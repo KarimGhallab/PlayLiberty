@@ -1,57 +1,66 @@
 # Product
 
-PlayLiberty is an audio player for web and mobile that syncs YouTube playlists and keeps the tracks saved, so a video deleted from YouTube does not remove it from the user's library.
+PlayLiberty is a self-hosted, multi-user audio player for web and mobile that mirrors YouTube playlists into a server-owned media store and keeps the audio, so a video removed from YouTube does not remove it from the user's playlists.
 
 ## Platform
 
-The intended surfaces are a web client and a mobile client, backed by a self-hosted Node/TypeScript service that owns sync and storage. No client or service exists yet: the repository currently holds a workspace scaffold and shared utilities. Production runs on the owner's infrastructure behind the Pangolin authenticating edge.
+Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node/TypeScript in this pnpm monorepo; the client stacks are decided in their own tasks. No server or client code exists yet: the repository currently holds a workspace scaffold and shared utilities.
 
 ## Users
 
-The owner: one person, at most a small household, who listens to music through YouTube playlists and wants that listening to survive video removals. They reach the service from a phone and a desktop browser after authenticating at the Pangolin edge.
+A small group of accounts on one private instance, normally a household. Each account curates its own playlists and can share a playlist with other accounts on the same instance. Accounts are provisioned from Pangolin identity; the app holds no passwords.
 
 ## Product Purpose
 
-Keep a playable, personal copy of the music the user already chose, and keep it in sync with the source playlists. Done, from the user's side, means: point PlayLiberty at a playlist, and later still be able to play every track that was there, even after YouTube removes some of the videos. The user never has to notice a removal.
+Keep a playable, personal copy of the music each user already chose, and keep it in sync with the source playlists. Done, from the user's side, means: paste a playlist, and later still play every track that was there, even after YouTube removes videos. The user never has to notice a removal.
 
 ## Positioning
 
-Against using YouTube directly: videos disappear and playlists silently lose tracks. Against manual downloading: a download does not stay in sync and does not know the playlist. PlayLiberty keeps a durable library and reconciles it with the source playlists over time.
+Against using YouTube directly: videos disappear and playlists silently lose tracks. Against manual downloading: a download does not stay in sync and does not know the playlist. PlayLiberty keeps a durable, deduplicated media store and reconciles it with the sources over time.
 
 ## Operating Context
 
-On demand and self-hosted. The owner triggers or schedules a sync, then plays from the retained library on their own devices. One user at a time; nothing is shared or published.
+On demand and self-hosted. A user pastes a playlist URL or a single video URL and triggers a sync; the server downloads the audio; users then play from the web and mobile clients. Streaming only in v1, and playback state is per client.
 
 ## Capabilities and Constraints
 
-Capabilities, intended:
+Capabilities in v1:
 
-- Point PlayLiberty at one or more YouTube playlists.
-- Sync each playlist into a library: detect new videos, retain previously synced tracks.
-- Play the retained library from the web and mobile clients.
-- Survive the removal of a source video.
+- Ingest a YouTube playlist URL or a single video URL.
+- Sync a playlist into the media store: add new videos, retain tracks whose source video is gone.
+- Stream stored tracks to the web and mobile clients.
+- Multiple accounts, each with its own playlists; a playlist owner can share read-only or read-write with specific accounts.
+- Add one pasted video to several write-accessible playlists at once.
+- Manual refresh, retention, and weekly orphan pruning.
 
 Hard constraints:
 
-- Personal, single-user use. Do not build sharing, publishing, or redistribution features. The library is for the owner's own listening.
-- The library, not YouTube, is the source of truth for playback.
-- A sync must never delete a track the user already has because the source video disappeared.
-- Sync depends on YouTube being reachable. Losing that access must not damage the existing library.
+- Audio only. No video storage or playback.
+- No transcoding, ever. The stored format must play natively everywhere, which fixes it to AAC/M4A. See `docs/adr/0002-no-transcoding-store-aac-m4a.md`.
+- The stored media, not YouTube, is the source of truth for playback.
+- A sync must never delete a track because a source video disappeared.
+- No global library view: playlists are the only entry point to content.
+- The instance is private; authentication is Pangolin's, not the app's. See `docs/adr/0003-identity-via-pangolin-forwarded-headers.md`.
+
+## Non-Goals
+
+Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, favorites, ratings, play counts, and search.
 
 ## Brand Commitments
 
-Calm, content-first, and quiet. The interface is a music library, not a video feed. It should feel like a dependable personal shelf, and must not nag or gamify.
+Calm, content-first, and quiet. The interface is a playlist library, not a video feed. It should feel like a dependable personal shelf, and must not nag or gamify.
 
 ## Evidence on Hand
 
-None yet. This repository is pre-implementation: the only shipped code is the workspace scaffold and `packages/utils`. Product decisions so far rest on the owner's stated intent, recorded here.
+The product definition came out of a structured grilling session, and the decisions are recorded in `docs/GLOSSARY.md`, `docs/ARCHITECTURE.md`, and `docs/adr/`. There is no code besides the workspace scaffold and `packages/utils`, no tests, and no dataset.
 
 ## Product Principles
 
-1. A removed source video must never remove an already-synced track.
-2. The retained library is authoritative for playback; YouTube is an input, not a dependency at play time.
+1. A removed source video must never remove an already-stored track.
+2. The stored media is authoritative for playback; YouTube is an input, not a dependency at play time.
 3. Sync is incremental and repeatable; running it twice changes nothing the second time.
-4. Keep the personal, single-user boundary; refuse features that imply redistribution.
+4. Keep the private-instance boundary; refuse features that imply redistribution.
+5. One video id, one stored file, shared by every playlist that references it.
 
 ## Accessibility & Inclusion
 
