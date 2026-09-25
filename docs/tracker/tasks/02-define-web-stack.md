@@ -1,7 +1,7 @@
 # Define the web client stack
 
-Status: open
-Labels: `enhancement`, `ready-for-human`
+Status: resolved
+Labels: `enhancement`
 
 ## Objective
 
@@ -34,3 +34,9 @@ None. It consumes the API contract from task 01, so read those contract decision
 - An ADR in `docs/adr/` records the chosen stack and the alternatives rejected.
 - `pnpm run build` and `pnpm run lint` pass with the scaffolded client.
 - `npx depcruise .` and `npx syncpack lint` pass.
+
+## Outcome
+
+Resolved by a grilling session. The stack is recorded in `docs/adr/0005-web-stack.md`: React 19.3 with the React Compiler, Vite 8, TypeScript 6, TanStack Router, TanStack Query v5, Zustand 5, SCSS with CSS Modules over dark-only tokens, a single global audio element with the Media Session API, `localStorage` persistence, and Vitest with RTL, jsdom, and MSW. The client is served by a dedicated nginx container as the single public origin, proxying `/api` to the server; the CSRF defense is recorded in `docs/adr/0006-csrf-defense.md`.
+
+The build, lint, test, depcruise, and container checks are carried out by `05-scaffold-web`, which creates the skeleton. This task resolves on the decision.

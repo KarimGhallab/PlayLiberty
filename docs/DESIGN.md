@@ -2,11 +2,11 @@
 
 ## Overview
 
-No user interface exists yet. This records the intended direction so the first client does not start from a blank slate: a calm, dark-first, content-forward music library. It should read as a dependable personal shelf, not a video feed and not a gamer dashboard. The exact tokens below are provisional and are expected to change when the first client is built; treat the principles as the stable part.
+No user interface exists yet. This records the intended direction so the first client does not start from a blank slate: a calm, dark-only, content-forward music library. It should read as a dependable personal shelf, not a video feed and not a gamer dashboard. The exact tokens below are provisional and are expected to change when the first client is built; treat the principles as the stable part.
 
 ## Colors
 
-Dark-first, with a light variant. Restrained, low-saturation surfaces so album art carries the color.
+Dark only. Restrained, low-saturation surfaces so album art carries the color. The tokens are implemented as CSS custom properties on `:root`, with `color-scheme: dark` so the browser chrome matches.
 
 | Token       | Value                    | Use                           |
 | ----------- | ------------------------ | ----------------------------- |
@@ -47,6 +47,10 @@ Small, consistent radii (about 6px on controls, 10px on cards). Hairline strokes
 ## Browser surfaces
 
 Style focus rings to be visible against the dark surfaces. Use the accent for selection and active states. Style scrollbars minimally to avoid bright default chrome on dark backgrounds.
+
+## Motion
+
+Motion is CSS transitions only and stays restrained: no page transitions and no decorative loops. A global `prefers-reduced-motion: reduce` rule disables transitions and animations, and the player bar additionally drops artwork transitions, seek smoothing, and hover scale while keeping the position indicator and focus rings, which carry information rather than decoration.
 
 ## Do's and Don'ts
 

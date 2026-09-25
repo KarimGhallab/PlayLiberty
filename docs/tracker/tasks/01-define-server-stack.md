@@ -1,7 +1,7 @@
 # Define the server stack
 
-Status: open
-Labels: `enhancement`, `ready-for-human`
+Status: resolved
+Labels: `enhancement`
 
 ## Objective
 
@@ -38,3 +38,9 @@ None. This task can start immediately.
 - `pnpm run build` and `pnpm run lint` pass with the scaffolded server.
 - `npx depcruise .` and `npx syncpack lint` pass.
 - No container file publishes a host port; the production unit attaches to `pangolin_frontend` as `external`.
+
+## Outcome
+
+Resolved by a grilling session. The stack is recorded in `docs/adr/0004-server-stack.md`: Node 26 with Fastify 5, `tsc` output, `better-sqlite3` plus Drizzle on local SQLite, the `/api/v1` REST surface in Zod, `packages/youtube` as the only yt-dlp seam, an in-process worker and `croner` prune with the `track` rows as the queue, and a per-request authorized streaming route. The schema, API surface, sync pipeline, and deployment shape are in that ADR and in `docs/ARCHITECTURE.md`.
+
+The build, lint, test, depcruise, and container checks are carried out by `04-scaffold-server`, which creates the skeleton. This task resolves on the decision.

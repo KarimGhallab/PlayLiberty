@@ -1,0 +1,19 @@
+# Build the server on Fastify 5, Node 26, SQLite, and Drizzle
+
+The server (`apps/server`) is one Node 26 process built with Fastify 5 and compiled by `tsc`. It owns a local SQLite database through `better-sqlite3` and Drizzle ORM, with `drizzle-kit` SQL migrations committed to the repository and applied at startup. It depends on two new workspace packages: `packages/contracts`, which holds the Zod schemas that define the `/api/v1` REST surface, and `packages/youtube`, the only module allowed to invoke yt-dlp. Identity is read from Pangolin's forwarded headers (ADR 0003). Streaming is a Fastify route that authorizes the request and delegates byte ranges to `@fastify/static`. Downloads and the weekly prune run in the same process, using the `track` rows as the queue.
+
+The product grilling chose a single process, which makes SQLite sufficient and removes any need for job claiming between workers, since only this process writes the database. Every other settled choice is Node-first: `better-sqlite3` declares `engines: node >=22` and ships Node-API prebuilds, Fastify is a Node framework and is the only candidate whose maintained static plugin handles `Range`, `ETag`, and conditional GET correctly, Vitest requires Node, and the repository's pnpm workspaces and `mise` pin are Node. The TypeScript guideline mandates `enum`, which Node's type stripping cannot execute, so the server compiles with `tsc` like the other workspaces. Drizzle is chosen over Kysely and Prisma because it types the schema, generates committed migrations, and supports both SQLite and Postgres, so moving engines later stays a configuration and dialect change. The `source` table of the first schema draft was folded into `playlist` (provider and source playlist id) and `track` (provider and video id), because a synced playlist always mirrors one playlist and a single video becomes a manual association rather than a playlist of its own.
+
+Alternatives rejected:
+
+- Hono: the best type inference and genuinely cross-runtime, but its Node static helper emits no ETag and no conditional GET, so the audio route would be hand-written. Fastify's `@fastify/static` makes that a plugin concern.
+- Express 5: correct static file handling but weak typing and roughly 40 percent slower.
+- NestJS: decorator and DI driven, and it cannot run under Node's type stripping, so it forces a compile step and a heavier structure for a small service.
+- Raw `node:http`: would mean rebuilding routing, validation, and correct range handling that maintained packages already provide.
+- Bun: yt-dlp has deprecated Bun with a supported ceiling below the current release, so Bun would still require shipping Node or Deno, while giving up `better-sqlite3`, Fastify, and Vitest support.
+- Deno: the best TypeScript and security story, but `better-sqlite3` needs `--allow-ffi` and install-script approval, and it would migrate the pnpm workspace to `deno.json`.
+- PostgreSQL and Supabase: there are no multiple concurrent writers, no network volume, and no near-terabyte data, which are the conditions that justify leaving SQLite. Supabase Cloud would also move private metadata off the host, add a second identity system beside Pangolin, and its self-hosted stack is about eleven containers.
+- `node:sqlite`: zero additional dependency, but still a release candidate and it defaults the busy timeout to zero.
+- Kysely and Prisma: Kysely supports only `better-sqlite3` among the drivers considered, and Prisma adds a schema DSL, a generated client, and a driver adapter.
+- A separate jobs table and a multi-process split: unnecessary when one process owns the write connection; it can be introduced later with an explicit claimed state.
+- `--download-archive`: a global extractor plus id ledger that fights the orphan-prune and re-add behavior, while the database already records what is stored per video id.

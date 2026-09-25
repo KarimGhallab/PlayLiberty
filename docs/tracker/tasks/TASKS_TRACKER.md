@@ -4,11 +4,15 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 
 ## Tickets
 
-| Ticket                   | State | Blocked by | Blocks |
-| ------------------------ | ----- | ---------- | ------ |
-| `01-define-server-stack` | open  | none       | none   |
-| `02-define-web-stack`    | open  | none       | none   |
-| `03-define-mobile-stack` | open  | none       | none   |
+| Ticket                       | State    | Blocked by | Blocks |
+| ---------------------------- | -------- | ---------- | ------ |
+| `01-define-server-stack`     | resolved | none       | none   |
+| `02-define-web-stack`        | resolved | none       | none   |
+| `03-define-mobile-stack`     | resolved | none       | none   |
+| `04-scaffold-server`         | open     | none       | none   |
+| `05-scaffold-web`            | open     | none       | none   |
+| `06-scaffold-mobile`         | open     | none       | none   |
+| `07-provision-mobile-access` | open     | `04`, `06` | none   |
 
 ## Conventions
 
