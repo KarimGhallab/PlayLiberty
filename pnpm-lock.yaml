@@ -249,24 +249,9 @@ importers:
 
   apps/console:
     dependencies:
-      '@template-monorepo/color':
-        specifier: workspace:*
-        version: link:../../packages/color
-      '@template-monorepo/utils':
+      '@playliberty/utils':
         specifier: workspace:*
         version: link:../../packages/utils
-    devDependencies:
-      '@types/node':
-        specifier: 26.6.2
-        version: 26.6.2
-      tsc-watch:
-        specifier: ^7.2.1
-        version: 7.2.1(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  packages/color:
     devDependencies:
       '@types/node':
         specifier: 26.6.2

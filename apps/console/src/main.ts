@@ -1,11 +1,7 @@
-import { HexColor, identifyColor } from '@template-monorepo/color';
-import { convertToUnix } from '@template-monorepo/utils';
+import { convertToUnix } from '@playliberty/utils';
 
-const redHexColor = `#FF0000`;
-const identifiedColor: HexColor = identifyColor(redHexColor);
-console.log(identifiedColor);
+const appName = 'PlayLiberty';
+const defaultLibraryPath = String.raw`C:\Music\PlayLiberty`;
 
-const windowPath = 'C:\\pathDD\\to\\file';
-const unixPath = convertToUnix(windowPath);
-console.log('Windows path:', windowPath);
-console.log('Unix path:', unixPath);
+console.log(`${appName} is starting.`);
+console.log('Library path:', convertToUnix(defaultLibraryPath));

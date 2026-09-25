@@ -1,7 +1,7 @@
 {
-  "name": "@template-monorepo/console",
-  "version": "1.0.0",
-  "description": "",
+  "name": "@playliberty/console",
+  "version": "0.1.0",
+  "description": "PlayLiberty console application.",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
@@ -17,8 +17,7 @@
   "license": "ISC",
   "packageManager": "pnpm@12.4.2",
   "dependencies": {
-    "@template-monorepo/color": "workspace:*",
-    "@template-monorepo/utils": "workspace:*"
+    "@playliberty/utils": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.6.2",

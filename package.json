@@ -1,11 +1,12 @@
 {
-  "name": "template-node-ts-monorepo",
-  "version": "1.0.0",
-  "description": "",
+  "name": "playliberty",
+  "version": "0.1.0",
+  "description": "Audio player for web and mobile that syncs YouTube playlists and keeps them saved, so you never lose a track to video deletion.",
+  "private": true,
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "console:start": "pnpm --filter @template-monorepo/console run start",
+    "console:start": "pnpm --filter @playliberty/console run start",
     "build": "pnpm -r run build",
     "watch": "pnpm -r --parallel run watch",
     "clean": "pnpm -r run clean",
@@ -17,7 +18,7 @@
     "script:workspace-generate-dependency-graph": "npx depcruise . --output-type archi | dot -T svg > dependency-graph.svg"
   },
   "keywords": [],
-  "author": "",
+  "author": "Karim Ghallab <Milloser@live.fr>",
   "license": "ISC",
   "packageManager": "pnpm@12.4.2",
   "devDependencies": {
