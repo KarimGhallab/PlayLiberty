@@ -13,8 +13,8 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`05-scaffold-web`](05-scaffold-web.md)                                 | open     | [`10`](10-build-design-foundation.md)      | none                                                      |
 | [`06-scaffold-mobile`](06-scaffold-mobile.md)                           | open     | [`10`](10-build-design-foundation.md)      | [`07`](07-provision-mobile-access.md)                     |
 | [`07-provision-mobile-access`](07-provision-mobile-access.md)           | open     | [`06`](06-scaffold-mobile.md)              | none                                                      |
-| [`08-define-design-system`](08-define-design-system.md)                 | open     | none                                       | [`09`](09-design-scheme-and-components.md)                |
-| [`09-design-scheme-and-components`](09-design-scheme-and-components.md) | open     | [`08`](08-define-design-system.md)         | [`10`](10-build-design-foundation.md)                     |
+| [`08-define-design-system`](08-define-design-system.md)                 | resolved | none                                       | [`09`](09-design-scheme-and-components.md)                |
+| [`09-design-scheme-and-components`](09-design-scheme-and-components.md) | open     | none                                       | [`10`](10-build-design-foundation.md)                     |
 | [`10-build-design-foundation`](10-build-design-foundation.md)           | open     | [`09`](09-design-scheme-and-components.md) | [`05`](05-scaffold-web.md), [`06`](06-scaffold-mobile.md) |
 
 ## Conventions

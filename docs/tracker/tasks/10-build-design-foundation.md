@@ -5,7 +5,7 @@ Labels: `enhancement`, `ready-for-agent`
 
 ## Objective
 
-Turn the designed token set and the shared UI decisions into the two workspace packages both clients consume, so a duration, a state label, and a colour resolve identically on web and on mobile. This is the ticket that makes the design usable from code.
+Turn the designed token set and the shared UI decisions into the two workspace packages both clients consume, so a duration, a state label, and a color resolve identically on web and on mobile. This is the ticket that makes the design usable from code.
 
 ## Context
 
@@ -21,7 +21,7 @@ The workspace builds with plain `tsc` and has no script runner, so the emitter m
 
 - The designed values as the single source of truth, held as literal-typed data, with lengths as unitless numbers.
 - A `types.ts` next to the values holding the group contracts, so consumers import types from there and never from the implementation.
-- The emitter: appends `px` to lengths, `ms` to durations, passes colours through verbatim, and writes the stylesheet into `dist`.
+- The emitter: appends `px` to lengths, `ms` to durations, passes colors through verbatim, and writes the stylesheet into `dist`.
 - A build of clean, compile, then run the compiled emitter, so the emitter ships as part of the package's own output and needs no new dependency and no runner.
 - An export map exposing both the stylesheet subpath for web and the module for mobile.
 - A test asserting that every leaf value in the source appears in the emitted stylesheet.
@@ -44,7 +44,7 @@ The workspace builds with plain `tsc` and has no script runner, so the emitter m
 
 ## Out of scope
 
-Components, views, routes, and any colour or spacing decision, all of which belong to tasks `09`, `05`, and `06`.
+Components, views, routes, and any color or spacing decision, all of which belong to tasks `09`, `05`, and `06`.
 
 ## Blocking edges
 

@@ -19,7 +19,7 @@ The contract this design must satisfy is recorded in `docs/adr/0009-design-syste
 
 ### The design brief
 
-Post the brief as a chat message before touching the canvas, and treat it as a deliverable rather than scratch work. It names the mood candidates, the mood chosen and why it is not the first instinct, the palette with a role for each value, the type, and the direction. The mood is a physical condition or register, and every colour is derived from a named object in that scene, so the palette reads as one place rather than as a set of applied tints.
+Post the brief as a chat message before touching the canvas, and treat it as a deliverable rather than scratch work. It names the mood candidates, the mood chosen and why it is not the first instinct, the palette with a role for each value, the type, and the direction. The mood is a physical condition or register, and every color is derived from a named object in that scene, so the palette reads as one place rather than as a set of applied tints.
 
 ### The Paper file
 
@@ -37,7 +37,7 @@ Post the brief as a chat message before touching the canvas, and treat it as a d
 
 ### The components
 
-Each component is drawn in every state it has to express, and each state carries a label, never colour alone.
+Each component is drawn in every state it has to express, and each state carries a label, never color alone.
 
 - **Track row**, the core unit that appears in every list: the five track states, a removed-but-retained video, and the interaction states including hover, focus-visible, active, and disabled.
 - **Player bar**, persistent across the app: transport, the current track, the position indicator, and its reduced-motion variant.
