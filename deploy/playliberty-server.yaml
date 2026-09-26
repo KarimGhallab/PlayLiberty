@@ -1,0 +1,80 @@
+# Production pod for the PlayLiberty server. It never publishes a host port; it
+# attaches to the shared pangolin_frontend network through the .kube unit. The
+# API is served through the edge, and nginx (task 05) fronts the web client on
+# the same network.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: playliberty-server
+spec:
+  containers:
+    - name: server
+      image: localhost/playliberty-server:latest
+      imagePullPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      ports:
+        - containerPort: 8080
+      env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: '8080'
+        - name: LOG_LEVEL
+          value: info
+        - name: MEDIA_ROOT
+          value: /media
+        - name: DATABASE_PATH
+          value: /data/playliberty.db
+        - name: PUBLIC_ORIGIN
+          value: https://playliberty.example.com
+        - name: PANGOLIN_API_URL
+          value: https://pangolin.example.com
+        - name: PANGOLIN_RESOURCE_ID
+          value: replace-me
+        - name: PANGOLIN_INTEGRATION_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: playliberty-secrets
+              key: pangolin-integration-api-key
+      volumeMounts:
+        - name: media
+          mountPath: /media
+        - name: data
+          mountPath: /data
+        - name: tmp
+          mountPath: /tmp
+      livenessProbe:
+        exec:
+          command:
+            - wget
+            - -q
+            - -O
+            - /dev/null
+            - http://127.0.0.1:8080/healthz
+        initialDelaySeconds: 15
+        periodSeconds: 30
+      resources:
+        requests:
+          memory: 128Mi
+          cpu: 100m
+        limits:
+          memory: 512Mi
+          cpu: '1'
+  volumes:
+    - name: media
+      hostPath:
+        path: /srv/playliberty/media
+        type: DirectoryOrCreate
+    - name: data
+      hostPath:
+        path: /srv/playliberty/data
+        type: DirectoryOrCreate
+    - name: tmp
+      emptyDir:
+        sizeLimit: 64Mi

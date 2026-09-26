@@ -4,7 +4,7 @@ PlayLiberty is a self-hosted, multi-user audio player for web and mobile that mi
 
 ## Platform
 
-Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see `docs/adr/0004-server-stack.md`). The web client is a React 19.2 and Vite SPA served by nginx as the single public origin (see `docs/adr/0005-web-stack.md`). The mobile client is an Expo React Native app carrying a per-user Pangolin access token obtained through a self-service browser flow (see `docs/adr/0007-mobile-stack.md` and `docs/adr/0008-mobile-provisioning.md`). No server or client code exists yet: the repository currently holds a workspace scaffold and shared utilities.
+Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see `docs/adr/0004-server-stack.md`). The web client is a React 19.2 and Vite SPA served by nginx as the single public origin (see `docs/adr/0005-web-stack.md`). The mobile client is an Expo React Native app carrying a per-user Pangolin access token obtained through a self-service browser flow (see `docs/adr/0007-mobile-stack.md` and `docs/adr/0008-mobile-provisioning.md`). The server skeleton exists (`apps/server`, `packages/contracts`, `packages/youtube`); the web and mobile clients are not built yet.
 
 ## Users
 
@@ -52,7 +52,7 @@ Calm, content-first, and quiet. The interface is a playlist library, not a video
 
 ## Evidence on Hand
 
-The product definition and the server, web, and mobile stacks all came out of structured grilling sessions. The decisions are recorded in `docs/GLOSSARY.md`, `docs/ARCHITECTURE.md`, and `docs/adr/`, with `docs/adr/0004-server-stack.md`, `docs/adr/0005-web-stack.md`, and `docs/adr/0007-mobile-stack.md` covering the stacks and `docs/adr/0008-mobile-provisioning.md` the mobile access model. There is no code besides the workspace scaffold and `packages/utils`, no tests, and no dataset.
+The product definition and the server, web, and mobile stacks all came out of structured grilling sessions. The decisions are recorded in `docs/GLOSSARY.md`, `docs/ARCHITECTURE.md`, and `docs/adr/`, with `docs/adr/0004-server-stack.md`, `docs/adr/0005-web-stack.md`, and `docs/adr/0007-mobile-stack.md` covering the stacks and `docs/adr/0008-mobile-provisioning.md` the mobile access model. The server skeleton, the shared contracts, and the YouTube adapter exist with their tests; the clients do not, and there is no dataset.
 
 ## Product Principles
 

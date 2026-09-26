@@ -1,7 +1,7 @@
 # Scaffold the server skeleton
 
-Status: open
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Objective
 
@@ -64,3 +64,25 @@ None. Task 01 settled the stack, so this can start immediately.
 - `npx depcruise .`, `npx syncpack lint`, and `node ./scripts/validate-tsconfig-paths.cjs` pass.
 - The server starts locally and `GET /healthz` responds.
 - No container file publishes a host port for production; the production unit attaches to `pangolin_frontend` as `external`.
+
+## Outcome
+
+Implemented and verified. `packages/contracts` holds the Zod schemas and inferred types for the `/api/v1` surface; `packages/youtube` holds the URL validator, the yt-dlp argument builders, the `spawn` wrapper with process-group kill, and the faststart remux. `apps/server` is the Fastify 5 application: Zod-validated config, the Drizzle schema with seven tables and a committed initial migration applied at startup, the auth hook (forwarded `Remote-*`, auto-provision, fail closed), the CSRF guard, health and readiness routes, the `/api/v1` route surface with `501` placeholders and real `GET /tracks/:id/stream` and `/thumbnail`, the in-process download worker (a no-op loop), the `croner` prune scheduler, and the startup sweep, all wired into `onReady` and `onClose`. The container artifacts are the multi-stage `Containerfile`, the dev `compose.yaml`, and the production Quadlet unit under `deploy/`.
+
+Notes and deviations:
+
+- The logger is Fastify's built-in pino (level from config, request ids from `genReqId`) rather than a standalone pino instance. Passing a standalone instance made the Fastify instance generic over pino's `Logger`, which broke the shared `FastifyInstance` typing; Fastify's logger is pino, so the requirement holds.
+- `skipLibCheck` was added to `tsconfig.base.json`; drizzle-orm and a pino dependency ship declaration files that do not type-check under TypeScript 6.
+- `allowBuilds` for `better-sqlite3` and `esbuild` was added to `pnpm-workspace.yaml`; pnpm blocks install scripts by default, and both need to run.
+- `no-orphans` in `.dependency-cruiser.cjs` now excludes test files, the `testing/` helper folder, and `*.config.ts` tool configs.
+- Node 26 images no longer ship `corepack`, so the `Containerfile` installs the pinned `pnpm@12.4.2` with npm.
+- Podman's default OCI output ignores the image `HEALTHCHECK`, so the runtime health is also declared on the compose service and the Quadlet `livenessProbe`; building with `--format docker` honors the image directive.
+
+Verification:
+
+- `pnpm run build`, `pnpm run lint`, and `pnpm run format` pass.
+- `pnpm run test` passes: 30 tests (contracts 4, youtube 12, server 14).
+- `npx depcruise .` reports 0 violations (53 modules); `npx syncpack lint` and the tsconfig path check pass.
+- The server starts and answers `GET /healthz` and `GET /readyz` with `200`, `GET /api/v1/me` with `401` without identity and `200` with it, `GET /api/v1/tracks/:id/stream` with `404` for an unknown track, and a mutating request without the CSRF header with `403`.
+- The image builds with podman and the running container serves `/healthz` and `/readyz`, runs as uid 1000, and ships yt-dlp 2026.08.19, ffmpeg 5.1.9, and the migration.
+- `deploy/playliberty-server.yaml` publishes only a `containerPort`, never a `hostPort`, and the `.kube` unit attaches to `pangolin_frontend`.

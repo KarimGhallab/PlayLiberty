@@ -3,7 +3,10 @@
   "compilerOptions": {
     "paths": {
       "@playliberty/console": ["./apps/console/src"],
-      "@playliberty/utils": ["./packages/utils/src"]
+      "@playliberty/contracts": ["./packages/contracts/src"],
+      "@playliberty/server": ["./apps/server/src"],
+      "@playliberty/utils": ["./packages/utils/src"],
+      "@playliberty/youtube": ["./packages/youtube/src"]
     }
   }
 }

@@ -7,6 +7,9 @@
   "type": "module",
   "scripts": {
     "console:start": "pnpm --filter @playliberty/console run start",
+    "server:start": "pnpm --filter @playliberty/server run start",
+    "server:dev": "pnpm --filter @playliberty/server run dev",
+    "test": "pnpm -r run test",
     "build": "pnpm -r run build",
     "watch": "pnpm -r --parallel run watch",
     "clean": "pnpm -r run clean",
@@ -18,7 +21,6 @@
     "script:workspace-generate-dependency-graph": "npx depcruise . --output-type archi | dot -T svg > dependency-graph.svg"
   },
   "keywords": [],
-  "author": "Karim Ghallab <Milloser@live.fr>",
   "license": "ISC",
   "packageManager": "pnpm@12.4.2",
   "devDependencies": {

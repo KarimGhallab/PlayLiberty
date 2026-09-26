@@ -16,7 +16,6 @@
     "clean": "rm -rf dist"
   },
   "keywords": [],
-  "author": "",
   "license": "ISC",
   "packageManager": "pnpm@12.4.2",
   "dependencies": {},

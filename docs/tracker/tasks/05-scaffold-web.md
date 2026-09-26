@@ -9,7 +9,7 @@ Create the minimal compiling skeleton for `apps/web` and its nginx serving conta
 
 ## Context
 
-Read `docs/adr/0005-web-stack.md`, `docs/adr/0006-csrf-defense.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCT.md`, `docs/GLOSSARY.md`, and `docs/DESIGN.md` first. The stack is settled; this task only realizes its shape.
+Read `docs/adr/0005-web-stack.md`, `docs/adr/0006-csrf-defense.md`, `docs/adr/0009-design-system-token-layer.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCT.md`, `docs/GLOSSARY.md`, and `docs/DESIGN.md` first. The stack is settled; this task only realizes its shape.
 
 ## Scope
 
@@ -21,7 +21,8 @@ Read `docs/adr/0005-web-stack.md`, `docs/adr/0006-csrf-defense.md`, `docs/ARCHIT
 - A Zustand player store, a single global audio element mounted in the shell, and Media Session wiring with feature detection and `try/catch`.
 - Queue and position persistence in `localStorage` with throttled writes plus `pagehide` and `visibilitychange`.
 - API client under `src/shared/api` that consumes `packages/contracts` schemas, sends `X-PlayLiberty-Client` on mutations, and turns a `401` or a redirect into a top-level navigation so the edge can re-authenticate.
-- SCSS with CSS Modules and BEM over the dark-only `docs/DESIGN.md` tokens as CSS custom properties, a base stylesheet with `color-scheme: dark`, and `prefers-reduced-motion` handling.
+- SCSS with CSS Modules and BEM, importing the stylesheet emitted by `@playliberty/tokens` once at the app entry, with a base stylesheet carrying `color-scheme: dark`, the focus ring, minimal scrollbar styling, and `prefers-reduced-motion` handling. Every value comes from a token, never from a literal in a module.
+- `@playliberty/ui-foundation` for durations, the relative last-synced time, and the track state tone, so the web and mobile clients render the same strings.
 - Views under `src/views/<view>/` and shared pieces under `src/shared/`, per the TypeScript guideline.
 
 ### Tests
@@ -46,7 +47,7 @@ Real feature behavior beyond the placeholders, end-to-end Playwright tests (a la
 
 ## Blocking edges
 
-None. It consumes `packages/contracts` from task 01.
+Blocked by `10-build-design-foundation`, which produces the token stylesheet and the shared UI decisions this app renders with. It also consumes `packages/contracts` from task 01.
 
 ## Verification
 

@@ -4,18 +4,23 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 
 ## Tickets
 
-| Ticket                       | State    | Blocked by | Blocks |
-| ---------------------------- | -------- | ---------- | ------ |
-| `01-define-server-stack`     | resolved | none       | none   |
-| `02-define-web-stack`        | resolved | none       | none   |
-| `03-define-mobile-stack`     | resolved | none       | none   |
-| `04-scaffold-server`         | open     | none       | none   |
-| `05-scaffold-web`            | open     | none       | none   |
-| `06-scaffold-mobile`         | open     | none       | none   |
-| `07-provision-mobile-access` | open     | `04`, `06` | none   |
+| Ticket                                                                  | State    | Blocked by                                 | Blocks                                                    |
+| ----------------------------------------------------------------------- | -------- | ------------------------------------------ | --------------------------------------------------------- |
+| [`01-define-server-stack`](01-define-server-stack.md)                   | resolved | none                                       | none                                                      |
+| [`02-define-web-stack`](02-define-web-stack.md)                         | resolved | none                                       | none                                                      |
+| [`03-define-mobile-stack`](03-define-mobile-stack.md)                   | resolved | none                                       | none                                                      |
+| [`04-scaffold-server`](04-scaffold-server.md)                           | resolved | none                                       | none                                                      |
+| [`05-scaffold-web`](05-scaffold-web.md)                                 | open     | [`10`](10-build-design-foundation.md)      | none                                                      |
+| [`06-scaffold-mobile`](06-scaffold-mobile.md)                           | open     | [`10`](10-build-design-foundation.md)      | [`07`](07-provision-mobile-access.md)                     |
+| [`07-provision-mobile-access`](07-provision-mobile-access.md)           | open     | [`06`](06-scaffold-mobile.md)              | none                                                      |
+| [`08-define-design-system`](08-define-design-system.md)                 | open     | none                                       | [`09`](09-design-scheme-and-components.md)                |
+| [`09-design-scheme-and-components`](09-design-scheme-and-components.md) | open     | [`08`](08-define-design-system.md)         | [`10`](10-build-design-foundation.md)                     |
+| [`10-build-design-foundation`](10-build-design-foundation.md)           | open     | [`09`](09-design-scheme-and-components.md) | [`05`](05-scaffold-web.md), [`06`](06-scaffold-mobile.md) |
 
 ## Conventions
 
+- One file per ticket, named `NN-slug.md`, numbered in creation order.
+- The table above links every ticket reference to its file, so a reader lands on the ticket from any row.
 - Each ticket declares its blocking edges: which tickets must land before it can start. A ticket with no edges can start immediately.
 - Each ticket is a tracer bullet: it reaches a working end state on its own, however thin, rather than being a layer of a larger change.
 - A ticket ends with its verification: the command or check that proves it is done.
