@@ -19,7 +19,7 @@ The contract this design must satisfy is recorded in `docs/adr/0009-design-syste
 
 These were settled before the design work and are not reopened here.
 
-- **Type system**: IBM Plex Sans for text, IBM Plex Mono for numeric data such as durations, timestamps and counts. The mono is what aligns the duration column, so no alignment may depend on a font feature being honoured. A specimen compared this against a single-family system and the mono won on alignment. Self-hosted on both clients, never a CDN, because the deployment is private.
+- **Type system**: one family, IBM Plex Sans, for everything including numbers. Self-hosted on both clients, never a CDN, because the deployment is private. A second family was drafted in and then removed, which is worth recording because the reason it was removed is not obvious. It had been justified as the thing that made a duration column align. Measured in the browser at a 1000px em, Plex Sans has tabular figures by default: every digit 0 to 9 has an advance of 600, the same as a monospace face, while M and I are 812 and 400. So the column aligns with no second family and without depending on any font feature being honoured, which also settles the React Native question, since nothing needs `fontVariant` to work on Android. The specimen carrying the measurement is `docs/design/foundations/type.html`.
 - **Tone count**: six tones, one per display state. `pending`, `downloading`, `stored`, `failed`, `unavailable`, and `removed`.
 - **Component inventory**: the track row, the player bar, the empty state, and the playlist header, which replaces the "playlist view" of `docs/DESIGN.md` and is joined by a sync summary. See the components section for why the split is needed.
 
@@ -101,7 +101,7 @@ Record the measured contrast ratio for every text pairing the design uses, and c
 
 ## Out of scope
 
-Application code, the two packages, a light theme, iOS, and any component beyond the inventory listed under "Decided". The type scale, the mood, and every colour value are in scope here rather than out, because this is the ticket that decides them.
+Application code, the two packages, a light theme, iOS, and any component beyond the inventory listed under "Decided". The type scale, the mood, and every colour value are in scope here rather than out, because this is the ticket that decides them. The generic form controls, buttons, inputs, checkboxes, radios, switches and the dialog, are also out of scope and are designed in `11-form-controls`: they are platform primitives whose states are not derived from the contracts, and they need control geometry tokens that this ticket's inventory does not imply.
 
 ## Blocking edges
 

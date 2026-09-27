@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayLiberty design system</title>
+    <link rel="stylesheet" href="./fonts.css" />
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./specimen.css" />
+  </head>
+  <body>
+    <main class="page stack">
+      <header class="stack-tight">
+        <div class="eyebrow">PlayLiberty</div>
+        <h1 class="page-title">Design system</h1>
+        <p class="prose">
+          Hand-written specimens, not a hosted tool. Every value lives in
+          <span class="token-sm">tokens.css</span> as a custom property, every
+          specimen links that one file, and
+          <span class="token-sm">scripts/validate-design-tokens.cjs</span> keeps
+          the two honest.
+        </p>
+      </header>
+
+      <section class="stack">
+        <h2 class="section-title">Foundations</h2>
+        <ul class="index-grid">
+          <li><a href="./foundations/color.html">Colour</a></li>
+          <li><a href="./foundations/type.html">Type</a></li>
+          <li>
+            <a href="./foundations/space-shape-motion.html"
+              >Space, shape, motion</a
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">Components</h2>
+        <ul class="index-grid">
+          <li><a href="./components/form-controls.html">Form controls</a></li>
+          <li><a href="./components/track-row.html">Track row</a></li>
+          <li><span class="index-todo">Player bar</span></li>
+          <li><span class="index-todo">Empty state</span></li>
+          <li>
+            <span class="index-todo">Playlist header and sync summary</span>
+          </li>
+        </ul>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">Screens</h2>
+        <ul class="index-grid">
+          <li><span class="index-todo">Playlist detail, web</span></li>
+          <li><span class="index-todo">Playlist detail, mobile</span></li>
+        </ul>
+        <p class="hint">
+          Not built yet. The component specimens come next, then these two. They
+          are listed as text rather than as links, so the validator can tell a
+          deliberate gap from a broken one.
+        </p>
+      </section>
+
+      <hr class="rule" />
+
+      <section class="stack">
+        <h2 class="section-title">The palette at a glance</h2>
+        <div style="display: flex; gap: var(--space-2); flex-wrap: wrap">
+          <div
+            class="swatch"
+            style="width: 84px; height: 56px; background: var(--bg)"></div>
+          <div
+            class="swatch"
+            style="width: 84px; height: 56px; background: var(--surface)"></div>
+          <div
+            class="swatch"
+            style="
+              width: 84px;
+              height: 56px;
+              background: var(--surface-raised);
+            "></div>
+          <div
+            class="swatch"
+            style="width: 84px; height: 56px; background: var(--accent)"></div>
+          <div
+            class="swatch"
+            style="
+              width: 84px;
+              height: 56px;
+              background: var(--emphasis);
+            "></div>
+          <div
+            class="swatch"
+            style="
+              width: 84px;
+              height: 56px;
+              background: var(--tone-failed);
+            "></div>
+          <div
+            class="swatch"
+            style="
+              width: 84px;
+              height: 56px;
+              background: var(--tone-unavailable);
+            "></div>
+          <div
+            class="swatch"
+            style="
+              width: 84px;
+              height: 56px;
+              background: var(--tone-pending);
+            "></div>
+        </div>
+        <p class="hint">
+          Instrument black, one green telltale, and a fault vocabulary that
+          never uses the accent.
+          <span class="token-sm">docs/DESIGN.md</span> is the narrative record;
+          <a href="./README.md" style="color: var(--muted)">README.md</a>
+          explains which one is authoritative.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

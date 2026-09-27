@@ -14,6 +14,7 @@
     "watch": "pnpm -r --parallel run watch",
     "clean": "pnpm -r run clean",
     "lint": "eslint --cache --fix",
+    "design:check": "node ./docs/design/scripts/validate-design-tokens.cjs",
     "format": "npx prettier --list-different --write .",
     "script:unused-code": "npx knip",
     "script:check-updates": "npx ncu --workspaces --interactive",
