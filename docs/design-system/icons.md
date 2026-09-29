@@ -26,6 +26,17 @@ album art, and an icon with a baked-in colour is a second palette competing with
 an icon inside a disabled control, a muted label, or a filled accent button needs no rule of its own,
 because it has already inherited the right one.
 
+**The pin held `minus` for a long time without `plus`, which is the shape of an omission rather than
+a decision.** Nothing in the tree drew an add control with a mark on it until
+[the library's record](screens/library.md) did, and a pair that obviously belongs together arriving one half
+at a time is worth recording so the next reader does not read the absence as a choice against the plus.
+`plus` is the minus's other stroke: two paths, `M12 5l0 14` and `M5 12l14 0`, the second of which is
+byte-identical to the `minus` already in the pin, so the two are certainly from the same package and
+the same version. It is 0.667 of both axes and centred, which is to say it takes no optical correction:
+a cross is symmetric about the middle of its own box, and the one figure that says otherwise, 0.01 of a
+unit, is raster noise. It is drawn at `--icon-sm` beside a `--text-sm` label, because at `--icon-md` its
+ink would be 1.36 times the cap height of the word next to it and at `--icon-sm` it is 1.09.
+
 **Outline by default, filled only where filled means something.** This system uses filled in two places,
 both on the primary play button. The play triangle is filled because a solid triangle is the convention
 every platform already expects. The pause bars are filled too, and that is not a matter of taste: the two

@@ -194,6 +194,10 @@
         <symbol id="i-minus" data-icon="minus@3.48.0" viewBox="0 0 24 24">
           <path d="M5 12l14 0" />
         </symbol>
+        <symbol id="i-plus" data-icon="plus@3.48.0" viewBox="0 0 24 24">
+          <path d="M12 5l0 14" />
+          <path d="M5 12l14 0" />
+        </symbol>
         <symbol id="i-refresh" data-icon="refresh@3.48.0" viewBox="0 0 24 24">
           <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
           <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
@@ -352,6 +356,15 @@
             </svg>
             <span class="token-sm">minus</span>
             <span class="role">a partially selected box</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-plus" />
+            </svg>
+            <span class="token-sm">plus</span>
+            <span class="role"
+              >add a playlist, on the control that starts it</span
+            >
           </div>
           <div class="col stack-tight glyph-cell">
             <svg class="icon icon--md" aria-hidden="true" focusable="false">
@@ -563,6 +576,12 @@
             <code class="num">centred</code>
           </div>
           <div class="def-row readout-row">
+            <code class="name">plus</code>
+            <code class="num">0.667</code>
+            <code class="num">0.667</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
             <code class="name">refresh</code>
             <code class="num">0.750</code>
             <code class="num">0.749</code>
@@ -687,6 +706,15 @@
             <span class="token-sm">minus</span>
             <span class="role"
               >One stroke, so 0.08 of the height is the whole mark.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">plus</span>
+            <span class="role"
+              >Two strokes, each as wide as the mark is tall, so 0.67 of both
+              axes is ink and nothing is offset. Centred for the same reason the
+              minus is: a cross is symmetric about the middle of its own
+              box.</span
             >
           </div>
           <div class="def-row">

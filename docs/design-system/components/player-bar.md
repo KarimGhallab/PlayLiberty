@@ -77,7 +77,36 @@ bar: `.bars` is absolutely positioned with `inset-inline: 0`, so with no positio
 resolved against the bar instead of the artwork, and every number being checked was about the strip's
 own geometry rather than about where the strip was.
 
-**Not drawn: the bar with nothing playing.** It is persistent, so it cannot be absent the way the
-header's transport is, and the answer is a bar with an empty identity and a play that cannot act. That
-control is `disabled` rather than merely inert, for the reason check `2p` exists: a control that takes a
-click and does nothing is a mis-hit the user cannot explain.
+**The bar is absent at rest, and this paragraph withdraws what this file used to say.** It used to
+read: the bar is persistent, so it cannot be absent the way the header's transport is, and the answer
+is a bar with an empty identity and a play that cannot act. That was reasoned from persistence, which
+is true of the bar once something is playing and was not true of the screen a person lands on. The
+[library](../screens/library.md) is the route a person arrives at before they have chosen anything,
+and it is the one place where a bar holding nothing costs the most: 98px of a phone's landing screen
+spent on a play that cannot act. So the bar appears on the first track and is absent before it.
+
+**The persistence argument survives for the rest of the product and is scoped rather than deleted.** A
+person who has opened a playlist is somewhere they chose to be, and the bar being there is what they
+expect. So the bar is persistent once playback exists, and the rule is now about the bar's lifetime
+relative to playback rather than relative to the route.
+
+**What the arrival costs is measured, because withdrawing an answer is only half of it.** At 390 the
+library's content area goes from 788px to 691px. That figure has been re-measured four times on this
+screen and each time the unit changed: at 775 to 678 it took a whole 88.8px row down to seven, and when
+the library's items became the playlist header it took 0.23 of a 436.8px card, and when the mobile list
+became a two-column grid of 172.2px cards it took **two of the six cards** above the fold, and the
+header losing its add button to a floating one moved the area by 12px. The bar has
+not changed; the thing it is being measured against has, three times, which is why the figure here is
+the one from the drawing rather than the one from the argument. The bar still takes real room on the one
+screen where a person is about to tap a play, which is the price of not drawing it at rest.
+
+**A docked bar is 97px rather than 98**, because its bottom border is against the screen edge where a
+border draws nothing. The 98 in this file is the bar as a block in a specimen page, which has an edge
+all the way round.
+
+**A bar that is present but has nothing to play does not exist any more**, so the `disabled` play that
+this file used to specify for that state is not drawn. Check `2p`'s reason for preferring `disabled` to
+merely inert still stands for the controls that are genuinely unavailable rather than absent: a bar
+whose track has no file on disk, or a queue that is empty while playback is stopped. The distinction is
+between a control that cannot act and a bar that has not arrived, and only the first wants a disabled
+control sitting there explaining itself.

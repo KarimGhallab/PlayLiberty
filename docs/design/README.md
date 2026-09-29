@@ -8,13 +8,14 @@ hosted tool. Open `index.html` from the filesystem.
 ```
 index.html                              cover and navigation
 tokens.css                              every value, as custom properties
-specimen.css                            page frame, label vocabulary, fixed-width lanes
+specimen.css                            page frame, label vocabulary, the jointly-owned
+                                        component blocks beside the equalizer strip
 fonts.css                               three @font-face blocks
 fonts/                                  IBM Plex Sans variable, Latin subset, 45 KB
 foundations/                            colour, type, icons, space and shape and motion
 components/                             one file per component, desktop and mobile together
-screens/                                the two playlist detail screens
-scripts/validate-design-tokens.cjs       twenty-two checks
+screens/                                one file per screen, web and mobile together
+scripts/validate-design-tokens.cjs       twenty-five checks
 scripts/morph-frames.mjs                  the play to pause frames, derived from the pin
 scripts/build-morph-frames.mjs            prints them, writes the table, verifies a specimen
 scripts/splice-morph-block.mjs            writes the emitted CSS block into every file that uses it
@@ -83,7 +84,8 @@ glyphs, character for character, and the frames between them are computed from t
 ```
 pnpm run design:morph         print the strip and the CSS to paste into a specimen
 pnpm run design:morph:json    write generated/play-pause-morph.json for packages/tokens
-pnpm run design:morph:splice  write the emitted CSS block into every file that uses the control
+pnpm run design:morph:splice  write the emitted CSS block and frame groups into every file
+                              that declares a morph
 ```
 
 The strip in `components/playlist-header.html` is literal markup, because the specimens have no
@@ -102,6 +104,19 @@ including hosts it does not contain, and `splice-morph-block.mjs` writes the emi
 all of them. It finds its targets by the `data-morph` the block drives rather than from a list,
 because a list goes stale the moment a component adopts the control and then fails silently: the
 new file is simply absent from it, the run is clean, and the block in it is a hand copy.
+
+**The splicer writes the frame groups as well as the CSS, and until the library needed thirteen
+buttons in one file it did not.** The CSS was generated and the thirty-three strips already in the
+tree were hand-pasted, so the geometry a control actually draws was the one thing in it that could
+drift: a designer could add a play button, paste the strip out of another specimen and be a frame
+off with nothing to notice. The failure is worse there than in the CSS because the wrapper makes it
+silent, which the generator's own comment says: a strip without its `<g class="play__strip">` is
+addressed by no rule, sits at `translateX(0)` whatever the state says, and draws frame 0 forever,
+which on a playing button is the play triangle where the pause bars belong, and because
+`.play__glyph` clips, that looks exactly like a correct resting glyph. The extension replaced all
+thirty-three existing strips with text identical to what they already were, which is how it was
+checked to be a no-op, and a file declaring a morph with no frame groups now fails the run rather
+than passing on a button that will never move.
 
 A bounding box is not a check on any of this. One build had every corner of both bars bowed the
 wrong way and a box within 0.05 units of correct, because the straight edges set the box and the
@@ -150,6 +165,32 @@ two of its three bars move as one, and no reader of that source could have told.
 negative `animation-delay` to arrive with a resting value, because `animation: none` removes the
 thing that was animating a transform rather than resetting it, so a phased bar with nothing to
 fall back on freezes at an arbitrary height and still looks like a strip.
+
+`2r` exists because the playlist identity's cover is drawn by two specimens, so its geometry moved
+into `specimen.css` and its size became a custom property each consumer sets. That trades a
+duplicated rule for a wiring between two files, and a wiring fails in a way a duplicate cannot: a
+name that does not match leaves every consumer sitting on the fallback, both specimens look
+plausible, every measurement is taken against a box that is not on the page, and the run is green.
+It was checked by doing it, and check `2l` passed, because `2l` resolves the same fallback and a
+fallback is a legal size. The rule is narrow on purpose: it is not "every custom property is read
+somewhere", because inheritance makes that false for good reasons. It asks whether the two halves of
+one shared component name the same thing.
+
+`3d` is the shallowest, and it says so in its own header. A screen record has to name
+both arrangements, has to attribute at least one measurement to each, and has to have a specimen of the
+same name beside it. It cannot tell whether the two arrangements are actually drawn or whether the
+record's numbers are right: that is a reader's job and check 4's. What it catches is the failure that
+costs most and is easiest to make, which is a second screen record added for one client because the
+first one happened to be written that way.
+
+`2q` is the narrowest. The library's add-a-playlist dialog was drawn at `--z-base`,
+which is 0, over a scrim at `--z-overlay`, which is 20, so the scrim painted on top of the dialog it
+was dimming. Every measurement of that dialog was correct: size, position, contrast, all of it. Only
+the stacking was wrong, and a screenshot does not catch it, because a dialog under a scrim looks like
+a dialog that has been deliberately dimmed, which is a thing a designer might well have meant. The
+check reads the dialog off `role="dialog"` in the markup, because a role is the one thing about a
+dialog that is not a class name, and the scrim off a class whose name contains the word, which is the
+same word as the token. It is narrow on purpose: it cannot know what a scrim is, and it says so.
 
 Items 9 and 10 are about the row's play control, which is the header's control at 28px with the
 same eight-frame morph, and neither fault is visible in a screenshot. `2o` holds that a control

@@ -31,6 +31,14 @@
  *       button's user-agent padding makes the content box smaller than the control, so
  *       the icon ends up centred in the wrong box, by less than a pixel and therefore
  *       invisible in a screenshot.
+ *   2r. A shared component's parameters are wired up. Two specimens drawing one component turns a
+ *       duplicated rule into a wiring between files, and a wiring can be wrong in a way a duplicate
+ *       could not: a name that does not match leaves every consumer on the fallback and the run green.
+ *   3d. A screen record carries both arrangements, attributes a measurement to each, and has a
+ *       specimen. A record written for one client reads as the whole truth rather than as half.
+ *   2q. A dialog is not painted under the scrim it dims. Every measurement of a
+ *       dialog under a scrim is correct and the drawing looks deliberate, so a
+ *       screenshot cannot catch it.
  *   2g. No specimen types a mark as a character. A typed glyph is drawn by whatever
  *       font is installed, which is the failure ADR 0009 and ADR 0010 both exist to
  *       prevent, and it is invisible in a screenshot because the specimen renders in
@@ -342,7 +350,16 @@ for (const file of prototypes) {
 
 const literals = [];
 
-for (const file of specimens) {
+/* specimen.css joins the specimens here for the same reason 2m puts it in its
+ * own list, and the reason is stated there: a check that cannot see the thing it
+ * checks is a claim of coverage rather than coverage. The shared stylesheet is
+ * where a component's long, jointly-owned declarations now live, the equalizer's
+ * twenty-rule phase table being the first of them, so a colour literal written
+ * into it is a colour literal in the tree and this check has to be able to say
+ * so. Before this, a hex typed into specimen.css was invisible here while every
+ * specimen was scanned for exactly that mistake. */
+for (const file of [...specimens, path.join(designDir, 'specimen.css')]) {
+  if (!fs.existsSync(file)) continue;
   read(file)
     .split('\n')
     .forEach((line, index) => {
@@ -946,6 +963,14 @@ const PINNED_ICONS = {
   ],
   check: ['M5 12l5 5l10 -10'],
   minus: ['M5 12l14 0'],
+  /* The plus is the minus's other stroke, and it is here because the add control
+   * needs a mark. Worth recording that the pin held minus for a long time without
+   * plus, which is the shape of an omission rather than a decision: nothing in the
+   * tree drew an add control with anything on it until the library did. Taken
+   * verbatim from @tabler/icons 3.48.0 icons/outline/plus.svg, whose second path
+   * is byte-identical to the minus above, so the two are certainly from the same
+   * package and the same version. */
+  plus: ['M12 5l0 14', 'M5 12l14 0'],
   refresh: [
     'M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4',
     'M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4'
@@ -1487,12 +1512,60 @@ for (const host of BAND_HOSTS) {
   }
 
   /* n, first way: the pitch arithmetic against the host's own box. The host is
-     declared in its own specimen, not here, so it is read from there. */
-  const hostRule = ruleBody(specimenText, `.${host}`) || '';
-  const hostW = parseFloat((hostRule.match(/width:\s*([\d.]+)px/) || [])[1]);
-  const hostBorder = parseFloat(
-    (hostRule.match(/border:\s*([\d.]+)px solid/) || [])[1] || '0'
-  );
+   * declared in its own specimen, not here, so it is read from there.
+   *
+   * And "there" is now two places, because the playlist identity's cover moved
+   * into specimen.css to be shared with the library's row, and the size became a
+   * custom property with the default in the var() fallback. So the width is read
+   * from the specimen first, where a per-arrangement literal override would be,
+   * and from the shared stylesheet second, resolving a fallback. Both readings
+   * are needed: the strip's pitch is a property of whichever size is actually
+   * drawn, so a consumer that states its own width has to win, and a consumer
+   * that states none has to fall through to the shared default rather than
+   * reading as a host whose box is gone. A check that cannot find its input
+   * reports that, which is the right direction to fail in, but the fix is to
+   * follow the input to where it moved and not to leave the check reading a
+   * value nobody declares. */
+  const hostRuleInSpecimens = ruleBody(specimenText, `.${host}`) || '';
+  const hostRuleShared = ruleBody(barGeometry, `.${host}`) || '';
+
+  /* A width is stated in one of three ways now, and all three have to resolve
+     rather than one of them reading as absent. A consumer states its own size as
+     a custom property, because that is how it overrides the shared block; a
+     consumer that predates the parameter states a literal width; and the shared
+     block states the default in a var() fallback, which is the sanctioned way
+     this tree declares a local property.
+   *
+   * The custom property is read first on purpose, and that ordering is the whole
+   * of the fix. Read last, a consumer that set a size the arithmetic does not
+   * hold for would be measured against the shared default, the pitch would come
+   * out whole, and this check would pass on a cover that cannot carry a whole
+   * number of bars. That is a check reading a value nobody drew, which is the
+   * fault the comment above exists to prevent, reached by making the reader more
+   * forgiving. A permissive reader is only safe if the permissive path is the
+   * last one tried. */
+  const pixelOf = (rule, prop) => {
+    for (const re of [
+      new RegExp(`${prop}:\\s*([\\d.]+)px`),
+      /width:\s*([\d.]+)px/,
+      new RegExp(`width:\\s*var\\(\\s*${prop}\\s*,\\s*([\\d.]+)px`)
+    ]) {
+      const m = rule.match(re);
+      if (m) return parseFloat(m[1]);
+    }
+    return NaN;
+  };
+  const borderOf = rule => {
+    const m =
+      rule.match(/border:\s*([\d.]+)px solid/) ||
+      rule.match(/border:\s*var\(\s*--[\w-]+\s*,\s*([\d.]+)px solid/);
+    return m ? parseFloat(m[1]) : 0;
+  };
+
+  const hostProp = `--${host}`;
+  const hostW =
+    pixelOf(hostRuleInSpecimens, hostProp) || pixelOf(hostRuleShared, hostProp);
+  const hostBorder = borderOf(hostRuleInSpecimens) || borderOf(hostRuleShared);
 
   /* n, second way: the spans actually in the markup, counted for this host
      only. A strip is a child of its artwork box, so the host is whatever class
@@ -1801,6 +1874,111 @@ for (const file of specimens) {
 }
 failures.push(...unplayable);
 
+/* ------------------------- 2q. a modal is not painted under its own scrim
+ *
+ * The library's add-a-playlist dialog was drawn at --z-base, which is 0, over a
+ * scrim at --z-overlay, which is 20. The scrim therefore painted on top of the
+ * dialog it was supposed to be dimming, and the dialog rendered correctly in
+ * every measurement: correct size, correct position, correct contrast, all of it.
+ * Only the stacking was wrong.
+ *
+ * A screenshot does not catch this, which is why it is worth a check rather than
+ * a note. A dialog under a scrim looks like a dialog that has been deliberately
+ * dimmed, which is a thing a designer might well have meant, so the drawing is
+ * not wrong-looking. It is wrong in a way that reads as intent, and the only
+ * evidence is that the thing you most need to read is the thing you can read
+ * least.
+ *
+ * The check is narrow and says so. It cannot know which element is a scrim, so
+ * it takes the system's own word for one: a class whose name contains "scrim",
+ * which is the same word as the --scrim token. It reads the dialog from the
+ * markup instead, off role="dialog", because a dialog is a role and a role is
+ * the one thing about it that is not a class name. Both sides are then resolved
+ * through the token layer, so a level written as var(--z-player) and a level
+ * written as 30 are compared as the same number and a re-tiering of the four
+ * levels cannot silently invert the order.
+ */
+
+const underScrim = [];
+
+/* The z-index a class resolves to in this file, or null when it declares none.
+   A rule with no z-index is at the auto level, which paints below every positive
+   one, so a dialog relying on document order alone is exactly the fault. */
+function zIndexOfClass(css, cls) {
+  let found = null;
+  for (const block of cssRules(css)) {
+    if (!block.selector.includes('.' + cls)) {
+      continue;
+    }
+    const m = block.body.match(/\bz-index\s*:\s*([^;]+);/);
+    if (!m) {
+      continue;
+    }
+    const raw = m[1].trim();
+    const resolved = raw.startsWith('var(')
+      ? resolve(raw.slice(raw.indexOf('var(') + 4, raw.lastIndexOf(')')).trim())
+      : raw;
+    const asNumber = Number(resolved);
+    found = Number.isNaN(asNumber) ? null : asNumber;
+  }
+  return found;
+}
+
+for (const file of specimens) {
+  const html = read(file);
+  const rel = path.relative(designDir, file);
+
+  const dialogClasses = new Set();
+  const scrimClasses = new Set();
+  for (const m of html.matchAll(/<(\w+)\b([^>]*)>/g)) {
+    const classes =
+      (m[2].match(/class="([^"]+)"/) || [])[1]?.split(/\s+/) ?? [];
+    for (const cls of classes) {
+      if (!cls) continue;
+      if (/\bdialog\b/.test(m[2])) dialogClasses.add(cls);
+      if (cls.includes('scrim')) scrimClasses.add(cls);
+    }
+  }
+  if (!dialogClasses.size || !scrimClasses.size) {
+    continue;
+  }
+
+  const css = stripComments(html);
+  /* Every offending class is named, not just the first. One message per file is
+     the convention here, and a message that names one of two broken rules reads
+     as though the other is fine. */
+  const offenders = new Map();
+  let anyScrim = null;
+  for (const s of scrimClasses) {
+    const sz = zIndexOfClass(css, s);
+    if (sz !== null && (anyScrim === null || sz < anyScrim.z)) {
+      anyScrim = { s, z: sz };
+    }
+  }
+  if (anyScrim === null) {
+    continue;
+  }
+  for (const d of dialogClasses) {
+    const dz = zIndexOfClass(css, d);
+    if (dz !== null && dz < anyScrim.z) {
+      offenders.set(d, dz);
+    }
+  }
+  if (offenders.size) {
+    underScrim.push(
+      `${rel} ${[...offenders]
+        .map(([d, dz]) => `.${d} is a dialog at z-index ${dz}`)
+        .join(
+          ' and '
+        )} and .${anyScrim.s} is the scrim at ${anyScrim.z}, so the ` +
+        `scrim paints over the dialog it dims. A dialog has to be at or above the ` +
+        `scrim, and on document order when the two are equal.`
+    );
+  }
+}
+
+failures.push(...underScrim);
+
 /* ------------------------- 2h. an icon-only control resets its padding
  *
  * A button carries a user-agent padding of 1px vertical and 6px horizontal, and
@@ -1896,6 +2074,81 @@ for (const file of specimens) {
 }
 
 failures.push(...unresetControls);
+
+/* --------------------------- 2r. a shared component's parameters are wired up
+ *
+ * The playlist identity's cover is drawn by two specimens, so its geometry moved
+ * into specimen.css and its size became a custom property each consumer sets:
+ * `--cover` and `--cover-radius`. That trades a duplicated rule for a wiring
+ * between two files, and a wiring can be wrong in a way a duplicated rule could
+ * not, because nothing reads it.
+ *
+ * The failure is a name. If the shared block reads `var(--cover-size, 96px)` and
+ * a consumer sets `--cover: 64px`, then every consumer renders at the 96px
+ * fallback, both specimens look plausible, every measurement in the tree is
+ * taken against a box that is not on the page, and the run is green. The size is
+ * silently inert. That was checked by doing it: check 2l still passed, because
+ * 2l resolves the same fallback and the fallback is a legal size.
+ *
+ * So the rule is that every custom property a consumer sets on a class the
+ * shared stylesheet also rules has to be one that stylesheet reads. Narrow on
+ * purpose. It is not "every custom property is read somewhere", because
+ * inheritance makes that false for good reasons: a value set on a container is
+ * read by a descendant that may not be present, and a value set for one state is
+ * read only in that state. This asks the narrower and answerable question, which
+ * is whether the two halves of one shared component name the same thing.
+ */
+
+const unwired = [];
+const sharedCss = stripComments(read(path.join(designDir, 'specimen.css')));
+
+/* Which classes specimen.css rules, so a consumer's declaration on one of them
+   is a parameter of a shared component rather than a local private value. */
+const sharedClasses = new Set();
+for (const block of cssRules(sharedCss)) {
+  for (const m of block.selector.matchAll(/\.([a-zA-Z0-9_-]+)/g)) {
+    sharedClasses.add(m[1]);
+  }
+}
+
+/* Which of those classes each shared rule reads, so a consumer's parameter can
+   be checked against the rule that is supposed to consume it. */
+const readsInShared = new Map();
+for (const block of cssRules(sharedCss)) {
+  const sel = block.selector.split(',')[0].trim();
+  for (const m of block.body.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)/g)) {
+    const key = sel.replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!readsInShared.has(key)) readsInShared.set(key, new Set());
+    readsInShared.get(key).add(m[1]);
+  }
+}
+
+for (const file of specimens) {
+  const css = stripComments(read(file));
+  const rel = path.relative(designDir, file);
+  for (const block of cssRules(css)) {
+    const bare = block.selector.split(',')[0].trim().replace(/^\./, '');
+    if (!sharedClasses.has(bare)) {
+      continue;
+    }
+    const consumed = readsInShared.get(bare) || new Set();
+    for (const m of block.body.matchAll(/(--[a-zA-Z0-9_-]+)\s*:/g)) {
+      const prop = m[1];
+      if (prop.startsWith('--icon-')) {
+        continue;
+      }
+      if (!consumed.has(prop)) {
+        unwired.push(
+          `${rel} .${bare} sets ${prop} and specimen.css does not read it, so the ` +
+            `value is inert and the class falls back to its default. Either the ` +
+            `shared rule reads a different name, or this declaration does nothing.`
+        );
+      }
+    }
+  }
+}
+
+failures.push(...unwired);
 
 /* ------------------------- 2g. no specimen types a glyph
  *
@@ -2058,6 +2311,86 @@ for (const [fgRef, bgRef, note] of CANDIDATES) {
     note
   });
 }
+
+/* ------------------------------- 3d. a screen record carries both arrangements
+ *
+ * A screen is a surface a person reaches by route, so it has one on each client,
+ * and the inventory settled that one design task carries both rather than two
+ * with a variant between them. The failure this prevents is a record written for
+ * one client: the two would not read as one arrangement and a variant, they
+ * would read as the whole truth, and every measurement in them would be
+ * attributed to a width the reader was never told about.
+ *
+ * Three facts, and each is a thing that can be absent rather than wrong. A screen
+ * record has to name both arrangements, it has to attribute at least one
+ * measurement to each, and it has to have a specimen of the same name beside it,
+ * because a record with no drawing is a decision nobody can look at.
+ *
+ * This is a shallow check and it says so. It cannot tell whether the two
+ * arrangements are actually drawn, or whether the record's numbers are right:
+ * that is what a reader and check 4 are for. What it catches is the failure that
+ * costs most and is easiest to make, which is a second screen record added for
+ * one client because the first one happened to be written that way.
+ */
+
+/* docsDir is declared above and is the one this file already relies on; the
+ * design-system directory is declared further down, near check 6, so a check
+ * that runs earlier cannot borrow it. */
+const screenDir = path.join(docsDir, 'design-system', 'screens');
+const specimenScreenDir = path.join(designDir, 'screens');
+const screenProblems = [];
+
+const screenRecords = fs.existsSync(screenDir)
+  ? fs
+      .readdirSync(screenDir, { withFileTypes: true })
+      .filter(e => e.isFile() && e.name.endsWith('.md'))
+      .map(e => e.name)
+  : [];
+
+for (const name of screenRecords) {
+  const rel = path.relative(docsDir, path.join(screenDir, name));
+  const body = read(path.join(screenDir, name));
+
+  /* Stripped first, and for the same reason 2h strips: a sentence in a comment
+   * that says "web" is not a record naming an arrangement. */
+  const prose = body.replace(/<!--[\s\S]*?-->/g, '');
+
+  for (const client of ['web', 'mobile']) {
+    if (!new RegExp(`\\b${client}\\b`, 'i').test(prose)) {
+      screenProblems.push(
+        `${rel} never names the ${client} arrangement. A screen record carries both, and a ` +
+          `record that names one reads as the whole truth rather than as half.`
+      );
+    }
+  }
+
+  /* A measurement attributed to a width, per arrangement. A figure of px and the
+   * client's own word within the same sentence is the shape the library record
+   * uses; requiring only the word would pass on a record that says "mobile" once
+   * in a heading and measures nothing. */
+  for (const client of ['web', 'mobile']) {
+    const attributed = new RegExp(
+      `\\b${client}\\b[^.]{0,160}?\\d+(?:\\.\\d+)?px`,
+      'i'
+    );
+    if (!attributed.test(prose)) {
+      screenProblems.push(
+        `${rel} attributes no measurement to the ${client} arrangement. Every figure in a ` +
+          `screen record has to say which width it came from.`
+      );
+    }
+  }
+
+  const specimen = path.join(specimenScreenDir, name.replace(/\.md$/, '.html'));
+  if (!fs.existsSync(specimen)) {
+    screenProblems.push(
+      `${rel} has no specimen at ${path.relative(designDir, specimen)}. A screen record with ` +
+        `no drawing is a decision nobody can look at.`
+    );
+  }
+}
+
+failures.push(...screenProblems);
 
 /* ------------------------------- 4. printed ratios on a specimen are correct
  *
@@ -2373,7 +2706,9 @@ if (fs.existsSync(readme)) {
     twenty: 20,
     'twenty-one': 21,
     'twenty-two': 22,
-    'twenty-three': 23
+    'twenty-three': 23,
+    'twenty-four': 24,
+    'twenty-five': 25
   };
   const all = [
     ...read(readme).matchAll(/validate-design-tokens\.cjs +([a-z-]+) +checks/g)

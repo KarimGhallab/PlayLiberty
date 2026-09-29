@@ -19,22 +19,26 @@ than misleading a reader.
 
 ## The map
 
-| Subject                      | File                                                                   | Specimen                                                  |
-| ---------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------- |
-| Colour, contrast, tones      | [colour](design-system/colour.md)                                      | [color](design/foundations/color.html)                    |
-| Typography                   | [typography](design-system/typography.md)                              | [type](design/foundations/type.html)                      |
-| Space, shape, depth          | [space and shape](design-system/space-and-shape.md)                    | [space](design/foundations/space-shape-motion.html)       |
-| Icons and the morph          | [icons](design-system/icons.md)                                        | [icons](design/foundations/icons.html)                    |
-| Motion                       | [motion](design-system/motion.md)                                      | [space](design/foundations/space-shape-motion.html)       |
-| Focus ring, stacking, layout | [focus and layout](design-system/focus-and-layout.md)                  | [space](design/foundations/space-shape-motion.html)       |
-| Equalizer strip              | [equalizer strip](design-system/components/equalizer-strip.md)         | [specimen.css](design/specimen.css)                       |
-| Header transport             | [header transport](design-system/components/header-transport.md)       | [playlist header](design/components/playlist-header.html) |
-| Player bar                   | [player bar](design-system/components/player-bar.md)                   | [player bar](design/components/player-bar.html)           |
-| Empty state                  | [empty state](design-system/components/empty-state.md)                 | [empty state](design/components/empty-state.html)         |
-| Sync summary                 | [sync summary](design-system/components/sync-summary.md)               | [sync summary](design/components/sync-summary.html)       |
-| Sync error                   | [sync error](design-system/components/sync-error.md)                   | [sync error](design/components/sync-error.html)           |
-| Track row play control       | [row play control](design-system/components/track-row-play-control.md) | [track row](design/components/track-row.html)             |
-| Form controls                | [form controls](design-system/components/form-controls.md)             | [form controls](design/components/form-controls.html)     |
+| Subject                      | File                                                                   | Specimen                                                     |
+| ---------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Colour, contrast, tones      | [colour](design-system/colour.md)                                      | [color](design/foundations/color.html)                       |
+| Typography                   | [typography](design-system/typography.md)                              | [type](design/foundations/type.html)                         |
+| Space, shape, depth          | [space and shape](design-system/space-and-shape.md)                    | [space](design/foundations/space-shape-motion.html)          |
+| Icons and the morph          | [icons](design-system/icons.md)                                        | [icons](design/foundations/icons.html)                       |
+| Motion                       | [motion](design-system/motion.md)                                      | [space](design/foundations/space-shape-motion.html)          |
+| Focus ring, stacking, layout | [focus and layout](design-system/focus-and-layout.md)                  | [space](design/foundations/space-shape-motion.html)          |
+| Equalizer strip              | [equalizer strip](design-system/components/equalizer-strip.md)         | [specimen.css](design/specimen.css)                          |
+| Header transport             | [header transport](design-system/components/header-transport.md)       | [playlist header](design/components/playlist-header.html)    |
+| Player bar                   | [player bar](design-system/components/player-bar.md)                   | [player bar](design/components/player-bar.html)              |
+| Empty state                  | [empty state](design-system/components/empty-state.md)                 | [empty state](design/components/empty-state.html)            |
+| Sync summary                 | [sync summary](design-system/components/sync-summary.md)               | [sync summary](design/components/sync-summary.html)          |
+| Sync error                   | [sync error](design-system/components/sync-error.md)                   | [sync error](design/components/sync-error.html)              |
+| Track row play control       | [row play control](design-system/components/track-row-play-control.md) | [track row](design/components/track-row.html)                |
+| Form controls                | [form controls](design-system/components/form-controls.md)             | [form controls](design/components/form-controls.html)        |
+| Playlist header              | [playlist header](design-system/components/playlist-header.md)         | [playlist header](design/components/playlist-header.html)    |
+| Add a playlist               | [add a playlist](design-system/components/add-playlist-dialog.md)      | [add a playlist](design/components/add-playlist-dialog.html) |
+| Empty shelf                  | [empty shelf](design-system/components/empty-shelf.md)                 | [library](design/screens/library.html)                       |
+| Library                      | [library](design-system/screens/library.md)                            | [library](design/screens/library.html)                       |
 
 The two directory splits are the same split. `docs/design/` holds what you look at, and
 `docs/design-system/` holds why it is that way.
@@ -53,10 +57,15 @@ These are the components, not their specs. Each links to the file that specifies
   [the player bar](design-system/components/player-bar.md).
 - **Empty state**, shown before the first sync, which is also the state where `lastSyncedAt` is still
   null. Specified in [the empty state](design-system/components/empty-state.md).
-- **Playlist header**, the playlist's identity: cover, name, sync status, last synced. Its decisions are
-  split between [the equalizer strip](design-system/components/equalizer-strip.md), which covers the
-  artwork, and [the transport on the playing header](design-system/components/header-transport.md),
-  which covers the controls.
+- **Playlist header**, the playlist's identity: cover, name, share, count, sync line and actions. Specified
+  in [the playlist header](design-system/components/playlist-header.md), which owns it at both of its
+  arrangements and exists because there are two consumers: the header itself, and
+  [the library](design-system/screens/library.md), whose playlist items are this component rather than a
+  smaller thing that resembles it. Its rules live in `specimen.css` for the same reason, and a decision
+  that exists only as a comment in one stylesheet cannot be inherited by a second consumer. Its parts are
+  split further: the strip is [the equalizer strip](design-system/components/equalizer-strip.md), the
+  steps are [the transport on the playing header](design-system/components/header-transport.md), and the
+  state words are [the sync summary](design-system/components/sync-summary.md).
 - **Sync summary**, the outcome of the last run. A different record with a different lifetime from the
   playlist, which is why it is a component of its own, and it gives `retainedCount` a deliberate position
   rather than one item in a list of counts. Specified in
@@ -64,23 +73,34 @@ These are the components, not their specs. Each links to the file that specifies
 - **Sync error**, because `PlaylistSyncStatus.Error` and a non-null `SyncRun.error` are both reachable. A
   failed sync is exactly when the user needs to know, and exactly where "do not nag" could tempt a
   designer into silence. Specified in [the sync error](design-system/components/sync-error.md).
+- **Empty shelf**, the library with no playlists at all, which is a different component from the
+  playlist empty state and has a different action. Specified in
+  [the empty shelf](design-system/components/empty-shelf.md).
+- **Add a playlist**, the dialog the library hosts on both clients, in two arrangements because a sheet
+  is the phone's own idiom for a short task. Specified in
+  [add a playlist](design-system/components/add-playlist-dialog.md).
 
 ## What is not yet designed
 
-The library-with-no-playlists state, which is a different component from the playlist empty state and
-has a different action. And the player bar with nothing playing. Both are designed in
-[`16-design-the-library`](tracker/tasks/16-design-the-library.md), because the library is the
-route a user lands on, so both are states of it rather than corners of it.
-
-**The screens are settled; none is drawn.** The inventory is
+**The playlist detail, and only the playlist detail.** The inventory is
 [`13-settle-the-screen-inventory`](tracker/tasks/13-settle-the-screen-inventory.md), and a screen is a
 surface a user reaches by route, so there are two screens and two design tasks rather than four: the
-library in `16` and the playlist detail in `17`, each with a route on each client and one record
-carrying both arrangements. There is no web sidebar, no mobile tab bar, and no account surface on
-either client. A screen record lives in `docs/design-system/screens/` and its specimen in
-`docs/design/screens/`, and the map above gains a row per screen as each one lands. A record with two
-arrangements names them and attributes every measurement to a width, so neither reads as a variant of
-the other.
+library, drawn in [`16-design-the-library`](tracker/tasks/16-design-the-library.md), and the playlist
+detail in [`17-design-the-playlist-detail`](tracker/tasks/17-design-the-playlist-detail.md). There is
+no web sidebar, no mobile tab bar, and no account surface on either client.
+
+## The screens
+
+A screen record lives in `docs/design-system/screens/` and its specimen in `docs/design/screens/`. A
+record carries both arrangements and attributes every measurement to a width, so neither reads as a
+variant of the other, and the first thing it does is name the two.
+
+- **Library**, at `/` on web and the app root on mobile. The only entry point to content, so it is
+  the route a user lands on. Specified in [the library](design-system/screens/library.md). Drawing it
+  forced three things into being that were not designed: the empty shelf, the add-a-playlist dialog,
+  and an answer to what the player bar does before anything is playing. That last one withdrew a
+  claim the [player bar record](design-system/components/player-bar.md) had made, and the correction
+  is written into that record rather than left here as an exception.
 
 ## Do's and Don'ts
 
@@ -101,7 +121,7 @@ Edit `docs/design/tokens.css`, then run:
 node docs/design/scripts/validate-design-tokens.cjs
 ```
 
-It runs 22 checks. `tokens.css` holds nothing but custom property declarations. No specimen hard-codes a
+It runs 25 checks. `tokens.css` holds nothing but custom property declarations. No specimen hard-codes a
 colour a token already carries. No `:hover` rule paints with a tone token, which is the one mistake in
 this file that no ratio can catch and so has to be forbidden outright. Every text pairing clears AA at
 4.5:1. Every control boundary clears 3:1. Every ratio printed on a specimen still matches. Nothing
