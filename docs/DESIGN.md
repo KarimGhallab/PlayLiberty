@@ -39,6 +39,7 @@ than misleading a reader.
 | Add a playlist               | [add a playlist](design-system/components/add-playlist-dialog.md)      | [add a playlist](design/components/add-playlist-dialog.html) |
 | Empty shelf                  | [empty shelf](design-system/components/empty-shelf.md)                 | [library](design/screens/library.html)                       |
 | Library                      | [library](design-system/screens/library.md)                            | [library](design/screens/library.html)                       |
+| Playlist detail              | [playlist detail](design-system/screens/playlist-detail.md)            | [playlist detail](design/screens/playlist-detail.html)       |
 
 The two directory splits are the same split. `docs/design/` holds what you look at, and
 `docs/design-system/` holds why it is that way.
@@ -82,7 +83,9 @@ These are the components, not their specs. Each links to the file that specifies
 
 ## What is not yet designed
 
-**The playlist detail, and only the playlist detail.** The inventory is
+**The playlist detail's own components: the not-found state, the share dialog and the add-a-video
+dialog.** The screen is drawn, on web so far, and those three are the pieces of it that do not exist
+yet. The inventory is
 [`13-settle-the-screen-inventory`](tracker/tasks/13-settle-the-screen-inventory.md), and a screen is a
 surface a user reaches by route, so there are two screens and two design tasks rather than four: the
 library, drawn in [`16-design-the-library`](tracker/tasks/16-design-the-library.md), and the playlist
@@ -101,6 +104,23 @@ variant of the other, and the first thing it does is name the two.
   and an answer to what the player bar does before anything is playing. That last one withdrew a
   claim the [player bar record](design-system/components/player-bar.md) had made, and the correction
   is written into that record rather than left here as an exception.
+- **Playlist detail**, at `/playlists/:id` on web and pushed over the library root on mobile. The only
+  place stored tracks become audible. Specified in
+  [the playlist detail](design-system/screens/playlist-detail.md), both arrangements drawn: eight desk
+  frames at 1056 by 900 and seven phone frames at 390 by 844. Composing it found three faults in
+  components it did not draw, and two of them are the same mistake seen from two angles: **every track
+  row in the tree was 120.8px rather than 65px**, and **every state word in every track row carried a
+  7px mark it never asked for**, both because two of the playlist header's rules in the shared
+  stylesheet were landing on the track row's elements of the same name. The third is that **five of the
+  row's class names are also `specimen.css`'s**, so the row's rules have to be scoped to be drawn beside
+  the header at all. All three are written up there, and the third is still open: the durable fix is a
+  change to the track row and belongs to a ticket about it.
+- **A lifted component fragment is not a component.** The detail lifted the player bar out of its record
+  and got a 390 flush bar in a 1056 frame: transport 443.2px off centre, no shuffle at all, and a seeker
+  running 956px where that record's argument is a 480px cap. A lift now takes the component's primary
+  arrangement and a consumer adds the variant class if it wants the other, asserted in the generator, so
+  the mistake fails the build instead of rendering. The same inversion let the phone take the flush bar
+  it actually wants.
 
 ## Do's and Don'ts
 

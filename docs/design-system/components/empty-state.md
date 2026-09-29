@@ -21,10 +21,29 @@ nothing yet to lose.
 still has never been synced, a sync still goes to YouTube, and a sync still takes a few minutes. The
 third is more true than it is at rest. So the only difference between the two drawings is the button, and
 the button's busy form is the one `form-controls.html` already defines. That costs the button its width,
-measured: **103px becomes 113px**, because the label loses two characters and the spinner adds 13px and an
-8px gap. `form-controls` says a loading button keeps its label so it does not change width mid-click, and
-this is that rule and its exception in one control. The alternative is a label that does not change, which
-costs a screen reader the only announcement that the state changed at all.
+measured: **126.81px becomes 115.8px**, and the 11.01px of change is the label alone, because `Syncing` is
+two characters shorter than `Sync now`. `form-controls` says a loading button keeps its label so it does
+not change width mid-click, and this is that rule and its exception in one control. The alternative is a
+label that does not change, which costs a screen reader the only announcement that the state changed at
+all.
+
+**The button's two marks are the same box, and that is the whole reason the spinner is 16px rather than
+13px.** The resting form carries `rotate-clockwise` at `--icon-sm`, a 16px box, and the busy form swaps it
+for the spinner, so the two marks have to be one size or the swap costs the layout something. Measured with
+the spinner back at 13px: the press change is **14px** rather than 11px, three of it for no reason a user
+can see. And the busy form **drops** the rotate rather than carrying both, because the two are different
+verbs: one says _do it again_ and the other says _it is happening_, and a button has one. Proved by putting
+the mark back on the busy form: the button is **140px**, 13px wider than the resting one, with two marks
+on it.
+
+**The mark is `--icon-sm` and the size is measured rather than read off the scale.** `rotate-clockwise`'s
+ink is 18 by 18.06 units of the 24 unit grid, 75% of the box, against the `plus`'s 67%, so it is the
+heavier of the system's two button marks and the step below `--icon-md` matters more here than it does
+for the plus. At `--icon-sm` its ink is 12.04px against a 10.0px cap height, **1.20 times**; at
+`--icon-md` it would be 15.05px, **1.51 times**, where the plus at `--icon-md` is 1.36. The rule is the
+[icons record's](../icons.md): a mark beside a `--text-sm` label is a mark _on_ the label, not a peer of
+it. Its ink is centred on both axes to 0.00 units, so it takes no optical correction, and the validator's
+rule that a centred glyph must not carry one is what asserts that.
 
 **The reading width is 66ch and the number lives in one place.** The sentence is `.prose`, which already
 carries it, and it is worth knowing what that is in pixels: 16px of Plex Sans has a 600/1000 tabular

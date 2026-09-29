@@ -971,6 +971,18 @@ const PINNED_ICONS = {
    * is byte-identical to the minus above, so the two are certainly from the same
    * package and the same version. */
   plus: ['M12 5l0 14', 'M5 12l14 0'],
+  /* The chevron, and it is here for one control: the way home off the playlist
+   * detail, which is a web fact because on mobile the platform gesture returns
+   * from a pushed route and a control that returns would be a second way to do
+   * what the platform already does. A word alone was the alternative and it reads
+   * as a section heading rather than as a control, and a chevron alone is a shape
+   * with a name attached to it, so the way home carries both.
+   *
+   * One path, verbatim from @tabler/icons 3.48.0
+   * icons/outline/chevron-left.svg. Its ink spans x 9 to x 15 and y 6 to y 18, so
+   * it is centred on the 24 unit grid and takes no optical correction: there is no
+   * PINNED_OPTICAL entry for it below, and that absence is the assertion. */
+  'chevron-left': ['M15 6l-6 6l6 6'],
   refresh: [
     'M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4',
     'M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4'

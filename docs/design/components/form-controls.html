@@ -112,10 +112,28 @@
          mid-click, which is the thing that makes a loading state feel janky. */
       /* currentColor, not a token. The spinner sits on whatever fill the
          variant has, and hard-coding a colour here is how a spinner ends up
-         invisible on one of them. */
+         invisible on one of them.
+
+         16px, and it was 13px. A button that carries a mark at rest is
+         --icon-sm, which is a 16px box, so the two marks on one control are now
+         the same box and swapping one for the other costs the layout nothing.
+         That is the whole reason for the number: a busy button is the same
+         button with a different mark, and at 13px against 16px it was a
+         different button. The width still changes on press by 11.01px, because
+         "Syncing" is two characters shorter than "Sync now", and that change is
+         the one this record already accepts above, in exchange for the label
+         surviving: a label that did not change would cost a screen reader the
+         only announcement that the state changed at all.
+
+         The spinner's own box is the layout box and not what a bounding rect
+         reports: `pl-spin` is a rotation, and a rotating 16px square has a
+         22.63px diagonal, so a measurement taken while it turns is reading the
+         diagonal. That is the same trap the icons record names about the morph,
+         in a different element, and it is why every figure here is read from
+         `offsetWidth`. */
       .spinner {
-        width: 13px;
-        height: 13px;
+        width: 16px;
+        height: 16px;
         flex-shrink: 0;
         border-radius: var(--radius-chip);
         border: 2px solid currentColor;
@@ -562,6 +580,32 @@
   </head>
 
   <body>
+    <!-- Two glyphs, and they are here because this file's buttons grew marks. It
+         was the only specimen in the tree that declared no sprite at all, which
+         is a thing you only find by giving a control a mark. Both are lifted out
+         of foundations/icons.html, which declares them at @tabler/icons 3.48.0.
+         `rotate-clockwise` is byte-identical to the `i-rotate` the playlist
+         header draws on the same verb in its overflow menu, so the button and the
+         menu item are one control twice. -->
+    <svg
+      class="sprite"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false">
+      <defs>
+        <symbol
+          id="i-rotate-clockwise"
+          data-icon="rotate-clockwise@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
+        </symbol>
+        <symbol id="i-plus" data-icon="plus@3.48.0" viewBox="0 0 24 24">
+          <path d="M12 5l0 14" />
+          <path d="M5 12l14 0" />
+        </symbol>
+      </defs>
+    </svg>
     <main class="page stack">
       <div class="crumb">
         <a href="../index.html">PlayLiberty design</a> / form controls
@@ -609,6 +653,45 @@
           <button class="btn btn-quiet">Quiet</button>
           <button class="btn btn-quiet" disabled>Disabled</button>
         </div>
+        <div class="frame-label">A control that carries a mark</div>
+        <div class="inline">
+          <button class="btn btn-primary" type="button">
+            <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+              <use href="#i-rotate-clockwise" />
+            </svg>
+            Sync now
+          </button>
+          <button
+            class="btn btn-primary"
+            type="button"
+            data-loading="true"
+            aria-busy="true">
+            <span class="spinner" aria-hidden="true"></span>
+            Syncing
+          </button>
+          <button class="btn btn-secondary" type="button">
+            <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+              <use href="#i-plus" />
+            </svg>
+            Add a playlist
+          </button>
+        </div>
+        <p class="hint">
+          <strong
+            >A mark is at <span class="token-sm">--icon-sm</span>, and the busy
+            form swaps it for the spinner rather than carrying both.</strong
+          >
+          The size is the
+          <a href="../../design-system/icons.md" style="color: var(--muted)"
+            >icons record's</a
+          >
+          rule for a mark beside a
+          <span class="token-sm">--text-sm</span> label: the mark is a mark
+          <em>on</em> the label, not a peer of it. The busy form drops the mark
+          because the two are different verbs, one says <em>do it again</em> and
+          the other says <em>it is happening</em>, and a button can only have
+          one. Both are a 16px box, so the swap costs the layout nothing.
+        </p>
         <p class="hint">
           A disabled control uses
           <span class="token-sm">--control-disabled-fg</span> and

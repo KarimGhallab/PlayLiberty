@@ -605,7 +605,28 @@ body {
   border-top: 1px solid var(--line);
 }
 
-.body {
+/* Scoped to .hdr, and that is a fix rather than a style.
+ *
+ * This was a bare `.body`, and two other things in the tree are called body:
+ * the track row's own `.body`, inside its own `.row`, in track-row.html and
+ * again in add-playlist-dialog.html. specimen.css is linked above both, neither
+ * of them sets `display`, and so the header's rule won on the two declarations
+ * they never mentioned. The row drew its title and its sub line inside a
+ * 96px min-height flex column instead of a 40px one, so **every track row in
+ * the tree measured 120.8px rather than 65px**, and the 65px that the sync
+ * summary, the empty state and the playlist detail all quote was a number no
+ * specimen produced. It is exactly the failure the layout comment at the top of
+ * this file names, and it survived because "body" is a plausible name for a
+ * row's text column and a plausible name for a header's, so nothing reading
+ * either file could see the other.
+ *
+ * Every legitimate consumer of this rule is a direct child of .hdr: the header
+ * specimen and [the library](design-system/screens/library.md), whose items are
+ * this component. Every illegitimate one is a child of .row. So the child
+ * combinator separates them on a fact about the markup rather than on a guess
+ * about which file came first, and the row keeps the 40px its own record
+ * describes. */
+.hdr > .body {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -696,13 +717,38 @@ body {
   color: var(--muted);
 }
 
-.state {
+/* The header's sync state, and scoped for the same reason and by the same
+ * argument as .hdr > .body above.
+ *
+ * The dot in ::before is this block's own: a header's sync state is a mark and a
+ * word, and the mark is the seven pixels that survive when the colour cannot be
+ * seen. The track row has a `.state` too and means something else by it: a
+ * single coloured word, no mark, and where it wants a separator between the
+ * source and the state it draws its own three-pixel `.dot` span, which is muted
+ * and at --opacity-disabled rather than the state's own colour. So this rule was
+ * landing on it, and every state word in every track row was carrying a
+ * seven-pixel dot in its own tone in front of a word that asked for none.
+ *
+ * Measured on the track row's own specimen, all eight of its state words: each
+ * one was 7px wider than the word plus the 8px gap that mark implied, so
+ * "Downloading" was 86.85px and is 71.85px, "Failed" was 48.31px and is 33.31px.
+ * The row's own `.dot` is 3px and is unaffected, because it is a span and not a
+ * state.
+ *
+ * Every legitimate consumer of this rule is inside a header: nineteen in the
+ * header's own specimen, all nineteen inside .hdr or .mhdr, and every one of the
+ * nineteen in the library's too. Every one of the track row's eight is inside
+ * neither. The descendant combinator separates them on the markup rather than on
+ * which file was loaded first, and all nineteen keep the dot to the digit. */
+.hdr .state,
+.mhdr .state {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   white-space: nowrap;
 }
-.state::before {
+.hdr .state::before,
+.mhdr .state::before {
   content: '';
   width: 7px;
   height: 7px;
@@ -710,16 +756,20 @@ body {
   border-radius: var(--radius-chip);
   background: currentColor;
 }
-.state.idle {
+.hdr .state.idle,
+.mhdr .state.idle {
   color: var(--muted);
 }
-.state.syncing {
+.hdr .state.syncing,
+.mhdr .state.syncing {
   color: var(--tone-downloading);
 }
-.state.syncing::before {
+.hdr .state.syncing::before,
+.mhdr .state.syncing::before {
   animation: pl-breathe 1.4s ease-in-out infinite;
 }
-.state.error {
+.hdr .state.error,
+.mhdr .state.error {
   color: var(--tone-failed);
 }
 @keyframes pl-breathe {

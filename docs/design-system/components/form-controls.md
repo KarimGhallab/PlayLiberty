@@ -49,6 +49,34 @@ so it is legible on any fill without a per-variant colour to keep in step. Under
 `prefers-reduced-motion: reduce` the ring stops turning and its cut top comes back, because a frozen ring
 with a notch reads as broken; the word is what carries the state.
 
+**A mark on a button is `--icon-sm`, and the busy form swaps it for the spinner rather than carrying
+both.** Two rules and one measurement behind them. The size is the
+[icons record's](../icons.md): a mark beside a `--text-sm` label is a mark _on_ the label, not a peer of it,
+and the button already carries `gap: var(--space-2)` and was built for a mark, so the mark costs a 16px box
+and an 8px gap and nothing else. The swap is because the two are different verbs: `rotate-clockwise` says
+_do it again_ and the spinner says _it is happening_, and a control has one. And because the two are one
+control in two states they are **the same box**: the spinner is 16px, which it was not, so a busy button
+is the same button with a different mark rather than a different button.
+
+Three figures, all measured. A `Sync now` button is **126.81px** with the mark and **115.8px** busy, so
+the press changes it by **11.01px** and that is the label's own two characters. With the spinner back at
+13px the change is **14px**, three of it for nothing a user can see. With the mark put back on the busy
+form alongside the spinner the button is **140px**, 13px wider than the resting one, carrying two marks and
+two animations.
+
+**A mark is `aria-hidden` and takes the colour it sits in, so it costs no rule.** The button already says
+what it does, and a screen reader reading "rotate clockwise, Sync now" is a worse announcement than the
+word alone. `currentColor` means the mark inherits the `--bg` the label has on an accent fill, and would
+inherit a disabled control's colour without a rule of its own. And `rotate-clockwise` is byte-identical to
+the `i-rotate` the [playlist header](playlist-header.md) draws on the same verb in its overflow
+menu, so the retry in a panel and the menu item are one control twice.
+
+**The spinner's box is not what a bounding rect reports, and that cost a wrong number once.**
+`pl-spin` is a rotation, and a rotating 16px square has a **22.63px** diagonal, so a measurement taken
+while it turns is reading the diagonal and not the layout. Every figure above is read from `offsetWidth`
+for that reason. It is the same trap [the icons record](../icons.md) names about the morph, in a different
+element.
+
 **The segmented control has no fill on its selected option.** Filling it with `--surface-raised` inside a
 `--bg` track measures 1.19:1, and inside the dialog it collapses to 1.00:1 because the track was already
 the dialog's own fill, so the selection disappeared exactly where it mattered most. Lifting the fill does

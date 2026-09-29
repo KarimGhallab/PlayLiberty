@@ -225,6 +225,37 @@
   </head>
 
   <body>
+    <!-- One glyph, and it is here because this file's retry grew a mark. The
+         path is lifted out of foundations/icons.html, which declares it as
+         `rotate-clockwise` at @tabler/icons 3.48.0, and it is byte-identical to
+         the `i-rotate` the playlist header draws on the same verb inside its
+         overflow menu: the same control twice, in a panel and in a menu, saying
+         the same thing with the same shape.
+
+         --icon-sm, for the reason icons.md gives for a mark beside a
+         --text-sm label, and measured rather than read off the scale. The
+         glyph's ink is 18 by 18.06 units of the 24 unit grid, which is 75% of
+         the box against the plus's 67%, and centred to 0.00 units on both axes
+         so it takes no optical correction. At --icon-sm its ink is 12.04px
+         against a 10.0px cap height, 1.20 times; at --icon-md it would be
+         15.05px, 1.51 times, where the plus at --icon-md is 1.36. So the step
+         is the same one the plus is on and this glyph is the worse case of the
+         two, which is the argument. -->
+    <svg
+      class="sprite"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false">
+      <defs>
+        <symbol
+          id="i-rotate-clockwise"
+          data-icon="rotate-clockwise@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
+        </symbol>
+      </defs>
+    </svg>
     <main class="page stack">
       <div class="crumb">
         <a href="../index.html">PlayLiberty design</a> / sync error
@@ -267,7 +298,15 @@
                 synced and there is nothing here to play.
               </p>
               <div>
-                <button class="btn btn-primary" type="button">Sync now</button>
+                <button class="btn btn-primary" type="button">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-rotate-clockwise" />
+                  </svg>
+                  Sync now
+                </button>
               </div>
             </div>
           </div>
@@ -291,7 +330,15 @@
                 this playlist.
               </p>
               <div>
-                <button class="btn btn-primary" type="button">Sync now</button>
+                <button class="btn btn-primary" type="button">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-rotate-clockwise" />
+                  </svg>
+                  Sync now
+                </button>
               </div>
             </div>
           </div>
@@ -332,7 +379,15 @@
                 All 128 tracks are still here and still playable.
               </p>
               <div>
-                <button class="btn btn-primary" type="button">Sync now</button>
+                <button class="btn btn-primary" type="button">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-rotate-clockwise" />
+                  </svg>
+                  Sync now
+                </button>
               </div>
               <button class="fault__reveal" type="button">
                 Show what the server said
@@ -375,6 +430,12 @@ ERROR: [youtube] PLZxxxxxxxxxxxxxxxxxxxx: Sign in to confirm your age</pre>
                   </p>
                   <div>
                     <button class="btn btn-primary" type="button">
+                      <svg
+                        class="icon icon--sm"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-rotate-clockwise" />
+                      </svg>
                       Sync now
                     </button>
                   </div>
@@ -398,6 +459,12 @@ ERROR: [youtube] PLZxxxxxxxxxxxxxxxxxxxx: Sign in to confirm your age</pre>
                   </p>
                   <div>
                     <button class="btn btn-primary" type="button">
+                      <svg
+                        class="icon icon--sm"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-rotate-clockwise" />
+                      </svg>
                       Sync now
                     </button>
                   </div>
@@ -435,6 +502,12 @@ ERROR: [youtube] PLZxxxxxxxxxxxxxxxxxxxx: Sign in to confirm your age</pre>
                   </p>
                   <div>
                     <button class="btn btn-primary" type="button">
+                      <svg
+                        class="icon icon--sm"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-rotate-clockwise" />
+                      </svg>
                       Sync now
                     </button>
                   </div>

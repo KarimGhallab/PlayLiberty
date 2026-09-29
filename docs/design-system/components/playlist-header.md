@@ -5,14 +5,16 @@
 The cover, the name line, the share indicator, the count, the sync line and the actions. One component,
 drawn at two arrangements, and this record owns both.
 
-**There are two consumers of this component and that is why its rules live in `specimen.css` rather
-than in the header's own file.** The second consumer is [the library](../screens/library.md), whose
-playlist items are this component rather than a smaller thing that resembles it: a gallery of headers.
-The rules moved because two copies that are allowed to disagree will, and they did. The library's
-first version of an item drew its own cover, its own name line, its own count and its own share
-indicator under five class names of its own, and it reproduced `flex: 1` on the name, which is the
-fault `.name__text` below documents. Nothing caught it, because a decision that exists only as a
-comment inside one stylesheet cannot be inherited by a second consumer.
+**There are three consumers of this component and that is why its rules live in `specimen.css` rather
+than in the header's own file.** The second is [the library](../screens/library.md), whose playlist
+items are this component rather than a smaller thing that resembles it: a gallery of headers. The third
+is [the playlist detail](../screens/playlist-detail.md), which uses the row arrangement at 1056 and at
+390 and is the reason the row arrangement is now a consumer at two widths rather than one. The rules
+moved because two copies that are allowed to disagree will, and they did. The library's first version of
+an item drew its own cover, its own name line, its own count and its own share indicator under five
+class names of its own, and it reproduced `flex: 1` on the name, which is the fault `.name__text` below
+documents. Nothing caught it, because a decision that exists only as a comment inside one stylesheet
+cannot be inherited by a second consumer.
 
 So what lives where is:
 
@@ -38,6 +40,39 @@ So what lives where is:
 | the block's height      | **136px**, 137 after the first       | **468.8px** full-bleed, 436.8px inset      |
 | the cover's radius      | `--radius-card`                      | `--radius-card`                            |
 | the hatch with no cover | 12px                                 | 12px                                       |
+
+**The row arrangement has a consumer at 390 as well, and the two consumers of it disagree about one
+line and about one target.** [The playlist detail](../screens/playlist-detail.md) draws this component's
+row arrangement across the top of a 390 frame rather than its card, and the measurement is what settled
+it: at 390 the card is **470.4px** and the row is **136px**, which on an 844px phone with a 97px bar is
+275px of list against 609.4px, four rows against nine. The row's geometry at that width is 96 + 20 +
+**180.4** + 20 + 72 = 388.4, and 136 tall because the body's content fits inside the cover's 96.
+
+The disagreement is the sync line. At 390 the identity block has **180.4px** and the line needs
+**198.16px** for a state, a separator and a time: 70.78, 3.91, 99.47 and 12.00 of gap either side of the
+separator. `.meta` is `flex-wrap: nowrap`, so the row does not wrap; **the last span wraps inside itself**,
+arriving at 81.71px and taking 32.4px of height instead of 16.2, which makes the header 136.6 and
+leaves the separator stranded at the end of the line above it. A middot with nothing after it is not a
+separator. So the time goes and the separator goes with it, the line is 70.78px on one line, and the
+header is 136.
+
+**And full-bleed at 390 puts 5.2px of the last step's 44px target off the screen.** This record's rule
+is that the steps are borderless and so their target grows outward six pixels a side by a `::before`
+that paints nothing; on a header placed at its container's inline edges, with no page inset to absorb
+it, the last step's target reaches 5.2px past the frame and the effective target is 38.8px. It is the
+detail's decision to place the header at the full width rather than the page's 16px inset, and the cost
+is recorded there with why it was not designed out. It is worth naming in a component record because the
+rule and the placement interact: **this rule assumes an inset somewhere, and this arrangement does not
+provide one.**
+
+**That is the sixth thing the library declares at its width, restated, and the two screens now agree.**
+The library record's point 3 is "the sync line joins the count on one line and the time is left off",
+decided there on its own card's arithmetic; the detail reaches the same removal on the row's, at a
+different number and for the same reason. Neither drops information in the two states that carry a
+summary, because the summary's stamp says the time 20px lower; both lose it in the error state, where
+the summary is the thing that is gone. Recording it twice is deliberate: a screen that reads a
+component's record to find out what was decided at a width will not find this there unless it is
+recorded there too.
 
 **Six things differ at the library's width, and all six are that screen's decisions rather than this
 component's.** They are declared in [the library record](../screens/library.md) and not here, and
@@ -109,12 +144,54 @@ rather than calling it a fix.
 column is 848px resting and 784px playing, so 64 and 60 characters fit; the library's 78-character
 probe is 923px and is cut on both.
 
-**The card is drawn at two widths now, and the narrower one is in a grid.** This record's own card
+**The card is drawn at three widths now, and only the middle one is in a grid.** This record's own card
 measures 468.8px with a 356.4px cover because it is the only thing on its screen and it is full-bleed.
 [The library](../screens/library.md) draws the same card at **172.2px with a 140.2px square cover**, in
-a two-column grid inside its own `--space-4` gutter. Same component, and each screen states the width
-it drew it at. The cover needs no second size at either count, because `.mart` is `aspect-ratio: 1`
+a two-column grid inside its own `--space-4` gutter, and
+[the playlist detail](../screens/playlist-detail.md) draws it at **320px with a 288px square cover** as
+the left column of a two-column desktop screen. Same component, and each screen states the width it
+drew it at. The cover needs no second size at any of the three, because `.mart` is `aspect-ratio: 1`
 and square by construction rather than by a number.
+
+**The detail's 320px card declares no difference at all, and what 320px costs is the two figures this
+record already predicts.** The scrim is **27.8%** of a 288px picture against **24.7%** of a 324.4px one,
+because the band is a fixed 80px and a band's share of a picture gets worse as the picture gets smaller,
+which is the sentence further down this record that says to know a cover's size before choosing one. The
+name's text column is **260px** after the share indicator, which is **22 characters** against this
+record's own 25. The card is 400.4px in both of its states and so is the 286.4px band inside it: the
+transport is 136px and the action row 76px, and they sit beside each other rather than instead of each
+other, so nothing about the card's height responds to whether the playlist is playing. That is this
+record's own swap and not the screen's: a card with a play and no steps is a card that cannot skip.
+
+**This record's rules are in `specimen.css`, and one of them was landing on a component it does not
+belong to.** `.body` is declared here, bare, for this record's identity block, and `track-row.html`
+declares its own `.body` inside its own `.row` without ever setting `display`, so this rule won on the
+two declarations the row never mentioned and **every track row in the tree measured 120.8px rather than
+65px**. The 65px that the [sync summary](sync-summary.md), the [empty state](empty-state.md) and
+[the playlist detail](../screens/playlist-detail.md) all quote was a number no specimen produced, and
+this record is where the fix belongs because the rule is its own. It is now `.hdr > .body`: every
+legitimate consumer of it is a direct child of `.hdr` and every illegitimate one is a child of `.row`, so
+a child combinator separates them on a fact about the markup rather than on a guess about which file
+came first. Proved behaviour-preserving for this component: all **fourteen** headers in its own specimen
+and all **nine** items on the library measure the same before and after, to the digit.
+
+**The same collision had a second face, on `.state`, and it cost a line rather than a factor.** This
+record's `.state::before` is a 7px mark in the state's own tone, and the header's own rule says why: the
+word is what survives when the motion does not and the mark is what survives when the colour cannot be
+seen. The track row has a `.state` too and means something else by it: a single coloured word, no mark,
+and where it wants a separator between the source and the state it draws its own 3px `.dot` span, which
+is muted and at `--opacity-disabled` rather than the state's own colour. So this rule was landing on
+every state word in every track row, and each was **15px** wider than the word and its 8px gap.
+Measured on the track row's own specimen: `Downloading` 86.85px becoming 71.85px, `Failed` 48.31px
+becoming 33.31px. On a phone the width is what decides a line, and the failed row's sentence fitted on
+one line at 390px and the mark put it on two, taking the row from **76.1px to 92.3px**.
+
+The rule is now `.hdr .state, .mhdr .state`. Proved the same way and the same number: all **nineteen**
+of this record's own states and all **twenty** of the library's keep the 7px mark, and every header
+figure and every library item is unchanged. The row's own `.dot` is unaffected, because it is a span and
+not a state. **Two rules of this block were landing on a component that does not belong to them, and
+both are the same mistake: a class name in a shared stylesheet is a claim about every element in the
+tree carrying it, not about the file that wrote it.**
 
 **At 172.2px the three controls do not fit on the picture, and that is arithmetic rather than
 taste.** The cover is 140.2px and 108.2px of that is inside the band's own 16px padding, while the
@@ -173,6 +250,12 @@ texture.
 behind the 80px of controls it would have to cross, which is the equalizer's recorded reason that a
 comb at that size is a texture. The row at 96px can carry one, and does, on the one item that is
 playing.
+
+**The detail's 288px cover carries no strip, and the arithmetic is why.** `7n - 4` against a 288px
+cover's content box is 34.57, and the exact sizes are 96px and 40px; a comb at 35 bars on a picture
+whose control band is 27.8% of it is a texture rather than an equalizer, which is the strip's own
+recorded reason it was dropped in place of a scrim. The row that is playing in the detail's list says
+so with a shape on its own 40px tile, in the list, where a reader scanning a list looks.
 
 **Only one row ever carries it, and the earlier reason for that was wrong.** The library's record
 previously said a strip was withheld because "a track belongs to every playlist that references it,

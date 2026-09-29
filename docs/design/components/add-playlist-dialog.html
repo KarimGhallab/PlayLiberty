@@ -202,9 +202,17 @@
       }
       /* currentColor, not a token: the spinner sits on whatever fill the variant
        * has. */
+      /* 16px, and it is the form controls' own number. The spinner is restated
+         here rather than borrowed, for the reason the rest of this block gives,
+         and a restated value is one that can drift: this file said 13px while
+         form-controls said 13px and empty-state said 16px, and nothing in the
+         tree could see the disagreement because each file is correct about its
+         own copy. It is 16px because that is --icon-sm, which is the box a mark
+         on a button is drawn in, and a busy button is the same button with a
+         different mark. */
       .spinner {
-        width: 13px;
-        height: 13px;
+        width: 16px;
+        height: 16px;
         flex-shrink: 0;
         border-radius: var(--radius-chip);
         border: 2px solid currentColor;

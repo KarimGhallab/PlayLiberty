@@ -29,14 +29,23 @@ on the border and on that message and **not** on the text, which stays `--ink` s
 while being corrected. The message is one line at 390 and the dialog grows **24.2px** to take it: a
 16.2px line and one `--space-2` gap.
 
-**The working state is a spinner and a changed label, and it costs 40.36px of button.** `Add` becomes
-`Adding` and gains a 13px spinner and an 8px gap, so the button goes from **67.43px to 107.79px**. That
-is four times the empty state's 10px for the same rule, and the reason is that the cost is
+**The working state is a spinner and a changed label, and it costs 43.36px of button.** `Add` becomes
+`Adding` and gains a 16px spinner and an 8px gap, so the button goes from **67.43px to 110.79px**. That
+is four times the empty state's 11.01px for the same rule, and the reason is that the cost is
 proportional to how much the label changes rather than to the spinner: `Sync now` to `Syncing` loses
 two characters, and `Add` to `Adding` gains three on a label of three. A short label is the worst case
 for this rule and this is the shortest primary button in the product. It is worth the width, because
 the alternative is a label that does not change, which costs a screen reader the only announcement
 that the press did anything.
+
+**The spinner is the form controls' 16px and this file had to be told.** It said 13px while
+[form controls](form-controls.md) said 13px and the
+[empty state](empty-state.md) said 16px, and nothing in the tree could see the disagreement, because a
+restated value is a second source of truth and three copies of a number that happened to agree were
+still three copies. It is 16px because that is `--icon-sm`, the box a mark on a button is drawn in, and a
+busy button is the same button with a different mark. This dialog's button carries no mark of its own, so
+the spinner is the only thing in it at that size, and it is the size the rest of the system's busy
+buttons use.
 
 **The field and the buttons are disabled while it works, and the disabled pair is measured rather than
 faded.** The field takes `--control-disabled-bg` and `--control-disabled-fg` and the Cancel button

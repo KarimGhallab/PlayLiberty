@@ -22,7 +22,7 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`14-expose-the-last-sync-run`](14-expose-the-last-sync-run.md)         | resolved | none                                       | none                                                      |
 | [`15-add-track-count-to-playlists`](15-add-track-count-to-playlists.md) | resolved | none                                       | none                                                      |
 | [`16-design-the-library`](16-design-the-library.md)                     | resolved | none                                       | none                                                      |
-| [`17-design-the-playlist-detail`](17-design-the-playlist-detail.md)     | open     | none                                       | none                                                      |
+| [`17-design-the-playlist-detail`](17-design-the-playlist-detail.md)     | resolved | none                                       | none                                                      |
 | [`18-expose-playlist-access`](18-expose-playlist-access.md)             | resolved | none                                       | none                                                      |
 
 ## Conventions

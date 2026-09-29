@@ -64,10 +64,19 @@
         outline-offset: var(--focus-offset);
       }
       /* currentColor, not a token: the spinner sits on whatever fill the
-         variant has. */
+         variant has.
+         *
+         * 16px, and it was 13px until the resting button grew a mark. The two
+         * are the same box on purpose: the resting form of this button carries
+         * `rotate-clockwise` at --icon-sm, a 16px box, so a 13px spinner would
+         * make the button lose 3px on press for a reason that has nothing to do
+         * with the label. With both at 16px the only width change left on press
+         * is the label's own, which is the one form-controls.html's record
+         * explains and accepts: 11.01px, because "Syncing" is two characters
+         * shorter than "Sync now". */
       .spinner {
-        width: 13px;
-        height: 13px;
+        width: 16px;
+        height: 16px;
         flex-shrink: 0;
         border-radius: var(--radius-chip);
         border: 2px solid currentColor;
@@ -163,6 +172,28 @@
   </head>
 
   <body>
+    <!-- One glyph, and it is here because this file's button grew a mark. It was
+         the only specimen in the tree that drew no sprite at all, which is a
+         thing you only find by giving a control a mark. The path is lifted out
+         of foundations/icons.html, which declares it as `rotate-clockwise` at
+         @tabler/icons 3.48.0, and it is byte-identical to the `i-rotate` the
+         playlist header draws on the same verb inside its overflow menu, so the
+         button and the menu item are the same shape. -->
+    <svg
+      class="sprite"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false">
+      <defs>
+        <symbol
+          id="i-rotate-clockwise"
+          data-icon="rotate-clockwise@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
+        </symbol>
+      </defs>
+    </svg>
     <main class="page stack">
       <div class="crumb">
         <a href="../index.html">PlayLiberty design</a> / empty state
@@ -203,7 +234,12 @@
                 still plays here.
               </p>
             </div>
-            <button class="btn btn-primary" type="button">Sync now</button>
+            <button class="btn btn-primary" type="button">
+              <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                <use href="#i-rotate-clockwise" />
+              </svg>
+              Sync now
+            </button>
           </div>
         </div>
 
@@ -220,8 +256,14 @@
           The label becomes the present participle, so the accessible name changes
           with the state and a screen reader says "Syncing" after the press. That
           is the shipped convention, and it costs the button its width: measured,
-          103px becomes 113px, because the label loses two characters and the
-          spinner adds 13px and an 8px gap.
+          <strong>126.81px becomes 115.8px</strong>, and the 11.01px of change is
+          the label alone, because "Syncing" is two characters shorter than "Sync
+          now". The two marks are the same 16px box, so nothing else moves: the
+          resting button's <code>rotate-clockwise</code> at
+          <span class="token-sm">--icon-sm</span> and the busy form's spinner are
+          the same size, and swapping one for the other costs the layout nothing.
+          With the spinner at 13px the change is 14px, three of it for no reason a
+          user can see.
           form-controls states that a loading button keeps its label so the
           button does not change width mid-click, and this is that rule and its
           exception in one control. It is drawn here rather than left to be
@@ -284,7 +326,12 @@
                   still plays here.
                 </p>
               </div>
-              <button class="btn btn-primary" type="button">Sync now</button>
+              <button class="btn btn-primary" type="button">
+                <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                  <use href="#i-rotate-clockwise" />
+                </svg>
+                Sync now
+              </button>
             </div>
           </div>
         </div>

@@ -67,6 +67,15 @@ case that adds a second line: **66px** for a completed run whether it changed an
 both, and **91px** while one is active, which is 8 rows of a 65px track list at rest and 7 while a sync is
 running, out of the 610px of content area a phone has between a 136px header and a 98px bar.
 
+**That 65px was quoted by three records and produced by none of them until
+[`17-design-the-playlist-detail`](../../tracker/tasks/17-design-the-playlist-detail.md) fixed a class
+name collision.** The playlist header's `.body` rule, in the shared stylesheet, was landing on the
+track row's `.body` and gave every row a 96px `min-height` inside a 40px tile, so a row measured
+**120.8px**. The rule is now scoped to `.hdr > .body` and a row is **64.8px**, which is 64 plus the
+0.8px this environment renders a 1px border at. The figure above is unchanged and is now true; the
+arithmetic on it was being done against a row that was not being drawn. The write-up is
+[here](../screens/playlist-detail.md#what-composing-these-cost-and-the-two-faults-it-found).
+
 **Not drawn:** a playlist in `PlaylistSyncStatus.Error` with no run to summarise, which is reachable
 because the playlist status and the run row are independent, and is a fault with no figures rather than a
 summary with no figures. It belongs to the sync error.

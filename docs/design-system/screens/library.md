@@ -644,9 +644,13 @@ this tree.
 ## What is not drawn
 
 The owner of a shared playlist, by name, for the reason above. Search, sort, filter and pagination.
-The equalizer strip on a card, which its own size cannot carry. The queue panel, which belongs to the
-[player bar record](../components/player-bar.md); the library is one of the places it can be opened from
-and not a place it is designed. The playlist detail, which is
+The equalizer strip on a card, which its own size cannot carry. **The queue panel this record used to list
+here does not exist and is not going to**: the
+[playlist detail's record](./playlist-detail.md) resolved it, the answer being that the track list is the
+queue, so there is no panel and no trigger to open one, and the three records that pointed at a panel on
+the [player bar record](../components/player-bar.md) were pointing at nothing. The library has no list of
+its own on this screen, so if a queue ever needs a panel it will be built then, against a case that has
+shown it is needed. The playlist detail, which is
 [`17-design-the-playlist-detail`](../../tracker/tasks/17-design-the-playlist-detail.md).
 
 **Two things this record previously listed here are now drawn, and saying so is the point of the

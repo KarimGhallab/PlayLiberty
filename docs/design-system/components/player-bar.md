@@ -21,7 +21,10 @@ centred together: a one-row variant that is exactly that had its transport 16px 
 **The costs are all horizontal, and all of them were measured after layout rather than argued.** The
 shortest arrangement is 74px, 8.2% of a 900px screen, so the 24px above the floor is what a second row
 plus a centred transport cost together. Three rows and a centred transport reach 146px, 16.2%, leaving
-263px of title at 390. Centring costs 375px of title room against a flush-right arrangement, and the tape
+263px of title at 390. Centring costs title room, and it is worth saying what at
+which width because the paragraph it sits in claims two widths at once: at 1056
+the flush arrangement gives the title 818.4px and the centred one 375.2px, so the
+centre costs 443.2px, and the drawn 339px title shows whole in both. The tape
 has to be told the drawn width of a title separately from the room it has: all three arrangements draw
 the same 339px of name and only two of them show it whole. A title measured by its box looks identical in
 the one that truncates and the one that does not.
@@ -45,6 +48,20 @@ The width at which the two swap is a decision about how much title room is worth
 number anything can derive. 306px is where the centred form stops fitting at all, and 348px fits it while
 giving the title 21px, and somewhere between those two is a judgement. So the client picks by available
 width and no figure is written into the token set for it.
+
+**The centred arrangement is the base and the phone's is the class, because getting that backwards put a
+phone's bar on a desktop.** The two are the same markup; the phone's is the centred one plus `bar--flush`,
+and that is how this file parameterises them. It used to be lifted the other way round: the lift took the
+390 drawing because that was the one the library screen wanted, carried on the assumption that a lift is a
+lift, and the playlist detail then reused the copy in a 1056px web frame and got a bar with the transport
+443.2px off centre on the right edge, the shuffle at `display: none` and so no shuffle at all, and the
+seeker uncapped at 956.17px where the argument above says 480px or the playhead runs at 3.7px a second. Each
+of those is a claim this file makes failing on one screen while holding on its own, which is the shape a
+lift should be assumed to be wrong in. A consumer now takes the base and adds the class, and the detail's
+generator asserts it carries no variant at all, so the mistake fails the build instead of rendering.
+
+Two consumers, two widths: the detail docks a 1056px bar and takes the base, and the library docks a
+388.4px one and asks for the flush arrangement, which is unchanged by any of this.
 
 **The bar takes no shadow, and that is a departure from the line above.** Depth allows the player bar one
 subtle lift. On a dark theme a lift is not available: a shadow is dark, the page is dark, and a dark blur

@@ -27,6 +27,31 @@ the actions column, and since the body is the only flexible column, all of it co
 transport row of 32px steps costs 64px of actions and leaves the title 750px, one row of five costs 208px
 and leaves 670px, and three equal 48px boxes cost 160px and leave 718px.
 
+**Those three figures are 1056px figures, and this record did not say so until the playlist detail screen
+measured the header at 390.** They are the only numbers here that carry a width's absence: "leaves the
+title 750px" is true of a 1056px header and of nothing else, and a reader arriving at the second
+consumer of this header had no way to tell which. The sibling records name both widths explicitly, so
+the omission was this one's alone. It is closed, and the phone's measurement is beside it rather than in
+another file:
+
+|                          | at 1056           | at 390                                        |
+| ------------------------ | ----------------- | --------------------------------------------- |
+| the header's height      | 136px             | **136px**, 136.6 with the sync line's time on |
+| the actions column       | 72px              | 72px, and **136px** while playing             |
+| the identity block       | 848px             | **180.4px**                                   |
+| the drawn title's column | 750px / 670 / 718 | **152.4px**                                   |
+| the cover                | 96px              | 96px                                          |
+
+The phone's row is 180.4px because 96 + 20 + 180.4 + 20 + 72 = 388.4, and 136px because the body's
+content fits inside the cover's 96. Two things follow that are this record's business rather than the
+screen's. **The transport costs the phone 64px of the identity block while it is playing**, 180.4 to
+116.4, because `.actions` is a column and the steps go above the action row rather than beside it, which
+is the arrangement this record already asks for; that is the tightest width anywhere on that screen. And
+**the identity block is 180.4px against a sync line that needs 198.16px**, so the line cannot hold a
+separator and a time at that width, and the separator is what should go rather than the time's own span
+wrapping inside itself. Both are recorded where they are decided, in
+[the playlist detail's record](../screens/playlist-detail.md).
+
 The arrangement that puts the transport under the identity block is the one worth drawing, because its
 cost is not where it looks. Nothing moves on the right and the transport costs no margin at all; it costs
 the title column 67%, down to 267px, because the name, the count and the transport end up sharing one

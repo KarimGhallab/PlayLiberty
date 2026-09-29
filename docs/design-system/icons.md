@@ -37,6 +37,40 @@ a cross is symmetric about the middle of its own box, and the one figure that sa
 unit, is raster noise. It is drawn at `--icon-sm` beside a `--text-sm` label, because at `--icon-md` its
 ink would be 1.36 times the cap height of the word next to it and at `--icon-sm` it is 1.09.
 
+**The chevron is in the pin for one control, and it is the fourth thing a route needs and only the
+second screen has ever drawn.** `chevron-left`, one path, `M15 6l-6 6l6 6`, verbatim from
+`@tabler/icons` 3.48.0 `icons/outline/chevron-left.svg`. It is the way home off
+[the playlist detail](screens/playlist-detail.md), which is a web fact: on mobile the platform
+gesture returns from a pushed route, so a control that returns would be a second way to do what the
+platform already does. A word alone was the alternative and it reads as a section heading rather than as
+a control, and a chevron alone is a shape with a name attached to it, so the way home carries both.
+
+**It takes no optical correction, and that is a measurement rather than an omission.** Its ink spans
+x 9 to x 15 and y 6 to y 18, so it centres at 12 on both axes of the 24 unit grid. There is no
+`PINNED_OPTICAL` entry for it below and the absence is the assertion, because the validator fails a
+glyph that is already centred and carries a correction anyway. A chevron's _perceived_ centre is a
+shape further right than its ink, which is the argument the two left-alone glyphs make below, and it
+lands on the same answer: a third of a unit at `--icon-sm` is 0.21px, which is a number in a stylesheet
+that changes nothing on screen.
+
+**The two marks this system puts on a button are the heaviest and the lightest glyphs it owns, and
+`--icon-sm` is what keeps that from reading.** `rotate-clockwise` is 18 by 18.06 units of the 24 unit
+grid, **75%** of its box, and the `plus` is 16.08 units, **67%**, so the two marks that appear beside a
+label are both round and both far above the family's spread. Measured against a `--text-sm` cap height of
+10.0px: the rotate at `--icon-sm` is 12.04px of ink, **1.20 times** the cap height, and at `--icon-md` it
+would be 15.05px, **1.51 times**, where the plus at `--icon-md` is 1.36. So the mark is a mark _on_ the
+label and not a peer of it, and the step below `--icon-md` matters more for these two than it does for
+anything else in the set. Both are centred to 0.00 units on both axes, so neither carries a correction
+and the validator's rule that a centred glyph must not carry one is what holds them there.
+
+**The rotate is in the pin twice under two names, and the two are the same shape.** `i-rotate-clockwise`
+in [the icons specimen](../design/foundations/icons.html) and `i-rotate` in
+[the playlist header's](components/playlist-header.md) carry byte-identical paths and the same
+`data-icon` at `@tabler/icons` 3.48.0. That is not a duplicate to tidy: one is the mark on a `Sync now`
+button and the other is the mark on a `Sync now` menu item, and they are the same verb so they are the
+same glyph. A screen that composes both reads one symbol out of the other rather than typing the path, so
+the two cannot drift apart.
+
 **Outline by default, filled only where filled means something.** This system uses filled in two places,
 both on the primary play button. The play triangle is filled because a solid triangle is the convention
 every platform already expects. The pause bars are filled too, and that is not a matter of taste: the two
@@ -59,7 +93,7 @@ checkbox, because a mark inside a control is filling the control it belongs to r
 one.
 
 Those steps were measured in the controls rather than read off the 24 unit grid, and the grid is
-genuinely no help. A glyph does not fill its box: across the nineteen in this system the drawn width runs
+genuinely no help. A glyph does not fill its box: across the twenty in this system the drawn width runs
 from 0.17 of the box on the three dots to 0.93 on the cloud, a factor of five and a half, so a scale taken
 from the grid would have put all of them at one optical size when they are at four.
 `docs/design/foundations/icons.html` carries the measurement.
