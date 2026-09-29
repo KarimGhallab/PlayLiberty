@@ -27,6 +27,7 @@
         <ul class="index-grid">
           <li><a href="./foundations/color.html">Colour</a></li>
           <li><a href="./foundations/type.html">Type</a></li>
+          <li><a href="./foundations/icons.html">Icons</a></li>
           <li>
             <a href="./foundations/space-shape-motion.html"
               >Space, shape, motion</a
@@ -40,24 +41,31 @@
         <ul class="index-grid">
           <li><a href="./components/form-controls.html">Form controls</a></li>
           <li><a href="./components/track-row.html">Track row</a></li>
-          <li><span class="index-todo">Player bar</span></li>
-          <li><span class="index-todo">Empty state</span></li>
+          <li><a href="./components/player-bar.html">Player bar</a></li>
+          <li><a href="./components/empty-state.html">Empty state</a></li>
           <li>
-            <span class="index-todo">Playlist header and sync summary</span>
+            <a href="./components/playlist-header.html">Playlist header</a>
           </li>
+          <li><a href="./components/sync-summary.html">Sync summary</a></li>
+          <li><a href="./components/sync-error.html">Sync error</a></li>
         </ul>
       </section>
 
       <section class="stack">
         <h2 class="section-title">Screens</h2>
-        <ul class="index-grid">
-          <li><span class="index-todo">Playlist detail, web</span></li>
-          <li><span class="index-todo">Playlist detail, mobile</span></li>
-        </ul>
         <p class="hint">
-          Not built yet. The component specimens come next, then these two. They
-          are listed as text rather than as links, so the validator can tell a
-          deliberate gap from a broken one.
+          Settled, and none drawn. A screen is a surface a user reaches by
+          route, so there are two of them and one task each:
+          <code>16-design-the-library</code>, at <code>/</code> on web and the
+          root on mobile, and <code>17-design-the-playlist-detail</code>, at
+          <code>/playlists/:id</code> on web and pushed over the root on mobile.
+          Each record carries both arrangements and names the width every
+          measurement came from. No sidebar, no tab bar, and no account surface
+          on either client, because the edge authenticates the browser before
+          the app exists. The argument is in
+          <a href="../tracker/tasks/13-settle-the-screen-inventory.md"
+            >ticket 13</a
+          >, and each screen's record and specimen land here as it is drawn.
         </p>
       </section>
 

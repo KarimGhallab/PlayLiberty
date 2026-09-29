@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayLiberty design: icons</title>
+    <link rel="stylesheet" href="../fonts.css" />
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../specimen.css" />
+    <style>
+      /* The sprite has to be in the document rather than in a file, because a
+         specimen is opened from the filesystem and an external use element is
+         blocked there. One sprite per file, and the validator holds every
+         file's copy of a name to identical path data. */
+      .sprite {
+        position: absolute;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+      }
+
+      .glyph-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: var(--space-6) var(--space-5);
+      }
+      .glyph-cell .icon {
+        margin-bottom: var(--space-2);
+      }
+      .glyph-cell .role {
+        font-size: var(--text-xs);
+        line-height: var(--leading-relaxed);
+      }
+
+      /* The size scale, shown in the controls it is for rather than on its own,
+         because a glyph that looks right on a white page can be wrong in a
+         32px button. */
+      .scale-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-5);
+        flex-wrap: wrap;
+      }
+      .scale-cell {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+      }
+      .frame {
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--control-border);
+        color: var(--ink);
+        flex-shrink: 0;
+      }
+      .frame--icon {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-control);
+      }
+      .frame--play {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-chip);
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--bg);
+      }
+      .frame--check {
+        width: var(--control-size-check);
+        height: var(--control-size-check);
+        border-radius: var(--radius-artwork);
+      }
+      .frame-label {
+        font-size: var(--text-xs);
+        color: var(--muted);
+      }
+
+      /* The measurement, one line per glyph. */
+      .readout-head,
+      .readout-row {
+        display: grid;
+        grid-template-columns: 190px 70px 70px 190px 1fr;
+        gap: var(--space-3);
+        align-items: baseline;
+      }
+      .readout-head {
+        padding-bottom: var(--space-2);
+        border-bottom: 1px solid var(--line);
+        font-size: var(--text-xs);
+        color: var(--muted);
+      }
+      .readout-row .name {
+        color: var(--ink);
+        font-size: var(--text-sm);
+      }
+      .readout-row .num {
+        color: var(--muted);
+        font-size: var(--text-sm);
+        font-variant-numeric: tabular-nums;
+      }
+      .readout-row .role {
+        font-size: var(--text-xs);
+        line-height: var(--leading-relaxed);
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Glyph geometry, transcribed from @tabler/icons 3.48.0, MIT.
+
+      The specimens are static files with no build step and cannot import a
+      package, so the path data is written out here. The clients do not use
+      these transcriptions: apps/web imports @tabler/icons-react and apps/mobile
+      imports @tabler/icons-react-native, both pinned to 3.48.0, and each
+      depends on @tabler/icons at that same exact version, so both runtimes draw
+      the artwork transcribed below. See docs/adr/0010-tabler-icons.md.
+
+      The validator holds the same path data and fails the run if a specimen's
+      copy of a glyph differs from the pin by so much as half a unit. That is
+      what makes "no hand-drawn icon" a check rather than a sentence.
+    -->
+    <svg
+      class="sprite"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false">
+      <defs>
+        <symbol
+          id="i-player-play-filled"
+          data-icon="player-play-filled@3.48.0"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          stroke="none">
+          <path
+            d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+        </symbol>
+        <symbol
+          id="i-player-pause"
+          data-icon="player-pause@3.48.0"
+          viewBox="0 0 24 24">
+          <path
+            d="M6 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12" />
+          <path
+            d="M14 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12" />
+        </symbol>
+        <symbol
+          id="i-player-skip-back"
+          data-icon="player-skip-back@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M20 5v14l-12 -7l12 -7" />
+          <path d="M4 5l0 14" />
+        </symbol>
+        <symbol
+          id="i-player-track-next"
+          data-icon="player-track-next@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M3 5v14l8 -7l-8 -7" />
+          <path d="M14 5v14l8 -7l-8 -7" />
+        </symbol>
+        <symbol
+          id="i-arrows-shuffle"
+          data-icon="arrows-shuffle@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M18 4l3 3l-3 3" />
+          <path d="M18 20l3 -3l-3 -3" />
+          <path d="M3 7h3a5 5 0 0 1 5 5a5 5 0 0 0 5 5h5" />
+          <path
+            d="M21 7h-5a4.978 4.978 0 0 0 -3 1m-4 8a4.984 4.984 0 0 1 -3 1h-3" />
+        </symbol>
+        <symbol id="i-repeat" data-icon="repeat@3.48.0" viewBox="0 0 24 24">
+          <path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3" />
+          <path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3" />
+        </symbol>
+        <symbol
+          id="i-dots-vertical"
+          data-icon="dots-vertical@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+          <path d="M11 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+          <path d="M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+        </symbol>
+        <symbol id="i-trash" data-icon="trash@3.48.0" viewBox="0 0 24 24">
+          <path d="M4 7l16 0" />
+          <path d="M10 11l0 6" />
+          <path d="M14 11l0 6" />
+          <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+          <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+        </symbol>
+        <symbol id="i-check" data-icon="check@3.48.0" viewBox="0 0 24 24">
+          <path d="M5 12l5 5l10 -10" />
+        </symbol>
+        <symbol id="i-minus" data-icon="minus@3.48.0" viewBox="0 0 24 24">
+          <path d="M5 12l14 0" />
+        </symbol>
+        <symbol id="i-refresh" data-icon="refresh@3.48.0" viewBox="0 0 24 24">
+          <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+          <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+        </symbol>
+        <symbol
+          id="i-alert-triangle"
+          data-icon="alert-triangle@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M12 9v4" />
+          <path
+            d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0" />
+          <path d="M12 16h.01" />
+        </symbol>
+        <symbol id="i-circle-x" data-icon="circle-x@3.48.0" viewBox="0 0 24 24">
+          <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+          <path d="M10 10l4 4m0 -4l-4 4" />
+        </symbol>
+        <symbol id="i-clock" data-icon="clock@3.48.0" viewBox="0 0 24 24">
+          <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+          <path d="M12 7v5l3 3" />
+        </symbol>
+        <symbol id="i-playlist" data-icon="playlist@3.48.0" viewBox="0 0 24 24">
+          <path d="M11 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M17 17v-13h4" />
+          <path d="M13 5h-10" />
+          <path d="M3 9l10 0" />
+          <path d="M9 13h-6" />
+        </symbol>
+        <symbol id="i-pencil" data-icon="pencil@3.48.0" viewBox="0 0 24 24">
+          <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+          <path d="M13.5 6.5l4 4" />
+        </symbol>
+        <symbol
+          id="i-rotate-clockwise"
+          data-icon="rotate-clockwise@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
+        </symbol>
+        <symbol id="i-share" data-icon="share@3.48.0" viewBox="0 0 24 24">
+          <path d="M3 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M15 6a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M15 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M8.7 10.7l6.6 -3.4" />
+          <path d="M8.7 13.3l6.6 3.4" />
+        </symbol>
+        <symbol
+          id="i-cloud-download"
+          data-icon="cloud-download@3.48.0"
+          viewBox="0 0 24 24">
+          <path
+            d="M19 18a3.5 3.5 0 0 0 0 -7h-1a5 4.5 0 0 0 -11 -2a4.6 4.4 0 0 0 -2.1 8.4" />
+          <path d="M12 13l0 9" />
+          <path d="M9 19l3 3l3 -3" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <main class="page stack">
+      <div class="crumb">
+        <a href="../index.html">PlayLiberty design</a> / icons
+      </div>
+
+      <header class="stack-tight">
+        <div class="eyebrow">Foundations</div>
+        <h1 class="page-title">Icons</h1>
+        <p class="prose">
+          19 glyphs, all of them Tabler's, drawn on its 24 unit grid with a 2
+          unit stroke and coloured only by whatever they sit inside. The size
+          scale on this page was measured in the controls the glyphs go in,
+          because a glyph does not fill its box and the grid cannot be read off
+          the drawing. Every number in the last section came out of the
+          geometry.
+        </p>
+      </header>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">The set</h2>
+          <p class="section-note">
+            One filled glyph, the rest outline. The role is what a glyph is for
+            here, and the name beside it is the one to import.
+          </p>
+        </div>
+        <div class="glyph-grid">
+          <div class="col stack-tight glyph-cell">
+            <svg
+              class="icon icon--md icon--filled"
+              aria-hidden="true"
+              focusable="false">
+              <use class="icon--optical" href="#i-player-play-filled" />
+            </svg>
+            <span class="token-sm">player-play-filled</span>
+            <span class="role">the primary play button</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-player-pause" />
+            </svg>
+            <span class="token-sm">player-pause</span>
+            <span class="role">pause, on that same button</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-player-skip-back" />
+            </svg>
+            <span class="token-sm">player-skip-back</span>
+            <span class="role">previous track, in the player bar</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use class="icon--optical" href="#i-player-track-next" />
+            </svg>
+            <span class="token-sm">player-track-next</span>
+            <span class="role">next track, in the player bar</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-arrows-shuffle" />
+            </svg>
+            <span class="token-sm">arrows-shuffle</span>
+            <span class="role">shuffle, on the header and the player bar</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-repeat" />
+            </svg>
+            <span class="token-sm">repeat</span>
+            <span class="role">repeat, in the player bar</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-dots-vertical" />
+            </svg>
+            <span class="token-sm">dots-vertical</span>
+            <span class="role"
+              >more actions, on the header and on every track row</span
+            >
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-trash" />
+            </svg>
+            <span class="token-sm">trash</span>
+            <span class="role">delete a playlist, in the menu</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-check" />
+            </svg>
+            <span class="token-sm">check</span>
+            <span class="role">a checked box</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-minus" />
+            </svg>
+            <span class="token-sm">minus</span>
+            <span class="role">a partially selected box</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-refresh" />
+            </svg>
+            <span class="token-sm">refresh</span>
+            <span class="role">a sync in progress</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use class="icon--optical" href="#i-alert-triangle" />
+            </svg>
+            <span class="token-sm">alert-triangle</span>
+            <span class="role">a sync that failed</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-circle-x" />
+            </svg>
+            <span class="token-sm">circle-x</span>
+            <span class="role">a track that can never be played</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-clock" />
+            </svg>
+            <span class="token-sm">clock</span>
+            <span class="role">never synced, and how long ago otherwise</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-playlist" />
+            </svg>
+            <span class="token-sm">playlist</span>
+            <span class="role">the empty library</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-pencil" />
+            </svg>
+            <span class="token-sm">pencil</span>
+            <span class="role">rename a playlist, in the menu</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-rotate-clockwise" />
+            </svg>
+            <span class="token-sm">rotate-clockwise</span>
+            <span class="role"
+              >sync now from the menu, and retry on a failed track</span
+            >
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use href="#i-share" />
+            </svg>
+            <span class="token-sm">share</span>
+            <span class="role">share a playlist, in the menu</span>
+          </div>
+          <div class="col stack-tight glyph-cell">
+            <svg class="icon icon--md" aria-hidden="true" focusable="false">
+              <use class="icon--optical" href="#i-cloud-download" />
+            </svg>
+            <span class="token-sm">cloud-download</span>
+            <span class="role">the one action in the empty state</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">The size scale</h2>
+          <p class="section-note">
+            Three steps, each named for the job. 20 is 0.62 of the 32px control
+            and 28 is 0.58 of the 48px one, so the two sit at a single ratio of
+            about 0.6. 16 is the exception and is 0.89 of the checkbox, because
+            a mark inside a control fills the control rather than sitting in it.
+          </p>
+        </div>
+        <div class="stack">
+          <div class="scale-row">
+            <div class="scale-cell">
+              <span class="frame frame--play">
+                <svg
+                  class="icon icon--lg icon--filled"
+                  aria-hidden="true"
+                  focusable="false">
+                  <use class="icon--optical" href="#i-player-play-filled" />
+                </svg>
+              </span>
+              <span class="frame-label"
+                >--icon-lg, 28px, in the 48px primary</span
+              >
+            </div>
+            <div class="scale-cell">
+              <span class="frame frame--icon">
+                <svg class="icon icon--md" aria-hidden="true" focusable="false">
+                  <use href="#i-arrows-shuffle" />
+                </svg>
+              </span>
+              <span class="frame frame--icon">
+                <svg class="icon icon--md" aria-hidden="true" focusable="false">
+                  <use href="#i-dots-vertical" />
+                </svg>
+              </span>
+              <span class="frame-label"
+                >--icon-md, 20px, in the 32px control</span
+              >
+            </div>
+            <div class="scale-cell">
+              <span class="frame frame--check">
+                <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                  <use href="#i-check" />
+                </svg>
+              </span>
+              <span class="frame-label">--icon-sm, 16px, in the 18px box</span>
+            </div>
+          </div>
+          <p class="hint">
+            The play triangle is nudged 1.5 units left of where the box puts it.
+            Tabler centres that glyph on its optical bounds rather than on its
+            box, which is correct for a glyph on its own and wrong for a glyph
+            in a round button, where 1.5 units is 1.75px at this size and reads
+            as a triangle sitting off to the right. Of the 19, 6 are off centre
+            and 4 of those are moved; check and pencil are off by less than half
+            a unit and are left alone, because a correction that small changes
+            nothing on screen. This is a position and not a size: the glyph is
+            still drawn at the token size, so it does not contradict the rule
+            that both clients agree on one number per step.
+          </p>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">What a glyph fills of its box</h2>
+          <p class="section-note">
+            Measured from the path data at the pin, with the stroke included on
+            the outline glyphs because a raster includes it. This is the whole
+            argument for measuring the scale rather than reading the grid.
+          </p>
+        </div>
+        <div class="stack-tight">
+          <div class="readout-head">
+            <span>glyph</span>
+            <span>width</span>
+            <span>height</span>
+            <span>off centre by</span>
+            <span></span>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">player-play-filled</code>
+            <code class="num">0.625</code>
+            <code class="num">0.750</code>
+            <code class="num">1.50 right</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">player-pause</code>
+            <code class="num">0.583</code>
+            <code class="num">0.667</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">player-skip-back</code>
+            <code class="num">0.750</code>
+            <code class="num">0.667</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">player-track-next</code>
+            <code class="num">0.875</code>
+            <code class="num">0.667</code>
+            <code class="num">0.50 right</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">arrows-shuffle</code>
+            <code class="num">0.833</code>
+            <code class="num">0.750</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">repeat</code>
+            <code class="num">0.750</code>
+            <code class="num">0.833</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">dots-vertical</code>
+            <code class="num">0.167</code>
+            <code class="num">0.750</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">trash</code>
+            <code class="num">0.750</code>
+            <code class="num">0.833</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">check</code>
+            <code class="num">0.708</code>
+            <code class="num">0.500</code>
+            <code class="num">0.50 right</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">minus</code>
+            <code class="num">0.667</code>
+            <code class="num">0.083</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">refresh</code>
+            <code class="num">0.750</code>
+            <code class="num">0.749</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">alert-triangle</code>
+            <code class="num">0.917</code>
+            <code class="num">0.805</code>
+            <code class="num">0.67 up</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">circle-x</code>
+            <code class="num">0.833</code>
+            <code class="num">0.834</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">clock</code>
+            <code class="num">0.833</code>
+            <code class="num">0.833</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">playlist</code>
+            <code class="num">0.833</code>
+            <code class="num">0.750</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">pencil</code>
+            <code class="num">0.719</code>
+            <code class="num">0.719</code>
+            <code class="num">0.32 left, 0.31 down</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">rotate-clockwise</code>
+            <code class="num">0.745</code>
+            <code class="num">0.750</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">share</code>
+            <code class="num">0.828</code>
+            <code class="num">0.828</code>
+            <code class="num">centred</code>
+          </div>
+          <div class="def-row readout-row">
+            <code class="name">cloud-download</code>
+            <code class="num">0.929</code>
+            <code class="num">0.794</code>
+            <code class="num">0.35 right, 1.47 down</code>
+          </div>
+        </div>
+        <p class="hint">
+          The width column runs from 0.17 on the three dots to 0.93 on the
+          cloud, which is a factor of five and a half. A scale read off the grid
+          would have put all of these at one optical size, and they are at four.
+          The two ends of the range are not both mistakes: a mark that is 0.08
+          of its box in height is a single stroke and is supposed to look thin,
+          and a glyph at 0.93 is nearly filling its box and will crowd a control
+          the others sit comfortably inside.
+        </p>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">The ones that are not like the others</h2>
+          <p class="section-note">
+            10 of the 19, and what each one costs or needs because of it.
+          </p>
+        </div>
+        <div class="stack-tight">
+          <div class="def-row">
+            <span class="token-sm">player-play-filled</span>
+            <span class="role"
+              >The one filled glyph, and the one that sits 1.5 units right of
+              its own centre.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">player-pause</span>
+            <span class="role"
+              >Outline, because a filled pause would mean nothing an outline
+              does not.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">arrows-shuffle</span>
+            <span class="role"
+              >Tabler calls it arrows-shuffle. There is no icon named shuffle at
+              this pin.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">dots-vertical</span>
+            <span class="role"
+              >Three dots and their caps, so 0.17 of the width is the whole
+              mark, which makes it the faintest thing in the set. At --icon-sm
+              in a 28px row control the three dots span 2.7px and each is 1.3px
+              across, narrower than the character it replaced. It is legible and
+              it is the one mark here whose weight is set by its glyph rather
+              than by its box.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">trash</span>
+            <span class="role"
+              >Separated by a rule and coloured as a fault, because it is the
+              destructive one, and it takes that colour from the row rather than
+              carrying one.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">check</span>
+            <span class="role"
+              >Off by half a unit and deliberately not corrected: 0.33px inside
+              an 18px box is below where a correction would show.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">minus</span>
+            <span class="role"
+              >One stroke, so 0.08 of the height is the whole mark.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">pencil</span>
+            <span class="role"
+              >Off by a third of a unit and deliberately not corrected: 0.21px
+              at --icon-sm, which is below where a correction would show.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">rotate-clockwise</span>
+            <span class="role"
+              >The action, so it is the glyph a user presses to sync.
+              Deliberately not the release's own refresh glyph, which plays the
+              state a sync leaves behind: an action cannot share a glyph with
+              the state it produces, and a reader looking for the product's word
+              in the icon set finds two candidates and this is the one that is
+              pressable.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">cloud-download</span>
+            <span class="role"
+              >The arrow hangs below the cloud, so the mark sits low in its
+              box.</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">What is not an icon</h2>
+          <p class="section-note">
+            Drawn by this system, on purpose, and worth saying out loud.
+          </p>
+        </div>
+        <div class="stack-tight">
+          <div class="def-row">
+            <span class="token-sm">the checkbox square</span>
+            <span class="role"
+              >Control geometry. The box is the control, and a glyph drawn
+              inside it would be a second set of measurements for a shape the
+              browser already has a box for.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">the radio circle and its dot</span>
+            <span class="role">Control geometry, for the same reason.</span>
+          </div>
+          <div class="def-row">
+            <span class="token-sm">the switch track and knob</span>
+            <span class="role"
+              >Control geometry. Tabler has switch icons, and using one would
+              mean the control's own state was drawn twice at two sizes.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">the segmented control's rule</span>
+            <span class="role"
+              >Control geometry, and it is the selection indicator rather than a
+              glyph, which is why it carries no icon at all.</span
+            >
+          </div>
+          <div class="def-row">
+            <span class="token-sm">the checkbox tick and the partial bar</span>
+            <span class="role"
+              >Icons, and they are the two glyphs that cannot be markup. A
+              native input holds no children, so they arrive as a mask with the
+              pinned path inside it, painted in currentColor so the mark takes
+              the colour of the control it is in.</span
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

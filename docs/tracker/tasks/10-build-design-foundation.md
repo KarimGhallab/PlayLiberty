@@ -21,7 +21,7 @@ The workspace builds with plain `tsc` and has no script runner, so the emitter m
 
 - The designed values as the single source of truth, held as literal-typed data, with lengths as unitless numbers.
 - A `types.ts` next to the values holding the group contracts, so consumers import types from there and never from the implementation.
-- The emitter: appends `px` to lengths, `ms` to durations, passes colors through verbatim, and writes the stylesheet into `dist`.
+- The emitter: appends `px` to lengths, `ms` to durations, passes colors through verbatim, wraps an easing curve's four numbers in `cubic-bezier(...)` for the stylesheet, and writes that into `dist`. The curve is a fourth kind of value rather than a variant of the first three, so the emitter needs a case for it. `packages/ui-foundation` exposes the matching mapping to React Native's `Easing.bezier`, which takes four numbers as arguments and not a string, so the shared source speaks the numbers and neither client ever sees the CSS syntax.
 - A build of clean, compile, then run the compiled emitter, so the emitter ships as part of the package's own output and needs no new dependency and no runner.
 - An export map exposing both the stylesheet subpath for web and the module for mobile.
 - A test asserting that every leaf value in the source appears in the emitted stylesheet.

@@ -31,7 +31,7 @@ Capabilities in v1:
 - Stream stored tracks to the web and mobile clients.
 - Multiple accounts, each with its own playlists; a playlist owner can share read-only or read-write with specific accounts.
 - Add one pasted video to several write-accessible playlists at once.
-- Manual refresh, retention, and weekly orphan pruning.
+- Manual sync, retention, and weekly orphan pruning.
 
 Hard constraints:
 

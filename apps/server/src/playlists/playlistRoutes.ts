@@ -3,17 +3,36 @@ import type { FastifyInstance } from 'fastify';
 import {
   AddTrackInputSchema,
   CreatePlaylistInputSchema,
+  PageQuerySchema,
   RenamePlaylistInputSchema
 } from '@playliberty/contracts';
+import { exhaust } from '@playliberty/utils';
 
-import { sendNotImplemented } from '../errors/problem.js';
+import { sendNotImplemented, sendProblem } from '../errors/problem.js';
+import type { AppOptions } from '../http/appTypes.js';
 import { parseBody, sendInvalidRequest } from '../http/validation.js';
+import {
+  PlaylistOutcome,
+  listPlaylistsForAccount,
+  readPlaylistForAccount
+} from './playlistService.js';
 
-export function registerPlaylistRoutes(app: FastifyInstance): void {
-  app.get('/playlists', async (_request, reply) => {
-    return sendNotImplemented(
-      reply,
-      'Listing playlists is not implemented yet.'
+export function registerPlaylistRoutes(
+  app: FastifyInstance,
+  options: AppOptions
+): void {
+  app.get('/playlists', async (request, reply) => {
+    const parsed = parseBody(PageQuerySchema, request.query);
+
+    if (!parsed.success) {
+      return sendInvalidRequest(reply, parsed.message);
+    }
+
+    return reply.send(
+      listPlaylistsForAccount(options.database, request.account.id, {
+        limit: parsed.data.limit,
+        offset: parsed.data.offset
+      })
     );
   });
 
@@ -32,11 +51,27 @@ export function registerPlaylistRoutes(app: FastifyInstance): void {
 
   app.get<{ Params: { id: string } }>(
     '/playlists/:id',
-    async (_request, reply) => {
-      return sendNotImplemented(
-        reply,
-        'Reading a playlist is not implemented yet.'
+    async (request, reply) => {
+      const result = readPlaylistForAccount(
+        options.database,
+        request.params.id,
+        request.account.id
       );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail: 'The playlist does not exist, or this account cannot see it.'
+        });
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
     }
   );
 
@@ -67,11 +102,11 @@ export function registerPlaylistRoutes(app: FastifyInstance): void {
   );
 
   app.post<{ Params: { id: string } }>(
-    '/playlists/:id/refresh',
+    '/playlists/:id/sync',
     async (_request, reply) => {
       return sendNotImplemented(
         reply,
-        'Refreshing a playlist is not implemented yet.'
+        'Syncing a playlist is not implemented yet.'
       );
     }
   );

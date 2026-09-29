@@ -38,15 +38,13 @@
   /* One tone per display state. A removed track takes the removed tone whatever
      its file status is.
 
-     --tone-downloading is an alias rather than a value of its own, because amber
-     is not only a state. It is declared once as --emphasis, further down, and
-     this borrows it: "in progress" and "worth your attention" are near enough in
-     meaning to be the same idea, so they are the same colour by construction
-     rather than by a comment asking people not to change one without the other.
-     Writing #e39a3c twice would be two values free to drift apart, which is the
-     one thing this file is for avoiding. */
+     --tone-downloading and --emphasis hold the same literal on purpose, and the
+     validator fails if they ever stop agreeing. They cannot be one token
+     pointing at the other, because ADR 0009 rejects aliased tokens: React
+     Native cannot resolve var(). So this is two names for one decision, kept
+     honest by a check rather than by a var() the phone would not resolve. */
   --tone-pending: #84948a;
-  --tone-downloading: var(--emphasis);
+  --tone-downloading: #e39a3c;
   --tone-stored: #e6e9ea;
   --tone-failed: #e0625e;
   --tone-unavailable: #b87570;
@@ -132,9 +130,11 @@
   /* The second colour, and the only one that is not a surface, a tone or the
      action colour. Its job is to point at one thing: at most one emphasis per
      view, always alongside a word, never on a hover. It is deliberately not a
-     new hue and not a second amber. --tone-downloading is declared as this value
-     rather than the other way round, because "in progress" is a mild form of
-     "needs attention" and the emphasis is the broader of the two ideas.
+     new hue and not a second amber. --tone-downloading holds this same literal
+     and the suite checks the two agree, because "in progress" is a mild form of
+     "needs attention" and the emphasis is the broader of the two ideas. They
+     cannot be one token aliasing the other: ADR 0009 rejects that, since React
+     Native cannot resolve var().
 
      It measures 8.30:1 on --bg and 6.98:1 on --surface-raised, and --bg sits on
      it at the same 8.30:1 for a filled badge. */
@@ -146,6 +146,24 @@
   --control-touch: 44px;
   --control-size-check: 18px;
   --control-size-inline: 28px;
+
+  /* Icon size. Three steps, named for the job rather than for the number, and
+     measured in the controls they sit in rather than read off the icon set's
+     grid. Tabler draws on 24 units and a glyph does not fill its box, so the
+     grid is not the answer: what a glyph occupies of its own box runs from 0.50
+     of the height on a check to 0.93 of the width on a cloud, and a size scale
+     built from the grid would have put all of them at one optical size when they
+     are at four.
+
+     The rule that decided the two larger steps is a ratio to the control, not a
+     number. --icon-md is 0.62 of the 32px icon button and --icon-lg is 0.58 of
+     the 48px primary, so both sit at one ratio of about 0.6 and the pair reads
+     as a pair. --icon-sm is the exception and is 0.89 of the 18px checkbox,
+     because a mark inside a control is filling the control it belongs to rather
+     than sitting in one. */
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 28px;
 
   /* A disabled control gets its own pair rather than --opacity-disabled, because
      a blanket opacity drags the label down with the control: ink at 45% lands at
@@ -164,10 +182,21 @@
   --focus-width: 2px;
   --focus-offset: 2px;
 
-  /* Motion. Transitions only; a reduced-motion rule drops all three to zero. */
+  /* Motion. Transitions only; a reduced-motion rule drops the durations to zero
+     and kills the animations outright, so no curve is ever reached under it. */
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 240ms;
+
+  /* The one curve. It is named for the decision and not the shape, and it sits
+     outside the --motion-* family above on purpose: that family is all
+     durations, and a reader who finds a curve in it will read it as a time.
+     Decelerates into place, never overshoots, and is soft enough for a border
+     colour changing at 120ms while still carrying a 48px control at 240ms. The
+     two decorative loops keep the ease-in-out keyword rather than this, because
+     a loop is not a transition and a transition curve on a pulse changes the
+     pulse from a breath into a lurch. */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Stacking */
   --z-base: 0;

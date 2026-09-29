@@ -172,7 +172,7 @@
       .input:focus,
       .input:focus-visible {
         border-color: var(--accent);
-        transition: border-color var(--motion-fast) var(--leading-normal);
+        transition: border-color var(--motion-fast) var(--ease-standard);
       }
       /* Invalid is not the fault red on the text. The text stays ink so it is
          still readable while being corrected; the red goes on the border and on
@@ -229,24 +229,41 @@
         color: var(--bg);
         cursor: pointer;
       }
-      /* The mark is drawn rather than typed. A glyph is a font decision: it
-         lands at a different size and baseline in every family that is not the
-         one this happened to be rendered in, and this is going into a package
-         that other people load their own fonts into. */
+      /* The mark is Tabler's check, taken as a mask rather than as markup.
+         A native input cannot contain children, and this file keeps its inputs
+         native with appearance: none rather than wrapping each one in a span,
+         so the geometry arrives as a mask on the pseudo-element instead. The
+         path is transcribed from @tabler/icons 3.48.0, MIT; see
+         docs/adr/0010-tabler-icons.md and the sprite in playlist-header.html for
+         the same kind of glyph written as real markup.
+
+         A mask rather than a background-image for one reason that matters: a
+         mask is painted in currentColor by background-color, so the mark takes
+         the colour of the control it is in and the checked and unchecked cases
+         need no rule of their own. An image would have to carry a colour, and
+         then the near-black mark on the accent fill would be a second
+         declaration that could drift away from the pairing declared above it. */
       .box::after {
         content: '';
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 10px;
-        height: 5px;
-        border-left: 2px solid currentColor;
-        border-bottom: 2px solid currentColor;
-        transform: translate(-50%, -60%) rotate(-45deg) scale(0);
-        transition: transform var(--motion-fast) var(--leading-normal);
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+        background-color: currentColor;
+        -webkit-mask-image: var(--mark-check, none);
+        mask-image: var(--mark-check, none);
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
+        transform: translate(-50%, -50%) scale(0);
+        transition: transform var(--motion-fast) var(--ease-standard);
       }
       .box:checked::after {
-        transform: translate(-50%, -60%) rotate(-45deg) scale(1);
+        transform: translate(-50%, -50%) scale(1);
       }
       /* The checked fill is the accent, not the ink. The accent is the colour
          this system already means "you can act on this", and the near-black
@@ -256,15 +273,13 @@
         background: var(--accent);
         border-color: var(--accent);
       }
-      /* The partial mark is a drawn bar, not an en dash, and it replaces the
-         tick rather than sitting with it. */
+      /* The partial mark is Tabler's minus, and it replaces the tick rather than
+         sitting with it. The mask changes with the state, so the two marks are
+         never both on the control. */
       .box:indeterminate::after {
-        width: 10px;
-        height: 2px;
-        border: 0;
-        border-radius: 1px;
-        background: currentColor;
-        transform: translate(-50%, -50%);
+        -webkit-mask-image: var(--mark-minus, none);
+        mask-image: var(--mark-minus, none);
+        transform: translate(-50%, -50%) scale(1);
       }
       .box:disabled {
         background: var(--control-disabled-bg);
@@ -316,10 +331,23 @@
         border-radius: var(--radius-chip);
         background: var(--accent);
         transform: translate(-50%, -50%) scale(0);
-        transition: transform var(--motion-fast) var(--leading-normal);
+        transition: transform var(--motion-fast) var(--ease-standard);
       }
       .radio:checked::after {
         transform: translate(-50%, -50%) scale(1);
+      }
+
+      /* The two checkbox marks as masks, transcribed from @tabler/icons 3.48.0.
+         The angle brackets and the hash are percent-encoded because this is a
+         data URI; everything between them is the path exactly as the package
+         ships it. Neither carries a colour, because a mask is painted by the
+         element using it and reads only the alpha channel. */
+      .box {
+        /* prettier-ignore: a data URI is not reflowable text. Prettier
+           treats a url() token as a string, wraps it across lines and drops
+           the spaces, which takes the spaces out of the path data itself. */
+        --mark-check: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M5 12l5 5l10 -10%27/%3E%3C/svg%3E');
+        --mark-minus: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M5 12l14 0%27/%3E%3C/svg%3E');
       }
 
       /* ---------------------------------------------------- segmented control */
@@ -399,7 +427,7 @@
         height: 16px;
         border-radius: var(--radius-chip);
         background: var(--muted);
-        transition: transform var(--motion-fast) var(--leading-normal);
+        transition: transform var(--motion-fast) var(--ease-standard);
       }
       /* The knob travels as well as the fill changing, so the state survives
          being read with no colour at all. */
@@ -593,13 +621,11 @@
           <strong style="color: var(--ink); font-weight: var(--weight-medium)"
             >A busy button is not a disabled one.</strong
           >
-          This was a real mistake in the first draft, where the syncing button
-          shared a rule with the disabled ones and greyed out the instant it was
-          pressed. That reads as a refusal. Busy keeps the variant's own colours
-          and gains a spinner, and the spinner is
-          <span class="token-sm">currentColor</span> so it is legible on any
-          fill without a per-variant colour to keep in step. The label stays put
-          so the button does not change width mid-click. Under
+          A syncing button that greys out the instant it is pressed reads as a
+          refusal. Busy keeps the variant's own colours and gains a spinner, and
+          the spinner is <span class="token-sm">currentColor</span> so it is
+          legible on any fill without a per-variant colour to keep in step. The
+          label stays put so the button does not change width mid-click. Under
           <span class="token-sm">prefers-reduced-motion: reduce</span> the ring
           stops turning and its cut top comes back, because a frozen ring with a
           notch reads as broken, and the word &ldquo;Syncing&rdquo; is what
@@ -715,21 +741,15 @@
           means actionable.
 
           <strong style="color: var(--ink); font-weight: var(--weight-medium)"
-            >These are real inputs, and the first draft was not.</strong
+            >These are real inputs.</strong
           >
-          The boxes began as <span class="token-sm">span</span> elements inside
-          the label, which looked identical and could not take focus: five
-          checkboxes, none reachable by keyboard, which the ticket explicitly
-          forbids. Native inputs with
-          <span class="token-sm">appearance: none</span> get the role, the
-          accessible name from the wrapping label and the whole keyboard
-          behaviour from the platform, and restyling removes the chrome without
-          removing any of it. The tick and the partial bar are drawn in CSS
-          rather than typed, because a glyph is a font decision: it lands at a
-          different size and baseline in every family that is not the one this
-          happened to be rendered in, and this is going into a package that
-          other people load their own fonts into. The partial state is set
-          through the DOM property, since
+          Native inputs with <span class="token-sm">appearance: none</span> get
+          the role, the accessible name from the wrapping label and the whole
+          keyboard behaviour from the platform, and restyling removes the chrome
+          without removing any of it. The tick and the partial bar are drawn in
+          CSS rather than typed, because a glyph is a font decision and this is
+          going into a package that other people load their own fonts into. The
+          partial state is set through the DOM property, since
           <span class="token-sm">:indeterminate</span> is not an attribute and
           cannot be written in markup.
         </p>
@@ -796,21 +816,15 @@
           that is a decision rather than an omission.
 
           <strong style="color: var(--ink); font-weight: var(--weight-medium)"
-            >The segmented control has no fill on its selected option, and that
-            was forced by measurement rather than chosen.</strong
+            >The segmented control has no fill on its selected option.</strong
           >
-          The obvious build fills the selection, and it does not work here.
           Filling it with <span class="token-sm">--surface-raised</span> inside
           a <span class="token-sm">--bg</span> track measures 1.19:1, and inside
           the dialog it collapses to 1.00:1 because the track was already the
           dialog's own fill, so the selection vanished exactly where it matters
-          most. Lifting the fill does not rescue it: every dark grey in this
-          palette sits between 1.15:1 and 1.80:1 against these surfaces, and a
-          grey strong enough to read starts failing the label sitting on it,
-          since <span class="token-sm">--muted</span> on
-          <span class="token-sm">#333941</span> is 3.70:1. There is no room for
-          a fill in the dark end of this palette. The selection is a rule under
-          the option and a step from <span class="token-sm">--muted</span> to
+          most. There is no room for a fill in the dark end of this palette, so
+          the selection is a rule under the option and a step from
+          <span class="token-sm">--muted</span> to
           <span class="token-sm">--ink</span>, which are a shape and a contrast,
           so the state survives greyscale and does not depend on judging a
           shade.
@@ -987,34 +1001,31 @@
           >
         </div>
         <p class="hint">
-          Amber is <span class="token-sm">--emphasis</span>, and the downloading
-          tone is declared as that value rather than owning one of its own:
-          <span class="token-sm">--tone-downloading: var(--emphasis)</span>. One
-          declaration, two names, so the two cannot drift apart. The dependency
-          points that way on purpose, because &ldquo;in progress&rdquo; is a
-          mild form of &ldquo;needs attention&rdquo; and emphasis is the broader
-          of the two ideas; a state borrowing a colour is ordinary, whereas a
-          colour borrowing a state name is what this file exists to avoid. It
-          measures 8.30:1 on <span class="token-sm">--bg</span> and 6.98:1 on
+          Amber is <span class="token-sm">--emphasis</span>, and
+          <span class="token-sm">--tone-downloading</span> holds the same
+          literal rather than pointing at it, because ADR 0009 rejects aliased
+          tokens and React Native cannot resolve
+          <span class="token-sm">var()</span>. It measures 8.30:1 on
+          <span class="token-sm">--bg</span> and 6.98:1 on
           <span class="token-sm">--surface-raised</span>, and a filled badge
           puts <span class="token-sm">--bg</span> on it at the same 8.30:1. The
-          two can share a colour because they never compete. Download
+          two can share a colour because they never compete: download
           concurrency is capped at 2, so at most two rows are ever downloading
-          at once and neither of them is the emphasis. Had that cap been 20,
-          amber could not have been both, because a screen full of downloading
-          rows would leave the emphasis with nothing to stand out from.
+          at once and neither of them is the emphasis.
 
           <strong style="color: var(--ink); font-weight: var(--weight-medium)"
             >Three rules hold it together.</strong
           >
           One emphasis per view, or the emphasis is the background. Always with
           a word, never the colour alone, which is why the counterexample above
-          tints the sentence as well as the rule and is wrong: once the body
-          copy is amber it stops being the thing being pointed at. And never on
-          a hover, which is what the primary button used to do. A statement that
-          fires every time a pointer crosses a control is not a statement, and
-          turning the action colour into the emphasis colour meant the same
-          button meant two different things depending on where the pointer was.
+          tints the sentence as well as the rule and is wrong. And never on a
+          hover, so the accent cannot mean two different things depending on
+          where the pointer is. The reasoning is in
+          <a
+            href="../../design-system/components/form-controls.md#form-controls"
+            style="color: var(--muted)"
+            >DESIGN.md</a
+          >.
         </p>
       </section>
 

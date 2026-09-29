@@ -16,10 +16,16 @@ Read `docs/adr/0005-web-stack.md`, `docs/adr/0006-csrf-defense.md`, `docs/adr/00
 ### `apps/web` application
 
 - React 19.2 with the React Compiler enabled (`@vitejs/plugin-react` 6 with `@rolldown/plugin-babel`), Vite 8, TypeScript 6, and a `tsc --noEmit && vite build` build.
-- App shell with TanStack Router and placeholder routes for the playlists list, the playlist detail, and the account and sharing screen.
+- App shell with TanStack Router and two placeholder routes, the library at `/` and the playlist
+  detail at `/playlists/:id`. Those are the two web screens and there is no third: the screen
+  inventory is settled in
+  [`13-settle-the-screen-inventory`](13-settle-the-screen-inventory.md), which rejected an account
+  surface for web on the grounds that Pangolin sits in front of nginx, so an unauthenticated request
+  never reaches the SPA and a signed-out state cannot exist. There is no sidebar and no persistent
+  chrome, so the shell is a router outlet and the player bar and nothing else.
 - TanStack Query client provider and one placeholder query.
 - A Zustand player store, a single global audio element mounted in the shell, and Media Session wiring with feature detection and `try/catch`.
-- Queue and position persistence in `localStorage` with throttled writes plus `pagehide` and `visibilitychange`.
+- Queue and position persistence in `localStorage` with throttled writes plus `pagehide` and `visibilitychange`. The queue is client state that never reaches the database, and the order the user sets is re-applied over every refetch, because an order that survives a reload but not a refetch is not a behaviour. It has no surface yet: the queue is a panel specified in the player bar record, and this ticket builds the state without implying a view.
 - API client under `src/shared/api` that consumes `packages/contracts` schemas, sends `X-PlayLiberty-Client` on mutations, and turns a `401` or a redirect into a top-level navigation so the edge can re-authenticate.
 - SCSS with CSS Modules and BEM, importing the stylesheet emitted by `@playliberty/tokens` once at the app entry, with a base stylesheet carrying `color-scheme: dark`, the focus ring, minimal scrollbar styling, and `prefers-reduced-motion` handling. Every value comes from a token, never from a literal in a module.
 - `@playliberty/ui-foundation` for durations, the relative last-synced time, and the track state tone, so the web and mobile clients render the same strings.

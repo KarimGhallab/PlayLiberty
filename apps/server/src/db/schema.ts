@@ -53,6 +53,7 @@ export const playlists = sqliteTable(
       .notNull()
       .default(PlaylistSyncStatus.Idle),
     lastSyncedAt: text('last_synced_at'),
+    trackCount: integer('track_count').notNull().default(0),
     createdAt: text('created_at').notNull().$defaultFn(createdAt),
     updatedAt: text('updated_at').notNull().$defaultFn(createdAt)
   },

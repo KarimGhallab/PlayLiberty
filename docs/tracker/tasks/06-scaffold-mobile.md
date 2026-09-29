@@ -14,8 +14,16 @@ Read `docs/adr/0007-mobile-stack.md`, `docs/adr/0008-mobile-provisioning.md`, `d
 ## Scope
 
 - Expo SDK 57 app: React Native 0.86.3, React 19.2, New Architecture, TypeScript.
-- Expo Router with placeholder screens for the playlists list, the playlist detail, the account, and a settings or auth screen.
-- TanStack Query provider, a Zustand player store, and `expo-audio` with the background config plugin: one player, the queue via `useAudioPlaylist`, lock-screen controls, and background playback mode.
+- Expo Router with two placeholder routes: the library at the root and the playlist detail pushed
+  over it. Those are the two mobile screens and there is no third. The account screen and the settings
+  or auth screen this line used to name were removed in
+  [`13-settle-the-screen-inventory`](13-settle-the-screen-inventory.md): no preference field exists
+  anywhere in the contracts, and sign-in is a full-screen state of the library route rather than a
+  route, because a route only reachable from a state of another route is a route that exists to be a
+  state. Signed out, no other resource in the app is reachable, so the prompt replaces the content area
+  rather than sitting over it. There is no bottom tab bar and no drawer: the library is the root, the
+  detail is pushed, and the platform gesture is the way back.
+- TanStack Query provider, a Zustand player store, and `expo-audio` with the background config plugin: one player, the queue via `useAudioPlaylist`, lock-screen controls, and background playback mode. The queue is client state that never reaches the database, the order the user sets is re-applied over every refetch, and it has no surface yet: the queue is a sheet above the bar specified in the player bar record, so this ticket builds the state without implying a view.
 - React Native `StyleSheet` over the values in `@playliberty/tokens`, the same values the web app consumes, with `StyleSheet` helpers built once over them rather than per screen.
 - `expo-secure-store` plumbing, and an API client that consumes `packages/contracts`, attaches the `P-Access-Token-Id` and `P-Access-Token` headers, sends `X-PlayLiberty-Client` on mutations, and treats a `401` as "needs provisioning".
 - Accessibility from the start: labels and roles on touchables, `AccessibilityInfo.isReduceMotionEnabled`, Dynamic Type respected with capped multipliers only where layout breaks, and 44x44 point targets.

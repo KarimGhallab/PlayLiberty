@@ -14,9 +14,16 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`06-scaffold-mobile`](06-scaffold-mobile.md)                           | open     | [`10`](10-build-design-foundation.md)      | [`07`](07-provision-mobile-access.md)                     |
 | [`07-provision-mobile-access`](07-provision-mobile-access.md)           | open     | [`06`](06-scaffold-mobile.md)              | none                                                      |
 | [`08-define-design-system`](08-define-design-system.md)                 | resolved | none                                       | [`09`](09-design-scheme-and-components.md)                |
-| [`09-design-scheme-and-components`](09-design-scheme-and-components.md) | open     | none                                       | [`10`](10-build-design-foundation.md)                     |
+| [`09-design-scheme-and-components`](09-design-scheme-and-components.md) | resolved | none                                       | [`10`](10-build-design-foundation.md)                     |
 | [`10-build-design-foundation`](10-build-design-foundation.md)           | open     | [`09`](09-design-scheme-and-components.md) | [`05`](05-scaffold-web.md), [`06`](06-scaffold-mobile.md) |
-| [`11-form-controls`](11-form-controls.md)                               | open     | none                                       | none                                                      |
+| [`11-form-controls`](11-form-controls.md)                               | resolved | none                                       | none                                                      |
+| [`12-rename-refresh-route-to-sync`](12-rename-refresh-route-to-sync.md) | resolved | none                                       | none                                                      |
+| [`13-settle-the-screen-inventory`](13-settle-the-screen-inventory.md)   | resolved | none                                       | none                                                      |
+| [`14-expose-the-last-sync-run`](14-expose-the-last-sync-run.md)         | resolved | none                                       | none                                                      |
+| [`15-add-track-count-to-playlists`](15-add-track-count-to-playlists.md) | resolved | none                                       | none                                                      |
+| [`16-design-the-library`](16-design-the-library.md)                     | open     | [`15`](15-add-track-count-to-playlists.md) | none                                                      |
+| [`17-design-the-playlist-detail`](17-design-the-playlist-detail.md)     | open     | none                                       | none                                                      |
+| [`18-expose-playlist-access`](18-expose-playlist-access.md)             | resolved | none                                       | none                                                      |
 
 ## Conventions
 

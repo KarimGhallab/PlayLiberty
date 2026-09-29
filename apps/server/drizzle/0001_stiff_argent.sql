@@ -1,0 +1,2 @@
+ALTER TABLE `playlist` ADD `track_count` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+UPDATE `playlist` SET `track_count` = (select count(*) from `association` where `association`.`playlist_id` = `playlist`.`id`);

@@ -7,8 +7,8 @@ PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspa
 ### The applications
 
 - `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. Scaffolded; the feature behavior is still being built. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. See `docs/adr/0004-server-stack.md`.
-- `apps/web` (planned) - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See `docs/adr/0005-web-stack.md`.
-- `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See `docs/adr/0007-mobile-stack.md` and `docs/adr/0008-mobile-provisioning.md`.
+- `apps/web` (planned) - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See `docs/adr/0005-web-stack.md`.
+- `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See `docs/adr/0007-mobile-stack.md` and `docs/adr/0008-mobile-provisioning.md`.
 - `apps/console` - runnable Node entry point and development harness. Not a product surface.
 
 ### The packages
@@ -49,7 +49,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 2. The server creates a Synced playlist recording its provider and source playlist id, and a sync run starts. Re-pasting a known source returns the existing playlist instead of creating a duplicate.
 3. The adapter reads the source membership in one `--flat-playlist` pass, falling back to a single video's details only when a field is missing.
 4. The sync reconciles it: a new video id becomes a track with `fileStatus: pending`; a known id is left alone; a video missing from the source marks its track `sourceStatus: removed` (retention); suppressed videos are skipped.
-5. The in-process worker downloads pending tracks through yt-dlp with a configurable concurrency cap, into a temp file that is atomically renamed on success, moving each track from `pending` to `downloading` to `stored`, or to `failed` (retried on the next refresh). The `track` rows are the queue; there is no jobs table.
+5. The in-process worker downloads pending tracks through yt-dlp with a configurable concurrency cap, into a temp file that is atomically renamed on success, moving each track from `pending` to `downloading` to `stored`, or to `failed` (retried on the next sync). The `track` rows are the queue; there is no jobs table.
 6. The sync run records its counts; the playlist's `lastSyncedAt` and counts update.
 7. A weekly job prunes tracks with zero associations.
 

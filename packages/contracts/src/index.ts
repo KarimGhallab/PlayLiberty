@@ -7,6 +7,7 @@ export type {
   Page,
   PageQuery,
   Playlist,
+  PlaylistAccess,
   PlaylistTrack,
   Problem,
   RenamePlaylistInput,

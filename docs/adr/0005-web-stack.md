@@ -19,3 +19,5 @@ Alternatives rejected:
 - Serving the SPA from Fastify on the same origin: rejected in favour of nginx, so static serving and the media route stay separate concerns.
 - A two-origin split with CORS: it would widen the CSRF trust boundary for no benefit.
 - Plain `fetch` and the Web Audio API: they would re-implement caching and decode that TanStack Query and the media element already provide.
+
+Amendment, from `0010-tabler-icons.md`: the client takes `@tabler/icons-react` for its glyphs, pinned to the same exact version the mobile app pins `@tabler/icons-react-native` to, and imported one icon at a time rather than from the barrel. It is MIT, needs no build plugin, and declares `sideEffects: false`. Nothing in the styling decision changes: the glyphs are SVG elements that take `currentColor` and a size from a token, so they sit inside the SCSS modules and BEM rules above rather than beside them.

@@ -15,6 +15,7 @@ import { startPruneScheduler } from '../prune/pruneScheduler.js';
 import type { PruneSchedulerHandle } from '../prune/pruneScheduler.js';
 import { pruneOrphanTracks } from '../prune/pruneService.js';
 import { registerShareRoutes } from '../shares/shareRoutes.js';
+import { registerSyncRunRoutes } from '../sync/syncRunRoutes.js';
 import { registerTrackRoutes } from '../tracks/trackRoutes.js';
 import { startDownloadWorker } from '../worker/downloadWorker.js';
 import type { DownloadWorkerHandle } from '../worker/downloadWorker.js';
@@ -70,8 +71,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(
     async api => {
       registerAccountRoutes(api);
-      registerPlaylistRoutes(api);
+      registerPlaylistRoutes(api, options);
       registerShareRoutes(api);
+      registerSyncRunRoutes(api, options);
       registerTrackRoutes(api, options);
     },
     { prefix: '/api/v1' }

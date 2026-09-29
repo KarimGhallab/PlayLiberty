@@ -37,7 +37,23 @@ body {
   padding: 0 0 var(--space-9);
 }
 
-/* ------------------------------------------------------------------ layout */
+/* ------------------------------------------------------------------ layout
+ *
+ * These names are taken. Every specimen links this file and then carries its own
+ * <style>, and the two are not namespaced, so a specimen that picks one of these
+ * for something else wins on source order and says nothing. It is a silent
+ * failure that presents as a layout bug somewhere else: a prototype defined
+ * .stack as the 28px box holding its morph frames, which is this file's vertical
+ * rhythm utility, so every element using .stack in that page became 28px wide
+ * and the document rendered inside a 64px column.
+ *
+ * Specialising one of them for a component on its own page is fine, and the tree
+ * does it: track-row.html gives .lane a size and a grid because a lane there is
+ * a control, not a label column. What is not fine is taking the name for a
+ * different thing. If a specimen needs a box of its own, name it for the thing in
+ * it. A check cannot separate the two cases, because the declarations are
+ * identical, so this comment is the guard.
+ */
 
 .page {
   max-width: 1120px;
@@ -323,6 +339,254 @@ body {
 /* The two shapes --emphasis is allowed to take in the colour specimen. A rule
    with a mark beside it, and a filled badge. Both are drawn here so the page is
    arguing the point rather than describing it. */
+/* No artwork, in any component.
+ *
+ * One treatment for one null case. thumbnailPath and coverUrl are both nullable,
+ * so a track and a playlist can each arrive with nothing to show, and a user
+ * should not have to learn two different things from two different holes. The
+ * period is a local custom property rather than a fixed length so a 40px
+ * thumbnail and a 96px cover carry the same number of stripes instead of the
+ * larger one looking like a different, busier texture. */
+.no-art {
+  --hatch: 5px;
+  /* background-image, not the background shorthand. A component sets its own
+     background colour for the filled case, and a shorthand here would either
+     lose to that or win and erase it, depending on which stylesheet came last.
+     The gradient is an image and the fill is a colour; they compose. */
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface),
+    var(--surface) var(--hatch, 5px),
+    var(--surface-raised) var(--hatch, 5px),
+    var(--surface-raised) calc(var(--hatch, 5px) * 2)
+  );
+}
+
+/* Playing, on artwork.
+ *
+ * One strip, two sizes. It lives here rather than in either specimen because
+ * both the 96px cover and the 40px thumbnail use it and the phase table below is
+ * twenty rules long: duplicated into the two specimens it would be two tables
+ * that could disagree, and a phase table that disagrees with itself produces
+ * two bars moving as one, which is invisible in a screenshot.
+ *
+ * A bar is 3px wide with a 4px gap, a 7px pitch, and the count solves
+ * 7n - 4 against the content box. At 96px that is 14 bars and at 40px it is 6,
+ * each filling its box exactly. The gap is a minimum rather than the whole
+ * story: the bars also carry space-between, because browsers snap a 1px border
+ * to whole device pixels, so on a 1.25x display the cover's content box is 94.4
+ * and a fixed-gap row stops 0.4px short of the artwork's edge. The leftover is
+ * shared across the gaps at 0.03px each and the strip reaches both edges at any
+ * pixel ratio. The fill is a property of the layout, not of the arithmetic.
+ *
+ * There is no scrim, and that is a decision with a measured price rather than an
+ * omission. coverUrl and thumbnailPath are arbitrary images, so this is the one
+ * place in the system where ink lands on a surface whose contrast cannot be
+ * computed, and a scrim to an opaque --surface was the answer: it put every bar
+ * on a known surface at 5.40:1 and cost a quarter of the cover under a gradient.
+ * It was dropped, and the reason it was worth dropping is that a half-height
+ * strip and a bottom band are not the same object. A band has to be short enough
+ * not to eat the artwork, which is what forced the bars down to 16px; half the
+ * artwork is tall enough to read as an equalizer rather than as a comb, and
+ * reading as one is the entire job.
+ *
+ * So the price is stated here rather than left to be discovered. --accent on an
+ * arbitrary cover measures 5.23:1 on a dark photograph, which is fine, 3.33:1
+ * on white, which is marginal, and 1.60:1 on a mid grey, which is not. Mid-tone
+ * covers are common. A user with a mid-tone cover gets bars they can barely see.
+ * That is accepted, and it is accepted with the figure written down, because the
+ * alternative is a 16px band that reads as a texture.
+ *
+ * Nothing in the tree can catch this, and that is worth being honest about. All
+ * nine specimens draw their artwork as a flat --surface-raised box, on which the
+ * bars measure 5.40:1 and look correct. A scrim check was written for this and
+ * then withdrawn: with no gradient in the tree it could never fire, and a check
+ * that cannot fire is a claim of safety that is not there. The reserved rule is
+ * this paragraph. If a scrim ever comes back, its last colour stop has to be
+ * fully opaque and at or above the top of the strip, so no bar is ever drawn on a
+ * partly transparent pixel.
+ *
+ * The period is a literal and not a --motion-* token, which is a decision rather
+ * than an oversight. A transition duration is a value someone might retune
+ * across the system; a loop's period is part of that loop's identity the way its
+ * keyframe stops are, and no other loop shares it.
+ */
+.bars {
+  /* One proportional rule for both sizes. The strip reaches half way up the
+     artwork and the bar count solves the pitch, so a 96px cover carries 14 bars
+     47.2px tall and a 40px thumbnail carries 6 bars 19.2px tall from the same two
+     declarations. Two named pixel bands were tried and were worse: they made the
+     thumbnail a special case of the cover, and they cost 50 percent of a 40px
+     tile to a 16px band that was already a third of a 96px one. */
+  --bar-reach: 50%;
+  --period: 1400ms;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: var(--bar-reach, 50%);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  justify-content: space-between;
+}
+.bars > span {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--accent);
+  /* bottom, or a bar grows from its own middle and the strip's baseline drifts
+     as the phases move. */
+  transform-origin: bottom;
+  /* The resting scale, and the reason the reduced-motion form costs nothing to
+     state. The keyframes override this while the animation runs; the moment the
+     animation is switched off, by the media query or by anything else, this
+     declaration is what shows through. So there is one table and there is no
+     second table under prefers-reduced-motion to keep in step with this one. */
+  transform: scaleY(var(--rest, 1));
+  /* transform, never height, so a moving bar relayouts nothing and the radius
+     artifact stays confined to one property. */
+  animation: pl-equalize var(--period, 1400ms) linear infinite;
+}
+/* No alternate, deliberately. It would double the visible cycle to 2800ms, and a
+   palindromic shape shared by every bar reads as a metronome. Ending on the
+   value it started on makes the seam invisible with no extra keyframe. */
+@keyframes pl-equalize {
+  0% {
+    transform: scaleY(0.3);
+  }
+  22% {
+    transform: scaleY(1);
+  }
+  48% {
+    transform: scaleY(0.5);
+  }
+  72% {
+    transform: scaleY(0.78);
+  }
+  /* 0.3 and not 0 anywhere, because a bar at zero is a gap: the strip would
+     momentarily read as carrying fewer bars, and at 14 bars a reader counts
+     them. The floor is a third of the band, which on a 12px band is 3.6px. */
+  100% {
+    transform: scaleY(0.3);
+  }
+}
+
+/* The two phase tables.
+ *
+ * Phase i is (i * stride) mod M where M = 2n - 1, and the delay is
+ * -(phase / M) * period, rounded to 10ms. Two properties of that rule are
+ * load-bearing and both are asserted by the validator rather than trusted.
+ *
+ * gcd(stride, M) = 1 is what guarantees no two bars share a phase. The article
+ * this was built from ships its own counter-example: a -2.2s delay on a 2.2s
+ * animation, which is phase-identical to zero, so two of its three bars move as
+ * one. A hand-written table of negative delays cannot catch that, because
+ * -2200ms and 0ms look like two different numbers and are one phase.
+ *
+ * M = 2n - 1 rather than n is what stops the phases being an evenly spaced
+ * staircase. At 6 bars every coprime stride produces one, and a staircase reads
+ * as a wave sweeping across the strip rather than as six independent bars.
+ * Walking 2n - 1 slots to place n bars leaves gaps of unequal size in the time
+ * domain while every phase is still distinct.
+ *
+ * --rest is the same walk read through a five-value scale cycle, so the
+ * still form is a second view of one table rather than a second table.
+ */
+.cover > .bars {
+  /* The rule's two parameters, declared here so the twenty rules below are
+     derived rather than typed. Check 2l re-derives every delay and every
+     resting scale from these, from the period, and from the bar count in the
+     markup, and fails if any of the twenty disagrees. */
+  --phase-slots: 27;
+  --phase-stride: 4;
+}
+.cover > .bars > :nth-child(1) {
+  --rest: 0.35;
+  animation-delay: 0ms;
+}
+.cover > .bars > :nth-child(2) {
+  --rest: 0.42;
+  animation-delay: -210ms;
+}
+.cover > .bars > :nth-child(3) {
+  --rest: 0.8;
+  animation-delay: -410ms;
+}
+.cover > .bars > :nth-child(4) {
+  --rest: 0.55;
+  animation-delay: -620ms;
+}
+.cover > .bars > :nth-child(5) {
+  --rest: 1;
+  animation-delay: -830ms;
+}
+.cover > .bars > :nth-child(6) {
+  --rest: 0.35;
+  animation-delay: -1040ms;
+}
+.cover > .bars > :nth-child(7) {
+  --rest: 0.42;
+  animation-delay: -1240ms;
+}
+.cover > .bars > :nth-child(8) {
+  --rest: 1;
+  animation-delay: -50ms;
+}
+.cover > .bars > :nth-child(9) {
+  --rest: 0.35;
+  animation-delay: -260ms;
+}
+.cover > .bars > :nth-child(10) {
+  --rest: 0.42;
+  animation-delay: -470ms;
+}
+.cover > .bars > :nth-child(11) {
+  --rest: 0.8;
+  animation-delay: -670ms;
+}
+.cover > .bars > :nth-child(12) {
+  --rest: 0.55;
+  animation-delay: -880ms;
+}
+.cover > .bars > :nth-child(13) {
+  --rest: 1;
+  animation-delay: -1090ms;
+}
+.cover > .bars > :nth-child(14) {
+  --rest: 0.35;
+  animation-delay: -1300ms;
+}
+
+.art > .bars {
+  --phase-slots: 11;
+  --phase-stride: 3;
+}
+.art > .bars > :nth-child(1) {
+  --rest: 0.35;
+  animation-delay: 0ms;
+}
+.art > .bars > :nth-child(2) {
+  --rest: 0.8;
+  animation-delay: -380ms;
+}
+.art > .bars > :nth-child(3) {
+  --rest: 1;
+  animation-delay: -760ms;
+}
+.art > .bars > :nth-child(4) {
+  --rest: 0.42;
+  animation-delay: -1150ms;
+}
+.art > .bars > :nth-child(5) {
+  --rest: 1;
+  animation-delay: -130ms;
+}
+.art > .bars > :nth-child(6) {
+  --rest: 0.42;
+  animation-delay: -510ms;
+}
+
 .emphasis-rule {
   display: block;
   width: 100%;
@@ -347,25 +611,143 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ------------------------------------------------------------------- icons
+ *
+ * The geometry in a specimen is transcribed from @tabler/icons, pinned to one
+ * release, because the specimens are static files with no build step and cannot
+ * import a package. The clients do not use these transcriptions: they import
+ * @tabler/icons-react and @tabler/icons-react-native, which carry the same
+ * artwork from the same pinned release. See docs/adr/0010-tabler-icons.md.
+ *
+ * Everything an icon is not is set here once, so a specimen writes a class and
+ * a path and nothing else. In particular the colour is currentColor, which is
+ * what makes an icon take the colour of the text or control it sits inside and
+ * never carry one of its own, and it is why an icon inside a disabled control
+ * or on an accent button needs no rule of its own.
+ */
+.icon {
+  display: block;
+  flex-shrink: 0;
+  color: inherit;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The one filled glyph in the system. A filled play triangle carries meaning an
+   outlined one does not: at this size a stroked triangle reads as a chevron,
+   which is the next-track affordance. Nothing else is filled, and an outline
+   keeps a row of secondary actions from reading as a row of badges. */
+.icon--filled {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* Size comes from the scale and nowhere else. A width and a height rather than
+   one, because a square set on a square grid scaled on one axis only is how a
+   22 by 17 shuffle happened in the first place. */
+.icon--sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+.icon--md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+.icon--lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+/* Optical centring. Most glyphs are centred on their own 24 unit box, and four
+   are not. Tabler centres the filled play triangle on its optical bounds rather
+   than on its box, which is right for a glyph standing alone and wrong for one
+   in a round button: it sits 1.5 of 24 units right of centre, which is 1.75px at
+   --icon-lg and reads as a triangle pushed to the right of the circle. The
+   hand-drawn triangle it replaced carried a margin for exactly this.
+
+   The class goes on the <use> and never on the <svg> around it. The two are not
+   interchangeable: the glyph is chosen by the href, so play and pause carry the
+   same wrapper markup and differ only in the reference, and a correction on the
+   wrapper lands on both. That happened, and the pause bars ended up 1.82px left
+   of the middle of their button while the triangle was correctly centred.
+
+   A percentage resolves against the element's own box, so one value holds at
+   every step of the size scale. This is a position and not a size, so it does
+   not contradict ADR 0010: the glyph is drawn at the token size like every other
+   and both clients still agree on one number per step. */
+.icon--optical {
+  translate: var(--icon-optical-x, 0) var(--icon-optical-y, 0);
+}
+
+/* The correction each glyph that needs one gets, in units of the 24 unit grid,
+   so the numbers are the ones the specimen measures and prints. The glyph that
+   is off by half a unit and is deliberately not corrected is the checkbox tick,
+   which is 0.33px out inside an 18px box. */
+use[href='#i-play-filled'],
+use[href='#i-player-play-filled'] {
+  --icon-optical-x: -6.25%;
+}
+use[href='#i-player-track-next'] {
+  --icon-optical-x: -2.08%;
+}
+use[href='#i-alert-triangle'] {
+  --icon-optical-y: 2.88%;
+}
+use[href='#i-cloud-download'] {
+  --icon-optical-x: -1.29%;
+  --icon-optical-y: -6%;
+}
+/* The share family, and this table earns a second reason to exist. The three
+   states are one indicator showing three facts, so an indicator that moves when
+   the fact changes is reporting the wrong thing. Measured on the pinned outlines
+   their ink centres sit 0, 1 and 1.5 units right of the middle of their own
+   boxes, which at --icon-md is 0, 0.83 and 1.25px: a header whose playlist is
+   shared would put the glyph a pixel to the right of where the same header put
+   it when the playlist was private. In a column that reads as a ragged edge
+   rather than as a changed fact. The two that sit off are pulled back onto the
+   middle, and lock has no rule here because it is already on it.
+ *
+ * A value in this table is not optional and the gate cannot tell that it is
+ * missing. It holds the table in validate-design-tokens.cjs and it checks that
+ * every <use> for a glyph with an entry carries icon--optical, so a missing rule
+ * here is invisible to it: the class is present, the fallback in .icon--optical
+   resolves to 0, and the correction does nothing while every check passes. That
+   is exactly how these two shipped doing nothing at first, and the only thing
+   that caught it was reading the computed translate instead of trusting the
+   class. */
+use[href='#i-lock-share'] {
+  --icon-optical-x: -4.17%;
+  --icon-optical-y: -2.08%;
+}
+use[href='#i-user-share'] {
+  --icon-optical-x: -6.25%;
+  --icon-optical-y: -2.08%;
+}
+
 /* ------------------------------------------------------- reduced motion
  *
  * The specimens honour this the same way the product will, so a transition shown
  * here is a transition that can be turned off.
  */
 
-/* An entry in the index for something that is planned but not drawn. It is not
-   a link, because a link to nothing is a 404 and a reader should learn the
-   state of the work by reading, not by clicking and failing. */
-.index-todo {
-  color: var(--muted);
-  cursor: default;
-}
-.index-todo::after {
-  content: 'not drawn yet';
-  margin-left: var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--control-disabled-fg);
-}
+/* An index entry for something that is planned but not drawn. It was a class
+   with a "not drawn yet" suffix, and it is now a class with no rule.
+
+   The two entries it served were the two screen specimens. Which screens the
+   product needs is settled in ticket 13 before any of them is built, and the
+   index now says so in a sentence rather than listing two names it cannot
+   justify. A vocabulary that only had one user is not a vocabulary, so the
+   class is gone rather than left in the shared stylesheet waiting for a
+   second entry that may never come.
+
+   The reason it existed is still worth keeping, for the next thing that needs
+   to be listed as absent: it was not a link, because a link to nothing is a
+   404, and a reader should learn the state of the work by reading rather than
+   by clicking and failing. A future index-todo is a paragraph in the index,
+   not a class here. */
 
 @media (prefers-reduced-motion: reduce) {
   * {

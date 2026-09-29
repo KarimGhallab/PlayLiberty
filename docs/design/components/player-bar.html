@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayLiberty design: player bar</title>
+    <link rel="stylesheet" href="../fonts.css" />
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../specimen.css" />
+    <style>
+      /* ============================================================== the bar
+       *
+       * Two rows. Row one is the thumbnail, the title and the player actions with
+       * the transport on the bar's centre; row two is the durations and the
+       * seeker. 98px tall, and the height is the number that decided the
+       * arrangement, because the bar is anchored to the bottom and gives none of
+       * it back: every pixel of it is a pixel of the track list the user cannot
+       * see. Nine arrangements were measured before this one and the shortest of
+       * them is 74px, so the 24px above the floor is what a centred transport and
+       * a full-width seeker cost together. docs/DESIGN.md carries the table.
+       *
+       * --surface-raised, because DESIGN.md gives the bar the one step up from a
+       * row, and the bar sits over the list so it has to separate from the rows
+       * it covers.
+       *
+       * And it does NOT take the one shadow DESIGN.md allows it. Depth says depth
+       * comes from the surface step and the hairline, never from a shadow, with a
+       * subtle lift on the player bar as the exception. On a dark theme a lift is
+       * not available: a shadow is dark, the page is dark, and a dark blur over a
+       * dark page is invisible rather than subtle. The lift that does work in a
+       * dark theme is a lighter edge, and --line already is one. So the bar's
+       * boundary is --line and the allowance is not taken. This is a departure
+       * from a line in DESIGN.md, and it is written into the artifact rather than
+       * left as a choice, because the next reader would take the allowance for a
+       * decision.
+       */
+      .bar {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2);
+        padding: var(--space-3) var(--space-4);
+        background: var(--surface-raised);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+      }
+
+      /* Row one: 1fr auto 1fr, so the middle column is the transport and the two
+       * flexible ones are equal, which is what actually puts it on the bar's
+       * middle. Measured, the transport is 0px off centre at 1056 and the
+       * arrangement's price is in the row below.
+       *
+       * A single flex row cannot do this any other way: centring means either
+       * equal widths either side, which is what the two 1fr columns are, or an
+       * absolute offset, which is not. What looks like a centred transport in a
+       * flex row is the identity and the transport being centred together, which
+       * is centred only for as long as the title happens to be half the bar. One
+       * of the nine measured arrangements was exactly that, with its transport
+       * 16px left of the middle and 390px of empty bar to the right of its
+       * shuffle, and it read as centred because the title it was measured with is
+       * 391px of a 981px bar.
+       *
+       * The shuffle goes at the end of its own column. A left aligned shuffle in
+       * a 1fr column makes the two sides unequal and the 0 a fiction.
+       */
+      .bar__row-top {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        column-gap: var(--space-4);
+      }
+
+      /* Row two: the seeker capped at 480px and centred, with the two times
+       * against its ends.
+       *
+       * 480px, and the reason is arithmetic rather than taste. Uncapped it is
+       * 899px of the 982px content box, and a four minute track moves its
+       * playhead 3.7px per second, so one pixel of pointer is a quarter of a
+       * second of music. At 480px it is 2px per second. Capping also puts the
+       * elapsed time next to the playhead rather than most of the way across the
+       * bar from it. The cost is 419px of track, and that is a real loss of width
+       * bought with an argument about the pointer.
+       */
+      .bar__row-pos {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+      }
+      .scrub {
+        width: 480px;
+      }
+
+      /* The identity. 40px artwork, which is the track row's size for the same
+       * track rather than a size of its own, so the two views of one track are
+       * the same object at the same size. It cannot be anything else: the
+       * equalizer's bar count solves 7n - 4 against the artwork's content box, so
+       * the only two sizes a whole number of bars fills exactly are the 96px
+       * cover and the 40px thumbnail, and a strip that stops short of the
+       * artwork's edge is the fault that arithmetic exists to catch.
+       *
+       * aria-hidden because the title is beside it. The artwork and the title say
+       * the same thing, so announcing both announces the track name twice, and a
+       * decorative image is the honest description of a thumbnail whose subject
+       * is written next to it.
+       *
+       * And the rule is restated here rather than shared, because .art is not a
+       * class in specimen.css. It is declared in the track row's own stylesheet
+       * and every specimen carries its own, so using the name without declaring
+       * it leaves an unstyled box. That is not a cosmetic miss. .bars is
+       * absolutely positioned with inset-inline: 0, so with no positioned
+       * ancestor the strip resolved against the BAR and drew a six bar equalizer
+       * across the full width of it while the tape said six bars and check 2l
+       * said the arithmetic was satisfied. Both were true. The strip was in the
+       * wrong box, and nothing in the tree could see it because every number
+       * being checked was about the strip's own geometry rather than about where
+       * the strip was.
+       *
+       * position: relative is what gives the strip this box to resolve against,
+       * and overflow: hidden is what stops the outermost bars squaring off the
+       * two bottom corners that --radius-artwork exists to round. The strip's own
+       * geometry is in specimen.css.
+       */
+      .art {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        overflow: hidden;
+        background-color: var(--surface-raised);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-artwork);
+      }
+      .bar__id {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        min-width: 0;
+      }
+      .bar__name {
+        font-size: var(--text-sm);
+        line-height: var(--leading-normal);
+        color: var(--ink);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* The transport. The header's grammar, carried over rather than
+       * reinvented, because it is the same decision in the same system: a quiet
+       * unbordered 32px step either side of a filled 48px play. The play is the
+       * only door, and a bordered step beside a filled play reads as two more
+       * buttons competing with it.
+       */
+      .bar__tport {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        flex-shrink: 0;
+      }
+
+      /* The position indicator. 4px, not the 2px of a hairline, and the
+       * difference is the whole argument about whether this is a control: a 2px
+       * line is a report and a 4px track is a target, and the system already has
+       * a 3:1 boundary token for the second one. --control-border on
+       * --surface-raised measures 3.42:1 and the accent fill 4.92:1, so both
+       * edges of the track clear WCAG 1.4.11 and the filled part clears it as a
+       * text pairing too.
+       *
+       * The knob is --ink inside a 2px --surface-raised ring, and the ring is load
+       * bearing rather than decorative: ink straight onto the accent fill is the
+       * pairing this system forbids at 2.73:1, so the ring puts the bar's own
+       * surface between the two and the dot lands on --surface-raised at
+       * 13.42:1 instead. A 12px dot with a 2px ring is 16px of ink, which is why
+       * the ring is drawn at all rather than the dot being shrunk.
+       *
+       * The transition on the fill is the seek smoothing DESIGN.md names. The
+       * reduced-motion rule in specimen.css drops it by dropping every
+       * transition, so the knob arrives rather than slides and the indicator
+       * keeps working: it is one declaration and it is the only thing in the bar
+       * that moves.
+       */
+      .scrub {
+        position: relative;
+        flex-shrink: 0;
+        height: 4px;
+        border-radius: var(--radius-chip);
+        background: var(--control-border);
+        cursor: pointer;
+      }
+      .scrub__fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 30%;
+        border-radius: inherit;
+        background: var(--accent);
+        transition: width var(--motion-slow) var(--ease-standard);
+      }
+      .scrub__knob {
+        position: absolute;
+        top: 50%;
+        left: 30%;
+        width: 12px;
+        height: 12px;
+        translate: -50% -50%;
+        border-radius: var(--radius-chip);
+        background: var(--ink);
+        border: 2px solid var(--surface-raised);
+      }
+      /* 1:12 of 4:00 is exactly 30%, so the fill and the two times are one
+       * number and not two roundings of it. */
+      .time {
+        font-size: var(--text-xs);
+        line-height: var(--leading-normal);
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        /* flex-shrink: 0, and it changes what a failing arrangement looks like. A
+           time is a datum and not a label, so it does not shrink. Without this a
+           bar that does not fit says so by showing "2" where it meant to show
+           "1:12", which is worse than saying so by running past the edge. */
+        flex-shrink: 0;
+      }
+
+      /* The steps have no border, so the box has nothing to wrap, so the target
+       * grows outward six pixels a side by a ::before that paints nothing. Six is
+       * not arbitrary: the gap is --space-3 at 12px, so two 44px targets meet
+       * exactly in the middle of the gap and neither eats any of the other's. */
+      .step {
+        position: relative;
+        display: grid;
+        place-items: center;
+        /* padding: 0 for the reason every icon control in this system says it:
+           the user-agent default of 6px a side leaves a 20px content box inside a
+           32px control, and a 16px icon then overflows it, which centres the icon
+           off the control's centre. */
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        border: 0;
+        background: none;
+        color: var(--muted);
+        cursor: pointer;
+        transition: color var(--motion-fast) var(--ease-standard);
+      }
+      .step::before {
+        content: '';
+        position: absolute;
+        inset: -6px;
+      }
+      .step:hover {
+        color: var(--ink);
+      }
+      .play {
+        position: relative;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+        border: 1px solid var(--accent);
+        border-radius: var(--radius-chip);
+        background: var(--accent);
+        cursor: pointer;
+        transition: background-color var(--motion-slow) var(--ease-standard);
+      }
+      .play:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+      }
+      .step:focus-visible,
+      .play:focus-visible,
+      .icon-btn:focus-visible,
+      .scrub:focus-visible {
+        outline: var(--focus-width) solid var(--accent);
+        outline-offset: var(--focus-offset);
+      }
+
+      /* The shuffle, which the header already carries as a per-client mode rather
+       * than a thing on PlaylistSchema. */
+      .bar__shuffle {
+        justify-self: end;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .icon-btn {
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--control-border);
+        border-radius: var(--radius-control);
+        background: none;
+        color: var(--muted);
+        cursor: pointer;
+        transition: color var(--motion-fast) var(--ease-standard);
+      }
+      .icon-btn:hover {
+        background: var(--surface);
+        color: var(--ink);
+      }
+      .icon-btn[aria-pressed='true'] {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--surface);
+      }
+
+      /* --------------------------------------------------- the flush variant
+       *
+       * Two rows at 390 rather than the centred arrangement, and the two are one
+       * decision: the centre and the cap are both web-width decisions and neither
+       * survives a phone.
+       *
+       * The cap has to go because 480px does not fit 348px, and it went
+       * overflowing 124px past the bar's edge. It goes to flex rather than to a
+       * smaller literal, because a 44px cap is not a cap and a third number to
+       * keep honest is worse than none.
+       *
+       * The centre has to go because a symmetric bar needs room for two halves
+       * and a 390px bar has 314px of content. The 1fr auto 1fr grid then gives the
+       * title 21px, which is not a title, and the transport sits on the middle of
+       * a bar that has nothing to be symmetric about. So the row becomes two
+       * columns, the identity takes the first and flexes, and the transport is
+       * the second and lands on the right edge, 89px off centre.
+       *
+       * Which means the two arrangements converge: measured, the flush one is the
+       * centred one minus the centre and minus the cap, and every row of the two
+       * is identical. 98px, 111px of title room, 233px of track, nothing past
+       * the edge. So the client picks between them by available width, and the
+       * threshold is a decision about how much title room is worth having rather
+       * than a number anything can derive, so it is not written here. 390 takes
+       * the flush one and the web bar has room for the other.
+       */
+      .bar--flush .bar__row-top {
+        grid-template-columns: 1fr auto;
+      }
+      .bar--flush .scrub {
+        width: auto;
+        flex: 1;
+      }
+      .bar--flush .bar__shuffle {
+        display: none;
+      }
+
+      /* The 390 drawing. 390 rather than whatever the page happens to be, so the
+       * section can make a claim about a phone and be making it about one. */
+      .narrow {
+        width: 390px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!--
+      Glyph geometry, transcribed from @tabler/icons 3.48.0, MIT, because this
+      file has no build step and cannot import a package. Check 2f holds every
+      path below against the pin, so an arrowhead drawn by hand fails the run
+      rather than becoming a divergence nobody notices until two clients ship
+      different artwork. See docs/adr/0010-tabler-icons.md.
+
+      Both transport glyphs were already in the tree for the header, so this is a
+      second consumer rather than a new icon. player-track-next carries the pin's
+      own optical correction and player-skip-back is centred in its own box, which
+      is why one <use> has the class and the other does not.
+    -->
+    <svg
+      class="sprite"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false">
+      <defs>
+        <symbol
+          id="i-player-skip-back"
+          data-icon="player-skip-back@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M20 5v14l-12 -7l12 -7" />
+          <path d="M4 5l0 14" />
+        </symbol>
+        <symbol
+          id="i-player-track-next"
+          data-icon="player-track-next@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M3 5v14l8 -7l-8 -7" />
+          <path d="M14 5v14l8 -7l-8 -7" />
+        </symbol>
+        <symbol
+          id="i-shuffle"
+          data-icon="arrows-shuffle@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M18 4l3 3l-3 3" />
+          <path d="M18 20l3 -3l-3 -3" />
+          <path d="M3 7h3a5 5 0 0 1 5 5a5 5 0 0 0 5 5h5" />
+          <path
+            d="M21 7h-5a4.978 4.978 0 0 0 -3 1m-4 8a4.984 4.984 0 0 1 -3 1h-3" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <main class="page stack">
+      <div class="crumb">
+        <a href="../index.html">PlayLiberty design</a> / player bar
+      </div>
+
+      <header class="stack-tight">
+        <div class="eyebrow">Components</div>
+        <h1 class="page-title">Player bar</h1>
+        <p class="prose">
+          The one component whose height is paid for by the thing it covers. It
+          is anchored to the bottom on both surfaces, so every pixel of it is a
+          pixel of track list the user cannot see, and it is the only place in
+          the product where a control has to be worth a second row.
+        </p>
+      </header>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">The bar</h2>
+          <p class="section-note">
+            Two rows. Row one is the thumbnail, the title and the player
+            actions, with the transport on the bar's centre. Row two is the
+            durations and the seeker, capped at 480px and centred with the two
+            times against its ends.
+          </p>
+        </div>
+
+        <div class="panel-raised">
+          <div class="bar" data-state="playing">
+            <div class="bar__row-top">
+              <div class="bar__id">
+                <div class="art" aria-hidden="true">
+                  <div class="bars" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span
+                    ><span></span><span></span>
+                  </div>
+                </div>
+                <div class="bar__name">
+                  Midnight City (M83) - Hurry Up, We're Dreaming, 2011
+                </div>
+              </div>
+              <div class="bar__tport">
+                <button class="step" type="button" aria-label="Skip back">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-player-skip-back" />
+                  </svg>
+                </button>
+                <button class="play" type="button" aria-label="Pause">
+                  <svg
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
+                    aria-hidden="true"
+                    focusable="false">
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
+                  </svg>
+                </button>
+                <button class="step" type="button" aria-label="Track next">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use class="icon--optical" href="#i-player-track-next" />
+                  </svg>
+                </button>
+              </div>
+              <span class="bar__shuffle">
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-pressed="false"
+                  aria-label="Shuffle">
+                  <svg
+                    class="icon icon--md"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-shuffle" />
+                  </svg>
+                </button>
+              </span>
+            </div>
+            <div class="bar__row-pos">
+              <span class="time">1:12</span>
+              <div
+                class="scrub"
+                role="slider"
+                tabindex="0"
+                aria-label="Position in track"
+                aria-valuemin="0"
+                aria-valuemax="240"
+                aria-valuenow="72"
+                aria-valuetext="1:12 of 4:00">
+                <div class="scrub__fill"></div>
+                <div class="scrub__knob"></div>
+              </div>
+              <span class="time">4:00</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint">
+          The 40px artwork carries the equalizer strip, because a playlist that
+          is playing says so on its artwork everywhere it appears. Six bars,
+          because <span class="token-sm">7 * 6 - 4 = 38</span> is the artwork's
+          content box exactly. The strip's ink lands on an arbitrary image with
+          no scrim, which measures 1.60:1 on a mid grey cover, and the phase
+          table and that price are in
+          <a
+            href="../../design-system/components/equalizer-strip.md#the-equalizer-strip"
+            style="color: var(--muted)"
+            >DESIGN.md</a
+          >.
+        </p>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">Playback state</h2>
+          <p class="section-note">
+            <span class="token-sm">data-state</span> on the bar, and it drives
+            two things and not a third.
+          </p>
+        </div>
+
+        <!--
+          The paused case is the one that proves the resting frame is a state rule.
+          The morph's animation is attached by data-run and is not present here, so
+          what shows is the state rule's own value: a control that mounts showing
+          play must not spend its first 180ms morphing to pause and come to rest
+          there against its own label.
+        -->
+        <div class="panel-raised">
+          <div class="bar" data-state="paused">
+            <div class="bar__row-top">
+              <div class="bar__id">
+                <div class="art" aria-hidden="true">
+                  <div class="bars" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span
+                    ><span></span><span></span>
+                  </div>
+                </div>
+                <div class="bar__name">
+                  Midnight City (M83) - Hurry Up, We're Dreaming, 2011
+                </div>
+              </div>
+              <div class="bar__tport">
+                <button class="step" type="button" aria-label="Skip back">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-player-skip-back" />
+                  </svg>
+                </button>
+                <button class="play" type="button" aria-label="Play">
+                  <svg
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
+                    aria-hidden="true"
+                    focusable="false">
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
+                  </svg>
+                </button>
+                <button class="step" type="button" aria-label="Track next">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use class="icon--optical" href="#i-player-track-next" />
+                  </svg>
+                </button>
+              </div>
+              <span class="bar__shuffle">
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-pressed="false"
+                  aria-label="Shuffle">
+                  <svg
+                    class="icon icon--md"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-shuffle" />
+                  </svg>
+                </button>
+              </span>
+            </div>
+            <div class="bar__row-pos">
+              <span class="time">1:12</span>
+              <div
+                class="scrub"
+                role="slider"
+                tabindex="0"
+                aria-label="Position in track"
+                aria-valuemin="0"
+                aria-valuemax="240"
+                aria-valuenow="72"
+                aria-valuetext="1:12 of 4:00">
+                <div class="scrub__fill"></div>
+                <div class="scrub__knob"></div>
+              </div>
+              <span class="time">4:00</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint">
+          The strip is on the artwork in both drawings because the artwork is a
+          track, and a track that is loaded carries the strip whether it is
+          playing or not: the strip says this is the current track, and the play
+          glyph says whether it is sounding. A real client adds and removes the
+          strip's
+          <span class="token-sm">animation</span> rather than the strip, and
+          reduced motion does exactly that for free, because each bar carries
+          its resting height as a plain <span class="token-sm">scaleY</span> and
+          the keyframes only override it while the animation runs.
+        </p>
+
+        <p class="hint">
+          <strong>The transport is not keyed to it</strong>, and that is where
+          the bar differs from the header. The header's steps are absent unless
+          the playlist is playing, because a paused playlist has no previous or
+          next to go to. The bar's are always there, because the bar is the one
+          place a user goes looking for them and a control that appears and
+          disappears there is worse than one that is always present. Change
+          track, and <span class="token-sm">aria-label</span> changes with it:
+          the button is about the track being played, so it is "Pause" and not
+          "Pause this playlist".
+        </p>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">At 390</h2>
+          <p class="section-note">
+            The flush arrangement: transport on the right edge, seeker taking
+            the row.
+          </p>
+        </div>
+
+        <div class="narrow">
+          <div class="panel-raised">
+            <div class="bar bar--flush" data-state="playing">
+              <div class="bar__row-top">
+                <div class="bar__id">
+                  <div class="art" aria-hidden="true">
+                    <div class="bars" aria-hidden="true">
+                      <span></span><span></span><span></span><span></span
+                      ><span></span><span></span>
+                    </div>
+                  </div>
+                  <div class="bar__name">
+                    Midnight City (M83) - Hurry Up, We're Dreaming, 2011
+                  </div>
+                </div>
+                <div class="bar__tport">
+                  <button class="step" type="button" aria-label="Skip back">
+                    <svg
+                      class="icon icon--sm"
+                      aria-hidden="true"
+                      focusable="false">
+                      <use href="#i-player-skip-back" />
+                    </svg>
+                  </button>
+                  <button class="play" type="button" aria-label="Pause">
+                    <svg
+                      class="icon icon--lg icon--filled play__glyph"
+                      viewBox="0 0 24 24"
+                      data-morph="play-pause"
+                      aria-hidden="true"
+                      focusable="false">
+                      <g class="play__strip">
+                        <g transform="translate(-1.5 0)">
+                          <path
+                            d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                        </g>
+                        <g transform="translate(24 0)">
+                          <path
+                            d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                          <path
+                            d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                        </g>
+                        <g transform="translate(48 0)">
+                          <path
+                            d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                          <path
+                            d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                        </g>
+                        <g transform="translate(72 0)">
+                          <path
+                            d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                          <path
+                            d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                        </g>
+                        <g transform="translate(96 0)">
+                          <path
+                            d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                          <path
+                            d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                        </g>
+                        <g transform="translate(120 0)">
+                          <path
+                            d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                          <path
+                            d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                        </g>
+                        <g transform="translate(144 0)">
+                          <path
+                            d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                          <path
+                            d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                        </g>
+                        <g transform="translate(168 0)">
+                          <path
+                            d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                          <path
+                            d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        </g>
+                      </g>
+                    </svg>
+                  </button>
+                  <button class="step" type="button" aria-label="Track next">
+                    <svg
+                      class="icon icon--sm"
+                      aria-hidden="true"
+                      focusable="false">
+                      <use class="icon--optical" href="#i-player-track-next" />
+                    </svg>
+                  </button>
+                </div>
+                <span class="bar__shuffle">
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    aria-pressed="false"
+                    aria-label="Shuffle">
+                    <svg
+                      class="icon icon--md"
+                      aria-hidden="true"
+                      focusable="false">
+                      <use href="#i-shuffle" />
+                    </svg>
+                  </button>
+                </span>
+              </div>
+              <div class="bar__row-pos">
+                <span class="time">1:12</span>
+                <div
+                  class="scrub"
+                  role="slider"
+                  tabindex="0"
+                  aria-label="Position in track"
+                  aria-valuemin="0"
+                  aria-valuemax="240"
+                  aria-valuenow="72"
+                  aria-valuetext="1:12 of 4:00">
+                  <div class="scrub__fill"></div>
+                  <div class="scrub__knob"></div>
+                </div>
+                <span class="time">4:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint">
+          Same 98px either way, so the choice costs nothing in height and only
+          in title room: 729px of it at 1056 and 111px at 390, where the drawn
+          title is the same 339px in both and only one of them truncates. The
+          shuffle is gone at 390 because the header already carries it and a bar
+          that is 348px wide has room for one secondary control, not two.
+        </p>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">What is not drawn</h2>
+        <p class="hint">
+          The bar with nothing playing. It is persistent, so it cannot be absent
+          the way the header's transport is, and the answer is a bar with an
+          empty identity and a play that cannot act. That control is
+          <span class="token-sm">disabled</span> rather than merely inert, for
+          the reason check <span class="token-sm">2p</span> exists.
+        </p>
+        <p class="hint">
+          The width at which the two arrangements swap. The client picks by
+          available width, and the threshold is a judgement rather than a
+          derivable number, so no figure is written into the token set for it.
+        </p>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">Usage</h2>
+        <p class="hint">
+          Do keep the play filled and larger than the steps. It is the only
+          door, and a row of equal boxes is only defensible while the filled
+          middle is what says which one is the door. Do keep the bar's boundary
+          a hairline and do not reach for the shadow DESIGN.md allows it,
+          because on this theme a shadow lifts nothing. Do size the artwork at
+          40px, so the bar's strip and the track row's are the same table rather
+          than two of them. Do measure the height before changing anything in
+          it, because a bar anchored to the bottom gives none of it back. Do not
+          put a second line under the title unless it has something to say:
+          <span class="token-sm">TrackSchema</span> has no artist and no album,
+          and the resting file state has no word, so the line every player bar
+          spends on the artist has nothing to put in it here.
+        </p>
+      </section>
+    </main>
+
+    <style>
+      /* The strip. All 8 frames sit side by side inside a box the size of
+   one, and a single transform steps across the row. steps(7, jump-end) is what puts the element on the first frame, then on each of the
+   next 6, and leaves it on the last, with no tweening between any of
+   them and nothing to undo afterwards.
+
+   data-state is which frame rests, and it is on whatever owns the state rather
+   than on the button: the cover's equalizer strip is driven by the same fact and
+   the cover is a sibling of the button, and CSS cannot reach a sibling. All 4 hosts that use this control are listed, which is why this block is
+   identical in every specimen and no copy can drift. data-run is that a
+   transition is under way and which way, and the client drops it on
+   animationend. It stays on the button, because it describes that control's
+   transition rather than a fact about the playlist or the track. */
+      .play__glyph {
+        overflow: hidden;
+      }
+      .play__strip {
+        transform: translateX(0);
+      }
+      .hdr[data-state='playing'] .play__strip,
+      .mhdr[data-state='playing'] .play__strip,
+      .row[data-state='playing'] .play__strip,
+      .bar[data-state='playing'] .play__strip {
+        transform: translateX(-168px);
+      }
+      .play[data-run] .play__strip {
+        animation: pl-play-pause var(--motion-base) steps(7, jump-end) both;
+      }
+      .play[data-run='reverse'] .play__strip {
+        animation-direction: reverse;
+      }
+      @keyframes pl-play-pause {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-168px);
+        }
+      }
+    </style>
+  </body>
+</html>

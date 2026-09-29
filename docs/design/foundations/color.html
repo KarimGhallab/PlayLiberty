@@ -276,14 +276,14 @@
           control is not a statement.
         </p>
         <p class="hint">
-          <span class="token-sm">--tone-downloading</span> is declared as this
-          value rather than owning one of its own, so the two are the same amber
-          by construction instead of by a comment asking people not to change
-          one without the other. The dependency points from the state to the
-          colour, because &ldquo;in progress&rdquo; is a mild form of
-          &ldquo;needs attention&rdquo;. A state borrowing a colour is ordinary;
-          a colour borrowing a state name is not, and that is what this token
-          used to be.
+          <span class="token-sm">--tone-downloading</span> holds this same
+          literal, and the suite fails if the two ever stop agreeing. They
+          cannot be one token pointing at the other, because ADR 0009 rejects
+          aliased tokens: React Native cannot resolve
+          <span class="token-sm">var()</span>. &ldquo;In progress&rdquo; is a
+          mild form of &ldquo;needs attention&rdquo;, so a state sharing a
+          colour's name is ordinary; a colour borrowing a state name is not, and
+          that is what this token used to be.
         </p>
         <p class="hint">
           They can share a value because they never compete. Download
@@ -403,8 +403,8 @@
             </div>
             <div class="lane lane-use">
               <span class="role"
-                >A download failed and will retry on the next refresh, so it is
-                the loud one.</span
+                >A download failed and will retry on the next sync, so it is the
+                loud one.</span
               >
             </div>
             <div class="lane lane-ratio">
