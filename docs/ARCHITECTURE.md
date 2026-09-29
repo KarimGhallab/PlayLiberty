@@ -6,7 +6,7 @@ PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspa
 
 ### The applications
 
-- `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. Scaffolded; the feature behavior is still being built. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. See `docs/adr/0004-server-stack.md`.
+- `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. Scaffolded; the feature behavior is still being built. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See `docs/adr/0004-server-stack.md` and `docs/adr/0011-server-folder-organisation.md`.
 - `apps/web` (planned) - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See `docs/adr/0005-web-stack.md`.
 - `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See `docs/adr/0007-mobile-stack.md` and `docs/adr/0008-mobile-provisioning.md`.
 - `apps/console` - runnable Node entry point and development harness. Not a product surface.
@@ -63,6 +63,8 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 
 - Packages must never import applications. Enforced by the `no-apps-import` rule in `.dependency-cruiser.cjs`.
 - Cycles are forbidden (`no-circular`); orphan modules warn (`no-orphans`).
+- The server's four top-level folders are a dependency order, not a naming convention. `app/` is the composition root and the request pipeline, `features/` holds one folder per domain module, `shared/` holds cross-cutting code no feature owns, and `platform/` holds the resources features sit on. `platform/` and `shared/` must not import `features/`, and only `app/buildApp.ts` may import a route registrar. Both are enforced by rules in `.dependency-cruiser.cjs`, because a folder layout nothing checks is a suggestion.
+- Raw SQL lives in `platform/database/` and in `shared/access/`, and nowhere else. Everywhere else goes through Drizzle, so the schema stays the one description of the storage. Enforced by the `no-restricted-syntax` override in `eslint.config.js`, which exists because a `.prepare()` call is a member expression and not an import, so dependency-cruiser cannot see it.
 - Only the server touches the database and the media root, and only `packages/youtube` invokes yt-dlp. Clients reach all of it through the API.
 - Every mutating API request carries `X-PlayLiberty-Client` and passes the origin checks in `docs/adr/0006-csrf-defense.md`. Never mutate on `GET`.
 - `POST /auth/exchange` is the only path exempt from Pangolin SSO; the server owns its code, PKCE, lifetime, and rate-limit checks.
@@ -72,7 +74,11 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 ## Where things live
 
 - `apps/console/src/main.ts` - the console entry point.
-- `apps/server/src/` - the server, one folder per feature (route, service, and schema together).
+- `apps/server/src/main.ts` - the server entry point: load config, open the database, migrate, build the app, listen.
+- `apps/server/src/app/` - the composition root and the request pipeline. `buildApp.ts` is the only module that knows every feature exists, `hooks/identity.ts` resolves the forwarded identity into an account, `hooks/csrf.ts` holds the mutating-request checks, `health/` answers `/healthz` and `/readyz`, and `testing/createTestContext.ts` builds the real app over a temporary database and media root.
+- `apps/server/src/features/` - one folder per domain module, each holding its own routes, its service, and its contracts: `accounts`, `playlists`, `tracks`, `shares`, `sync`, `downloads`, `prune`.
+- `apps/server/src/shared/` - cross-cutting code no feature owns. `context.ts` is the `AppContext` every feature receives, `problem.ts` is the problem document and the two ways a request produces one, and `access/` is the playlist and track authorisation rules.
+- `apps/server/src/platform/` - the resources features sit on, with no domain knowledge: `config/`, `database/`, `media/`, and `jobs/`, where `jobs/` owns the timing and the stop handle of a background job and the feature owns what a tick does.
 - `apps/server/Containerfile`, `compose.yaml`, and `deploy/` - the server image, the dev stack, and the production Quadlet unit.
 - `apps/web/src/` (planned) - the web SPA, views under `src/views/` and shared pieces under `src/shared/`.
 - `apps/web/nginx.conf` (planned) - the static serving and `/api` proxy configuration.
@@ -88,7 +94,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 ## Deployment shapes
 
 - Local development: `pnpm install`, then `pnpm run build` or `pnpm run watch`. The Vite dev server proxies `/api` to the running server; the mobile app runs as a development build against the public origin. Run the console with `pnpm run console:start`.
-- Production: private, behind the Pangolin authenticating edge. The nginx container is the origin: it joins the `pangolin_frontend` network (declared `external`), never publishes a host port, and serves the SPA while proxying the API to the server on a private network. The server trusts Pangolin's forwarded `Remote-*` headers and fails closed without them. The mobile app is distributed as a sideloaded Android APK. See `docs/adr/0001-private-deployment-behind-pangolin-edge.md`, `docs/adr/0003-identity-via-pangolin-forwarded-headers.md`, `docs/adr/0005-web-stack.md`, and `docs/adr/0008-mobile-provisioning.md`. The server's `Containerfile`, dev `compose.yaml`, and production Quadlet unit exist; `docs/tracker/tasks/05-scaffold-web.md` adds the web client's nginx container, `06-scaffold-mobile` the app, and `07-provision-mobile-access` the provisioning flow and the edge bypass.
+- Production: private, behind the Pangolin authenticating edge. The nginx container is the origin: it joins the `pangolin_frontend` network (declared `external`), never publishes a host port, and serves the SPA while proxying the API to the server on a private network. The server trusts Pangolin's forwarded `Remote-*` headers and fails closed without them. The mobile app is distributed as a sideloaded Android APK. See `docs/adr/0001-private-deployment-behind-pangolin-edge.md`, `docs/adr/0003-identity-via-pangolin-forwarded-headers.md`, `docs/adr/0005-web-stack.md`, `docs/adr/0008-mobile-provisioning.md`, and `docs/adr/0011-server-folder-organisation.md`. The server's `Containerfile`, dev `compose.yaml`, and production Quadlet unit exist; `docs/tracker/tasks/05-scaffold-web.md` adds the web client's nginx container, `06-scaffold-mobile` the app, and `07-provision-mobile-access` the provisioning flow and the edge bypass.
 - Clients: the web client is served through the edge; the mobile client carries its own per-user token and streams through the same edge.
 
 ## Decisions

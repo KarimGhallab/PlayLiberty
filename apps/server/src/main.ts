@@ -1,11 +1,12 @@
-import { loadConfig } from './config/loadConfig.js';
-import { createDatabase } from './db/client.js';
-import { runMigrations } from './db/migrate.js';
-import { buildApp } from './http/buildApp.js';
+import { buildApp } from './app/buildApp.js';
+
+import { loadConfig } from './platform/config/loadConfig.js';
+import { createDatabase } from './platform/database/client.js';
+import { runMigrations } from './platform/database/migrate.js';
 import {
   createMediaPaths,
   ensureMediaDirectories
-} from './media/mediaPaths.js';
+} from './platform/media/mediaPaths.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
