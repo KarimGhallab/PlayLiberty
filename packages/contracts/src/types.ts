@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   AccountSchema,
+  AccountSummarySchema,
   AddTrackInputSchema,
   AddTrackResultSchema,
   CreatePlaylistInputSchema,
@@ -18,6 +19,7 @@ import {
 } from './schemas.js';
 
 export type Account = z.infer<typeof AccountSchema>;
+export type AccountSummary = z.infer<typeof AccountSummarySchema>;
 export type Track = z.infer<typeof TrackSchema>;
 export type Playlist = z.infer<typeof PlaylistSchema>;
 export type PlaylistAccess = z.infer<typeof PlaylistAccessSchema>;

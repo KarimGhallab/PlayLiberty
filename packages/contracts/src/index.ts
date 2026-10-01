@@ -2,6 +2,7 @@ export * from './enums.js';
 export * from './schemas.js';
 export type {
   Account,
+  AccountSummary,
   AddTrackInput,
   AddTrackResult,
   CreatePlaylistInput,

@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import fastifyStatic from '@fastify/static';
-import Fastify from 'fastify';
 import type {
   FastifyError,
   FastifyInstance,
   FastifyServerOptions
 } from 'fastify';
+import Fastify from 'fastify';
 
 import { YtdlpClient } from '@playliberty/youtube';
 
@@ -14,16 +14,16 @@ import type { AppContext } from '../shared/context.js';
 import { sendProblem } from '../shared/problem.js';
 
 import { registerAccountRoutes } from '../features/accounts/accountRoutes.js';
-import { startDownloadWorker } from '../features/downloads/downloadWorker.js';
 import type { DownloadWorkerHandle } from '../features/downloads/downloadWorker.js';
+import { startDownloadWorker } from '../features/downloads/downloadWorker.js';
 import { runStartupSweep } from '../features/downloads/startupSweep.js';
 import { registerPlaylistRoutes } from '../features/playlists/playlistRoutes.js';
 import { pruneOrphanTracks } from '../features/prune/pruneService.js';
 import { registerShareRoutes } from '../features/shares/shareRoutes.js';
 import { registerSyncRunRoutes } from '../features/sync/syncRunRoutes.js';
 import { registerTrackRoutes } from '../features/tracks/trackRoutes.js';
-import { startCronJob } from '../platform/jobs/cronJob.js';
 import type { JobHandle } from '../platform/jobs/cronJob.js';
+import { startCronJob } from '../platform/jobs/cronJob.js';
 import { registerHealthRoutes } from './health/healthRoutes.js';
 import { registerCsrfHook } from './hooks/csrf.js';
 import { registerIdentityHook } from './hooks/identity.js';
@@ -135,11 +135,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   await app.register(
     async api => {
-      // The two registrars taking no context are the two with nothing to read from
-      // it: everything they serve comes off the request. They are left without the
-      // parameter rather than handed one they do not use, so that a registrar
-      // taking the context means it needs the context.
-      registerAccountRoutes(api);
+      registerAccountRoutes(api, context);
       registerPlaylistRoutes(api, context);
       registerShareRoutes(api);
       registerSyncRunRoutes(api, context);

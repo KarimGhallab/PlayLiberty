@@ -23,6 +23,18 @@ export const AccountSchema = z.object({
   role: z.enum(UserRole)
 });
 
+/*
+ * The narrow view of an account a picker is drawn from: who they are, and nothing
+ * about how to reach them or what they may do. The wider AccountSchema is the
+ * caller's own view, served by GET /me, and reusing it in the directory would hand
+ * every account in the household every other account's email address and role.
+ */
+export const AccountSummarySchema = z.object({
+  id: identifier,
+  displayName: z.string(),
+  avatarUrl: z.url().nullable()
+});
+
 export const TrackSchema = z.object({
   id: identifier,
   provider: z.enum(Provider),

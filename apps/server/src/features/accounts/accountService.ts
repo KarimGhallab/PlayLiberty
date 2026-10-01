@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 
-import type { Account } from '@playliberty/contracts';
+import type { Account, AccountSummary, Page } from '@playliberty/contracts';
 import { UserRole } from '@playliberty/contracts';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
@@ -97,5 +97,47 @@ export function toAccountView(account: AuthAccount): Account {
     email: account.email,
     avatarUrl: account.avatarUrl,
     role: account.role
+  };
+}
+
+export interface ListAccountsQuery {
+  limit: number;
+  offset: number;
+}
+
+/*
+ * The directory a picker is drawn from. Ordered by display name, because a picker
+ * is read in order and a list ordered by creation is a list ordered by who
+ * happened to sign in first; the rowid tiebreak keeps two accounts that share a
+ * display name from swapping between pages, the same reason the playlist list
+ * route carries one. Only the three columns a summary has are read, so an email
+ * address cannot leak into the answer by accident.
+ */
+export function listAccountSummaries(
+  database: DatabaseHandle,
+  query: ListAccountsQuery
+): Page<AccountSummary> {
+  const rows = database.db
+    .select({
+      id: accounts.id,
+      displayName: accounts.displayName,
+      avatarUrl: accounts.avatarUrl
+    })
+    .from(accounts)
+    .orderBy(asc(accounts.displayName), asc(sql`${accounts}.rowid`))
+    .limit(query.limit)
+    .offset(query.offset)
+    .all();
+
+  const counted = database.db
+    .select({ total: sql<number>`count(*)` })
+    .from(accounts)
+    .all();
+
+  return {
+    items: rows,
+    total: counted[0]?.total ?? 0,
+    limit: query.limit,
+    offset: query.offset
   };
 }
