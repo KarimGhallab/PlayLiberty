@@ -72,6 +72,34 @@ function recordingLogger(): {
   return { logger, warnings };
 }
 
+/*
+ * A logger whose first warning aborts the controller. It is the deterministic hook
+ * for stopping a run mid-scan: the run warns when a track's media cannot be
+ * removed, and that is the moment the test asks it to stop, rather than racing a
+ * timer against the run's own speed.
+ */
+function abortsOnWarning(controller: AbortController): {
+  logger: FastifyBaseLogger;
+  warnings: Record<string, unknown>[];
+} {
+  const recording = recordingLogger();
+  const logger = {
+    info: (): void => undefined,
+    debug: (): void => undefined,
+    warn: (payload: Record<string, unknown>): void => {
+      recording.warnings.push(payload);
+      controller.abort();
+    },
+    error: (payload: Record<string, unknown>): void => {
+      recording.warnings.push(payload);
+      controller.abort();
+    },
+    child: (): unknown => logger
+  } as unknown as FastifyBaseLogger;
+
+  return { logger, warnings: recording.warnings };
+}
+
 function seedTrack(
   database: DatabaseHandle,
   options: {
@@ -178,7 +206,7 @@ function trackRow(trackId: string) {
     .get();
 }
 
-function prune(logger: FastifyBaseLogger) {
+function prune(logger: FastifyBaseLogger, signal?: AbortSignal) {
   if (context === undefined) {
     throw new Error('the test context is not created');
   }
@@ -186,7 +214,8 @@ function prune(logger: FastifyBaseLogger) {
   return pruneOrphanTracks({
     database: context.database,
     mediaPaths: context.mediaPaths,
-    logger
+    logger,
+    signal
   });
 }
 
@@ -391,5 +420,89 @@ describe('pruning orphaned tracks', () => {
     expect(removed).toBe(0);
     expect(trackRow(trackId)).toBeDefined();
     await expect(exists(audio)).resolves.toBe(true);
+  });
+
+  it('stops before the first track when the signal is already set', async () => {
+    context = await createTestContext();
+    const { logger } = recordingLogger();
+    const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
+    const trackId = seedTrack(database(), { filePath: relativePath });
+    const audio = await writeBytes(relativePath);
+    const controller = new AbortController();
+    controller.abort();
+
+    const removed = await prune(logger, controller.signal);
+
+    expect(removed).toBe(0);
+    expect(trackRow(trackId)).toBeDefined();
+    await expect(exists(audio)).resolves.toBe(true);
+  });
+
+  it('finishes the track in flight and leaves the rest for a later run', async () => {
+    context = await createTestContext();
+
+    // Three orphans in a deterministic order (rowid), the first of which fails to
+    // remove its media. That failure is the hook: the logger warns, the controller
+    // is aborted, and the run then stops before claiming the second track.
+    const controller = new AbortController();
+    const first = seedTrack(database(), {
+      filePath: mediaRelativePath('aaaaaaaaaaa', '.m4a')
+    });
+    const firstAudio = await writeBytes(
+      mediaRelativePath('aaaaaaaaaaa', '.m4a')
+    );
+    await chmod(dirname(firstAudio), 0o500);
+
+    const second = seedTrack(database());
+    const third = seedTrack(database());
+
+    const { logger } = abortsOnWarning(controller);
+
+    const removed = await prune(logger, controller.signal);
+
+    // Nothing was removed: the first track could not, and the abort stopped the run
+    // before it reached the others.
+    expect(removed).toBe(0);
+    expect(trackRow(first)).toBeDefined();
+    expect(trackRow(second)).toBeDefined();
+    expect(trackRow(third)).toBeDefined();
+
+    await chmod(dirname(firstAudio), 0o700);
+
+    // A later run with no signal reclaims everything the stopped one left.
+    const secondRun = await prune(recordingLogger().logger);
+
+    expect(secondRun).toBe(3);
+    expect(trackRow(first)).toBeUndefined();
+    expect(trackRow(second)).toBeUndefined();
+    expect(trackRow(third)).toBeUndefined();
+  });
+
+  it('finishes the removal in progress when the signal arrives during it', async () => {
+    context = await createTestContext();
+
+    // The first track fails to remove its media, which warns and aborts; the run
+    // then stops before the second. The second is therefore untouched, not half
+    // removed, which is the property: the stop lands between tracks.
+    const controller = new AbortController();
+    const blocked = seedTrack(database(), {
+      filePath: mediaRelativePath('aaaaaaaaaaa', '.m4a')
+    });
+    const blockedAudio = await writeBytes(
+      mediaRelativePath('aaaaaaaaaaa', '.m4a')
+    );
+    await chmod(dirname(blockedAudio), 0o500);
+
+    const untouched = seedTrack(database());
+    const { logger } = abortsOnWarning(controller);
+
+    const removed = await prune(logger, controller.signal);
+
+    expect(removed).toBe(0);
+    expect(trackRow(blocked)).toBeDefined();
+    expect(trackRow(untouched)).toBeDefined();
+    // The file the run could not remove is still there, so the row is honest.
+    await chmod(dirname(blockedAudio), 0o700);
+    await expect(exists(blockedAudio)).resolves.toBe(true);
   });
 });

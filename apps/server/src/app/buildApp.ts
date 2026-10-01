@@ -159,11 +159,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     scheduler = startCronJob({
       cron: context.config.pruneCron,
       logger: app.log,
-      run: async (): Promise<void> => {
+      run: async (signal: AbortSignal): Promise<void> => {
         await pruneOrphanTracks({
           database: context.database,
           mediaPaths: context.mediaPaths,
-          logger: app.log
+          logger: app.log,
+          signal
         });
       }
     });

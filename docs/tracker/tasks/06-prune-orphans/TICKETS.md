@@ -4,10 +4,10 @@ Tickets for [`06-prune-orphans`](../../specs/06-prune-orphans.md). One file per 
 order, each declaring its blocking edges. This spec has no client clause at all, so every ticket is verifiable
 through the service and the media root.
 
-| Ticket                                                            | Status          | Blocked by                              | Blocks                             |
-| ----------------------------------------------------------------- | --------------- | --------------------------------------- | ---------------------------------- |
-| [`01-prune-the-orphaned-tracks`](01-prune-the-orphaned-tracks.md) | resolved        | none                                    | [`02`](02-stop-a-prune-cleanly.md) |
-| [`02-stop-a-prune-cleanly`](02-stop-a-prune-cleanly.md)           | ready-for-agent | [`01`](01-prune-the-orphaned-tracks.md) | none                               |
+| Ticket                                                            | Status   | Blocked by                              | Blocks                             |
+| ----------------------------------------------------------------- | -------- | --------------------------------------- | ---------------------------------- |
+| [`01-prune-the-orphaned-tracks`](01-prune-the-orphaned-tracks.md) | resolved | none                                    | [`02`](02-stop-a-prune-cleanly.md) |
+| [`02-stop-a-prune-cleanly`](02-stop-a-prune-cleanly.md)           | resolved | [`01`](01-prune-the-orphaned-tracks.md) | none                               |
 
 ## Conventions
 

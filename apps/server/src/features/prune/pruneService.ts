@@ -7,14 +7,15 @@ import type { FastifyBaseLogger } from 'fastify';
 import { TrackFileStatus } from '@playliberty/contracts';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import { associations, tracks } from '../../platform/database/schema.js';
 import type { TrackRow } from '../../platform/database/schema.js';
+import { associations, tracks } from '../../platform/database/schema.js';
 import type { MediaPaths } from '../../platform/media/mediaPaths.js';
 
 export interface PruneOptions {
   database: DatabaseHandle;
   mediaPaths: MediaPaths;
   logger: FastifyBaseLogger;
+  signal?: AbortSignal;
 }
 
 /*
@@ -55,6 +56,14 @@ export async function pruneOrphanTracks(
     // prevent. It is left for a later run.
     if (track.fileStatus === TrackFileStatus.Downloading) {
       continue;
+    }
+
+    // The check is between tracks, never mid-deletion: a track already being
+    // removed finishes, so a shutdown never leaves a file without its row or a row
+    // without its file. Everything not reached stays for the next run.
+    if (options.signal?.aborted === true) {
+      options.logger.info({ removed }, 'orphan prune stopped before finishing');
+      break;
     }
 
     const gone = await removeTrackMedia(options, track);
