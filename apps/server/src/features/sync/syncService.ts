@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import {
   AssociationOrigin,
@@ -11,10 +11,9 @@ import {
   TrackSourceStatus
 } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
-import { validateYoutubeUrl } from '@playliberty/youtube';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
-import { resolvePlaylistAccess } from '../../shared/access/playlistAccess.js';
+import { canWritePlaylist } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
@@ -26,8 +25,15 @@ import {
   tracks
 } from '../../platform/database/schema.js';
 import type { PlaylistRow } from '../../platform/database/schema.js';
-import { addAssociation } from '../playlists/associationService.js';
+import {
+  addAssociation,
+  nextPositionFor
+} from '../playlists/associationService.js';
 import { markTrackSourceRemoved } from '../tracks/trackLifecycle.js';
+import {
+  createPendingTrack,
+  findTrackByVideoId
+} from '../tracks/trackService.js';
 
 /*
  * Syncing a Synced playlist with its Source.
@@ -43,19 +49,6 @@ import { markTrackSourceRemoved } from '../tracks/trackLifecycle.js';
  * Ticket 03 adds retention, ticket 04 suppression, and ticket 05 the failure
  * branch's full guarantees.
  */
-
-/*
- * A URL that is not a YouTube playlist or video is not a source. The validator
- * throws by design, so it is wrapped into the answer the route needs rather than
- * left as an exception a route has to remember to catch.
- */
-export function resolveSourceUrl(raw: string): YoutubeUrlInfo | null {
-  try {
-    return validateYoutubeUrl(raw);
-  } catch {
-    return null;
-  }
-}
 
 export enum StartSyncOutcome {
   Started = 'started',
@@ -138,12 +131,12 @@ export function startSyncForPlaylist(
   playlistId: string,
   accountId: string
 ): StartSyncResult {
-  const access = resolvePlaylistAccess(context.database, playlistId, accountId);
+  const writable = canWritePlaylist(context.database, playlistId, accountId);
 
   // A read collaborator and a stranger both answer not-found, so the route does
   // not confirm a playlist the caller cannot write. Rename, delete and share
   // management stay with the owner; a write collaborator may sync.
-  if (access !== 'owner' && access !== 'write') {
+  if (!writable) {
     return { outcome: StartSyncOutcome.PlaylistNotFound };
   }
 
@@ -321,16 +314,6 @@ async function reconcile(
   }
 }
 
-function nextPositionFor(database: DatabaseHandle, playlistId: string): number {
-  const row = database.db
-    .select({ value: sql<number | null>`max(${associations.position})` })
-    .from(associations)
-    .where(eq(associations.playlistId, playlistId))
-    .get();
-
-  return (row?.value ?? -1) + 1;
-}
-
 /*
  * A video the source no longer lists does not take its track with it. A stored
  * track keeps its file and is marked remote-removed, which is the retention the
@@ -411,16 +394,13 @@ function ensureTrack(
   durationSeconds: number | null,
   thumbnailUrl: string | null
 ): string {
-  const existing = database.db
-    .select({ id: tracks.id, fileStatus: tracks.fileStatus })
-    .from(tracks)
-    .where(eq(tracks.videoId, videoId))
-    .get();
+  const existing = findTrackByVideoId(database, videoId);
 
   if (existing !== undefined) {
     // A failed download is retried by the next sync: the row goes back to pending
     // so the worker claims it again, and the stale reason goes with it. Every other
-    // existing track is left exactly as it is.
+    // existing track is left exactly as it is, which is the one way the sync's
+    // reuse differs from the batch add's, which reuses a failed track untouched.
     if (existing.fileStatus === TrackFileStatus.Failed) {
       database.db
         .update(tracks)
@@ -436,26 +416,12 @@ function ensureTrack(
     return existing.id;
   }
 
-  const trackId = randomUUID();
-
-  database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId,
-      title,
-      durationSeconds,
-      thumbnailPath: null,
-      thumbnailUrl,
-      fileStatus: TrackFileStatus.Pending,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: null,
-      failureReason: null
-    })
-    .run();
-
-  return trackId;
+  return createPendingTrack(database, {
+    videoId,
+    title,
+    durationSeconds,
+    thumbnailUrl
+  });
 }
 
 function hasAssociation(

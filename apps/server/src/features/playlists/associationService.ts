@@ -25,6 +25,26 @@ export interface RemoveAssociationOptions {
 }
 
 /*
+ * Where the next association goes. Adding a video means appending it, so the
+ * position is the one past the highest already in the playlist, and an empty
+ * playlist starts at zero. A caller adding several associations in one run reads
+ * this once and increments, rather than asking again per row, which is why it is
+ * a number rather than an "append" that recomputes.
+ */
+export function nextPositionFor(
+  database: DatabaseHandle,
+  playlistId: string
+): number {
+  const row = database.db
+    .select({ value: sql<number | null>`max(${associations.position})` })
+    .from(associations)
+    .where(eq(associations.playlistId, playlistId))
+    .get();
+
+  return (row?.value ?? -1) + 1;
+}
+
+/*
  * `playlist.track_count` is a stored total, so it is only as trustworthy as the
  * number of places that can change it. These two functions are the whole of that
  * surface: an association is created here or deleted here, never by writing to

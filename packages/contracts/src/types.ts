@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   AccountSchema,
   AddTrackInputSchema,
+  AddTrackResultSchema,
   CreatePlaylistInputSchema,
   PageQuerySchema,
   PlaylistAccessSchema,
@@ -26,6 +27,7 @@ export type SyncRun = z.infer<typeof SyncRunSchema>;
 export type Problem = z.infer<typeof ProblemSchema>;
 export type CreatePlaylistInput = z.infer<typeof CreatePlaylistInputSchema>;
 export type AddTrackInput = z.infer<typeof AddTrackInputSchema>;
+export type AddTrackResult = z.infer<typeof AddTrackResultSchema>;
 export type RenamePlaylistInput = z.infer<typeof RenamePlaylistInputSchema>;
 export type SharePlaylistInput = z.infer<typeof SharePlaylistInputSchema>;
 export type PageQuery = z.infer<typeof PageQuerySchema>;

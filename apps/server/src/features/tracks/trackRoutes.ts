@@ -1,10 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 
+import { AddTrackInputSchema } from '@playliberty/contracts';
 import { exhaust } from '@playliberty/utils';
+import { YoutubeSourceKind } from '@playliberty/youtube';
 
 import type { AppContext } from '../../shared/context.js';
-import { sendNotImplemented, sendProblem } from '../../shared/problem.js';
+import {
+  parseBody,
+  sendNotImplemented,
+  sendProblem,
+  sendUnprocessable
+} from '../../shared/problem.js';
+import { resolveSourceUrl } from '../../shared/resolveSourceUrl.js';
 
+import { addTrackToPlaylists } from './addTrackToPlaylists.js';
 import {
   resolveTrackForStream,
   resolveTrackForThumbnail
@@ -15,6 +24,31 @@ export function registerTrackRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
+  app.post('/tracks', async (request, reply) => {
+    const parsed = parseBody(AddTrackInputSchema, request.body);
+
+    if (!parsed.success) {
+      return sendUnprocessable(reply, parsed.message);
+    }
+
+    const info = resolveSourceUrl(parsed.data.url);
+
+    // A playlist URL is what the create-a-playlist dialog takes, and this dialog
+    // takes a video; the whole request is refused so no playlist is touched.
+    if (info === null || info.kind !== YoutubeSourceKind.Video) {
+      return sendUnprocessable(reply, 'The URL is not a YouTube video URL.');
+    }
+
+    const result = await addTrackToPlaylists(
+      context,
+      request.account.id,
+      info,
+      parsed.data.playlistIds
+    );
+
+    return reply.send(result);
+  });
+
   app.get<{ Params: { id: string } }>(
     '/tracks/:id/stream',
     async (request, reply) => {

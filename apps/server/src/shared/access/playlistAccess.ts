@@ -150,6 +150,23 @@ export function isPlaylistOwner(
 }
 
 /*
+ * Write access, which is the owner or a write collaborator and not a read one. The
+ * sync and the batch add both ask it, and spec 04's remove and retry will, so it
+ * is stated once beside the rule it is a slice of rather than open-coded three
+ * times. A playlist the account cannot reach resolves to no access and is not
+ * writable, so its callers answer not-found exactly as they do for a missing row.
+ */
+export function canWritePlaylist(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string
+): boolean {
+  const access = resolvePlaylistAccess(database, playlistId, accountId);
+
+  return access === 'owner' || access === 'write';
+}
+
+/*
  * Which of these playlists are shared with anybody at all, for the `hasShares` flag
  * the playlist view carries. Distinct from the access level on purpose: an owner
  * needs to know a playlist is shared out even though their own access is 'owner'

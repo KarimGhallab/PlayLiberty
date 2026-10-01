@@ -42,6 +42,19 @@ export function testSource(
   };
 }
 
+/*
+ * The source a video URL resolves to. One entry, which is what the adapter returns
+ * for a single video, and the track the batch add creates from it.
+ */
+export function testVideo(videoId: string): YoutubeSource {
+  return {
+    kind: YoutubeSourceKind.Video,
+    sourceId: videoId,
+    title: `Track ${videoId}`,
+    entries: [testEntry(videoId)]
+  };
+}
+
 export function createFakeYoutube(...sources: YoutubeSource[]): IYoutubeClient {
   const queue = [...sources];
 

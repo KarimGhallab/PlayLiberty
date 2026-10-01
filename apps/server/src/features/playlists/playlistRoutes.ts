@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
 import {
-  AddTrackInputSchema,
   CreatePlaylistInputSchema,
   PageQuerySchema,
   RenamePlaylistInputSchema
@@ -15,10 +14,10 @@ import {
   sendNotImplemented,
   sendProblem
 } from '../../shared/problem.js';
+import { resolveSourceUrl } from '../../shared/resolveSourceUrl.js';
 
 import {
   StartSyncOutcome,
-  resolveSourceUrl,
   startSyncForPlaylist,
   startSyncForSource
 } from '../sync/syncService.js';
@@ -194,22 +193,6 @@ export function registerPlaylistRoutes(
       }
 
       return reply.code(202).send(result.run);
-    }
-  );
-
-  app.post<{ Params: { id: string } }>(
-    '/playlists/:id/tracks',
-    async (request, reply) => {
-      const parsed = parseBody(AddTrackInputSchema, request.body);
-
-      if (!parsed.success) {
-        return sendInvalidRequest(reply, parsed.message);
-      }
-
-      return sendNotImplemented(
-        reply,
-        'Adding a track is not implemented yet.'
-      );
     }
   );
 

@@ -21,3 +21,15 @@ export type TrackThumbnailResult =
   | { outcome: TrackThumbnailOutcome.Ok; thumbnailPath: string }
   | { outcome: TrackThumbnailOutcome.NotFound }
   | { outcome: TrackThumbnailOutcome.Forbidden };
+
+/*
+ * The fields a track is created from, before any file exists. The video id is the
+ * identity and the dedup key; the rest is metadata the source supplied. A track
+ * already held for the same id is never created a second time.
+ */
+export interface TrackSeed {
+  videoId: string;
+  title: string;
+  durationSeconds: number | null;
+  thumbnailUrl: string | null;
+}

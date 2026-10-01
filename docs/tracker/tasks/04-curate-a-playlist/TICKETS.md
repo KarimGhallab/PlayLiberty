@@ -7,8 +7,8 @@ through the API; the overflow menu and the add-a-video dialog belong to the scre
 
 | Ticket                                                                              | Status          | Blocked by                                     | Blocks                                           |
 | ----------------------------------------------------------------------------------- | --------------- | ---------------------------------------------- | ------------------------------------------------ |
-| [`01-record-the-batch-add-route-shape`](01-record-the-batch-add-route-shape.md)     | ready-for-agent | none                                           | [`02`](02-add-a-video-to-several-playlists.md)   |
-| [`02-add-a-video-to-several-playlists`](02-add-a-video-to-several-playlists.md)     | ready-for-agent | [`01`](01-record-the-batch-add-route-shape.md) | none                                             |
+| [`01-record-the-batch-add-route-shape`](01-record-the-batch-add-route-shape.md)     | resolved        | none                                           | [`02`](02-add-a-video-to-several-playlists.md)   |
+| [`02-add-a-video-to-several-playlists`](02-add-a-video-to-several-playlists.md)     | resolved        | [`01`](01-record-the-batch-add-route-shape.md) | none                                             |
 | [`03-rename-a-playlist`](03-rename-a-playlist.md)                                   | ready-for-agent | none                                           | none                                             |
 | [`04-delete-a-playlist`](04-delete-a-playlist.md)                                   | ready-for-agent | none                                           | none                                             |
 | [`05-remove-a-track-from-a-playlist`](05-remove-a-track-from-a-playlist.md)         | ready-for-agent | none                                           | [`07`](07-a-returned-video-is-treated-as-new.md) |

@@ -86,3 +86,22 @@ export function sendInvalidRequest(
     detail: message
   });
 }
+
+/*
+ * The batch add's whole-request refusal. The request is syntactically fine and
+ * still cannot be carried out, because "add a video" was handed a playlist URL, or
+ * an empty list, or more ids than one request may name. 422 rather than 400 keeps
+ * the two apart: a 400 is a body the server could not read, a 422 is a body it read
+ * and would not act on.
+ */
+export function sendUnprocessable(
+  reply: FastifyReply,
+  message: string
+): FastifyReply {
+  return sendProblem(reply, {
+    status: 422,
+    code: 'unprocessable_request',
+    title: 'Unprocessable Request',
+    detail: message
+  });
+}

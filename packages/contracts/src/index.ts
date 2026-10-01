@@ -3,6 +3,7 @@ export * from './schemas.js';
 export type {
   Account,
   AddTrackInput,
+  AddTrackResult,
   CreatePlaylistInput,
   Page,
   PageQuery,

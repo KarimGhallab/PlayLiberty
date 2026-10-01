@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  AddTrackOutcome,
   AssociationOrigin,
   PlaylistSyncStatus,
   Provider,
@@ -113,7 +114,19 @@ export const CreatePlaylistInputSchema = z.object({
 });
 
 export const AddTrackInputSchema = z.object({
-  url: z.url()
+  url: z.url(),
+  playlistIds: z.array(identifier).min(1).max(100)
+});
+
+export const AddTrackOutcomeSchema = z.enum(AddTrackOutcome);
+
+export const AddTrackResultSchema = z.object({
+  results: z.array(
+    z.object({
+      playlistId: identifier,
+      outcome: AddTrackOutcomeSchema
+    })
+  )
 });
 
 export const RenamePlaylistInputSchema = z.object({

@@ -1,6 +1,12 @@
+import { randomUUID } from 'node:crypto';
+
 import { eq } from 'drizzle-orm';
 
-import { TrackFileStatus } from '@playliberty/contracts';
+import {
+  Provider,
+  TrackFileStatus,
+  TrackSourceStatus
+} from '@playliberty/contracts';
 
 import { canAccountAccessTrack } from '../../shared/access/trackAccess.js';
 
@@ -8,7 +14,11 @@ import type { DatabaseHandle } from '../../platform/database/client.js';
 import { tracks } from '../../platform/database/schema.js';
 import type { TrackRow } from '../../platform/database/schema.js';
 import { TrackStreamOutcome, TrackThumbnailOutcome } from './types.js';
-import type { TrackStreamResult, TrackThumbnailResult } from './types.js';
+import type {
+  TrackSeed,
+  TrackStreamResult,
+  TrackThumbnailResult
+} from './types.js';
 
 function loadTrack(
   database: DatabaseHandle,
@@ -58,4 +68,52 @@ export function resolveTrackForThumbnail(
     outcome: TrackThumbnailOutcome.Ok,
     thumbnailPath: track.thumbnailPath
   };
+}
+
+/*
+ * The track a video id already has, if any. A track is instance-wide and keyed by
+ * video id, so this is the dedup read both the sync and the batch add make before
+ * they create one, and its caller decides what to do with a track that exists:
+ * the sync re-queues a failed one, the batch add reuses it untouched.
+ */
+export function findTrackByVideoId(
+  database: DatabaseHandle,
+  videoId: string
+): Pick<TrackRow, 'id' | 'fileStatus'> | undefined {
+  return database.db
+    .select({ id: tracks.id, fileStatus: tracks.fileStatus })
+    .from(tracks)
+    .where(eq(tracks.videoId, videoId))
+    .get();
+}
+
+/*
+ * One track for a video id the instance does not hold yet, queued for download.
+ * The provider is fixed today because YouTube is the only source; the video id is
+ * the key every later read uses.
+ */
+export function createPendingTrack(
+  database: DatabaseHandle,
+  seed: TrackSeed
+): string {
+  const trackId = randomUUID();
+
+  database.db
+    .insert(tracks)
+    .values({
+      id: trackId,
+      provider: Provider.Youtube,
+      videoId: seed.videoId,
+      title: seed.title,
+      durationSeconds: seed.durationSeconds,
+      thumbnailPath: null,
+      thumbnailUrl: seed.thumbnailUrl,
+      fileStatus: TrackFileStatus.Pending,
+      sourceStatus: TrackSourceStatus.Available,
+      filePath: null,
+      failureReason: null
+    })
+    .run();
+
+  return trackId;
 }

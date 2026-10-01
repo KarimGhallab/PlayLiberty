@@ -31,6 +31,18 @@ export enum AssociationOrigin {
   Manual = 'manual'
 }
 
+/*
+ * What one playlist did with a pasted video. `already_present` is the outcome the
+ * association service already returns, and it is a success rather than a failure:
+ * the desired end state is the one the user asked for. `refused` carries no reason,
+ * so a playlist the account cannot see and one it cannot write are one answer.
+ */
+export enum AddTrackOutcome {
+  Added = 'added',
+  AlreadyPresent = 'already_present',
+  Refused = 'refused'
+}
+
 export enum ShareLevel {
   Read = 'read',
   Write = 'write'
