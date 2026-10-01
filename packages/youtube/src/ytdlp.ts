@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import {
@@ -271,5 +271,18 @@ export class YtdlpClient implements IYoutubeClient {
     await rm(downloadedPath, { force: true });
 
     return { videoId: request.videoId, filePath: request.outputPath };
+  }
+
+  public async fetchThumbnail(url: string, outputPath: string): Promise<void> {
+    // A plain image fetch: the URL is the source's own, not yt-dlp's business, but
+    // it is still source access, so it lives behind this seam with the rest.
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`The thumbnail request failed with ${response.status}.`);
+    }
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, Buffer.from(await response.arrayBuffer()));
   }
 }

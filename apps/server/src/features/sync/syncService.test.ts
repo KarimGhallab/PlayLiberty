@@ -194,6 +194,22 @@ describe('POST /playlists', () => {
     ).toBe(true);
   });
 
+  it('stores the source thumbnail URL on the track it creates', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
+    );
+
+    const run = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(run.playlistId, 'owner-1');
+
+    expect(trackByVideoId('aaaaaaaaaaa')?.thumbnailUrl).toBe(
+      'https://i.ytimg.com/vi/aaaaaaaaaaa/hq.jpg'
+    );
+  });
+
   it('associates a video the instance already holds without a second track', async () => {
     context = await createTestContext(
       {},
@@ -781,6 +797,9 @@ function scriptedYoutube(script: (YoutubeSource | Error)[]): IYoutubeClient {
     },
     downloadTrack: async (): Promise<never> => {
       throw new Error('a sync must not download');
+    },
+    fetchThumbnail: async (): Promise<never> => {
+      throw new Error('a sync must not fetch a thumbnail');
     }
   };
 }
@@ -1149,6 +1168,9 @@ function storingYoutube(...sources: YoutubeSource[]): {
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'stored-audio');
         return { videoId: request.videoId, filePath: request.outputPath };
+      },
+      fetchThumbnail: async (): Promise<never> => {
+        throw new Error('a retry test does not fetch a thumbnail');
       }
     }
   };

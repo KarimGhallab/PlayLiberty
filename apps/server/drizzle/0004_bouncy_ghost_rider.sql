@@ -1,0 +1,1 @@
+ALTER TABLE `track` ADD `thumbnail_url` text;

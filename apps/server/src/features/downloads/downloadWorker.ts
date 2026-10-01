@@ -13,7 +13,10 @@ import type { TrackRow } from '../../platform/database/schema.js';
 import { tracks } from '../../platform/database/schema.js';
 import type { JobHandle } from '../../platform/jobs/intervalJob.js';
 import { startIntervalJob } from '../../platform/jobs/intervalJob.js';
-import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
+import {
+  mediaRelativePath,
+  thumbnailRelativePath
+} from '../../platform/media/mediaPaths.js';
 import { markTrackSourceRemoved } from '../tracks/trackLifecycle.js';
 
 /*
@@ -169,6 +172,48 @@ async function storeTrack(
     logger.warn(
       { trackId: track.id, videoId: track.videoId, err: error },
       'track download failed'
+    );
+    return;
+  }
+
+  // The audio is stored; the artwork is best effort and never changes that.
+  await fetchThumbnail(context, logger, track);
+}
+
+/*
+ * The picture is fetched after the audio and on its own terms: a thumbnail that
+ * fails leaves the path null and the track stored, because a missing picture is a
+ * cosmetic loss and a failed audio fetch is not.
+ */
+async function fetchThumbnail(
+  context: WorkerContext,
+  logger: FastifyBaseLogger,
+  track: TrackRow
+): Promise<void> {
+  if (track.thumbnailUrl === null) {
+    return;
+  }
+
+  const relativePath = thumbnailRelativePath(track.videoId);
+  const absolutePath = join(context.mediaPaths.root, relativePath);
+
+  try {
+    await context.youtube.fetchThumbnail(track.thumbnailUrl, absolutePath);
+
+    context.database.db
+      .update(tracks)
+      .set({ thumbnailPath: relativePath, updatedAt: new Date().toISOString() })
+      .where(eq(tracks.id, track.id))
+      .run();
+
+    logger.info(
+      { trackId: track.id, videoId: track.videoId },
+      'thumbnail stored'
+    );
+  } catch (error) {
+    logger.warn(
+      { trackId: track.id, videoId: track.videoId, err: error },
+      'thumbnail fetch failed'
     );
   }
 }

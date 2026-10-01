@@ -240,7 +240,8 @@ async function reconcile(
         database,
         item.videoId,
         item.title,
-        item.durationSeconds
+        item.durationSeconds,
+        item.thumbnailUrl
       );
 
       if (hasAssociation(database, playlist.id, trackId)) {
@@ -407,7 +408,8 @@ function ensureTrack(
   database: DatabaseHandle,
   videoId: string,
   title: string,
-  durationSeconds: number | null
+  durationSeconds: number | null,
+  thumbnailUrl: string | null
 ): string {
   const existing = database.db
     .select({ id: tracks.id, fileStatus: tracks.fileStatus })
@@ -445,6 +447,7 @@ function ensureTrack(
       title,
       durationSeconds,
       thumbnailPath: null,
+      thumbnailUrl,
       fileStatus: TrackFileStatus.Pending,
       sourceStatus: TrackSourceStatus.Available,
       filePath: null,

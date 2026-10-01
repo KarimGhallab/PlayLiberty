@@ -56,4 +56,5 @@ export interface YtdlpOptions {
 export interface IYoutubeClient {
   listSource(url: string): Promise<YoutubeSource>;
   downloadTrack(request: DownloadTrackRequest): Promise<DownloadTrackResult>;
+  fetchThumbnail(url: string, outputPath: string): Promise<void>;
 }

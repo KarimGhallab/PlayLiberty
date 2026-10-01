@@ -83,6 +83,7 @@ export const tracks = sqliteTable(
     title: text('title').notNull(),
     durationSeconds: integer('duration_seconds'),
     thumbnailPath: text('thumbnail_path'),
+    thumbnailUrl: text('thumbnail_url'),
     fileStatus: text('file_status')
       .$type<TrackFileStatus>()
       .notNull()

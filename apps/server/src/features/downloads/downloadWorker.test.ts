@@ -29,7 +29,10 @@ import {
   playlists,
   tracks
 } from '../../platform/database/schema.js';
-import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
+import {
+  mediaRelativePath,
+  thumbnailRelativePath
+} from '../../platform/media/mediaPaths.js';
 import { processPendingTracks } from './downloadWorker.js';
 
 let context: TestContext | undefined;
@@ -49,6 +52,7 @@ afterEach(async () => {
 interface FakeDownloaderOptions {
   failTimes?: number;
   error?: Error;
+  thumbnailFails?: boolean;
 }
 
 function fakeDownloader(options: FakeDownloaderOptions = {}): {
@@ -77,6 +81,17 @@ function fakeDownloader(options: FakeDownloaderOptions = {}): {
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'downloaded-audio');
         return { videoId: request.videoId, filePath: request.outputPath };
+      },
+      fetchThumbnail: async (
+        _url: string,
+        outputPath: string
+      ): Promise<void> => {
+        if (options.thumbnailFails === true) {
+          throw new Error('the thumbnail failed');
+        }
+
+        await mkdir(dirname(outputPath), { recursive: true });
+        await writeFile(outputPath, 'thumbnail-bytes');
       }
     }
   };
@@ -128,6 +143,7 @@ interface SeedOptions {
   videoId?: string;
   fileStatus?: TrackFileStatus;
   filePath?: string | null;
+  thumbnailUrl?: string | null;
 }
 
 interface Seeded {
@@ -156,6 +172,7 @@ function seed(
       title: 'Track',
       durationSeconds: null,
       thumbnailPath: null,
+      thumbnailUrl: options.thumbnailUrl ?? null,
       fileStatus: options.fileStatus ?? TrackFileStatus.Pending,
       sourceStatus: TrackSourceStatus.Available,
       filePath: options.filePath ?? null,
@@ -346,5 +363,42 @@ describe('the download worker', () => {
     // A later pass does not retry it, and neither does a sync.
     await run(fake.youtube);
     expect(fake.downloads).toEqual([seeded.videoId]);
+  });
+
+  it('fetches the artwork and records its path', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      thumbnailUrl: 'https://i.ytimg.com/vi/aaaaaaaaaaa/hq.jpg'
+    });
+
+    await run(fake.youtube);
+
+    const relativePath = thumbnailRelativePath('aaaaaaaaaaa');
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Stored);
+    expect(row?.thumbnailPath).toBe(relativePath);
+
+    const bytes = await readFile(
+      join(context.directory, 'media', relativePath),
+      'utf8'
+    );
+    expect(bytes).toBe('thumbnail-bytes');
+  });
+
+  it('leaves the artwork null when the fetch fails and still stores the audio', async () => {
+    const fake = fakeDownloader({ thumbnailFails: true });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      thumbnailUrl: 'https://i.ytimg.com/vi/aaaaaaaaaaa/hq.jpg'
+    });
+
+    await run(fake.youtube);
+
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Stored);
+    expect(row?.thumbnailPath).toBeNull();
   });
 });

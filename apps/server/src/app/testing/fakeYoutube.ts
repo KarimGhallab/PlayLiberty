@@ -57,6 +57,9 @@ export function createFakeYoutube(...sources: YoutubeSource[]): IYoutubeClient {
     },
     downloadTrack: async (): Promise<never> => {
       throw new Error('a sync must not download');
+    },
+    fetchThumbnail: async (): Promise<never> => {
+      throw new Error('a sync must not fetch a thumbnail');
     }
   };
 }
