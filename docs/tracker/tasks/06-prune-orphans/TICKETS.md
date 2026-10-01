@@ -6,7 +6,7 @@ through the service and the media root.
 
 | Ticket                                                            | Status          | Blocked by                              | Blocks                             |
 | ----------------------------------------------------------------- | --------------- | --------------------------------------- | ---------------------------------- |
-| [`01-prune-the-orphaned-tracks`](01-prune-the-orphaned-tracks.md) | ready-for-agent | none                                    | [`02`](02-stop-a-prune-cleanly.md) |
+| [`01-prune-the-orphaned-tracks`](01-prune-the-orphaned-tracks.md) | resolved        | none                                    | [`02`](02-stop-a-prune-cleanly.md) |
 | [`02-stop-a-prune-cleanly`](02-stop-a-prune-cleanly.md)           | ready-for-agent | [`01`](01-prune-the-orphaned-tracks.md) | none                               |
 
 ## Conventions
