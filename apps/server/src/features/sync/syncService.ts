@@ -21,6 +21,7 @@ import type { DatabaseHandle } from '../../platform/database/client.js';
 import {
   associations,
   playlists,
+  suppressions,
   syncRuns,
   tracks
 } from '../../platform/database/schema.js';
@@ -230,6 +231,10 @@ async function reconcile(
     let added = 0;
 
     for (const item of source.entries) {
+      if (isSuppressed(database, playlist.id, item.videoId)) {
+        continue;
+      }
+
       const trackId = ensureTrack(
         database,
         item.videoId,
@@ -382,6 +387,31 @@ function retainAbsentTracks(
   }
 
   return retained;
+}
+
+/*
+ * A suppression is a video the listener removed from this playlist, and the
+ * reconcile honours it rather than reopening the question: the video is skipped
+ * and gets no association. The writer is removing a track (spec 04); this reads
+ * and never writes one.
+ */
+function isSuppressed(
+  database: DatabaseHandle,
+  playlistId: string,
+  videoId: string
+): boolean {
+  return (
+    database.db
+      .select({ videoId: suppressions.videoId })
+      .from(suppressions)
+      .where(
+        and(
+          eq(suppressions.playlistId, playlistId),
+          eq(suppressions.videoId, videoId)
+        )
+      )
+      .get() !== undefined
+  );
 }
 
 function ensureTrack(

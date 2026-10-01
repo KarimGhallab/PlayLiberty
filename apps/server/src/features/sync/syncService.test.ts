@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -27,7 +27,11 @@ import {
   testSource as source
 } from '../../app/testing/fakeYoutube.js';
 
-import { associations, tracks } from '../../platform/database/schema.js';
+import {
+  associations,
+  suppressions,
+  tracks
+} from '../../platform/database/schema.js';
 import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
 
 const PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PL1234567890abcdef';
@@ -619,5 +623,124 @@ describe('retaining a track whose source video is gone', () => {
 
     const other = await readPlaylist(theirs.playlistId, 'owner-2');
     expect(other.trackCount).toBe(1);
+  });
+});
+
+function suppressionCount(playlistId: string): number {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const row = context.database.db
+    .select({ total: sql<number>`count(*)` })
+    .from(suppressions)
+    .where(eq(suppressions.playlistId, playlistId))
+    .get();
+
+  return row?.total ?? 0;
+}
+
+function suppress(playlistId: string, videoId: string): void {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  context.database.db
+    .insert(suppressions)
+    .values({ playlistId, videoId })
+    .run();
+}
+
+function liftSuppression(playlistId: string, videoId: string): void {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  context.database.db
+    .delete(suppressions)
+    .where(
+      and(
+        eq(suppressions.playlistId, playlistId),
+        eq(suppressions.videoId, videoId)
+      )
+    )
+    .run();
+}
+
+describe('honouring a suppression', () => {
+  it('does not associate a video the playlist has a suppression for', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('bbbbbbbbbbb')]),
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    // The writer is spec 04 (removing a track). Until it lands, a suppression is
+    // seeded, which is the only way to put the database in the state it describes.
+    suppress(first.playlistId, 'aaaaaaaaaaa');
+
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    expect(associationCount('aaaaaaaaaaa')).toBe(0);
+    expect(trackByVideoId('aaaaaaaaaaa')).toBeUndefined();
+    expect(associationCount('bbbbbbbbbbb')).toBe(1);
+    // The reconcile reads suppressions and never writes one.
+    expect(suppressionCount(first.playlistId)).toBe(1);
+  });
+
+  it('associates a suppressed video again once its suppression is gone', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('bbbbbbbbbbb')]),
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    suppress(first.playlistId, 'aaaaaaaaaaa');
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+    expect(associationCount('aaaaaaaaaaa')).toBe(0);
+
+    liftSuppression(first.playlistId, 'aaaaaaaaaaa');
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    expect(associationCount('aaaaaaaaaaa')).toBe(1);
+  });
+
+  it('never writes a suppression of its own', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    expect(suppressionCount(first.playlistId)).toBe(0);
   });
 });
