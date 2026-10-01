@@ -25,7 +25,7 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`17-design-the-playlist-detail`](17-design-the-playlist-detail.md)     | resolved | none                                       | none                                                      |
 | [`18-expose-playlist-access`](18-expose-playlist-access.md)             | resolved | none                                       | none                                                      |
 
-Feature-scoped ticket sets live in a folder named for their spec: [`01-sync-a-playlist/TICKETS.md`](01-sync-a-playlist/TICKETS.md), [`02-store-a-track/TICKETS.md`](02-store-a-track/TICKETS.md), [`03-read-a-playlist/TICKETS.md`](03-read-a-playlist/TICKETS.md), [`04-curate-a-playlist/TICKETS.md`](04-curate-a-playlist/TICKETS.md) and [`05-share-a-playlist/TICKETS.md`](05-share-a-playlist/TICKETS.md).
+Feature-scoped ticket sets live in a folder named for their spec: [`01-sync-a-playlist/TICKETS.md`](01-sync-a-playlist/TICKETS.md), [`02-store-a-track/TICKETS.md`](02-store-a-track/TICKETS.md), [`03-read-a-playlist/TICKETS.md`](03-read-a-playlist/TICKETS.md), [`04-curate-a-playlist/TICKETS.md`](04-curate-a-playlist/TICKETS.md), [`05-share-a-playlist/TICKETS.md`](05-share-a-playlist/TICKETS.md) and [`06-prune-orphans/TICKETS.md`](06-prune-orphans/TICKETS.md).
 
 ## Conventions
 
