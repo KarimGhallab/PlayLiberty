@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 
 import type { Share, ShareLevel } from '@playliberty/contracts';
 
@@ -67,6 +67,11 @@ export type GrantShareResult =
   | { outcome: GrantShareOutcome.TargetNotFound }
   | { outcome: GrantShareOutcome.SelfShare };
 
+export enum ShareRevokeOutcome {
+  Ok = 'ok',
+  PlaylistNotFound = 'playlist_not_found'
+}
+
 /*
  * Granting or changing a share. It is an upsert, so a second grant changes the
  * level on the one share the unique index on playlist and account already defines
@@ -116,4 +121,37 @@ export function grantShareForAccount(
   }
 
   return { outcome: GrantShareOutcome.Ok, share: toShareView(share, target) };
+}
+
+/*
+ * Taking a share back. It is owner-only like every other route here, so a
+ * collaborator and a stranger get the same not-found. The delete is idempotent: a
+ * share that is not there, including one aimed at an account that does not exist,
+ * leaves the playlist unchanged and still succeeds, because the end state it asks
+ * for already holds, which is what the user chose over a 404. No check that the
+ * target account exists is made, because the account id is only ever a row to
+ * delete and a share's absence is the same answer whether the account was ever
+ * there.
+ */
+export function revokeShareForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string,
+  targetAccountId: string
+): ShareRevokeOutcome {
+  if (!isPlaylistOwner(database, playlistId, accountId)) {
+    return ShareRevokeOutcome.PlaylistNotFound;
+  }
+
+  database.db
+    .delete(shares)
+    .where(
+      and(
+        eq(shares.playlistId, playlistId),
+        eq(shares.accountId, targetAccountId)
+      )
+    )
+    .run();
+
+  return ShareRevokeOutcome.Ok;
 }

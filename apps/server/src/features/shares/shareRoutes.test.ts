@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -16,7 +18,13 @@ import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import { accounts, playlists, shares } from '../../platform/database/schema.js';
+import {
+  accounts,
+  associations,
+  playlists,
+  shares,
+  tracks
+} from '../../platform/database/schema.js';
 
 const PlaylistPageSchema = createPageSchema(PlaylistSchema);
 const ShareListSchema = z.array(ShareSchema);
@@ -123,6 +131,82 @@ function countShares(playlistId: string): number {
       .where(eq(shares.playlistId, playlistId))
       .get()?.total ?? 0
   );
+}
+
+function revoke(
+  playlistId: string,
+  account: SeededAccount,
+  targetAccountId: string,
+  withClientHeader = true
+) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const headers: Record<string, string> = {
+    'remote-user': account.pangolinUserId,
+    'remote-name': account.displayName
+  };
+
+  if (withClientHeader) {
+    headers['x-playliberty-client'] = 'test';
+  }
+
+  return context.app.inject({
+    method: 'DELETE',
+    url: `/api/v1/playlists/${playlistId}/shares/${targetAccountId}`,
+    headers
+  });
+}
+
+/*
+ * A stored track the playlist holds, so the stream and the thumbnail answer before
+ * a revocation and are refused after one.
+ */
+async function seedStoredTrack(playlistId: string): Promise<string> {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const trackId = randomUUID();
+  const relativePath = 'media/dd/song.m4a';
+
+  context.database.db
+    .insert(tracks)
+    .values({
+      id: trackId,
+      provider: Provider.Youtube,
+      videoId: `video-${trackId}`,
+      title: 'Track',
+      durationSeconds: 180,
+      thumbnailPath: 'thumbnails/dd/song.jpg',
+      fileStatus: 'stored',
+      sourceStatus: 'available',
+      filePath: relativePath,
+      failureReason: null
+    })
+    .run();
+
+  context.database.db
+    .insert(associations)
+    .values({
+      id: randomUUID(),
+      playlistId,
+      trackId,
+      origin: 'remote',
+      position: 0
+    })
+    .run();
+
+  const storedPath = join(context.mediaPaths.root, relativePath);
+  await mkdir(dirname(storedPath), { recursive: true });
+  await writeFile(storedPath, 'the-audio');
+
+  const thumbnailPath = join(context.mediaPaths.root, 'thumbnails/dd/song.jpg');
+  await mkdir(dirname(thumbnailPath), { recursive: true });
+  await writeFile(thumbnailPath, 'the-picture');
+
+  return trackId;
 }
 
 function grant(
@@ -271,5 +355,122 @@ describe('GET and POST /playlists/:id/shares', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+describe('DELETE /playlists/:id/shares/:accountId', () => {
+  it('revokes a share and it is gone from the listing', async () => {
+    context = await createTestContext();
+    const owner = seedAccount('Owner');
+    const target = seedAccount('Bea');
+    const playlistId = seedPlaylist(owner.accountId);
+    await grant(playlistId, owner, target.accountId, 'read');
+
+    const response = await revoke(playlistId, owner, target.accountId);
+
+    expect(response.statusCode).toBe(204);
+    expect(countShares(playlistId)).toBe(0);
+    const listed = ShareListSchema.parse(
+      (await get(`/api/v1/playlists/${playlistId}/shares`, owner)).json()
+    );
+    expect(listed).toEqual([]);
+  });
+
+  it('removes the playlist from the target library, the read and the tracks', async () => {
+    context = await createTestContext();
+    const owner = seedAccount('Owner');
+    const target = seedAccount('Bea');
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = await seedStoredTrack(playlistId);
+    await grant(playlistId, owner, target.accountId, 'read');
+
+    // Before revocation the target reaches all four.
+    expect(
+      (await get(`/api/v1/playlists/${playlistId}`, target)).statusCode
+    ).toBe(200);
+    expect(
+      (await get(`/api/v1/playlists/${playlistId}/tracks`, target)).statusCode
+    ).toBe(200);
+    expect(
+      (await get(`/api/v1/tracks/${trackId}/stream`, target)).statusCode
+    ).toBe(200);
+
+    await revoke(playlistId, owner, target.accountId);
+
+    const library = PlaylistPageSchema.parse(
+      (await get('/api/v1/playlists', target)).json()
+    );
+    expect(library.items.find(item => item.id === playlistId)).toBeUndefined();
+
+    const read = await get(`/api/v1/playlists/${playlistId}`, target);
+    expect(read.statusCode).toBe(404);
+    expect(read.json()).toMatchObject({ code: 'playlist_not_found' });
+
+    const listedTracks = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      target
+    );
+    expect(listedTracks.statusCode).toBe(404);
+
+    // The stream and the thumbnail are track routes and keep their own rule: a
+    // track the account can no longer reach is forbidden, not missing, which is
+    // the distinction spec 03 decided and this ticket does not override.
+    expect(
+      (await get(`/api/v1/tracks/${trackId}/stream`, target)).statusCode
+    ).toBe(403);
+    expect(
+      (await get(`/api/v1/tracks/${trackId}/thumbnail`, target)).statusCode
+    ).toBe(403);
+  });
+
+  it('revokes a share that is not there, and a target account that does not exist, without changing the playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount('Owner');
+    const target = seedAccount('Bea');
+    const playlistId = seedPlaylist(owner.accountId);
+    await grant(playlistId, owner, target.accountId, 'read');
+
+    // A different account holds nothing, and a random id holds nothing.
+    const outsider = seedAccount('Outsider');
+    const absent = await revoke(playlistId, owner, outsider.accountId);
+    const missingAccount = await revoke(playlistId, owner, randomUUID());
+
+    expect(absent.statusCode).toBe(204);
+    expect(missingAccount.statusCode).toBe(204);
+    // The share that did exist is untouched.
+    expect(countShares(playlistId)).toBe(1);
+  });
+
+  it('answers 404 for a write collaborator, a read collaborator and a stranger', async () => {
+    context = await createTestContext();
+    const owner = seedAccount('Owner');
+    const playlistId = seedPlaylist(owner.accountId);
+    const reader = seedAccount('Reader');
+    const writer = seedAccount('Writer');
+    const stranger = seedAccount('Stranger');
+    await grant(playlistId, owner, reader.accountId, 'read');
+    await grant(playlistId, owner, writer.accountId, 'write');
+
+    for (const account of [reader, writer, stranger]) {
+      const response = await revoke(playlistId, account, reader.accountId);
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+    }
+
+    expect(countShares(playlistId)).toBe(2);
+  });
+
+  it('refuses a revocation without the client header', async () => {
+    context = await createTestContext();
+    const owner = seedAccount('Owner');
+    const target = seedAccount('Bea');
+    const playlistId = seedPlaylist(owner.accountId);
+    await grant(playlistId, owner, target.accountId, 'read');
+
+    const response = await revoke(playlistId, owner, target.accountId, false);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+    expect(countShares(playlistId)).toBe(1);
   });
 });

@@ -7,14 +7,15 @@ import type { AppContext } from '../../shared/context.js';
 import {
   parseBody,
   sendInvalidRequest,
-  sendNotImplemented,
   sendProblem
 } from '../../shared/problem.js';
 
 import {
   GrantShareOutcome,
+  ShareRevokeOutcome,
   grantShareForAccount,
-  listSharesForAccount
+  listSharesForAccount,
+  revokeShareForAccount
 } from './shareService.js';
 
 export function registerShareRoutes(
@@ -99,11 +100,25 @@ export function registerShareRoutes(
 
   app.delete<{ Params: { id: string; accountId: string } }>(
     '/playlists/:id/shares/:accountId',
-    async (_request, reply) => {
-      return sendNotImplemented(
-        reply,
-        'Revoking a share is not implemented yet.'
+    async (request, reply) => {
+      const outcome = revokeShareForAccount(
+        context.database,
+        request.params.id,
+        request.account.id,
+        request.params.accountId
       );
+
+      if (outcome === ShareRevokeOutcome.PlaylistNotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail:
+            'The playlist does not exist, or this account cannot manage it.'
+        });
+      }
+
+      return reply.code(204).send();
     }
   );
 }
