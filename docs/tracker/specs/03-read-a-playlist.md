@@ -1,6 +1,6 @@
 # Read a playlist
 
-Status: agreed
+Status: ready
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement

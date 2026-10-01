@@ -1,6 +1,6 @@
 # Play stored audio
 
-Status: agreed
+Status: ready
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
