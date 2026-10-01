@@ -12,6 +12,7 @@ import {
   TrackSourceStatus,
   UserRole
 } from '@playliberty/contracts';
+import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
 import type {
   DownloadTrackRequest,
   DownloadTrackResult,
@@ -324,6 +325,26 @@ describe('the download worker', () => {
     await run(fake.youtube);
 
     expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(fake.downloads).toEqual([seeded.videoId]);
+  });
+
+  it('treats a video that is gone as terminal rather than a failure', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new YoutubeVideoUnavailableError('aaaaaaaaaaa')
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Unavailable);
+    expect(row?.sourceStatus).toBe(TrackSourceStatus.Removed);
+    expect(row?.filePath).toBeNull();
+
+    // A later pass does not retry it, and neither does a sync.
+    await run(fake.youtube);
     expect(fake.downloads).toEqual([seeded.videoId]);
   });
 });

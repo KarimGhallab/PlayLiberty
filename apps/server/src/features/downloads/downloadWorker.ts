@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
 import { TrackFileStatus } from '@playliberty/contracts';
+import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
 
 import type { AppContext } from '../../shared/context.js';
 
@@ -13,6 +14,7 @@ import { tracks } from '../../platform/database/schema.js';
 import type { JobHandle } from '../../platform/jobs/intervalJob.js';
 import { startIntervalJob } from '../../platform/jobs/intervalJob.js';
 import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
+import { markTrackSourceRemoved } from '../tracks/trackLifecycle.js';
 
 /*
  * The slot that processes pending tracks. The queue is the `track` rows themselves,
@@ -138,11 +140,22 @@ async function storeTrack(
 
     logger.info({ trackId: track.id, videoId: track.videoId }, 'track stored');
   } catch (error) {
-    // A claimed track that throws must not stay `downloading` forever. The reason
-    // is a bounded single line rather than the adapter's raw output, because the
-    // row carries it and a stack trace is not something a person acts on; the full
-    // error goes to the log. Ticket 03 owns the classification of a video that is
-    // gone, which is terminal rather than a failure.
+    // A video the adapter reports as gone is terminal, not a failure: the track is
+    // marked removed from the source and is never retried, reaching the same pair of
+    // values the sync's retention pass produces.
+    if (error instanceof YoutubeVideoUnavailableError) {
+      markTrackSourceRemoved(context.database, track.id, track.fileStatus);
+      logger.info(
+        { trackId: track.id, videoId: track.videoId },
+        'track source is gone'
+      );
+      return;
+    }
+
+    // Any other failure is transient: the reason is a bounded single line rather
+    // than the adapter's raw output, because the row carries it and a stack trace is
+    // not something a person acts on; the full error goes to the log. The next sync
+    // returns the track to `pending` so it is tried again.
     context.database.db
       .update(tracks)
       .set({

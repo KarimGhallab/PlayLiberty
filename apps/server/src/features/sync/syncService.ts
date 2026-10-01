@@ -27,6 +27,7 @@ import {
 } from '../../platform/database/schema.js';
 import type { PlaylistRow } from '../../platform/database/schema.js';
 import { addAssociation } from '../playlists/associationService.js';
+import { markTrackSourceRemoved } from '../tracks/trackLifecycle.js';
 
 /*
  * Syncing a Synced playlist with its Source.
@@ -355,7 +356,6 @@ function retainAbsentTracks(
     .where(eq(associations.playlistId, playlistId))
     .all();
 
-  const updatedAt = new Date().toISOString();
   let retained = 0;
 
   for (const row of rows) {
@@ -366,23 +366,12 @@ function retainAbsentTracks(
       continue;
     }
 
+    // The rule lives in one place now, shared with the download worker, so a
+    // video that leaves the source and a download that finds it gone agree.
+    markTrackSourceRemoved(database, row.trackId, row.fileStatus);
+
     if (row.fileStatus === TrackFileStatus.Stored) {
-      database.db
-        .update(tracks)
-        .set({ sourceStatus: TrackSourceStatus.Removed, updatedAt })
-        .where(eq(tracks.id, row.trackId))
-        .run();
       retained += 1;
-    } else {
-      database.db
-        .update(tracks)
-        .set({
-          sourceStatus: TrackSourceStatus.Removed,
-          fileStatus: TrackFileStatus.Unavailable,
-          updatedAt
-        })
-        .where(eq(tracks.id, row.trackId))
-        .run();
     }
   }
 

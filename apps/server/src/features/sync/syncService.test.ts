@@ -1196,3 +1196,39 @@ describe('retrying a failed download', () => {
     expect(stored?.filePath).toBe(mediaRelativePath('aaaaaaaaaaa', '.m4a'));
   });
 });
+
+describe('a track whose video is gone', () => {
+  it('is not returned to pending by a later sync', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa')]),
+          source([entry('aaaaaaaaaaa')])
+        )
+      }
+    );
+
+    const created = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(created.playlistId, 'owner-1');
+
+    const trackId = trackByVideoId('aaaaaaaaaaa')?.id ?? '';
+    context.database.db
+      .update(tracks)
+      .set({
+        fileStatus: TrackFileStatus.Unavailable,
+        sourceStatus: TrackSourceStatus.Removed
+      })
+      .where(eq(tracks.id, trackId))
+      .run();
+
+    await postSync(created.playlistId, 'owner-1');
+    await runFinished(created.playlistId, 'owner-1');
+
+    const row = trackByVideoId('aaaaaaaaaaa');
+    expect(row?.fileStatus).toBe(TrackFileStatus.Unavailable);
+    expect(row?.sourceStatus).toBe(TrackSourceStatus.Removed);
+  });
+});

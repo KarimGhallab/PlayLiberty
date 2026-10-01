@@ -3,6 +3,10 @@ import type { ChildProcess } from 'node:child_process';
 import { mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import {
+  YoutubeVideoUnavailableError,
+  isVideoUnavailableMessage
+} from './errors.js';
 import { YoutubeSourceKind } from './types.js';
 import type {
   DownloadOptions,
@@ -241,11 +245,22 @@ export class YtdlpClient implements IYoutubeClient {
 
     const outputTemplate = join(request.tempDir, `${request.videoId}.%(ext)s`);
     const url = `https://www.youtube.com/watch?v=${request.videoId}`;
-    await runProcess(
-      this._options.binary,
-      buildDownloadArgs(url, outputTemplate, this._options.download),
-      this._options.timeoutMs
-    );
+
+    try {
+      await runProcess(
+        this._options.binary,
+        buildDownloadArgs(url, outputTemplate, this._options.download),
+        this._options.timeoutMs
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (isVideoUnavailableMessage(message)) {
+        throw new YoutubeVideoUnavailableError(request.videoId);
+      }
+
+      throw error;
+    }
 
     const downloadedPath = join(request.tempDir, `${request.videoId}.m4a`);
     await runProcess(
