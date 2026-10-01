@@ -73,18 +73,10 @@ const failures = [];
  * Every CSS rule in a stylesheet or a specimen's style block, as selector and
  * body, in one linear pass.
  *
- * This replaces a /([^{}]+)\{([^{}]*)\}/g scan that was fine when the largest
- * file was 25KB and cost thirty seconds when it was 118KB. The pattern is
- * quadratic on any run of text containing no braces: at each start position it
- * consumes the whole remaining run looking for a brace, fails, and the engine
- * retries one character later. The track row carries sixteen copies of the play
- * to pause morph, so its body is 90KB with no braces in it at all, and the scan
- * spent all its time there rather than on any rule. Four checks used the
- * pattern, which is why the cost arrived as a mystery rather than as one edit.
- *
- * Walking the braces cannot backtrack. A rule's selector is whatever sits
- * between the previous closing brace and this opening one, and its body is
- * whatever sits between this brace and the next.
+ * Walking the braces cannot backtrack, which a regex scan over a brace-free
+ * morph body cannot promise. A rule's selector is whatever sits between the
+ * previous closing brace and this opening one, and its body is whatever sits
+ * between this brace and the next.
  */
 function cssRules(css) {
   const out = [];
@@ -601,13 +593,13 @@ for (const [fgName, bgName, note] of PAIRINGS) {
 
 /* ------------------------------- 2b. a hover is not a state
  *
- * The primary button used to turn amber on hover, and no numeric check could
- * catch it: the pairing measured well and looked reasonable. The problem was
- * that a tone token is a vocabulary for how a thing IS, and hover is not one of
- * those things. Turning the action colour into the progress colour on pointer
- * entry makes a single control mean two different things depending on where the
- * pointer happens to be, and it makes hover into an emphasis, which at the rate
- * a pointer crosses a button is just noise.
+ * The primary button's hover is the case: no numeric check can catch a tone
+ * used for hover, because the pairing can measure well and still be wrong. The
+ * problem is that a tone token is a vocabulary for how a thing IS, and hover is
+ * not one of those things. Turning the action colour into the progress colour on
+ * pointer entry makes a single control mean two different things depending on
+ * where the pointer happens to be, and it makes hover into an emphasis, which at
+ * the rate a pointer crosses a button is just noise.
  *
  * This cannot be phrased as a contrast rule, so it is stated directly: a hover
  * rule may not paint with a tone token. Amber and the fault reds are for states
@@ -653,12 +645,11 @@ const deadLinks = [];
 const seenLinks = new Set();
 
 /* Every link in the tree, from a specimen's href and from a markdown link in the
- * decision record. The record used to be one file, and the split put fifteen of
- * them next to each other with relative paths between them, so a link that
- * resolved from docs/ does not resolve from docs/design-system/components/. A dead
- * link check that walked only the HTML would have passed the split without ever
- * looking at it, which is the same failure as a check narrowed to the one file
- * that is small enough to eyeball.
+ * decision record. A markdown link resolves relative to the file that holds it,
+ * so a link that resolves from docs/ does not resolve from
+ * docs/design-system/components/. A dead link check that walked only the HTML
+ * would pass such a tree without ever looking at it, which is the same failure
+ * as a check narrowed to the one file that is small enough to eyeball.
  *
  * The tracker joined the walk for the same reason, and after the screen inventory
  * landed in it. The tickets are where the design and the work point at each other:
@@ -732,10 +723,9 @@ failures.push(...deadLinks);
  * another token is not a style preference here, it is a value that will reach
  * the phone as an unresolved string.
  *
- * This was violated once, deliberately, to make --tone-downloading and
- * --emphasis structurally impossible to disagree, and that reasoning was sound
- * while the mechanism was wrong. The two now hold the same literal and the next
- * check holds them to it.
+ * A token declared as another token is not a style preference here, it is a
+ * value that will reach the phone as an unresolved string. Two names for one
+ * decision hold the same literal instead, which the next check holds them to.
  */
 
 const aliased = [];
@@ -790,14 +780,10 @@ for (const [a, b, why] of SHARED_VALUES) {
  * The mapping is declared here rather than derived, because the word is a
  * design decision: the enum says idle and the design says "Up to date".
  *
- * The mapping held "Queued" for TrackFileStatus.pending for a while, and the
- * row drew "Pending". The check below did not notice, because it asked whether
- * the word appeared anywhere in the file, and "Queued" did: it is the first
- * word of the use column of the --tone-pending row in foundations/color.html,
- * which is rendered text saying what the tone is for and is not a state label
- * at all. So a wrong mapping sat here passing on an English sentence.
- *
- * Hence the narrower question this asks now: not whether the word appears, but
+ * A word appearing anywhere in the file is not a state label: "Pending" the row
+ * draws and "Queued" a colour legend uses would both satisfy a check that asked
+ * only whether the word appeared. Hence the narrower question this asks now: not
+ * whether the word appears, but
  * whether it is the exact text of an element carrying a state class, which is
  * what a state label is in this tree. A word that is also ordinary English can
  * no longer satisfy this by being used in a sentence, in a comment, or in an
@@ -1888,13 +1874,9 @@ failures.push(...unplayable);
 
 /* ------------------------- 2q. a modal is not painted under its own scrim
  *
- * The library's add-a-playlist dialog was drawn at --z-base, which is 0, over a
- * scrim at --z-overlay, which is 20. The scrim therefore painted on top of the
- * dialog it was supposed to be dimming, and the dialog rendered correctly in
- * every measurement: correct size, correct position, correct contrast, all of it.
- * Only the stacking was wrong.
- *
- * A screenshot does not catch this, which is why it is worth a check rather than
+ * A dialog can be drawn at a layer below the scrim that dims it, with correct
+ * size, position and contrast, and only the stacking wrong. A screenshot does
+ * not catch this, which is why it is worth a check rather than
  * a note. A dialog under a scrim looks like a dialog that has been deliberately
  * dimmed, which is a thing a designer might well have meant, so the drawing is
  * not wrong-looking. It is wrong in a way that reads as intent, and the only
@@ -2457,8 +2439,8 @@ if (staleRatios.length) {
 /* -------------------------------- 5. no specimen references a token that is gone
  *
  * Removing a token leaves every var(--that-token) behind resolving to nothing,
- * silently, and the page still looks plausible. This is the failure mode that
- * deleting --font-numeric introduced, so it is now checked rather than trusted.
+ * silently, and the page still looks plausible, so it is checked rather than
+ * trusted.
  */
 
 const dangling = [];

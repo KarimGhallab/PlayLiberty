@@ -41,8 +41,8 @@ export function resolveLatestSyncRun(
      * The row is returned as it comes back rather than mapped field by field, and
      * that is not a shortcut. Drizzle maps its own column names on the way out of
      * the query builder, so the row is already the contract's shape; a bare
-     * prepare() does not, which is what a hand-written `select *` here used to
-     * need a ten-field mapping to undo. The mapping also failed to compile if
+     * prepare() does not, so a bare `select *` would put undefined into fields
+     * the contract types as strings. The mapping also fails to compile if
      * SyncRunSchema gained a field, and so does this: a new contract field is
      * absent from the Drizzle row, and returning the row as a SyncRun stops the
      * build in the same place.

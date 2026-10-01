@@ -4,10 +4,9 @@ Audio player for web and mobile that syncs YouTube playlists and keeps them save
 
 ## Workspace layout
 
-This repository is a pnpm workspaces monorepo.
-
-- `apps/console` - runnable Node application, the current entry point while the player surface is built.
-- `packages/utils` - shared utility library (paths, collections, functions, async helpers).
+This repository is a pnpm workspaces monorepo. The components and the layer boundaries are owned by
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and the orientation and guardrails for an agent by
+[`AGENTS.md`](AGENTS.md).
 
 Tooling lives at the root: TypeScript, ESLint, Prettier with import sorting, Husky + lint-staged, dependency-cruiser, knip, and syncpack.
 

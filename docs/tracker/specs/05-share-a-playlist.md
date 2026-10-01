@@ -140,10 +140,7 @@ answers exactly as a playlist that never existed.
   client resolves `ownerAccountId` through it for the items that are not its own. _Decided here:_ the
   alternative, showing only the share indicator, is the state the design record was written in, and this spec
   is what makes the line affordable. [`08-see-the-library`](08-see-the-library.md) owns how the line is drawn.
-- **Binding constraints, not negotiable inside this spec:** identity comes from the forwarded edge headers and
-  fails closed; the instance is private and there is no public or unauthenticated access to anything; sharing
-  outside the instance is a permanent non-goal; a playlist the account cannot see is `404` and never `403`; and
-  the server is the only component that reads or writes the database.
+- **Inherited constraints are owned by the ADRs and not restated here:** the private deployment with no access from outside the instance ([`0001`](../../adr/0001-private-deployment-behind-pangolin-edge.md)), identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
 
 ## Testing Decisions
 
@@ -190,18 +187,3 @@ answers exactly as a playlist that never existed.
 - Any notification that a playlist has been shared, in any direction.
 - The controls that make sharing usable, which are the share dialog and the overflow menu, specified in the
   design records and cut as their own tickets.
-
-## Further Notes
-
-- This is the smallest surface of the set. It can be cut after the spine without blocking anything, and it is a
-  good candidate for pairing with the client tickets that need it.
-- The two schema facts this spec leans on are both already written into the contracts, with the reasoning
-  beside them: the share schema carries the account as well as the level, so a client does not have to join the
-  directory onto every share it lists, and the access value has three members rather than four, so a client
-  never has to represent "you cannot see this".
-- The narrow directory view is the one contract addition in this spec, and it is worth being explicit that it is
-  a reduction rather than a new idea. The account view was written for the route that returns the caller's own
-  account, and reusing it for a list of other people would be a leak rather than a convenience.
-- The directory is also what turns the library's shared-by line from a design record's open question into a
-  route the client can call, which is why this spec is listed before [`08-see-the-library`](08-see-the-library.md)
-  rather than after it.

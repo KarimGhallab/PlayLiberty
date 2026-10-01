@@ -113,10 +113,7 @@ playlist beside it.
 - **The web client reads this route the way it reads the library.** The page it fetches is the list it renders,
   and it refetches while a sync or a download is making the list change. The loop belongs to
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md).
-- **Binding constraints, not negotiable inside this spec:** the stored media is what the client plays, never
-  the source; identity comes from the forwarded edge headers and fails closed; playlists are the only entry
-  point, so there is no route that lists every track the instance holds; and no route in this surface mutates
-  anything, so no request here carries the client header.
+- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the stored media as the source of truth ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)).
 
 ## Testing Decisions
 
@@ -161,17 +158,3 @@ playlist beside it.
 - Anything about playing the tracks, which [`07-play-stored-audio`](07-play-stored-audio.md) owns.
 - The client's polling and invalidation, which
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns.
-
-## Further Notes
-
-- This is the shortest spec in the set and the one with the most leverage: it blocks the detail screen, the
-  player and the client's refresh loop, and every screen in the web client needs it. It should be cut early
-  even though it is small.
-- The response shape, including the origin and the position, was already written into the shared contracts and
-  has never been served. That is worth knowing before the ticket is cut, because it means the design question
-  is settled and the work is a query and an authorisation check.
-- The `404` rather than `403` choice is not this spec's. It was decided for the playlist route and recorded
-  beside that decision, and reusing it here is the point: a client should not have to learn two rules about
-  the same boundary.
-- The empty page answer is the reason this spec is worth writing down at all. It is the one case where the
-  obvious implementation, treating nothing as an error, would break a designed state that already exists.

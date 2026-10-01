@@ -113,9 +113,7 @@ server rather than from the client's optimism.
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md)'s.
 - **The library is a read and writes nothing on arrival.** Opening it, focusing it, and refreshing it create no
   playlist, no run, and no share.
-- **Binding constraints, not negotiable inside this spec:** playlists are the only entry point, so there is no
-  view that lists every track on the instance; a playlist the account cannot see is absent rather than
-  forbidden; identity comes from the edge and fails closed; and the server is the only writer of the database.
+- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the private deployment ([`0001`](../../adr/0001-private-deployment-behind-pangolin-edge.md)).
 
 ## Testing Decisions
 
@@ -154,15 +152,3 @@ server rather than from the client's optimism.
 - The data lifecycle of the screen, which
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns.
 - A global library view and a per-track listing.
-
-## Further Notes
-
-- The one open question this spec closes is the shared-by line. The design record named it as wanted and
-  unsupplied; the directory supplies it, and a spec is the right place to decide to draw it rather than a
-  component ticket.
-- The add flow is the library's and not the dialog's, which is why the decision to stay on the library lives
-  here. It is also the reason the client does not optimistically draw the new item: the route already returns
-  the playlist in `syncing`, so the server's answer is the state the screen shows.
-- The empty shelf and the playlist empty state are the pair most likely to be collapsed by an implementation
-  under time pressure, and the verification list names them explicitly because collapsing them tells a person
-  with no playlists to sync something.

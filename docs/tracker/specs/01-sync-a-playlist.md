@@ -168,11 +168,7 @@ built to protect, and it is a refusal rather than a recovery.
 - **Everything about YouTube stays behind the adapter.** The sync never parses yt-dlp output and never spawns
   a process, because the adapter is the only seam to the source and that boundary is what makes the sync
   testable at all.
-- **Binding constraints, not negotiable inside this spec:** identity comes from the forwarded edge headers and
-  fails closed when they are absent; no transcoding, and the stored format is AAC in an M4A container; the
-  stored media rather than YouTube is the source of truth for playback; a sync never deletes a stored track;
-  every mutating request carries the client header and passes the origin check; and the server is the only
-  component that touches the database, the media root, or yt-dlp.
+- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), no transcoding and the AAC/M4A store ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)), private deployment behind the edge ([`0001`](../../adr/0001-private-deployment-behind-pangolin-edge.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)). The retention promise is owned by [`PRODUCT.md`](../../PRODUCT.md).
 
 ## Testing Decisions
 
@@ -218,18 +214,3 @@ built to protect, and it is a refusal rather than a recovery.
   [`03-read-a-playlist`](03-read-a-playlist.md) owns.
 - The client's live view of a run in flight, which
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns.
-
-## Further Notes
-
-- The invariant this spec exists to hold, restated once: **a stored track survives every sync, and a failed
-  sync changes nothing at all.** Both halves are checked by tests, and the second half is the one that will
-  not show up in a demo, which is why it has its own case above.
-- The architecture document describes the reconcile as a video missing from the source marking its track
-  `sourceStatus: removed`. This spec keeps that rule and adds the failure branch the document does not name,
-  because the branch is where the rule would be violated by accident.
-- The source uniqueness migration in decision six is the one change here that alters an existing constraint
-  rather than filling an empty behaviour. It is worth an ADR when the ticket is cut, and it is marked
-  _Decided here_ so it can be overturned before then rather than after.
-- The `removedCount` field stays at zero throughout v1. That is intentional: the web client shows a number
-  that is honest, and a future decision to give a sync the power to remove would be recorded as an ADR rather
-  than arriving as a changed number.

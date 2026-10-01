@@ -130,10 +130,7 @@ reflected in the browser's own media controls, from the same state.
 - **A track held by two playlists is one file and one stream address,** and the queue plays the same audio
   either way. The deduplication that makes this true is a property of the media store, and the player simply
   never knows there was a second playlist.
-- **Binding constraints, not negotiable inside this spec:** the stored media is what plays, never the source;
-  there is no transcoding and no download endpoint; a stream requires the same authorisation as any other read,
-  so the browser's session is attached to the audio request; and the client never writes to the media root, the
-  database, or any state the server owns.
+- **Inherited constraints are owned by the ADRs and not restated here:** no transcoding and the stored media as what plays ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)), identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
 
 ## Testing Decisions
 
@@ -182,14 +179,3 @@ reflected in the browser's own media controls, from the same state.
 - Editing tags, titles, or artwork, which belong to the source.
 - Synchronising playback position between clients. It is per client, so two devices are two sessions.
 - Reordering the queue. No control is designed for it, and the order is the playlist's.
-
-## Further Notes
-
-- Playing a track writing nothing to the server is the most consequential decision in this spec and the easiest
-  to reverse by accident. Any future request to know what somebody listened to is a product change with a
-  privacy dimension, not a field to add.
-- The one check this spec cannot fake, a real seek against a real file, is the one that decides whether the
-  feature works. It belongs to the end-to-end ticket, and a queue that passes every unit test while seeking
-  takes four seconds is still broken.
-- Because the queue is one playlist at a time and a track records its origin, the player bar and the track list
-  have everything they need to say where the music is coming from without a new route or a new server field.

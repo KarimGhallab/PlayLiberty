@@ -143,16 +143,13 @@ snapshot is not edited; the check below is run when a document here or a specime
 node docs/design/scripts/validate-design-tokens.cjs
 ```
 
-It runs 25 checks. `tokens.css` holds nothing but custom property declarations. No specimen hard-codes a
-colour a token already carries. No `:hover` rule paints with a tone token, which is the one mistake in
-this file that no ratio can catch and so has to be forbidden outright. Every text pairing clears AA at
-4.5:1. Every control boundary clears 3:1. Every ratio printed on a specimen still matches. Nothing
-references a token that no longer exists. Every ratio quoted in this directory still matches. Every mapped
-state word is drawn as a state label, which is an element carrying a state class rather than the word
-appearing anywhere in a file. Every relative link resolves to a file that exists, across the specimens,
-this directory and the tracker, which is why the index marks what is unbuilt as text rather than
-linking it. The tracker is in that walk because a ticket and a design record point at each other with
-paths relative to where each sits, and a path one `..` short breaks without looking wrong.
+The checks and the reason for each are owned by the script's own header comment. Their subjects, briefly:
+`tokens.css` holds nothing but custom-property declarations; no specimen hard-codes a colour a token already
+carries; no `:hover` rule paints with a tone token; a text pairing clears AA at 4.5:1 and a control boundary
+clears 3:1, both computed rather than asserted; every ratio printed on a specimen or quoted in this
+directory still matches; nothing references a token that no longer exists; every mapped state word is drawn
+as a state label; and every relative link resolves across the specimens, this directory and the tracker,
+which is why the index marks what is unbuilt as text rather than linking it.
 
 It also holds the rejected candidates at their measured values. Those cannot fail the run, because they
 are values that were tried and ruled out, and their only job is to hold a figure steady so a document can

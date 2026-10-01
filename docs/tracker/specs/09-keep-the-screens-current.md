@@ -130,10 +130,7 @@ than reloading forever.
   [`03-read-a-playlist`](03-read-a-playlist.md) records. The playlist gives the header and the state, the tracks
   give the list, and the latest run gives the summary or the error. They are three resources with three
   lifetimes, and invalidating one does not invalidate the others.
-- **Binding constraints, not negotiable inside this spec:** identity comes from the forwarded edge headers and
-  fails closed; every mutating request carries the client header and passes the origin check; the server is the
-  only writer of the database; playback state is the client's and is never sent; and the client never writes to
-  the media root.
+- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
 
 ## Testing Decisions
 
@@ -175,18 +172,3 @@ than reloading forever.
 - The wording of a screen's error state, which the design records own, beyond the rule that a problem's title
   is what is shown.
 - The server's routes and the shape of their answers, which the other specs own.
-
-## Further Notes
-
-- This spec exists because the server's specs deliberately stopped at the wire. `01` says a client learns the
-  outcome from the latest-run route and does not say how often; `02` says a track moves through states and does
-  not say who watches; `04` and `05` change state and do not say what a screen does about it. Without this, each
-  client ticket would invent its own cadence and its own invalidation, and the two screens would disagree about
-  the same playlist.
-- The stop condition is the part most likely to be got wrong under time pressure. A client that polls forever
-  is a client that keeps an idle instance busy; a client that gives up after N tries is a client that stops
-  watching a download that is still running. Reading the stop condition out of the data is what makes both
-  wrong answers unavailable.
-- The one-shot re-authentication is the smallest decision here and the one with the worst failure. A second
-  navigation is a loop a person cannot escape, which is why the rule is written as an attempt and not as a
-  response to a status.

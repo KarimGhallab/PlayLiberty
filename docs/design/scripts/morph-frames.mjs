@@ -123,8 +123,8 @@ const S_TOP = cut(PLAY_PTS.E, PLAY_PTS.F);
  * A point a fraction t along an edge. An edge is { to, r }: r 0 is a straight
  * line, r above 0 is a circular arc from the current point to `to`.
  *
- * Both halves of the arc maths were wrong at first and the box figures did not
- * show it, so they are pinned down here. The centre goes opposite the direction
+ * The two sign conventions are pinned down here, because the box figures do not
+ * show either. The centre goes opposite the direction
  * of travel, which for a fillet is what puts it on the inside of the corner:
  * the pause bar's bottom right fillet, (9,20) to (11,18) at r 2, has its centre
  * at (9,18), and the other sign puts it at (11,20), which is the corner itself.

@@ -128,9 +128,7 @@ again, whoever asks for it.
 - **The web client learns about a store the same way it learns about a sync.** Nothing pushes a track's state
   to the browser; the playlist read carries the file and source status, and the client refetches while work is
   in flight. [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns that loop.
-- **Binding constraints, not negotiable inside this spec:** no transcoding, ever; only the YouTube adapter
-  spawns a tool or reads source output; the stored media is what clients play; the server is the only writer
-  of the media root; a stored audio file is faststart so a browser can seek without fetching the tail.
+- **Inherited constraints are owned by the ADRs and not restated here:** no transcoding, ever, and the AAC/M4A store ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)), identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
 
 ## Testing Decisions
 
@@ -176,18 +174,3 @@ again, whoever asks for it.
 - Reading the source to decide what to download, which [`01-sync-a-playlist`](01-sync-a-playlist.md) owns.
 - The client's live view of a download in flight, which
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns.
-
-## Further Notes
-
-- The media store is the reason this feature is shaped around a single file per video id rather than a file
-  per playlist. Everything else here, the claim, the retry and the unavailable state, follows from that one
-  property.
-- Two existing mechanisms already do part of this work and are named here so the ticket does not rebuild them:
-  the startup sweep empties the temporary directory and returns interrupted downloads to `pending`, and the
-  adapter already writes, remuxes and hands back a finished path. What is missing is the claim, the fetch and
-  the state transitions inside a loop that already exists.
-- The `unavailable` state is the only terminal state, and it is reached from two places, the reconcile and a
-  download that discovers the video is gone. Both are specified to produce the same pair of values, and the
-  rule itself belongs to the sync spec so there is one answer rather than two that agree today.
-- The download configuration, including the concurrency cap and every retry and rate option, already exists in
-  the server's configuration. This spec consumes it and adds no new setting.

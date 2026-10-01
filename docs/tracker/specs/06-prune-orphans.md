@@ -109,10 +109,7 @@ rather than being forced through.
 - **Nothing about the prune is visible to the web client.** It writes no state a screen reads, and it is the one
   feature in the set with no client clause at all. A track that the prune removes is gone from a playlist only
   because something already removed its last association.
-- **Binding constraints, not negotiable inside this spec:** a stored track is never deleted because a source
-  video disappeared; a stored track is deleted only when no playlist associates it; the server is the only
-  writer of the media root and the only writer of the database; the media store is instance-wide, so one track
-  with no references anywhere is the unit of deletion rather than one track per playlist.
+- **Inherited constraints are owned by the ADRs and not restated here:** no transcoding and the AAC/M4A store ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)). The retention promise that a stored track survives its source is owned by [`PRODUCT.md`](../../PRODUCT.md).
 
 ## Testing Decisions
 
@@ -149,14 +146,3 @@ rather than being forced through.
 - Any change to what a sync does, and any change to retention.
 - Replacing the startup sweep, or moving the sweep's work into this job.
 - Recovering a pruned track. There is no second copy, and pretending otherwise would be a lie in the interface.
-
-## Further Notes
-
-- This is the only job in the server whose failure is permanent, and that asymmetry is worth carrying into the
-  ticket. Every other feature here can be wrong and corrected by doing it again.
-- The rule that an orphan is exactly a track with zero associations is doing all the work. The tempting
-  refinements, age, file status, source status, are each individually reasonable and collectively a way to
-  delete a song somebody plays.
-- The relationship with the two other lifecycle features is worth keeping explicit when the ticket is cut: a
-  playlist delete leaves the media for this job, this job never touches a referenced track, and the startup
-  sweep is what catches whatever both of them leave behind after a crash.

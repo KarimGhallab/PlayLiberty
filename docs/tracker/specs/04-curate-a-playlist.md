@@ -160,10 +160,7 @@ suppresses it, so the next sync does not put it back.
 - **The web client renders the result of the rule, not the rule.** The detail screen draws the overflow items
   and the row controls the `access` field permits, and every refusal it never draws is still enforced when it
   is asked for directly.
-- **Binding constraints, not negotiable inside this spec:** identity comes from the forwarded edge headers and
-  fails closed; a playlist the account cannot see is `404` and never `403`; only the server writes the
-  database; the stored media is the source of truth for playback, so removing an association never touches a
-  file; and a playlist is owned by exactly one account.
+- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)), and no transcoding ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)).
 
 ## Testing Decisions
 
@@ -213,16 +210,3 @@ suppresses it, so the next sync does not put it back.
 - The download a new track triggers, which [`02-store-a-track`](02-store-a-track.md) owns.
 - Syncing, which [`01-sync-a-playlist`](01-sync-a-playlist.md) owns.
 - Any admin override on a playlist. A role is not authority over somebody else's shelf.
-
-## Further Notes
-
-- The route shape here is the one place where this set of specs changes a decision another document already
-  records. The product document promises the capability, and the add-a-video dialog record explains it away by
-  saying no multi-playlist route exists. That record should be corrected when the ticket lands, and the route
-  itself is worth an ADR because it is a contract change with three consumers.
-- The result shape, one outcome per playlist, is the part most likely to be got wrong under time pressure,
-  because the obvious implementation is a single status code and a loop of requests. It is the reason the
-  verification list names the mixed batch explicitly.
-- The suppression write is the smallest line in this spec and the one that most protects the product's promise
-  in the other direction. A removal that does not write one is a track that comes back on the next sync, and
-  the user experiences that as the product breaking its word.
