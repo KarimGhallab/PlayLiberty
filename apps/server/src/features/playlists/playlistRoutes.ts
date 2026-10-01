@@ -25,7 +25,8 @@ import {
   PlaylistOutcome,
   listPlaylistTracksForAccount,
   listPlaylistsForAccount,
-  readPlaylistForAccount
+  readPlaylistForAccount,
+  renamePlaylistForAccount
 } from './playlistService.js';
 
 export function registerPlaylistRoutes(
@@ -147,10 +148,28 @@ export function registerPlaylistRoutes(
         return sendInvalidRequest(reply, parsed.message);
       }
 
-      return sendNotImplemented(
-        reply,
-        'Renaming a playlist is not implemented yet.'
+      const result = renamePlaylistForAccount(
+        context.database,
+        request.params.id,
+        request.account.id,
+        parsed.data.name
       );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail:
+            'The playlist does not exist, or this account cannot manage it.'
+        });
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
     }
   );
 

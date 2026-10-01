@@ -9,6 +9,7 @@ import type {
 } from '@playliberty/contracts';
 
 import {
+  isPlaylistOwner,
   playlistVisibleTo,
   resolvePlaylistAccess,
   resolvePlaylistAccessMany,
@@ -152,6 +153,33 @@ export function readPlaylistForAccount(
       sharedPlaylistIds(database, [playlistId]).has(playlistId)
     )
   };
+}
+
+/*
+ * Renaming belongs to the owner alone, so a write collaborator who may curate
+ * answers the same not-found a stranger does, and the route never confirms a
+ * playlist the caller may not manage. The update touches the name and the row's
+ * updated timestamp and nothing else: not the source, the cover, the last-synced
+ * time or the sync status, because those are the source's facts and this is the
+ * owner's.
+ */
+export function renamePlaylistForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string,
+  name: string
+): ReadPlaylistResult {
+  if (!isPlaylistOwner(database, playlistId, accountId)) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  database.db
+    .update(playlists)
+    .set({ name, updatedAt: new Date().toISOString() })
+    .where(eq(playlists.id, playlistId))
+    .run();
+
+  return readPlaylistForAccount(database, playlistId, accountId);
 }
 
 export interface ListPlaylistTracksQuery {

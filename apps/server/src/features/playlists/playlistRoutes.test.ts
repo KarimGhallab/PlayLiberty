@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   AssociationOrigin,
   PlaylistSchema,
+  PlaylistSyncStatus,
   PlaylistTrackSchema,
   Provider,
   ShareLevel,
@@ -66,7 +67,14 @@ function seedAccount(
 function seedPlaylist(
   database: DatabaseHandle,
   ownerAccountId: string,
-  options: { createdAt?: string; name?: string } = {}
+  options: {
+    createdAt?: string;
+    name?: string;
+    coverUrl?: string | null;
+    sourceUrl?: string | null;
+    lastSyncedAt?: string | null;
+    syncStatus?: PlaylistSyncStatus;
+  } = {}
 ): string {
   const playlistId = randomUUID();
 
@@ -76,9 +84,12 @@ function seedPlaylist(
       id: playlistId,
       ownerAccountId,
       name: options.name ?? 'Playlist',
-      coverUrl: null,
+      coverUrl: options.coverUrl ?? null,
       provider: Provider.Youtube,
       sourcePlaylistId: `source-${playlistId}`,
+      sourceUrl: options.sourceUrl ?? null,
+      syncStatus: options.syncStatus ?? PlaylistSyncStatus.Idle,
+      lastSyncedAt: options.lastSyncedAt ?? null,
       createdAt: options.createdAt ?? new Date().toISOString()
     })
     .run();
@@ -229,6 +240,23 @@ function get(url: string, pangolinUserId: string) {
     method: 'GET',
     url,
     headers: { 'remote-user': pangolinUserId }
+  });
+}
+
+function patch(
+  url: string,
+  pangolinUserId: string,
+  payload: Record<string, unknown>
+) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.app.inject({
+    method: 'PATCH',
+    url,
+    headers: { 'remote-user': pangolinUserId, 'x-playliberty-client': 'test' },
+    payload
   });
 }
 
@@ -1282,5 +1310,164 @@ describe('GET /playlists/:id/tracks', () => {
     expect(track).toHaveProperty('durationSeconds');
     expect(track?.thumbnailPath).toBeNull();
     expect(track?.durationSeconds).toBeNull();
+  });
+});
+
+describe('PATCH /playlists/:id', () => {
+  it('renames as the owner and stores the trimmed name', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      name: 'Before'
+    });
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}`,
+      owner.pangolinUserId,
+      { name: '  Evening Jazz  ' }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).name).toBe('Evening Jazz');
+    expect(
+      context.database.db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get()?.name
+    ).toBe('Evening Jazz');
+  });
+
+  it('refuses a name that is empty after trimming and leaves the playlist alone', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      name: 'Kept'
+    });
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}`,
+      owner.pangolinUserId,
+      { name: '   ' }
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+    expect(
+      context.database.db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get()?.name
+    ).toBe('Kept');
+  });
+
+  it('refuses a name longer than two hundred characters', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}`,
+      owner.pangolinUserId,
+      { name: 'x'.repeat(201) }
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+  });
+
+  it('answers 404 for a write collaborator, a read collaborator, a stranger and a missing playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      name: 'Kept'
+    });
+    const writer = seedAccount(context.database);
+    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    const stranger = seedAccount(context.database);
+
+    const attempts: [string, string][] = [
+      [playlistId, writer.pangolinUserId],
+      [playlistId, reader.pangolinUserId],
+      [playlistId, stranger.pangolinUserId],
+      [randomUUID(), owner.pangolinUserId]
+    ];
+
+    for (const [targetId, pangolinUserId] of attempts) {
+      const response = await patch(
+        `/api/v1/playlists/${targetId}`,
+        pangolinUserId,
+        { name: 'Renamed' }
+      );
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+    }
+
+    expect(
+      context.database.db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get()?.name
+    ).toBe('Kept');
+  });
+
+  it('changes the name and the updated timestamp and nothing else', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      name: 'Before',
+      coverUrl: 'https://example.com/cover.jpg',
+      sourceUrl: 'https://www.youtube.com/playlist?list=PL1234567890abcdef',
+      lastSyncedAt: '2020-06-01T00:00:00.000Z',
+      syncStatus: PlaylistSyncStatus.Error
+    });
+    context.database.db
+      .update(playlists)
+      .set({ updatedAt: '2020-01-01T00:00:00.000Z' })
+      .where(eq(playlists.id, playlistId))
+      .run();
+    const before = context.database.db
+      .select()
+      .from(playlists)
+      .where(eq(playlists.id, playlistId))
+      .get();
+
+    await patch(`/api/v1/playlists/${playlistId}`, owner.pangolinUserId, {
+      name: 'After'
+    });
+
+    const after = context.database.db
+      .select()
+      .from(playlists)
+      .where(eq(playlists.id, playlistId))
+      .get();
+
+    expect(after?.name).toBe('After');
+    expect(after?.updatedAt).not.toBe(before?.updatedAt);
+    expect(after?.sourceUrl).toBe(before?.sourceUrl);
+    expect(after?.coverUrl).toBe(before?.coverUrl);
+    expect(after?.lastSyncedAt).toBe(before?.lastSyncedAt);
+    expect(after?.syncStatus).toBe(before?.syncStatus);
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+
+    const response = await context.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/playlists/${playlistId}`,
+      headers: { 'remote-user': owner.pangolinUserId },
+      payload: { name: 'Renamed' }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
   });
 });
