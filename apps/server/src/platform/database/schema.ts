@@ -48,6 +48,11 @@ export const playlists = sqliteTable(
     coverUrl: text('cover_url'),
     provider: text('provider').$type<Provider>().notNull(),
     sourcePlaylistId: text('source_playlist_id').notNull(),
+    // The normalized source URL the adapter produced when the playlist was
+    // created, kept so a later sync can read the source again. Nullable because a
+    // playlist seeded before this column existed has none; every playlist this
+    // server creates sets it.
+    sourceUrl: text('source_url'),
     syncStatus: text('sync_status')
       .$type<PlaylistSyncStatus>()
       .notNull()

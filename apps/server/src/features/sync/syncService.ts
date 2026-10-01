@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 
 import { and, eq, sql } from 'drizzle-orm';
 
-import type { SyncRun } from '@playliberty/contracts';
 import {
   AssociationOrigin,
   PlaylistSyncStatus,
@@ -11,9 +10,11 @@ import {
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
-import type { YoutubeUrlInfo } from '@playliberty/youtube';
+import type { SyncRun } from '@playliberty/contracts';
 import { validateYoutubeUrl } from '@playliberty/youtube';
+import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
+import { resolvePlaylistAccess } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
@@ -23,17 +24,22 @@ import {
   syncRuns,
   tracks
 } from '../../platform/database/schema.js';
+import type { PlaylistRow } from '../../platform/database/schema.js';
 import { addAssociation } from '../playlists/associationService.js';
 
 /*
  * Syncing a Synced playlist with its Source.
  *
- * The reconcile reads the source through the adapter, so it cannot finish inside
- * a request: `startSyncForSource` creates the playlist if it is new, opens a run
- * in `running`, returns it, and lets the reconcile finish in the background,
- * where a client learns the outcome from the latest-run route. Ticket 02 opens
- * the same run on an existing playlist; ticket 03 adds retention, ticket 04
- * suppression, and ticket 05 the failure branch's full guarantees.
+ * A reconcile reads the source through the adapter, so it cannot finish inside a
+ * request: starting a sync creates the playlist if it is new, opens a run in
+ * `running`, returns it, and lets the reconcile finish in the background, where a
+ * client learns the outcome from the latest-run route.
+ *
+ * One run at a time per playlist. A second request while a run is in flight is
+ * refused rather than queued, because two runs would each assign positions and
+ * write the playlist's counts and the loser would overwrite the winner's numbers.
+ * Ticket 03 adds retention, ticket 04 suppression, and ticket 05 the failure
+ * branch's full guarantees.
  */
 
 /*
@@ -49,47 +55,139 @@ export function resolveSourceUrl(raw: string): YoutubeUrlInfo | null {
   }
 }
 
-export interface StartedSync {
-  playlistId: string;
-  run: SyncRun;
+export enum StartSyncOutcome {
+  Started = 'started',
+  AlreadyRunning = 'already_running',
+  PlaylistNotFound = 'playlist_not_found'
 }
+
+export type StartOrConflict =
+  | { outcome: StartSyncOutcome.Started; playlistId: string; run: SyncRun }
+  | { outcome: StartSyncOutcome.AlreadyRunning };
+
+export type StartSyncResult =
+  StartOrConflict | { outcome: StartSyncOutcome.PlaylistNotFound };
 
 export function startSyncForSource(
   context: AppContext,
   accountId: string,
   info: YoutubeUrlInfo
-): StartedSync {
+): StartOrConflict {
   const database = context.database;
 
   // Source uniqueness is per owner, so this finds the caller's own playlist for
   // the source and never one belonging to somebody else. The insert is a
   // conflict-no-op rather than a check-then-insert, so two simultaneous pastes of
   // one source cannot both create a playlist.
-  const playlistId = randomUUID();
-  const syncRunId = randomUUID();
-
-  const { changes } = database.db
+  const inserted = database.db
     .insert(playlists)
     .values({
-      id: playlistId,
+      id: randomUUID(),
       ownerAccountId: accountId,
       name: info.sourceId,
       coverUrl: null,
       provider: Provider.Youtube,
       sourcePlaylistId: info.sourceId,
-      syncStatus: PlaylistSyncStatus.Syncing,
-      updatedAt: new Date().toISOString()
+      sourceUrl: info.url,
+      syncStatus: PlaylistSyncStatus.Syncing
     })
     .onConflictDoNothing()
-    .run();
+    .returning()
+    .get();
 
-  if (changes !== 1) {
+  // The insert returns the row it created, or nothing when the caller already
+  // holds this source. On a conflict the row belongs to the earlier paste, so it
+  // is read rather than assumed. The unique index and the conflict clause are what
+  // stop two pastes of one source from both creating a playlist.
+  const playlist =
+    inserted ??
+    database.db
+      .select()
+      .from(playlists)
+      .where(
+        and(
+          eq(playlists.ownerAccountId, accountId),
+          eq(playlists.provider, Provider.Youtube),
+          eq(playlists.sourcePlaylistId, info.sourceId)
+        )
+      )
+      .get();
+
+  if (playlist === undefined) {
     throw new Error('The playlist could not be created or found.');
   }
 
+  // A playlist that predates the source URL column, or one the caller re-pasted
+  // with a differently normalized URL, is filled in from what was just pasted so
+  // the next sync has something to read.
+  if (playlist.sourceUrl !== info.url) {
+    database.db
+      .update(playlists)
+      .set({ sourceUrl: info.url, updatedAt: new Date().toISOString() })
+      .where(eq(playlists.id, playlist.id))
+      .run();
+  }
+
+  return beginRun(context, playlist);
+}
+
+export function startSyncForPlaylist(
+  context: AppContext,
+  playlistId: string,
+  accountId: string
+): StartSyncResult {
+  const access = resolvePlaylistAccess(context.database, playlistId, accountId);
+
+  // A read collaborator and a stranger both answer not-found, so the route does
+  // not confirm a playlist the caller cannot write. Rename, delete and share
+  // management stay with the owner; a write collaborator may sync.
+  if (access !== 'owner' && access !== 'write') {
+    return { outcome: StartSyncOutcome.PlaylistNotFound };
+  }
+
+  const playlist = context.database.db
+    .select()
+    .from(playlists)
+    .where(eq(playlists.id, playlistId))
+    .get();
+
+  if (playlist === undefined) {
+    return { outcome: StartSyncOutcome.PlaylistNotFound };
+  }
+
+  return beginRun(context, playlist);
+}
+
+function beginRun(context: AppContext, playlist: PlaylistRow): StartOrConflict {
+  const database = context.database;
+
+  const running = database.db
+    .select({ id: syncRuns.id })
+    .from(syncRuns)
+    .where(
+      and(
+        eq(syncRuns.playlistId, playlist.id),
+        eq(syncRuns.status, SyncRunStatus.Running)
+      )
+    )
+    .get();
+
+  if (running !== undefined) {
+    return { outcome: StartSyncOutcome.AlreadyRunning };
+  }
+
+  database.db
+    .update(playlists)
+    .set({
+      syncStatus: PlaylistSyncStatus.Syncing,
+      updatedAt: new Date().toISOString()
+    })
+    .where(eq(playlists.id, playlist.id))
+    .run();
+
   const run: SyncRun = {
-    id: syncRunId,
-    playlistId: playlistId,
+    id: randomUUID(),
+    playlistId: playlist.id,
     status: SyncRunStatus.Running,
     addedCount: 0,
     retainedCount: 0,
@@ -102,9 +200,9 @@ export function startSyncForSource(
 
   database.db.insert(syncRuns).values(run).run();
 
-  void reconcile(context, run.id, playlistId, info);
+  void reconcile(context, run.id, playlist);
 
-  return { playlistId: playlistId, run };
+  return { outcome: StartSyncOutcome.Started, playlistId: playlist.id, run };
 }
 
 /*
@@ -112,20 +210,23 @@ export function startSyncForSource(
  * covers the two cases where nothing is removed: a video the instance has never
  * seen becomes a track queued for download, and a video it already holds gains an
  * association and no second track. A video the playlist already associates is
- * left exactly where it is.
+ * left exactly as it is, which is what makes a second sync change nothing.
  */
 async function reconcile(
   context: AppContext,
   runId: string,
-  playlistId: string,
-  info: YoutubeUrlInfo
+  playlist: PlaylistRow
 ): Promise<void> {
   const database = context.database;
 
   try {
-    const source = await context.youtube.listSource(info.url);
+    if (playlist.sourceUrl === null) {
+      throw new Error('The playlist has no source URL to read.');
+    }
 
-    let nextPosition = nextPositionFor(database, playlistId);
+    const source = await context.youtube.listSource(playlist.sourceUrl);
+
+    let nextPosition = nextPositionFor(database, playlist.id);
     let added = 0;
 
     for (const item of source.entries) {
@@ -136,12 +237,12 @@ async function reconcile(
         item.durationSeconds
       );
 
-      if (hasAssociation(database, playlistId, trackId)) {
+      if (hasAssociation(database, playlist.id, trackId)) {
         continue;
       }
 
       addAssociation(database, {
-        playlistId,
+        playlistId: playlist.id,
         trackId,
         origin: AssociationOrigin.Remote,
         position: nextPosition
@@ -150,7 +251,14 @@ async function reconcile(
       added += 1;
     }
 
-    const name = source.title.trim().length > 0 ? source.title : info.sourceId;
+    const retained = retainAbsentTracks(
+      database,
+      playlist.id,
+      source.entries.map(item => item.videoId)
+    );
+
+    const name =
+      source.title.trim().length > 0 ? source.title : playlist.sourcePlaylistId;
     const coverUrl = source.entries[0]?.thumbnailUrl ?? null;
     const finishedAt = new Date().toISOString();
 
@@ -159,7 +267,12 @@ async function reconcile(
     database.sqlite.transaction(() => {
       database.db
         .update(syncRuns)
-        .set({ status: SyncRunStatus.Completed, addedCount: added, finishedAt })
+        .set({
+          status: SyncRunStatus.Completed,
+          addedCount: added,
+          retainedCount: retained,
+          finishedAt
+        })
         .where(eq(syncRuns.id, runId))
         .run();
 
@@ -172,7 +285,7 @@ async function reconcile(
           syncStatus: PlaylistSyncStatus.Idle,
           updatedAt: finishedAt
         })
-        .where(eq(playlists.id, playlistId))
+        .where(eq(playlists.id, playlist.id))
         .run();
     })();
   } catch (error) {
@@ -195,7 +308,7 @@ async function reconcile(
           lastSyncedAt: finishedAt,
           updatedAt: finishedAt
         })
-        .where(eq(playlists.id, playlistId))
+        .where(eq(playlists.id, playlist.id))
         .run();
     })();
   }
@@ -209,6 +322,66 @@ function nextPositionFor(database: DatabaseHandle, playlistId: string): number {
     .get();
 
   return (row?.value ?? -1) + 1;
+}
+
+/*
+ * A video the source no longer lists does not take its track with it. A stored
+ * track keeps its file and is marked remote-removed, which is the retention the
+ * product promises; a track that never got a file becomes unavailable rather than
+ * sitting queued forever. The flag lives on the track, so every playlist holding
+ * it reads the same answer. Only the stored case is a retention, because nothing
+ * was kept for a track that had no file.
+ */
+function retainAbsentTracks(
+  database: DatabaseHandle,
+  playlistId: string,
+  presentVideoIds: string[]
+): number {
+  const present = new Set(presentVideoIds);
+  const rows = database.db
+    .select({
+      trackId: tracks.id,
+      videoId: tracks.videoId,
+      fileStatus: tracks.fileStatus,
+      sourceStatus: tracks.sourceStatus
+    })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(eq(associations.playlistId, playlistId))
+    .all();
+
+  const updatedAt = new Date().toISOString();
+  let retained = 0;
+
+  for (const row of rows) {
+    if (
+      present.has(row.videoId) ||
+      row.sourceStatus === TrackSourceStatus.Removed
+    ) {
+      continue;
+    }
+
+    if (row.fileStatus === TrackFileStatus.Stored) {
+      database.db
+        .update(tracks)
+        .set({ sourceStatus: TrackSourceStatus.Removed, updatedAt })
+        .where(eq(tracks.id, row.trackId))
+        .run();
+      retained += 1;
+    } else {
+      database.db
+        .update(tracks)
+        .set({
+          sourceStatus: TrackSourceStatus.Removed,
+          fileStatus: TrackFileStatus.Unavailable,
+          updatedAt
+        })
+        .where(eq(tracks.id, row.trackId))
+        .run();
+    }
+  }
+
+  return retained;
 }
 
 function ensureTrack(

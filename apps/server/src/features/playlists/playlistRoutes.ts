@@ -16,7 +16,12 @@ import {
   sendProblem
 } from '../../shared/problem.js';
 
-import { resolveSourceUrl, startSyncForSource } from '../sync/syncService.js';
+import {
+  StartSyncOutcome,
+  resolveSourceUrl,
+  startSyncForPlaylist,
+  startSyncForSource
+} from '../sync/syncService.js';
 import {
   PlaylistOutcome,
   listPlaylistsForAccount,
@@ -61,6 +66,15 @@ export function registerPlaylistRoutes(
     // The playlist and its run exist before this answers, so the client has an id
     // to read the run from; the reconcile itself finishes behind the response.
     const started = startSyncForSource(context, request.account.id, info);
+
+    if (started.outcome === StartSyncOutcome.AlreadyRunning) {
+      return sendProblem(reply, {
+        status: 409,
+        code: 'sync_already_running',
+        title: 'Sync Already Running',
+        detail: 'A sync is already running for this playlist.'
+      });
+    }
 
     return reply.code(202).send(started.run);
   });
@@ -119,11 +133,33 @@ export function registerPlaylistRoutes(
 
   app.post<{ Params: { id: string } }>(
     '/playlists/:id/sync',
-    async (_request, reply) => {
-      return sendNotImplemented(
-        reply,
-        'Syncing a playlist is not implemented yet.'
+    async (request, reply) => {
+      const result = startSyncForPlaylist(
+        context,
+        request.params.id,
+        request.account.id
       );
+
+      if (result.outcome === StartSyncOutcome.PlaylistNotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail:
+            'The playlist does not exist, or this account cannot write it.'
+        });
+      }
+
+      if (result.outcome === StartSyncOutcome.AlreadyRunning) {
+        return sendProblem(reply, {
+          status: 409,
+          code: 'sync_already_running',
+          title: 'Sync Already Running',
+          detail: 'A sync is already running for this playlist.'
+        });
+      }
+
+      return reply.code(202).send(result.run);
     }
   );
 

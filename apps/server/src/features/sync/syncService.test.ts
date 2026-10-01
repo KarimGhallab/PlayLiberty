@@ -1,4 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+
+import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -9,9 +12,11 @@ import {
   SyncRunSchema,
   SyncRunStatus,
   TrackFileStatus,
-  TrackSourceStatus
+  TrackSourceStatus,
+  createPageSchema
 } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
+import type { IYoutubeClient } from '@playliberty/youtube';
 
 import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
@@ -23,9 +28,11 @@ import {
 } from '../../app/testing/fakeYoutube.js';
 
 import { associations, tracks } from '../../platform/database/schema.js';
+import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
 
 const PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PL1234567890abcdef';
 const PLAYLIST_ID = TEST_SOURCE_ID;
+const PageSchema = createPageSchema(PlaylistSchema);
 
 let context: TestContext | undefined;
 
@@ -284,5 +291,333 @@ describe('POST /playlists', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+function postSync(playlistId: string, pangolinUserId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.app.inject({
+    method: 'POST',
+    url: `/api/v1/playlists/${playlistId}/sync`,
+    headers: {
+      'remote-user': pangolinUserId,
+      'x-playliberty-client': 'test'
+    }
+  });
+}
+
+function readTrackTitle(videoId: string): string | undefined {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.database.db
+    .select({ title: tracks.title })
+    .from(tracks)
+    .where(eq(tracks.videoId, videoId))
+    .get()?.title;
+}
+
+describe('POST /playlists/:id/sync', () => {
+  it('answers 202 with a run in running and leaves an unchanged source alone', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('a'), entry('b')]),
+          source([entry('a'), entry('b')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    const response = await postSync(first.playlistId, 'owner-1');
+
+    expect(response.statusCode).toBe(202);
+    const run = SyncRunSchema.parse(response.json());
+    expect(run.status).toBe(SyncRunStatus.Running);
+
+    const finished = await runFinished(first.playlistId, 'owner-1');
+    expect(finished.status).toBe(SyncRunStatus.Completed);
+    expect(finished.addedCount).toBe(0);
+
+    const playlist = await readPlaylist(first.playlistId, 'owner-1');
+    expect(playlist.trackCount).toBe(2);
+  });
+
+  it('appends a new video and leaves an associated one exactly as it is', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('a'), entry('b')]),
+          source([
+            { ...entry('a'), title: 'Renamed a' },
+            entry('b'),
+            entry('c')
+          ])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    const rows = readAssociations(first.playlistId);
+
+    expect(rows.map(row => row.videoId)).toEqual(['a', 'b', 'c']);
+    expect(rows.map(row => row.position)).toEqual([0, 1, 2]);
+    // The second read named 'a' differently. The track keeps the metadata it was
+    // created with, which is what "left exactly as it is" means.
+    expect(readTrackTitle('a')).toBe('Track a');
+  });
+
+  it('re-pasting a source the caller already synced returns the existing playlist', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(source([entry('a')]), source([entry('a')]))
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    const second = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+
+    expect(second.playlistId).toBe(first.playlistId);
+
+    await runFinished(first.playlistId, 'owner-1');
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', 'owner-1')).json()
+    );
+    expect(page.total).toBe(1);
+  });
+
+  it('refuses a second sync while one is in flight with 409', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const gated: IYoutubeClient = {
+      listSource: async () => {
+        await gate;
+        return source([entry('a')]);
+      },
+      downloadTrack: async () => {
+        throw new Error('a sync must not download');
+      }
+    };
+
+    context = await createTestContext({}, { youtube: gated });
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    expect(first.status).toBe(SyncRunStatus.Running);
+
+    const conflict = await postSync(first.playlistId, 'owner-1');
+
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json()).toMatchObject({ code: 'sync_already_running' });
+
+    release();
+    await runFinished(first.playlistId, 'owner-1');
+  });
+
+  it('refuses a caller who cannot write the playlist', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('a')])) }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    const response = await postSync(first.playlistId, 'owner-2');
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+});
+
+function trackByVideoId(videoId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.database.db
+    .select()
+    .from(tracks)
+    .where(eq(tracks.videoId, videoId))
+    .get();
+}
+
+function associationCount(videoId: string): number {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const row = context.database.db
+    .select({ total: sql<number>`count(*)` })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(eq(tracks.videoId, videoId))
+    .get();
+
+  return row?.total ?? 0;
+}
+
+/*
+ * A synced track arrives `pending`, so a test about retaining a file has to put
+ * one there first. The bytes are written where the static handler will look for
+ * the stored path, so the stream route really serves them rather than merely
+ * agreeing that a path exists.
+ */
+async function storeTrack(trackId: string, videoId: string): Promise<void> {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const relativePath = mediaRelativePath(videoId, '.m4a');
+  const absolutePath = join(context.directory, 'media', relativePath);
+  await mkdir(dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, 'stored-audio');
+
+  context.database.db
+    .update(tracks)
+    .set({ fileStatus: TrackFileStatus.Stored, filePath: relativePath })
+    .where(eq(tracks.id, trackId))
+    .run();
+}
+
+function stream(trackId: string, pangolinUserId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.app.inject({
+    method: 'GET',
+    url: `/api/v1/tracks/${trackId}/stream`,
+    headers: { 'remote-user': pangolinUserId }
+  });
+}
+
+describe('retaining a track whose source video is gone', () => {
+  it('marks a stored track remote-removed, keeps its file, counts it, and still streams', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          source([entry('bbbbbbbbbbb')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    const stored = trackByVideoId('aaaaaaaaaaa');
+    expect(stored).toBeDefined();
+    await storeTrack(stored?.id ?? '', 'aaaaaaaaaaa');
+
+    await postSync(first.playlistId, 'owner-1');
+    const finished = await runFinished(first.playlistId, 'owner-1');
+
+    expect(finished.retainedCount).toBe(1);
+    expect(finished.removedCount).toBe(0);
+
+    const retained = trackByVideoId('aaaaaaaaaaa');
+    expect(retained?.sourceStatus).toBe(TrackSourceStatus.Removed);
+    expect(retained?.fileStatus).toBe(TrackFileStatus.Stored);
+    expect(retained?.filePath).not.toBeNull();
+
+    const response = await stream(retained?.id ?? '', 'owner-1');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toBe('stored-audio');
+  });
+
+  it('makes a track that left before it was downloaded unavailable rather than pending', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          source([entry('bbbbbbbbbbb')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    await postSync(first.playlistId, 'owner-1');
+    const finished = await runFinished(first.playlistId, 'owner-1');
+
+    const gone = trackByVideoId('aaaaaaaaaaa');
+    expect(gone?.fileStatus).toBe(TrackFileStatus.Unavailable);
+    expect(gone?.sourceStatus).toBe(TrackSourceStatus.Removed);
+    // Nothing was retained, because there was no file to keep.
+    expect(finished.retainedCount).toBe(0);
+  });
+
+  it('reads remote-removed in every playlist that holds the track', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa')]),
+          source([entry('aaaaaaaaaaa')]),
+          source([])
+        )
+      }
+    );
+
+    const mine = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(mine.playlistId, 'owner-1');
+
+    const theirs = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-2')).json()
+    );
+    await runFinished(theirs.playlistId, 'owner-2');
+
+    // One shared track, two associations.
+    expect(associationCount('aaaaaaaaaaa')).toBe(2);
+
+    await postSync(mine.playlistId, 'owner-1');
+    await runFinished(mine.playlistId, 'owner-1');
+
+    // The flag lives on the track, so both playlists read the same answer.
+    const shared = trackByVideoId('aaaaaaaaaaa');
+    expect(shared?.sourceStatus).toBe(TrackSourceStatus.Removed);
+    expect(associationCount('aaaaaaaaaaa')).toBe(2);
+
+    const other = await readPlaylist(theirs.playlistId, 'owner-2');
+    expect(other.trackCount).toBe(1);
   });
 });
