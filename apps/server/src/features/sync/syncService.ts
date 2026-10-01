@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   AssociationOrigin,
@@ -220,6 +220,12 @@ async function reconcile(
     }
 
     const source = await context.youtube.listSource(playlist.sourceUrl);
+    const presentVideoIds = source.entries.map(item => item.videoId);
+
+    // A suppression lasts only while the source still lists the video. Once the
+    // source drops it, the listener's removal has nothing left to hold against, so
+    // a video that later returns is treated as new rather than staying removed.
+    liftAbsentSuppressions(database, playlist.id, presentVideoIds);
 
     let nextPosition = nextPositionFor(database, playlist.id);
     let added = 0;
@@ -251,11 +257,7 @@ async function reconcile(
       added += 1;
     }
 
-    const retained = retainAbsentTracks(
-      database,
-      playlist.id,
-      source.entries.map(item => item.videoId)
-    );
+    const retained = retainAbsentTracks(database, playlist.id, presentVideoIds);
 
     const name =
       source.title.trim().length > 0 ? source.title : playlist.sourcePlaylistId;
@@ -363,10 +365,51 @@ function retainAbsentTracks(
 }
 
 /*
+ * Lifting the suppressions whose video the source no longer lists. This is the one
+ * write the reconcile makes to suppressions, and it is what keeps a removal a
+ * choice about the playlist rather than a permanent deletion of the video: if the
+ * source later lists the video again, nothing holds it back. A suppression whose
+ * video is still present is left alone, so a removed track stays removed while the
+ * source still has it.
+ *
+ * The read is bounded by the playlist's own suppressions rather than by the source
+ * size, so a large playlist does not build a huge `not in` list.
+ */
+function liftAbsentSuppressions(
+  database: DatabaseHandle,
+  playlistId: string,
+  presentVideoIds: string[]
+): void {
+  const present = new Set(presentVideoIds);
+
+  const absent = database.db
+    .select({ videoId: suppressions.videoId })
+    .from(suppressions)
+    .where(eq(suppressions.playlistId, playlistId))
+    .all()
+    .map(row => row.videoId)
+    .filter(videoId => !present.has(videoId));
+
+  if (absent.length === 0) {
+    return;
+  }
+
+  database.db
+    .delete(suppressions)
+    .where(
+      and(
+        eq(suppressions.playlistId, playlistId),
+        inArray(suppressions.videoId, absent)
+      )
+    )
+    .run();
+}
+
+/*
  * A suppression is a video the listener removed from this playlist, and the
  * reconcile honours it rather than reopening the question: the video is skipped
- * and gets no association. The writer is removing a track (spec 04); this reads
- * and never writes one.
+ * and gets no association. The writer is removing a track (spec 04), and the lift
+ * above is the one write the reconcile makes to suppressions.
  */
 function isSuppressed(
   database: DatabaseHandle,

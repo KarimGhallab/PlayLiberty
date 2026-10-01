@@ -44,6 +44,7 @@ import {
 } from '../../platform/database/schema.js';
 import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
 import { processPendingTracks } from '../downloads/downloadWorker.js';
+import { removeAssociation } from '../playlists/associationService.js';
 
 const PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PL1234567890abcdef';
 const PLAYLIST_ID = TEST_SOURCE_ID;
@@ -721,7 +722,7 @@ describe('honouring a suppression', () => {
     expect(associationCount('aaaaaaaaaaa')).toBe(0);
     expect(trackByVideoId('aaaaaaaaaaa')).toBeUndefined();
     expect(associationCount('bbbbbbbbbbb')).toBe(1);
-    // The reconcile reads suppressions and never writes one.
+    // The reconcile leaves a suppression whose video the source still lists.
     expect(suppressionCount(first.playlistId)).toBe(1);
   });
 
@@ -754,7 +755,7 @@ describe('honouring a suppression', () => {
     expect(associationCount('aaaaaaaaaaa')).toBe(1);
   });
 
-  it('never writes a suppression of its own', async () => {
+  it('creates no suppression of its own', async () => {
     context = await createTestContext(
       {},
       { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
@@ -769,6 +770,106 @@ describe('honouring a suppression', () => {
     await runFinished(first.playlistId, 'owner-1');
 
     expect(suppressionCount(first.playlistId)).toBe(0);
+  });
+});
+
+describe('lifting a suppression', () => {
+  it('lifts a suppression once the source no longer lists the video', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          source([entry('bbbbbbbbbbb')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    // The listener removes the track while the source still lists it.
+    expect(
+      removeAssociation(context.database, {
+        playlistId: first.playlistId,
+        trackId: trackByVideoId('aaaaaaaaaaa')?.id ?? ''
+      })
+    ).toBe('removed');
+    expect(suppressionCount(first.playlistId)).toBe(1);
+
+    // The source then drops the video, so the removal has nothing left to hold
+    // against and the suppression is lifted.
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    expect(suppressionCount(first.playlistId)).toBe(0);
+    expect(associationCount('aaaaaaaaaaa')).toBe(0);
+  });
+
+  it('associates a video again after it left the source and returned', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          source([entry('bbbbbbbbbbb')]),
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    removeAssociation(context.database, {
+      playlistId: first.playlistId,
+      trackId: trackByVideoId('aaaaaaaaaaa')?.id ?? ''
+    });
+
+    // The source drops the video: the suppression is lifted.
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+    expect(suppressionCount(first.playlistId)).toBe(0);
+    expect(associationCount('aaaaaaaaaaa')).toBe(0);
+
+    // The video comes back, and there is nothing left to suppress it.
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    expect(associationCount('aaaaaaaaaaa')).toBe(1);
+  });
+
+  it('keeps a removed track removed while the source still lists it', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')])
+        )
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    removeAssociation(context.database, {
+      playlistId: first.playlistId,
+      trackId: trackByVideoId('aaaaaaaaaaa')?.id ?? ''
+    });
+
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    // The source still lists it, so the suppression holds and it stays removed.
+    expect(associationCount('aaaaaaaaaaa')).toBe(0);
+    expect(suppressionCount(first.playlistId)).toBe(1);
   });
 });
 
