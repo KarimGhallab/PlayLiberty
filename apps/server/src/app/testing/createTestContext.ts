@@ -14,11 +14,13 @@ import {
   createMediaPaths,
   ensureMediaDirectories
 } from '../../platform/media/mediaPaths.js';
+import type { MediaPaths } from '../../platform/media/mediaPaths.js';
 import { buildApp } from '../buildApp.js';
 
 export interface TestContext {
   app: FastifyInstance;
   database: DatabaseHandle;
+  mediaPaths: MediaPaths;
   directory: string;
   cleanup(): Promise<void>;
 }
@@ -61,6 +63,7 @@ export async function createTestContext(
   return {
     app,
     database,
+    mediaPaths,
     directory,
     cleanup: async (): Promise<void> => {
       await app.close();

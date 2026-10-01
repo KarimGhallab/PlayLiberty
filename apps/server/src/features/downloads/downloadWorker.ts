@@ -1,9 +1,18 @@
+import { mkdir, rename } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+
+import { eq } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
+
+import { TrackFileStatus } from '@playliberty/contracts';
 
 import type { AppContext } from '../../shared/context.js';
 
+import type { TrackRow } from '../../platform/database/schema.js';
+import { tracks } from '../../platform/database/schema.js';
 import type { JobHandle } from '../../platform/jobs/intervalJob.js';
 import { startIntervalJob } from '../../platform/jobs/intervalJob.js';
+import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
 
 /*
  * The slot that processes pending tracks. The queue is the `track` rows themselves,
@@ -24,19 +33,130 @@ export interface DownloadWorkerOptions {
 
 export type DownloadWorkerHandle = JobHandle;
 
+/*
+ * The worker reads three things from the context: the database it claims rows in,
+ * the media paths it writes under, and the adapter it fetches through. Naming just
+ * those lets a test drive one pass with a fake adapter and no server around it.
+ */
+type WorkerContext = Pick<AppContext, 'database' | 'mediaPaths' | 'youtube'>;
+
+const WORKER_INTERVAL_MS = 30_000;
+
 export function startDownloadWorker(
   options: DownloadWorkerOptions
 ): DownloadWorkerHandle {
-  // Claiming pending tracks and calling the adapter is a later ticket. Until then
-  // this keeps a single, stoppable owner of the worker slot, so the wiring is real
-  // and the seam the download will use is already in place.
+  // A tick is asynchronous and a download outlasts the interval, so a second tick
+  // while one is still running is skipped rather than started. The claim below is
+  // what stops two passes from taking the same track; this stops two passes from
+  // existing at all.
+  let running = false;
+
   return startIntervalJob({
-    intervalMs: 30_000,
+    intervalMs: WORKER_INTERVAL_MS,
     tick: (): void => {
-      options.logger.debug(
-        { mediaRoot: options.context.mediaPaths.root },
-        'download worker idle'
-      );
+      if (running) {
+        return;
+      }
+
+      running = true;
+      void processPendingTracks(options.context, options.logger).finally(() => {
+        running = false;
+      });
     }
   });
+}
+
+/*
+ * One pass, exposed so a test can drive it without waiting on the interval. It
+ * claims the pending tracks in one conditional update and downloads the ones it
+ * actually moved, so a track another pass already claimed is not fetched twice.
+ */
+export async function processPendingTracks(
+  context: WorkerContext,
+  logger: FastifyBaseLogger
+): Promise<void> {
+  const claimedPendingTracks = claimPendingTracks(context);
+  for (const track of claimedPendingTracks) {
+    await storeTrack(context, logger, track);
+  }
+}
+
+/*
+ * The claim is one statement: every row still `pending` becomes `downloading`, and
+ * the update returns exactly the rows it moved. A row already `downloading` or
+ * `stored` is not in the result, so two passes cannot both start the same download.
+ */
+function claimPendingTracks(context: WorkerContext): TrackRow[] {
+  return context.database.db
+    .update(tracks)
+    .set({
+      fileStatus: TrackFileStatus.Downloading,
+      updatedAt: new Date().toISOString()
+    })
+    .where(eq(tracks.fileStatus, TrackFileStatus.Pending))
+    .returning()
+    .all();
+}
+
+async function storeTrack(
+  context: WorkerContext,
+  logger: FastifyBaseLogger,
+  track: TrackRow
+): Promise<void> {
+  // The adapter writes the finished file under the temporary directory, and the
+  // move into the media store is one rename on the same filesystem. A crash
+  // therefore leaves a temporary file and no stored file, never a stored file that
+  // was half written, which is what the startup sweep cleans up.
+  const relativePath = mediaRelativePath(track.videoId, '.m4a');
+  const storedPath = join(context.mediaPaths.root, relativePath);
+  const tempPath = join(
+    context.mediaPaths.tempDir,
+    `${track.videoId}.stored.m4a`
+  );
+
+  try {
+    await mkdir(dirname(storedPath), { recursive: true });
+
+    const result = await context.youtube.downloadTrack({
+      videoId: track.videoId,
+      outputPath: tempPath,
+      tempDir: context.mediaPaths.tempDir
+    });
+
+    await rename(result.filePath, storedPath);
+
+    context.database.db
+      .update(tracks)
+      .set({
+        fileStatus: TrackFileStatus.Stored,
+        filePath: relativePath,
+        failureReason: null,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(tracks.id, track.id))
+      .run();
+
+    logger.info({ trackId: track.id, videoId: track.videoId }, 'track stored');
+  } catch (error) {
+    // A claimed track that throws must not stay `downloading` forever. Ticket 02
+    // owns the retry and ticket 03 the classification; what is here is the state
+    // that leaves no row stuck.
+    const message =
+      error instanceof Error ? error.message : 'The download failed.';
+
+    context.database.db
+      .update(tracks)
+      .set({
+        fileStatus: TrackFileStatus.Failed,
+        failureReason: message,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(tracks.id, track.id))
+      .run();
+
+    logger.warn(
+      { trackId: track.id, videoId: track.videoId, err: error },
+      'track download failed'
+    );
+  }
 }
