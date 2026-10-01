@@ -23,6 +23,7 @@ import {
 } from '../sync/syncService.js';
 import {
   PlaylistOutcome,
+  deletePlaylistForAccount,
   listPlaylistTracksForAccount,
   listPlaylistsForAccount,
   readPlaylistForAccount,
@@ -175,11 +176,28 @@ export function registerPlaylistRoutes(
 
   app.delete<{ Params: { id: string } }>(
     '/playlists/:id',
-    async (_request, reply) => {
-      return sendNotImplemented(
-        reply,
-        'Deleting a playlist is not implemented yet.'
+    async (request, reply) => {
+      const outcome = deletePlaylistForAccount(
+        context.database,
+        request.params.id,
+        request.account.id
       );
+
+      if (outcome === PlaylistOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail:
+            'The playlist does not exist, or this account cannot manage it.'
+        });
+      }
+
+      if (outcome === PlaylistOutcome.Ok) {
+        return reply.code(204).send();
+      }
+
+      return exhaust(outcome);
     }
   );
 

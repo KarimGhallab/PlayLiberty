@@ -182,6 +182,29 @@ export function renamePlaylistForAccount(
   return readPlaylistForAccount(database, playlistId, accountId);
 }
 
+/*
+ * Deleting belongs to the owner alone, so the not-found is the same one a stranger
+ * gets. The associations and the shares go with the row through the foreign key
+ * cascade, which is the one place the association service's rule, that an
+ * association is only ever written through it, is bypassed, and it is safe because
+ * the only stored count that would need adjusting is this playlist's own and that
+ * row is going. The media is left alone: the weekly prune reclaims a file once no
+ * association names its track, so the delete never waits on the disk.
+ */
+export function deletePlaylistForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string
+): PlaylistOutcome {
+  if (!isPlaylistOwner(database, playlistId, accountId)) {
+    return PlaylistOutcome.NotFound;
+  }
+
+  database.db.delete(playlists).where(eq(playlists.id, playlistId)).run();
+
+  return PlaylistOutcome.Ok;
+}
+
 export interface ListPlaylistTracksQuery {
   limit: number;
   offset: number;
