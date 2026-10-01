@@ -10,6 +10,7 @@ import {
   Provider,
   ShareLevel,
   TrackFileStatus,
+  TrackSchema,
   TrackSourceStatus,
   UserRole
 } from '@playliberty/contracts';
@@ -24,6 +25,7 @@ import {
   associations,
   playlists,
   shares,
+  syncRuns,
   tracks
 } from '../../platform/database/schema.js';
 import { addAssociation } from '../playlists/associationService.js';
@@ -103,7 +105,8 @@ function seedPlaylist(ownerAccountId: string): string {
 
 function seedTrack(
   videoId: string,
-  fileStatus: TrackFileStatus = TrackFileStatus.Stored
+  fileStatus: TrackFileStatus = TrackFileStatus.Stored,
+  failureReason: string | null = null
 ): string {
   const trackId = randomUUID();
 
@@ -118,11 +121,28 @@ function seedTrack(
       thumbnailPath: null,
       fileStatus,
       sourceStatus: TrackSourceStatus.Available,
-      filePath: null
+      filePath: null,
+      failureReason
     })
     .run();
 
   return trackId;
+}
+
+/*
+ * The association is created through the service rather than inserted, because
+ * that is the only path that keeps the playlist's stored count honest, and the
+ * retry access rule reads the association table.
+ */
+function associate(playlistId: string, trackId: string): void {
+  expect(
+    addAssociation(database(), {
+      playlistId,
+      trackId,
+      origin: AssociationOrigin.Remote,
+      position: 0
+    })
+  ).toBe('added');
 }
 
 function seedShare(
@@ -448,6 +468,162 @@ describe('POST /tracks', () => {
       url: '/api/v1/tracks',
       headers: { 'remote-user': owner.pangolinUserId },
       payload: { url: VIDEO_URL, playlistIds: [randomUUID()] }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+describe('POST /tracks/:id/retry', () => {
+  it('returns a failed track to pending and clears its reason', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(
+      VIDEO_ID,
+      TrackFileStatus.Failed,
+      'yt-dlp exited with code 1'
+    );
+    associate(playlistId, trackId);
+
+    const response = await post(
+      `/api/v1/tracks/${trackId}/retry`,
+      owner.pangolinUserId,
+      {}
+    );
+
+    expect(response.statusCode).toBe(200);
+    const track = TrackSchema.parse(response.json());
+    expect(track.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(track.failureReason).toBeNull();
+
+    const row = database()
+      .db.select()
+      .from(tracks)
+      .where(eq(tracks.id, trackId))
+      .get();
+    expect(row?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(row?.failureReason).toBeNull();
+  });
+
+  it('lets a write collaborator of a playlist holding the track retry it', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
+    associate(playlistId, trackId);
+    const writer = seedAccount();
+    seedShare(playlistId, writer.accountId, ShareLevel.Write);
+
+    const response = await post(
+      `/api/v1/tracks/${trackId}/retry`,
+      writer.pangolinUserId,
+      {}
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(TrackSchema.parse(response.json()).fileStatus).toBe(
+      TrackFileStatus.Pending
+    );
+  });
+
+  it('starts no sync and creates no run', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
+    associate(playlistId, trackId);
+
+    await post(`/api/v1/tracks/${trackId}/retry`, owner.pangolinUserId, {});
+
+    expect(
+      database()
+        .db.select({ total: sql<number>`count(*)` })
+        .from(syncRuns)
+        .get()?.total
+    ).toBe(0);
+  });
+
+  it.each([
+    TrackFileStatus.Unavailable,
+    TrackFileStatus.Stored,
+    TrackFileStatus.Pending,
+    TrackFileStatus.Downloading
+  ])('refuses a %s track and leaves its state alone', async fileStatus => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, fileStatus);
+    associate(playlistId, trackId);
+
+    const response = await post(
+      `/api/v1/tracks/${trackId}/retry`,
+      owner.pangolinUserId,
+      {}
+    );
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ code: 'track_not_retryable' });
+    expect(
+      database().db.select().from(tracks).where(eq(tracks.id, trackId)).get()
+        ?.fileStatus
+    ).toBe(fileStatus);
+  });
+
+  it('answers 404 for a read collaborator, a stranger, an orphan track and a missing track', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
+    associate(playlistId, trackId);
+    const reader = seedAccount();
+    seedShare(playlistId, reader.accountId, ShareLevel.Read);
+    const stranger = seedAccount();
+    const orphan = seedTrack('orphanVideo', TrackFileStatus.Failed, 'boom');
+    const missing = randomUUID();
+
+    const attempts: [string, string][] = [
+      [trackId, reader.pangolinUserId],
+      [trackId, stranger.pangolinUserId],
+      [orphan, owner.pangolinUserId],
+      [missing, owner.pangolinUserId]
+    ];
+
+    for (const [targetTrack, pangolinUserId] of attempts) {
+      const response = await post(
+        `/api/v1/tracks/${targetTrack}/retry`,
+        pangolinUserId,
+        {}
+      );
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ code: 'track_not_found' });
+    }
+
+    // No refused attempt retried the failed track.
+    expect(
+      database().db.select().from(tracks).where(eq(tracks.id, trackId)).get()
+        ?.fileStatus
+    ).toBe(TrackFileStatus.Failed);
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
+    associate(playlistId, trackId);
+
+    if (context === undefined) {
+      throw new Error('the test context is not created');
+    }
+
+    const response = await context.app.inject({
+      method: 'POST',
+      url: `/api/v1/tracks/${trackId}/retry`,
+      headers: { 'remote-user': owner.pangolinUserId },
+      payload: {}
     });
 
     expect(response.statusCode).toBe(403);

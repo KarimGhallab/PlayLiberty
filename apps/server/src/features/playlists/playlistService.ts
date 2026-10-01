@@ -4,8 +4,7 @@ import type {
   Page,
   Playlist,
   PlaylistAccess,
-  PlaylistTrack,
-  Track
+  PlaylistTrack
 } from '@playliberty/contracts';
 
 import {
@@ -28,6 +27,7 @@ import {
   playlists,
   tracks
 } from '../../platform/database/schema.js';
+import { toTrackView } from '../tracks/trackService.js';
 import { AssociationOutcome, removeAssociation } from './associationService.js';
 
 export enum PlaylistOutcome {
@@ -249,22 +249,6 @@ export type ReadPlaylistTracksResult =
  * metadata, so neither crosses the wire here; the artwork is reached through the
  * track's own route.
  */
-function toTrackView(row: TrackRow): Track {
-  return {
-    id: row.id,
-    provider: row.provider,
-    videoId: row.videoId,
-    title: row.title,
-    durationSeconds: row.durationSeconds,
-    thumbnailPath: row.thumbnailPath,
-    fileStatus: row.fileStatus,
-    sourceStatus: row.sourceStatus,
-    failureReason: row.failureReason,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt
-  };
-}
-
 function toPlaylistTrackView(row: {
   association: AssociationRow;
   track: TrackRow;

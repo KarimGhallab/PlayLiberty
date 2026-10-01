@@ -1,3 +1,5 @@
+import { ShareLevel } from '@playliberty/contracts';
+
 import type { DatabaseHandle } from '../../platform/database/client.js';
 
 /*
@@ -36,5 +38,41 @@ export function canAccountAccessTrack(
     database.sqlite
       .prepare(TRACK_ACCESS_SQL)
       .get(trackId, accountId, accountId) !== undefined
+  );
+}
+
+/*
+ * Write access to a track, which is the owner of a playlist that holds it or a
+ * write collaborator on one, and not a read collaborator. A track is instance-wide
+ * and has no owner of its own, so the right to act on it is the right to write one
+ * of the playlists it is associated with. The level is a parameter rather than a
+ * literal so a new share level cannot drift out of this statement.
+ */
+const TRACK_WRITE_ACCESS_SQL = `
+  select 1 as allowed
+  from association a
+  join playlist p on p.id = a.playlist_id
+  where a.track_id = ?
+    and (
+      p.owner_account_id = ?
+      or exists (
+        select 1 from share s
+        where s.playlist_id = p.id
+          and s.account_id = ?
+          and s.level = ?
+      )
+    )
+  limit 1
+`;
+
+export function canAccountWriteTrack(
+  database: DatabaseHandle,
+  trackId: string,
+  accountId: string
+): boolean {
+  return (
+    database.sqlite
+      .prepare(TRACK_WRITE_ACCESS_SQL)
+      .get(trackId, accountId, accountId, ShareLevel.Write) !== undefined
   );
 }

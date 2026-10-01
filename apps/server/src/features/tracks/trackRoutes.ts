@@ -7,7 +7,6 @@ import { YoutubeSourceKind } from '@playliberty/youtube';
 import type { AppContext } from '../../shared/context.js';
 import {
   parseBody,
-  sendNotImplemented,
   sendProblem,
   sendUnprocessable
 } from '../../shared/problem.js';
@@ -16,9 +15,14 @@ import { resolveSourceUrl } from '../../shared/resolveSourceUrl.js';
 import { addTrackToPlaylists } from './addTrackToPlaylists.js';
 import {
   resolveTrackForStream,
-  resolveTrackForThumbnail
+  resolveTrackForThumbnail,
+  retryTrackForAccount
 } from './trackService.js';
-import { TrackStreamOutcome, TrackThumbnailOutcome } from './types.js';
+import {
+  RetryTrackOutcome,
+  TrackStreamOutcome,
+  TrackThumbnailOutcome
+} from './types.js';
 
 export function registerTrackRoutes(
   app: FastifyInstance,
@@ -134,11 +138,35 @@ export function registerTrackRoutes(
 
   app.post<{ Params: { id: string } }>(
     '/tracks/:id/retry',
-    async (_request, reply) => {
-      return sendNotImplemented(
-        reply,
-        'Retrying a track is not implemented yet.'
+    async (request, reply) => {
+      const result = retryTrackForAccount(
+        context.database,
+        request.params.id,
+        request.account.id
       );
+
+      if (result.outcome === RetryTrackOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'track_not_found',
+          title: 'Track Not Found'
+        });
+      }
+
+      if (result.outcome === RetryTrackOutcome.NotRetryable) {
+        return sendProblem(reply, {
+          status: 409,
+          code: 'track_not_retryable',
+          title: 'Track Not Retryable',
+          detail: 'Only a failed track can be retried.'
+        });
+      }
+
+      if (result.outcome === RetryTrackOutcome.Ok) {
+        return reply.send(result.track);
+      }
+
+      return exhaust(result);
     }
   );
 }

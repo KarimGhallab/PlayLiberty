@@ -1,3 +1,5 @@
+import type { Track } from '@playliberty/contracts';
+
 export enum TrackStreamOutcome {
   Ok = 'ok',
   NotFound = 'not_found',
@@ -33,3 +35,14 @@ export interface TrackSeed {
   durationSeconds: number | null;
   thumbnailUrl: string | null;
 }
+
+export enum RetryTrackOutcome {
+  Ok = 'ok',
+  NotFound = 'not_found',
+  NotRetryable = 'not_retryable'
+}
+
+export type RetryTrackResult =
+  | { outcome: RetryTrackOutcome.Ok; track: Track }
+  | { outcome: RetryTrackOutcome.NotFound }
+  | { outcome: RetryTrackOutcome.NotRetryable };

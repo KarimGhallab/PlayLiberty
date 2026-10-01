@@ -2,22 +2,31 @@ import { randomUUID } from 'node:crypto';
 
 import { eq } from 'drizzle-orm';
 
+import type { Track } from '@playliberty/contracts';
 import {
   Provider,
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
 
-import { canAccountAccessTrack } from '../../shared/access/trackAccess.js';
+import {
+  canAccountAccessTrack,
+  canAccountWriteTrack
+} from '../../shared/access/trackAccess.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import { tracks } from '../../platform/database/schema.js';
 import type { TrackRow } from '../../platform/database/schema.js';
-import { TrackStreamOutcome, TrackThumbnailOutcome } from './types.js';
+import { tracks } from '../../platform/database/schema.js';
 import type {
+  RetryTrackResult,
   TrackSeed,
   TrackStreamResult,
   TrackThumbnailResult
+} from './types.js';
+import {
+  RetryTrackOutcome,
+  TrackStreamOutcome,
+  TrackThumbnailOutcome
 } from './types.js';
 
 function loadTrack(
@@ -116,4 +125,83 @@ export function createPendingTrack(
     .run();
 
   return trackId;
+}
+
+/*
+ * The stored row carries two fields the contract does not: the media path the
+ * stream route resolves, and the thumbnail URL the download wrote. Neither is
+ * metadata, so neither crosses the wire; the artwork is reached through the
+ * track's own route.
+ */
+export function toTrackView(row: TrackRow): Track {
+  return {
+    id: row.id,
+    provider: row.provider,
+    videoId: row.videoId,
+    title: row.title,
+    durationSeconds: row.durationSeconds,
+    thumbnailPath: row.thumbnailPath,
+    fileStatus: row.fileStatus,
+    sourceStatus: row.sourceStatus,
+    failureReason: row.failureReason,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  };
+}
+
+/*
+ * Putting a failed track back in the queue without running a sync. The right
+ * follows the track rather than the playlist, because the track is instance-wide
+ * and a household shares one copy, so anyone who can write a playlist that holds
+ * it may retry it. Only a failed track is retryable: a stored one has its audio, a
+ * pending or downloading one is already queued, and unavailable is terminal. A
+ * missing track and one no writable playlist holds are the same not-found, so the
+ * route confirms nothing it will not act on. No run is created and no sync starts.
+ */
+export function retryTrackForAccount(
+  database: DatabaseHandle,
+  trackId: string,
+  accountId: string
+): RetryTrackResult {
+  const track = loadTrack(database, trackId);
+
+  if (
+    track === undefined ||
+    !canAccountWriteTrack(database, track.id, accountId)
+  ) {
+    return { outcome: RetryTrackOutcome.NotFound };
+  }
+
+  if (track.fileStatus !== TrackFileStatus.Failed) {
+    return { outcome: RetryTrackOutcome.NotRetryable };
+  }
+
+  const updatedAt = new Date().toISOString();
+  const trackUpdatedFields: Partial<Track> = {
+    fileStatus: TrackFileStatus.Pending,
+    failureReason: null,
+    updatedAt
+  };
+
+  const updated = database.db
+    .update(tracks)
+    .set(trackUpdatedFields)
+    .where(eq(tracks.id, track.id))
+    .run();
+
+  // Success is claimed from the write itself: if it changed no row, the track is
+  // not there, which is the same answer as one that was never there.
+  if (updated.changes === 0) {
+    return { outcome: RetryTrackOutcome.NotFound };
+  }
+
+  // The row already in hand is the answer with the three fields this write
+  // changed applied; a second read would only fetch back what was just written.
+  return {
+    outcome: RetryTrackOutcome.Ok,
+    track: toTrackView({
+      ...track,
+      ...trackUpdatedFields
+    })
+  };
 }

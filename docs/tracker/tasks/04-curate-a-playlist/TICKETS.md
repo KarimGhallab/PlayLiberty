@@ -12,7 +12,7 @@ through the API; the overflow menu and the add-a-video dialog belong to the scre
 | [`03-rename-a-playlist`](03-rename-a-playlist.md)                                   | resolved        | none                                           | none                                             |
 | [`04-delete-a-playlist`](04-delete-a-playlist.md)                                   | resolved        | none                                           | none                                             |
 | [`05-remove-a-track-from-a-playlist`](05-remove-a-track-from-a-playlist.md)         | resolved        | none                                           | [`07`](07-a-returned-video-is-treated-as-new.md) |
-| [`06-retry-a-failed-track`](06-retry-a-failed-track.md)                             | ready-for-agent | none                                           | none                                             |
+| [`06-retry-a-failed-track`](06-retry-a-failed-track.md)                             | resolved        | none                                           | none                                             |
 | [`07-a-returned-video-is-treated-as-new`](07-a-returned-video-is-treated-as-new.md) | ready-for-agent | [`05`](05-remove-a-track-from-a-playlist.md)   | none                                             |
 
 ## Conventions
