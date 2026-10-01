@@ -421,12 +421,27 @@ function ensureTrack(
   durationSeconds: number | null
 ): string {
   const existing = database.db
-    .select({ id: tracks.id })
+    .select({ id: tracks.id, fileStatus: tracks.fileStatus })
     .from(tracks)
     .where(eq(tracks.videoId, videoId))
     .get();
 
   if (existing !== undefined) {
+    // A failed download is retried by the next sync: the row goes back to pending
+    // so the worker claims it again, and the stale reason goes with it. Every other
+    // existing track is left exactly as it is.
+    if (existing.fileStatus === TrackFileStatus.Failed) {
+      database.db
+        .update(tracks)
+        .set({
+          fileStatus: TrackFileStatus.Pending,
+          failureReason: null,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(tracks.id, existing.id))
+        .run();
+    }
+
     return existing.id;
   }
 

@@ -45,8 +45,17 @@ afterEach(async () => {
  * asked to fetch, which is how a test says a track was never claimed without
  * reading the row it did not touch.
  */
-function fakeDownloader(): { youtube: IYoutubeClient; downloads: string[] } {
+interface FakeDownloaderOptions {
+  failTimes?: number;
+  error?: Error;
+}
+
+function fakeDownloader(options: FakeDownloaderOptions = {}): {
+  youtube: IYoutubeClient;
+  downloads: string[];
+} {
   const downloads: string[] = [];
+  let failures = options.failTimes ?? 0;
 
   return {
     downloads,
@@ -58,6 +67,12 @@ function fakeDownloader(): { youtube: IYoutubeClient; downloads: string[] } {
         request: DownloadTrackRequest
       ): Promise<DownloadTrackResult> => {
         downloads.push(request.videoId);
+
+        if (failures > 0) {
+          failures -= 1;
+          throw options.error ?? new Error('the download failed');
+        }
+
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'downloaded-audio');
         return { videoId: request.videoId, filePath: request.outputPath };
@@ -262,5 +277,53 @@ describe('the download worker', () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.body).toBe('downloaded-audio');
+  });
+
+  it('leaves a failed track with a short reason and no stored file', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new Error('yt-dlp exited with code 1: ERROR: something went wrong')
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(row?.filePath).toBeNull();
+    expect(row?.failureReason).toBe(
+      'yt-dlp exited with code 1: ERROR: something went wrong'
+    );
+  });
+
+  it('reduces a multi-line failure to one short line', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new Error(
+        'ERROR: the first thing\nTraceback (most recent call last):\n  more'
+      )
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    const reason = trackRow(seeded.trackId)?.failureReason ?? '';
+    expect(reason).not.toContain('\n');
+    expect(reason.length).toBeLessThanOrEqual(200);
+    expect(reason.startsWith('ERROR: the first thing')).toBe(true);
+  });
+
+  it('does not retry a failed track on a later pass', async () => {
+    const fake = fakeDownloader({ failTimes: 1 });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+    await run(fake.youtube);
+
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(fake.downloads).toEqual([seeded.videoId]);
   });
 });

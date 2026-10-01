@@ -138,17 +138,16 @@ async function storeTrack(
 
     logger.info({ trackId: track.id, videoId: track.videoId }, 'track stored');
   } catch (error) {
-    // A claimed track that throws must not stay `downloading` forever. Ticket 02
-    // owns the retry and ticket 03 the classification; what is here is the state
-    // that leaves no row stuck.
-    const message =
-      error instanceof Error ? error.message : 'The download failed.';
-
+    // A claimed track that throws must not stay `downloading` forever. The reason
+    // is a bounded single line rather than the adapter's raw output, because the
+    // row carries it and a stack trace is not something a person acts on; the full
+    // error goes to the log. Ticket 03 owns the classification of a video that is
+    // gone, which is terminal rather than a failure.
     context.database.db
       .update(tracks)
       .set({
         fileStatus: TrackFileStatus.Failed,
-        failureReason: message,
+        failureReason: summarizeFailure(error),
         updatedAt: new Date().toISOString()
       })
       .where(eq(tracks.id, track.id))
@@ -159,4 +158,25 @@ async function storeTrack(
       'track download failed'
     );
   }
+}
+
+const FAILURE_REASON_MAX = 200;
+
+/*
+ * One line, bounded. The adapter's error message can be a multi-line tool excerpt,
+ * and the stored reason is rendered in a track row and kept for a report, so it is
+ * collapsed to a single line and capped rather than stored raw.
+ */
+function summarizeFailure(error: unknown): string {
+  const collapsed = (error instanceof Error ? error.message : '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (collapsed.length === 0) {
+    return 'The download failed.';
+  }
+
+  return collapsed.length > FAILURE_REASON_MAX
+    ? `${collapsed.slice(0, FAILURE_REASON_MAX - 1)}…`
+    : collapsed;
 }

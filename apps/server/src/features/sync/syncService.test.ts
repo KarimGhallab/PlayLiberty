@@ -19,7 +19,12 @@ import {
   createPageSchema
 } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
-import type { IYoutubeClient, YoutubeSource } from '@playliberty/youtube';
+import type {
+  DownloadTrackRequest,
+  DownloadTrackResult,
+  IYoutubeClient,
+  YoutubeSource
+} from '@playliberty/youtube';
 
 import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
@@ -38,6 +43,7 @@ import {
   tracks
 } from '../../platform/database/schema.js';
 import { mediaRelativePath } from '../../platform/media/mediaPaths.js';
+import { processPendingTracks } from '../downloads/downloadWorker.js';
 
 const PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PL1234567890abcdef';
 const PLAYLIST_ID = TEST_SOURCE_ID;
@@ -1109,5 +1115,84 @@ describe('authorizing a sync', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_origin_mismatch' });
+  });
+});
+
+/*
+ * A fake that both reads a source and stores a file, for the end-to-end retry:
+ * a sync creates the track, a fetch fails, the next sync re-queues it, and a
+ * worker pass stores it.
+ */
+function storingYoutube(...sources: YoutubeSource[]): {
+  youtube: IYoutubeClient;
+  downloads: string[];
+} {
+  const queue = [...sources];
+  const downloads: string[] = [];
+
+  return {
+    downloads,
+    youtube: {
+      listSource: async (): Promise<YoutubeSource> => {
+        const next = queue.shift();
+
+        if (next === undefined) {
+          throw new Error('the fake adapter has no source left to read');
+        }
+
+        return next;
+      },
+      downloadTrack: async (
+        request: DownloadTrackRequest
+      ): Promise<DownloadTrackResult> => {
+        downloads.push(request.videoId);
+        await mkdir(dirname(request.outputPath), { recursive: true });
+        await writeFile(request.outputPath, 'stored-audio');
+        return { videoId: request.videoId, filePath: request.outputPath };
+      }
+    }
+  };
+}
+
+describe('retrying a failed download', () => {
+  it('returns a failed track to pending on the next sync and then stores it', async () => {
+    const fake = storingYoutube(
+      source([entry('aaaaaaaaaaa')]),
+      source([entry('aaaaaaaaaaa')])
+    );
+    context = await createTestContext({}, { youtube: fake.youtube });
+
+    const created = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(created.playlistId, 'owner-1');
+
+    const trackId = trackByVideoId('aaaaaaaaaaa')?.id ?? '';
+    context.database.db
+      .update(tracks)
+      .set({ fileStatus: TrackFileStatus.Failed, failureReason: 'a failure' })
+      .where(eq(tracks.id, trackId))
+      .run();
+
+    await postSync(created.playlistId, 'owner-1');
+    await runFinished(created.playlistId, 'owner-1');
+
+    // The sync returns it to pending and clears the stale reason.
+    const retried = trackByVideoId('aaaaaaaaaaa');
+    expect(retried?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(retried?.failureReason).toBeNull();
+
+    await processPendingTracks(
+      {
+        database: context.database,
+        mediaPaths: context.mediaPaths,
+        youtube: fake.youtube
+      },
+      context.app.log
+    );
+
+    const stored = trackByVideoId('aaaaaaaaaaa');
+    expect(stored?.fileStatus).toBe(TrackFileStatus.Stored);
+    expect(stored?.filePath).toBe(mediaRelativePath('aaaaaaaaaaa', '.m4a'));
   });
 });
