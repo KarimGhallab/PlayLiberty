@@ -137,7 +137,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     async api => {
       registerAccountRoutes(api, context);
       registerPlaylistRoutes(api, context);
-      registerShareRoutes(api);
+      registerShareRoutes(api, context);
       registerSyncRunRoutes(api, context);
       registerTrackRoutes(api, context);
     },
