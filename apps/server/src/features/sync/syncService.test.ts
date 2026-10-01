@@ -1210,7 +1210,8 @@ describe('retrying a failed download', () => {
         mediaPaths: context.mediaPaths,
         youtube: fake.youtube
       },
-      context.app.log
+      context.app.log,
+      1
     );
 
     const stored = trackByVideoId('aaaaaaaaaaa');

@@ -1,7 +1,7 @@
 import { mkdir, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
 import { TrackFileStatus } from '@playliberty/contracts';
@@ -64,7 +64,11 @@ export function startDownloadWorker(
       }
 
       running = true;
-      void processPendingTracks(options.context, options.logger).finally(() => {
+      void processPendingTracks(
+        options.context,
+        options.logger,
+        options.context.config.download.concurrency
+      ).finally(() => {
         running = false;
       });
     }
@@ -73,32 +77,59 @@ export function startDownloadWorker(
 
 /*
  * One pass, exposed so a test can drive it without waiting on the interval. It
- * claims the pending tracks in one conditional update and downloads the ones it
- * actually moved, so a track another pass already claimed is not fetched twice.
+ * claims at most `concurrency` pending tracks in one conditional update and
+ * downloads exactly the ones it moved, so a track another pass already claimed is
+ * not fetched twice and a backlog is worked through across passes.
  */
 export async function processPendingTracks(
   context: WorkerContext,
-  logger: FastifyBaseLogger
+  logger: FastifyBaseLogger,
+  concurrency: number
 ): Promise<void> {
-  const claimedPendingTracks = claimPendingTracks(context);
-  for (const track of claimedPendingTracks) {
-    await storeTrack(context, logger, track);
-  }
+  const claimed = claimPendingTracks(context, concurrency);
+
+  await Promise.all(claimed.map(track => storeTrack(context, logger, track)));
 }
 
 /*
- * The claim is one statement: every row still `pending` becomes `downloading`, and
- * the update returns exactly the rows it moved. A row already `downloading` or
- * `stored` is not in the result, so two passes cannot both start the same download.
+ * The claim is two statements and one batch. The first picks the oldest `pending`
+ * rows up to the cap; the update then moves those rows to `downloading` only if
+ * they are still `pending`, and returns exactly the ones it moved. A row another
+ * pass already took is not in the result, so no download is started twice.
  */
-function claimPendingTracks(context: WorkerContext): TrackRow[] {
+function claimPendingTracks(
+  context: WorkerContext,
+  concurrency: number
+): TrackRow[] {
+  const batch = Math.max(1, Math.floor(concurrency));
+
+  const candidates = context.database.db
+    .select({ id: tracks.id })
+    .from(tracks)
+    .where(eq(tracks.fileStatus, TrackFileStatus.Pending))
+    .orderBy(sql`${tracks}.rowid`)
+    .limit(batch)
+    .all();
+
+  if (candidates.length === 0) {
+    return [];
+  }
+
   return context.database.db
     .update(tracks)
     .set({
       fileStatus: TrackFileStatus.Downloading,
       updatedAt: new Date().toISOString()
     })
-    .where(eq(tracks.fileStatus, TrackFileStatus.Pending))
+    .where(
+      and(
+        eq(tracks.fileStatus, TrackFileStatus.Pending),
+        inArray(
+          tracks.id,
+          candidates.map(candidate => candidate.id)
+        )
+      )
+    )
     .returning()
     .all();
 }

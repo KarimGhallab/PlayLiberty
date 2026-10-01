@@ -58,12 +58,16 @@ interface FakeDownloaderOptions {
 function fakeDownloader(options: FakeDownloaderOptions = {}): {
   youtube: IYoutubeClient;
   downloads: string[];
+  stats: { maxActive: number };
 } {
   const downloads: string[] = [];
+  const stats = { maxActive: 0 };
+  let active = 0;
   let failures = options.failTimes ?? 0;
 
   return {
     downloads,
+    stats,
     youtube: {
       listSource: async () => {
         throw new Error('the download worker must not read the source');
@@ -78,8 +82,16 @@ function fakeDownloader(options: FakeDownloaderOptions = {}): {
           throw options.error ?? new Error('the download failed');
         }
 
+        active += 1;
+        stats.maxActive = Math.max(stats.maxActive, active);
+        // Yield, so two claimed downloads overlap and a cap above one is
+        // observable rather than theoretical.
+        await new Promise(resolve => setTimeout(resolve, 0));
+
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'downloaded-audio');
+        active -= 1;
+
         return { videoId: request.videoId, filePath: request.outputPath };
       },
       fetchThumbnail: async (
@@ -206,7 +218,7 @@ function trackRow(trackId: string) {
     .get();
 }
 
-function run(youtube: IYoutubeClient) {
+function run(youtube: IYoutubeClient, concurrency = 1) {
   if (context === undefined) {
     throw new Error('the test context is not created');
   }
@@ -217,7 +229,8 @@ function run(youtube: IYoutubeClient) {
       mediaPaths: context.mediaPaths,
       youtube
     },
-    context.app.log
+    context.app.log,
+    concurrency
   );
 }
 
@@ -400,5 +413,46 @@ describe('the download worker', () => {
     const row = trackRow(seeded.trackId);
     expect(row?.fileStatus).toBe(TrackFileStatus.Stored);
     expect(row?.thumbnailPath).toBeNull();
+  });
+
+  it('runs no more than the configured number of downloads at once', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    seed(context.database, { videoId: 'aaaaaaaaaaa' }, 'owner-1');
+    seed(context.database, { videoId: 'bbbbbbbbbbb' }, 'owner-2');
+    seed(context.database, { videoId: 'ccccccccccc' }, 'owner-3');
+
+    await run(fake.youtube, 2);
+
+    expect(fake.stats.maxActive).toBe(2);
+  });
+
+  it('leaves the rest for the next pass when the backlog exceeds the cap', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = [
+      seed(context.database, { videoId: 'aaaaaaaaaaa' }, 'owner-1'),
+      seed(context.database, { videoId: 'bbbbbbbbbbb' }, 'owner-2'),
+      seed(context.database, { videoId: 'ccccccccccc' }, 'owner-3')
+    ];
+
+    await run(fake.youtube, 2);
+
+    const afterFirst = seeded.map(entry => trackRow(entry.trackId)?.fileStatus);
+    expect(
+      afterFirst.filter(status => status === TrackFileStatus.Stored)
+    ).toHaveLength(2);
+    expect(
+      afterFirst.filter(status => status === TrackFileStatus.Pending)
+    ).toHaveLength(1);
+
+    await run(fake.youtube, 2);
+
+    const afterSecond = seeded.map(
+      entry => trackRow(entry.trackId)?.fileStatus
+    );
+    expect(afterSecond.every(status => status === TrackFileStatus.Stored)).toBe(
+      true
+    );
   });
 });
