@@ -5,12 +5,12 @@ dependency order, each declaring its blocking edges. This spec is server-only, s
 through the API; the share dialog and the library's "shared by" line belong to the screen work and
 [`08-see-the-library`](../../specs/08-see-the-library.md).
 
-| Ticket                                                                                | Status          | Blocked by                                                                      | Blocks                            |
-| ------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------- | --------------------------------- |
-| [`01-list-the-accounts-on-the-instance`](01-list-the-accounts-on-the-instance.md)     | resolved        | none                                                                            | none                              |
-| [`02-list-and-grant-shares-on-a-playlist`](02-list-and-grant-shares-on-a-playlist.md) | resolved        | none                                                                            | [`04`](04-what-a-share-grants.md) |
-| [`03-revoke-a-share`](03-revoke-a-share.md)                                           | resolved        | none                                                                            | [`04`](04-what-a-share-grants.md) |
-| [`04-what-a-share-grants`](04-what-a-share-grants.md)                                 | ready-for-agent | [`02`](02-list-and-grant-shares-on-a-playlist.md), [`03`](03-revoke-a-share.md) | none                              |
+| Ticket                                                                                | Status   | Blocked by                                                                      | Blocks                            |
+| ------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------- | --------------------------------- |
+| [`01-list-the-accounts-on-the-instance`](01-list-the-accounts-on-the-instance.md)     | resolved | none                                                                            | none                              |
+| [`02-list-and-grant-shares-on-a-playlist`](02-list-and-grant-shares-on-a-playlist.md) | resolved | none                                                                            | [`04`](04-what-a-share-grants.md) |
+| [`03-revoke-a-share`](03-revoke-a-share.md)                                           | resolved | none                                                                            | [`04`](04-what-a-share-grants.md) |
+| [`04-what-a-share-grants`](04-what-a-share-grants.md)                                 | resolved | [`02`](02-list-and-grant-shares-on-a-playlist.md), [`03`](03-revoke-a-share.md) | none                              |
 
 ## Conventions
 

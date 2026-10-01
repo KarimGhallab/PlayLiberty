@@ -7,9 +7,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
+  AssociationOrigin,
   PlaylistSchema,
   Provider,
   ShareSchema,
+  TrackFileStatus,
+  TrackSourceStatus,
   UserRole,
   createPageSchema
 } from '@playliberty/contracts';
@@ -180,8 +183,8 @@ async function seedStoredTrack(playlistId: string): Promise<string> {
       title: 'Track',
       durationSeconds: 180,
       thumbnailPath: 'thumbnails/dd/song.jpg',
-      fileStatus: 'stored',
-      sourceStatus: 'available',
+      fileStatus: TrackFileStatus.Stored,
+      sourceStatus: TrackSourceStatus.Available,
       filePath: relativePath,
       failureReason: null
     })
@@ -193,7 +196,7 @@ async function seedStoredTrack(playlistId: string): Promise<string> {
       id: randomUUID(),
       playlistId,
       trackId,
-      origin: 'remote',
+      origin: AssociationOrigin.Remote,
       position: 0
     })
     .run();

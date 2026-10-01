@@ -454,6 +454,9 @@ describe('POST /playlists/:id/sync', () => {
       },
       downloadTrack: async () => {
         throw new Error('a sync must not download');
+      },
+      fetchThumbnail: async () => {
+        throw new Error('a sync must not fetch a thumbnail');
       }
     };
 
