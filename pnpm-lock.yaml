@@ -328,6 +328,43 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/tokens:
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.2
+        version: 26.6.2
+      tsc-watch:
+        specifier: ^7.2.1
+        version: 7.2.1(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.2)(vite@8.3.1(@types/node@26.6.2)(jiti@2.7.0))
+
+  packages/ui-foundation:
+    dependencies:
+      '@playliberty/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@playliberty/tokens':
+        specifier: workspace:*
+        version: link:../tokens
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.2
+        version: 26.6.2
+      tsc-watch:
+        specifier: ^7.2.1
+        version: 7.2.1(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.2)(vite@8.3.1(@types/node@26.6.2)(jiti@2.7.0))
+
   packages/utils:
     devDependencies:
       '@types/node':

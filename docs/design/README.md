@@ -33,11 +33,9 @@ validator fails the build if one appears.
 
 This matters and it changes.
 
-While task `09` is open, **`tokens.css` is authoritative**. That is where values are decided.
-
-Once `10-build-design-foundation` lands, **`packages/tokens` is authoritative**, because that is
-what ships. After that point a value change is made in the package and re-emitted. The
-specimens are a dated snapshot of what was decided and are not rewritten.
+**`packages/tokens` is authoritative**, because that is what ships. A value change is made in
+the package and re-emitted. `tokens.css` and the specimens are the dated snapshot of what task
+`09` decided and are not rewritten.
 
 The design record is `docs/DESIGN.md` for the index and the cross-cutting rules, and
 `docs/design-system/` for one file per subject, and it is the narrative record throughout. The

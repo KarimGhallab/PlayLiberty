@@ -10,12 +10,12 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`02-define-web-stack`](02-define-web-stack.md)                         | resolved | none                                       | none                                                      |
 | [`03-define-mobile-stack`](03-define-mobile-stack.md)                   | resolved | none                                       | none                                                      |
 | [`04-scaffold-server`](04-scaffold-server.md)                           | resolved | none                                       | none                                                      |
-| [`05-scaffold-web`](05-scaffold-web.md)                                 | open     | [`10`](10-build-design-foundation.md)      | none                                                      |
-| [`06-scaffold-mobile`](06-scaffold-mobile.md)                           | open     | [`10`](10-build-design-foundation.md)      | [`07`](07-provision-mobile-access.md)                     |
+| [`05-scaffold-web`](05-scaffold-web.md)                                 | open     | none                                       | none                                                      |
+| [`06-scaffold-mobile`](06-scaffold-mobile.md)                           | open     | none                                       | [`07`](07-provision-mobile-access.md)                     |
 | [`07-provision-mobile-access`](07-provision-mobile-access.md)           | open     | [`06`](06-scaffold-mobile.md)              | none                                                      |
 | [`08-define-design-system`](08-define-design-system.md)                 | resolved | none                                       | [`09`](09-design-scheme-and-components.md)                |
 | [`09-design-scheme-and-components`](09-design-scheme-and-components.md) | resolved | none                                       | [`10`](10-build-design-foundation.md)                     |
-| [`10-build-design-foundation`](10-build-design-foundation.md)           | open     | [`09`](09-design-scheme-and-components.md) | [`05`](05-scaffold-web.md), [`06`](06-scaffold-mobile.md) |
+| [`10-build-design-foundation`](10-build-design-foundation.md)           | resolved | [`09`](09-design-scheme-and-components.md) | [`05`](05-scaffold-web.md), [`06`](06-scaffold-mobile.md) |
 | [`11-form-controls`](11-form-controls.md)                               | resolved | none                                       | none                                                      |
 | [`12-rename-refresh-route-to-sync`](12-rename-refresh-route-to-sync.md) | resolved | none                                       | none                                                      |
 | [`13-settle-the-screen-inventory`](13-settle-the-screen-inventory.md)   | resolved | none                                       | none                                                      |

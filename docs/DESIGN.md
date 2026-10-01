@@ -8,10 +8,11 @@ video feed and not a gamer dashboard.
 Every value in this system is measured and decided. The specimens in `docs/design/` draw them; this
 directory is the record of what was decided and why, and the two are not the same job.
 
-The values live in [`docs/design/tokens.css`](design/tokens.css) and nowhere else. That file is the
-contract that `10-build-design-foundation` transcribes into `packages/tokens`, so these documents and the
-specimens describe the design while `tokens.css` defines it. Where the two disagree, `tokens.css` is
-right and a document here is stale.
+The values live in `packages/tokens/src/values.ts` and nowhere else, and the emitter there writes the
+stylesheet the web client loads. `docs/design/tokens.css` is the dated snapshot that
+`10-build-design-foundation` transcribed from, so these documents and the specimens describe the design
+while the snapshot records what was decided on the day it was taken. Where the two disagree, the package
+is right and the snapshot is the decision it was taken from.
 
 Every ratio quoted anywhere in this directory is recomputed from the token values on every run of
 `docs/design/scripts/validate-design-tokens.cjs`, so a number that has gone stale fails the build rather
@@ -135,7 +136,8 @@ variant of the other, and the first thing it does is name the two.
 
 ## Changing a value
 
-Edit `docs/design/tokens.css`, then run:
+Change the value in `packages/tokens/src/values.ts` and rebuild with `pnpm run tokens:build`. The
+snapshot is not edited; the check below is run when a document here or a specimen changes:
 
 ```
 node docs/design/scripts/validate-design-tokens.cjs
@@ -156,9 +158,9 @@ It also holds the rejected candidates at their measured values. Those cannot fai
 are values that were tried and ruled out, and their only job is to hold a figure steady so a document can
 honestly say what the alternatives were. The known-bad pairings are declared with a `FORBIDDEN` prefix and
 are measured but do not fail the run, so the value the system ruled out stays recorded instead of quietly
-becoming legal again. While task `09` is open the stylesheet is authoritative. Once
-`10-build-design-foundation` lands, `packages/tokens` is authoritative, the emitter writes the stylesheet
-the web client loads, and the specimens become a dated snapshot of what was decided.
+becoming legal again. `packages/tokens` is authoritative now that `10-build-design-foundation` has landed, the emitter writes
+the stylesheet the web client loads, and the specimens and `tokens.css` are the dated snapshot of what
+was decided.
 
 The specimens themselves are in `docs/design/`, one file per subject, and they are not the
 implementation. The component specimens contain flexbox that the real React and React Native components

@@ -5,6 +5,8 @@
       "@playliberty/console": ["./apps/console/src"],
       "@playliberty/contracts": ["./packages/contracts/src"],
       "@playliberty/server": ["./apps/server/src"],
+      "@playliberty/tokens": ["./packages/tokens/src"],
+      "@playliberty/ui-foundation": ["./packages/ui-foundation/src"],
       "@playliberty/utils": ["./packages/utils/src"],
       "@playliberty/youtube": ["./packages/youtube/src"]
     }
