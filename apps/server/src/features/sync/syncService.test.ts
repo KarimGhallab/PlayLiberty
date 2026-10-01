@@ -16,7 +16,7 @@ import {
   createPageSchema
 } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
-import type { IYoutubeClient } from '@playliberty/youtube';
+import type { IYoutubeClient, YoutubeSource } from '@playliberty/youtube';
 
 import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
@@ -742,5 +742,140 @@ describe('honouring a suppression', () => {
     await runFinished(first.playlistId, 'owner-1');
 
     expect(suppressionCount(first.playlistId)).toBe(0);
+  });
+});
+
+/*
+ * The queue-flavoured fake answers every read from a list of sources; this one
+ * takes a script of sources and errors, so a test can say exactly which read
+ * fails and which succeeds.
+ */
+function scriptedYoutube(script: (YoutubeSource | Error)[]): IYoutubeClient {
+  let index = 0;
+
+  return {
+    listSource: async (): Promise<YoutubeSource> => {
+      const step = script[index];
+      index += 1;
+
+      if (step === undefined) {
+        throw new Error('the script is exhausted');
+      }
+
+      if (step instanceof Error) {
+        throw step;
+      }
+
+      return step;
+    },
+    downloadTrack: async (): Promise<never> => {
+      throw new Error('a sync must not download');
+    }
+  };
+}
+
+describe('a failed sync changes nothing', () => {
+  it('yields a failed run with an error and leaves the playlist in error', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: scriptedYoutube([
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          new Error('YouTube is unreachable')
+        ])
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    const before = readAssociations(first.playlistId);
+
+    await postSync(first.playlistId, 'owner-1');
+    const failed = await runFinished(first.playlistId, 'owner-1');
+
+    expect(failed.status).toBe(SyncRunStatus.Failed);
+    expect(failed.error).toBe('YouTube is unreachable');
+    expect(failed.addedCount).toBe(0);
+    expect(failed.retainedCount).toBe(0);
+
+    const playlist = await readPlaylist(first.playlistId, 'owner-1');
+    expect(playlist.syncStatus).toBe(PlaylistSyncStatus.Error);
+    expect(playlist.lastSyncedAt).not.toBeNull();
+    expect(playlist.trackCount).toBe(2);
+
+    // Nothing moved: the same rows, the same positions, still available.
+    const after = readAssociations(first.playlistId);
+    expect(after).toEqual(before);
+    expect(
+      after.every(row => row.sourceStatus === TrackSourceStatus.Available)
+    ).toBe(true);
+  });
+
+  it('reconciles normally on the next sync after a failure', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: scriptedYoutube([
+          source([entry('aaaaaaaaaaa')]),
+          new Error('YouTube is unreachable'),
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')])
+        ])
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    await postSync(first.playlistId, 'owner-1');
+    const failed = await runFinished(first.playlistId, 'owner-1');
+    expect(failed.status).toBe(SyncRunStatus.Failed);
+
+    await postSync(first.playlistId, 'owner-1');
+    const recovered = await runFinished(first.playlistId, 'owner-1');
+
+    expect(recovered.status).toBe(SyncRunStatus.Completed);
+    expect(recovered.addedCount).toBe(1);
+    expect(associationCount('bbbbbbbbbbb')).toBe(1);
+
+    const playlist = await readPlaylist(first.playlistId, 'owner-1');
+    expect(playlist.syncStatus).toBe(PlaylistSyncStatus.Idle);
+    expect(playlist.trackCount).toBe(2);
+  });
+
+  it('does not treat a failure as an empty source', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: scriptedYoutube([
+          source([entry('aaaaaaaaaaa')]),
+          new Error('YouTube is unreachable'),
+          source([])
+        ])
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+    // The failure left the track alone.
+    expect(trackByVideoId('aaaaaaaaaaa')?.sourceStatus).toBe(
+      TrackSourceStatus.Available
+    );
+
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+    // An empty source, by contrast, is a real reading and retires the track.
+    expect(trackByVideoId('aaaaaaaaaaa')?.sourceStatus).toBe(
+      TrackSourceStatus.Removed
+    );
   });
 });
