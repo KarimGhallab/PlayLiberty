@@ -1,9 +1,14 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { AssociationOrigin } from '@playliberty/contracts';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import { associations, playlists } from '../../platform/database/schema.js';
+import {
+  associations,
+  playlists,
+  suppressions,
+  tracks
+} from '../../platform/database/schema.js';
 
 export enum AssociationOutcome {
   Added = 'added',
@@ -102,16 +107,33 @@ export function removeAssociation(
   options: RemoveAssociationOptions
 ): AssociationOutcome {
   return database.sqlite.transaction((): AssociationOutcome => {
-    const deleted = database.db
-      .delete(associations)
+    // The video id is read with the association it belongs to, so the suppression
+    // below cannot be written for a track the playlist never held.
+    const existing = database.db
+      .select({ videoId: tracks.videoId })
+      .from(associations)
+      .innerJoin(tracks, eq(associations.trackId, tracks.id))
       .where(
-        sql`${associations.playlistId} = ${options.playlistId} and ${associations.trackId} = ${options.trackId}`
+        and(
+          eq(associations.playlistId, options.playlistId),
+          eq(associations.trackId, options.trackId)
+        )
       )
-      .run();
+      .get();
 
-    if (deleted.changes === 0) {
+    if (existing === undefined) {
       return AssociationOutcome.Absent;
     }
+
+    database.db
+      .delete(associations)
+      .where(
+        and(
+          eq(associations.playlistId, options.playlistId),
+          eq(associations.trackId, options.trackId)
+        )
+      )
+      .run();
 
     // The decrement is bounded by the existing value, so a count can never go
     // negative even if something else removed rows behind these functions. A
@@ -124,6 +146,15 @@ export function removeAssociation(
         updatedAt: new Date().toISOString()
       })
       .where(eq(playlists.id, options.playlistId))
+      .run();
+
+    // Removal always suppresses: the next sync must not put back what the listener
+    // took out. The insert is a conflict-no-op, so removing a track that is
+    // already suppressed cannot fail.
+    database.db
+      .insert(suppressions)
+      .values({ playlistId: options.playlistId, videoId: existing.videoId })
+      .onConflictDoNothing()
       .run();
 
     return AssociationOutcome.Removed;

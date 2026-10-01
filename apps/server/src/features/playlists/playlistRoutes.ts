@@ -11,7 +11,6 @@ import type { AppContext } from '../../shared/context.js';
 import {
   parseBody,
   sendInvalidRequest,
-  sendNotImplemented,
   sendProblem
 } from '../../shared/problem.js';
 import { resolveSourceUrl } from '../../shared/resolveSourceUrl.js';
@@ -27,6 +26,7 @@ import {
   listPlaylistTracksForAccount,
   listPlaylistsForAccount,
   readPlaylistForAccount,
+  removeTrackForAccount,
   renamePlaylistForAccount
 } from './playlistService.js';
 
@@ -235,11 +235,29 @@ export function registerPlaylistRoutes(
 
   app.delete<{ Params: { id: string; trackId: string } }>(
     '/playlists/:id/tracks/:trackId',
-    async (_request, reply) => {
-      return sendNotImplemented(
-        reply,
-        'Removing a track is not implemented yet.'
+    async (request, reply) => {
+      const outcome = removeTrackForAccount(
+        context.database,
+        request.params.id,
+        request.params.trackId,
+        request.account.id
       );
+
+      if (outcome === PlaylistOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail:
+            'The playlist does not exist, this account cannot write it, or the track is not in it.'
+        });
+      }
+
+      if (outcome === PlaylistOutcome.Ok) {
+        return reply.code(204).send();
+      }
+
+      return exhaust(outcome);
     }
   );
 }

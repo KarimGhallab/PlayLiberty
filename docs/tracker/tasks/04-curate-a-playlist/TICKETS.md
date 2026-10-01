@@ -11,7 +11,7 @@ through the API; the overflow menu and the add-a-video dialog belong to the scre
 | [`02-add-a-video-to-several-playlists`](02-add-a-video-to-several-playlists.md)     | resolved        | [`01`](01-record-the-batch-add-route-shape.md) | none                                             |
 | [`03-rename-a-playlist`](03-rename-a-playlist.md)                                   | resolved        | none                                           | none                                             |
 | [`04-delete-a-playlist`](04-delete-a-playlist.md)                                   | resolved        | none                                           | none                                             |
-| [`05-remove-a-track-from-a-playlist`](05-remove-a-track-from-a-playlist.md)         | ready-for-agent | none                                           | [`07`](07-a-returned-video-is-treated-as-new.md) |
+| [`05-remove-a-track-from-a-playlist`](05-remove-a-track-from-a-playlist.md)         | resolved        | none                                           | [`07`](07-a-returned-video-is-treated-as-new.md) |
 | [`06-retry-a-failed-track`](06-retry-a-failed-track.md)                             | ready-for-agent | none                                           | none                                             |
 | [`07-a-returned-video-is-treated-as-new`](07-a-returned-video-is-treated-as-new.md) | ready-for-agent | [`05`](05-remove-a-track-from-a-playlist.md)   | none                                             |
 

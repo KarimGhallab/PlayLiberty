@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -26,6 +26,7 @@ import {
   accounts,
   playlists,
   shares,
+  suppressions,
   tracks
 } from '../../platform/database/schema.js';
 import { addAssociation, removeAssociation } from './associationService.js';
@@ -297,6 +298,25 @@ function selectTrack(trackId: string) {
     .from(tracks)
     .where(eq(tracks.id, trackId))
     .get();
+}
+
+function hasSuppression(playlistId: string, videoId: string): boolean {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return (
+    context.database.db
+      .select()
+      .from(suppressions)
+      .where(
+        and(
+          eq(suppressions.playlistId, playlistId),
+          eq(suppressions.videoId, videoId)
+        )
+      )
+      .get() !== undefined
+  );
 }
 
 describe('GET /playlists', () => {
@@ -1647,5 +1667,137 @@ describe('DELETE /playlists/:id', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
     expect(selectPlaylist(playlistId)).toBeDefined();
+  });
+});
+
+describe('DELETE /playlists/:id/tracks/:trackId', () => {
+  it('removes the track for the owner, moves the count and writes a suppression', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const trackId = seedTrack(context.database);
+    addTrack(context.database, playlistId, trackId);
+    expect(selectPlaylist(playlistId)?.trackCount).toBe(1);
+
+    const response = await del(
+      `/api/v1/playlists/${playlistId}/tracks/${trackId}`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(countAssociations(context.database, playlistId)).toBe(0);
+    expect(selectPlaylist(playlistId)?.trackCount).toBe(0);
+    expect(
+      hasSuppression(playlistId, selectTrack(trackId)?.videoId ?? '')
+    ).toBe(true);
+  });
+
+  it('lets a write collaborator remove a track', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const trackId = seedTrack(context.database);
+    addTrack(context.database, playlistId, trackId);
+    const writer = seedAccount(context.database);
+    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+
+    const response = await del(
+      `/api/v1/playlists/${playlistId}/tracks/${trackId}`,
+      writer.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(countAssociations(context.database, playlistId)).toBe(0);
+    expect(
+      hasSuppression(playlistId, selectTrack(trackId)?.videoId ?? '')
+    ).toBe(true);
+  });
+
+  it('answers 404 for a read collaborator, a stranger, a missing playlist and an absent association, writing nothing', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const trackId = seedTrack(context.database);
+    addTrack(context.database, playlistId, trackId);
+    const absentTrack = seedTrack(context.database);
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    const stranger = seedAccount(context.database);
+
+    const attempts: [string, string, string][] = [
+      [playlistId, trackId, reader.pangolinUserId],
+      [playlistId, trackId, stranger.pangolinUserId],
+      [randomUUID(), trackId, owner.pangolinUserId],
+      [playlistId, absentTrack, owner.pangolinUserId]
+    ];
+
+    for (const [targetPlaylist, targetTrack, pangolinUserId] of attempts) {
+      const response = await del(
+        `/api/v1/playlists/${targetPlaylist}/tracks/${targetTrack}`,
+        pangolinUserId
+      );
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+    }
+
+    // Every refused attempt left the association and the count where they were.
+    expect(countAssociations(context.database, playlistId)).toBe(1);
+    expect(selectPlaylist(playlistId)?.trackCount).toBe(1);
+    expect(
+      hasSuppression(playlistId, selectTrack(trackId)?.videoId ?? '')
+    ).toBe(false);
+  });
+
+  it('leaves the track and its file for a playlist that still holds it', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const doomed = seedPlaylist(context.database, owner.accountId);
+    const keeper = seedPlaylist(context.database, owner.accountId);
+    const relativePath = 'media/cc/song.m4a';
+    const trackId = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Stored,
+      filePath: relativePath
+    });
+    addTrack(context.database, doomed, trackId);
+    addTrack(context.database, keeper, trackId);
+    const storedPath = join(context.mediaPaths.root, relativePath);
+    await mkdir(dirname(storedPath), { recursive: true });
+    await writeFile(storedPath, 'the-audio');
+
+    const response = await del(
+      `/api/v1/playlists/${doomed}/tracks/${trackId}`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(countAssociations(context.database, keeper)).toBe(1);
+    expect(selectTrack(trackId)).toBeDefined();
+    await expect(readFile(storedPath, 'utf8')).resolves.toBe('the-audio');
+
+    const stream = await get(
+      `/api/v1/tracks/${trackId}/stream`,
+      owner.pangolinUserId
+    );
+    expect(stream.statusCode).toBe(200);
+    expect(stream.body).toBe('the-audio');
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const trackId = seedTrack(context.database);
+    addTrack(context.database, playlistId, trackId);
+
+    const response = await context.app.inject({
+      method: 'DELETE',
+      url: `/api/v1/playlists/${playlistId}/tracks/${trackId}`,
+      headers: { 'remote-user': owner.pangolinUserId }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+    expect(countAssociations(context.database, playlistId)).toBe(1);
   });
 });

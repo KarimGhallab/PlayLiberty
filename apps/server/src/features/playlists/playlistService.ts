@@ -9,6 +9,7 @@ import type {
 } from '@playliberty/contracts';
 
 import {
+  canWritePlaylist,
   isPlaylistOwner,
   playlistVisibleTo,
   resolvePlaylistAccess,
@@ -27,6 +28,7 @@ import {
   playlists,
   tracks
 } from '../../platform/database/schema.js';
+import { AssociationOutcome, removeAssociation } from './associationService.js';
 
 export enum PlaylistOutcome {
   Ok = 'ok',
@@ -203,6 +205,33 @@ export function deletePlaylistForAccount(
   database.db.delete(playlists).where(eq(playlists.id, playlistId)).run();
 
   return PlaylistOutcome.Ok;
+}
+
+/*
+ * Removing a track belongs to the owner or a write collaborator. The answer is the
+ * same not-found for a read collaborator, a stranger, a playlist that does not
+ * exist and an association that is not there, so the route confirms neither a
+ * playlist nor a membership the caller may not touch. The suppression is written
+ * by the association service in the same transaction as the delete, so no caller
+ * can remove without suppressing.
+ */
+export function removeTrackForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  trackId: string,
+  accountId: string
+): PlaylistOutcome {
+  if (!canWritePlaylist(database, playlistId, accountId)) {
+    return PlaylistOutcome.NotFound;
+  }
+
+  const outcome = removeAssociation(database, { playlistId, trackId });
+
+  // A removal answers removed or absent; the add outcomes cannot come from it, and
+  // only absent is not a successful removal.
+  return outcome === AssociationOutcome.Absent
+    ? PlaylistOutcome.NotFound
+    : PlaylistOutcome.Ok;
 }
 
 export interface ListPlaylistTracksQuery {
