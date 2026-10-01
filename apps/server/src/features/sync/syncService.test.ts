@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -9,10 +10,12 @@ import {
   PlaylistSchema,
   PlaylistSyncStatus,
   Provider,
+  ShareLevel,
   SyncRunSchema,
   SyncRunStatus,
   TrackFileStatus,
   TrackSourceStatus,
+  UserRole,
   createPageSchema
 } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
@@ -28,7 +31,9 @@ import {
 } from '../../app/testing/fakeYoutube.js';
 
 import {
+  accounts,
   associations,
+  shares,
   suppressions,
   tracks
 } from '../../platform/database/schema.js';
@@ -877,5 +882,232 @@ describe('a failed sync changes nothing', () => {
     expect(trackByVideoId('aaaaaaaaaaa')?.sourceStatus).toBe(
       TrackSourceStatus.Removed
     );
+  });
+});
+
+describe('a single video source', () => {
+  const videoId = 'dQw4w9WgXcQ';
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const videoEntry = { ...entry(videoId), title: 'A Song' };
+
+  function videoSource() {
+    return source([videoEntry], { title: 'A Song', sourceId: videoId });
+  }
+
+  it('creates a one-track Synced playlist whose source is that video', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(videoSource()) }
+    );
+
+    const started = SyncRunSchema.parse(
+      (await post(videoUrl, 'owner-1')).json()
+    );
+    const finished = await runFinished(started.playlistId, 'owner-1');
+
+    expect(finished.status).toBe(SyncRunStatus.Completed);
+    expect(finished.addedCount).toBe(1);
+
+    const playlist = await readPlaylist(started.playlistId, 'owner-1');
+    expect(playlist.sourcePlaylistId).toBe(videoId);
+    expect(playlist.name).toBe('A Song');
+    expect(playlist.coverUrl).toBe(videoEntry.thumbnailUrl);
+    expect(playlist.trackCount).toBe(1);
+
+    const rows = readAssociations(started.playlistId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.videoId).toBe(videoId);
+    expect(rows[0]?.origin).toBe(AssociationOrigin.Remote);
+    expect(rows[0]?.position).toBe(0);
+  });
+
+  it('re-posting the same video URL returns the existing playlist', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(videoSource(), videoSource()) }
+    );
+
+    const first = SyncRunSchema.parse((await post(videoUrl, 'owner-1')).json());
+    await runFinished(first.playlistId, 'owner-1');
+
+    const second = SyncRunSchema.parse(
+      (await post(videoUrl, 'owner-1')).json()
+    );
+
+    expect(second.playlistId).toBe(first.playlistId);
+
+    await runFinished(first.playlistId, 'owner-1');
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', 'owner-1')).json()
+    );
+    expect(page.total).toBe(1);
+  });
+
+  it('re-syncs a video playlist like any other', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(videoSource(), videoSource()) }
+    );
+
+    const started = SyncRunSchema.parse(
+      (await post(videoUrl, 'owner-1')).json()
+    );
+    await runFinished(started.playlistId, 'owner-1');
+
+    const response = await postSync(started.playlistId, 'owner-1');
+    expect(response.statusCode).toBe(202);
+
+    const finished = await runFinished(started.playlistId, 'owner-1');
+    expect(finished.status).toBe(SyncRunStatus.Completed);
+    expect(finished.addedCount).toBe(0);
+    expect(associationCount(videoId)).toBe(1);
+  });
+});
+
+function seedAccount(pangolinUserId: string): string {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const id = randomUUID();
+
+  context.database.db
+    .insert(accounts)
+    .values({
+      id,
+      pangolinUserId,
+      displayName: 'Account',
+      email: null,
+      avatarUrl: null,
+      role: UserRole.User
+    })
+    .run();
+
+  return id;
+}
+
+/*
+ * A share is seeded rather than created by a route: the three share routes are
+ * still stubs (spec 05), so inserting the row is the only way to put the database
+ * in the state a shared playlist is actually in.
+ */
+function sharePlaylist(
+  playlistId: string,
+  accountId: string,
+  level: ShareLevel
+): void {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  context.database.db
+    .insert(shares)
+    .values({ id: randomUUID(), playlistId, accountId, level })
+    .run();
+}
+
+describe('authorizing a sync', () => {
+  it('lets an owner and a write collaborator sync, and refuses a read collaborator like a stranger', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(
+          source([entry('aaaaaaaaaaa')]),
+          source([entry('aaaaaaaaaaa')]),
+          source([entry('aaaaaaaaaaa')])
+        )
+      }
+    );
+
+    const created = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(created.playlistId, 'owner-1');
+
+    const writerId = seedAccount('writer-1');
+    const readerId = seedAccount('reader-1');
+    sharePlaylist(created.playlistId, writerId, ShareLevel.Write);
+    sharePlaylist(created.playlistId, readerId, ShareLevel.Read);
+
+    const writer = await postSync(created.playlistId, 'writer-1');
+    expect(writer.statusCode).toBe(202);
+    await runFinished(created.playlistId, 'writer-1');
+
+    const owner = await postSync(created.playlistId, 'owner-1');
+    expect(owner.statusCode).toBe(202);
+    await runFinished(created.playlistId, 'owner-1');
+
+    const reader = await postSync(created.playlistId, 'reader-1');
+    expect(reader.statusCode).toBe(404);
+    expect(reader.json()).toMatchObject({ code: 'playlist_not_found' });
+
+    const stranger = await postSync(created.playlistId, 'stranger-1');
+    expect(stranger.statusCode).toBe(404);
+    expect(stranger.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it('lets any authenticated account create a playlist', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
+    );
+
+    const created = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'brand-new-account')).json()
+    );
+    expect(created.status).toBe(SyncRunStatus.Running);
+    await runFinished(created.playlistId, 'brand-new-account');
+
+    const mine = PageSchema.parse(
+      (await get('/api/v1/playlists', 'brand-new-account')).json()
+    );
+    expect(mine.total).toBe(1);
+    expect(mine.items[0]?.access).toBe('owner');
+
+    const theirs = PageSchema.parse(
+      (await get('/api/v1/playlists', 'somebody-else')).json()
+    );
+    expect(theirs.total).toBe(0);
+  });
+
+  it('refuses a sync without the client header', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
+    );
+
+    const created = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(created.playlistId, 'owner-1');
+
+    const response = await context.app.inject({
+      method: 'POST',
+      url: `/api/v1/playlists/${created.playlistId}/sync`,
+      headers: { 'remote-user': 'owner-1' }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+
+  it('refuses a sync from a foreign origin when one is configured', async () => {
+    context = await createTestContext(
+      { PUBLIC_ORIGIN: 'https://app.example.com' },
+      { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
+    );
+
+    const response = await context.app.inject({
+      method: 'POST',
+      url: `/api/v1/playlists/${randomUUID()}/sync`,
+      headers: {
+        'remote-user': 'owner-1',
+        'x-playliberty-client': 'test',
+        origin: 'https://evil.example.com'
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_origin_mismatch' });
   });
 });
