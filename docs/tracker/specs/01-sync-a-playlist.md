@@ -5,9 +5,11 @@ Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
 
-A listener pastes a YouTube playlist URL and nothing happens. The only route that would accept it answers
-`501`, so no playlist is created, nothing is read from the source, and no audio is fetched. The listener's
-only way to hear the music they chose is YouTube itself, which is the thing PlayLiberty exists to replace.
+A listener pastes a YouTube playlist URL into the web client and nothing happens. `POST /playlists` and
+`POST /playlists/:id/sync` both answer `501`, so no playlist is created, nothing is read from the source, and
+no audio is queued. The web client has an add-a-playlist dialog and a sync control in the playlist header,
+and both are dead. The listener's only way to hear the music they chose is YouTube itself, which is the thing
+PlayLiberty exists to replace.
 
 The second half of the problem matters more, and it arrives the moment a sync does. A source changes while
 nobody is looking: videos are deleted, an owner tidies a playlist, a source becomes private. A sync that
@@ -18,11 +20,11 @@ track, and nothing in the codebase enforces it, because no sync exists to enforc
 ## Solution
 
 Pasting a playlist URL, or a single video URL, creates a Synced playlist mirroring that Source and starts a
-sync run. A sync reads the source membership once through the YouTube adapter, reconciles it against what
-the playlist already holds, and adds without ever subtracting: a video missing from the source keeps its
-file and is marked remote-removed, a video the listener removed stays removed, and a new video becomes a
-track queued for download. The run records what it added, retained and failed, the playlist records when it
-last synced, and running the same sync twice changes nothing the second time.
+sync run. A sync reads the source membership once through the YouTube adapter, reconciles it against what the
+playlist already holds, and adds without ever subtracting: a video missing from the source keeps its file and
+is marked remote-removed, a video the listener removed stays removed, and a new video becomes a track queued
+for download. The run records what it added, retained and failed, the playlist records when it last synced,
+and running the same sync twice changes nothing the second time.
 
 A sync that cannot read its source changes nothing at all. That is the constraint the rest of this spec is
 built to protect, and it is a refusal rather than a recovery.
@@ -58,8 +60,8 @@ built to protect, and it is a refusal rather than a recovery.
 16. As a listener, I want a failed sync to change nothing, so that a bad network cannot empty my library.
 17. As a listener, I want the failed playlist to show that its last sync failed rather than that it has never
     synced, so that the two are not confused.
-18. As a listener, I want the same playlist on two devices to show the same counts, so that the numbers are
-    a fact and not a guess.
+18. As a listener, I want the same playlist on two devices to show the same counts, so that the numbers are a
+    fact and not a guess.
 19. As a listener, I want a playlist I already synced to be returned when I paste its URL again, so that I do
     not end up with two copies.
 20. As a listener, I want to paste a single video URL and get a one-track playlist, so that a song I found on
@@ -87,23 +89,24 @@ built to protect, and it is a refusal rather than a recovery.
   sync on an existing playlist. Both return `202` with the sync run they created, which is in `running`.
   `CreatePlaylistInputSchema` already carries a URL, so the input does not change.
 - **Both routes are asynchronous, and neither adds a polling route.** The reconcile reads YouTube, so it
-  cannot finish inside a request. A client learns the outcome from the latest-run route that already exists,
-  which reports `sync_run_absent` separately from a failed run precisely so a client can tell the two apart.
-  _Decided here:_ no route returns a run by id, so `202` plus the latest-run route is the whole contract.
+  cannot finish inside a request. A client learns the outcome from the latest-run route that already exists
+  and is already served, which reports `sync_run_absent` separately from a failed run precisely so a client
+  can tell the two apart. _Decided here:_ no route returns a run by id, so `202` plus the latest-run route is
+  the whole contract. How the web client polls it, and when it stops, is
+  [`09-keep-the-screens-current`](09-keep-the-screens-current.md).
 - **One run at a time per playlist.** A second request while a run is in flight answers `409` with a problem
   document. Two concurrent runs would each assign positions to the associations they create and each write
-  the playlist's counts, and the loser would overwrite the winner's numbers.
-  _Decided here:_ the alternative, queueing the second run, is not distinguishable from a stuck run to a
-  user.
+  the playlist's counts, and the loser would overwrite the winner's numbers. _Decided here:_ the alternative,
+  queueing the second run, is not distinguishable from a stuck run to a user.
 - **A single video URL is a valid Source.** It creates a Synced playlist whose source is that video, with one
   remote association. The glossary defines a Source as a playlist URL or a single video URL, so the route
-  accepts both. This is not the manual association of
-  [`04-curate-a-playlist`](04-curate-a-playlist.md), which adds a video to playlists that already exist.
-  _Decided here:_ the distinction between the two, since the vocabulary has both and the contracts have both.
+  accepts both. This is not the manual association of [`04-curate-a-playlist`](04-curate-a-playlist.md), which
+  adds a video to playlists that already exist. _Decided here:_ the distinction between the two, since the
+  vocabulary has both and the contracts have both.
 - **Re-pasting a source the caller already synced returns the existing playlist** and starts a run on it. It
   does not create a duplicate and it does not answer `409`.
-- **Source uniqueness is per owner.** The unique index the schema ships is on provider and source playlist
-  id alone, which would stop a second account from ever mirroring a source the first account mirrored. It
+- **Source uniqueness is per owner.** The unique index the schema ships is on provider and source playlist id
+  alone, which would stop a second account from ever mirroring a source the first account mirrored. It
   becomes owner, provider, source playlist id. The media store is server-wide and the playlist is
   owner-owned, so two accounts holding one source cost two sets of associations and no extra media, which is
   user story 22. _Decided here:_ this is a schema migration, and it is the one decision in this spec that
@@ -119,26 +122,24 @@ built to protect, and it is a refusal rather than a recovery.
   - a video id the instance already holds as a track gets a new association only, never a second track and
     never a second download.
 - **Positions are append-only under a sync.** A sync assigns a position only to an association it creates,
-  and never rewrites the position of one that already exists. Reordering in YouTube therefore does not
-  reorder the shelf, and a sync cannot fight an arrangement the user made.
-  _Decided here:_ no contract offers reordering in v1, and the alternative makes a sync destructive in a
-  second, quieter way.
+  and never rewrites the position of one that already exists. Reordering in YouTube therefore does not reorder
+  the shelf, and a sync cannot fight an arrangement the user made. _Decided here:_ no contract offers
+  reordering in v1, and the alternative makes a sync destructive in a second, quieter way.
 - **`sourceStatus: removed` is a claim about the source, not about the file.** Because the flag lives on the
   track rather than on the association, marking it removed makes the row read as remote-removed in every
   playlist that holds that track, including a playlist it was added to by hand. Playback is unaffected, which
   is the promise: a stored file is served whatever the flag says, and the row's play control stays present
-  whenever there is a file. This is a consequence of the schema as built rather than a choice, and it is
-  called out because it is visible.
+  whenever there is a file.
 - **A track that left the source before it was ever downloaded becomes `unavailable`, not `pending`.** It has
   no file, it is not going to get one, and leaving it queued would be a promise nothing keeps. `unavailable`
-  is terminal and is not played. This is where the glossary's Unavailable comes from, and this spec owns the
-  rule. A download that discovers the same thing takes the same pair of values.
+  is terminal and is not played. A download that discovers the same thing takes the same pair of values, which
+  [`02-store-a-track`](02-store-a-track.md) owns for its own path.
 - **A run that cannot read its source mutates nothing.** No association is created, no track is marked
   removed, no position moves, the run is `failed` with a short error, and the playlist's `syncStatus` becomes
   `error`. An unreadable source and a source with nothing in it produce the same payload from the adapter, so
   reading a failure as an empty listing would apply retention to every track in the playlist at once. This is
-  the most dangerous failure in the product and the answer is a refusal, not a recovery.
-  _Decided here:_ the architecture names the reconcile and the counts but not the failure branch.
+  the most dangerous failure in the product and the answer is a refusal, not a recovery. _Decided here:_ the
+  architecture names the reconcile and the counts but not the failure branch.
 - **The four counts mean this, and the first and third are zero by construction:**
   - `addedCount` is the number of associations the run created;
   - `retainedCount` is the number of tracks the run marked remote-removed;
@@ -149,42 +150,39 @@ built to protect, and it is a refusal rather than a recovery.
     _Decided here:_ the architecture names four counts and does not say what each measures.
 - **`lastSyncedAt` is set when a run finishes, whether it completed or failed**, because a failed run is a
   sync that happened. `syncStatus` is `syncing` while a run is in flight, `error` after a failure, and `idle`
-  after a success.
-  _Decided here:_ the alternative, leaving `lastSyncedAt` null on failure, makes a failed first sync
-  indistinguishable from a playlist that has never synced, and the design system's empty state is defined as
-  `lastSyncedAt` being null.
+  after a success. _Decided here:_ the alternative, leaving `lastSyncedAt` null on failure, makes a failed
+  first sync indistinguishable from a playlist that has never synced, and the design system's empty state is
+  defined as `lastSyncedAt` being null.
 - **The playlist takes its name and cover from the source**, both read in the same pass, because the name is
   non-nullable and nothing else in the contracts says where a name comes from. A source with no usable title
-  falls back to its source id.
-  _Decided here._
+  falls back to its source id. _Decided here._
 - **A field the flat pass does not carry is fetched as a single-video read; the rest of the playlist never
   is.** A missing duration on one entry costs one extra read, and a playlist never degrades to a read per
   entry.
-- **The run's counts, the playlist's `lastSyncedAt` and its `syncStatus` are written in one transaction at
-  the end of the run**, so a client never reads a finished run beside a playlist that still says it is
-  syncing. _Decided here._
+- **The run's counts, the playlist's `lastSyncedAt` and its `syncStatus` are written in one transaction at the
+  end of the run**, so a client never reads a finished run beside a playlist that still says it is syncing.
+  _Decided here._
 - **Suppression is written by removing a track and read only by the reconcile.** The table exists in the
   schema and nothing in the server references it; this spec gives the reader and
   [`04-curate-a-playlist`](04-curate-a-playlist.md) gives the writer.
 - **Everything about YouTube stays behind the adapter.** The sync never parses yt-dlp output and never spawns
   a process, because the adapter is the only seam to the source and that boundary is what makes the sync
   testable at all.
-- **Binding constraints, not negotiable inside this spec:** identity comes from the forwarded edge headers
-  and fails closed when they are absent; no transcoding, and the stored format is AAC in an M4A container;
-  the stored media rather than YouTube is the source of truth for playback; a sync never deletes a stored
-  track; every mutating request carries the client header and passes the origin check; and the server is the
-  only component that touches the database, the media root, or yt-dlp.
+- **Binding constraints, not negotiable inside this spec:** identity comes from the forwarded edge headers and
+  fails closed when they are absent; no transcoding, and the stored format is AAC in an M4A container; the
+  stored media rather than YouTube is the source of truth for playback; a sync never deletes a stored track;
+  every mutating request carries the client header and passes the origin check; and the server is the only
+  component that touches the database, the media root, or yt-dlp.
 
 ## Testing Decisions
 
 - **One seam, at the highest point available.** The real Fastify app, built over a temporary database and a
-  temporary media root, exercised through HTTP injection, with a fake YouTube adapter substituted for the
-  real one. No test in this spec spawns a process, touches the network, or writes outside its temporary
-  directory.
-- **What makes a good test here** is the response validated against the contract schemas plus the state a
-  user would see afterwards, never the order the reconcile happened to call things in. A test that asserts
-  the adapter was called twice is a test of the implementation; a test that asserts a track exists with a
-  position and a `pending` file status is a test of the behaviour.
+  temporary media root, exercised through HTTP injection, with a fake YouTube adapter substituted for the real
+  one. No test in this spec spawns a process, touches the network, or writes outside its temporary directory.
+- **What makes a good test here** is the response validated against the contract schemas plus the state a user
+  would see afterwards, never the order the reconcile happened to call things in. A test that asserts the
+  adapter was called twice is a test of the implementation; a test that asserts a track exists with a position
+  and a `pending` file status is a test of the behaviour.
 - **The cases that must exist:**
   - a first sync of a new playlist creates it, names it, and returns a run in `running`;
   - a second sync with no change on the source adds nothing and leaves every position alone;
@@ -201,9 +199,10 @@ built to protect, and it is a refusal rather than a recovery.
   - a read collaborator's sync is refused and an owner or write collaborator's is not;
   - a single video URL creates a one-track playlist;
   - a mutation without the client header is refused.
-- **Prior art:** the existing server route tests, which build the real app over a temporary database and
-  media root, seed accounts directly, and validate responses against the contract schemas. The fake adapter
-  is a new seam at the same height, not a lower one, because the adapter already publishes an interface.
+- **Prior art:** the existing server route tests, which build the real app over a temporary database and media
+  root, seed accounts directly, and validate responses against the contract schemas. The fake adapter is a new
+  seam at the same height, not a lower one, because the adapter already publishes an interface. The
+  playlist-list and playlist-read services are already written against the database this spec writes to.
 
 ## Out of Scope
 
@@ -215,8 +214,10 @@ built to protect, and it is a refusal rather than a recovery.
 - Deleting a playlist, sharing one, and adding a video to an existing playlist. Those are
   [`04-curate-a-playlist`](04-curate-a-playlist.md) and [`05-share-a-playlist`](05-share-a-playlist.md).
 - The download itself, which [`02-store-a-track`](02-store-a-track.md) owns.
-- The read route a client needs to render the result, which
+- The read route the web client needs to render the result, which
   [`03-read-a-playlist`](03-read-a-playlist.md) owns.
+- The client's live view of a run in flight, which
+  [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns.
 
 ## Further Notes
 
@@ -226,9 +227,9 @@ built to protect, and it is a refusal rather than a recovery.
 - The architecture document describes the reconcile as a video missing from the source marking its track
   `sourceStatus: removed`. This spec keeps that rule and adds the failure branch the document does not name,
   because the branch is where the rule would be violated by accident.
-- The source uniqueness migration in decision six is the one change here that alters an existing
-  constraint rather than filling an empty behaviour. It is worth an ADR when the ticket is cut, and it is
-  marked _Decided here_ so it can be overturned before then rather than after.
-- The `removedCount` field stays at zero throughout v1. That is intentional: a client shows a number that is
-  honest, and a future decision to give a sync the power to remove would be recorded as an ADR rather than
-  arriving as a changed number.
+- The source uniqueness migration in decision six is the one change here that alters an existing constraint
+  rather than filling an empty behaviour. It is worth an ADR when the ticket is cut, and it is marked
+  _Decided here_ so it can be overturned before then rather than after.
+- The `removedCount` field stays at zero throughout v1. That is intentional: the web client shows a number
+  that is honest, and a future decision to give a sync the power to remove would be recorded as an ADR rather
+  than arriving as a changed number.

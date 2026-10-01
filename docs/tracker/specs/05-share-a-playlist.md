@@ -5,25 +5,26 @@ Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
 
-Sharing is promised, designed, and absent. A playlist carries an owner and can be handed to another account
-on the same instance, the design system has a share dialog, and the playlist a client reads already carries
-the access level and whether it has any shares. None of it can happen: the three share routes answer `501`,
-and so does the route that would list the accounts a playlist could be shared with, so there is nothing to
-even name in a dialog.
+Sharing is promised, designed, and absent. A playlist carries an owner and can be handed to another account on
+the same instance, the web client has a share dialog, and the playlist it reads already carries the access
+level and whether it has any shares. None of it can happen: `GET /playlists/:id/shares`,
+`POST /playlists/:id/shares` and `DELETE /playlists/:id/shares/:accountId` all answer `501`, and so does
+`GET /accounts`, the route that lists the accounts a playlist could be shared with, so there is nothing to even
+name in a dialog.
 
-The second problem is who may see whom. A share needs a target, and the target list is a list of people.
-The instance is private and sits behind the edge, which makes it a household rather than a public service,
-and the account record as it stands carries an email address and a role. Exposing those to every other
-account in order to render a picker is more than the picker needs, and it is the kind of decision that is
-cheap to make now and expensive to unpick once every client has read it.
+The second problem is who may see whom. A share needs a target, and the target list is a list of people. The
+instance is private and sits behind the edge, which makes it a household rather than a public service, and the
+account record as it stands carries an email address and a role. Exposing those to every other account in order
+to render a picker is more than the picker needs, and it is the kind of decision that is cheap to make now and
+expensive to unpick once every client has read it.
 
 ## Solution
 
 An owner lists the accounts on the instance, grants one of them access to one of their playlists at either
-level, and revokes it again. A read share lets that account see the playlist and play what is in it. A write
-share adds the right to add, remove and sync. Rename, delete and share management never leave the owner.
-Revocation takes effect on the next request, and a playlist the account can no longer reach answers exactly
-as a playlist that never existed.
+level, and revokes it again. A read share lets that account see the playlist, find it in the library and play
+what is in it. A write share adds the right to add, remove and sync. Rename, delete and share management never
+leave the owner. Revocation takes effect on the next request, and a playlist the account can no longer reach
+answers exactly as a playlist that never existed.
 
 ## User Stories
 
@@ -39,11 +40,11 @@ as a playlist that never existed.
    is not only mine.
 8. As a playlist owner, I want to be able to share with any account on the instance, so that I am not limited
    to people I have shared with before.
-9. As a playlist owner, I want to be prevented from sharing a playlist with myself, so that there is one
-   access path to it rather than two.
+9. As a playlist owner, I want to be prevented from sharing a playlist with myself, so that there is one access
+   path to it rather than two.
 10. As a playlist owner, I want a share to survive a sync, so that sharing is not something I have to redo.
-11. As a playlist owner, I want sharing a playlist not to copy any audio, so that a shared song is one file
-    on the instance.
+11. As a playlist owner, I want sharing a playlist not to copy any audio, so that a shared song is one file on
+    the instance.
 12. As a playlist owner, I want deleting a playlist to end its shares, so that nothing is left pointing at
     nothing.
 13. As a read collaborator, I want the playlist to appear in my library, so that a share is usable rather than
@@ -60,8 +61,8 @@ as a playlist that never existed.
     so that the interface does not tease me with what is not mine.
 21. As a write collaborator, I want my additions to be the same kind of addition as the owner's, so that the
     playlist does not have two kinds of track.
-22. As an account, I want a playlist I have lost access to to read as gone rather than as forbidden, so that
-    a revoked share is not a fault I have to report.
+22. As an account, I want a playlist I have lost access to to read as gone rather than as forbidden, so that a
+    revoked share is not a fault I have to report.
 23. As an account, I want to see other people's display names, so that I can recognise them in a picker.
 24. As an account, I want not to see other people's email addresses, so that the picker does not cost anyone
     their address.
@@ -76,48 +77,50 @@ as a playlist that never existed.
 
 ## Implementation Decisions
 
-- **The three routes are the three that are already stubbed**, under the playlist, and the listing route
+- **The three share routes are the three that are already stubbed**, under the playlist, and the listing route
   returns the share schema the contracts already define, carrying the account, the level, and when the share
-  was created. No contract changes here, which is the second time the contracts have anticipated a feature
-  that was never built.
+  was created. No contract change there, which is the second time the contracts have anticipated a feature that
+  was never built.
+- **The account directory is the route that already stubs `GET /accounts`,** and it returns the narrowest view a
+  picker needs: an account's id, display name and avatar, never their email address and never their role. The
+  wider account view already exists and stays where it belongs, on `GET /me`. _Decided here:_ this adds one
+  small schema to the contracts, and the alternative, reusing the wider view, would hand every account in the
+  household every other account's email address for no reason.
+- **The directory is available to any authenticated account**, because any account may be handed a share and
+  any owner needs a list to choose from. It is not admin-only, and there is no admin surface in v1.
+- **The directory is paged with the existing page query and ordered by display name,** because a picker is read
+  in order and a list ordered by creation is a list ordered by who happened to sign in first.
+- **The directory has no search field.** The instance is a small group of accounts by definition, so the list
+  is short enough to scan, and search over accounts would be the thin edge of the content search that is a
+  permanent non-goal. If an instance ever holds enough accounts for that to stop being true, the answer is a
+  filter on the list, not a search engine.
 - **Every share route is owner-only.** A collaborator cannot share, at either level, and a read collaborator
   cannot do anything at all. The reason is structural rather than a policy choice: a share is a grant of
   access, and an account that can grant access is an owner by definition, so a write collaborator allowed to
   share would be a second owner wearing a collaborator's label.
 - **Granting is an upsert.** Posting a share for an account that already has one changes its level rather than
-  failing or creating a second row, and the unique constraint on playlist and account is what makes that
-  well defined. The alternative, refusing and making the owner revoke and re-grant, is two actions for one
-  change of mind and needs a route this surface does not have.
+  failing or creating a second row, and the unique constraint on playlist and account is what makes that well
+  defined. The alternative, refusing and making the owner revoke and re-grant, is two actions for one change of
+  mind and needs a route this surface does not have.
 - **There are two levels and no third.** The level is the share-level enum's own two members, and the server
   decides what each one means with an exhaustive switch, so adding a level fails the build there rather than
   passing through as a string nobody has given meaning to. The playlist's access value is the owner or one of
-  the two levels, and that union has no fourth member on purpose: a playlist an account cannot see is a
-  `404`, so there is no "no access" value for a client to carry, and adding one later would reopen a
-  question two routes have already answered.
+  the two levels, and that union has no fourth member on purpose: a playlist an account cannot see is a `404`,
+  so there is no "no access" value for a client to carry, and adding one later would reopen a question two
+  routes have already answered.
 - **The owner cannot share with themselves.** A share to the account that owns the playlist would be a second
-  path to access the owner already has, and every rule about who may do what would then have to consider it.
-  It is refused rather than ignored.
-- **A share target that does not exist is a `404`,** and a playlist that is not the caller's, or does not
-  exist, is the same `404` every other route in this set returns. The caller's own playlist existing or not
-  is not something a share attempt reveals.
-- **The account directory is available to any authenticated account and returns the narrowest view that a
-  picker needs:** an account's id, display name and avatar, never their email address and never their role.
-  The wider account view already exists and stays where it belongs, on the route that returns the caller's
-  own account. _Decided here:_ this adds one small schema to the contracts, and the alternative, reusing the
-  wider view, would hand every account in the household every other account's email address for no reason.
-- **The directory is paged with the existing page query and ordered by display name,** because a picker is
-  read in order and a list ordered by creation is a list ordered by who happened to sign in first.
-- **The directory has no search field.** The instance is a small group of accounts by definition, so the list
-  is short enough to scan, and search over accounts would be the thin edge of the content search that is a
-  permanent non-goal. If an instance ever holds enough accounts for that to stop being true, the answer is a
-  filter on the list, not a search engine.
-- **A read share grants the library, the playlist, its tracks, the stream and the thumbnails, and nothing
-  that changes anything.** The library shows the playlist with read access, the detail screen shows one item
-  in its overflow menu, and every mutating route in
-  [`04-curate-a-playlist`](04-curate-a-playlist.md) answers a refusal.
-- **A write share grants adding, removing, retrying and syncing, and nothing else.** Rename, delete and
-  share management stay with the owner. This is the glossary's definition of a collaborator and it is
-  enforced on the server, with the interface's absence of a control following from it.
+  path to access the owner already has, and every rule about who may do what would then have to consider it. It
+  is refused rather than ignored.
+- **A share target that does not exist is a `404`,** and a playlist that is not the caller's, or does not exist,
+  is the same `404` every other route in this set returns. The caller's own playlist existing or not is not
+  something a share attempt reveals.
+- **A read share grants the library, the playlist, its tracks, the stream and the thumbnails, and nothing that
+  changes anything.** The library shows the playlist with read access, the detail screen shows one item in its
+  overflow menu, and every mutating route in [`04-curate-a-playlist`](04-curate-a-playlist.md) answers a
+  refusal.
+- **A write share grants adding, removing, retrying and syncing, and nothing else.** Rename, delete and share
+  management stay with the owner. This is the glossary's definition of a collaborator and it is enforced on the
+  server, with the interface's absence of a control following from it.
 - **A collaborator's addition is an ordinary association.** Nothing marks it as a collaborator's, so the
   playlist does not carry two kinds of track and a later sync treats both the same way.
 - **Sharing changes no media, no count, and no sync state.** Two accounts holding one track share one file,
@@ -128,20 +131,25 @@ as a playlist that never existed.
   machinery for a case that resolves itself in seconds.
 - **Deleting a playlist ends its shares** through the same cascade that removes its associations, so no share
   can outlive the playlist it points at.
-- **There is no invitation, no notification, and no link.** A share names an account that already exists on
-  the instance, so there is nothing to send and nothing to deliver, and there is no path by which a playlist
-  can be reached from outside it. The private boundary is structural: the only way in is an account, and the
-  only way to have an account is to pass the edge.
+- **There is no invitation, no notification, and no link.** A share names an account that already exists on the
+  instance, so there is nothing to send and nothing to deliver, and there is no path by which a playlist can be
+  reached from outside it. The private boundary is structural: the only way in is an account, and the only way
+  to have an account is to pass the edge.
+- **The library names the owner of a shared playlist, and this is where the name comes from.** The library
+  record wanted a "shared by" line and had no route to supply a display name. The directory does, and the web
+  client resolves `ownerAccountId` through it for the items that are not its own. _Decided here:_ the
+  alternative, showing only the share indicator, is the state the design record was written in, and this spec
+  is what makes the line affordable. [`08-see-the-library`](08-see-the-library.md) owns how the line is drawn.
 - **Binding constraints, not negotiable inside this spec:** identity comes from the forwarded edge headers and
-  fails closed; the instance is private and there is no public or unauthenticated access to anything;
-  sharing outside the instance is a permanent non-goal; a playlist the account cannot see is `404` and never
-  `403`; and the server is the only component that reads or writes the database.
+  fails closed; the instance is private and there is no public or unauthenticated access to anything; sharing
+  outside the instance is a permanent non-goal; a playlist the account cannot see is `404` and never `403`; and
+  the server is the only component that reads or writes the database.
 
 ## Testing Decisions
 
-- **One seam, at the highest point available.** The real app over a temporary database, exercised through
-  HTTP injection, with accounts and playlists seeded directly. Nothing in this spec needs the media root or
-  the adapter, so neither is involved beyond the shared test context.
+- **One seam, at the highest point available.** The real app over a temporary database, exercised through HTTP
+  injection, with accounts and playlists seeded directly. Nothing in this spec needs the media root or the
+  adapter, so neither is involved beyond the shared test context.
 - **What makes a good test here** is the access a caller ends up with, observed through the routes that depend
   on it, rather than the shape of the share row. A test that asserts a row exists is a test of the
   implementation; one that asserts a write collaborator's rename is refused and a read collaborator's stream
@@ -167,8 +175,8 @@ as a playlist that never existed.
   - a share survives a sync of the playlist.
 - **Prior art:** the existing server route tests, which build the real app over a temporary database, seed
   accounts directly and validate responses against the contract schemas. The access rule the share routes
-  enforce is already implemented twice, in the playlist listing and in the stream route, and those are the
-  prior art for the `404` answer and for what counts as access.
+  enforce is already implemented in the playlist listing, the playlist read and the stream route, and those are
+  the prior art for the `404` answer and for what counts as access.
 
 ## Out of Scope
 
@@ -185,13 +193,15 @@ as a playlist that never existed.
 
 ## Further Notes
 
-- This is the smallest surface of the set and the only one whose absence is not felt by the person using the
-  product alone. It can be cut late without blocking anything, and it is a good candidate for pairing with
-  the client tickets that need it.
+- This is the smallest surface of the set. It can be cut after the spine without blocking anything, and it is a
+  good candidate for pairing with the client tickets that need it.
 - The two schema facts this spec leans on are both already written into the contracts, with the reasoning
-  beside them: the share schema carries the account as well as the level, so a client does not have to join
-  the directory onto every share it lists, and the access value has three members rather than four, so a
-  client never has to represent "you cannot see this".
-- The narrow directory view is the one contract addition in this spec, and it is worth being explicit that
-  it is a reduction rather than a new idea. The account view was written for the route that returns the
-  caller's own account, and reusing it for a list of other people would be a leak rather than a convenience.
+  beside them: the share schema carries the account as well as the level, so a client does not have to join the
+  directory onto every share it lists, and the access value has three members rather than four, so a client
+  never has to represent "you cannot see this".
+- The narrow directory view is the one contract addition in this spec, and it is worth being explicit that it is
+  a reduction rather than a new idea. The account view was written for the route that returns the caller's own
+  account, and reusing it for a list of other people would be a leak rather than a convenience.
+- The directory is also what turns the library's shared-by line from a design record's open question into a
+  route the client can call, which is why this spec is listed before [`08-see-the-library`](08-see-the-library.md)
+  rather than after it.

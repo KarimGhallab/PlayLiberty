@@ -5,10 +5,11 @@ Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
 
-A track only becomes playable once its audio is on the server, and nothing fetches it. The download worker
-in the server is an idle timer that logs the media root every thirty seconds and owns no queue, so a track
-created by any route would sit in `pending` forever. The user pastes a playlist, sees a list of tracks, and
-hears nothing, with no way to tell whether the work is happening, finished, or broken.
+A track only becomes playable once its audio is on the server, and nothing fetches it. The download worker in
+the server is an idle timer that logs the media root every thirty seconds, claims no rows, and owns no queue,
+so a track created by a sync would sit in `pending` forever. The listener pastes a playlist, sees a list of
+tracks in the web client, and hears nothing, with no way to tell whether the work is happening, finished, or
+broken.
 
 The second problem is the one that decides the shape. PlayLiberty is a durable copy, so a download that dies
 halfway is worse than one that never started: a truncated file that looks playable, or a row claiming a file
@@ -21,14 +22,14 @@ or the instance quietly becomes a download client for YouTube.
 A single in-process worker takes pending tracks from the track rows themselves, claims each one atomically,
 fetches its audio through the YouTube adapter into a temporary location, moves it into the media store in one
 step, and records what happened. A track moves from `pending` to `downloading` to `stored`, or to `failed`
-with a reason a user can read, and a failed track is retried by the next sync without being asked for. A
-video that has been deleted is terminal and is not retried. A video the instance already holds is never
-fetched again, whoever asks for it.
+with a reason a user can read, and a failed track is retried by the next sync without being asked for. A video
+that has been deleted is terminal and is not retried. A video the instance already holds is never fetched
+again, whoever asks for it.
 
 ## User Stories
 
-1. As a listener, I want the audio of a track I pasted to arrive on its own, so that I do not have to wait for
-   a second action.
+1. As a listener, I want the audio of a track I pasted to arrive on its own, so that I do not have to wait
+   for a second action.
 2. As a listener, I want to see a track as pending, then downloading, then playable, so that the wait is
    visible rather than mysterious.
 3. As a listener, I want to start playing a track the moment it is stored, so that the list is a shelf and
@@ -79,9 +80,12 @@ fetched again, whoever asks for it.
   claim loop, a concurrency cap from configuration, and no separate service to deploy. The server is one Node
   process, so two workers cannot exist, and the single-process property is what lets a claim be a conditional
   update rather than a distributed lease.
+- **The worker it replaces is the loop that exists.** `startDownloadWorker` already owns the interval and the
+  stop handle and does nothing else. This spec replaces its empty tick with the claim, the fetch and the state
+  transitions, and adds no second scheduler.
 - **A claim is one conditional update.** A worker takes a batch of pending track ids and moves each from
-  `pending` to `downloading` only if it is still `pending`, and processes only the rows it actually moved.
-  Two passes over the same rows therefore cannot both start the same download, even if the cap allows it.
+  `pending` to `downloading` only if it is still `pending`, and processes only the rows it actually moved. Two
+  passes over the same rows therefore cannot both start the same download, even if the cap allows it.
   _Decided here:_ the claim is where the atomicity lives, and nothing else needs a lock.
 - **A download writes to the temporary directory and is moved into the media store in one step.** The adapter
   writes under the media root's `.tmp` directory, remuxes for faststart without re-encoding, and the finished
@@ -89,10 +93,9 @@ fetched again, whoever asks for it.
   temporary file and no stored file, never a stored file that is half written. The startup sweep already
   empties the temporary directory and returns interrupted downloads to `pending`, so a restart is a recovery
   rather than a repair.
-- **The stored format is AAC in an M4A container, fetched at the source's own quality and never
-  re-encoded.** The remux moves the container and writes the faststart index; it does not touch the audio
-  stream. This is the constraint that makes the file play natively in a browser and on a phone without a
-  transcoder anywhere in the stack.
+- **The stored format is AAC in an M4A container, fetched at the source's own quality and never re-encoded.**
+  The remux moves the container and writes the faststart index; it does not touch the audio stream. This is
+  the constraint that makes the file play natively in a browser without a transcoder anywhere in the stack.
 - **A track is fetched at most once per instance, whatever asked for it.** A track whose `fileStatus` is
   `stored` is never queued, including when a second playlist or a second account associates it. Deduplication
   is keyed by video id alone, which the unique constraint on the track's video id already enforces, so the
@@ -116,12 +119,15 @@ fetched again, whoever asks for it.
 - **A track whose video left the source while still pending never enters the queue at all.** The reconcile
   makes it `unavailable` directly, so the worker's only inputs are tracks that are expected to succeed or to
   fail transiently.
-- **The worker's inputs are exactly `pending` tracks with no stored file.** Anything else is a bug rather
-  than a case, so the claim query is narrow and the loop has no branches over statuses.
-- **The worker polls rather than being woken.** A short interval between empty passes keeps the code a loop
-  with no queue plumbing, and the interval is a small fraction of the time a download takes, so the delay
-  between a track being created and being claimed is not perceptible. _Decided here:_ the alternative, a
-  notification from the sync, adds a coupling between two features for a delay nobody can see.
+- **The worker's inputs are exactly `pending` tracks with no stored file.** Anything else is a bug rather than
+  a case, so the claim query is narrow and the loop has no branches over statuses.
+- **The worker polls rather than being woken.** The interval the loop already owns stays, and it is a small
+  fraction of the time a download takes, so the delay between a track being created and being claimed is not
+  perceptible. _Decided here:_ the alternative, a notification from the sync, adds a coupling between two
+  features for a delay nobody can see.
+- **The web client learns about a store the same way it learns about a sync.** Nothing pushes a track's state
+  to the browser; the playlist read carries the file and source status, and the client refetches while work is
+  in flight. [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns that loop.
 - **Binding constraints, not negotiable inside this spec:** no transcoding, ever; only the YouTube adapter
   spawns a tool or reads source output; the stored media is what clients play; the server is the only writer
   of the media root; a stored audio file is faststart so a browser can seek without fetching the tail.
@@ -136,8 +142,8 @@ fetched again, whoever asks for it.
   invocations. A test that asserts a faststart remux ran is testing the adapter, which has its own tests; a
   test that plays nothing and asks the stream route for bytes is testing the feature.
 - **The cases that must exist:**
-  - a pending track is claimed, downloaded, stored, and becomes streamable with its path and a cleared
-    failure reason;
+  - a pending track is claimed, downloaded, stored, and becomes streamable with its path and a cleared failure
+    reason;
   - the stored file lands at the sharded path the media store defines, and its bytes are what the stream route
     serves;
   - a second track with the same video id does not create a second row and does not trigger a second download;
@@ -153,9 +159,9 @@ fetched again, whoever asks for it.
   - the concurrency cap is respected, observed as no more simultaneous downloads than configured;
   - stopping the worker leaves no download in flight and the server closes cleanly.
 - **Prior art:** the existing server route tests build the real app over a temporary database and media root
-  and assert against the contract schemas; the adapter's own tests assert on the arguments built for the
-  tool, which is the level below this one and stays there. The fake adapter substitutes at the same
-  interface the sync tests use, so one fake serves both features.
+  and assert against the contract schemas; the adapter's own tests assert on the arguments built for the tool,
+  which is the level below this one and stays there. The fake adapter substitutes at the same interface the
+  sync tests use, so one fake serves both features.
 
 ## Out of Scope
 
@@ -167,20 +173,21 @@ fetched again, whoever asks for it.
 - Thumbnails beyond the source's own, and any artwork the user supplies.
 - The streaming route's authorisation and range behaviour, which already exist and are specified in
   [`07-play-stored-audio`](07-play-stored-audio.md).
-- Reading the source to decide what to download, which
-  [`01-sync-a-playlist`](01-sync-a-playlist.md) owns.
+- Reading the source to decide what to download, which [`01-sync-a-playlist`](01-sync-a-playlist.md) owns.
+- The client's live view of a download in flight, which
+  [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns.
 
 ## Further Notes
 
 - The media store is the reason this feature is shaped around a single file per video id rather than a file
   per playlist. Everything else here, the claim, the retry and the unavailable state, follows from that one
   property.
-- Two existing mechanisms already do part of this work and are named here so the ticket does not rebuild
-  them: the startup sweep empties the temporary directory and returns interrupted downloads to `pending`,
-  and the adapter already writes, remuxes and hands back a finished path. What is missing is the loop, the
-  claim, and the state transitions.
+- Two existing mechanisms already do part of this work and are named here so the ticket does not rebuild them:
+  the startup sweep empties the temporary directory and returns interrupted downloads to `pending`, and the
+  adapter already writes, remuxes and hands back a finished path. What is missing is the claim, the fetch and
+  the state transitions inside a loop that already exists.
 - The `unavailable` state is the only terminal state, and it is reached from two places, the reconcile and a
   download that discovers the video is gone. Both are specified to produce the same pair of values, and the
   rule itself belongs to the sync spec so there is one answer rather than two that agree today.
-- The download configuration, including the concurrency cap and every retry and rate option, already exists
-  in the server's configuration. This spec consumes it and adds no new setting.
+- The download configuration, including the concurrency cap and every retry and rate option, already exists in
+  the server's configuration. This spec consumes it and adds no new setting.

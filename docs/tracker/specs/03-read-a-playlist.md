@@ -5,11 +5,11 @@ Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
 
-A playlist exists in the database and a client can be told it exists, but nothing can tell a client what is in
-it. The route that would return a playlist's tracks does not exist at all, not even as a stub, while the
-schema for exactly that response, carrying a track and where it came from and where it sits, is already part
-of the shared contracts. The playlist detail screen, which is the one place stored tracks become audible, has
-no data to draw itself from, and the library has a count it cannot reconcile against a list.
+The library route already answers with the playlists an account can see, and nothing can tell a client what is
+inside one. `GET /playlists/:id/tracks` does not exist at all, not even as a stub, while the schema for
+exactly that response, carrying a track and where it came from and where it sits, is already part of the
+shared contracts. The playlist detail screen, which is the one place stored tracks become audible in the web
+client, has no data to draw itself from, and the library has a count it cannot reconcile against a list.
 
 The problem is not only the missing route. What the route answers decides three things a client cannot
 recover on its own: whether an empty playlist is an error or a state, whether a playlist the account cannot
@@ -30,8 +30,8 @@ playlist beside it.
 3. As a listener, I want the tracks in the order the playlist holds them, so that the list means something.
 4. As a listener, I want to see which tracks came from the source and which I added by hand, so that I know
    what a sync is about to reconcile.
-5. As a listener, I want every track's state to be shown as a word as well as a colour, so that I can read
-   the list without relying on colour.
+5. As a listener, I want every track's state to be shown as a word as well as a colour, so that I can read the
+   list without relying on colour.
 6. As a listener, I want to see that a track is pending or downloading rather than have it silently absent, so
    that I know it is coming.
 7. As a listener, I want to see that a track failed and why, so that I can decide whether to retry it.
@@ -39,75 +39,80 @@ playlist beside it.
    still there.
 9. As a listener, I want a track with no file to be visible but not playable, so that the list is honest about
    what I can hear.
-10. As a listener, I want a track with no artwork to still be listed, so that a missing picture does not hide
-    a song.
+10. As a listener, I want a track with no artwork to still be listed, so that a missing picture does not hide a
+    song.
 11. As a listener, I want a track with an unknown duration to still be listed, so that a missing number does
     not hide a song.
 12. As a listener, I want a track whose failure reason is long to be readable rather than to break the row, so
     that an unusual failure does not break the screen.
-13. As a listener, I want a playlist that has never synced to show an empty state rather than an error, so that
-    I can tell "nothing yet" from "something is wrong".
+13. As a listener, I want a playlist that has never synced to show an empty state rather than an error, so
+    that I can tell "nothing yet" from "something is wrong".
 14. As a listener, I want a playlist I no longer have access to to read as gone rather than as forbidden, so
     that a revoked share does not look like a fault.
 15. As a read collaborator, I want to see the playlist's tracks, so that a share I was given is usable.
 16. As a write collaborator, I want to see the playlist's tracks, so that I can curate what I was given.
 17. As an account, I want a playlist belonging to somebody else to answer the same way as one that does not
     exist, so that the route does not confirm what I cannot see.
-18. As an account, I want a track from another playlist never to appear in this one, so that playlists stay
-    the boundary of what I see.
+18. As an account, I want a track from another playlist never to appear in this one, so that playlists stay the
+    boundary of what I see.
 19. As an account, I want my own track to appear once even if it is in two of my playlists, so that a list is
     not inflated by my own arrangements.
 20. As a listener, I want a long playlist to page rather than to arrive in one enormous response, so that the
     screen opens.
 21. As a listener, I want to know how many tracks a playlist holds in total, so that I know when I have seen
     them all.
-22. As a listener, I want a track's stored state to be decided by the server, so that both clients agree on
-    what is playable without each guessing.
+22. As a listener, I want a track's stored state to be decided by the server, so that the client does not
+    guess what is playable.
 23. As a listener, I want the route to be a read, so that opening a playlist never changes anything.
 
 ## Implementation Decisions
 
 - **The route is the obvious one, paginated with the query shape the contracts already define.** It accepts
   the existing page query and returns the existing page schema built over the existing playlist-track schema,
-  which carries a track, an origin and a position. No contract changes, which is the point: the response
-  shape was designed with the screen in mind and never needed.
+  which carries a track, an origin and a position. No contract changes, which is the point: the response shape
+  was designed with the screen in mind and never needed.
 - **A page is ordered by position, with a stable tiebreak.** Position is assigned by the features that create
   associations, so two associations in one run can share it, and a client that fetched the same page twice
   must not see the rows swap. The tiebreak is insertion order, which is monotonic, because no declared column
-  on the association is.
+  on the association is. The playlist list route already uses the same qualified-rowid tiebreak for the same
+  reason, and this route follows it rather than inventing a second one.
 - **Only associations decide membership.** The query joins through the association table and nothing else, so
   a track held by another playlist cannot appear here, and a track held by this playlist and another appears
   once. The store is server-wide and the view is not, and that is exactly the boundary the product draws:
   playlists are the only entry point to content.
-- **A playlist the account cannot see answers `404`, never `403`.** The rule is the one the playlist route
-  and the latest-run route already apply, decided there for the reason recorded beside it: a client rendering
-  a playlist screen has no case for "you may not see this", and a route that answers forbidden for a
-  playlist confirms that it exists. Visibility is the owner's account or any share on it.
-- **A playlist that has never synced is an empty page with a total of zero, not an error.** The empty state
-  is defined as a null last-synced time with a run present as a reachable combination, so an empty list is
-  the expected first answer for a playlist that has just been created. The route never invents a placeholder
-  track and never returns a problem document for an empty association set.
+- **A playlist the account cannot see answers `404`, never `403`.** The rule is the one the playlist route and
+  the latest-run route already apply, decided there for the reason recorded beside it: a client rendering a
+  playlist screen has no case for "you may not see this", and a route that answers forbidden for a playlist
+  confirms that it exists. Visibility is the owner's account or any share on it, and the shared access helpers
+  already implement it.
+- **A playlist that has never synced is an empty page with a total of zero, not an error.** The empty state is
+  defined as a null last-synced time with a run present as a reachable combination, so an empty list is the
+  expected first answer for a playlist that has just been created. The route never invents a placeholder track
+  and never returns a problem document for an empty association set.
 - **The route reports state and nothing else.** Every field it returns is a field of the track or the
   association as stored. It adds no derived flags, no counts, and no booleans about playability, because the
   playability rule is already one line for a client to apply and a second encoding of it is a second thing to
-  keep in step. What a client derives, it derives from the same two status fields the design system already
-  labels.
+  keep in step. What the web client derives, it derives from the same two status fields the design system
+  already labels.
 - **The total is the playlist's stored track count**, which moves in the same transaction as the association
-  that changed it. The count is therefore the number of rows in the playlist, which is what a client needs to
-  know when it has fetched every page.
-- **The route is a read.** It creates nothing, mutates nothing, and requires no client header, because the
-  edge has already authenticated the caller and the request changes nothing.
-- **A missing thumbnail or duration is a value, not a gap.** Both fields are nullable in the contract and
-  both are returned as null rather than omitted, so a client reads one shape and handles the null case
-  explicitly instead of discovering an absent key.
+  that changed it, in the association service that already exists. The count is therefore the number of rows in
+  the playlist, which is what a client needs to know when it has fetched every page.
+- **The route is a read.** It creates nothing, mutates nothing, and requires no client header, because the edge
+  has already authenticated the caller and the request changes nothing.
+- **A missing thumbnail or duration is a value, not a gap.** Both fields are nullable in the contract and both
+  are returned as null rather than omitted, so a client reads one shape and handles the null case explicitly
+  instead of discovering an absent key.
 - **A failure reason is returned as stored and bounded at the edges, not in the middle.** The field is a
   non-null string with no declared length, so the route returns what the download wrote and the design
   system's row is responsible for presenting it. No truncation happens here, because a truncated reason is a
   reason the user cannot act on.
-- **No aggregate route is added.** A playlist screen needs the playlist, its tracks, and its latest run, and
-  they are three reads of three resources that already exist. Combining them would be convenient and would
-  make every write to any one of them invalidate one large payload, and no client has a stated need for a
-  single round trip.
+- **No aggregate route is added.** The detail screen needs the playlist, its tracks, and its latest run, and
+  they are three reads of three resources that already exist or are specified here and in
+  [`01-sync-a-playlist`](01-sync-a-playlist.md). Combining them would be convenient and would make every write
+  to any one of them invalidate one large payload, and no client has a stated need for a single round trip.
+- **The web client reads this route the way it reads the library.** The page it fetches is the list it renders,
+  and it refetches while a sync or a download is making the list change. The loop belongs to
+  [`09-keep-the-screens-current`](09-keep-the-screens-current.md).
 - **Binding constraints, not negotiable inside this spec:** the stored media is what the client plays, never
   the source; identity comes from the forwarded edge headers and fails closed; playlists are the only entry
   point, so there is no route that lists every track the instance holds; and no route in this surface mutates
@@ -115,13 +120,12 @@ playlist beside it.
 
 ## Testing Decisions
 
-- **One seam, at the highest point available.** The real app over a temporary database, exercised through
-  HTTP injection, with accounts, playlists, tracks and associations seeded directly so the test states only
-  what it is about.
-- **What makes a good test here** is the response validated against the contract schema plus the rows that
-  came back, never the shape of the query that produced them. A route test that asserts a join was used is a
-  test of the implementation; one that asserts a track from another playlist is absent is a test of the
-  boundary.
+- **One seam, at the highest point available.** The real app over a temporary database, exercised through HTTP
+  injection, with accounts, playlists, tracks and associations seeded directly so the test states only what it
+  is about.
+- **What makes a good test here** is the response validated against the contract schema plus the rows that came
+  back, never the shape of the query that produced them. A route test that asserts a join was used is a test of
+  the implementation; one that asserts a track from another playlist is absent is a test of the boundary.
 - **The cases that must exist:**
   - a playlist with associations returns them in position order, each with its origin and position;
   - an association with the same position as another returns in a stable order across two calls;
@@ -140,29 +144,32 @@ playlist beside it.
 - **Prior art:** the existing server route tests, which build the real app over a temporary database, seed
   accounts directly, and validate responses against the contract schemas. The playlist route's own tests
   already cover the `404` for a playlist the account cannot see, and this route inherits that expectation
-  rather than inventing a second one.
+  rather than inventing a second one. The list route's ordering and access-map code is the shape this query
+  follows.
 
 ## Out of Scope
 
-- Any route that lists every track in the instance. There is no global library view and there never will be
-  one in v1.
+- Any route that lists every track in the instance. There is no global library view and there never will be one
+  in v1.
 - Any route that lists the playlists a track belongs to.
 - Search, filtering, and sorting by anything but position.
-- Derived playability flags, next and previous track pointers, and duration totals. A client derives what it
+- Derived playability flags, next and previous track pointers, and duration totals. The client derives what it
   needs from the status fields.
 - An aggregate route that returns a playlist, its tracks and its latest run together.
-- Moving a track's position, which is
-  [`04-curate-a-playlist`](04-curate-a-playlist.md)'s business and is not in v1 at all.
-- Anything about playing the tracks, which
-  [`07-play-stored-audio`](07-play-stored-audio.md) owns.
+- Moving a track's position, which is [`04-curate-a-playlist`](04-curate-a-playlist.md)'s business and is not
+  in v1 at all.
+- Anything about playing the tracks, which [`07-play-stored-audio`](07-play-stored-audio.md) owns.
+- The client's polling and invalidation, which
+  [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns.
 
 ## Further Notes
 
-- This is the shortest spec in the set and the one with the most leverage: it blocks both clients, and every
-  screen on either client needs it. It should be cut early even though it is small.
-- The response shape, including the origin and the position, was already written into the shared contracts
-  and has never been served. That is worth knowing before the ticket is cut, because it means the design
-  question is settled and the work is a query and an authorisation check.
+- This is the shortest spec in the set and the one with the most leverage: it blocks the detail screen, the
+  player and the client's refresh loop, and every screen in the web client needs it. It should be cut early
+  even though it is small.
+- The response shape, including the origin and the position, was already written into the shared contracts and
+  has never been served. That is worth knowing before the ticket is cut, because it means the design question
+  is settled and the work is a query and an authorisation check.
 - The `404` rather than `403` choice is not this spec's. It was decided for the playlist route and recorded
   beside that decision, and reusing it here is the point: a client should not have to learn two rules about
   the same boundary.
