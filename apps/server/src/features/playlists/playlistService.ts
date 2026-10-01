@@ -1,6 +1,12 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 
-import type { Page, Playlist, PlaylistAccess } from '@playliberty/contracts';
+import type {
+  Page,
+  Playlist,
+  PlaylistAccess,
+  PlaylistTrack,
+  Track
+} from '@playliberty/contracts';
 
 import {
   playlistVisibleTo,
@@ -10,8 +16,16 @@ import {
 } from '../../shared/access/playlistAccess.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import type { PlaylistRow } from '../../platform/database/schema.js';
-import { playlists } from '../../platform/database/schema.js';
+import type {
+  AssociationRow,
+  PlaylistRow,
+  TrackRow
+} from '../../platform/database/schema.js';
+import {
+  associations,
+  playlists,
+  tracks
+} from '../../platform/database/schema.js';
 
 export enum PlaylistOutcome {
   Ok = 'ok',
@@ -137,5 +151,98 @@ export function readPlaylistForAccount(
       access,
       sharedPlaylistIds(database, [playlistId]).has(playlistId)
     )
+  };
+}
+
+export interface ListPlaylistTracksQuery {
+  limit: number;
+  offset: number;
+}
+
+export type ReadPlaylistTracksResult =
+  | { outcome: PlaylistOutcome.Ok; page: Page<PlaylistTrack> }
+  | { outcome: PlaylistOutcome.NotFound };
+
+/*
+ * The stored track carries two fields the contract does not: the media path the
+ * stream route resolves, and the thumbnail URL the download wrote. Neither is
+ * metadata, so neither crosses the wire here; the artwork is reached through the
+ * track's own route.
+ */
+function toTrackView(row: TrackRow): Track {
+  return {
+    id: row.id,
+    provider: row.provider,
+    videoId: row.videoId,
+    title: row.title,
+    durationSeconds: row.durationSeconds,
+    thumbnailPath: row.thumbnailPath,
+    fileStatus: row.fileStatus,
+    sourceStatus: row.sourceStatus,
+    failureReason: row.failureReason,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  };
+}
+
+function toPlaylistTrackView(row: {
+  association: AssociationRow;
+  track: TrackRow;
+}): PlaylistTrack {
+  return {
+    track: toTrackView(row.track),
+    origin: row.association.origin,
+    position: row.association.position
+  };
+}
+
+export function listPlaylistTracksForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string,
+  query: ListPlaylistTracksQuery
+): ReadPlaylistTracksResult {
+  // The same access decision the two playlist reads make, so a playlist this
+  // account cannot reach answers the same 404 rather than a forbidden.
+  const access = resolvePlaylistAccess(database, playlistId, accountId);
+
+  if (access === null) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  const playlist = database.db
+    .select({ trackCount: playlists.trackCount })
+    .from(playlists)
+    .where(eq(playlists.id, playlistId))
+    .get();
+
+  if (playlist === undefined) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  // The association is membership, and this is the only join: a track held by
+  // another playlist has no row here, and a track held by this playlist and
+  // another has exactly one, so neither leaks and neither doubles.
+  const rows = database.db
+    .select({ association: associations, track: tracks })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(eq(associations.playlistId, playlistId))
+    .orderBy(asc(associations.position), asc(sql`${associations}.rowid`))
+    .limit(query.limit)
+    .offset(query.offset)
+    .all();
+
+  return {
+    outcome: PlaylistOutcome.Ok,
+    page: {
+      items: rows.map(toPlaylistTrackView),
+      // The stored count, which the association service moves in the same
+      // transaction as the association, rather than a second count query over the
+      // rows this page already had to read.
+      total: playlist.trackCount,
+      limit: query.limit,
+      offset: query.offset
+    }
   };
 }

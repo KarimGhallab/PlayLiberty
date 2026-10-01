@@ -24,6 +24,7 @@ import {
 } from '../sync/syncService.js';
 import {
   PlaylistOutcome,
+  listPlaylistTracksForAccount,
   listPlaylistsForAccount,
   readPlaylistForAccount
 } from './playlistService.js';
@@ -99,6 +100,39 @@ export function registerPlaylistRoutes(
 
       if (result.outcome === PlaylistOutcome.Ok) {
         return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  app.get<{ Params: { id: string } }>(
+    '/playlists/:id/tracks',
+    async (request, reply) => {
+      const parsed = parseBody(PageQuerySchema, request.query);
+
+      if (!parsed.success) {
+        return sendInvalidRequest(reply, parsed.message);
+      }
+
+      const result = listPlaylistTracksForAccount(
+        context.database,
+        request.params.id,
+        request.account.id,
+        { limit: parsed.data.limit, offset: parsed.data.offset }
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail: 'The playlist does not exist, or this account cannot see it.'
+        });
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        return reply.send(result.page);
       }
 
       return exhaust(result);

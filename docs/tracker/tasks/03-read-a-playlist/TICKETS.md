@@ -4,10 +4,10 @@ Tickets for [`03-read-a-playlist`](../../specs/03-read-a-playlist.md). One file 
 dependency order, each declaring its blocking edges. This spec is server-only, so every ticket is verifiable
 through the API.
 
-| Ticket                                                                          | Status          | Blocked by                                  | Blocks                                         |
-| ------------------------------------------------------------------------------- | --------------- | ------------------------------------------- | ---------------------------------------------- |
-| [`01-read-the-tracks-of-a-playlist`](01-read-the-tracks-of-a-playlist.md)       | ready-for-agent | none                                        | [`02`](02-the-boundary-and-the-states-hold.md) |
-| [`02-the-boundary-and-the-states-hold`](02-the-boundary-and-the-states-hold.md) | ready-for-agent | [`01`](01-read-the-tracks-of-a-playlist.md) | none                                           |
+| Ticket                                                                          | Status   | Blocked by                                  | Blocks                                         |
+| ------------------------------------------------------------------------------- | -------- | ------------------------------------------- | ---------------------------------------------- |
+| [`01-read-the-tracks-of-a-playlist`](01-read-the-tracks-of-a-playlist.md)       | resolved | none                                        | [`02`](02-the-boundary-and-the-states-hold.md) |
+| [`02-the-boundary-and-the-states-hold`](02-the-boundary-and-the-states-hold.md) | resolved | [`01`](01-read-the-tracks-of-a-playlist.md) | none                                           |
 
 ## Conventions
 
