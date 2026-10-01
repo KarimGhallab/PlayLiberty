@@ -11,7 +11,6 @@ import type { AppContext } from '../../shared/context.js';
 
 import type { TrackRow } from '../../platform/database/schema.js';
 import { tracks } from '../../platform/database/schema.js';
-import type { JobHandle } from '../../platform/jobs/intervalJob.js';
 import { startIntervalJob } from '../../platform/jobs/intervalJob.js';
 import {
   mediaRelativePath,
@@ -32,11 +31,15 @@ import { markTrackSourceRemoved } from '../tracks/trackLifecycle.js';
  * stop is not this feature's business. What a tick does is.
  */
 export interface DownloadWorkerOptions {
-  context: AppContext;
+  context: WorkerContext;
+  concurrency: number;
   logger: FastifyBaseLogger;
+  intervalMs?: number;
 }
 
-export type DownloadWorkerHandle = JobHandle;
+export interface DownloadWorkerHandle {
+  stop(): Promise<void>;
+}
 
 /*
  * The worker reads three things from the context: the database it claims rows in,
@@ -54,25 +57,34 @@ export function startDownloadWorker(
   // while one is still running is skipped rather than started. The claim below is
   // what stops two passes from taking the same track; this stops two passes from
   // existing at all.
-  let running = false;
+  let inFlight: Promise<void> | null = null;
 
-  return startIntervalJob({
-    intervalMs: WORKER_INTERVAL_MS,
+  const job = startIntervalJob({
+    intervalMs: options.intervalMs ?? WORKER_INTERVAL_MS,
     tick: (): void => {
-      if (running) {
+      if (inFlight !== null) {
         return;
       }
 
-      running = true;
-      void processPendingTracks(
+      inFlight = processPendingTracks(
         options.context,
         options.logger,
-        options.context.config.download.concurrency
+        options.concurrency
       ).finally(() => {
-        running = false;
+        inFlight = null;
       });
     }
   });
+
+  return {
+    stop: async (): Promise<void> => {
+      job.stop();
+
+      if (inFlight !== null) {
+        await inFlight;
+      }
+    }
+  };
 }
 
 /*

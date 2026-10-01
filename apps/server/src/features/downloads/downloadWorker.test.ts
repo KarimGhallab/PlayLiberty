@@ -33,11 +33,15 @@ import {
   mediaRelativePath,
   thumbnailRelativePath
 } from '../../platform/media/mediaPaths.js';
-import { processPendingTracks } from './downloadWorker.js';
+import { processPendingTracks, startDownloadWorker } from './downloadWorker.js';
+import type { DownloadWorkerHandle } from './downloadWorker.js';
 
 let context: TestContext | undefined;
+let worker: DownloadWorkerHandle | undefined;
 
 afterEach(async () => {
+  await worker?.stop();
+  worker = undefined;
   await context?.cleanup();
   context = undefined;
 });
@@ -454,5 +458,69 @@ describe('the download worker', () => {
     expect(afterSecond.every(status => status === TrackFileStatus.Stored)).toBe(
       true
     );
+  });
+
+  it('stops only after the download in flight has finished', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    let signalStarted!: () => void;
+    const started = new Promise<void>(resolve => {
+      signalStarted = resolve;
+    });
+    const downloads: string[] = [];
+
+    const youtube: IYoutubeClient = {
+      listSource: async () => {
+        throw new Error('the download worker must not read the source');
+      },
+      downloadTrack: async (
+        request: DownloadTrackRequest
+      ): Promise<DownloadTrackResult> => {
+        downloads.push(request.videoId);
+        signalStarted();
+        await gate;
+        await mkdir(dirname(request.outputPath), { recursive: true });
+        await writeFile(request.outputPath, 'downloaded-audio');
+        return { videoId: request.videoId, filePath: request.outputPath };
+      },
+      fetchThumbnail: async () => {
+        throw new Error('the download worker must not fetch a thumbnail');
+      }
+    };
+
+    context = await createTestContext({}, { youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    worker = startDownloadWorker({
+      context: {
+        database: context.database,
+        mediaPaths: context.mediaPaths,
+        youtube
+      },
+      concurrency: 1,
+      logger: context.app.log,
+      intervalMs: 5
+    });
+
+    await started;
+
+    let stopped = false;
+    const stopping = worker.stop().then(() => {
+      stopped = true;
+    });
+
+    // The download is still in flight, so the stop has not resolved.
+    await new Promise(resolve => setTimeout(resolve, 25));
+    expect(stopped).toBe(false);
+
+    release();
+    await stopping;
+
+    expect(stopped).toBe(true);
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
+    // The interval was cleared, so no further pass ran.
+    expect(downloads).toEqual([seeded.videoId]);
   });
 });

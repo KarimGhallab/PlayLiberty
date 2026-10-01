@@ -155,7 +155,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     const sweep = await runStartupSweep(context.mediaPaths, context.database);
     app.log.info({ ...sweep }, 'startup sweep finished');
 
-    worker = startDownloadWorker({ context, logger: app.log });
+    worker = startDownloadWorker({
+      context,
+      concurrency: context.config.download.concurrency,
+      logger: app.log
+    });
     scheduler = startCronJob({
       cron: context.config.pruneCron,
       logger: app.log,
@@ -171,7 +175,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   app.addHook('onClose', async () => {
     scheduler?.stop();
-    worker?.stop();
+    await worker?.stop();
   });
 
   return app;
