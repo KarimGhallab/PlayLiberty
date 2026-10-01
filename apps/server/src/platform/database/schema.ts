@@ -59,6 +59,7 @@ export const playlists = sqliteTable(
   },
   table => [
     uniqueIndex('playlist_source_unique').on(
+      table.ownerAccountId,
       table.provider,
       table.sourcePlaylistId
     ),

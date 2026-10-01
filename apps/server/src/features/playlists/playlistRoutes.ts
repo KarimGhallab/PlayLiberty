@@ -16,6 +16,7 @@ import {
   sendProblem
 } from '../../shared/problem.js';
 
+import { resolveSourceUrl, startSyncForSource } from '../sync/syncService.js';
 import {
   PlaylistOutcome,
   listPlaylistsForAccount,
@@ -48,10 +49,20 @@ export function registerPlaylistRoutes(
       return sendInvalidRequest(reply, parsed.message);
     }
 
-    return sendNotImplemented(
-      reply,
-      'Creating a synced playlist is not implemented yet.'
-    );
+    const info = resolveSourceUrl(parsed.data.url);
+
+    if (info === null) {
+      return sendInvalidRequest(
+        reply,
+        'The URL is not a YouTube playlist or video URL.'
+      );
+    }
+
+    // The playlist and its run exist before this answers, so the client has an id
+    // to read the run from; the reconcile itself finishes behind the response.
+    const started = startSyncForSource(context, request.account.id, info);
+
+    return reply.code(202).send(started.run);
   });
 
   app.get<{ Params: { id: string } }>(

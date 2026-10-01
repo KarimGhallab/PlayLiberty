@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { createTestContext } from '../testing/createTestContext.js';
 import type { TestContext } from '../testing/createTestContext.js';
+import { createFakeYoutube, testSource } from '../testing/fakeYoutube.js';
 
 const playlistPayload = {
   url: 'https://www.youtube.com/playlist?list=PL1234567890abcdef'
@@ -30,7 +31,13 @@ describe('csrf guard', () => {
   });
 
   it('accepts a mutating request that carries the client header', async () => {
-    context = await createTestContext();
+    // The adapter is faked so the request the guard lets through never reaches
+    // yt-dlp; this test asserts the guard, and the route's own behaviour is the
+    // sync slice's to prove.
+    context = await createTestContext(
+      {},
+      { youtube: createFakeYoutube(testSource([])) }
+    );
 
     const response = await context.app.inject({
       method: 'POST',
@@ -39,7 +46,7 @@ describe('csrf guard', () => {
       payload: playlistPayload
     });
 
-    expect(response.statusCode).toBe(501);
+    expect(response.statusCode).toBe(202);
   });
 
   it('rejects a cross-site mutating request', async () => {

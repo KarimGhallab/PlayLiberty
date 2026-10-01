@@ -15,6 +15,13 @@
       "when": 1790608651943,
       "tag": "0001_stiff_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790852281438,
+      "tag": "0002_next_karnak",
+      "breakpoints": true
     }
   ]
 }

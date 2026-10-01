@@ -23,19 +23,13 @@ and ADR 0008 are out of scope, and no spec in this set is written to leave room 
 
 - One file per spec, named `NN-slug.md`, numbered in creation order.
 - The table above links every spec reference to its file, so a reader lands on the spec from any row.
-- One spec is one user-visible verb. A spec that had to be split by layer would be a plan, and a plan belongs
-  in a ticket set.
-- A spec is **ready** when its decisions are settled and tickets can be cut from it. A spec replaced by a
-  later one is marked **superseded** rather than deleted, so the decision it recorded stays readable.
-- Each spec declares its blocking edges: the specs whose decisions its implementation depends on. A spec with
-  no edges can be cut immediately.
-- Blocking edges order the cut, not the code. A spec blocked by another is one whose tickets would otherwise
-  invent a decision the other spec owns.
+- One spec is one user-visible verb. A spec that had to be split by layer would be a plan, and a plan belongs in a ticket set.
+- A spec is **ready** when its decisions are settled and tickets can be cut from it. A spec replaced by a later one is marked **superseded** rather than deleted, so the decision it recorded stays readable.
+- Each spec declares its blocking edges: the specs whose decisions its implementation depends on. A spec with no edges can be cut immediately.
+- Blocking edges order the cut, not the code. A spec blocked by another is one whose tickets would otherwise invent a decision the other spec owns.
 - A decision the repository has not already made is marked `Decided here` in the spec's implementation
-  decisions, so a reader can tell at a glance which decisions are the spec's own and overturn any of them
-  before its tickets are cut.
-- Because this corpus is web only, a client clause names the web client rather than the two runtimes. The
-  token layer and the shared UI decisions are still client-neutral; the behavior is not.
+  decisions, so a reader can tell at a glance which decisions are the spec's own and overturn any o them before its tickets are cut.
+- Because this corpus is web only, a client clause names the web client rather than the two runtimes. The token layer and the shared UI decisions are still client-neutral; the behavior is not.
 
 ## Out of scope in this corpus
 
