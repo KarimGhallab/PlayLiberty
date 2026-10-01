@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
-import type { FastifyError, FastifyInstance } from 'fastify';
+import type {
+  FastifyError,
+  FastifyInstance,
+  FastifyServerOptions
+} from 'fastify';
 
 import { YtdlpClient } from '@playliberty/youtube';
 
@@ -49,6 +53,35 @@ function createYoutubeClient(
   });
 }
 
+/*
+ * Human-readable colored logs while developing in a terminal, and structured
+ * JSON everywhere else, so the container's collector and a piped run both get
+ * the object. `pino-pretty` is a devDependency named only as a transport target
+ * string, which is why knip is told to leave it alone.
+ */
+function createLoggerOptions(
+  config: AppContext['config']
+): FastifyServerOptions['logger'] {
+  const pretty =
+    config.nodeEnv === 'development' && process.stdout.isTTY === true;
+
+  if (!pretty) {
+    return { level: config.logLevel };
+  }
+
+  return {
+    level: config.logLevel,
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        translateTime: 'HH:MM:ss.l',
+        ignore: 'pid,hostname'
+      }
+    }
+  };
+}
+
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const context: AppContext = {
     config: options.config,
@@ -58,7 +91,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   };
 
   const app = Fastify({
-    logger: { level: context.config.logLevel },
+    logger: createLoggerOptions(context.config),
     genReqId: request => {
       const header = request.headers['x-request-id'];
 

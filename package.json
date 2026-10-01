@@ -9,6 +9,8 @@
     "console:start": "pnpm --filter @playliberty/console run start",
     "server:start": "pnpm --filter @playliberty/server run start",
     "server:dev": "pnpm --filter @playliberty/server run dev",
+    "web:dev": "pnpm --filter @playliberty/web run dev",
+    "web:build": "pnpm --filter @playliberty/web run build",
     "tokens:build": "pnpm --filter @playliberty/tokens run build",
     "tokens:watch": "pnpm --filter @playliberty/tokens run watch",
     "ui-foundation:build": "pnpm --filter @playliberty/ui-foundation run build",

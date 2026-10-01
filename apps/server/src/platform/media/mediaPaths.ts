@@ -1,5 +1,5 @@
 import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 export const MEDIA_DIRECTORY = 'media';
 export const THUMBNAILS_DIRECTORY = 'thumbnails';
@@ -12,12 +12,21 @@ export interface MediaPaths {
   tempDir: string;
 }
 
+/*
+ * The root is resolved to an absolute path because a relative `MEDIA_ROOT` is
+ * taken against the working directory, and `@fastify/static` rejects a relative
+ * root outright. Resolving here means every consumer, the static handler, the
+ * health probe, yt-dlp's output path and the prune walk, gets one absolute root
+ * and the subdirectories are derived from that value once.
+ */
 export function createMediaPaths(root: string): MediaPaths {
+  const absoluteRoot = resolve(root);
+
   return {
-    root,
-    mediaDir: join(root, MEDIA_DIRECTORY),
-    thumbnailsDir: join(root, THUMBNAILS_DIRECTORY),
-    tempDir: join(root, TEMP_DIRECTORY)
+    root: absoluteRoot,
+    mediaDir: join(absoluteRoot, MEDIA_DIRECTORY),
+    thumbnailsDir: join(absoluteRoot, THUMBNAILS_DIRECTORY),
+    tempDir: join(absoluteRoot, TEMP_DIRECTORY)
   };
 }
 

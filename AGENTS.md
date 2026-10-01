@@ -17,8 +17,11 @@ PlayLiberty is an audio player for web and mobile that syncs YouTube playlists a
 ## Orientation
 
 - `apps/server` - the Fastify server: accounts, playlists, the media store, sync, and streaming. Scaffolded; features are being built.
+- `apps/web` - the React SPA served by nginx: the library and the playlist detail. Scaffolded; features are being built.
 - `apps/console` - runnable Node entry point and development harness. Not a product surface.
 - `packages/contracts` - the Zod schemas for the `/api/v1` surface and the types inferred from them.
+- `packages/tokens` - the design values and the emitter that writes the stylesheet the clients consume.
+- `packages/ui-foundation` - shared, non-rendering UI decisions: string formatting and the track state tone.
 - `packages/youtube` - the yt-dlp adapter, the single seam to YouTube.
 - `packages/utils` - shared TypeScript utility library (paths, collections, functions, async helpers).
 - `docs/tracker/` - work tracking: issues, specs, tasks.

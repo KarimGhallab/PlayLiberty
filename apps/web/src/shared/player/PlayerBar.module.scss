@@ -1,0 +1,46 @@
+.player-bar {
+  position: fixed;
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: var(--z-player);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border-block-start: 1px solid var(--line);
+
+  &__title {
+    flex: 1 1 auto;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__position {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: var(--text-xs);
+  }
+
+  &__control {
+    flex: 0 0 auto;
+    min-height: var(--control-height);
+    padding-inline: var(--space-4);
+    color: var(--bg);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    background: var(--accent);
+    border: 0;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:disabled {
+      color: var(--control-disabled-fg);
+      background: var(--control-disabled-bg);
+      cursor: default;
+    }
+  }
+}

@@ -1,0 +1,18 @@
+.playlist-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4) calc(var(--space-9) + var(--space-8));
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-semibold);
+  }
+
+  &__id {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+}

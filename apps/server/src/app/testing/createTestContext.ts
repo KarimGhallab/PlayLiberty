@@ -26,6 +26,7 @@ export async function createTestContext(
 ): Promise<TestContext> {
   const directory = await mkdtemp(join(tmpdir(), 'playliberty-test-'));
   const config = loadConfig({
+    NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
     MEDIA_ROOT: join(directory, 'media'),
     DATABASE_PATH: join(directory, 'playliberty.db'),
