@@ -21,6 +21,24 @@ const downloadOptions: DownloadOptions = {
 };
 
 describe('buildListArgs', () => {
+  it('pins extraction to every YouTube extractor a URL can land on', () => {
+    const info: YoutubeUrlInfo = {
+      kind: YoutubeSourceKind.Playlist,
+      sourceId: 'PL1234567890abcdef',
+      url: 'https://www.youtube.com/playlist?list=PL1234567890abcdef'
+    };
+    const args = buildListArgs(info);
+
+    /*
+     * Exact, not `toContain('youtube')`. yt-dlp matches an extractor name exactly,
+     * and a playlist URL is `youtube:tab`; asserting the whole selector is what
+     * would have failed when it read `youtube` and every playlist sync broke.
+     */
+    expect(args).toContain('--use-extractors');
+    const selector = args[args.indexOf('--use-extractors') + 1];
+    expect(selector).toBe('youtube,youtube:tab');
+  });
+
   it('places safety flags before the URL separator', () => {
     const info: YoutubeUrlInfo = {
       kind: YoutubeSourceKind.Playlist,
@@ -30,8 +48,6 @@ describe('buildListArgs', () => {
     const args = buildListArgs(info);
 
     expect(args).toContain('--ignore-config');
-    expect(args).toContain('--use-extractors');
-    expect(args).toContain('youtube');
     expect(args).toContain('--js-runtimes');
     expect(args).toContain('--yes-playlist');
     expect(args.at(-2)).toBe('--');
@@ -50,6 +66,17 @@ describe('buildListArgs', () => {
 });
 
 describe('buildDownloadArgs', () => {
+  it('pins extraction to every YouTube extractor a URL can land on', () => {
+    const args = buildDownloadArgs(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      '/media/.tmp/dQw4w9WgXcQ.%(ext)s',
+      downloadOptions
+    );
+    const selector = args[args.indexOf('--use-extractors') + 1];
+
+    expect(selector).toBe('youtube,youtube:tab');
+  });
+
   it('selects the m4a audio stream and ends with the URL after the separator', () => {
     const args = buildDownloadArgs(
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ',

@@ -17,6 +17,12 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | `triaged`  | Carrying exactly one state role label |
 | `resolved` | Closed with the outcome recorded      |
 
+## Issues
+
+| Issue                                                                                       | State          | Category | Summary                                                                            |
+| ------------------------------------------------------------------------------------------- | -------------- | -------- | ---------------------------------------------------------------------------------- |
+| [`01-silent-failures-and-live-sync-progress`](01-silent-failures-and-live-sync-progress.md) | `needs-triage` | `bug`    | A failed sync explains nothing on screen, and a running sync shows nothing moving. |
+
 ## Conventions
 
 - One file per issue, named `NN-slug.md`, numbered in creation order.
