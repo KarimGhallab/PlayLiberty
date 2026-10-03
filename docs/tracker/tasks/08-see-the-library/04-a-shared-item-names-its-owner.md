@@ -1,6 +1,6 @@
 # 04: A shared item names its owner
 
-**What to build:** A shelf of several people's playlists is legible. A playlist shared with the account names
+**What to build:** A gallery of several people's playlists is legible. A playlist shared with the account names
 its owner through the account directory, and the account's own playlists carry no line, because the item's
 access already says it is theirs. The line is resolved from the owner id the playlist carries against the
 directory, so it is one extra read and no new server route. An owner who is not on the directory page leaves

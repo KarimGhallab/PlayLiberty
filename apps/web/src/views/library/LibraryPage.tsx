@@ -1,22 +1,22 @@
 import { usePlaylists } from '../../shared/api/queries';
 import PlaylistHeader from '../../shared/components/PlaylistHeader';
 
-import EmptyShelf from './EmptyShelf';
+import EmptyGallery from './EmptyGallery';
 import styles from './LibraryPage.module.scss';
 
 /*
  * The library, at `/`. The list of playlists is the only entry point to content,
  * so this is the route a user lands on. Four states and no fifth: loading, a
- * failed read, the empty shelf, and the populated list. Each item is the shared
+ * failed read, the empty gallery, and the populated list. Each item is the shared
  * playlist header, so this screen draws no item of its own.
  */
 export default function LibraryPage() {
   const playlists = usePlaylists();
 
   /*
-   * Ticket 03 replaces this with the dialog's open action. Until then the shelf's
-   * control is present and wired to nothing, which is the scaffold's own
-   * placeholder and not a control that lies about what it does.
+   * Ticket 03 replaces this with the dialog's open action. Until then the
+   * gallery's control is present and wired to nothing, which is the scaffold's
+   * own placeholder and not a control that lies about what it does.
    */
   const openAddDialog = () => undefined;
 
@@ -32,7 +32,7 @@ export default function LibraryPage() {
         </p>
       ) : null}
       {playlists.isSuccess && playlists.data.items.length === 0 ? (
-        <EmptyShelf onAdd={openAddDialog} />
+        <EmptyGallery onAdd={openAddDialog} />
       ) : null}
       {playlists.isSuccess && playlists.data.items.length > 0 ? (
         <ul className={styles.library__list}>

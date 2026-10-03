@@ -20,6 +20,7 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | Track              | One server-wide playable item, keyed by video id. The only thing stored and streamed.                                                |
 | Video id           | The YouTube video id. The identity of a track and the dedup key: one file per video id, shared by every playlist that references it. |
 | Playlist           | A named, owner-owned, ordered collection of tracks. In v1 the only kind is the Synced playlist.                                      |
+| Gallery            | The playlists an account can see, presented as one collection on the library. Never "shelf".                                         |
 | Synced playlist    | A playlist that mirrors a YouTube source. Created by pasting a URL; synced manually in v1.                                           |
 | Source             | The YouTube entity a synced playlist mirrors, a playlist URL or a single video URL, identified by its source id.                     |
 | Association        | The link of a track to a playlist. A track can have many associations. Never "membership".                                           |

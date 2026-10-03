@@ -55,7 +55,7 @@ The band holds one control and it is the same control in both states: the header
 pause when this is the playing playlist. Nothing moves when it starts: the band keeps its 16px padding, the
 play stays at the same x, and no equalizer strip is drawn on a card. A playing card differs by a glyph, a
 label and the accent colour of that glyph, so **the pause glyph is the only signal of what is playing, 48px
-of button on a shelf of six**; on web the item also carries the strip, so there the state is legible without
+of button on a gallery of six**; on web the item also carries the strip, so there the state is legible without
 a press.
 
 The card drops or moves five things, all of them this screen's decisions declared here rather than in
@@ -114,7 +114,7 @@ the picture was the link, 18% was the control and **55%** was the band's empty p
 none` on the band and `auto` on the controls inside it puts the dead area at **0%** and the link's share up
 to 63%.
 
-### The add control, the empty shelf, and the grid's requirements
+### The add control, the empty gallery, and the grid's requirements
 
 The add control is a floating action button on mobile and a labelled button in the header on web. On mobile
 the header is **56px** rather than 68px and the content area **788px** rather than 776px. The button is
@@ -129,7 +129,7 @@ grid, below the 97px bar at `--z-player`, and below a dialog's scrim at `--z-ove
 what this control opens. The glyph is `--icon-lg` 28px, **50%** of the box, against `--icon-sm` at 29% and
 a 48px box at 58%.
 
-The empty shelf's frame gets no floating button: its own action is a full-width button in the middle of the
+The empty gallery's frame gets no floating button: its own action is a full-width button in the middle of the
 screen, and a floating copy would put the action twice on the one screen where a person has seen neither.
 
 The grid asks the card for four declarations, each the grid asking for something a card in a column never
@@ -141,7 +141,7 @@ not the card's. Every item carries a share indicator, because `access` is on eve
 ## The links
 
 An item cannot be a link: it holds a play button, a shuffle and an overflow, and a button inside an anchor
-is invalid HTML. The cover and the name are both links to the playlist, which a shelf of destinations needs,
+is invalid HTML. The cover and the name are both links to the playlist, which a gallery of destinations needs,
 because the alternative leaves a 356.4px square that does nothing when tapped. The cover's link carries
 `aria-hidden="true"` and `tabindex="-1"`, so a screen reader announces one link per item rather than two,
 the name carrying the label. On a card the cover cannot be the link, because the card puts two buttons on
@@ -185,8 +185,8 @@ every row. The equalizer strip is on the one playing item and no other: playback
 bars and cannot carry the strip's 14.
 
 There is no search, no sort, no filter and no pagination. Search is a permanent non-goal in the glossary and
-the page size is `PageQuerySchema`'s default of 50, which is the API's business, so a shelf of more than 50
-playlists is a shelf this screen cannot show all of. That is recorded as a known limit rather than solved
+the page size is `PageQuerySchema`'s default of 50, which is the API's business, so a gallery of more than 50
+playlists is a gallery this screen cannot show all of. That is recorded as a known limit rather than solved
 by inventing a control the glossary has ruled out.
 
 ## The header
@@ -197,14 +197,14 @@ it on mobile. Its `plus` is `--icon-sm` and `aria-hidden`, paired with the `--te
 the ink is 1.36 times the cap height beside it, at `--icon-sm` it is 1.09, which is the pair the menu items
 already use. There is no playlist count in the header, because a count of playlists is a standing total
 rather than a fact about a row. "Add a playlist" appears twice on the empty screen, once in the header and
-once on the shelf, and the two never coexist with a list.
+once on the gallery, and the two never coexist with a list.
 
-## The empty shelf
+## The empty gallery
 
 A different component from the playlist empty state, and not a variant of it. That one's action is
 `Sync now`, because a playlist that exists and has no tracks has never been synced; this one's action is
 `Add a playlist`. Drawing the other would tell a person with no playlists at all to sync something. It has
-its own [record](../components/empty-shelf.md) and is drawn at both widths on the library's specimen.
+its own [record](../components/empty-gallery.md) and is drawn at both widths on the library's specimen.
 
 ## The add dialog
 
@@ -280,7 +280,7 @@ a button could only open a flow no ticket, contract or ADR has decided.
 | content area                 | not a phone budget              | 788px at rest, 691px with the bar |
 | whole items above the fold   | not a phone budget              | 6 cards at rest, 4 with the bar   |
 | rows above the fold          | not a phone budget              | 3 at rest, 2 with the bar         |
-| empty shelf                  | 220px tall                      | 244px tall                        |
+| empty gallery                | 220px tall                      | 244px tall                        |
 | add dialog                   | 400 by 255.6px                  | 388.4 by 234.8px, as a sheet      |
 | signed out                   | not drawn                       | 356.4 by 180px                    |
 

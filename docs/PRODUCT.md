@@ -48,7 +48,7 @@ Permanent: sharing outside the instance, public or unauthenticated access, casti
 
 ## Brand Commitments
 
-Calm, content-first, and quiet. The interface is a playlist library, not a video feed. It should feel like a dependable personal shelf, and must not nag or gamify.
+Calm, content-first, and quiet. The interface is a playlist library, not a video feed. It should feel like a dependable personal gallery, and must not nag or gamify.
 
 ## Evidence on Hand
 

@@ -54,7 +54,7 @@ suppresses it, so the next sync does not put it back.
    which dialog I am in.
 10. As a listener, I want to rename a playlist, so that the name is mine and not the source's.
 11. As a listener, I want an empty name refused, so that a playlist cannot disappear from my library.
-12. As a listener, I want to delete a playlist, so that a shelf I no longer want is gone.
+12. As a listener, I want to delete a playlist, so that a gallery I no longer want is gone.
 13. As a listener, I want a deleted playlist to leave my other playlists alone, so that deleting one thing
     does not cost me another.
 14. As a listener, I want the audio of a deleted playlist to be reclaimed eventually rather than immediately,
@@ -209,4 +209,4 @@ suppresses it, so the next sync does not put it back.
 - Sharing, which [`05-share-a-playlist`](05-share-a-playlist.md) owns.
 - The download a new track triggers, which [`02-store-a-track`](02-store-a-track.md) owns.
 - Syncing, which [`01-sync-a-playlist`](01-sync-a-playlist.md) owns.
-- Any admin override on a playlist. A role is not authority over somebody else's shelf.
+- Any admin override on a playlist. A role is not authority over somebody else's gallery.

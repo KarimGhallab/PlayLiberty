@@ -8,7 +8,7 @@ Labels: `enhancement`, `ready-for-agent`
 The web client's first screen has no behavior. The route exists and renders the raw result of
 `GET /playlists` as a plain list, and nothing decides what a person sees or can do there. The library is the
 only entry point to content and the route a user lands on, so every one of the client's other jobs starts
-here: the add-a-playlist dialog has nothing to open, an item has nowhere to go, and an empty shelf and a
+here: the add-a-playlist dialog has nothing to open, an item has nowhere to go, and an empty gallery and a
 playlist with no tracks are the same picture. The design record draws the screen, but a drawing is not a
 decision about what the screen does when the list is empty, when a sync is running, when a sync failed, or
 when the playlist belongs to somebody else.
@@ -24,7 +24,7 @@ The library is one list of the playlists the account can see, its own and the on
 sections and no second meaning for a shared item. Each item is the playlist header, showing the cover, the
 name, the association count, the sync state and time, and a share indicator, and its cover and name link to
 the playlist. An owner's own playlist carries no "shared by" line; a playlist shared with the account names
-the owner through the account directory. Before the first sync the screen is an empty shelf whose action is
+the owner through the account directory. Before the first sync the screen is an empty gallery whose action is
 "Add a playlist", which opens the dialog and creates a Synced playlist, and the new item appears from the
 server rather than from the client's optimism.
 
@@ -36,7 +36,7 @@ server rather than from the client's optimism.
 3. As a listener, I want each item to show its name, cover and track count, so that I recognise it.
 4. As a listener, I want each item to show whether it is up to date, syncing or failed, so that a fault is
    visible without opening it.
-5. As a listener, I want a shared item to say who shared it, so that a shelf of several people's playlists is
+5. As a listener, I want a shared item to say who shared it, so that a gallery of several people's playlists is
    legible.
 6. As a listener, I want to open a playlist from its cover or its name, so that a list is a set of doors.
 7. As a listener, I want to add a playlist by pasting a URL, so that this is where content enters the instance.
@@ -55,7 +55,7 @@ server rather than from the client's optimism.
     expect to rename or delete it.
 15. As an account, I want a playlist I have lost access to to disappear, so that a revoked share is not a
     broken row.
-16. As an account, I want the library to show only what I can see, so that a shelf is not a place to discover
+16. As an account, I want the library to show only what I can see, so that a gallery is not a place to discover
     other people's ids.
 17. As a listener, I want the list to refresh while a sync runs, so that the counts and the state are current.
 18. As a listener, I want a failed sync on the library to read the same way as on the playlist, so that I do
@@ -71,7 +71,7 @@ server rather than from the client's optimism.
 - **One list, no sections.** A shared playlist and an owned one are the same item in the same list, ordered by
   creation like the route returns them. The design record rejected a second section because a shared item
   reachable only from a section is a second meaning for the same thing, and because a second section splits an
-  empty shelf into two empty shelves.
+  empty gallery into two empty shelves.
 - **The item is the playlist header, drawn at the arrangement the design record fixes, and this spec adds no
   second item component.** The cover and the name are the two links to `/playlists/:id`, the cover link is
   hidden from the accessible name so a reader announces one link per item, and the sync line and the share
@@ -88,7 +88,7 @@ server rather than from the client's optimism.
 - **The sync line is the header's, and the library inherits it.** A syncing item says so, a failed one says so
   in the failed tone, and the time comes from `lastSyncedAt`, formatted by the shared UI foundation so both
   this screen and the detail agree. A playlist that has never synced reads as never synced, not as a fault.
-- **The empty shelf is a different component from the playlist's empty state, and the two actions are
+- **The empty gallery is a different component from the playlist's empty state, and the two actions are
   different.** No playlists is "Add a playlist", because there is nothing to sync; a playlist with no tracks is
   "Sync now", because the playlist exists and has never been synced. The library never draws the second.
 - **Adding a playlist is a dialog that submits `POST /playlists`, and the client does not invent the item.**
@@ -99,7 +99,7 @@ server rather than from the client's optimism.
 - **A successful create closes the dialog and leaves the person in the library.** The new item is the feedback,
   and it is already marked as syncing. This is the library's decision and not the dialog's, and the detail
   screen is one press away if the person wants to watch it. _Decided here:_ the alternative, navigating into
-  the new playlist, takes a person away from the shelf they were building.
+  the new playlist, takes a person away from the gallery they were building.
 - **While a sync is in flight the list refreshes, and that loop is
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md)'s.** The library states what it shows and that
   it refreshes; it does not decide the cadence.
@@ -126,7 +126,7 @@ server rather than from the client's optimism.
   "Add a playlist" and a shared item shows its owner's name is a test of the feature.
 - **The cases that must exist:**
   - a populated library renders one item per playlist with its name, count and sync line;
-  - an account with no playlists renders the empty shelf and its action, and not the playlist empty state;
+  - an account with no playlists renders the empty gallery and its action, and not the playlist empty state;
   - a playlist in `syncing` renders as syncing, and one in `error` renders the failed state;
   - a playlist that has never synced renders as never synced rather than as a fault;
   - a shared item renders the owner's display name, and an owned item renders no line;

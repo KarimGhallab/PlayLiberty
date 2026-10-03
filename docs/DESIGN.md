@@ -2,7 +2,7 @@
 
 ## Overview
 
-A calm, dark-only, content-forward music library. It should read as a dependable personal shelf, not a
+A calm, dark-only, content-forward music library. It should read as a dependable personal gallery, not a
 video feed and not a gamer dashboard.
 
 Every value in this system is measured and decided. The specimens in `docs/design/` draw them; this
@@ -38,7 +38,7 @@ than misleading a reader.
 | Form controls                | [form controls](design-system/components/form-controls.md)             | [form controls](design/components/form-controls.html)        |
 | Playlist header              | [playlist header](design-system/components/playlist-header.md)         | [playlist header](design/components/playlist-header.html)    |
 | Add a playlist               | [add a playlist](design-system/components/add-playlist-dialog.md)      | [add a playlist](design/components/add-playlist-dialog.html) |
-| Empty shelf                  | [empty shelf](design-system/components/empty-shelf.md)                 | [library](design/screens/library.html)                       |
+| Empty gallery                | [empty gallery](design-system/components/empty-gallery.md)             | [library](design/screens/library.html)                       |
 | Library                      | [library](design-system/screens/library.md)                            | [library](design/screens/library.html)                       |
 | Playlist detail              | [playlist detail](design-system/screens/playlist-detail.md)            | [playlist detail](design/screens/playlist-detail.html)       |
 
@@ -75,9 +75,9 @@ These are the components, not their specs. Each links to the file that specifies
 - **Sync error**, because `PlaylistSyncStatus.Error` and a non-null `SyncRun.error` are both reachable. A
   failed sync is exactly when the user needs to know, and exactly where "do not nag" could tempt a
   designer into silence. Specified in [the sync error](design-system/components/sync-error.md).
-- **Empty shelf**, the library with no playlists at all, which is a different component from the
+- **Empty gallery**, the library with no playlists at all, which is a different component from the
   playlist empty state and has a different action. Specified in
-  [the empty shelf](design-system/components/empty-shelf.md).
+  [the empty gallery](design-system/components/empty-gallery.md).
 - **Add a playlist**, the dialog the library hosts on both clients, in two arrangements because a sheet
   is the phone's own idiom for a short task. Specified in
   [add a playlist](design-system/components/add-playlist-dialog.md).
@@ -101,7 +101,7 @@ variant of the other, and the first thing it does is name the two.
 
 - **Library**, at `/` on web and the app root on mobile. The only entry point to content, so it is
   the route a user lands on. Specified in [the library](design-system/screens/library.md). Drawing it
-  forced three things into being that were not designed: the empty shelf, the add-a-playlist dialog,
+  forced three things into being that were not designed: the empty gallery, the add-a-playlist dialog,
   and an answer to what the player bar does before anything is playing. That last one withdrew a
   claim the [player bar record](design-system/components/player-bar.md) had made, and the correction
   is written into that record rather than left here as an exception.

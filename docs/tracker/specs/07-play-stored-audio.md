@@ -28,7 +28,7 @@ reflected in the browser's own media controls, from the same state.
 
 ## User Stories
 
-1. As a listener, I want to press play on a track and hear it, so that the shelf is a player and not a list.
+1. As a listener, I want to press play on a track and hear it, so that the gallery is a player and not a list.
 2. As a listener, I want the whole playlist to become the queue, so that the music continues without me
    choosing each track.
 3. As a listener, I want to start from the track I pressed rather than from the top, so that a long list is
@@ -118,7 +118,7 @@ reflected in the browser's own media controls, from the same state.
   audio nobody will hear. _Decided here:_ prefetching is a bandwidth decision with no customer, on an instance
   that is rate limited by its source.
 - **One track plays at a time.** No overlap, no crossfade, no gapless join. _Decided here:_ the product is a
-  dependable shelf, and every one of those is a feature rather than a default.
+  dependable gallery, and every one of those is a feature rather than a default.
 - **The browser's own controls are driven from the same player state,** being the Media Session API on web,
   behind feature detection and never allowed to throw past the player. What the browser shows is what the
   player state says, never a second copy of it. A browser that lacks the API loses the controls and nothing

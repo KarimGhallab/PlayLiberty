@@ -166,7 +166,7 @@ arrangement is used, and the predicted fault cannot happen because `.share` is `
 where the name is 848px wide and there is no second row to align with, the indicator belongs beside the text.
 
 The indicator is coarser than the permission model: one glyph covers both collaborator levels, so it says
-you are not the owner and nothing about what you may do. On a shelf that matters more, because a person may
+you are not the owner and nothing about what you may do. On a gallery that matters more, because a person may
 rename one row and not the next, and the indicator cannot tell them apart; the overflow can, and does, so
 the level is shown where it acts.
 
@@ -226,7 +226,7 @@ four, a `write` collaborator's holds Sync now alone, and a `read` collaborator's
 overflow button rather than an empty panel. The panel is present only when open, the opposite of the
 tooltip's arrangement: a tooltip labels something already on screen, a menu is not there until asked for.
 
-A shelf puts forty shuffle toggles on one screen, the price of reusing the component exactly. Shuffle is
+A gallery puts forty shuffle toggles on one screen, the price of reusing the component exactly. Shuffle is
 playback state rather than playlist state, so forty `aria-pressed` toggles are more state than the screen
 needs; dropping it and keeping it on the player bar and the detail header lost because the item is otherwise
 identical to the header and one exception is easier to notice than forty controls.

@@ -103,7 +103,7 @@ than reloading forever.
   answers fast enough that the invalidation is the feedback.
 - **The error state of a read is the screen's, and it is distinct from empty.** A failed playlist read renders
   the detail's error state, not an empty track list; a failed library read renders the library's error state,
-  not the empty shelf. The `404` a revoked share produces is the "gone" state the design records already name,
+  not the empty gallery. The `404` a revoked share produces is the "gone" state the design records already name,
   not a fault.
 - **A problem document is shown as the problem it is.** The client already parses `application/problem+json`;
   a screen shows the problem's title, and a mutation shows the message beside the control that caused it. The

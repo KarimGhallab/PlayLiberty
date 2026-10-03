@@ -32,7 +32,7 @@
        */
 
       /* The list is a stack and nothing else. The separator between two items is
-         the header's own .hdr + .hdr, so a shelf of headers is separated by the
+         the header's own .hdr + .hdr, so a gallery of headers is separated by the
          rule the header already had rather than by a rule invented here. */
       .list {
         display: flex;
@@ -142,7 +142,7 @@
        * The header stacks three facts, name then sync line then count, and a card
        * at 172.2px cannot afford a line per fact. The state's own line is the one
        * to lose, because the state is a fact about whether to act and the count is
-       * the fact a person came to the shelf for, and pairing them costs one line
+       * the fact a person came to the gallery for, and pairing them costs one line
        * rather than two.
        *
        * .state and .count are the header's and are not touched. What is declared
@@ -199,7 +199,7 @@
        * right edge. That is the reason worth having, and it is a scanning one: the
        * three words are 57px, 70.8px and 73.76px wide, and only right alignment
        * makes the longest of them read as a column edge, so a "Sync failed" in
-       * --tone-failed sits at the same x on every card and a shelf of forty can be
+       * --tone-failed sits at the same x on every card and a gallery of forty can be
        * read for the fault.
       /* The state holds its size and the count gives way, which is the whole of
        * what keeps "tracks" on the card.
@@ -446,7 +446,7 @@
 
       /* The touch target is separate from the control, so a control looks the
        * same on both platforms and only its target differs. The header's control
-       * and the shelf's both carry it, and the shelf's is the one a thumb is
+       * and the gallery's both carry it, and the gallery's is the one a thumb is
        * most likely to miss, being alone on an empty screen. */
       .btn--touch {
         position: relative;
@@ -608,7 +608,7 @@
        *
        * The button does not scroll with the grid, so without this the last card
        * sits under it and there is no scroll that gets it out: a person scrolls to
-       * the end of a shelf of forty and the last playlist's name is behind a green
+       * the end of a gallery of forty and the last playlist's name is behind a green
        * circle. 56px of button plus --space-4 either side is 88px at rest, and
        * 185px once the bar is docked, because the button is then 113px up and the
        * last card has to clear its top edge rather than its bottom one.
@@ -628,15 +628,15 @@
         padding-bottom: calc(97px + var(--space-4) + 56px + var(--space-4));
       }
 
-      /* ====================================================== the empty shelf
+      /* ====================================================== the empty gallery
        *
-       * The shelf is a different component from the playlist empty state and
+       * The gallery is a different component from the playlist empty state and
        * not a variant of it. That one's action is Sync now, because a playlist
        * that exists and has no tracks is a playlist that has never been synced.
        * This one's action is Add a playlist, and drawing the other would tell a
        * person with no playlists at all to sync something.
        */
-      .shelf {
+      .gallery {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -644,7 +644,7 @@
         padding: var(--space-8) 0;
         text-align: center;
       }
-      .shelf__head {
+      .gallery__head {
         margin: 0;
         font-size: var(--text-lg);
         font-weight: var(--weight-semibold);
@@ -2200,7 +2200,7 @@
             because a card at 172.2px has nowhere to put the equalizer strip
             that says what is playing on web and no room for two steps, so
             <strong>the pause glyph is the entire signal</strong> and it is 48px
-            of button on a shelf of six.
+            of button on a gallery of six.
           </p>
           <p class="section-note">
             <strong
@@ -3553,7 +3553,7 @@
 
       <section class="stack">
         <div class="row">
-          <h2 class="section-title">The empty shelf</h2>
+          <h2 class="section-title">The empty gallery</h2>
           <p class="section-note">
             No playlists at all, which is a different component from the
             playlist empty state and not a variant of it. That one is a playlist
@@ -3581,8 +3581,8 @@
                   Add a playlist
                 </button>
               </div>
-              <div class="shelf">
-                <p class="shelf__head">No playlists yet</p>
+              <div class="gallery">
+                <p class="gallery__head">No playlists yet</p>
                 <p class="prose">
                   Paste a YouTube playlist link, then sync it. Every track you
                   download is yours from then on, even if the video is taken
@@ -3608,8 +3608,8 @@
                   <div class="lib-head">
                     <h3 class="lib-title">Playlists</h3>
                   </div>
-                  <div class="shelf">
-                    <p class="shelf__head">No playlists yet</p>
+                  <div class="gallery">
+                    <p class="gallery__head">No playlists yet</p>
                     <p class="prose">
                       Paste a YouTube playlist link, then sync it. Every track
                       you download is yours from then on, even if the video is
@@ -3646,10 +3646,10 @@
 
         <p class="hint">
           The word <span class="token-sm">Add a playlist</span> appears twice on
-          the empty screen, once in the header and once on the shelf, and that
+          the empty screen, once in the header and once on the gallery, and that
           is a duplication rather than an oversight. The header's control is
-          chrome and is there in every state; the shelf's is the invitation, and
-          on an empty screen it is the only thing there is to press. The two
+          chrome and is there in every state; the gallery's is the invitation,
+          and on an empty screen it is the only thing there is to press. The two
           never coexist with a list, so at no width does a user see it twice
           while choosing between two things.
         </p>
@@ -4563,9 +4563,9 @@
           a permanent non-goal and the page size is
           <span class="token-sm">PageQuerySchema</span>'s default of 50, which
           is the API's business and not a control this screen draws. The
-          consequence is that a shelf of more than 50 playlists is a shelf this
-          screen cannot show all of, and that is recorded rather than solved by
-          inventing a control the glossary has ruled out.
+          consequence is that a gallery of more than 50 playlists is a gallery
+          this screen cannot show all of, and that is recorded rather than
+          solved by inventing a control the glossary has ruled out.
         </p>
         <p class="hint">
           <strong
@@ -4586,7 +4586,7 @@
         <p class="hint">
           Do keep the list one list. A playlist shared to the account is in it,
           and a second section for shared items would duplicate the row and
-          split an empty shelf into two meanings. Do not restate the count as
+          split an empty gallery into two meanings. Do not restate the count as
           something playable: the count is a total of associations, so a
           playlist of 300 with 290 still
           <span class="token-sm">pending</span> reads 300, and nothing on a row

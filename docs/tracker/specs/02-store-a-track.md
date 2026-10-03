@@ -32,7 +32,7 @@ again, whoever asks for it.
    for a second action.
 2. As a listener, I want to see a track as pending, then downloading, then playable, so that the wait is
    visible rather than mysterious.
-3. As a listener, I want to start playing a track the moment it is stored, so that the list is a shelf and
+3. As a listener, I want to start playing a track the moment it is stored, so that the list is a gallery and
    not a to-do list.
 4. As a listener, I want a track that failed to download to say so, so that I know the difference between
    missing and broken.

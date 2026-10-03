@@ -1,6 +1,6 @@
-# 03: Add a playlist from the shelf
+# 03: Add a playlist from the gallery
 
-**What to build:** This is where content enters the instance. The empty shelf's action and a control in the
+**What to build:** This is where content enters the instance. The empty gallery's action and a control in the
 header open a dialog carrying the single URL field the create-playlist schema defines. Submitting it posts to
 create a Synced playlist; on success the dialog closes, the list is invalidated, and the person stays in the
 library rather than being taken into the new playlist. The new item arrives from the server already in
@@ -8,7 +8,7 @@ library rather than being taken into the new playlist. The new item arrives from
 empty or malformed URL is refused by the schema and no request is made, and a refused create shows the problem
 beside the field rather than inventing a message.
 
-**Blocked by:** [`02`](02-an-empty-shelf-not-an-empty-playlist.md).
+**Blocked by:** [`02`](02-an-empty-gallery-not-an-empty-playlist.md).
 
 **Status:** ready-for-agent
 

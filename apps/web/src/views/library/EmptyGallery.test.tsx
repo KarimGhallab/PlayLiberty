@@ -2,11 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
 
-import EmptyShelf from './EmptyShelf';
+import EmptyGallery from './EmptyGallery';
 
-describe('EmptyShelf', () => {
+describe('EmptyGallery', () => {
   it('says there are no playlists and offers the add action', () => {
-    render(<EmptyShelf onAdd={vi.fn()} />);
+    render(<EmptyGallery onAdd={vi.fn()} />);
 
     expect(screen.getByText('No playlists yet')).toBeInTheDocument();
     expect(
@@ -15,7 +15,7 @@ describe('EmptyShelf', () => {
   });
 
   it('does not offer the playlist sync action', () => {
-    render(<EmptyShelf onAdd={vi.fn()} />);
+    render(<EmptyGallery onAdd={vi.fn()} />);
 
     expect(
       screen.queryByRole('button', { name: 'Sync now' })
@@ -24,7 +24,7 @@ describe('EmptyShelf', () => {
 
   it('calls the add action when pressed', () => {
     const onAdd = vi.fn();
-    render(<EmptyShelf onAdd={onAdd} />);
+    render(<EmptyGallery onAdd={onAdd} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Add a playlist' }));
 
@@ -32,7 +32,7 @@ describe('EmptyShelf', () => {
   });
 
   it('has no axe violations', async () => {
-    const { container } = render(<EmptyShelf onAdd={vi.fn()} />);
+    const { container } = render(<EmptyGallery onAdd={vi.fn()} />);
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }

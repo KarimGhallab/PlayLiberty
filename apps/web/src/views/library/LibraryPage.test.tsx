@@ -125,7 +125,7 @@ describe('LibraryPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders the empty shelf when the account has no playlists', async () => {
+  it('renders the empty gallery when the account has no playlists', async () => {
     emptyPage();
     renderLibraryPage();
 
@@ -147,7 +147,7 @@ describe('LibraryPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders the library error state, not the empty shelf, when the read fails', async () => {
+  it('renders the library error state, not the empty gallery, when the read fails', async () => {
     failedPage();
     renderLibraryPage();
 

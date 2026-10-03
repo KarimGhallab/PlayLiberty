@@ -13,7 +13,7 @@ PlayLiberty exists to replace.
 
 The second half of the problem matters more, and it arrives the moment a sync does. A source changes while
 nobody is looking: videos are deleted, an owner tidies a playlist, a source becomes private. A sync that
-misreads any of that as "these tracks are gone" empties the shelf, and the shelf is the only copy the
+misreads any of that as "these tracks are gone" empties the gallery, and the gallery is the only copy the
 listener has. The first product principle is that a removed source video never removes an already stored
 track, and nothing in the codebase enforces it, because no sync exists to enforce it.
 
@@ -123,7 +123,7 @@ built to protect, and it is a refusal rather than a recovery.
     never a second download.
 - **Positions are append-only under a sync.** A sync assigns a position only to an association it creates,
   and never rewrites the position of one that already exists. Reordering in YouTube therefore does not reorder
-  the shelf, and a sync cannot fight an arrangement the user made. _Decided here:_ no contract offers
+  the gallery, and a sync cannot fight an arrangement the user made. _Decided here:_ no contract offers
   reordering in v1, and the alternative makes a sync destructive in a second, quieter way.
 - **`sourceStatus: removed` is a claim about the source, not about the file.** Because the flag lives on the
   track rather than on the association, marking it removed makes the row read as remote-removed in every
