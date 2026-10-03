@@ -50,6 +50,13 @@ export interface PlayerState extends PersistedPlayerState {
   readonly play: (id: string) => void;
   readonly remove: (id: string) => void;
   /*
+   * A track that cannot be played, removed from the queue. When it is the
+   * current track, the one that follows it becomes current and playback
+   * continues; at the end there is nothing to continue to, so the queue stops.
+   * When it is not current, it is only removed.
+   */
+  readonly dropAndAdvance: (id: string) => void;
+  /*
    * Transport. `skipNext` and `skipPrevious` move one place and do nothing at the
    * ends rather than wrapping; `advance` is what a finished track does, which is
    * the same move and a different answer at the last track, where it stops.

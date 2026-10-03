@@ -153,6 +153,43 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         isPlaying: false
       };
     }),
+  dropAndAdvance: (id: string) =>
+    set(state => {
+      const index = state.queue.findIndex(track => track.id === id);
+
+      const queue = state.queue.filter(track => track.id !== id);
+
+      if (state.currentId !== id) {
+        return { queue };
+      }
+
+      /*
+       * The failure is the current track's, so the queue continues from the
+       * entry that now occupies its place, which is the next one. There is none
+       * when it was the last entry: the queue is spent and stops, the same
+       * answer the end of the queue gives, rather than leaving the cursor on a
+       * track that is gone.
+       */
+      const next = index >= 0 ? queue[index] : undefined;
+
+      if (next === undefined) {
+        return {
+          queue,
+          currentId: null,
+          positionSeconds: 0,
+          seekTo: null,
+          isPlaying: false
+        };
+      }
+
+      return {
+        queue,
+        currentId: next.id,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: true
+      };
+    }),
   skipNext: () =>
     set(state => {
       const index = currentIndex(state);

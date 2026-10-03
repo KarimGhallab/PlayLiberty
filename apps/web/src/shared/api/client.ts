@@ -118,6 +118,27 @@ export async function apiGet<T>(
 }
 
 /*
+ * The status of a stream request that has already failed in the audio element.
+ *
+ * An `<audio>` element reports a load failure as a `MediaError` and never the
+ * HTTP status: a `401`, a `404` and a `409` are one code to it. The player has
+ * to tell an expired session apart from a track that is gone, so on the
+ * element's failure it asks the route again for the status alone.
+ *
+ * This is deliberately the same `send` path every other request uses, so a
+ * refusal because the session expired reaches the re-authentication guard and a
+ * second refusal in the same tab surfaces as the problem rather than a reload
+ * loop. It is a `HEAD`, which is a status and a set of headers with no body, so
+ * the probe transfers no media; it runs only after a load has already failed, so
+ * the playback that succeeds makes no request of its own.
+ */
+export async function probeStreamStatus(path: string): Promise<number> {
+  const response = await send(path, { method: 'HEAD' });
+
+  return response.status;
+}
+
+/*
  * The mutation half. A `POST` sends a JSON body and parses the reply with the
  * same schema discipline a `GET` uses, and `send` is what attaches the client
  * header ADR 0006 requires. A refusal throws the `ApiError` carrying the problem

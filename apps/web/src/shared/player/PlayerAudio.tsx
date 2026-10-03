@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { API_PREFIX } from '../api/client';
 import { bindSessionHandlers, publishMetadata } from './mediaSession';
 import { usePlayerStore } from './playerStore';
+import { StreamFailureKind, classifyStreamFailure } from './streamFailure';
 
 /*
  * The one global audio element. It lives in the shell so playback survives a
@@ -42,6 +43,40 @@ export default function PlayerAudio() {
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const clearSeek = usePlayerStore(state => state.clearSeek);
   const advance = usePlayerStore(state => state.advance);
+  const dropAndAdvance = usePlayerStore(state => state.dropAndAdvance);
+
+  /*
+   * A load failure is classified before anything moves. The element cannot say
+   * whether it failed because the track is gone or because the session expired,
+   * so the route is asked for its status; only a definitive answer removes the
+   * entry, and an unknown failure leaves it in place and stops. `failedId` is
+   * captured so a probe that resolves after the listener moved on does not touch
+   * the track they are on now.
+   */
+  const handleError = (): void => {
+    if (currentId === null) {
+      return;
+    }
+
+    const failedId = currentId;
+
+    void classifyStreamFailure(failedId).then(kind => {
+      if (kind === StreamFailureKind.Session) {
+        return;
+      }
+
+      if (usePlayerStore.getState().currentId !== failedId) {
+        return;
+      }
+
+      if (kind === StreamFailureKind.Gone) {
+        dropAndAdvance(failedId);
+        return;
+      }
+
+      setPlaying(false);
+    });
+  };
 
   /*
    * `advance` and `publishMetadata` are stable store setters and module
@@ -210,6 +245,7 @@ export default function PlayerAudio() {
       hidden
       onTimeUpdate={event => setPosition(event.currentTarget.currentTime)}
       onEnded={() => advance()}
+      onError={() => handleError()}
     />
   );
 }

@@ -1,5 +1,7 @@
 import { useParams } from '@tanstack/react-router';
 
+import { TrackFileStatus } from '@playliberty/contracts';
+
 import { usePlaylist, usePlaylistTracks } from '../../shared/api/queries';
 import { usePlayerStore } from '../../shared/player/playerStore';
 import { toPlayerTracks } from '../../shared/player/playerTracks';
@@ -52,12 +54,24 @@ export default function PlaylistDetailPage() {
         <ul className={styles.playlistDetail__list}>
           {tracks.data.map(({ track, position }) => (
             <li key={track.id} className={styles.playlistDetail__item}>
-              <button
-                type="button"
-                className={styles.playlistDetail__play}
-                onClick={() => playTrack(track.id)}>
-                Play {track.title}
-              </button>
+              {/*
+               * The play control is present exactly when the server says the
+               * file is stored, and absent otherwise rather than disabled: a
+               * control that is drawn but cannot be pressed is a lie about what
+               * can be heard, which the design system treats as a fault.
+               */}
+              {track.fileStatus === TrackFileStatus.Stored ? (
+                <button
+                  type="button"
+                  className={styles.playlistDetail__play}
+                  onClick={() => playTrack(track.id)}>
+                  Play {track.title}
+                </button>
+              ) : (
+                <span className={styles.playlistDetail__unplayable}>
+                  {track.title}
+                </span>
+              )}
               <span className={styles.playlistDetail__position}>
                 {position + 1}
               </span>

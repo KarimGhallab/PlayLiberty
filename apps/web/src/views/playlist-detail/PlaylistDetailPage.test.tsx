@@ -57,6 +57,20 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('offers no play control for a track whose file is not stored', async () => {
+    renderDetail();
+
+    /*
+     * `Flamenco Sketches` is pending in the fixtures, so it is listed and
+     * unplayable. The control is absent rather than disabled: a button that
+     * cannot be pressed would claim a track can be heard when it cannot.
+     */
+    expect(await screen.findByText('Flamenco Sketches')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Play Flamenco Sketches' })
+    ).not.toBeInTheDocument();
+  });
+
   it('builds the queue from the pressed track and starts there', async () => {
     renderDetail();
 
@@ -66,8 +80,7 @@ describe('PlaylistDetailPage', () => {
 
     expect(state.queue.map(track => track.title)).toEqual([
       'Blue In Green',
-      'Naima',
-      'Flamenco Sketches'
+      'Naima'
     ]);
     expect(state.queue.every(track => track.playlistId === PLAYLIST_ID)).toBe(
       true

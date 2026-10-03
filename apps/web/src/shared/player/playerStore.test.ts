@@ -272,6 +272,50 @@ describe('transport', () => {
   });
 });
 
+describe('dropAndAdvance', () => {
+  it('drops the current track and continues on the next one', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], second.id);
+
+    usePlayerStore.getState().dropAndAdvance(second.id);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue.map(track => track.id)).toEqual(['track-1', 'track-3']);
+    expect(state.currentId).toBe('track-3');
+    expect(state.isPlaying).toBe(true);
+    expect(state.positionSeconds).toBe(0);
+  });
+
+  it('stops when the dropped track was the last one', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], second.id);
+
+    usePlayerStore.getState().dropAndAdvance(second.id);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue.map(track => track.id)).toEqual(['track-1']);
+    expect(state.currentId).toBeNull();
+    expect(state.isPlaying).toBe(false);
+    expect(state.positionSeconds).toBe(0);
+  });
+
+  it('only removes a track that is not current, leaving the playhead alone', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], second.id);
+
+    usePlayerStore.getState().dropAndAdvance(first.id);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue.map(track => track.id)).toEqual(['track-2', 'track-3']);
+    expect(state.currentId).toBe('track-2');
+    expect(state.isPlaying).toBe(true);
+  });
+});
+
 describe('seek', () => {
   it('writes the position and asks the element to move, then clears the ask', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);

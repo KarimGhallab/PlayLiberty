@@ -1,4 +1,5 @@
 import type { PlaylistTrack } from '@playliberty/contracts';
+import { TrackFileStatus } from '@playliberty/contracts';
 
 import type { PlayerTrack } from './types';
 
@@ -12,22 +13,26 @@ import type { PlayerTrack } from './types';
  * a relaunch has no library in memory and the media session can fetch nothing, so
  * a source named at play time is a source unnamed after a reload.
  *
- * The mapping is deliberately total: every association becomes an entry, including
- * one whose file has not arrived. Whether a track is playable is a separate
- * decision with its own ticket, because a queue that silently filtered here would
- * make "why is this track missing" unanswerable from the queue alone.
+ * A track enters the queue exactly when its file is stored, which is the same
+ * fact the track list draws its play control from. Filtering here rather than in
+ * the store is what keeps the two surfaces agreeing by construction: a queue can
+ * never hold an entry the list would not offer. A track that loses its file after
+ * it is queued is dropped when it is reached, which is a failure the map cannot
+ * see and the element reports instead.
  */
 export function toPlayerTracks(
   tracks: readonly PlaylistTrack[],
   playlistId: string,
   playlistName: string
 ): PlayerTrack[] {
-  return tracks.map(({ track }) => ({
-    id: track.id,
-    title: track.title,
-    playlistId,
-    playlistName,
-    durationSeconds: track.durationSeconds,
-    thumbnailPath: track.thumbnailPath
-  }));
+  return tracks
+    .filter(({ track }) => track.fileStatus === TrackFileStatus.Stored)
+    .map(({ track }) => ({
+      id: track.id,
+      title: track.title,
+      playlistId,
+      playlistName,
+      durationSeconds: track.durationSeconds,
+      thumbnailPath: track.thumbnailPath
+    }));
 }

@@ -39,6 +39,11 @@
     cursor: pointer;
   }
 
+  &__unplayable {
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
   &__position {
     color: var(--muted);
     font-size: var(--text-xs);

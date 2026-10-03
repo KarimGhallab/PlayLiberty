@@ -1,5 +1,8 @@
 import { act, render } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { server } from '../../testing/mocks/server';
 
 import PlayerAudio from './PlayerAudio';
 import { usePlayerStore } from './playerStore';
@@ -290,5 +293,83 @@ describe('PlayerAudio', () => {
           .startQueue(PLAYLIST, [first, second], first.id);
       });
     }).not.toThrow();
+  });
+
+  it('drops a track the stream says is gone and advances', async () => {
+    server.use(
+      http.head('http://localhost:3000/api/v1/tracks/track-1/stream', () =>
+        HttpResponse.json({ title: 'Not found' }, { status: 404 })
+      )
+    );
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    });
+
+    await act(async () => {
+      audio().dispatchEvent(new Event('error'));
+    });
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue.map(item => item.id)).toEqual(['track-2']);
+    expect(state.currentId).toBe('track-2');
+    expect(state.isPlaying).toBe(true);
+  });
+
+  it('keeps the track and stops when the failure cannot be classified', async () => {
+    server.use(
+      http.head('http://localhost:3000/api/v1/tracks/track-1/stream', () =>
+        HttpResponse.error()
+      )
+    );
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    });
+
+    await act(async () => {
+      audio().dispatchEvent(new Event('error'));
+    });
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+    expect(state.currentId).toBe('track-1');
+    expect(state.isPlaying).toBe(false);
+  });
+
+  it('re-authenticates instead of dropping the track when the session expired', async () => {
+    server.use(
+      http.head('http://localhost:3000/api/v1/tracks/track-1/stream', () =>
+        HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+      )
+    );
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    });
+
+    await act(async () => {
+      audio().dispatchEvent(new Event('error'));
+    });
+
+    const state = usePlayerStore.getState();
+
+    /*
+     * The re-auth flag is the client's own record that it took the edge path,
+     * and it is the only part of that path jsdom can show. What matters for the
+     * ticket is the queue: an expired session is not a broken track, so nothing
+     * is dropped and the listener is not moved.
+     */
+    expect(window.sessionStorage.getItem('playliberty.re-auth-attempt')).toBe('1');
+    expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+    expect(state.currentId).toBe('track-1');
   });
 });
