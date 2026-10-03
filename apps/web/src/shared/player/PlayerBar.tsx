@@ -1,13 +1,50 @@
+import { IconPlayerSkipBack, IconPlayerSkipForward } from '@tabler/icons-react';
+import { useRef } from 'react';
+
 import { formatDuration } from '@playliberty/ui-foundation';
+
+import { API_PREFIX } from '../api/client';
+import PlayGlyph from '../components/PlayGlyph';
 
 import styles from './PlayerBar.module.scss';
 import { usePlayerStore } from './playerStore';
 
 /*
- * The bar is the shell's only persistent chrome. This scaffold renders the
- * current title, its position and a play/pause control and nothing else; the
- * real bar, its queue panel and its states belong to a feature ticket.
+ * The player bar, the shell's only persistent chrome and the one component whose
+ * height is paid for by the list it covers. Two rows: the artwork, the title and
+ * the playlist it came from on the first, the transport on the first row's
+ * centre, and the seeker with the two times against its ends on the second.
+ *
+ * The bar is absent at rest and appears on the first track, which is the design
+ * record's own correction: 98px on the landing screen would be spent on a play
+ * that cannot act. Once playback exists the bar persists across both routes,
+ * because music keeps playing while the listener browses elsewhere.
+ *
+ * The transport is always drawn once the bar exists, unlike the header's, which
+ * is absent unless the playlist is playing: the bar is the one place a listener
+ * goes looking for the steps, and a control that appears and disappears there is
+ * worse than one that is always present.
  */
+
+/** How many seconds one press of an arrow key moves the playhead. */
+const KEYBOARD_STEP_SECONDS = 5;
+
+/*
+ * Pointer capture keeps the drag alive when the pointer leaves the track, which
+ * is the difference between a scrub that survives an impatient hand and one that
+ * stops at the track's edge. It is a nicety rather than the seek itself, so a
+ * host that does not implement it loses the drag-outside behaviour and nothing
+ * else; jsdom is one such host, and an unguarded call would take the whole
+ * handler down with it.
+ */
+function capturePointer(element: HTMLElement, pointerId: number): void {
+  element.setPointerCapture?.(pointerId);
+}
+
+function releasePointer(element: HTMLElement, pointerId: number): void {
+  element.releasePointerCapture?.(pointerId);
+}
+
 export default function PlayerBar() {
   const current = usePlayerStore(
     state => state.queue.find(track => track.id === state.currentId) ?? null
@@ -15,24 +52,155 @@ export default function PlayerBar() {
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
+  const seek = usePlayerStore(state => state.seek);
+  const skipNext = usePlayerStore(state => state.skipNext);
+  const skipPrevious = usePlayerStore(state => state.skipPrevious);
+  const scrubRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  if (current === null) {
+    return null;
+  }
+
+  const duration = current.durationSeconds ?? 0;
+  const elapsed = Math.min(positionSeconds, duration);
+  const fraction = duration > 0 ? elapsed / duration : 0;
+  const artwork =
+    current.thumbnailPath === null
+      ? null
+      : `${API_PREFIX}/tracks/${current.id}/thumbnail`;
+
+  /* The pointer's x against the track's own box, in seconds. The element is the
+   * truth for the target, not the store, because the store's position is
+   * whatever the last interaction wrote. */
+  const secondsAt = (clientX: number): number => {
+    const box = scrubRef.current?.getBoundingClientRect();
+
+    if (box === undefined || box.width === 0 || duration <= 0) {
+      return 0;
+    }
+
+    const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
+
+    return ratio * duration;
+  };
+
+  const seekToPointer = (clientX: number): void => {
+    seek(secondsAt(clientX));
+  };
 
   return (
-    <footer className={styles.playerBar} aria-label="Player">
-      <span className={styles.playerBar__title}>
-        {current?.title ?? 'Nothing playing'}
-      </span>
-      {current === null ? null : (
-        <span className={styles.playerBar__position}>
-          {formatDuration(positionSeconds)}
+    <footer
+      className={styles.playerBar}
+      aria-label="Player"
+      data-state={isPlaying ? 'playing' : 'paused'}>
+      <div className={styles.playerBar__top}>
+        <div className={styles.playerBar__id}>
+          <span
+            className={styles.playerBar__art}
+            data-art={artwork === null ? 'no-art' : 'art'}>
+            {artwork === null ? null : (
+              <img className={styles.playerBar__image} src={artwork} alt="" />
+            )}
+          </span>
+          <span className={styles.playerBar__name}>
+            <span className={styles.playerBar__title}>{current.title}</span>
+            <span className={styles.playerBar__source}>
+              {current.playlistName}
+            </span>
+          </span>
+        </div>
+        <div className={styles.playerBar__transport}>
+          <button
+            type="button"
+            className={styles.playerBar__step}
+            aria-label="Previous track"
+            onClick={() => skipPrevious()}>
+            <IconPlayerSkipBack
+              className={styles.playerBar__stepIcon}
+              aria-hidden="true"
+              focusable="false"
+            />
+          </button>
+          <button
+            type="button"
+            className={styles.playerBar__play}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            onClick={() => setPlaying(!isPlaying)}>
+            <PlayGlyph
+              className={styles.playerBar__glyph}
+              stripClassName={styles.playerBar__strip}
+            />
+          </button>
+          <button
+            type="button"
+            className={styles.playerBar__step}
+            aria-label="Next track"
+            onClick={() => skipNext()}>
+            <IconPlayerSkipForward
+              className={styles.playerBar__stepIcon}
+              aria-hidden="true"
+              focusable="false"
+            />
+          </button>
+        </div>
+      </div>
+      <div className={styles.playerBar__position}>
+        <span className={styles.playerBar__time}>{formatDuration(elapsed)}</span>
+        <div
+          ref={scrubRef}
+          className={styles.playerBar__scrub}
+          role="slider"
+          tabIndex={0}
+          aria-label="Position in track"
+          aria-valuemin={0}
+          aria-valuemax={duration}
+          aria-valuenow={elapsed}
+          aria-valuetext={`${formatDuration(elapsed)} of ${formatDuration(duration)}`}
+          onPointerDown={event => {
+            draggingRef.current = true;
+            capturePointer(event.currentTarget, event.pointerId);
+            seekToPointer(event.clientX);
+          }}
+          onPointerMove={event => {
+            if (draggingRef.current) {
+              seekToPointer(event.clientX);
+            }
+          }}
+          onPointerUp={event => {
+            draggingRef.current = false;
+            releasePointer(event.currentTarget, event.pointerId);
+          }}
+          onKeyDown={event => {
+            if (event.key === 'ArrowRight') {
+              seek(Math.min(duration, positionSeconds + KEYBOARD_STEP_SECONDS));
+            }
+
+            if (event.key === 'ArrowLeft') {
+              seek(Math.max(0, positionSeconds - KEYBOARD_STEP_SECONDS));
+            }
+
+            if (event.key === 'Home') {
+              seek(0);
+            }
+
+            if (event.key === 'End') {
+              seek(duration);
+            }
+          }}>
+          <div
+            className={styles.playerBar__fill}
+            style={{ width: `${fraction * 100}%` }}
+          />
+          <div
+            className={styles.playerBar__knob}
+            style={{ left: `${fraction * 100}%` }}
+          />
+        </div>
+        <span className={styles.playerBar__time}>
+          {formatDuration(duration)}
         </span>
-      )}
-      <button
-        type="button"
-        className={styles.playerBar__control}
-        onClick={() => setPlaying(!isPlaying)}
-        disabled={current === null}>
-        {isPlaying ? 'Pause' : 'Play'}
-      </button>
+      </div>
     </footer>
   );
 }

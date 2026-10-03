@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { TrackFileStatus, TrackSourceStatus } from '@playliberty/contracts';
+
 import {
   formatDuration,
   formatLastSynced,
   formatRelativeTime,
   formatTrackCount,
-  trackCountUnit
+  trackCountUnit,
+  trackStateLabel
 } from './formatters.js';
 
 const now = new Date('2026-10-01T12:00:00.000Z');
@@ -102,5 +105,37 @@ describe('trackCountUnit', () => {
     expect(trackCountUnit(0)).toBe('tracks');
     expect(trackCountUnit(1)).toBe('track');
     expect(trackCountUnit(5)).toBe('tracks');
+  });
+});
+
+describe('trackStateLabel', () => {
+  it('says nothing for a stored track that is still available', () => {
+    expect(
+      trackStateLabel(TrackFileStatus.Stored, TrackSourceStatus.Available)
+    ).toBeNull();
+  });
+
+  it('names each file state that is not stored', () => {
+    expect(
+      trackStateLabel(TrackFileStatus.Pending, TrackSourceStatus.Available)
+    ).toBe('Pending');
+    expect(
+      trackStateLabel(TrackFileStatus.Downloading, TrackSourceStatus.Available)
+    ).toBe('Downloading');
+    expect(
+      trackStateLabel(TrackFileStatus.Failed, TrackSourceStatus.Available)
+    ).toBe('Failed');
+    expect(
+      trackStateLabel(TrackFileStatus.Unavailable, TrackSourceStatus.Available)
+    ).toBe('Unavailable');
+  });
+
+  it('says the track is still here for a removed source, whatever the file', () => {
+    expect(
+      trackStateLabel(TrackFileStatus.Stored, TrackSourceStatus.Removed)
+    ).toBe('Removed, still here');
+    expect(
+      trackStateLabel(TrackFileStatus.Failed, TrackSourceStatus.Removed)
+    ).toBe('Removed, still here');
   });
 });

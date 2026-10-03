@@ -5,7 +5,8 @@ export {
   formatRelativeTime,
   formatTrackCount,
   syncStateLabel,
-  trackCountUnit
+  trackCountUnit,
+  trackStateLabel
 } from './formatters.js';
 export { trackTone } from './tones.js';
 export { TrackTone } from './types.js';

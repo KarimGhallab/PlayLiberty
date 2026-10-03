@@ -17,6 +17,7 @@ import { FAKE_SCRIPT } from './paths';
 export interface ScenarioEntry {
   videoId: string;
   title: string;
+  durationSeconds?: number;
 }
 
 export interface ScenarioSource {

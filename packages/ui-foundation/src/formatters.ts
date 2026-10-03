@@ -1,4 +1,8 @@
-import { PlaylistSyncStatus } from '@playliberty/contracts';
+import {
+  PlaylistSyncStatus,
+  TrackFileStatus,
+  TrackSourceStatus
+} from '@playliberty/contracts';
 
 /*
  * The strings both clients render. The exact output is the contract, so the
@@ -137,6 +141,43 @@ export function syncStateLabel(status: PlaylistSyncStatus): string {
   }
 
   return 'Up to date';
+}
+
+/**
+ * The track row's state word, or null when there is nothing to say. Stored is
+ * the default and stays silent: a row with nothing wrong should not announce
+ * that it is fine, and the absence of a word is the state.
+ *
+ * The precedence is `trackTone`'s: a removed track reads `Removed, still here`
+ * whatever its file status is, because the source is gone and the file should
+ * not compete with that news. `still here` is the product's whole promise, and
+ * the exact string is the contract, so both clients render it identically.
+ */
+export function trackStateLabel(
+  fileStatus: TrackFileStatus,
+  sourceStatus: TrackSourceStatus
+): string | null {
+  if (sourceStatus === TrackSourceStatus.Removed) {
+    return 'Removed, still here';
+  }
+
+  if (fileStatus === TrackFileStatus.Stored) {
+    return null;
+  }
+
+  if (fileStatus === TrackFileStatus.Pending) {
+    return 'Pending';
+  }
+
+  if (fileStatus === TrackFileStatus.Downloading) {
+    return 'Downloading';
+  }
+
+  if (fileStatus === TrackFileStatus.Failed) {
+    return 'Failed';
+  }
+
+  return 'Unavailable';
 }
 
 /** The unit word for a track count, singular only at one. */

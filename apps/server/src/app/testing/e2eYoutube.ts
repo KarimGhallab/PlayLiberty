@@ -35,6 +35,14 @@ import {
 interface ScenarioEntry {
   videoId: string;
   title: string;
+  /*
+   * The length the source reports. It defaults to the real length of the
+   * committed audio fixture, because the seeker draws its track from this number
+   * and a number that disagrees with the file makes a real seek unmeasurable:
+   * the element clamps `currentTime` to the file and the UI would claim a jump
+   * the browser never made.
+   */
+  durationSeconds?: number;
 }
 
 interface ScenarioSource {
@@ -54,6 +62,14 @@ interface Scenario {
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const AUDIO_FIXTURE = join(FIXTURES_DIR, 'test-audio.m4a');
 const THUMBNAIL_FIXTURE = join(FIXTURES_DIR, 'test-thumbnail.jpg');
+
+/*
+ * The committed audio fixture is two seconds long, and the fake reports that as
+ * every entry's duration unless the scenario overrides it. It is pinned rather
+ * than probed: the file is committed and re-reading it on every call would only
+ * move the cost, not the fact.
+ */
+const AUDIO_FIXTURE_SECONDS = 2;
 
 function readScenario(scriptPath: string): Scenario {
   const raw = readFileSync(scriptPath, 'utf8');
@@ -75,7 +91,7 @@ function entryOf(entry: ScenarioEntry): YoutubeSourceEntry {
   return {
     videoId: entry.videoId,
     title: entry.title,
-    durationSeconds: 180,
+    durationSeconds: entry.durationSeconds ?? AUDIO_FIXTURE_SECONDS,
     thumbnailUrl: `https://i.ytimg.com/vi/${entry.videoId}/hq.jpg`
   };
 }

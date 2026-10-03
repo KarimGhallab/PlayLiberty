@@ -15,38 +15,13 @@
     color: var(--muted);
   }
 
+  /* The list is a plain table of rows. The top border closes the list and each
+   * row draws its own bottom border, which is the design's own list treatment.
+   * The extra bottom padding clears the docked player bar. */
   &__list {
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-2) 0;
-  }
-
-  &__play {
-    color: var(--ink);
-    font-family: inherit;
-    font-size: var(--text-sm);
-    text-align: start;
-    background: none;
-    border: 0;
-    padding: 0;
-    cursor: pointer;
-  }
-
-  &__unplayable {
-    color: var(--muted);
-    font-size: var(--text-sm);
-  }
-
-  &__position {
-    color: var(--muted);
-    font-size: var(--text-xs);
-    font-variant-numeric: tabular-nums;
+    border-top: 1px solid var(--line);
   }
 }
