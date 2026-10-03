@@ -15,6 +15,7 @@
     "tokens:watch": "pnpm --filter @playliberty/tokens run watch",
     "ui-foundation:build": "pnpm --filter @playliberty/ui-foundation run build",
     "ui-foundation:watch": "pnpm --filter @playliberty/ui-foundation run watch",
+    "test": "pnpm test:unit && pnpm test:e2e",
     "test:unit": "pnpm -r --filter '!@playliberty/e2e' run test",
     "test:e2e": "pnpm --filter @playliberty/e2e run test",
     "test:e2e:typecheck": "pnpm --filter @playliberty/e2e run typecheck",
