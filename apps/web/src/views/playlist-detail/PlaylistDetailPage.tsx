@@ -1,6 +1,6 @@
 import { useParams } from '@tanstack/react-router';
 
-import { usePlaylistTracks } from '../../shared/api/queries';
+import { usePlaylist, usePlaylistTracks } from '../../shared/api/queries';
 import { usePlayerStore } from '../../shared/player/playerStore';
 import { toPlayerTracks } from '../../shared/player/playerTracks';
 
@@ -16,20 +16,27 @@ import styles from './PlaylistDetailPage.module.scss';
  */
 export default function PlaylistDetailPage() {
   const { playlistId } = useParams({ from: '/playlists/$playlistId' });
+  const playlist = usePlaylist(playlistId);
   const tracks = usePlaylistTracks(playlistId);
   const startQueue = usePlayerStore(state => state.startQueue);
 
   const playTrack = (trackId: string): void => {
-    if (tracks.data === undefined) {
+    if (tracks.data === undefined || playlist.data === undefined) {
       return;
     }
 
-    startQueue(playlistId, toPlayerTracks(tracks.data, playlistId), trackId);
+    startQueue(
+      playlistId,
+      toPlayerTracks(tracks.data, playlistId, playlist.data.name),
+      trackId
+    );
   };
 
   return (
     <main className={styles.playlistDetail}>
-      <h1 className={styles.playlistDetail__title}>Playlist</h1>
+      <h1 className={styles.playlistDetail__title}>
+        {playlist.data?.name ?? 'Playlist'}
+      </h1>
       {tracks.isPending ? (
         <p className={styles.playlistDetail__note}>Loading tracks.</p>
       ) : null}

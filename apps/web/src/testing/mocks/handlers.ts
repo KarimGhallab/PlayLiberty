@@ -63,6 +63,28 @@ export const handlers = [
     })
   ),
   /*
+   * The single playlist, which is where the detail reads its name. It is the same
+   * row as the first list item, so a test can tell the two reads apart by their
+   * keys while the data stays consistent.
+   */
+  http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+    HttpResponse.json({
+      id: 'playlist-1',
+      ownerAccountId: 'account-1',
+      name: 'Rain On The Window',
+      coverUrl: null,
+      provider: 'youtube',
+      sourcePlaylistId: 'PL-demo',
+      syncStatus: 'idle',
+      lastSyncedAt: '2026-09-29T12:00:00.000Z',
+      trackCount: 3,
+      access: 'owner',
+      hasShares: false,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    })
+  ),
+  /*
    * The tracks of the first playlist, in the playlist's own order. Two stored and
    * one still pending, so a test has a playable track and a not-yet-playable one
    * to tell apart.

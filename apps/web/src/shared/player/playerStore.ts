@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { currentIndex } from './types';
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from './types';
 
 /*
@@ -31,16 +32,27 @@ export function mergeQueue(
   return [...kept, ...incoming.filter(track => !keptIds.has(track.id))];
 }
 
+function clampVolume(volume: number): number {
+  if (Number.isNaN(volume)) {
+    return 1;
+  }
+
+  return Math.min(1, Math.max(0, volume));
+}
+
 export const usePlayerStore = create<PlayerState>()(set => ({
   queue: [],
   currentId: null,
   positionSeconds: 0,
+  volume: 1,
+  seekTo: null,
   isPlaying: false,
   hydrate: (state: PersistedPlayerState) =>
     set({
       queue: [...state.queue],
       currentId: state.currentId,
-      positionSeconds: state.positionSeconds
+      positionSeconds: state.positionSeconds,
+      volume: clampVolume(state.volume)
     }),
   startQueue: (
     playlistId: string,
@@ -60,6 +72,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
           queue: [],
           currentId: null,
           positionSeconds: 0,
+          seekTo: null,
           isPlaying: false
         };
       }
@@ -68,6 +81,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         queue,
         currentId: startTrackId,
         positionSeconds: 0,
+        seekTo: null,
         isPlaying: true
       };
     }),
@@ -95,7 +109,13 @@ export const usePlayerStore = create<PlayerState>()(set => ({
        * pointing at nothing.
        */
       if (!currentStillThere) {
-        return { queue, currentId: null, positionSeconds: 0, isPlaying: false };
+        return {
+          queue,
+          currentId: null,
+          positionSeconds: 0,
+          seekTo: null,
+          isPlaying: false
+        };
       }
 
       return { queue };
@@ -110,7 +130,12 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         return { isPlaying: true };
       }
 
-      return { currentId: id, positionSeconds: 0, isPlaying: true };
+      return {
+        currentId: id,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: true
+      };
     }),
   remove: (id: string) =>
     set(state => {
@@ -120,10 +145,78 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         return { queue };
       }
 
-      return { queue, currentId: null, positionSeconds: 0, isPlaying: false };
+      return {
+        queue,
+        currentId: null,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: false
+      };
     }),
+  skipNext: () =>
+    set(state => {
+      const index = currentIndex(state);
+
+      if (index < 0 || index + 1 >= state.queue.length) {
+        return state;
+      }
+
+      return {
+        currentId: state.queue[index + 1].id,
+        positionSeconds: 0,
+        seekTo: null
+      };
+    }),
+  skipPrevious: () =>
+    set(state => {
+      const index = currentIndex(state);
+
+      if (index <= 0) {
+        return state;
+      }
+
+      return {
+        currentId: state.queue[index - 1].id,
+        positionSeconds: 0,
+        seekTo: null
+      };
+    }),
+  advance: () =>
+    set(state => {
+      const index = currentIndex(state);
+
+      /*
+       * The end of the queue stops rather than wrapping. There is no next track, so
+       * the playhead returns to the start of the last one and playback stops, which
+       * is what "finish the album" means and is not the same as "skip at the end",
+       * which does nothing.
+       */
+      if (index < 0 || index + 1 >= state.queue.length) {
+        return { positionSeconds: 0, seekTo: null, isPlaying: false };
+      }
+
+      return {
+        currentId: state.queue[index + 1].id,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: true
+      };
+    }),
+  seek: (seconds: number) =>
+    set(() => {
+      const clamped = Math.max(0, seconds);
+      return { positionSeconds: clamped, seekTo: clamped };
+    }),
+  clearSeek: () => set({ seekTo: null }),
   setPosition: (seconds: number) => set({ positionSeconds: seconds }),
   setPlaying: (playing: boolean) => set({ isPlaying: playing }),
+  setVolume: (volume: number) => set({ volume: clampVolume(volume) }),
   clear: () =>
-    set({ queue: [], currentId: null, positionSeconds: 0, isPlaying: false })
+    set({
+      queue: [],
+      currentId: null,
+      positionSeconds: 0,
+      seekTo: null,
+      isPlaying: false
+    })
 }));

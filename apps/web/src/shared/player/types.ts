@@ -11,13 +11,15 @@ export interface PlayerTrack {
   readonly id: string;
   readonly title: string;
   readonly playlistId: string;
+  readonly playlistName: string;
   readonly durationSeconds: number | null;
   readonly thumbnailPath: string | null;
 }
 
 /*
- * The part of the player that survives a reload. `isPlaying` is never persisted,
- * so a relaunch never starts audio on its own.
+ * The part of the player that survives a reload. `isPlaying` and `seekTo` are
+ * never persisted, so a relaunch never starts audio on its own and never jumps
+ * the playhead on the first frame.
  *
  * The current track is held as an id and not as an index. The queue is re-ordered
  * by a refetch merging by id, and a drop shifts every index after it; an index
@@ -29,10 +31,12 @@ export interface PersistedPlayerState {
   readonly queue: readonly PlayerTrack[];
   readonly currentId: string | null;
   readonly positionSeconds: number;
+  readonly volume: number;
 }
 
 export interface PlayerState extends PersistedPlayerState {
   readonly isPlaying: boolean;
+  readonly seekTo: number | null;
   readonly hydrate: (state: PersistedPlayerState) => void;
   readonly startQueue: (
     playlistId: string,
@@ -45,8 +49,19 @@ export interface PlayerState extends PersistedPlayerState {
   ) => void;
   readonly play: (id: string) => void;
   readonly remove: (id: string) => void;
+  /*
+   * Transport. `skipNext` and `skipPrevious` move one place and do nothing at the
+   * ends rather than wrapping; `advance` is what a finished track does, which is
+   * the same move and a different answer at the last track, where it stops.
+   */
+  readonly skipNext: () => void;
+  readonly skipPrevious: () => void;
+  readonly advance: () => void;
+  readonly seek: (seconds: number) => void;
+  readonly clearSeek: () => void;
   readonly setPosition: (seconds: number) => void;
   readonly setPlaying: (playing: boolean) => void;
+  readonly setVolume: (volume: number) => void;
   readonly clear: () => void;
 }
 

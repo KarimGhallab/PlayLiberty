@@ -2,12 +2,13 @@ import type { PersistedPlayerState, PlayerState, PlayerTrack } from './types';
 
 export const PLAYER_STORAGE_KEY = 'playliberty.player';
 
-/** The slice of the store the persistence writes, without `isPlaying`. */
+/** The slice of the store the persistence writes, without `isPlaying` or `seekTo`. */
 function persistedSlice(state: PlayerState): PersistedPlayerState {
   return {
     queue: state.queue,
     currentId: state.currentId,
-    positionSeconds: state.positionSeconds
+    positionSeconds: state.positionSeconds,
+    volume: state.volume
   };
 }
 
@@ -16,10 +17,18 @@ function isPlayerTrack(value: unknown): value is PlayerTrack {
     return false;
   }
 
-  const { id, title, playlistId, durationSeconds, thumbnailPath } = value as {
+  const {
+    id,
+    title,
+    playlistId,
+    playlistName,
+    durationSeconds,
+    thumbnailPath
+  } = value as {
     id: unknown;
     title: unknown;
     playlistId: unknown;
+    playlistName: unknown;
     durationSeconds: unknown;
     thumbnailPath: unknown;
   };
@@ -28,31 +37,61 @@ function isPlayerTrack(value: unknown): value is PlayerTrack {
     typeof id === 'string' &&
     typeof title === 'string' &&
     typeof playlistId === 'string' &&
+    typeof playlistName === 'string' &&
     (durationSeconds === null || typeof durationSeconds === 'number') &&
     (thumbnailPath === null || typeof thumbnailPath === 'string')
   );
 }
 
-function isPersistedPlayerState(value: unknown): value is PersistedPlayerState {
+/*
+ * The stored payload as a real state, or null when it is not one. `volume` is
+ * newer than the rest, so a payload written before it existed is normalized to
+ * the default rather than discarded: the queue and the offset are worth keeping
+ * and a missing preference has an obvious answer. Everything else must be exactly
+ * right, so the leniency is about one absent field and not about types.
+ */
+function parsePersistedPlayerState(
+  value: unknown
+): PersistedPlayerState | null {
   if (typeof value !== 'object' || value === null) {
-    return false;
+    return null;
   }
 
-  if (!('queue' in value) || !Array.isArray(value.queue)) {
-    return false;
+  if (
+    !('queue' in value) ||
+    !Array.isArray(value.queue) ||
+    !value.queue.every(isPlayerTrack)
+  ) {
+    return null;
   }
 
   if (!('currentId' in value) || !('positionSeconds' in value)) {
-    return false;
+    return null;
   }
 
   const { currentId, positionSeconds } = value;
 
-  return (
-    value.queue.every(isPlayerTrack) &&
-    (currentId === null || typeof currentId === 'string') &&
-    typeof positionSeconds === 'number'
-  );
+  if (currentId !== null && typeof currentId !== 'string') {
+    return null;
+  }
+
+  if (typeof positionSeconds !== 'number') {
+    return null;
+  }
+
+  const rawVolume =
+    'volume' in value ? (value as { volume: unknown }).volume : 1;
+
+  if (typeof rawVolume !== 'number') {
+    return null;
+  }
+
+  return {
+    queue: value.queue,
+    currentId,
+    positionSeconds,
+    volume: rawVolume
+  };
 }
 
 /** The persisted player, or null when there is nothing usable stored. */
@@ -64,9 +103,7 @@ export function readPlayerState(storage: Storage): PersistedPlayerState | null {
   }
 
   try {
-    const parsed: unknown = JSON.parse(raw);
-
-    return isPersistedPlayerState(parsed) ? parsed : null;
+    return parsePersistedPlayerState(JSON.parse(raw));
   } catch {
     return null;
   }

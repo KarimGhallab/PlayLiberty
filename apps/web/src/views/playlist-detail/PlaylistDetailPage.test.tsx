@@ -72,9 +72,20 @@ describe('PlaylistDetailPage', () => {
     expect(state.queue.every(track => track.playlistId === PLAYLIST_ID)).toBe(
       true
     );
+    expect(
+      state.queue.every(track => track.playlistName === 'Rain On The Window')
+    ).toBe(true);
     expect(state.currentId).toBe('track-2');
     expect(state.isPlaying).toBe(true);
     expect(state.positionSeconds).toBe(0);
+  });
+
+  it('names the playlist in the heading from the playlist read', async () => {
+    renderDetail();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
   });
 
   it('shows a read failure rather than an empty list', async () => {

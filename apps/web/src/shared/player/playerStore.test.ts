@@ -12,6 +12,7 @@ function track(id: string, playlistId = PLAYLIST): PlayerTrack {
     id,
     title: id,
     playlistId,
+    playlistName: 'The Queue Playlist',
     durationSeconds: 180,
     thumbnailPath: null
   };
@@ -193,12 +194,125 @@ describe('hydrate', () => {
     usePlayerStore.getState().hydrate({
       queue: [first],
       currentId: first.id,
-      positionSeconds: 12
+      positionSeconds: 12,
+      volume: 0.5
     });
 
     expect(usePlayerStore.getState().queue).toEqual([first]);
     expect(usePlayerStore.getState().currentId).toBe(first.id);
     expect(usePlayerStore.getState().positionSeconds).toBe(12);
+    expect(usePlayerStore.getState().volume).toBe(0.5);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+});
+
+describe('transport', () => {
+  it('moves one place forward and back within the queue', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], first.id);
+
+    usePlayerStore.getState().skipNext();
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    usePlayerStore.getState().skipPrevious();
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+  });
+
+  it('stops at the ends rather than wrapping', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+
+    usePlayerStore.getState().skipPrevious();
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+
+    usePlayerStore.getState().skipNext();
+    usePlayerStore.getState().skipNext();
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+  });
+
+  it('stops at the end of the queue instead of looping', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], second.id);
+    usePlayerStore.getState().setPosition(190);
+
+    usePlayerStore.getState().advance();
+
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('advances to the next track when a finished track has one', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+
+    usePlayerStore.getState().advance();
+
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('clears the resume offset when skipping to another track', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    usePlayerStore.getState().setPosition(90);
+
+    usePlayerStore.getState().skipNext();
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('keeps pause and resume on the same place', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    usePlayerStore.getState().setPosition(45);
+
+    usePlayerStore.getState().setPlaying(false);
+    expect(usePlayerStore.getState().positionSeconds).toBe(45);
+
+    usePlayerStore.getState().setPlaying(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(45);
+  });
+});
+
+describe('seek', () => {
+  it('writes the position and asks the element to move, then clears the ask', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().seek(120);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(120);
+    expect(usePlayerStore.getState().seekTo).toBe(120);
+
+    usePlayerStore.getState().clearSeek();
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+  });
+
+  it('never seeks before zero', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().seek(-30);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBe(0);
+  });
+
+  it('does not raise a seek request when the position is reported back', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().setPosition(30);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(30);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+  });
+});
+
+describe('volume', () => {
+  it('clamps the volume and refuses a non-number', () => {
+    usePlayerStore.getState().setVolume(1.5);
+    expect(usePlayerStore.getState().volume).toBe(1);
+
+    usePlayerStore.getState().setVolume(-0.2);
+    expect(usePlayerStore.getState().volume).toBe(0);
+
+    usePlayerStore.getState().setVolume(Number.NaN);
+    expect(usePlayerStore.getState().volume).toBe(1);
   });
 });
