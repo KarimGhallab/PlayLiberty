@@ -172,10 +172,8 @@ quietly.
 
 ## What the item deliberately does not carry
 
-A shared item says it is shared and not who shared it, because nothing can supply the owner's name:
-`ownerAccountId` is a UUID, `GET /me` returns only the signed-in account, and `GET /accounts` is a stub. The
-line is wanted, nothing supplies it, and the item carries the indicator alone rather than a placeholder
-name, because a placeholder in a specimen is read as a decision.
+A shared item names its owner, and an owned item carries no such line. The line is `Shared by <name>`,
+resolved from the playlist's `ownerAccountId` through the account directory that [`05-share-a-playlist`](../../tracker/specs/05-share-a-playlist.md) built; the earlier state this record was written in, where nothing could supply the name, is retired by that directory existing. On the account's own playlist `access` is `owner`, which already says the item is theirs, so the line is omitted there and never a "shared by yourself". When the directory does not carry the owner, the item keeps the indicator alone rather than a placeholder name, because a placeholder in a specimen is read as a decision. The line is its own row under the sync line rather than a third fact on the meta line, which at 390 already drops the time.
 
 The item carries the sync state, because the sync line is the header's and this screen draws headers. The
 earlier decision to withhold it, so a failed playlist stayed invisible until somebody opened it, was a
@@ -302,7 +300,7 @@ instead of one is being paid for.
 
 ## What is not drawn
 
-The owner of a shared playlist, by name, for the reason above. Search, sort, filter and pagination. The
+Search, sort, filter and pagination. The
 equalizer strip on a card, which its own size cannot carry. **The queue panel this record used to list here
 does not exist and is not going to**: the [playlist detail's record](./playlist-detail.md) resolved it, the
 answer being that the track list is the queue, so there is no panel and no trigger to open one, and the

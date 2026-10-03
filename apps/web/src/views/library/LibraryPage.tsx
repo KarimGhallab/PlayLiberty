@@ -2,7 +2,12 @@ import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 import { ApiError } from '../../shared/api/client';
-import { useCreatePlaylist, usePlaylists } from '../../shared/api/queries';
+import {
+  ownerNameFrom,
+  useAccountDirectory,
+  useCreatePlaylist,
+  usePlaylists
+} from '../../shared/api/queries';
 import PlaylistHeader from '../../shared/components/PlaylistHeader';
 
 import AddPlaylistDialog from './AddPlaylistDialog';
@@ -24,8 +29,17 @@ import styles from './LibraryPage.module.scss';
  */
 export default function LibraryPage() {
   const playlists = usePlaylists();
+  const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  /*
+   * The owner line needs the directory, and the directory is a second read that
+   * may be pending, failed or short of the owner. In every one of those cases the
+   * resolved name is null and the item falls back to its share indicator, so the
+   * line never blocks the list and never invents a name.
+   */
+  const directoryItems = directory.data ?? [];
 
   /* The server's own `detail`, which is the message the field shows. */
   const refused =
@@ -78,7 +92,13 @@ export default function LibraryPage() {
         <ul className={styles.library__list}>
           {playlists.data.items.map(playlist => (
             <li key={playlist.id} className={styles.library__item}>
-              <PlaylistHeader playlist={playlist} />
+              <PlaylistHeader
+                playlist={playlist}
+                ownerName={ownerNameFrom(
+                  directoryItems,
+                  playlist.ownerAccountId
+                )}
+              />
             </li>
           ))}
         </ul>

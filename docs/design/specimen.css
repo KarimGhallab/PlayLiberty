@@ -717,6 +717,18 @@ body {
   color: var(--muted);
 }
 
+/* The owner of a playlist that is not the account's. Its own row under .meta,
+ * rather than a third fact on the meta line, which at 390 already drops the
+ * time; the body's own gap spaces it. Scoped to a header for the reason .state
+ * below is: `.owner` is a generic word and the track row must not inherit it. */
+.hdr > .body .owner,
+.mhdr > .body .owner {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--muted);
+}
+
 /* The header's sync state, and scoped for the same reason and by the same
  * argument as .hdr > .body above.
  *

@@ -24,7 +24,7 @@ import PlaylistHeader from './PlaylistHeader';
  * way they do in the app. The route is a throwaway `/playlists/$playlistId` with
  * a stub component, because nothing here asserts what the destination draws.
  */
-function renderHeader(playlist: Playlist) {
+function renderHeader(playlist: Playlist, ownerName: string | null = null) {
   const rootRoute = createRootRoute();
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -34,7 +34,9 @@ function renderHeader(playlist: Playlist) {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => <PlaylistHeader playlist={playlist} />
+    component: () => (
+      <PlaylistHeader playlist={playlist} ownerName={ownerName} />
+    )
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, detailRoute]),
@@ -110,6 +112,34 @@ describe('PlaylistHeader', () => {
 
     expect(
       await screen.findByRole('img', { name: 'You are a collaborator' })
+    ).toBeInTheDocument();
+  });
+
+  it('names the owner of a shared playlist', async () => {
+    renderHeader(playlist({ access: ShareLevel.Read }), 'Ada');
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Shared by Ada')).toBeInTheDocument();
+  });
+
+  it('draws no owner line on an owned playlist, even when a name is passed', async () => {
+    renderHeader(playlist(), 'Ada');
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(screen.queryByText(/Shared by/)).not.toBeInTheDocument();
+  });
+
+  it('draws no owner line when the owner is missing from the directory', async () => {
+    renderHeader(playlist({ access: ShareLevel.Read }), null);
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(screen.queryByText(/Shared by/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'You are a collaborator' })
     ).toBeInTheDocument();
   });
 

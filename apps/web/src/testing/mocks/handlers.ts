@@ -45,5 +45,21 @@ export const handlers = [
       limit: 50,
       offset: 0
     })
+  ),
+  /*
+   * The account directory. Both owners are present, so the shared item resolves
+   * to Ada and the owned item's owner resolves too but is never drawn, which is
+   * the header's own rule rather than a gap in this fixture.
+   */
+  http.get('http://localhost:3000/api/v1/accounts', () =>
+    HttpResponse.json({
+      items: [
+        { id: 'account-1', displayName: 'You', avatarUrl: null },
+        { id: 'account-2', displayName: 'Ada', avatarUrl: null }
+      ],
+      total: 2,
+      limit: 50,
+      offset: 0
+    })
   )
 ];

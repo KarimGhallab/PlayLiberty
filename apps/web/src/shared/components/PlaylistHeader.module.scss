@@ -142,6 +142,15 @@
     color: var(--control-disabled-fg);
   }
 
+  /* The owner of a playlist that is not the account's, as its own line rather
+   * than a third fact on the meta line, which at 390 already drops the time. */
+  &__owner {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
   &__count {
     display: flex;
     align-items: baseline;

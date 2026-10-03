@@ -20,10 +20,19 @@ import styles from './PlaylistHeader.module.scss';
  * The cover and the name both link to the playlist. The cover's link carries
  * `aria-hidden` and `tabindex="-1"` so a reader announces one link per item, the
  * name carrying the label, rather than two links to one destination.
+ *
+ * `ownerName` is the resolved display name of a playlist that is not the
+ * account's, and null when the directory does not carry the owner. It is drawn
+ * only for a shared playlist: on the account's own playlist `access` is `owner`,
+ * which already says the item is theirs, so a "shared by" line there would be a
+ * sentence about the person reading it. A null name draws nothing at all rather
+ * than a placeholder, because a placeholder reads as a decision about who owns
+ * the playlist, and the share indicator beside the name is the honest fallback.
  */
 
 interface PlaylistHeaderProps {
   playlist: Playlist;
+  ownerName?: string | null;
 }
 
 interface ShareMark {
@@ -58,11 +67,16 @@ function shareMark(playlist: Playlist): ShareMark {
   return { state: 'own-private', label: 'Private playlist', Icon: IconLock };
 }
 
-export default function PlaylistHeader({ playlist }: PlaylistHeaderProps) {
+export default function PlaylistHeader({
+  playlist,
+  ownerName = null
+}: PlaylistHeaderProps) {
   const mark = shareMark(playlist);
   const lastSyncedAt =
     playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
   const now = new Date();
+  const sharedBy =
+    playlist.access !== 'owner' && ownerName !== null ? ownerName : null;
 
   return (
     <div className={styles.playlistHeader}>
@@ -117,6 +131,9 @@ export default function PlaylistHeader({ playlist }: PlaylistHeaderProps) {
           </span>
           <span>{formatLastSynced(lastSyncedAt, now)}</span>
         </div>
+        {sharedBy === null ? null : (
+          <p className={styles.playlistHeader__owner}>Shared by {sharedBy}</p>
+        )}
         <div className={styles.playlistHeader__count}>
           <span>{playlist.trackCount}</span>
           <span className={styles.playlistHeader__countUnit}>

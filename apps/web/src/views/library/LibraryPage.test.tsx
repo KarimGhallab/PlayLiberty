@@ -123,6 +123,24 @@ function createSucceeds(): { requests: Request[] } {
  * The dialog fades out over 180ms and unmounts itself when that elapses. These
  * tests run on real timers, so the exit is awaited rather than advanced.
  */
+/*
+ * A directory that carries one account and not the shared item's owner, so the
+ * item must fall back to its indicator alone. `account-2` is the shared item's
+ * owner in the base fixture, so a directory of `account-9` is a real miss.
+ */
+function directoryOf(ownerId: string): void {
+  server.use(
+    http.get('http://localhost:3000/api/v1/accounts', () =>
+      HttpResponse.json({
+        items: [{ id: ownerId, displayName: 'Ada', avatarUrl: null }],
+        total: 1,
+        limit: 50,
+        offset: 0
+      })
+    )
+  );
+}
+
 async function waitForDialogExit(): Promise<void> {
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -222,6 +240,121 @@ describe('LibraryPage', () => {
       'Rain On The Window',
       'Shared Mix'
     ]);
+  });
+
+  it("names a shared item's owner and leaves the owned item unlined", async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Shared Mix');
+
+    expect(screen.getByText('Shared by Ada')).toBeInTheDocument();
+    /* One line only: the owned item carries none. */
+    expect(screen.getAllByText(/Shared by/)).toHaveLength(1);
+  });
+
+  it('falls back to the indicator when the owner is not in the directory', async () => {
+    directoryOf('account-9');
+    renderLibraryPage();
+
+    await screen.findByText('Shared Mix');
+
+    expect(screen.queryByText(/Shared by/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'You are a collaborator' })
+    ).toBeInTheDocument();
+  });
+
+  it('drops a revoked playlist on the next list read and changes nothing else', async () => {
+    /*
+     * The create invalidates the list, so the read that follows is a real second
+     * read. In this fixture the shared playlist has been revoked in the meantime,
+     * so that read carries the owned one alone.
+     */
+    let read = 0;
+    server.use(
+      http.post('http://localhost:3000/api/v1/playlists', () =>
+        HttpResponse.json(syncRun, { status: 202 })
+      ),
+      http.get('http://localhost:3000/api/v1/playlists', () => {
+        read += 1;
+        if (read === 1) {
+          return HttpResponse.json({
+            items: [
+              {
+                id: 'playlist-1',
+                ownerAccountId: 'account-1',
+                name: 'Rain On The Window',
+                coverUrl: null,
+                provider: 'youtube',
+                sourcePlaylistId: 'PL-demo',
+                syncStatus: 'idle',
+                lastSyncedAt: '2026-09-29T12:00:00.000Z',
+                trackCount: 1,
+                access: 'owner',
+                hasShares: false,
+                createdAt: '2026-09-01T00:00:00.000Z',
+                updatedAt: '2026-09-29T12:00:00.000Z'
+              },
+              {
+                id: 'playlist-2',
+                ownerAccountId: 'account-2',
+                name: 'Shared Mix',
+                coverUrl: null,
+                provider: 'youtube',
+                sourcePlaylistId: 'PL-shared',
+                syncStatus: 'idle',
+                lastSyncedAt: '2026-09-28T12:00:00.000Z',
+                trackCount: 4,
+                access: 'read',
+                hasShares: false,
+                createdAt: '2026-09-01T00:00:00.000Z',
+                updatedAt: '2026-09-28T12:00:00.000Z'
+              }
+            ],
+            total: 2,
+            limit: 50,
+            offset: 0
+          });
+        }
+
+        return HttpResponse.json({
+          items: [
+            {
+              id: 'playlist-1',
+              ownerAccountId: 'account-1',
+              name: 'Rain On The Window',
+              coverUrl: null,
+              provider: 'youtube',
+              sourcePlaylistId: 'PL-demo',
+              syncStatus: 'idle',
+              lastSyncedAt: '2026-09-29T12:00:00.000Z',
+              trackCount: 1,
+              access: 'owner',
+              hasShares: false,
+              createdAt: '2026-09-01T00:00:00.000Z',
+              updatedAt: '2026-09-29T12:00:00.000Z'
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        });
+      })
+    );
+    renderLibraryPage();
+
+    await screen.findByText('Shared Mix');
+    fireEvent.click(screen.getByRole('button', { name: 'Add a playlist' }));
+    fireEvent.change(screen.getByLabelText('Playlist link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PL-new' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Shared Mix')).not.toBeInTheDocument()
+    );
+    expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 
   it('has no search, sort, filter or pagination control', async () => {

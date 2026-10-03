@@ -1799,6 +1799,7 @@
                   <span class="sep">&middot;</span>
                   <span>Synced 5 days ago</span>
                 </div>
+                <p class="owner">Shared by Ada</p>
                 <div class="count">
                   <span>66</span>
                   <span class="unit">tracks</span>
@@ -1922,6 +1923,7 @@
                   <span class="sep">&middot;</span>
                   <span>Synced yesterday</span>
                 </div>
+                <p class="owner">Shared by Grace</p>
                 <div class="count">
                   <span>340</span>
                   <span class="unit">tracks</span>
@@ -4534,14 +4536,14 @@
       <section class="stack">
         <h2 class="section-title">What is not drawn</h2>
         <p class="hint">
-          The owner of a shared playlist, by name. An item somebody else shared
-          carries the indicator and nothing else, because
-          <span class="token-sm">ownerAccountId</span> is a UUID,
-          <span class="token-sm">GET /me</span> returns only the signed-in
-          account, and <span class="token-sm">GET /accounts</span> is a
-          <span class="token-sm">sendNotImplemented</span> stub. Ticket 13
-          records that the line is wanted and nothing can supply it yet, so the
-          gap is named here rather than filled with a placeholder.
+          The owner of a shared playlist, by name, is now drawn on the two
+          collaborator items above as
+          <span class="token-sm">Shared by Ada</span> and
+          <span class="token-sm">Shared by Grace</span>, resolved from
+          <span class="token-sm">ownerAccountId</span> through
+          <span class="token-sm">GET /accounts</span>. An item whose owner is
+          not on the directory page keeps the indicator alone rather than a
+          placeholder, because a placeholder is read as a decision.
         </p>
         <p class="hint">
           An equalizer strip on a card, which its own size cannot carry: a
