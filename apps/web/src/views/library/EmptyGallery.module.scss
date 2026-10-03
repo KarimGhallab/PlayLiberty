@@ -1,0 +1,56 @@
+/*
+ * The empty shelf's own rules, mirroring the library specimen: a centred stack
+ * whose promise carries the system's reading width, and the same primary control
+ * the header uses.
+ */
+.empty-shelf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-8) 0;
+  text-align: center;
+
+  &__head {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+  }
+
+  &__promise {
+    max-width: 66ch;
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-md);
+    line-height: var(--leading-relaxed);
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: var(--control-height);
+    padding: 0 var(--space-5);
+    color: var(--bg);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+  }
+
+  &__action-icon {
+    flex-shrink: 0;
+  }
+}
