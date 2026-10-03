@@ -116,3 +116,28 @@ export async function apiGet<T>(
 
   return schema.parse(await response.json());
 }
+
+/*
+ * The mutation half. A `POST` sends a JSON body and parses the reply with the
+ * same schema discipline a `GET` uses, and `send` is what attaches the client
+ * header ADR 0006 requires. A refusal throws the `ApiError` carrying the problem
+ * document, so the caller shows the server's own `detail` rather than a message
+ * the client made up.
+ */
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  schema: ResponseSchema<T>
+): Promise<T> {
+  const response = await send(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw await readError(response);
+  }
+
+  return schema.parse(await response.json());
+}

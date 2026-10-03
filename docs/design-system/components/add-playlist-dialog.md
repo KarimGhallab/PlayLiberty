@@ -62,6 +62,33 @@ measurement of it was correct and a screenshot read as a dialog that had been de
 which is a thing a designer might have meant. Check `2q` exists for it and was proved by putting the
 fault back.
 
+**It fades in and out over `--motion-base`, and the fade carries the arrival rather than decorating
+it.** The scrim fades and the card fades while rising from **98% scale** to 100%, so it resolves into
+place instead of popping; on close the same distance runs the other way. It is `--motion-base` and not
+`--motion-fast`, because this is a state change and not a hover, and `--motion-slow` is the player
+bar's and nothing else. The curve is the system's one, `--ease-standard`, on both halves. The exit is a
+decision and not a given: a dialog that disappears in one frame reads as a dialog that crashed.
+
+**The two halves are four keyframes and not one keyframe reversed, and that was learned in the
+browser.** The first version named one `pl-dialog-fade` and one `pl-dialog-arrive` and set
+`animation-direction: reverse` on `data-closing`, on the reasoning that one definition cannot disagree
+with itself. It renders as no exit at all: the entrance animation has already finished by the time the
+exit starts, and a **finished** animation whose direction changes is re-resolved at its end value
+rather than restarted, so the opacity sits at 1 for the whole exit and the node is torn down still
+fully opaque. Changing `animation-name` is what starts a fresh animation, so the exit owns
+`pl-dialog-fade-out` and `pl-dialog-arrive-out`, and the mirrored pair sits beside the `-in` pair so a
+reader sees the reversal. It is the one place in this dialog where the CSS cannot do the obvious thing.
+
+**The unmount waits on the duration, not on `animationend`.** React has no animation library (ADR
+0005), so the node has to outlive the open state for the exit to be visible, and the component owns
+that lived span. It ends the exit on a timer at the same `--motion-base` and hands that duration to
+the stylesheet as `--dialog-motion`, so the animation and the unmount share one number rather than
+naming it twice. A component that unmounted only on `animationend` would strand itself over the page
+wherever the event does not come, which is any environment that suppresses the animation and any test
+runner that does not composite. A reader with `prefers-reduced-motion` set waits for nothing: the
+base stylesheet drops the animation and the component closes in the same turn, so there is no
+invisible node left behind the state change.
+
 ## The input has no focus ring, and that is the form controls record's rule
 
 The border is the focus indicator, shifting from `--control-border` to `--accent`, which clears 3:1 on

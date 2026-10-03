@@ -8,7 +8,7 @@ reads already exist, so every ticket is verifiable through the component and the
 | ------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | [`01-the-list-and-the-item`](01-the-list-and-the-item.md)                                   | resolved        | none                                                 | [`02`](02-an-empty-gallery-not-an-empty-playlist.md), [`04`](04-a-shared-item-names-its-owner.md) |
 | [`02-an-empty-gallery-not-an-empty-playlist`](02-an-empty-gallery-not-an-empty-playlist.md) | resolved        | [`01`](01-the-list-and-the-item.md)                  | [`03`](03-add-a-playlist-from-the-gallery.md)                                                     |
-| [`03-add-a-playlist-from-the-gallery`](03-add-a-playlist-from-the-gallery.md)               | ready-for-agent | [`02`](02-an-empty-gallery-not-an-empty-playlist.md) | none                                                                                              |
+| [`03-add-a-playlist-from-the-gallery`](03-add-a-playlist-from-the-gallery.md)               | resolved        | [`02`](02-an-empty-gallery-not-an-empty-playlist.md) | none                                                                                              |
 | [`04-a-shared-item-names-its-owner`](04-a-shared-item-names-its-owner.md)                   | ready-for-agent | [`01`](01-the-list-and-the-item.md)                  | none                                                                                              |
 
 ## Conventions
