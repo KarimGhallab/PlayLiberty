@@ -9,7 +9,13 @@ import {
 import { usePlayerStore } from './playerStore';
 import type { PlayerTrack } from './types';
 
-const track: PlayerTrack = { id: 'track-1', title: 'First' };
+const track: PlayerTrack = {
+  id: 'track-1',
+  title: 'First',
+  playlistId: 'playlist-1',
+  durationSeconds: 180,
+  thumbnailPath: null
+};
 
 function attach(): () => void {
   return attachPlayerPersistence({
@@ -66,12 +72,31 @@ describe('player persistence', () => {
   it('flushes a pending write when the page is hidden', () => {
     const detach = attach();
 
-    usePlayerStore.getState().enqueue(track);
+    usePlayerStore.getState().startQueue(track.playlistId, [track], track.id);
     expect(readPlayerState(window.localStorage)).toBeNull();
 
     window.dispatchEvent(new Event('pagehide'));
     expect(readPlayerState(window.localStorage)?.queue).toEqual([track]);
 
     detach();
+  });
+
+  it('restores the queue and the offset on a relaunch', () => {
+    const detachFirst = attach();
+    usePlayerStore.getState().startQueue(track.playlistId, [track], track.id);
+    usePlayerStore.getState().setPosition(37);
+    window.dispatchEvent(new Event('pagehide'));
+    detachFirst();
+
+    /* A relaunch: a fresh store, then the persistence hydrates it. */
+    usePlayerStore.getState().clear();
+    const detachSecond = attach();
+
+    expect(usePlayerStore.getState().queue).toEqual([track]);
+    expect(usePlayerStore.getState().currentId).toBe(track.id);
+    expect(usePlayerStore.getState().positionSeconds).toBe(37);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+
+    detachSecond();
   });
 });

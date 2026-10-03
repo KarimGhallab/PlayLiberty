@@ -16,11 +16,20 @@ function isPlayerTrack(value: unknown): value is PlayerTrack {
     return false;
   }
 
+  const { id, title, playlistId, durationSeconds, thumbnailPath } = value as {
+    id: unknown;
+    title: unknown;
+    playlistId: unknown;
+    durationSeconds: unknown;
+    thumbnailPath: unknown;
+  };
+
   return (
-    'id' in value &&
-    typeof value.id === 'string' &&
-    'title' in value &&
-    typeof value.title === 'string'
+    typeof id === 'string' &&
+    typeof title === 'string' &&
+    typeof playlistId === 'string' &&
+    (durationSeconds === null || typeof durationSeconds === 'number') &&
+    (thumbnailPath === null || typeof thumbnailPath === 'string')
   );
 }
 

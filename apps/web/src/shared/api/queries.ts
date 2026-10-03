@@ -4,15 +4,22 @@ import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 import {
   AccountSummarySchema,
   PlaylistSchema,
+  PlaylistTrackSchema,
   SyncRunSchema,
   createPageSchema
 } from '@playliberty/contracts';
-import type { AccountSummary, Playlist, SyncRun } from '@playliberty/contracts';
+import type {
+  AccountSummary,
+  Playlist,
+  PlaylistTrack,
+  SyncRun
+} from '@playliberty/contracts';
 
 import { apiGet, apiPost } from './client';
 
 const PlaylistPageSchema = createPageSchema(PlaylistSchema);
 const AccountSummaryPageSchema = createPageSchema(AccountSummarySchema);
+const PlaylistTrackPageSchema = createPageSchema(PlaylistTrackSchema);
 
 export interface PlaylistPage {
   items: Playlist[];
@@ -80,5 +87,21 @@ export function useCreatePlaylist(): UseMutationResult<SyncRun, Error, string> {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['playlists'] });
     }
+  });
+}
+
+/*
+ * The tracks of one playlist, which is the only list a queue is built from. The
+ * read is per playlist and its key carries the id for the same reason the detail's
+ * other reads do: invalidating one playlist's tracks must not touch another's.
+ */
+export function usePlaylistTracks(
+  playlistId: string
+): UseQueryResult<PlaylistTrack[], Error> {
+  return useQuery({
+    queryKey: ['playlist', playlistId, 'tracks'],
+    queryFn: () =>
+      apiGet(`/playlists/${playlistId}/tracks`, PlaylistTrackPageSchema),
+    select: page => page.items
   });
 }

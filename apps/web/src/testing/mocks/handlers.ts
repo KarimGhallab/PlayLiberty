@@ -61,5 +61,70 @@ export const handlers = [
       limit: 50,
       offset: 0
     })
+  ),
+  /*
+   * The tracks of the first playlist, in the playlist's own order. Two stored and
+   * one still pending, so a test has a playable track and a not-yet-playable one
+   * to tell apart.
+   */
+  http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
+    HttpResponse.json({
+      items: [
+        {
+          track: {
+            id: 'track-1',
+            provider: 'youtube',
+            videoId: 'video-1',
+            title: 'Blue In Green',
+            durationSeconds: 337,
+            thumbnailPath: null,
+            fileStatus: 'stored',
+            sourceStatus: 'available',
+            failureReason: null,
+            createdAt: '2026-09-01T00:00:00.000Z',
+            updatedAt: '2026-09-29T12:00:00.000Z'
+          },
+          origin: 'remote',
+          position: 0
+        },
+        {
+          track: {
+            id: 'track-2',
+            provider: 'youtube',
+            videoId: 'video-2',
+            title: 'Naima',
+            durationSeconds: 273,
+            thumbnailPath: null,
+            fileStatus: 'stored',
+            sourceStatus: 'available',
+            failureReason: null,
+            createdAt: '2026-09-01T00:00:00.000Z',
+            updatedAt: '2026-09-29T12:00:00.000Z'
+          },
+          origin: 'remote',
+          position: 1
+        },
+        {
+          track: {
+            id: 'track-3',
+            provider: 'youtube',
+            videoId: 'video-3',
+            title: 'Flamenco Sketches',
+            durationSeconds: 565,
+            thumbnailPath: null,
+            fileStatus: 'pending',
+            sourceStatus: 'available',
+            failureReason: null,
+            createdAt: '2026-09-01T00:00:00.000Z',
+            updatedAt: '2026-09-29T12:00:00.000Z'
+          },
+          origin: 'remote',
+          position: 2
+        }
+      ],
+      total: 3,
+      limit: 50,
+      offset: 0
+    })
   )
 ];
