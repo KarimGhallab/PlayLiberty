@@ -1,3 +1,5 @@
+import { PlaylistSyncStatus } from '@playliberty/contracts';
+
 /*
  * The strings both clients render. The exact output is the contract, so the
  * tests pin every case rather than a shape.
@@ -116,6 +118,25 @@ export function formatLastSynced(
   }
 
   return `Synced ${formatRelativeTime(lastSyncedAt, now)}`;
+}
+
+/**
+ * The header's sync state word: `Up to date`, `Syncing` or `Sync failed`. The
+ * word is mandatory rather than decorative, because it is what survives when the
+ * tone cannot be seen and what explains a fault the dot alone cannot. A playlist
+ * that has never synced is still `Up to date` here; its never-synced state is
+ * carried by `formatLastSynced`, which is the second half of the line.
+ */
+export function syncStateLabel(status: PlaylistSyncStatus): string {
+  if (status === PlaylistSyncStatus.Syncing) {
+    return 'Syncing';
+  }
+
+  if (status === PlaylistSyncStatus.Error) {
+    return 'Sync failed';
+  }
+
+  return 'Up to date';
 }
 
 /** The unit word for a track count, singular only at one. */

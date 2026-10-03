@@ -4,6 +4,7 @@ export {
   formatLastSynced,
   formatRelativeTime,
   formatTrackCount,
+  syncStateLabel,
   trackCountUnit
 } from './formatters.js';
 export { trackTone } from './tones.js';

@@ -1,21 +1,16 @@
-import { formatLastSynced, formatTrackCount } from '@playliberty/ui-foundation';
-
 import { usePlaylists } from '../../shared/api/queries';
+import PlaylistHeader from '../../shared/components/PlaylistHeader';
 
 import styles from './LibraryPage.module.scss';
 
-function toDate(value: string | null): Date | null {
-  return value === null ? null : new Date(value);
-}
-
 /*
  * The library, at `/`. The list of playlists is the only entry point to content,
- * so this is the route a user lands on. The scaffold renders the names, the
- * counts and the sync line; the real library is a feature ticket.
+ * so this is the route a user lands on. Each item is the shared playlist header,
+ * so this screen draws no item of its own. The empty shelf and the add dialog
+ * arrive in their own tickets; this one renders the populated list.
  */
 export default function LibraryPage() {
   const playlists = usePlaylists();
-  const now = new Date();
 
   return (
     <main className={styles.library}>
@@ -35,12 +30,7 @@ export default function LibraryPage() {
         <ul className={styles.library__list}>
           {playlists.data.items.map(playlist => (
             <li key={playlist.id} className={styles.library__item}>
-              <span className={styles.library__name}>{playlist.name}</span>
-              <span className={styles.library__meta}>
-                {formatTrackCount(playlist.trackCount)}
-                {' · '}
-                {formatLastSynced(toDate(playlist.lastSyncedAt), now)}
-              </span>
+              <PlaylistHeader playlist={playlist} />
             </li>
           ))}
         </ul>
