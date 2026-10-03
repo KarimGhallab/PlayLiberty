@@ -30,4 +30,10 @@ export interface Config {
   downloadTimeoutMs: number;
   download: DownloadConfig;
   pangolin: PangolinConfig;
+  /*
+   * The E2E fake adapter's scenario file, read only when `NODE_ENV` is `test`.
+   * Null in every other environment, and the fake is not even imported unless the
+   * entry point sees `test`, so this never names a file in production.
+   */
+  e2eFakeScript: string | null;
 }

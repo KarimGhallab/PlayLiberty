@@ -32,6 +32,19 @@ export interface TestContextOptions {
    * config, which it never calls.
    */
   youtube?: IYoutubeClient;
+  /*
+   * A spy a test passes to observe that a sync queued work. The background jobs
+   * are off by default, so nothing replaces it and the test reads exactly what the
+   * sync asked for.
+   */
+  kickDownloads?: () => void;
+  /*
+   * Whether the background download worker and prune scheduler run. Off by
+   * default: a unit test drives `processPendingTracks` by hand, and a background
+   * worker ticking beside it would download the same rows first and race the
+   * assertions. A test that wants the loop passes `true`.
+   */
+  startBackgroundJobs?: boolean;
 }
 
 export async function createTestContext(
@@ -56,7 +69,9 @@ export async function createTestContext(
     config,
     database,
     mediaPaths,
-    youtube: options.youtube
+    youtube: options.youtube,
+    kickDownloads: options.kickDownloads,
+    startBackgroundJobs: options.startBackgroundJobs ?? false
   });
   await app.ready();
 

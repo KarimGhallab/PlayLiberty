@@ -30,7 +30,10 @@ afterEach(async () => {
  */
 describe('the prune scheduler', () => {
   it('runs the service on its tick and closes cleanly', async () => {
-    context = await createTestContext({ PRUNE_CRON: '* * * * * *' });
+    context = await createTestContext(
+      { PRUNE_CRON: '* * * * * *' },
+      { startBackgroundJobs: true }
+    );
     const trackId = randomUUID();
 
     context.database.db

@@ -82,6 +82,7 @@ module.exports = {
           '[.]d[.]ts$', // TypeScript declaration files
           '[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$', // test files
           '(^|/)testing/', // test helpers
+          '(^|/)scripts/', // build helpers nothing imports
           '[.]config[.](?:js|cjs|mjs|ts|cts|mts|json)$', // tool configs (vitest, drizzle)
           '(^|/)tsconfig[.]json$', // TypeScript config
           '(^|/)(?:babel|webpack)[.]config[.](?:js|cjs|mjs|ts|cts|mts|json)$' // other configs

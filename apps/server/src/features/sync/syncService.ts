@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { and, eq, inArray } from 'drizzle-orm';
 
+import type { SyncRun } from '@playliberty/contracts';
 import {
   AssociationOrigin,
   PlaylistSyncStatus,
@@ -10,13 +11,13 @@ import {
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
-import type { SyncRun } from '@playliberty/contracts';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
 import { canWritePlaylist } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
+import type { PlaylistRow } from '../../platform/database/schema.js';
 import {
   associations,
   playlists,
@@ -24,7 +25,6 @@ import {
   syncRuns,
   tracks
 } from '../../platform/database/schema.js';
-import type { PlaylistRow } from '../../platform/database/schema.js';
 import {
   addAssociation,
   nextPositionFor
@@ -290,6 +290,10 @@ async function reconcile(
         .where(eq(playlists.id, playlist.id))
         .run();
     })();
+
+    if (added > 0) {
+      context.kickDownloads();
+    }
   } catch (error) {
     // Ticket 05 owns the guarantees of a failed run; what is here is enough to
     // leave no run hanging and no unhandled rejection.

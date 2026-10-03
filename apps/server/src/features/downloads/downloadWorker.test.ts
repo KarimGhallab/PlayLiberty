@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { eq } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AssociationOrigin,
@@ -521,6 +521,50 @@ describe('the download worker', () => {
     expect(stopped).toBe(true);
     expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
     // The interval was cleared, so no further pass ran.
+    expect(downloads).toEqual([seeded.videoId]);
+  });
+
+  it('runs one pass immediately rather than waiting for the first interval', async () => {
+    const downloads: string[] = [];
+    const youtube: IYoutubeClient = {
+      listSource: async () => {
+        throw new Error('the download worker must not read the source');
+      },
+      downloadTrack: async (
+        request: DownloadTrackRequest
+      ): Promise<DownloadTrackResult> => {
+        downloads.push(request.videoId);
+        await mkdir(dirname(request.outputPath), { recursive: true });
+        await writeFile(request.outputPath, 'downloaded-audio');
+        return { videoId: request.videoId, filePath: request.outputPath };
+      },
+      fetchThumbnail: async () => {
+        throw new Error('the download worker must not fetch a thumbnail');
+      }
+    };
+
+    context = await createTestContext({}, { youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    worker = startDownloadWorker({
+      context: {
+        database: context.database,
+        mediaPaths: context.mediaPaths,
+        youtube
+      },
+      concurrency: 1,
+      logger: context.app.log,
+      // An interval far longer than the test, so the only pass that can run is the
+      // immediate one.
+      intervalMs: 60_000
+    });
+
+    // No `started` gate to wait on: the claim is that the row is already stored
+    // before any interval could fire.
+    await vi.waitFor(() => {
+      expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
+    });
+
     expect(downloads).toEqual([seeded.videoId]);
   });
 });

@@ -26,7 +26,7 @@ const devIdentity: Readonly<Record<string, string>> = {
 export default defineConfig({
   plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
   server: {
-    open: true,
+    open: process.env.VITE_NO_OPEN !== '1',
     port: 5173,
     proxy: {
       '/api': {

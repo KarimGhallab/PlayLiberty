@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { and, eq, sql } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AssociationOrigin,
@@ -167,6 +167,50 @@ describe('POST /playlists', () => {
     expect(playlist.syncStatus).toBe(PlaylistSyncStatus.Idle);
     expect(playlist.lastSyncedAt).not.toBeNull();
     expect(playlist.trackCount).toBe(2);
+  });
+
+  it('kicks the download worker when the sync queued tracks', async () => {
+    const kick = vi.fn();
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(source([entry('a'), entry('b')])),
+        kickDownloads: kick
+      }
+    );
+
+    const run = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(run.playlistId, 'owner-1');
+
+    // Two tracks were queued, so the worker was woken rather than left until its
+    // next interval.
+    expect(kick).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not kick the worker when the sync queued nothing', async () => {
+    const kick = vi.fn();
+    const fake = fakeYoutube(source([entry('a')]), source([entry('a')]));
+    context = await createTestContext(
+      {},
+      { youtube: fake, kickDownloads: kick }
+    );
+
+    // The first sync adds the track and kicks; the spy is cleared after it so the
+    // second sync is what is measured.
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+    kick.mockClear();
+
+    await post(PLAYLIST_URL, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    // The second sync found the same video already associated, so it queued
+    // nothing and there is no work to start.
+    expect(kick).not.toHaveBeenCalled();
   });
 
   it('creates one pending remote association per video, in source order', async () => {

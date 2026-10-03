@@ -40,6 +40,20 @@ export interface AppOptions {
   database: AppContext['database'];
   mediaPaths: AppContext['mediaPaths'];
   youtube?: AppContext['youtube'];
+  /*
+   * A test's replacement for the worker wake-up. The real `onReady` swaps in the
+   * worker's own kick; a test with the background jobs off passes a spy here and
+   * observes that a sync queued work, without a worker to actually download it.
+   */
+  kickDownloads?: () => void;
+  /*
+   * Whether the background loops start. True in every real process; a unit test
+   * that drives `processPendingTracks` by hand turns it off so the background
+   * worker does not race the assertions, which is the same seam the tests always
+   * needed and only noticed now that the worker's first pass is immediate rather
+   * than thirty seconds away.
+   */
+  startBackgroundJobs?: boolean;
 }
 
 function createYoutubeClient(
@@ -52,7 +66,6 @@ function createYoutubeClient(
     download: config.download
   });
 }
-
 /*
  * Human-readable colored logs while developing in a terminal, and structured
  * JSON everywhere else, so the container's collector and a piped run both get
@@ -87,7 +100,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     config: options.config,
     database: options.database,
     mediaPaths: options.mediaPaths,
-    youtube: options.youtube ?? createYoutubeClient(options.config)
+    youtube: options.youtube ?? createYoutubeClient(options.config),
+    kickDownloads: options.kickDownloads ?? (() => undefined)
   };
 
   const app = Fastify({
@@ -140,6 +154,16 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       registerShareRoutes(api, context);
       registerSyncRunRoutes(api, context);
       registerTrackRoutes(api, context);
+
+      /*
+       * The E2E reset, only in a test process and only under the API prefix so
+       * the browser can reach it through the same proxy the product uses. It is
+       * not part of the API surface and never exists outside `NODE_ENV=test`.
+       */
+      if (context.config.nodeEnv === 'test') {
+        const { registerE2eRoutes } = await import('./testing/e2eRoutes.js');
+        registerE2eRoutes(api, context);
+      }
     },
     { prefix: '/api/v1' }
   );
@@ -151,11 +175,16 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     const sweep = await runStartupSweep(context.mediaPaths, context.database);
     app.log.info({ ...sweep }, 'startup sweep finished');
 
+    if (options.startBackgroundJobs === false) {
+      return;
+    }
+
     worker = startDownloadWorker({
       context,
       concurrency: context.config.download.concurrency,
       logger: app.log
     });
+    context.kickDownloads = worker.kick;
     scheduler = startCronJob({
       cron: context.config.pruneCron,
       logger: app.log,

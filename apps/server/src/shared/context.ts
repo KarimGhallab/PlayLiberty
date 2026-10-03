@@ -21,10 +21,18 @@ import type { MediaPaths } from '../platform/media/mediaPaths.js';
  * This is a plain object shape, not a class contract, so it takes no `I` prefix.
  * Nothing here is behaviour, and nothing needs a second implementation of the
  * object as a whole.
+ *
+ * `kickDownloads` is the one behaviour here, and it is a callback rather than a
+ * handle to the worker because of the order the app builds in: routes are
+ * registered before the worker exists, and a sync that queued tracks has to be
+ * able to wake it. The worker replaces the default no-op in `buildApp`'s `onReady`
+ * hook, so a feature that calls it before the worker is up does nothing rather
+ * than reaching for a handle that is not there.
  */
 export interface AppContext {
   config: Config;
   database: DatabaseHandle;
   mediaPaths: MediaPaths;
   youtube: IYoutubeClient;
+  kickDownloads: () => void;
 }

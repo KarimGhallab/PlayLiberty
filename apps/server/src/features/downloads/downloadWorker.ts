@@ -39,6 +39,7 @@ export interface DownloadWorkerOptions {
 
 export interface DownloadWorkerHandle {
   stop(): Promise<void>;
+  kick(): void;
 }
 
 /*
@@ -59,24 +60,34 @@ export function startDownloadWorker(
   // existing at all.
   let inFlight: Promise<void> | null = null;
 
+  const tick = (): void => {
+    if (inFlight !== null) {
+      return;
+    }
+
+    inFlight = processPendingTracks(
+      options.context,
+      options.logger,
+      options.concurrency
+    ).finally(() => {
+      inFlight = null;
+    });
+  };
+
   const job = startIntervalJob({
     intervalMs: options.intervalMs ?? WORKER_INTERVAL_MS,
-    tick: (): void => {
-      if (inFlight !== null) {
-        return;
-      }
-
-      inFlight = processPendingTracks(
-        options.context,
-        options.logger,
-        options.concurrency
-      ).finally(() => {
-        inFlight = null;
-      });
-    }
+    tick
   });
 
+  /*
+   * One pass now, rather than waiting a whole interval for the first. A server
+   * that boots with `pending` rows, which is every restart after a crash, would
+   * otherwise sit idle while the work is already there to do.
+   */
+  tick();
+
   return {
+    kick: tick,
     stop: async (): Promise<void> => {
       job.stop();
 

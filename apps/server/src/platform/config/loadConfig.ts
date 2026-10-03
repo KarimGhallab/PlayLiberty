@@ -41,7 +41,8 @@ const EnvSchema = z.object({
   PANGOLIN_RESOURCE_ID: optionalString,
   PANGOLIN_INTEGRATION_API_KEY: optionalString,
   YTDLP_BINARY: z.string().default('yt-dlp'),
-  FFMPEG_BINARY: z.string().default('ffmpeg')
+  FFMPEG_BINARY: z.string().default('ffmpeg'),
+  E2E_FAKE_SCRIPT: optionalString
 });
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -85,6 +86,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       apiUrl: value.PANGOLIN_API_URL ?? null,
       resourceId: value.PANGOLIN_RESOURCE_ID ?? null,
       integrationApiKey: value.PANGOLIN_INTEGRATION_API_KEY ?? null
-    }
+    },
+    e2eFakeScript: value.E2E_FAKE_SCRIPT ?? null
   };
 }

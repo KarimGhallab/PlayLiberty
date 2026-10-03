@@ -7,7 +7,7 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
-    "build": "tsc",
+    "build": "tsc && node ./scripts/copy-fixtures.mjs",
     "dev": "tsc-watch --noClear --onSuccess \"node --env-file=.env dist/main.js\"",
     "watch": "tsc-watch --noClear",
     "clean": "rm -rf dist",
