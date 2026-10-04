@@ -75,7 +75,7 @@ describe('AppShell', () => {
     await router.navigate({ to: '/' });
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: 'Playlists' })
+        screen.getByRole('heading', { name: 'PlayLiberty' })
       ).toBeInTheDocument();
     });
 

@@ -15,7 +15,7 @@ below is attributed to a width.
 | ----------------------- | --------------------------------------- | --------------------------------------- |
 | columns                 | two, 320px and 712px with a 24px gutter | one                                     |
 | the playlist's identity | the header's card, 320px, a 288px cover | the header's row, 388.4px, a 96px cover |
-| the way home            | a chevron and `Back to playlists`       | none, and the reason                    |
+| the way home            | a chevron and `Back to home`            | none, and the reason                    |
 | the player bar          | centred, 97px, drawn at rest            | flush, 97px                             |
 | the height budget       | a stated viewport, 803.8px of content   | 842.4 less a header less 97             |
 | a track row             | 64.8px                                  | 64.8px, and two are 76.1                |
@@ -138,7 +138,7 @@ row says so with a shape on its own 40px tile in the list, where a reader scanni
 ## The way home
 
 A word and a chevron, both load-bearing: the word names the destination and the chevron says which
-direction. The word is **`Back to playlists`**, and it is the implementation's own, not the drawn
+direction. The word is **`Back to home`**, and it is the implementation's own, not the drawn
 `Playlists`: the word alone was a small muted label that read as a section heading and was easy to miss, so
 the control is named as a way out and drawn in `--ink` at `--weight-medium` with no border and no fill, its
 colour turning to the accent only under the pointer. That keeps it quieter than the card below it while the

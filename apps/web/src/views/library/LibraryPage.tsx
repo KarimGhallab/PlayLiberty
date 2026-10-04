@@ -76,7 +76,7 @@ export default function LibraryPage() {
   return (
     <main className={styles.library}>
       <div className={styles.library__head}>
-        <h1 className={styles.library__title}>Playlists</h1>
+        <h1 className={styles.library__title}>PlayLiberty</h1>
         <button
           type="button"
           className={styles.library__add}

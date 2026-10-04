@@ -48,7 +48,7 @@ test('renaming a playlist updates the detail and the library', async ({
 
   // The library item carries the new name too, because the read it draws is the
   // server's.
-  await page.getByRole('link', { name: 'Back to playlists' }).click();
+  await page.getByRole('link', { name: 'Back to home' }).click();
   await expect(page.getByRole('link', { name: 'Morning Jazz' })).toBeVisible();
 });
 

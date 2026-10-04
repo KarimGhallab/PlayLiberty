@@ -1,5 +1,5 @@
-import { volumeIcon } from './volumeIcon';
 import styles from './VolumeToast.module.scss';
+import { volumeIcon } from './volumeIcon';
 
 /*
  * The volume notice. A short-lived readout of the level the keyboard just set,

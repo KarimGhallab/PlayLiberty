@@ -222,8 +222,9 @@ by inventing a control the glossary has ruled out.
 
 ## The header
 
-A quiet title and one control. "Playlists" is `--text-2xl` on web and `--text-lg` on mobile, the step the
-type scale names for screen titles. The add control is the same 36px box in both, with a 44px target around
+A quiet title and one control. The title is "PlayLiberty", the app's own name rather than a word for the
+list, at `--text-2xl` on web and `--text-lg` on mobile, the step the type scale names for screen titles. The
+add control is the same 36px box in both, with a 44px target around
 it on mobile. Its `plus` is `--icon-sm` and `aria-hidden`, paired with the `--text-sm` label: at `--icon-md`
 the ink is 1.36 times the cap height beside it, at `--icon-sm` it is 1.09, which is the pair the menu items
 already use. There is no playlist count in the header, because a count of playlists is a standing total

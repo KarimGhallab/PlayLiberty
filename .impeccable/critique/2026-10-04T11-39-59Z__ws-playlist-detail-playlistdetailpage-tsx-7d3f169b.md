@@ -69,7 +69,7 @@ Suggested command: `$impeccable clarify`
 **[P2] The not-found state is a generic dead end.**
 Where: `PlaylistDetailPage.tsx:285-289` renders "Tracks could not be loaded." for any `tracks.isError`; there is no `playlist.isError` branch. The design record (playlist-detail.md:306) and `DESIGN.md:87` both list the not-found state as an unbuilt component that "needs one."
 Why it matters: this is the screen the product exists for; its failure reads as a bug and names the wrong thing. It does not distinguish "does not exist" from "you cannot see it" (a revoked share is a normal household event), and offers no action.
-Fix: build the not-found composition the record calls for: a heading that names the situation ("This playlist is not here"), copy that holds both causes without claiming to know which, and a primary "Back to playlists" action.
+Fix: build the not-found composition the record calls for: a heading that names the situation ("This playlist is not here"), copy that holds both causes without claiming to know which, and a primary "Back to home" action.
 Suggested command: `$impeccable harden`
 
 **[P2] The deferred delete is low-salience, past-tense, and re-armable.**

@@ -1,13 +1,9 @@
-import {
-  IconVolume,
-  IconVolume2,
-  IconVolume3,
-  IconVolume4
-} from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 
 import styles from './VolumeControl.module.scss';
+import VolumeToast from './VolumeToast';
 import { usePlayerStore } from './playerStore';
+import { volumeIcon } from './volumeIcon';
 
 /*
  * The volume control, the player bar's rightmost item. A speaker button whose
@@ -28,31 +24,24 @@ import { usePlayerStore } from './playerStore';
  * two places the keys are left alone. Up and Down change the level whether or not
  * the output is muted, so a listener who mutes, adjusts, then unmutes lands where
  * they set it.
+ *
+ * Up and Down also raise [the volume notice](VolumeToast.tsx), because the rail is
+ * the only other readout and it is open only while the pointer is on it: a
+ * keyboard listener would otherwise move the level with nothing on screen saying
+ * where it landed. The notice is the keyboard's equal of the pointer's rail, and
+ * it is centred above the bar so the two can each be up without covering the
+ * other.
  */
 
 /** How much one press of Up/Down moves the volume. */
 const KEYBOARD_STEP = 0.05;
 
 /*
- * The glyph, by the level and the mute bit. Mute wins over the level, so a
- * silenced output always shows the crossed speaker whatever the level is, and the
- * three loud glyphs split the level into thirds.
+ * How long the notice stays after the last press. The host owns it: the value is
+ * both the toast's own fade and the timeout that disposes it, so the two cannot
+ * drift.
  */
-function volumeIcon(volume: number, muted: boolean) {
-  if (muted || volume <= 0) {
-    return IconVolume3;
-  }
-
-  if (volume <= 0.33) {
-    return IconVolume4;
-  }
-
-  if (volume <= 0.66) {
-    return IconVolume2;
-  }
-
-  return IconVolume;
-}
+const VOLUME_TOAST_MS = 1600;
 
 /*
  * Pointer capture keeps a drag alive when the pointer leaves the rail, which is
@@ -76,6 +65,7 @@ export default function VolumeControl() {
   const setVolume = usePlayerStore(state => state.setVolume);
   const setMuted = usePlayerStore(state => state.setMuted);
   const [open, setOpen] = useState(false);
+  const [notice, setNotice] = useState<number | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -103,12 +93,14 @@ export default function VolumeControl() {
       if (event.key === 'ArrowUp') {
         event.preventDefault();
         setVolume(state.volume + KEYBOARD_STEP);
+        setNotice(token => (token ?? 0) + 1);
         return;
       }
 
       if (event.key === 'ArrowDown') {
         event.preventDefault();
         setVolume(state.volume - KEYBOARD_STEP);
+        setNotice(token => (token ?? 0) + 1);
         return;
       }
 
@@ -121,6 +113,15 @@ export default function VolumeControl() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [setVolume, setMuted]);
+
+  useEffect(() => {
+    if (notice === null) {
+      return;
+    }
+
+    const id = window.setTimeout(() => setNotice(null), VOLUME_TOAST_MS);
+    return () => window.clearTimeout(id);
+  }, [notice]);
 
   const Icon = volumeIcon(volume, muted);
 
@@ -213,6 +214,14 @@ export default function VolumeControl() {
           focusable="false"
         />
       </button>
+      {notice === null ? null : (
+        <VolumeToast
+          key={notice}
+          volume={volume}
+          muted={muted}
+          durationMs={VOLUME_TOAST_MS}
+        />
+      )}
     </div>
   );
 }

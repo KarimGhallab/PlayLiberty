@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import VolumeControl from './VolumeControl';
 import { usePlayerStore } from './playerStore';
@@ -12,6 +12,10 @@ import { usePlayerStore } from './playerStore';
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('VolumeControl', () => {
@@ -51,6 +55,49 @@ describe('VolumeControl', () => {
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.45);
+  });
+
+  it('shows the new level when the arrows change it', () => {
+    usePlayerStore.getState().setVolume(0.5);
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 55 percent');
+  });
+
+  it('keeps one notice and restarts its life on the next press', () => {
+    vi.useFakeTimers();
+    usePlayerStore.getState().setVolume(0.5);
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+
+    /* Not yet at the notice's own end. */
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 55 percent');
+
+    /* A second press disposes the notice and mounts the newer level. */
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 60 percent');
+
+    /* Past the first press's expiry, so this holds only if the timer restarted. */
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('disposes the notice when its life ends', () => {
+    vi.useFakeTimers();
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('changes the level without clearing the mute', () => {

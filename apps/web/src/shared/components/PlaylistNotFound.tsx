@@ -39,7 +39,7 @@ export default function PlaylistNotFound() {
           aria-hidden="true"
           focusable="false"
         />
-        Back to playlists
+        Back to home
       </Link>
     </div>
   );

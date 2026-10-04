@@ -78,7 +78,7 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     expect(
-      await screen.findByRole('link', { name: 'Back to playlists' })
+      await screen.findByRole('link', { name: 'Back to home' })
     ).toHaveAttribute('href', '/');
   });
 
