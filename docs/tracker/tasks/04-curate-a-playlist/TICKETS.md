@@ -2,8 +2,10 @@
 
 Tickets for [`04-curate-a-playlist`](../../specs/04-curate-a-playlist.md). One file per ticket, numbered in
 dependency order, each declaring its blocking edges. This spec is server-only, so every ticket is verifiable
-through the API; the overflow menu and the add-a-video dialog belong to the screen work and
-[`09-keep-the-screens-current`](../../specs/09-keep-the-screens-current.md).
+through the API; the overflow menu and the add-a-track dialog belong to the web half, which landed later in
+[`WEB_TICKETS.md`](WEB_TICKETS.md) rather than in
+[`09-keep-the-screens-current`](../../specs/09-keep-the-screens-current.md), where this file first sent them and
+where nothing picked them up.
 
 | Ticket                                                                              | Status   | Blocked by                                     | Blocks                                           |
 | ----------------------------------------------------------------------------------- | -------- | ---------------------------------------------- | ------------------------------------------------ |

@@ -229,5 +229,14 @@ export const handlers = [
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-29T12:00:00.000Z'
     })
+  ),
+  /*
+   * The batch add, one outcome per chosen playlist. The default fixture says the
+   * first playlist took it; a test that needs a refusal overrides it per test.
+   */
+  http.post('http://localhost:3000/api/v1/tracks', () =>
+    HttpResponse.json({
+      results: [{ playlistId: 'playlist-1', outcome: 'added' }]
+    })
   )
 ];

@@ -1,6 +1,6 @@
-import { IconChevronLeft } from '@tabler/icons-react';
+import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
 
@@ -8,15 +8,18 @@ import { ApiError } from '../../shared/api/client';
 import {
   ownerNameFrom,
   useAccountDirectory,
+  useAddTrack,
   useDeletePlaylist,
   useLatestSyncRun,
   usePlaylist,
   usePlaylistTracks,
+  usePlaylists,
   useRemoveTrack,
   useRenamePlaylist,
   useRetryTrack,
   useSyncPlaylist
 } from '../../shared/api/queries';
+import AddTrackDialog from '../../shared/components/AddTrackDialog';
 import EmptyState from '../../shared/components/EmptyState';
 import PlaylistHeader from '../../shared/components/PlaylistHeader';
 import PlaylistNotFound from '../../shared/components/PlaylistNotFound';
@@ -70,13 +73,19 @@ export default function PlaylistDetailPage() {
   const tracks = usePlaylistTracks(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
+  /* The library read, which is where the writable playlists for the add dialog
+   * come from: the dialog adds to several, and this is the list the account can
+   * already see. */
+  const playlists = usePlaylists();
   const sync = useSyncPlaylist(playlistId);
   const remove = useDeletePlaylist(playlistId);
   const retry = useRetryTrack(playlistId);
   const removeTrack = useRemoveTrack(playlistId);
   const rename = useRenamePlaylist(playlistId);
+  const addTrack = useAddTrack();
   const [renameOpen, setRenameOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const deferred = useDeferredAction();
   /*
    * The header's arrangement at this width. The design's mobile arrangement is
@@ -193,6 +202,37 @@ export default function PlaylistDetailPage() {
   const canWrite = canSync;
   const retryingTrackId = retry.isPending ? retry.variables : undefined;
   const neverSynced = playlist.data?.lastSyncedAt === null;
+
+  /*
+   * The playlists the add dialog may offer: the account's own and any it can
+   * write, never a read one, because a playlist it cannot write to is absent
+   * rather than disabled. The one being looked at is always in the set when the
+   * account can write to it, which is the state this control is drawn in.
+   */
+  const writablePlaylists = (playlists.data?.items ?? []).filter(
+    item => item.access === 'owner' || item.access === 'write'
+  );
+
+  /*
+   * The refused playlists of the last batch, which is what keeps the dialog open.
+   * While a batch has refusals the dialog stays; one with none closes, because an
+   * all-success result has nothing to read.
+   */
+  const refusedOutcomes =
+    addTrack.data?.results.filter(entry => entry.outcome === 'refused') ?? [];
+  const batchRefused = refusedOutcomes.length > 0;
+
+  /*
+   * A batch with no refusals closes the dialog on the settled result, and a fresh
+   * open clears the previous one so a stale refusal does not reappear. The reset
+   * runs when the dialog opens, so the block is empty until a batch returns.
+   */
+  useEffect(() => {
+    if (addTrack.isSuccess && !batchRefused) {
+      setAddOpen(false);
+      addTrack.reset();
+    }
+  }, [addTrack.isSuccess, batchRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
   const isQueue = queuePlaylistId === playlistId;
   const playingThis = isPlaying && isQueue;
@@ -236,6 +276,28 @@ export default function PlaylistDetailPage() {
           />
           Back to home
         </Link>
+        {/*
+         * The add control, mirroring the library's own: the same pill, the same
+         * plus, in the top-right of the page. It is present for the owner and a
+         * write collaborator and absent for a read one, the screen's own rule for
+         * every control it does not offer a refusal through.
+         */}
+        {canWrite ? (
+          <button
+            type="button"
+            className={styles.playlistDetail__add}
+            onClick={() => {
+              addTrack.reset();
+              setAddOpen(true);
+            }}>
+            <IconPlus
+              className={styles.playlistDetail__addIcon}
+              aria-hidden="true"
+              focusable="false"
+            />
+            Add a track
+          </button>
+        ) : null}
       </nav>
 
       <div className={styles.playlistDetail__columns}>
@@ -358,6 +420,24 @@ export default function PlaylistDetailPage() {
         open={shareOpen}
         playlistId={playlistId}
         onClose={() => setShareOpen(false)}
+      />
+
+      <AddTrackDialog
+        open={addOpen}
+        currentPlaylistId={playlistId}
+        playlists={writablePlaylists}
+        isWorking={addTrack.isPending}
+        result={addTrack.data ?? null}
+        problem={
+          addTrack.isError && addTrack.error instanceof ApiError
+            ? (addTrack.error.problem?.detail ?? null)
+            : null
+        }
+        onSubmit={(url, playlistIds) => addTrack.mutate({ url, playlistIds })}
+        onClose={() => {
+          setAddOpen(false);
+          addTrack.reset();
+        }}
       />
 
       {deferred.pending !== null ? (

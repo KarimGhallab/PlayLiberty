@@ -38,6 +38,7 @@ than misleading a reader.
 | Form controls                | [form controls](design-system/components/form-controls.md)             | [form controls](design/components/form-controls.html)        |
 | Playlist header              | [playlist header](design-system/components/playlist-header.md)         | [playlist header](design/components/playlist-header.html)    |
 | Add a playlist               | [add a playlist](design-system/components/add-playlist-dialog.md)      | [add a playlist](design/components/add-playlist-dialog.html) |
+| Add a track                  | [add a track](design-system/components/add-track-dialog.md)            | [add a track](design/components/add-track-dialog.html)       |
 | Empty gallery                | [empty gallery](design-system/components/empty-gallery.md)             | [library](design/screens/library.html)                       |
 | Library                      | [library](design-system/screens/library.md)                            | [library](design/screens/library.html)                       |
 | Playlist detail              | [playlist detail](design-system/screens/playlist-detail.md)            | [playlist detail](design/screens/playlist-detail.html)       |
@@ -81,12 +82,17 @@ These are the components, not their specs. Each links to the file that specifies
 - **Add a playlist**, the dialog the library hosts on both clients, in two arrangements because a sheet
   is the phone's own idiom for a short task. Specified in
   [add a playlist](design-system/components/add-playlist-dialog.md).
+- **Add a track**, the dialog the playlist detail hosts, on both clients, and its only door for one pasted
+  video. It takes a video URL and a set of writable playlists and fires one batch request, and it stays open
+  on a refusal so the refused playlists can be named. Specified in
+  [add a track](design-system/components/add-track-dialog.md).
 
 ## What is not yet designed
 
-**The playlist detail's own components: the share dialog and the add-a-video
-dialog.** The screen is drawn, on web so far, and those two are the pieces of it that do not exist
-yet; the not-found state is now built as `PlaylistNotFound`. The inventory is
+**The playlist detail's share dialog.** The screen is drawn, on web so far, and the share dialog is the one
+piece of it that does not exist yet; the add-a-track dialog is now specified in
+[add a track](design-system/components/add-track-dialog.md), and the not-found state is built as
+`PlaylistNotFound`. The inventory is
 [`13-settle-the-screen-inventory`](tracker/tasks/13-settle-the-screen-inventory.md), and a screen is a
 surface a user reaches by route, so there are two screens and two design tasks rather than four: the
 library, drawn in [`16-design-the-library`](tracker/tasks/16-design-the-library.md), and the playlist

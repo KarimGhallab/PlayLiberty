@@ -3,6 +3,7 @@ import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
 import {
   AccountSummarySchema,
+  AddTrackResultSchema,
   PlaylistSchema,
   PlaylistTrackSchema,
   ShareListSchema,
@@ -13,6 +14,7 @@ import {
 } from '@playliberty/contracts';
 import type {
   AccountSummary,
+  AddTrackResult,
   Playlist,
   PlaylistTrack,
   Share,
@@ -111,6 +113,34 @@ export function useCreatePlaylist(): UseMutationResult<SyncRun, Error, string> {
     mutationFn: (url: string) => apiPost('/playlists', { url }, SyncRunSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    }
+  });
+}
+
+/*
+ * Adding one video to several playlists, in one request. The route is
+ * `POST /tracks`, its body a video URL and the chosen playlist ids, and it
+ * answers one outcome per playlist rather than an overall status: a batch can be
+ * part added, part already there and part refused, and the dialog reports each
+ * one. Nothing is written optimistically, and the response is returned rather
+ * than dropped because the dialog's refusal state is built from it.
+ *
+ * Both reads are invalidated on success: the chosen playlists gain an
+ * association, so each one's tracks and the library's counts have both moved.
+ */
+export function useAddTrack(): UseMutationResult<
+  AddTrackResult,
+  Error,
+  { url: string; playlistIds: string[] }
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { url: string; playlistIds: string[] }) =>
+      apiPost('/tracks', input, AddTrackResultSchema),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      void queryClient.invalidateQueries({ queryKey: ['playlist'] });
     }
   });
 }

@@ -209,11 +209,19 @@ or manage shares, which stay with the owner. The three owner-only controls (**Re
 and share management) are **absent, not disabled**, because a visible control that cannot be pressed is the
 fault the validator already checks for in the track row.
 
-| access | the overflow holds                       | the band         | the indicator        |
-| ------ | ---------------------------------------- | ---------------- | -------------------- |
-| owner  | Share, Rename, Sync now, Delete playlist | 224px of 286.4px | a lock with an arrow |
-| write  | Sync now                                 | 224px of 286.4px | a person             |
-| read   | nothing, so no button                    | 92px of 286.4px  | a person             |
+| access | the overflow holds                       | the add control | the band         | the indicator        |
+| ------ | ---------------------------------------- | --------------- | ---------------- | -------------------- |
+| owner  | Share, Rename, Sync now, Delete playlist | present         | 224px of 286.4px | a lock with an arrow |
+| write  | Sync now                                 | present         | 224px of 286.4px | a person             |
+| read   | nothing, so no button                    | absent          | 92px of 286.4px  | a person             |
+
+**The add control is in the way-home row, top-right, not in the overflow.** It mirrors the library's add
+button: the same accent pill, the same `plus`, in the row that already holds the way home, which becomes
+`space-between` so the two ends sit apart. It is present for the owner and a `write` collaborator and absent
+for a `read` one, the same rule the overflow follows, and it opens the
+[add-a-track dialog](../components/add-track-dialog.md). It is on its own rather than in the overflow because
+adding a track is the one curating action every writable account has and the most frequent thing done on this
+screen, so it is not buried one press down.
 
 A `read` collaborator gets no overflow button rather than an empty one, and the shuffle stays, so the action
 row is the shuffle alone at **32px** and the band is 92px. `access` decides the menu; `hasShares` is a
@@ -330,10 +338,13 @@ is drawn as the whole screen: a playlist read that answers 404 replaces the head
 rather than drawing a header for a playlist the server denied. The heading is the screen's own `h1`, which
 the main detail does not otherwise carry: the name is a heading there too, and the library keeps it a link.
 
-**The share dialog and the add-a-video dialog.** Both are hosted here and nowhere else. The second carries
-this playlist preselected and any other writable playlist selectable, and issues one request per chosen
-playlist because no multi-playlist route exists, which the checklist has to say rather than imply. Both need
-their own records, and a dialog is narrower on one arrangement than the other, so neither can be drawn once.
+**The share dialog and the add-a-track dialog.** Both are hosted here and nowhere else. The second carries
+this playlist preselected and any other writable playlist selectable, and issues **one `POST /tracks` for the
+whole batch**, not one request per playlist: `04-curate-a-playlist` replaced the nested per-playlist route
+with a single batch route precisely because a path under one playlist cannot express a choice of several. The
+earlier claim here, that the dialog fires one request per chosen playlist because no multi-playlist route
+exists, described a route that has since been deleted and is retired. Both dialogs need their own records, and
+a dialog is narrower on one arrangement than the other, so neither can be drawn once.
 
 **A queue panel. There is none, and three records claimed there was.** The answer is that **the track list is
 the queue**, so there is nothing to open and no trigger to place: the right column already is the thing,

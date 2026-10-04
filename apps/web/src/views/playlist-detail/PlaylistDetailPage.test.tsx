@@ -6,7 +6,7 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -418,6 +418,148 @@ describe('PlaylistDetailPage', () => {
         name: 'More actions for Rain On The Window'
       })
     ).not.toBeInTheDocument();
+    /* The add control is the same rule: absent, not disabled. */
+    expect(
+      screen.queryByRole('button', { name: 'Add a track' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('draws the add control for the owner and opens the dialog', async () => {
+    renderDetail();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a track' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Add a track' })
+    ).toBeInTheDocument();
+    /* The current playlist arrives checked, so the common case is one press. */
+    expect(
+      screen.getByRole('checkbox', { name: 'Rain On The Window' })
+    ).toBeChecked();
+  });
+
+  it('adds one video to the chosen playlists in one request', async () => {
+    const posted: unknown[] = [];
+    server.use(
+      http.post('http://localhost:3000/api/v1/tracks', async ({ request }) => {
+        posted.push(await request.json());
+
+        return HttpResponse.json({
+          results: [{ playlistId: 'playlist-1', outcome: 'added' }]
+        });
+      })
+    );
+    renderDetail();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a track' }));
+    fireEvent.change(await screen.findByLabelText('Video link'), {
+      target: { value: 'https://youtube.com/watch?v=dQw4w9WgXcQ' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(posted).toEqual([
+        {
+          url: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
+          playlistIds: ['playlist-1']
+        }
+      ]);
+    });
+  });
+
+  it('keeps the dialog open and names the playlists that refused', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists', () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'playlist-1',
+              ownerAccountId: 'account-1',
+              name: 'Rain On The Window',
+              coverUrl: null,
+              provider: 'youtube',
+              sourcePlaylistId: 'PL-demo',
+              syncStatus: 'idle',
+              lastSyncedAt: '2026-09-29T12:00:00.000Z',
+              trackCount: 3,
+              access: 'owner',
+              hasShares: false,
+              createdAt: '2026-09-01T00:00:00.000Z',
+              updatedAt: '2026-09-29T12:00:00.000Z'
+            },
+            {
+              id: 'playlist-9',
+              ownerAccountId: 'account-1',
+              name: 'Night Bus',
+              coverUrl: null,
+              provider: 'youtube',
+              sourcePlaylistId: 'PL-two',
+              syncStatus: 'idle',
+              lastSyncedAt: '2026-09-29T12:00:00.000Z',
+              trackCount: 1,
+              access: 'owner',
+              hasShares: false,
+              createdAt: '2026-09-01T00:00:00.000Z',
+              updatedAt: '2026-09-29T12:00:00.000Z'
+            }
+          ],
+          total: 2,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post('http://localhost:3000/api/v1/tracks', () =>
+        HttpResponse.json({
+          results: [
+            { playlistId: 'playlist-1', outcome: 'added' },
+            { playlistId: 'playlist-9', outcome: 'refused' }
+          ]
+        })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a track' }));
+    fireEvent.change(await screen.findByLabelText('Video link'), {
+      target: { value: 'https://youtube.com/watch?v=dQw4w9WgXcQ' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    /* The dialog is still open and names the playlist that said no. */
+    expect(
+      await screen.findByText(/Added to the rest\. Not added to:/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Added to the rest\. Not added to:/).parentElement
+    ).toHaveTextContent('Night Bus');
+  });
+
+  it('closes the dialog when every playlist took the video', async () => {
+    server.use(
+      http.post('http://localhost:3000/api/v1/tracks', () =>
+        HttpResponse.json({
+          results: [
+            { playlistId: 'playlist-1', outcome: 'added' },
+            { playlistId: 'playlist-2', outcome: 'already_present' }
+          ]
+        })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a track' }));
+    fireEvent.change(await screen.findByLabelText('Video link'), {
+      target: { value: 'https://youtube.com/watch?v=dQw4w9WgXcQ' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    /* An all-success batch has nothing to read, so the dialog goes, after its
+     * exit. */
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Add a track' })
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('has no axe violations', async () => {
