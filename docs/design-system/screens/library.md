@@ -151,6 +151,39 @@ destination and the item is the affordance, so forty underlined names would say 
 `color: inherit` is required, because an anchor does not inherit and the user agent's `a { color }` would
 draw the name in the browser's link colour instead of `--ink`.
 
+**The row is a door even though it is not a link.** A press anywhere on the item that is not a control, a menu
+panel or one of the two links opens the playlist, which is what a gallery of destinations owes a person who
+presses the middle of a 356.4px row. It stays a div rather than an anchor, because the row holds buttons and a
+button inside an anchor is invalid, so the press is the row's own handler and the controls carve themselves out
+of it rather than being the only way past it. The name stays the one link and the one tab stop, so a screen
+reader still announces one link per item and the keyboard is unchanged; the press is the pointer's extra door
+and not a second tab stop. It is the row arrangement's, which is what the library draws on web, and the card the
+detail uses does not carry it.
+
+**The row lifts to `--surface-raised` on hover, the step a playable track row already takes.** The rows sit on
+`--bg`, and a press needs a mark before it is taken; the track list answers the same question with the same
+colour, so the two lists agree rather than each inventing a hover. `focus-within` draws the mark too, so it
+follows the keyboard to the name or a control, and the pointer is set to the press the surface promises. Nothing
+moves: no box, no radius and no height, only the surface, and the dividers stay the header's own `border-top`.
+The surface eases in at `--motion-fast` rather than snapping, so running the pointer down a list reads as one
+surface following it rather than a flicker, and reduced motion drops the duration to zero.
+
+## A no-artwork item is a sleeve, and a non-resting one wears its tone on the cover
+
+An item's cover is the header's, and the header's null case now draws the playlist's identity rather than
+the anonymous hatch: one of six `--sleeve-*` hues, chosen by hashing the playlist id. A library without
+artwork is the case this matters most in, because it is the whole gallery at once, and the wall of grey
+squares read as one object repeated rather than as forty playlists. The component record owns the values and
+the derivation; what is this screen's is the dose. The library is a gallery, so the sleeve is the one place
+a list of identical rows can be told apart before a word is read.
+
+The sync state is on the cover's edge as well as in its word. A row is 136px and forty of them stack, so the
+state had to be readable from the object and not only from a 12px line inside it: the cover's hairline takes
+`--emphasis` while a run is in flight and `--tone-failed` when it broke, and a resting row keeps the neutral
+hairline. It is the same tone as the state word, read from the same element, so the two can never disagree.
+The cost is that a broken row now says so in two places, which is accepted because a fault is exactly the
+fact worth saying twice.
+
 ## The three overflows, and what `access` decides
 
 `access` is on every playlist and the overflow is gated on it; the glossary is authoritative. An owner's

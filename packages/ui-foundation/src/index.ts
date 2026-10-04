@@ -10,4 +10,5 @@ export {
   trackStateLabel
 } from './formatters.js';
 export { trackTone } from './tones.js';
+export { sleeveIndex } from './sleeve.js';
 export { TrackTone } from './types.js';

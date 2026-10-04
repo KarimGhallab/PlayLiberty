@@ -10,8 +10,12 @@
 .volume {
   position: relative;
   display: flex;
-  align-items: center;
-  height: 100%;
+  /* The root is the button's own box, not the bar's height. The rail is anchored
+   * to the root's top by `bottom: 100%`, so a button-sized root opens the rail
+   * just above the button; a full-height root opened it above the bar instead,
+   * which left the rail a bar's height away from the control it belongs to. The
+   * button still sits on the bar's foot, because the bar's own column aligns
+   * this root to the bottom. */
 
   &__button {
     display: grid;

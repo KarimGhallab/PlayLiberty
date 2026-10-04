@@ -16,11 +16,15 @@
   border-radius: var(--radius-artwork);
 
   /* Only a row with a stored file is a control, so only it is offered a press:
-   * the surface lifts one step and the pointer says so. A row with nothing to
-   * play keeps its plain surface and the default pointer, because a hover that
-   * promises a play a row cannot give is worse than no hover at all. */
+   * the surface lifts one step and the pointer says so. The lift is quick and
+   * eased rather than instant, so running the pointer down a list does not
+   * flicker, and it names only background-color so nothing else on the row
+   * moves. A row with nothing to play keeps its plain surface and the default
+   * pointer, because a hover that promises a play a row cannot give is worse
+   * than no hover at all. */
   &[data-playable='true'] {
     cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard);
 
     &:hover,
     &:focus-within {

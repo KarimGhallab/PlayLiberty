@@ -242,6 +242,39 @@ describe('LibraryPage', () => {
     ]);
   });
 
+  it('offers the owner the four actions and the reader no overflow', async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    /* One menu: the owned item's. The read collaborator gets no button at all. */
+    const menus = screen.getAllByRole('button', { name: 'More actions' });
+    expect(menus).toHaveLength(1);
+
+    fireEvent.click(menus[0]);
+    expect(screen.getByRole('menuitem', { name: 'Share' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Rename' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Sync now' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Delete playlist' })
+    ).toBeInTheDocument();
+  });
+
+  it('opens the playlist from a press on the item itself', async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    /* The count is not a link or a control, so the press is the item's own. */
+    fireEvent.click(screen.getByText('1'));
+
+    expect(await screen.findByText('detail')).toBeInTheDocument();
+  });
+
   it("names a shared item's owner and leaves the owned item unlined", async () => {
     renderLibraryPage();
 

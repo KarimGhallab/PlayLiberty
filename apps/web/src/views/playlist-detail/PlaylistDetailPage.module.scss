@@ -120,11 +120,8 @@
  */
 @media (max-width: 767px) {
   .playlist-detail {
-    /* The way home is a web fact and is absent here rather than restyled: the
-     * platform gesture returns from a pushed route, so a control that returns
-     * does what the platform already does. */
     &__wayhome {
-      display: none;
+      padding: var(--space-2) 0 0 0;
     }
 
     /* One column. The side stops being a fixed 320px and takes the whole frame,

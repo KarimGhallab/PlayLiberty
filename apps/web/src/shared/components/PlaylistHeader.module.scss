@@ -10,7 +10,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-5);
-  padding: var(--space-5) 0;
+  padding: var(--space-5);
 
   /* The card arrangement. A different root: the cover is a block above the
    * identity rather than a sibling, and the surface is the card's own so the
@@ -34,6 +34,24 @@
    * survives without colour, which is why this may be colour-led. */
   &[data-arrangement='card'][data-state='playing'] {
     box-shadow: inset 0 -2px 0 var(--emphasis);
+  }
+
+  /* The library's item is a door, so the whole row carries the press: its
+   * surface lifts one step on hover, the same --surface-raised a playable track
+   * row lifts to, and the pointer says so. The lift is quick and eased rather
+   * than instant, so crossing a list does not flicker, and it names only
+   * background-color so nothing else on the row moves. The controls and the two
+   * links carve themselves out in the component and this is only the surface.
+   * The detail does not pass `onOpen`, because the page the row would open is
+   * the page it is already on, so its own row keeps the plain page. */
+  &[data-arrangement='row'][data-open='true'] {
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+
+    &:hover,
+    &:focus-within {
+      background: var(--surface-raised);
+    }
   }
 
   &__cover {
@@ -178,6 +196,13 @@
 
   &__sep {
     color: var(--control-disabled-fg);
+  }
+
+  /* The elapsed time on the sync line. It inherits the muted tone and the
+   * --text-xs of `.meta`; it is held to one line so a long relative phrase
+   * cannot wrap the state beside it. */
+  &__time {
+    white-space: nowrap;
   }
 
   /* The owner of a playlist that is not the account's, as its own line rather
@@ -454,19 +479,74 @@
     border-radius: var(--radius-card);
   }
 
-  /* The no-art texture, shared by the row's cover and the card's square. The
+  /* The sleeve. A playlist with no artwork draws its identity hue rather than
+   * the anonymous hatch: `data-sleeve` is the index `sleeveIndex` derives from
+   * the id, and each value names one token. The hue is identity and not state,
+   * and the six skip the accent's green and the amber and red the states own, so
+   * a sleeve can never be read as an action or a fault. */
+  &__cover[data-sleeve='1'],
+  &__mart[data-sleeve='1'] {
+    --sleeve: var(--sleeve-1);
+  }
+
+  &__cover[data-sleeve='2'],
+  &__mart[data-sleeve='2'] {
+    --sleeve: var(--sleeve-2);
+  }
+
+  &__cover[data-sleeve='3'],
+  &__mart[data-sleeve='3'] {
+    --sleeve: var(--sleeve-3);
+  }
+
+  &__cover[data-sleeve='4'],
+  &__mart[data-sleeve='4'] {
+    --sleeve: var(--sleeve-4);
+  }
+
+  &__cover[data-sleeve='5'],
+  &__mart[data-sleeve='5'] {
+    --sleeve: var(--sleeve-5);
+  }
+
+  &__cover[data-sleeve='6'],
+  &__mart[data-sleeve='6'] {
+    --sleeve: var(--sleeve-6);
+  }
+
+  /* The no-artwork texture, shared by the row's cover and the card's square. The
    * hatch is the edge divided by eight, so four stripes cross either way and a
-   * larger cover carries the same number rather than a busier field. */
+   * larger cover carries the same number rather than a busier field. It is the
+   * sleeve's sheen now: --line over the identity hue, so a playlist with no
+   * artwork still reads as a placeholder rather than as a flat block of colour,
+   * and the fallback keeps the bare hatch for any consumer that sets no sleeve. */
   &__cover[data-art='no-art'],
   &__mart[data-art='no-art'] {
     --hatch: 12px;
+    background-color: var(--sleeve, var(--surface-raised));
     background-image: repeating-linear-gradient(
       45deg,
-      var(--surface),
-      var(--surface) var(--hatch, 5px),
-      var(--surface-raised) var(--hatch, 5px),
-      var(--surface-raised) calc(var(--hatch, 5px) * 2)
+      transparent 0,
+      transparent var(--hatch, 5px),
+      var(--line) var(--hatch, 5px),
+      var(--line) calc(var(--hatch, 5px) * 2)
     );
+  }
+
+  /* A playlist that is not resting carries its tone on the cover's own edge. The
+   * state word already says what happened; the ring makes the object say it too,
+   * so a gallery can be read for the one that is syncing or broken without
+   * reading every line. A resting playlist keeps the neutral hairline, because a
+   * tone is spent only on a fact that changed. The state is read from the state
+   * element rather than mirrored onto the root, so the two cannot disagree. */
+  &:has(&__state[data-state='syncing']) &__cover,
+  &:has(&__state[data-state='syncing']) &__mart {
+    border-color: var(--emphasis);
+  }
+
+  &:has(&__state[data-state='error']) &__cover,
+  &:has(&__state[data-state='error']) &__mart {
+    border-color: var(--tone-failed);
   }
 
   &__mart-art {
@@ -562,5 +642,11 @@
 
   to {
     transform: translateX(-168px);
+  }
+}
+
+@media (max-width: 767px) {
+  .playlist-header {
+    padding: var(--space-3);
   }
 }

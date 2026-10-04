@@ -12,10 +12,16 @@ import {
   IconUserShare
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import { syncStateLabel, trackCountUnit } from '@playliberty/ui-foundation';
+import {
+  formatLastSynced,
+  sleeveIndex,
+  syncStateLabel,
+  trackCountUnit
+} from '@playliberty/ui-foundation';
 
 import PlayGlyph from './PlayGlyph';
 import styles from './PlaylistHeader.module.scss';
@@ -96,14 +102,10 @@ interface PlaylistHeaderProps {
   onShare?: () => void;
   onDelete?: () => void;
   syncing?: boolean;
-  /*
-   * Whether the name is the page's own heading. On the detail route the name is
-   * the screen's `h1` and a link to the page it is already on, so it is drawn as
-   * a heading; in the library it is the link that opens the detail, so it stays a
-   * link. The two are different elements, which is why this is a prop and not a
-   * style.
-   */
   heading?: boolean;
+  onOpen?: () => void;
+  showSyncTime?: boolean;
+  now?: Date;
 }
 
 interface ShareMark {
@@ -163,14 +165,33 @@ export default function PlaylistHeader({
   onShare,
   onDelete,
   syncing = false,
-  heading = false
+  heading = false,
+  onOpen,
+  showSyncTime = false,
+  now = new Date()
 }: PlaylistHeaderProps) {
   const mark = shareMark(playlist);
   const sharedBy =
     playlist.access !== 'owner' && ownerName !== null ? ownerName : null;
+  /* The identity hue a no-artwork cover draws. Derived from the id, so it is the
+   * same sleeve wherever this playlist appears and it survives a reload. */
+  const sleeve = sleeveIndex(playlist.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const { run, endRun } = usePlayPauseMorph(playing);
+
+  const openFromClick =
+    onOpen === undefined
+      ? undefined
+      : (event: ReactMouseEvent<HTMLDivElement>): void => {
+          const target = event.target as HTMLElement;
+
+          if (target.closest('a, button, [role="menu"]') !== null) {
+            return;
+          }
+
+          onOpen();
+        };
 
   /*
    * The menu closes on a press outside it and on Escape, which is the whole
@@ -268,6 +289,8 @@ export default function PlaylistHeader({
   })();
 
   const playable = playlist.trackCount > 0;
+  const lastSyncedAt =
+    playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
 
   /* The one door. It is a pause while the queue is this playlist, which is the
    * header's own swap, and it is disabled rather than absent on a playlist with
@@ -428,14 +451,21 @@ export default function PlaylistHeader({
           data-state={playlist.syncStatus}>
           {syncStateLabel(playlist.syncStatus)}
         </span>
-        <span className={styles.playlistHeader__sep} aria-hidden="true">
-          &middot;
-        </span>
-        <span className={styles.playlistHeader__count}>
-          <span>{playlist.trackCount}</span>
-          <span className={styles.playlistHeader__countUnit}>
-            {trackCountUnit(playlist.trackCount)}
-          </span>
+        {showSyncTime ? (
+          <>
+            <span className={styles.playlistHeader__sep} aria-hidden="true">
+              &middot;
+            </span>
+            <span className={styles.playlistHeader__time}>
+              {formatLastSynced(lastSyncedAt, now)}
+            </span>
+          </>
+        ) : null}
+      </div>
+      <div className={styles.playlistHeader__count}>
+        <span>{playlist.trackCount}</span>
+        <span className={styles.playlistHeader__countUnit}>
+          {trackCountUnit(playlist.trackCount)}
         </span>
       </div>
       {sharedBy === null ? null : (
@@ -449,10 +479,13 @@ export default function PlaylistHeader({
       <div
         className={styles.playlistHeader}
         data-arrangement="card"
+        data-open={onOpen === undefined ? undefined : 'true'}
+        onClick={openFromClick}
         data-state={playing ? 'playing' : 'paused'}>
         <div
           className={styles.playlistHeader__mart}
-          data-art={playlist.coverUrl === null ? 'no-art' : 'art'}>
+          data-art={playlist.coverUrl === null ? 'no-art' : 'art'}
+          data-sleeve={playlist.coverUrl === null ? sleeve : undefined}>
           {playlist.coverUrl === null ? null : (
             <img
               className={styles.playlistHeader__martArt}
@@ -478,6 +511,8 @@ export default function PlaylistHeader({
     <div
       className={styles.playlistHeader}
       data-arrangement="row"
+      data-open={onOpen === undefined ? undefined : 'true'}
+      onClick={openFromClick}
       data-state={playing ? 'playing' : 'paused'}>
       <Link
         to="/playlists/$playlistId"
@@ -485,7 +520,8 @@ export default function PlaylistHeader({
         className={styles.playlistHeader__cover}
         aria-hidden="true"
         tabIndex={-1}
-        data-art={playlist.coverUrl === null ? 'no-art' : 'art'}>
+        data-art={playlist.coverUrl === null ? 'no-art' : 'art'}
+        data-sleeve={playlist.coverUrl === null ? sleeve : undefined}>
         {playlist.coverUrl === null ? null : (
           <img
             className={styles.playlistHeader__art}

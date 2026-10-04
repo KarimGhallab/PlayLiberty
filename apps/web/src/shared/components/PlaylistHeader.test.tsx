@@ -6,9 +6,9 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   PlaylistSyncStatus,
@@ -86,7 +86,17 @@ describe('PlaylistHeader', () => {
     expect(screen.getByText('tracks')).toBeInTheDocument();
   });
 
-  it('draws no sync time, only the state', async () => {
+  it('draws the elapsed time beside the state when the caller asks for it', async () => {
+    renderHeader(playlist(), null, {
+      showSyncTime: true,
+      now: new Date('2026-10-01T12:00:00.000Z')
+    });
+
+    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+    expect(screen.getByText('Synced 2 days ago')).toBeInTheDocument();
+  });
+
+  it('draws no sync time when the caller does not ask for it', async () => {
     renderHeader(playlist());
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
@@ -177,13 +187,53 @@ describe('PlaylistHeader', () => {
     expect(await screen.findByText('Sync failed')).toBeInTheDocument();
   });
 
-  it('reads a never-synced playlist by its idle state, with no time line', async () => {
+  it('gives a no-artwork cover its derived sleeve', async () => {
+    const { container } = renderHeader(playlist({ id: 'playlist-1' }));
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const sleeve = container.querySelector('[data-sleeve]');
+    expect(sleeve).not.toBeNull();
+    const index = Number(sleeve?.getAttribute('data-sleeve'));
+    expect(index).toBeGreaterThanOrEqual(1);
+    expect(index).toBeLessThanOrEqual(6);
+  });
+
+  it('marks the sync state on the item so the cover can carry its tone', async () => {
+    renderHeader(playlist({ syncStatus: PlaylistSyncStatus.Error }));
+
+    const state = await screen.findByText('Sync failed');
+
+    expect(state).toHaveAttribute('data-state', 'error');
+  });
+
+  it('reads a never-synced playlist by its idle state, beside a never-synced line', async () => {
     renderHeader(
-      playlist({ syncStatus: PlaylistSyncStatus.Idle, lastSyncedAt: null })
+      playlist({ syncStatus: PlaylistSyncStatus.Idle, lastSyncedAt: null }),
+      null,
+      { showSyncTime: true }
     );
 
     expect(await screen.findByText('Up to date')).toBeInTheDocument();
-    expect(screen.queryByText(/Never synced/)).not.toBeInTheDocument();
+    expect(screen.getByText('Never synced')).toBeInTheDocument();
+  });
+
+  it('opens the playlist from a press on the item, but not from its controls', async () => {
+    const onOpen = vi.fn();
+    renderHeader(playlist(), null, {
+      onOpen,
+      onShuffle: () => undefined,
+      onSync: () => undefined
+    });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    fireEvent.click(screen.getByText('Up to date'));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Shuffle' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it('disables the next step when the queue has no next track', async () => {

@@ -8,17 +8,23 @@ import {
   useCreatePlaylist,
   usePlaylists
 } from '../../shared/api/queries';
-import PlaylistHeader from '../../shared/components/PlaylistHeader';
+import UndoToast from '../../shared/components/UndoToast';
+import {
+  UNDO_WINDOW_MS,
+  useDeferredAction
+} from '../../shared/components/useDeferredAction';
 
 import AddPlaylistDialog from './AddPlaylistDialog';
 import EmptyGallery from './EmptyGallery';
 import styles from './LibraryPage.module.scss';
+import PlaylistListItem from './PlaylistListItem';
 
 /*
  * The library, at `/`. The list of playlists is the only entry point to content,
  * so this is the route a user lands on. Four states and no fifth: loading, a
  * failed read, the empty gallery, and the populated list. Each item is the shared
- * playlist header, so this screen draws no item of its own.
+ * playlist header with its own actions wired, one `PlaylistListItem` per row; the
+ * page itself draws the list and nothing that resembles a header.
  *
  * The add control lives in the header and, when there is nothing at all, again on
  * the gallery. Both open one dialog, and the dialog is the screen's only. On
@@ -26,11 +32,17 @@ import styles from './LibraryPage.module.scss';
  * arrives from the server carrying the state the route wrote rather than from a
  * row this screen invented; the person stays here and watches it appear, rather
  * than being taken into a playlist they have not seen yet.
+ *
+ * The page owns the one undo window, because a delete is the one destructive
+ * action an item offers and two of them in the same window must replace rather
+ * than stack. An item hands its own commit to this window; the toast below is the
+ * page's single surface for it.
  */
 export default function LibraryPage() {
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
+  const deferred = useDeferredAction();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   /*
@@ -92,12 +104,13 @@ export default function LibraryPage() {
         <ul className={styles.library__list}>
           {playlists.data.items.map(playlist => (
             <li key={playlist.id} className={styles.library__item}>
-              <PlaylistHeader
+              <PlaylistListItem
                 playlist={playlist}
                 ownerName={ownerNameFrom(
                   directoryItems,
                   playlist.ownerAccountId
                 )}
+                defer={deferred.defer}
               />
             </li>
           ))}
@@ -113,6 +126,16 @@ export default function LibraryPage() {
         isWorking={createPlaylist.isPending}
         problem={refused}
       />
+      {deferred.pending !== null ? (
+        <UndoToast
+          message={deferred.pending.message}
+          detail={deferred.pending.detail}
+          durationMs={UNDO_WINDOW_MS}
+          actionLabel="Cancel"
+          onAction={deferred.cancel}
+          onDismiss={deferred.cancel}
+        />
+      ) : null}
     </main>
   );
 }

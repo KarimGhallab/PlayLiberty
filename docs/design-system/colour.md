@@ -3,7 +3,9 @@
 > Part of the design system. Index and cross-cutting rules: [`DESIGN.md`](../DESIGN.md).
 
 Dark only, there is no light theme. Instrument black, one deep green telltale, one amber telltale kept
-rare, and album art as the only large field of colour.
+rare, and album art as the only large field of colour. The one other large colour field is the sleeve a
+playlist with no artwork draws, and it exists exactly so a gallery without art does not read as a wall of
+the same grey square; it is a placeholder for album art rather than a second subject.
 
 | Token              | Value                       | Role                                     |
 | ------------------ | --------------------------- | ---------------------------------------- |
@@ -37,6 +39,29 @@ required pairing drops below the AA threshold of 4.5, so these numbers cannot ro
 An accent control carries a near-black legend, never a light one. Light on the green accent is 2.73:1
 and is the pairing this system forbids; a specimen shows it failing on purpose, at full strength, because
 dimming the whole control would demonstrate nothing about the contrast inside it.
+
+## Sleeves
+
+A playlist's `coverUrl` is nullable, and the null case draws a sleeve: the playlist's identity as a
+colour, so a library without artwork is not a wall of the same grey square. The six hues are one family,
+all drawn at OKLCH L 0.34, C 0.055, and each is chosen by a hash of the playlist id, so a playlist keeps
+its sleeve across reloads and on every client and nothing has to store one.
+
+| Token        | Value     | Hue     |
+| ------------ | --------- | ------- |
+| `--sleeve-1` | `#08413e` | teal    |
+| `--sleeve-2` | `#0d3e4c` | blue    |
+| `--sleeve-3` | `#213a53` | indigo  |
+| `--sleeve-4` | `#353453` | violet  |
+| `--sleeve-5` | `#432f4c` | magenta |
+| `--sleeve-6` | `#4c2c3e` | plum    |
+
+They are identity, not state, and the arc runs teal to plum precisely because it must not borrow a
+meaning: it skips the accent's green, which is what you can act on, and the amber and red the states own,
+so a sleeve is never read as an action or a fault. They are dark on purpose, so real artwork still leads
+the gallery and a placeholder never outshouts the thing it stands in for. A sleeve is not a text surface
+and carries no label, so no pairing is declared for it; the name and the count beside it keep the
+pairings above.
 
 ## Track state tones
 

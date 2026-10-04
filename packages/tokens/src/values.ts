@@ -25,7 +25,10 @@ import type {
   TokenGroup
 } from './types.js';
 
-/** Surfaces, text, the accent, the six state tones and the control colours. */
+/**
+ * Surfaces, text, the accent, the six state tones, the control colours and the
+ * six sleeve hues.
+ */
 export const colors = {
   bg: { kind: TokenKind.Color, value: '#0b0d10' },
   surface: { kind: TokenKind.Color, value: '#14171b' },
@@ -45,7 +48,24 @@ export const colors = {
   emphasis: { kind: TokenKind.Color, value: '#e39a3c' },
   'control-disabled-fg': { kind: TokenKind.Color, value: '#888b8d' },
   'control-disabled-bg': { kind: TokenKind.Color, value: '#1e2229' },
-  scrim: { kind: TokenKind.Color, value: 'rgb(0 0 0 / 0.6)' }
+  scrim: { kind: TokenKind.Color, value: 'rgb(0 0 0 / 0.6)' },
+
+  /*
+   * The six sleeve hues. A playlist with no `coverUrl` draws its identity as a
+   * sleeve instead of the anonymous grey hatch, and the hue is one of these
+   * rather than one computed at run time: every value is drawn at OKLCH L 0.34,
+   * C 0.055, so the six read as one family of dark tinted sleeves rather than a
+   * second accent. The arc runs teal to plum and deliberately skips the accent's
+   * green and the amber and red the states own, so a sleeve is never read as a
+   * state. `sleeveIndex` in `@playliberty/ui-foundation` picks one from the
+   * playlist id.
+   */
+  'sleeve-1': { kind: TokenKind.Color, value: '#08413e' },
+  'sleeve-2': { kind: TokenKind.Color, value: '#0d3e4c' },
+  'sleeve-3': { kind: TokenKind.Color, value: '#213a53' },
+  'sleeve-4': { kind: TokenKind.Color, value: '#353453' },
+  'sleeve-5': { kind: TokenKind.Color, value: '#432f4c' },
+  'sleeve-6': { kind: TokenKind.Color, value: '#4c2c3e' }
 } as const satisfies Record<string, ColorToken>;
 
 /** The type scale, spacing, shape, control geometry, icons and the focus ring. */

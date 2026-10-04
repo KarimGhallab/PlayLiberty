@@ -39,6 +39,22 @@
         flex-direction: column;
       }
 
+      /* The item is a door even though it is not a link: a press anywhere on it
+         that is not a control or one of the two links opens the playlist. A
+         static specimen cannot show the press, so what is drawn is the surface
+         that promises it: the row lifts to --surface-raised on hover, the step a
+         playable track row already takes, and the pointer says the press is
+         there. Nothing moves but the surface, and it eases in at --motion-fast
+         so running the pointer down the list does not flicker. */
+      .list .hdr {
+        cursor: pointer;
+        transition: background-color var(--motion-fast) var(--ease-standard);
+      }
+      .list .hdr:hover,
+      .list .hdr:focus-within {
+        background: var(--surface-raised);
+      }
+
       /* The cover is a link, and the two numbers are the header's own, because
          the item is the header. The display line is this screen's: the header's
          cover is a div and this one is an anchor. It is needed because an anchor
@@ -1530,7 +1546,12 @@
               </div>
             </div>
             <div class="hdr" data-state="paused">
-              <a class="cover no-art" href="#" aria-hidden="true" tabindex="-1">
+              <a
+                class="cover no-art"
+                data-sleeve="1"
+                href="#"
+                aria-hidden="true"
+                tabindex="-1">
               </a>
               <div class="body">
                 <div class="name">
@@ -2475,7 +2496,7 @@
                   </div>
                 </div>
                 <div class="mhdr" data-state="paused">
-                  <div class="mart no-art">
+                  <div class="mart no-art" data-sleeve="2">
                     <div class="mscrim" aria-hidden="true"></div>
                     <a
                       class="martlink"
@@ -3827,7 +3848,7 @@
                       </div>
                     </div>
                     <div class="mhdr" data-state="paused">
-                      <div class="mart no-art">
+                      <div class="mart no-art" data-sleeve="3">
                         <div class="mscrim" aria-hidden="true"></div>
                         <a
                           class="martlink"
@@ -4120,7 +4141,7 @@
                   </div>
                 </div>
                 <div class="mhdr" data-state="paused">
-                  <div class="mart no-art">
+                  <div class="mart no-art" data-sleeve="4">
                     <div class="mscrim" aria-hidden="true"></div>
                     <a
                       class="martlink"

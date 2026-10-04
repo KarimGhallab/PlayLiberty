@@ -87,6 +87,20 @@
      is not valid CSS at all, which is how the mistake was found. */
   --scrim: rgb(0 0 0 / 0.6);
 
+  /* The six sleeve hues. A playlist with no artwork draws one of these as its
+     cover, so a wall of placeholders stops being a wall of the same grey square.
+     All six sit at OKLCH L 0.34, C 0.055: one family of dark tinted sleeves, not
+     six accents and not six states. The arc runs teal to plum and skips the
+     accent's green and the amber and red the states own, so a sleeve is never
+     read as an action or a fault. The hue is identity and the playlist id picks
+     it, through sleeveIndex in @playliberty/ui-foundation. */
+  --sleeve-1: #08413e;
+  --sleeve-2: #0d3e4c;
+  --sleeve-3: #213a53;
+  --sleeve-4: #353453;
+  --sleeve-5: #432f4c;
+  --sleeve-6: #4c2c3e;
+
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;

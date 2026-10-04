@@ -386,6 +386,61 @@ body {
   );
 }
 
+/* The sleeve, and the reason a placeholder now carries a colour.
+ *
+ * coverUrl is nullable, and the null case used to be one anonymous hatch: a
+ * library without artwork was a wall of the same grey square. A playlist does
+ * carry an identity, so the placeholder carries one too, drawn from the six
+ * --sleeve-* tokens. The hue is derived from the playlist id by `sleeveIndex` in
+ * @playliberty/ui-foundation, and each value here names one token, so the
+ * specimen draws the same six values the client can. Only which sleeve is
+ * derived; every sleeve is a decided value at OKLCH L 0.34, C 0.055, dark enough
+ * that real artwork still leads and low-chroma enough to sit in the
+ * instrument-black world rather than reading as a second accent.
+ *
+ * The hatch is kept, now as the sleeve's sheen: --line over the identity hue, so
+ * an empty cover is still visibly a placeholder rather than a flat block of
+ * colour. It is scoped to a playlist's cover and its card square; a track's 40px
+ * thumbnail keeps the neutral .no-art treatment, because a track is not a
+ * playlist and has no identity of its own. The arc skips green (the accent's)
+ * and the amber and red the states own, so a sleeve can never be read as an
+ * action or a fault. */
+.cover[data-sleeve='1'],
+.mart[data-sleeve='1'] {
+  --sleeve: var(--sleeve-1);
+}
+.cover[data-sleeve='2'],
+.mart[data-sleeve='2'] {
+  --sleeve: var(--sleeve-2);
+}
+.cover[data-sleeve='3'],
+.mart[data-sleeve='3'] {
+  --sleeve: var(--sleeve-3);
+}
+.cover[data-sleeve='4'],
+.mart[data-sleeve='4'] {
+  --sleeve: var(--sleeve-4);
+}
+.cover[data-sleeve='5'],
+.mart[data-sleeve='5'] {
+  --sleeve: var(--sleeve-5);
+}
+.cover[data-sleeve='6'],
+.mart[data-sleeve='6'] {
+  --sleeve: var(--sleeve-6);
+}
+.cover.no-art[data-sleeve],
+.mart.no-art[data-sleeve] {
+  background-color: var(--sleeve, var(--surface-raised));
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent var(--hatch, 5px),
+    var(--line) var(--hatch, 5px),
+    var(--line) calc(var(--hatch, 5px) * 2)
+  );
+}
+
 /* Playing, on artwork.
  *
  * One strip, two sizes. It lives here rather than in either specimen because
@@ -783,6 +838,21 @@ body {
 .hdr .state.error,
 .mhdr .state.error {
   color: var(--tone-failed);
+}
+
+/* A playlist whose sync is not resting carries its tone on the cover's own edge,
+ * so a gallery can be read for the one that is syncing or broken without reading
+ * every line. The tone is read from the state element the header already draws,
+ * through :has(), rather than mirrored onto the root, so the word and the ring
+ * cannot disagree. A resting playlist keeps the neutral --line, because a tone is
+ * spent only on a fact that changed. */
+.hdr:has(.state.syncing) .cover,
+.mhdr:has(.state.syncing) .mart {
+  border-color: var(--emphasis);
+}
+.hdr:has(.state.error) .cover,
+.mhdr:has(.state.error) .mart {
+  border-color: var(--tone-failed);
 }
 @keyframes pl-breathe {
   0%,

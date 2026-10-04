@@ -31,15 +31,18 @@
   border-block-start: 1px solid var(--line);
 
   /*
-   * The third column: the volume control, held against the right edge and
-   * stretching the bar's full height so its hover rail can float above it.
+   * The third column: the volume control, held against the right edge and seated
+   * on the bar's foot, level with the seeker row. The column stretches the bar's
+   * full height so the control can sit at the bottom of it, but the control's own
+   * box is the button alone, which is what lets its rail open just above the
+   * button rather than above the bar.
    */
   &__volume {
     grid-column: 3;
     grid-row: 1 / -1;
     align-self: stretch;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
   }
 
   &__top {

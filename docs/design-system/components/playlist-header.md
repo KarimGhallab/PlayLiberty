@@ -22,17 +22,18 @@ below documents, because a decision that exists only as a comment in one stylesh
 
 ## The two arrangements
 
-|                         | the row, at 1056                     | the card, at 390                           |
-| ----------------------- | ------------------------------------ | ------------------------------------------ |
-| cover                   | 96px, `--radius-card`                | square, `--radius-card`, `aspect-ratio: 1` |
-| name                    | `--text-xl` 24px semibold, tight     | `--text-xl` 24px semibold, tight           |
-| count                   | number `--text-sm`, unit `--text-xs` | the same                                   |
-| sync line               | under the name, with the count       | under the name, with the count             |
-| actions                 | beside the identity block            | on the picture, over a scrim               |
-| the transport           | 136px, over the band while playing   | not drawn                                  |
-| the block's height      | **136px**, 137 after the first       | **468.8px** full-bleed, 436.8px inset      |
-| the cover's radius      | `--radius-card`                      | `--radius-card`                            |
-| the hatch with no cover | 12px                                 | 12px                                       |
+|                          | the row, at 1056                     | the card, at 390                           |
+| ------------------------ | ------------------------------------ | ------------------------------------------ |
+| cover                    | 96px, `--radius-card`                | square, `--radius-card`, `aspect-ratio: 1` |
+| name                     | `--text-xl` 24px semibold, tight     | `--text-xl` 24px semibold, tight           |
+| count                    | number `--text-sm`, unit `--text-xs` | the same                                   |
+| sync line                | under the name, with the count       | under the name, with the count             |
+| actions                  | beside the identity block            | on the picture, over a scrim               |
+| the transport            | 136px, over the band while playing   | not drawn                                  |
+| the block's height       | **136px**, 137 after the first       | **468.8px** full-bleed, 436.8px inset      |
+| the cover's radius       | `--radius-card`                      | `--radius-card`                            |
+| the hatch with no cover  | 12px                                 | 12px                                       |
+| the sleeve with no cover | one of six, from the playlist id     | the same                                   |
 
 The row arrangement has a consumer at 390 as well, and the two consumers disagree about one line and one
 target. [The playlist detail](../screens/playlist-detail.md) draws the row across the top of a 390 frame
@@ -137,6 +138,28 @@ open, and is now one decision about one box rather than two about two.
 The hatch is a number and not a derivation: the track row's 40px thumbnail uses 5px and this 96px cover 12px,
 which is the edge divided by eight, so four stripes cross either way. It sits on `.no-art` rather than
 `.cover`, because the hatch is the texture's period and a cover that has a cover has no texture.
+
+**A playlist with no artwork draws a sleeve, and the sleeve is what the hatch is a texture on.** `coverUrl`
+is nullable, and the null case used to be the anonymous grey hatch alone: a gallery without artwork was a
+wall of the same square. A playlist does carry an identity, so the placeholder carries one too, in one of six
+`--sleeve-*` tokens. The hue is not stored and not drawn at run time: `sleeveIndex` in
+`@playliberty/ui-foundation` hashes the playlist id to one of the six, so a playlist keeps its sleeve across
+reloads and on every client, and nothing has to persist, migrate or backfill a colour. A sleeve is identity
+and not state, and the six deliberately skip the accent's green and the amber and red the states own, so a
+sleeve is never read as an action or a fault. [The colour record](../colour.md) owns the six values.
+
+The hatch survives inside the sleeve as its sheen: `--line` over the identity hue rather than the two opaque
+surfaces, so an empty cover still reads as a placeholder rather than as a flat block of colour. The rule is
+`[data-art='no-art'][data-sleeve]`, scoped to a playlist's cover and its card square; a track's 40px
+thumbnail keeps the plain `.no-art`, because a track is not a playlist and has no identity of its own.
+
+**A playlist whose sync is not resting carries its tone on the cover's edge.** The state word already says
+what happened, but the item as an object read the same whether it was resting, syncing or broken, so a
+gallery of forty could only be scanned by reading every line. The cover's hairline takes the state tone
+(`--emphasis` syncing, `--tone-failed` failed) and the word keeps it, so the object says the state and the
+word names it. A resting playlist keeps the neutral `--line`, because a tone is spent only on a fact that
+changed, and the tone is read from the state element the header already draws, through `:has()`, rather than
+mirrored onto the root, so the ring and the word cannot disagree.
 
 The strip is on the row and not the card. It solves `7n - 4` against the artwork's content box: 40px gives 6
 bars, 96px gives 14, both exact, and check `2l` re-derives it. The card's square cover gives 51.4, and the
