@@ -43,6 +43,7 @@ export interface PlayerState extends PersistedPlayerState {
    * keeps the order the shuffle left because there is no original to restore.
    */
   readonly shuffle: boolean;
+  readonly muted: boolean;
   readonly hydrate: (state: PersistedPlayerState) => void;
   readonly startQueue: (
     playlistId: string,
@@ -80,6 +81,7 @@ export interface PlayerState extends PersistedPlayerState {
   readonly setPosition: (seconds: number) => void;
   readonly setPlaying: (playing: boolean) => void;
   readonly setVolume: (volume: number) => void;
+  readonly setMuted: (muted: boolean) => void;
   readonly clear: () => void;
 }
 

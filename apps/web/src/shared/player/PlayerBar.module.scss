@@ -19,7 +19,7 @@
   inset-inline: 0;
   z-index: var(--z-player);
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   grid-template-rows: auto auto;
   align-items: center;
   align-content: center;
@@ -29,6 +29,18 @@
   padding: var(--space-3) var(--space-4);
   background: var(--surface-raised);
   border-block-start: 1px solid var(--line);
+
+  /*
+   * The third column: the volume control, held against the right edge and
+   * stretching the bar's full height so its hover rail can float above it.
+   */
+  &__volume {
+    grid-column: 3;
+    grid-row: 1 / -1;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
 
   &__top {
     grid-column: 2;

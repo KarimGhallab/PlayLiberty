@@ -57,6 +57,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   seekTo: null,
   isPlaying: false,
   shuffle: false,
+  muted: false,
   hydrate: (state: PersistedPlayerState) =>
     set({
       queue: [...state.queue],
@@ -309,6 +310,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   setPosition: (seconds: number) => set({ positionSeconds: seconds }),
   setPlaying: (playing: boolean) => set({ isPlaying: playing }),
   setVolume: (volume: number) => set({ volume: clampVolume(volume) }),
+  setMuted: (muted: boolean) => set({ muted }),
   clear: () =>
     set({
       queue: [],
@@ -316,6 +318,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       positionSeconds: 0,
       seekTo: null,
       isPlaying: false,
-      shuffle: false
+      shuffle: false,
+      muted: false
     })
 }));

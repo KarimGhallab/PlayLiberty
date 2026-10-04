@@ -7,6 +7,7 @@ import { API_PREFIX } from '../api/client';
 import PlayGlyph from '../components/PlayGlyph';
 import { usePlayPauseMorph } from '../components/usePlayPauseMorph';
 import styles from './PlayerBar.module.scss';
+import VolumeControl from './VolumeControl';
 import { usePlayerStore } from './playerStore';
 
 /*
@@ -264,6 +265,9 @@ export default function PlayerBar() {
         <span className={styles.playerBar__time}>
           {formatDuration(duration)}
         </span>
+      </div>
+      <div className={styles.playerBar__volume}>
+        <VolumeControl />
       </div>
     </footer>
   );

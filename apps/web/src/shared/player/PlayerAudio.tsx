@@ -39,6 +39,7 @@ export default function PlayerAudio() {
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const seekTo = usePlayerStore(state => state.seekTo);
   const volume = usePlayerStore(state => state.volume);
+  const muted = usePlayerStore(state => state.muted);
   const setPosition = usePlayerStore(state => state.setPosition);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const clearSeek = usePlayerStore(state => state.clearSeek);
@@ -159,8 +160,9 @@ export default function PlayerAudio() {
       return;
     }
 
+    audio.muted = muted;
     audio.volume = volume;
-  }, [volume]);
+  }, [volume, muted]);
 
   /*
    * A seek request is applied once and cleared, which is how an immediate jump

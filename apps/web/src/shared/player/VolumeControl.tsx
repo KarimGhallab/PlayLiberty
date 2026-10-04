@@ -1,0 +1,169 @@
+import {
+  IconVolume,
+  IconVolume2,
+  IconVolume3,
+  IconVolume4
+} from '@tabler/icons-react';
+import { useEffect, useRef, useState } from 'react';
+
+import styles from './VolumeControl.module.scss';
+import { usePlayerStore } from './playerStore';
+
+/*
+ * The volume control, the player bar's rightmost item. A speaker button whose
+ * glyph reads the level, and a vertical rail that appears while the pointer is on
+ * it. It is the bar's one disclosure: the rail is 96px of vertical travel that
+ * would dwarf the 98px bar if it stood open, so it is shown on hover and gone the
+ * moment the pointer leaves.
+ *
+ * The button is a mute, not an open. A press silences the output and leaves the
+ * level alone, so unmuting returns to exactly where the listener had it; the rail
+ * is the only thing that changes the level by pointer. The four glyphs are the
+ * level read at a glance: the crossed speaker for silence, then a speaker with
+ * none, one and two arcs across the thirds.
+ *
+ * Up, Down and M are bound on the window rather than on the control, because a
+ * listener reaches for the volume without first finding it, and the bar is
+ * always on screen once something plays. A text field and a held modifier are the
+ * two places the keys are left alone. Up and Down change the level whether or not
+ * the output is muted, so a listener who mutes, adjusts, then unmutes lands where
+ * they set it.
+ */
+
+/** How much one press of Up/Down moves the volume. */
+const KEYBOARD_STEP = 0.1;
+
+/*
+ * The glyph, by the level and the mute bit. Mute wins over the level, so a
+ * silenced output always shows the crossed speaker whatever the level is, and the
+ * three loud glyphs split the level into thirds.
+ */
+function volumeIcon(volume: number, muted: boolean) {
+  if (muted || volume <= 0) {
+    return IconVolume3;
+  }
+
+  if (volume <= 0.33) {
+    return IconVolume4;
+  }
+
+  if (volume <= 0.66) {
+    return IconVolume2;
+  }
+
+  return IconVolume;
+}
+
+export default function VolumeControl() {
+  const volume = usePlayerStore(state => state.volume);
+  const muted = usePlayerStore(state => state.muted);
+  const setVolume = usePlayerStore(state => state.setVolume);
+  const setMuted = usePlayerStore(state => state.setMuted);
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target;
+
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.closest('input, textarea, select') !== null)
+      ) {
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      /* The store is read at press time rather than closed over, so a key never
+       * acts on a level the listener has already changed. */
+      const state = usePlayerStore.getState();
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setVolume(state.volume + KEYBOARD_STEP);
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setVolume(state.volume - KEYBOARD_STEP);
+        return;
+      }
+
+      if (event.key === 'm' || event.key === 'M') {
+        event.preventDefault();
+        setMuted(!state.muted);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [setVolume, setMuted]);
+
+  const Icon = volumeIcon(volume, muted);
+
+  return (
+    <div
+      ref={root}
+      className={styles.volume}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}>
+      {open ? (
+        <div className={styles.volume__panel}>
+          <div
+            className={styles.volume__track}
+            role="slider"
+            tabIndex={0}
+            aria-label="Volume"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(volume * 100)}
+            aria-orientation="vertical"
+            onKeyDown={event => {
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                setVolume(volume + KEYBOARD_STEP);
+              }
+
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.stopPropagation();
+                setVolume(volume - KEYBOARD_STEP);
+              }
+            }}>
+            <span
+              className={styles.volume__fill}
+              style={{ height: `${volume * 100}%` }}
+              data-muted={muted ? 'true' : undefined}
+            />
+            <span
+              className={styles.volume__knob}
+              style={{ bottom: `${volume * 100}%` }}
+            />
+          </div>
+          <span className={styles.volume__readout}>
+            {Math.round(volume * 100)}
+          </span>
+        </div>
+      ) : null}
+      <button
+        type="button"
+        className={styles.volume__button}
+        data-muted={muted ? 'true' : undefined}
+        aria-label={muted ? 'Unmute' : 'Mute'}
+        aria-pressed={muted}
+        onClick={() => setMuted(!muted)}>
+        <Icon
+          className={styles.volume__icon}
+          aria-hidden="true"
+          focusable="false"
+        />
+      </button>
+    </div>
+  );
+}
