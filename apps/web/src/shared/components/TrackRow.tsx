@@ -218,7 +218,9 @@ export default function TrackRow({
            * full text in `title`, so an untrusted, unbounded string cannot set
            * the row's geometry or overflow toward the duration column. */}
           {track.failureReason === null ? null : (
-            <span className={styles.trackRow__reason} title={track.failureReason}>
+            <span
+              className={styles.trackRow__reason}
+              title={track.failureReason}>
               {track.failureReason}
             </span>
           )}

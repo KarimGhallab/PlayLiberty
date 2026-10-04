@@ -1,5 +1,5 @@
-import { Link } from '@tanstack/react-router';
 import { IconArrowLeft } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 
 import styles from './PlaylistNotFound.module.scss';
 

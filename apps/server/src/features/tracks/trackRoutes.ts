@@ -163,6 +163,7 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === RetryTrackOutcome.Ok) {
+        context.kickDownloads();
         return reply.send(result.track);
       }
 

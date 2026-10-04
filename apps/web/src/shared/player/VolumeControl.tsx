@@ -31,7 +31,7 @@ import { usePlayerStore } from './playerStore';
  */
 
 /** How much one press of Up/Down moves the volume. */
-const KEYBOARD_STEP = 0.1;
+const KEYBOARD_STEP = 0.05;
 
 /*
  * The glyph, by the level and the mute bit. Mute wins over the level, so a
@@ -54,6 +54,22 @@ function volumeIcon(volume: number, muted: boolean) {
   return IconVolume;
 }
 
+/*
+ * Pointer capture keeps a drag alive when the pointer leaves the rail, which is
+ * the difference between a drag that survives an impatient hand and one that
+ * stops at the rail's edge. It is a nicety rather than the change itself, so a
+ * host that does not implement it loses the drag-outside behaviour and nothing
+ * else; jsdom is one such host, and an unguarded call would take the whole
+ * handler down with it.
+ */
+function capturePointer(element: HTMLElement, pointerId: number): void {
+  element.setPointerCapture?.(pointerId);
+}
+
+function releasePointer(element: HTMLElement, pointerId: number): void {
+  element.releasePointerCapture?.(pointerId);
+}
+
 export default function VolumeControl() {
   const volume = usePlayerStore(state => state.volume);
   const muted = usePlayerStore(state => state.muted);
@@ -61,6 +77,8 @@ export default function VolumeControl() {
   const setMuted = usePlayerStore(state => state.setMuted);
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const rail = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -106,6 +124,22 @@ export default function VolumeControl() {
 
   const Icon = volumeIcon(volume, muted);
 
+  /*
+   * The pointer's y against the rail's own box, as a level. The box is the truth
+   * and the store is not: the store's level is whatever the last interaction
+   * wrote, and the target is where the pointer is now. The rail fills upward, so
+   * the top of the box is full and the bottom is silent.
+   */
+  const volumeAt = (clientY: number): number => {
+    const box = rail.current?.getBoundingClientRect();
+
+    if (box === undefined || box.height === 0) {
+      return 0;
+    }
+
+    return Math.min(1, Math.max(0, (box.bottom - clientY) / box.height));
+  };
+
   return (
     <div
       ref={root}
@@ -116,6 +150,7 @@ export default function VolumeControl() {
         <div className={styles.volume__panel}>
           <div
             className={styles.volume__track}
+            ref={rail}
             role="slider"
             tabIndex={0}
             aria-label="Volume"
@@ -123,6 +158,20 @@ export default function VolumeControl() {
             aria-valuemax={100}
             aria-valuenow={Math.round(volume * 100)}
             aria-orientation="vertical"
+            onPointerDown={event => {
+              dragging.current = true;
+              capturePointer(event.currentTarget, event.pointerId);
+              setVolume(volumeAt(event.clientY));
+            }}
+            onPointerMove={event => {
+              if (dragging.current) {
+                setVolume(volumeAt(event.clientY));
+              }
+            }}
+            onPointerUp={event => {
+              dragging.current = false;
+              releasePointer(event.currentTarget, event.pointerId);
+            }}
             onKeyDown={event => {
               if (event.key === 'ArrowUp') {
                 event.preventDefault();

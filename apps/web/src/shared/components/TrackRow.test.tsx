@@ -212,7 +212,9 @@ describe('TrackRow', () => {
     expect(screen.getByText('Failed')).toBeInTheDocument();
     /* The raw sentence is secondary and bounded: present, but carrying its full
      * text as a title so it cannot set the row's geometry. */
-    const reason = screen.getByText('Download failed, will retry on the next sync');
+    const reason = screen.getByText(
+      'Download failed, will retry on the next sync'
+    );
     expect(reason).toHaveAttribute(
       'title',
       'Download failed, will retry on the next sync'

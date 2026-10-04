@@ -59,6 +59,20 @@
     border: 1px solid var(--control-border);
     border-radius: var(--radius-card);
     box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+
+    /* The panel floats a gap above the button, and without this bridge the
+     * pointer crosses empty space on its way up: the root's leave fires the
+     * moment it leaves the button, and the rail is gone before it is reached.
+     * The strip is the gap's own height and the panel's width, so the path from
+     * button to rail is continuous. */
+    &::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      height: var(--space-2);
+    }
   }
 
   /* 4px, not a hairline, and the difference is whether this is a control: a 2px
@@ -107,5 +121,14 @@
     color: var(--muted);
     font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
+
+    /* The widest value is reserved whatever the level, so the panel is one width
+     * and the rail's centre does not shift as the number changes. `100` is three
+     * glyphs and `0` is one, and without this the panel would be a size per level
+     * and grow on the way to full and shrink on the way to silent. The box holds
+     * the loudest case, which is the only one that cannot be narrower. */
+    display: block;
+    min-width: 3ch;
+    text-align: center;
   }
 }

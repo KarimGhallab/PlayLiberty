@@ -15,7 +15,7 @@ below is attributed to a width.
 | ----------------------- | --------------------------------------- | --------------------------------------- |
 | columns                 | two, 320px and 712px with a 24px gutter | one                                     |
 | the playlist's identity | the header's card, 320px, a 288px cover | the header's row, 388.4px, a 96px cover |
-| the way home            | a chevron and the word Playlists        | none, and the reason                    |
+| the way home            | a chevron and `Back to playlists`       | none, and the reason                    |
 | the player bar          | centred, 97px, drawn at rest            | flush, 97px                             |
 | the height budget       | a stated viewport, 803.8px of content   | 842.4 less a header less 97             |
 | a track row             | 64.8px                                  | 64.8px, and two are 76.1                |
@@ -99,9 +99,8 @@ Two corrections the implementation found in its own 1056 column. The content col
 `box-sizing: border-box` subtracts padding from a `max-width`, so `max-width: 1056px` beside a 16px viewport
 gutter left the column 1024 and the track list **680** against the design's 712. The max-width now carries
 the gutter, `calc(1056px + var(--space-4) * 2)`, and the list measures **712px**. And the way-home row is
-**75px** rather than the design's **58.9px**, because the link carries 8px of padding for a taller touch
-target than the design's 18.9px text link; the row's own `--space-5` now matches the design's and the header's
-`20px 0`, so the screen keeps one vertical rhythm.
+**75px**, because the link carries 8px of padding for a taller touch target than a bare text link; the row's
+own `--space-5` matches the header's `20px 0`, so the screen keeps one vertical rhythm.
 
 ## The columns, and the number under the left one
 
@@ -139,11 +138,18 @@ row says so with a shape on its own 40px tile in the list, where a reader scanni
 ## The way home
 
 A word and a chevron, both load-bearing: the word names the destination and the chevron says which
-direction. The link measures **76.45 by 18.9px** in a **58.9px** row. `chevron-left` went into the pin for
-this one control, one path `M15 6l-6 6l6 6` verbatim from `@tabler/icons` 3.48.0, centred on both axes and
-carrying no optical correction: there is no `PINNED_OPTICAL` entry for it, and that absence is the assertion.
+direction. The word is **`Back to playlists`**, and it is the implementation's own, not the drawn
+`Playlists`: the word alone was a small muted label that read as a section heading and was easy to miss, so
+the control is named as a way out and drawn in `--ink` at `--weight-medium` with no border and no fill, its
+colour turning to the accent only under the pointer. That keeps it quieter than the card below it while the
+label says what it does, which the muted word alone did not. The link carries 8px of padding for a taller
+touch target than a bare text link, in a **75px** row (`--space-5` of padding either side, matching the
+header's own `padding: 20px 0` so the screen keeps one vertical rhythm). `chevron-left` went into the pin for
+this one control, one path `M15 6l-6 6l6 6` verbatim from `@tabler/icons` 3.48.0, at `--icon-sm`, centred on
+both axes and carrying no optical correction: there is no `PINNED_OPTICAL` entry for it, and that absence is
+the assertion.
 It costs one row of fourteen: **11 whole rows** clear the 803.8px bar with the way home and **12** without,
-the twelfth row's bottom at 838.1px against 779.2px.
+the twelfth row's bottom at 854.1px against 779.2px.
 
 ## The states
 
@@ -177,10 +183,11 @@ centre, the seeker is **480px**, and the title has **375.2px** for the same 338.
 
 Every state-carrying row was checked against the track row's own specimen and matches it exactly: the same
 child order and classes inside `.sub`, the same state widths to the digit (`Downloading` 71.85px, `Pending`
-44.61px, `Failed` 33.31px, `Unavailable` 64.66px, `Removed, still here` 105.49px), the same 64.8px height,
-the same 28px play, and the row's own 3px `.dot` on the in-flight row and on no other. While a run is active
-the count reads 131 and climbs, tabular so the line does not shift, and the summary's kept figure reads 0,
-which means "not counted yet".
+44.61px, `Failed` 33.31px, `Unavailable` 64.66px), the same 64.8px height, the same 28px play, and the row's
+own 3px `.dot` on the in-flight row and on no other. The removed word is **`Removed from YouTube`**, which
+names the source and is the implementation's own; the drawing's `Removed, still here` is retired here for the
+same reason it is retired below. While a run is active the count reads 131 and climbs, tabular so the line
+does not shift, and the summary's kept figure reads 0, which means "not counted yet".
 
 The removed word names the source, whatever the file's status is: a removed source reads `Removed from
 YouTube`, whether its file is stored (and the row still plays) or has no file. The provider is part of the
@@ -244,8 +251,11 @@ against 60.01px for a five-figure figure and 47.4px for "removed".
 
 **The name is an anchor, and an anchor does not inherit:** the user agent's `a { color }` beat any inherited
 value, so the name drew in the browser's link colour and underlined. The fix is the library's own rule,
-`color: inherit` and `text-decoration: none`; the way home takes the underline and not the colour, because
-its colour is deliberately muted.
+`color: inherit` and `text-decoration: none`. The way home takes the same `text-decoration: none`, because a
+page whose playlist name and whose way home are both underlined is a page where every word with a destination
+is underlined and the two stop reading as different things; it carries `--ink` by default and the accent only
+under the pointer, which is the colour that makes its label read as a way out rather than as a section
+heading.
 
 ## The figures
 

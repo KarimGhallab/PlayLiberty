@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { eq, sql } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AddTrackOutcome,
@@ -476,8 +476,12 @@ describe('POST /tracks', () => {
 });
 
 describe('POST /tracks/:id/retry', () => {
-  it('returns a failed track to pending and clears its reason', async () => {
-    context = await createTestContext({}, { youtube: createFakeYoutube() });
+  it('returns a failed track to pending, clears its reason and wakes the worker', async () => {
+    const kick = vi.fn();
+    context = await createTestContext(
+      {},
+      { youtube: createFakeYoutube(), kickDownloads: kick }
+    );
     const owner = seedAccount();
     const playlistId = seedPlaylist(owner.accountId);
     const trackId = seedTrack(
@@ -494,6 +498,8 @@ describe('POST /tracks/:id/retry', () => {
     );
 
     expect(response.statusCode).toBe(200);
+    /* The re-queued track is downloaded now, not at the worker's next tick. */
+    expect(kick).toHaveBeenCalledTimes(1);
     const track = TrackSchema.parse(response.json());
     expect(track.fileStatus).toBe(TrackFileStatus.Pending);
     expect(track.failureReason).toBeNull();
@@ -551,7 +557,11 @@ describe('POST /tracks/:id/retry', () => {
     TrackFileStatus.Pending,
     TrackFileStatus.Downloading
   ])('refuses a %s track and leaves its state alone', async fileStatus => {
-    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const kick = vi.fn();
+    context = await createTestContext(
+      {},
+      { youtube: createFakeYoutube(), kickDownloads: kick }
+    );
     const owner = seedAccount();
     const playlistId = seedPlaylist(owner.accountId);
     const trackId = seedTrack(VIDEO_ID, fileStatus);
@@ -565,6 +575,7 @@ describe('POST /tracks/:id/retry', () => {
 
     expect(response.statusCode).toBe(409);
     expect(response.json()).toMatchObject({ code: 'track_not_retryable' });
+    expect(kick).not.toHaveBeenCalled();
     expect(
       database().db.select().from(tracks).where(eq(tracks.id, trackId)).get()
         ?.fileStatus

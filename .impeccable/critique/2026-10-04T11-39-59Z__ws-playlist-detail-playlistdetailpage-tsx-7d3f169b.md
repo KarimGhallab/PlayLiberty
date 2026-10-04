@@ -5,29 +5,30 @@ max_score: 36
 na_heuristics: 10
 p0_count: 0
 p1_count: 2
-target_identity: "file:/mnt/Fichier/Documents/Projets/PlayLiberty/apps/web/src/views/playlist-detail/PlaylistDetailPage.tsx"
-target_fingerprint: "sha256:314b75f11e6dd127e5afaa9173c607fce0e471c269c2e31970f0e902b47ed3a6"
+target_identity: 'file:/mnt/Fichier/Documents/Projets/PlayLiberty/apps/web/src/views/playlist-detail/PlaylistDetailPage.tsx'
+target_fingerprint: 'sha256:314b75f11e6dd127e5afaa9173c607fce0e471c269c2e31970f0e902b47ed3a6'
 target_path: /mnt/Fichier/Documents/Projets/PlayLiberty/apps/web/src/views/playlist-detail/PlaylistDetailPage.tsx
 timestamp: 2026-10-04T11-39-59Z
 slug: ws-playlist-detail-playlistdetailpage-tsx-7d3f169b
 ---
+
 Method: dual-agent (A: general/design-review · B: general/detector-evidence)
 
 ## Design Health Score
 
-| # | Heuristic | Score | Key Issue |
-|---|-----------|-------|-----------|
-| 1 | Visibility of System Status | 2 | Deferred delete announces "Deleted playlist" before commit; in-flight summary leaks "counted from the tracks this client holds" |
-| 2 | Match System / Real World | 2 | Retained track reads "Removed from YouTube"; raw server failure string rendered as row copy |
-| 3 | User Control and Freedom | 3 | Real undo window, but the pending delete is only cancellable from a low-salience toast |
-| 4 | Consistency and Standards | 3 | Name is a self-link here and a real link in the library; row menu opens up, header menu opens down |
-| 5 | Error Prevention | 2 | Delete is deferred, not confirmed; a second delete silently replaces the first |
-| 6 | Recognition Rather Than Recall | 2 | Row state carried by shape + tone; no positive mark for a retained track |
-| 7 | Flexibility and Efficiency | 3 | Keyboard play/seek/shuffle; no bulk retry, no reorder, no "show problems" filter |
-| 8 | Aesthetic and Minimalist Design | 3 | Calm and restrained; undercut by raw diagnostics in rows and a large dead zone below a short list |
-| 9 | Error Recovery | 2 | SyncError is excellent; the not-found route is a generic dead end with no cause or action |
-| 10 | Help and Documentation | n/a | Private household tool; the empty state's inline explanation is the right substitute |
-| **Total** | | **22/36** | **Acceptable (61%)** |
+| #         | Heuristic                       | Score     | Key Issue                                                                                                                       |
+| --------- | ------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1         | Visibility of System Status     | 2         | Deferred delete announces "Deleted playlist" before commit; in-flight summary leaks "counted from the tracks this client holds" |
+| 2         | Match System / Real World       | 2         | Retained track reads "Removed from YouTube"; raw server failure string rendered as row copy                                     |
+| 3         | User Control and Freedom        | 3         | Real undo window, but the pending delete is only cancellable from a low-salience toast                                          |
+| 4         | Consistency and Standards       | 3         | Name is a self-link here and a real link in the library; row menu opens up, header menu opens down                              |
+| 5         | Error Prevention                | 2         | Delete is deferred, not confirmed; a second delete silently replaces the first                                                  |
+| 6         | Recognition Rather Than Recall  | 2         | Row state carried by shape + tone; no positive mark for a retained track                                                        |
+| 7         | Flexibility and Efficiency      | 3         | Keyboard play/seek/shuffle; no bulk retry, no reorder, no "show problems" filter                                                |
+| 8         | Aesthetic and Minimalist Design | 3         | Calm and restrained; undercut by raw diagnostics in rows and a large dead zone below a short list                               |
+| 9         | Error Recovery                  | 2         | SyncError is excellent; the not-found route is a generic dead end with no cause or action                                       |
+| 10        | Help and Documentation          | n/a       | Private household tool; the empty state's inline explanation is the right substitute                                            |
+| **Total** |                                 | **22/36** | **Acceptable (61%)**                                                                                                            |
 
 ## Design Specificity Verdict
 
@@ -60,7 +61,7 @@ Fix: return `Removed, still here` for `stored/removed`; give `unavailable/remove
 Suggested command: `$impeccable clarify`
 
 **[P1] The failed row renders the raw server diagnostic as primary copy.**
-Where: `TrackRow.tsx:216-220` renders `track.failureReason` inline in `.sub`; live it read "Failed  The E2E fake was told to fail this download." `failureReason` is documented as "a non-null string with no length bound," inside a `flex-wrap: nowrap` sub-line.
+Where: `TrackRow.tsx:216-220` renders `track.failureReason` inline in `.sub`; live it read "Failed The E2E fake was told to fail this download." `failureReason` is documented as "a non-null string with no length bound," inside a `flex-wrap: nowrap` sub-line.
 Why it matters: in production this ranges from cryptic (`HTTP 403`) to misleading, and a long string overflows toward the duration column. The design's own answer (`SyncError`) was to collapse unbounded diagnostics; the row does the opposite. A screen reader reads the raw string verbatim.
 Fix: show the mapped word ("Failed") in the row; move the raw reason behind the row's overflow menu or cap it to one ellipsized line. Never render the server string as row copy.
 Suggested command: `$impeccable clarify`

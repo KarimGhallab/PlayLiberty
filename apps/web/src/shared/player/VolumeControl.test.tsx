@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import VolumeControl from './VolumeControl';
 import { usePlayerStore } from './playerStore';
@@ -46,11 +46,11 @@ describe('VolumeControl', () => {
     render(<VolumeControl />);
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
-    expect(usePlayerStore.getState().volume).toBeCloseTo(0.6);
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.55);
 
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.45);
   });
 
   it('changes the level without clearing the mute', () => {
@@ -60,7 +60,7 @@ describe('VolumeControl', () => {
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
 
-    expect(usePlayerStore.getState().volume).toBeCloseTo(0.6);
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.55);
     expect(usePlayerStore.getState().muted).toBe(true);
   });
 
@@ -89,6 +89,82 @@ describe('VolumeControl', () => {
 
     usePlayerStore.getState().setVolume(0);
     fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(usePlayerStore.getState().volume).toBe(0);
+  });
+
+  it('sets the level from where the pointer lands on the rail', () => {
+    render(<VolumeControl />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 100,
+      left: 0,
+      right: 4,
+      width: 4,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+
+    /* A quarter down from the top is three quarters loud. */
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: 25, pointerId: 1 });
+
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.75);
+  });
+
+  it('keeps the level moving while the pointer drags and stops on release', () => {
+    render(<VolumeControl />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 100,
+      left: 0,
+      right: 4,
+      width: 4,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: 10, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.9);
+
+    fireEvent.pointerMove(rail, { clientX: 2, clientY: 60, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
+
+    fireEvent.pointerUp(rail, { clientX: 2, clientY: 60, pointerId: 1 });
+
+    fireEvent.pointerMove(rail, { clientX: 2, clientY: 90, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
+  });
+
+  it('clamps a pointer beyond the rail to the ends', () => {
+    render(<VolumeControl />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 100,
+      left: 0,
+      right: 4,
+      width: 4,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: -40, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBe(1);
+
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: 140, pointerId: 1 });
     expect(usePlayerStore.getState().volume).toBe(0);
   });
 });
