@@ -23,21 +23,32 @@
   &__wayhome {
     display: flex;
     align-items: center;
-    padding: var(--space-5) 0;
+    padding: var(--space-3) 0;
   }
 
+  /* Type and an arrow, not a button. The link was easy to miss as a small muted
+   * label, and the fix is weight and ink rather than chrome: no border and no
+   * fill, so it stays quieter than the card below it while its label says what
+   * it does. The ink turns to the accent only under the pointer. */
   &__back {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--muted);
+    padding: var(--space-2) var(--space-2) var(--space-2) 0;
+    color: var(--ink);
     font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-normal);
     text-decoration: none;
     border-radius: var(--radius-control);
 
     &:hover {
-      color: var(--ink);
+      color: var(--accent);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
     }
   }
 

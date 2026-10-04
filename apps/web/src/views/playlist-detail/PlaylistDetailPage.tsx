@@ -202,7 +202,7 @@ export default function PlaylistDetailPage() {
             aria-hidden="true"
             focusable="false"
           />
-          Playlists
+          Back to playlists
         </Link>
       </nav>
 

@@ -47,6 +47,14 @@ beforeEach(() => {
 });
 
 describe('PlaylistDetailPage', () => {
+  it('offers a labelled way home', async () => {
+    renderDetail();
+
+    expect(
+      await screen.findByRole('link', { name: 'Back to playlists' })
+    ).toHaveAttribute('href', '/');
+  });
+
   it('lists the playlist tracks that are playable', async () => {
     renderDetail();
 
