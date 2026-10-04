@@ -165,8 +165,9 @@ The strip is on the row and not the card. It solves `7n - 4` against the artwork
 bars, 96px gives 14, both exact, and check `2l` re-derives it. The card's square cover gives 51.4, and the
 detail's 288px covers gives 34.57, so a comb at those counts is a texture rather than an equalizer; the row
 at 96px carries one, on the one item playing. Only one row ever carries it, because playback is per client
-and `data-state` is a single value, so at most one playlist is playing. It is also the only thing that says
-which playlist is playing now that every item has a play button.
+and `data-state` is a single value, so at most one playlist is playing. Which playlist is playing is what the strip is for, where a row draws a play: [the library's
+item](../screens/library.md) draws none, because there the item's whole surface is the door into the
+playlist, so the strip is not drawn on the gallery.
 
 ## The name line, and why the indicator is on it
 
@@ -201,7 +202,10 @@ the indicator hovered, satisfying WCAG 1.4.13's hoverable requirement structural
 `role="presentation"` and repeats the indicator's accessible name rather than adding to it. The library
 reveals it too, because a component whose markup differs from the component it is a size of is how the cover
 drifted in the first place. This block cannot answer Escape, which 1.4.13 also requires and which is the
-client's job, and on a card none of it fires because there is no hover.
+client's job, and on a card none of it fires because there is no hover. The indicator's own name is the state
+alone and not the playlist's: the mark is not a control and sits inside the same name block as the link, so a
+reader has the playlist in earshot when the state is announced, and naming the playlist there would say it
+twice on every row, the same reason the cover link is hidden.
 
 The three glyphs do not have equal ink: measured as a share of the 24 unit grid they are 24.39%, 25.83% and
 19.29%, and against the pin's own 5.43% to 28.43% spread the argument collapses, since `user-share` at 19.29%
@@ -248,7 +252,9 @@ that the playlist plays: a playlist of 300 with 290 still `pending` reads 300 an
 ## The actions, and what the library adds to them
 
 Play is the only door, so it is the only large control, and shuffle and the overflow sit beneath it because
-they are not doors. The transport appears only while something is playing and is absent rather than disabled
+they are not doors. The library's item takes the play away, because there the item's whole surface is the
+door that opens the playlist, so its actions column is the shuffle and the overflow alone. The transport
+appears only while something is playing and is absent rather than disabled
 when nothing is, because a paused playlist has no previous and no next to go to. [That
 record](header-transport.md) owns the steps, their targets and the width each arrangement costs the title.
 
@@ -263,10 +269,27 @@ playback state rather than playlist state, so forty `aria-pressed` toggles are m
 needs; dropping it and keeping it on the player bar and the detail header lost because the item is otherwise
 identical to the header and one exception is easier to notice than forty controls.
 
+**Each row's controls are named for their playlist.** Forty identical "Shuffle" and "More actions" labels in
+one list name nothing, so the shuffle is `Shuffle <name>` and the overflow is `More actions for <name>`. The
+overflow follows the menu button pattern: opening from a press focuses the first item, ArrowUp opens onto the
+last, the arrows and Home and End walk the items, Escape closes and returns focus to the button, and Tab
+closes the panel and moves on. The items are `tabindex="-1"` so the button is the one tab stop, which is what
+`aria-expanded` and `aria-haspopup` describe. The share indicator keeps the state alone as its name and not the
+playlist's: it is not a control and it sits inside the name line, so a reader has the name in earshot, and
+naming it too would repeat the playlist on every row, the reason the cover link is hidden.
+
 The card's menu opens upward and the row's downward. On the card the control is at the foot of the artwork,
 so a menu opening upward is inside the artwork and clips nothing. On the row it opens below the item, 170px
 of panel against a 137px item, so two open at once in a list would overlap; in the product opening one closes
 the others, which is why the library draws its three access levels on cards.
+
+**The row's quiet controls reach 44px on mobile, and only there.** The specimen's `.icon-btn` is 32px for a
+pointer; at 767px and below the icon buttons grow 6 a side into `--control-touch`, and the action row's gap
+widens from `--space-2` to `--space-3` so the two 44px targets meet exactly in the middle instead of
+contesting 4px of an 8px gap, the same arithmetic the transport gives. This closes the hole the specimen
+names and never filled: the `.icon-btn` comment promised the 44px target on mobile while the only rule that
+delivered it was `.step`'s, and the ticket's first pass grew the row's box on every pointer, which is a target
+the specimen argues against.
 
 **A playing card carries an emphasis hairline along its foot, and it is the only colour the card spends on
 being alive.** While the queue is on this playlist the card is the one item in the gallery that is playing,

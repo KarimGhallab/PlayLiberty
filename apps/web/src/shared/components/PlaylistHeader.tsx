@@ -12,7 +12,10 @@ import {
   IconUserShare
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent
+} from 'react';
 import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
@@ -178,6 +181,10 @@ export default function PlaylistHeader({
   const sleeve = sleeveIndex(playlist.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  /* Whether the next open should land on the last item (ArrowUp) or the first. */
+  const menuFocusLastRef = useRef(false);
   const { run, endRun } = usePlayPauseMorph(playing);
 
   const openFromClick =
@@ -194,8 +201,44 @@ export default function PlaylistHeader({
         };
 
   /*
+   * The enabled items of the open panel, read from the DOM on each use rather
+   * than captured: Sync stops while a run is in flight, so the wrap and the ends
+   * must count only what can be pressed now.
+   */
+  const enabledMenuItems = (): HTMLButtonElement[] => {
+    const menu = menuRef.current;
+
+    if (menu === null) {
+      return [];
+    }
+
+    return Array.from(
+      menu.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not([disabled])'
+      )
+    );
+  };
+
+  const focusMenuItem = (index: number): void => {
+    const items = enabledMenuItems();
+
+    if (items.length === 0) {
+      return;
+    }
+
+    const wrapped = ((index % items.length) + items.length) % items.length;
+    items[wrapped]?.focus();
+  };
+
+  const closeMenu = (): void => {
+    setMenuOpen(false);
+    menuButtonRef.current?.focus();
+  };
+
+  /*
    * The menu closes on a press outside it and on Escape, which is the whole
-   * behaviour of a menu button that opens onto a small set of items. A press
+   * behaviour of a menu button that opens onto a small set of items. Escape hands
+   * focus back to the button, so the keyboard never lands on nothing. A press
    * inside is left alone so an item's own handler can run.
    */
   useEffect(() => {
@@ -210,7 +253,7 @@ export default function PlaylistHeader({
     };
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        setMenuOpen(false);
+        closeMenu();
       }
     };
 
@@ -222,6 +265,58 @@ export default function PlaylistHeader({
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [menuOpen]);
+
+  /*
+   * Opening moves focus onto an item, which is where a menu button leaves it and
+   * what `role="menu"` promises; ArrowUp on the button opens onto the last item
+   * and every other way opens onto the first. The arrows, Home and End walk the
+   * panel and Tab leaves it. The handler is on the panel, so it answers only keys
+   * that arrive while the menu owns focus.
+   */
+  useEffect(() => {
+    if (menuOpen) {
+      focusMenuItem(
+        menuFocusLastRef.current ? enabledMenuItems().length - 1 : 0
+      );
+    }
+  }, [menuOpen]);
+
+  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    const items = enabledMenuItems();
+    const activeIndex = items.findIndex(
+      item => item === document.activeElement
+    );
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusMenuItem(activeIndex + 1);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusMenuItem(activeIndex - 1);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      focusMenuItem(0);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      focusMenuItem(items.length - 1);
+      return;
+    }
+
+    /* Tab closes the panel and lets the browser walk on from the button focus is
+     * returned to, which is the menu button's own tab stop. */
+    if (event.key === 'Tab') {
+      closeMenu();
+    }
+  };
 
   /*
    * The overflow's items, by access. A read collaborator gets no overflow at
@@ -360,7 +455,7 @@ export default function PlaylistHeader({
         type="button"
         className={styles.playlistHeader__iconBtn}
         aria-pressed={shuffled}
-        aria-label="Shuffle"
+        aria-label={`Shuffle ${playlist.name}`}
         onClick={onShuffle}>
         <IconArrowsShuffle
           className={styles.playlistHeader__icon}
@@ -374,12 +469,23 @@ export default function PlaylistHeader({
     menuItems.length === 0 ? null : (
       <span className={styles.playlistHeader__menuAnchor} ref={menuAnchorRef}>
         <button
+          ref={menuButtonRef}
           type="button"
           className={styles.playlistHeader__iconBtn}
-          aria-label="More actions"
+          aria-label={`More actions for ${playlist.name}`}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          onClick={() => setMenuOpen(open => !open)}>
+          onClick={() => {
+            menuFocusLastRef.current = false;
+            setMenuOpen(open => !open);
+          }}
+          onKeyDown={event => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              menuFocusLastRef.current = event.key === 'ArrowUp';
+              setMenuOpen(true);
+            }
+          }}>
           <IconDots
             className={styles.playlistHeader__icon}
             aria-hidden="true"
@@ -387,20 +493,25 @@ export default function PlaylistHeader({
           />
         </button>
         {menuOpen ? (
-          <div className={styles.playlistHeader__menu} role="menu">
+          <div
+            className={styles.playlistHeader__menu}
+            role="menu"
+            ref={menuRef}
+            onKeyDown={onMenuKeyDown}>
             {menuItems.map((item, index) => (
               <Fragment key={item.key}>
                 {item.destructive === true && index > 0 ? <hr /> : null}
                 <button
                   type="button"
                   role="menuitem"
+                  tabIndex={-1}
                   className={styles.playlistHeader__menuItem}
                   data-destructive={
                     item.destructive === true ? 'true' : undefined
                   }
                   disabled={item.key === 'sync' && syncing}
                   onClick={() => {
-                    setMenuOpen(false);
+                    closeMenu();
                     item.onSelect();
                   }}>
                   <item.Icon
@@ -420,13 +531,19 @@ export default function PlaylistHeader({
   const identity = (
     <>
       <div className={styles.playlistHeader__name}>
+        {/* The line truncates to fit its column, so the full name rides in
+         * `title`: a name cut by the gallery's own width must still be
+         * recoverable without opening the playlist. */}
         {heading ? (
-          <h1 className={styles.playlistHeader__nameText}>{playlist.name}</h1>
+          <h1 className={styles.playlistHeader__nameText} title={playlist.name}>
+            {playlist.name}
+          </h1>
         ) : (
           <Link
             to="/playlists/$playlistId"
             params={{ playlistId: playlist.id }}
-            className={styles.playlistHeader__nameText}>
+            className={styles.playlistHeader__nameText}
+            title={playlist.name}>
             {playlist.name}
           </Link>
         )}
@@ -435,6 +552,13 @@ export default function PlaylistHeader({
           data-share={mark.state}
           role="img"
           aria-label={mark.label}>
+          {/*
+           * The indicator is not a control and it sits inside the same name block
+           * as the link, so its state is read with the playlist name already in
+           * earshot. Naming the playlist here too would announce it twice on every
+           * row, the same reason the cover link is hidden; the state is the whole
+           * of what the mark adds, so the name stays out.
+           */}
           <mark.Icon
             className={styles.playlistHeader__shareIcon}
             aria-hidden="true"

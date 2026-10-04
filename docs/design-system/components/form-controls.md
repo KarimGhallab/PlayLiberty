@@ -95,7 +95,8 @@ the look, since the alternative is no focus indicator at all, which fails WCAG 2
 Three smaller rules that fall out of the same reasoning. A checked box is filled with the accent rather
 than the ink, because the accent is the colour this system already means "you can act on this", and the
 near-black mark on it is 5.85:1. An invalid input does not turn its text red: the text stays ink so it
-can be read and corrected, and the red goes on the border and on a message that says what to do about it.
+can be read and corrected, and the red goes on the border and on a message that says what to do about it,
+at `--weight-medium` so the complaint is not quieter than the field it corrects.
 And the scrim is one colour, `--scrim`, rather than a black plus an alpha, because a composable opacity
 would let a consumer invent a scrim nobody decided on, and a bare `0.6` cannot be read on its own in the
 token file.

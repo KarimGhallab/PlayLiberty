@@ -24,10 +24,15 @@ says what a person is about to do and what they will have afterwards, which is t
 
 **The invalid message names the host rather than the syntax.** The only place in the product a URL is
 refused is here, and the commonest wrong answer is a perfectly good URL from the wrong site, so
-"That is not a YouTube link. Paste one from youtube.com." says more than "invalid URL". The red goes
+"Paste a YouTube playlist link, such as https://youtube.com/playlist?list=..." says more than "invalid URL". The client's schema
+refusal and the server's `invalid_request` detail carry this one sentence alike, so the slot reads the same
+whichever layer said no. The red goes
 on the border and on that message and **not** on the text, which stays `--ink` so it is still readable
-while being corrected. The message is one line at 390 and the dialog grows **24.2px** to take it: a
-16.2px line and one `--space-2` gap.
+while being corrected. **The message is `--weight-medium` at `--text-xs`**, the label's size and one step
+above the body's regular, because a complaint the eye skims past is a complaint the field did not make; the
+weight does not change the line. The 76-character sentence wraps inside the 400px card, so the message is
+**two lines at 350px** and the dialog grows **40.4px** to take it: two 16.2px lines and one `--space-2` gap,
+for an invalid dialog of **296px** against the resting **255.6px**.
 
 **The working state is a spinner and a changed label, and it costs 43.36px of button.** `Add` becomes
 `Adding` and gains a 16px spinner and an 8px gap, so the button goes from **67.43px to 110.79px**. That
@@ -95,6 +100,15 @@ The border is the focus indicator, shifting from `--control-border` to `--accent
 the input's own fill at 5.85:1 against the unfocused 4.07:1. It is a weaker signal than a 2px offset
 ring and the record calls it a deliberate trade for the look; the alternative was no focus indicator
 at all, which would fail WCAG 2.4.7.
+
+## The dialog holds focus, and that is the shell's rule
+
+The shared `Dialog` is the one place the modal's keyboard is decided, so this add dialog gets it for free.
+Focus moves onto the field on open (the caller's `initialFocus`, else the first focusable, else the
+container), Tab and Shift+Tab cycle inside the dialog instead of walking the library behind the scrim,
+Escape and the scrim close it, and closing returns focus to the control that opened it. The container is
+`tabindex="-1"` so a dialog with nothing focusable still holds focus, and it carries no ring because it is
+not a control. The title is an `h2`, the level the library's `h1` leaves open.
 
 ## Not this
 

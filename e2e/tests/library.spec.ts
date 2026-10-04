@@ -69,7 +69,7 @@ test('a refused create shows the server problem beside the field', async ({
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
   await expect(page.getByRole('alert')).toContainText(
-    'The URL is not a YouTube playlist or video URL.'
+    'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
   );
   await expect(page.getByRole('dialog')).toBeVisible();
 });

@@ -6,10 +6,10 @@ The route a user lands on, and the only entry point to content. A header and a l
 
 ## Two arrangements, and the width every number came from
 
-Web is `/` at **1056** and mobile is the app root at **390**. One record carries both rather than two records
-with a variant between them, because the token layer is one value set consumed by two runtimes and
-splitting a screen by client would contradict it. Every figure names its width, so a reader who reads only
-the web half can tell it is half.
+Two clients, one record: the **web client** is `/` at **1056**, the **mobile client** is the app root at
+**390**. One record carries both rather than two records with a variant between them, because the token
+layer is one value set consumed by two runtimes and splitting a screen by client would contradict it. Every
+figure names its width, so a reader who reads only the web half can tell it is half.
 
 1056 is the content column this file's own specimen frame produces at its maximum width: `1120px` less
 `--space-7` either side. It is not the empty-state record's **1014**, which is 1056 one step further in,
@@ -22,6 +22,16 @@ item is 136px on web and a card is **172.2px** wide in a two-column grid on mobi
 exists only on mobile; and the arriving player bar costs both arrangements the same 97px. What does not
 differ is the component: an item is [the playlist header](../components/playlist-header.md) in both, at the
 arrangements that record owns.
+
+### Which client owns the narrow width
+
+The **390 arrangements are the mobile client's** and not the web page's: the two-column card grid, the
+floating add button, the full-width sheet and the signed-out state below are the Expo app's idioms, and a
+browser that happens to be 390 wide is not that client. The **web client is the row at every width it is
+served at.** Below its 1056 column the row keeps its arrangement and narrows with the content column: the
+name truncates and is recoverable through its `title`, and at the components' `max-width: 767px` breakpoint
+the quiet controls grow to the 44px target a touchscreen is owed. The web client draws no grid, no floating
+button and no sheet, because those are the other client's idiom rather than a smaller version of this one.
 
 ## The item is the playlist header, and the mobile list is a grid
 
@@ -55,8 +65,8 @@ The band holds one control and it is the same control in both states: the header
 pause when this is the playing playlist. Nothing moves when it starts: the band keeps its 16px padding, the
 play stays at the same x, and no equalizer strip is drawn on a card. A playing card differs by a glyph, a
 label and the accent colour of that glyph, so **the pause glyph is the only signal of what is playing, 48px
-of button on a gallery of six**; on web the item also carries the strip, so there the state is legible without
-a press.
+of button on a gallery of six**. On web the item is a door and not a play, so the gallery does not mark the
+playing playlist at all: the pause and the strip are the card arrangement's, where the band holds the play.
 
 The card drops or moves five things, all of them this screen's decisions declared here rather than in
 `specimen.css`:
@@ -140,7 +150,7 @@ not the card's. Every item carries a share indicator, because `access` is on eve
 
 ## The links
 
-An item cannot be a link: it holds a play button, a shuffle and an overflow, and a button inside an anchor
+An item cannot be a link: it holds a shuffle and an overflow, and a button inside an anchor
 is invalid HTML. The cover and the name are both links to the playlist, which a gallery of destinations needs,
 because the alternative leaves a 356.4px square that does nothing when tapped. The cover's link carries
 `aria-hidden="true"` and `tabindex="-1"`, so a screen reader announces one link per item rather than two,
@@ -168,6 +178,12 @@ moves: no box, no radius and no height, only the surface, and the dividers stay 
 The surface eases in at `--motion-fast` rather than snapping, so running the pointer down a list reads as one
 surface following it rather than a flicker, and reduced motion drops the duration to zero.
 
+**The list is opened by the page header and closed by one hairline.** A separator between two items is the
+header's own `.hdr + .hdr`, so the first row has no rule above it: the page's own header names the screen and
+holds the add control, and a second rule there would be a second opening. Nothing follows the last row, so the
+list draws one closing hairline under it, and the gallery reads as ended rather than as a row running into the
+page's own ground.
+
 ## A no-artwork item is a sleeve, and a non-resting one wears its tone on the cover
 
 An item's cover is the header's, and the header's null case now draws the playlist's identity rather than
@@ -183,6 +199,13 @@ state had to be readable from the object and not only from a 12px line inside it
 hairline. It is the same tone as the state word, read from the same element, so the two can never disagree.
 The cost is that a broken row now says so in two places, which is accepted because a fault is exactly the
 fact worth saying twice.
+
+**The dot is not a third place.** The critique counted the dot, the word and the hairline as three statements
+of one fault, where this record defends two. The dot is not a third: it is the sync line's own mark in every
+state, the same seven pixels whether the word reads "Up to date", "Syncing" or "Sync failed", and only its
+colour moves with the state. Stripping it to quiet one row would take the line's mark from all forty. So the
+fault is the word and the hairline, which is the two the record already chose: the line names it and the
+object carries it.
 
 ## The three overflows, and what `access` decides
 
@@ -201,19 +224,24 @@ Forty items means forty `aria-pressed` shuffle toggles for one player's shuffle,
 of playback rather than of a playlist. Dropping it from the item and keeping it on the player bar and the
 detail screen's header was the alternative, and it lost because the item is otherwise identical to the
 header and one exception is easier to notice than forty controls. The cost is named rather than paid
-quietly.
+quietly. Each toggle is named for its playlist, `Shuffle <name>`, so the forty are distinguishable; the
+component record owns the naming rule and the touch target that goes with it.
 
 ## What the item deliberately does not carry
 
 A shared item names its owner, and an owned item carries no such line. The line is `Shared by <name>`,
 resolved from the playlist's `ownerAccountId` through the account directory that [`05-share-a-playlist`](../../tracker/specs/05-share-a-playlist.md) built; the earlier state this record was written in, where nothing could supply the name, is retired by that directory existing. On the account's own playlist `access` is `owner`, which already says the item is theirs, so the line is omitted there and never a "shared by yourself". When the directory does not carry the owner, the item keeps the indicator alone rather than a placeholder name, because a placeholder in a specimen is read as a decision. The line is its own row under the sync line rather than a third fact on the meta line, which at 390 already drops the time.
 
+The play. An item is a door and not a play: a playlist is started from its own screen, and the item's whole
+surface is the press that opens it, so the actions column is the shuffle and the overflow and no play.
+Nothing on the gallery then says which playlist is playing, and that is the deliberate cost: the pause and
+the equalizer strip belong to the card arrangement, where the band holds the play, and the strip's 14 bars
+need a 96px cover a card's square cannot give it.
+
 The item carries the sync state, because the sync line is the header's and this screen draws headers. The
 earlier decision to withhold it, so a failed playlist stayed invisible until somebody opened it, was a
 decision about a component this screen does not own, and the cost is now paid for in `--tone-failed` on
-every row. The equalizer strip is on the one playing item and no other: playback is per client and
-`data-state` is a single value, so at most one playlist is playing, and a card's square cover gives 51.4
-bars and cannot carry the strip's 14.
+every row.
 
 There is no search, no sort, no filter and no pagination. Search is a permanent non-goal in the glossary and
 the page size is `PageQuerySchema`'s default of 50, which is the API's business, so a gallery of more than 50
@@ -230,6 +258,18 @@ the ink is 1.36 times the cap height beside it, at `--icon-sm` it is 1.09, which
 already use. There is no playlist count in the header, because a count of playlists is a standing total
 rather than a fact about a row. "Add a playlist" appears twice on the empty screen, once in the header and
 once on the gallery, and the two never coexist with a list.
+
+## The loading state is the list's shape
+
+Before the first playlist arrives the page draws the list it is about to hold rather than a sentence about
+waiting. **Five rows of the item's own 136px**, each a 96px cover box and the two lines the header draws,
+**16px** of name bar and **12px** of sync line, so the read resolves into the space the skeleton held and
+nothing on the page moves when it lands. Five because that is what fills the 1056 column's first screen, and
+the geometry is the item's, so the skeleton is the list's shape rather than a second thing to keep in step.
+The shapes hold `--surface` on `--bg`, the step the track list's own surface takes, and they pulse once over
+**1.6s**; reduced motion drops the pulse and leaves the shape, and the shape is the part that matters. The
+shapes are `aria-hidden` and the only thing a screen reader hears is the status sentence "Loading playlists.",
+which is why the sentence is still on the page and off screen rather than gone.
 
 ## The empty gallery
 
@@ -253,6 +293,12 @@ There is no bar at rest. The bar appears the moment a track starts and takes **9
 bar's bottom border is against the screen edge. That record said the bar is persistent and answered with a
 bar holding an empty identity and a disabled play; it is corrected in place, because the landing screen is
 where a bar with nothing in it costs the most.
+
+**The page pays for the bar at its own end.** The list is an overlay under a docked bar, so the page carries
+the bar's **97px** in its bottom padding plus the **20px** it keeps under its last row, the same step the
+header uses above the list. The earlier **88px**, which was `--space-9` plus `--space-8`, was a breathing
+room and not a clearance: it left the last row **9px** behind the bar at full scroll. The playlist detail
+docks the same bar and carries the same clearance.
 
 What the arrival costs is named rather than argued. On mobile the content area is **788px** at rest and
 **691px** with the bar docked, so the bar costs two of the six cards the person could see, four surviving.
@@ -284,12 +330,12 @@ a button could only open a flow no ticket, contract or ADR has decided.
 | cover                        | 96px                            | 140.2px, square                   |
 | name                         | `--text-xl` semibold            | `--text-lg` 20px semibold         |
 | the name's column, at rest   | 848px                           | 112.2px of text                   |
-| the name's column, playing   | 784px                           | 112.2px, unchanged                |
+| the name's column, playing   | not drawn                       | 112.2px, unchanged                |
 | the share indicator          | 20px, beside the name           | 20px, at the row's right edge     |
 | actions column, at rest      | 72px                            | not used: the band is the picture |
 | on the picture, at rest      | not used                        | the play, 48px of 108.2           |
 | on the picture, playing      | not used                        | the pause, the same 48px          |
-| the transport                | 136px                           | not drawn                         |
+| the transport                | not drawn                       | not drawn                         |
 | the top left of the picture  | not used                        | the shuffle, 32px, inset 24px     |
 | the two controls' centre     | not used                        | one axis, 40.8px from the left    |
 | below the cover              | not used                        | not drawn: no overflow on a card  |
@@ -324,13 +370,14 @@ at 5.85:1, and the row's focus ring is `--accent` at 5.85:1 on `--bg`. The rows 
 object.
 
 **Truncation is on both arrangements, and the grid made mobile far worse.** At `--text-xl` the sixth item's
-78-character probe name measures **923px** against a column of 848px at rest and 784px while playing, so it
-is cut on web in both states. On a card in the grid the name row is **140.2px**, of which the share
+78-character probe name measures **923px** against a column of 848px, so it
+is cut on web. On a card in the grid the name row is **140.2px**, of which the share
 indicator takes **20px** and the row's own `--space-2` gap takes 8px, leaving **112.2px** of text: some
 **ten characters** at `--text-lg`, where one card per row fitted 27. Measured across the six fixtures,
 **four of the six names are cut**. No type step recovers more than three characters: `--text-lg` gives ten
 where `--text-xl` gave eight, and `--text-sm` would give about 13. That is what six cards above the fold
-instead of one is being paid for.
+instead of one is being paid for. The full name is not lost to the cut: it rides in the name element's
+`title`, so a truncated line is recoverable by pointer without opening the playlist.
 
 ## What is not drawn
 

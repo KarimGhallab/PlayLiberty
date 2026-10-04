@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -24,11 +25,7 @@ import PlaylistHeader from './PlaylistHeader';
  * way they do in the app. The route is a throwaway `/playlists/$playlistId` with
  * a stub component, because nothing here asserts what the destination draws.
  */
-function renderHeader(
-  playlist: Playlist,
-  ownerName: string | null = null,
-  props: Partial<Parameters<typeof PlaylistHeader>[0]> = {}
-) {
+function renderInRouter(element: ReactNode) {
   const rootRoute = createRootRoute();
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -38,9 +35,7 @@ function renderHeader(
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => (
-      <PlaylistHeader playlist={playlist} ownerName={ownerName} {...props} />
-    )
+    component: () => element
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, detailRoute]),
@@ -52,6 +47,16 @@ function renderHeader(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>
+  );
+}
+
+function renderHeader(
+  playlist: Playlist,
+  ownerName: string | null = null,
+  props: Partial<Parameters<typeof PlaylistHeader>[0]> = {}
+) {
+  return renderInRouter(
+    <PlaylistHeader playlist={playlist} ownerName={ownerName} {...props} />
   );
 }
 
@@ -121,6 +126,26 @@ describe('PlaylistHeader', () => {
     ).toBeInTheDocument();
     /* The route is the page it is on, so the self-link is gone. */
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('carries the full name when the line is cut to fit its column', async () => {
+    const name =
+      'A playlist name long enough that the gallery column cannot show it in one line';
+    renderHeader(playlist({ name }));
+
+    const link = await screen.findByRole('link', { name });
+
+    expect(link).toHaveAttribute('title', name);
+  });
+
+  it('carries the full name on the heading arrangement too', async () => {
+    const name =
+      'Another playlist name too long for the detail column it is drawn in';
+    renderHeader(playlist({ name }), null, { heading: true });
+
+    const heading = await screen.findByRole('heading', { name });
+
+    expect(heading).toHaveAttribute('title', name);
   });
 
   it('names a private owned playlist', async () => {
@@ -231,9 +256,51 @@ describe('PlaylistHeader', () => {
     fireEvent.click(screen.getByText('Up to date'));
     expect(onOpen).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Shuffle' }));
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('ties each row control to its own playlist', async () => {
+    renderInRouter(
+      <>
+        <PlaylistHeader
+          playlist={playlist({ id: 'playlist-a', name: 'Rain On The Window' })}
+          onShuffle={() => undefined}
+          onSync={() => undefined}
+        />
+        <PlaylistHeader
+          playlist={playlist({ id: 'playlist-b', name: 'A Second Playlist' })}
+          onShuffle={() => undefined}
+          onSync={() => undefined}
+        />
+      </>
+    );
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Shuffle Rain On The Window'
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Shuffle A Second Playlist' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'More actions for A Second Playlist'
+      })
+    ).toBeInTheDocument();
   });
 
   it('disables the next step when the queue has no next track', async () => {
@@ -282,9 +349,11 @@ describe('PlaylistHeader', () => {
       onSync: () => undefined
     });
 
-    const shuffle = await screen.findByRole('button', { name: 'Shuffle' });
+    const shuffle = await screen.findByRole('button', {
+      name: 'Shuffle Rain On The Window'
+    });
     const menuAnchor = screen.getByRole('button', {
-      name: 'More actions'
+      name: 'More actions for Rain On The Window'
     }).parentElement;
     const group = shuffle.parentElement;
 

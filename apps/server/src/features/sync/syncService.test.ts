@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { SyncRun } from '@playliberty/contracts';
 import {
   AssociationOrigin,
   PlaylistSchema,
@@ -18,7 +19,6 @@ import {
   UserRole,
   createPageSchema
 } from '@playliberty/contracts';
-import type { SyncRun } from '@playliberty/contracts';
 import type {
   DownloadTrackRequest,
   DownloadTrackResult,
@@ -26,8 +26,8 @@ import type {
   YoutubeSource
 } from '@playliberty/youtube';
 
-import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
+import { createTestContext } from '../../app/testing/createTestContext.js';
 import {
   TEST_SOURCE_ID,
   testEntry as entry,
@@ -349,7 +349,11 @@ describe('POST /playlists', () => {
     const response = await post('https://example.com/not-youtube', 'owner-1');
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+    expect(response.json()).toMatchObject({
+      code: 'invalid_request',
+      detail:
+        'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
+    });
   });
 
   it('refuses a mutation without the client header', async () => {

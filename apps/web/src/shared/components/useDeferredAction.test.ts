@@ -58,4 +58,61 @@ describe('useDeferredAction', () => {
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
   });
+
+  it('reports the action a window displaced, and clears it when the window ends', () => {
+    vi.useFakeTimers();
+    const first = vi.fn();
+    const second = vi.fn();
+    const { result } = renderHook(() => useDeferredAction(1000));
+
+    act(() =>
+      result.current.defer({
+        message: 'Deleting playlist',
+        detail: 'A',
+        commit: first
+      })
+    );
+    const firstWindow = result.current.windowId;
+    expect(result.current.replaced).toBeNull();
+
+    act(() =>
+      result.current.defer({
+        message: 'Deleting playlist',
+        detail: 'B',
+        commit: second
+      })
+    );
+
+    expect(result.current.replaced?.detail).toBe('A');
+    expect(result.current.pending?.detail).toBe('B');
+    expect(result.current.windowId).toBeGreaterThan(firstWindow);
+
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(result.current.replaced).toBeNull();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads a repeated press of the same action as one intent', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useDeferredAction(1000));
+
+    act(() =>
+      result.current.defer({
+        message: 'Deleting playlist',
+        detail: 'A',
+        commit: vi.fn()
+      })
+    );
+    act(() =>
+      result.current.defer({
+        message: 'Deleting playlist',
+        detail: 'A',
+        commit: vi.fn()
+      })
+    );
+
+    expect(result.current.replaced).toBeNull();
+  });
 });

@@ -186,6 +186,7 @@
       }
       .message {
         font-size: var(--text-xs);
+        font-weight: var(--weight-medium);
         line-height: var(--leading-normal);
       }
       .field.invalid .message {
@@ -386,7 +387,8 @@
                     aria-invalid="true"
                     aria-describedby="bad-msg" />
                   <span class="message" id="bad-msg" role="alert">
-                    That is not a YouTube link. Paste one from youtube.com.
+                    Paste a YouTube playlist link, such as
+                    https://youtube.com/playlist?list=...
                   </span>
                 </div>
                 <div class="dlg__actions">

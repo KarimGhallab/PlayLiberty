@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import styles from './Dialog.module.scss';
@@ -49,6 +49,29 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/*
+ * What a Tab press can land on inside the dialog. A stopped control is not a
+ * stop, a hidden input is not tabbable, and `[tabindex="-1"]` is dropped because
+ * those are focused programmatically rather than tabbed to, which is how the
+ * dialog's own container stays out of its own cycle.
+ */
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(', ');
+
+function focusablesWithin(root: HTMLElement | null): HTMLElement[] {
+  if (root === null) {
+    return [];
+  }
+
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+}
+
 interface DialogProps {
   readonly open: boolean;
   readonly title: string;
@@ -75,6 +98,7 @@ export default function Dialog({
 }: DialogProps) {
   const headId = useId();
   const bodyId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -113,18 +137,41 @@ export default function Dialog({
 
   /*
    * Focus runs when the node actually mounts, not when `open` flips, because the
-   * first render with `open` true returns null until `mounted` catches up. Focus
-   * is restored by the unmount, which returns it to whichever control opened it.
+   * first render with `open` true returns null until `mounted` catches up. The
+   * element focused at that moment is the opener, read before the move because the
+   * unmount does not do that by itself: removing a focused node hands focus to
+   * `<body>`, so the return trip has to be explicit. The target is the caller's
+   * field when it gave one, otherwise the first thing this dialog can be typed or
+   * pressed in, otherwise the container, which carries `tabindex="-1"` so a dialog
+   * with nothing focusable still has somewhere to hold focus.
    */
   useEffect(() => {
-    if (mounted) {
-      initialFocus?.current?.focus();
+    if (!mounted) {
+      return;
     }
+
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const dialog = dialogRef.current;
+    const target =
+      initialFocus?.current ?? focusablesWithin(dialog)[0] ?? dialog;
+
+    target?.focus();
+
+    return () => {
+      opener?.focus();
+    };
   }, [mounted]);
 
   /*
-   * Escape asks to close, from anywhere in the dialog, which is what a modal is
-   * expected to do and the only keyboard path back out.
+   * The modal's keyboard. Escape asks to close, from anywhere, which is what a
+   * modal is expected to do. Tab is held inside: the focusables are read on each
+   * press rather than at mount, because the body changes while the dialog is open
+   * (a field stops, a list of accounts arrives), so the first and last are the
+   * ones on screen now. At the ends it wraps, and a press whose focus is already
+   * outside is pulled back to the first, so the page behind cannot be walked into.
    */
   useEffect(() => {
     if (!open) {
@@ -134,12 +181,48 @@ export default function Dialog({
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         onRequestClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const dialog = dialogRef.current;
+
+      if (dialog === null) {
+        return;
+      }
+
+      const items = focusablesWithin(dialog);
+
+      if (items.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey) {
+        if (active === first || !dialog.contains(active)) {
+          event.preventDefault();
+          last.focus();
+        }
+        return;
+      }
+
+      if (active === last || !dialog.contains(active)) {
+        event.preventDefault();
+        first.focus();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  });
+  }, [open, onRequestClose]);
 
   if (!mounted) {
     return null;
@@ -156,14 +239,16 @@ export default function Dialog({
         }
       }}>
       <div
+        ref={dialogRef}
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={headId}
-        aria-describedby={bodyId}>
-        <h3 className={styles.dialog__head} id={headId}>
+        aria-describedby={bodyId}
+        tabIndex={-1}>
+        <h2 className={styles.dialog__head} id={headId}>
           {title}
-        </h3>
+        </h2>
         <p className={styles.dialog__body} id={bodyId}>
           {description}
         </p>

@@ -61,7 +61,7 @@ export function registerPlaylistRoutes(
     if (info === null) {
       return sendInvalidRequest(
         reply,
-        'The URL is not a YouTube playlist or video URL.'
+        'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
       );
     }
 

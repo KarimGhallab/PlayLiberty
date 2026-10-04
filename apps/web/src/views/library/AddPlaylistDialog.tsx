@@ -13,9 +13,10 @@ import styles from '../../shared/components/Dialog.module.scss';
  * shown in this same slot. The dialog never invents a message for a refusal.
  *
  * `problem` is the server's `detail`, passed down from the mutation. While there
- * is none, a submit that the schema refuses writes its own sentence here. The two
- * share one slot because a person sees one field and one thing wrong with it, not
- * a client error and a server error as separate layers.
+ * is none, a submit that the schema refuses writes the same refusal here, so the
+ * one slot reads the same whichever layer said no: a person sees one field and
+ * one thing wrong with it, not a client error and a server error as separate
+ * layers.
  *
  * The shell, the motion and the two-phase presence belong to `Dialog`; this
  * component is the field and the two verbs.

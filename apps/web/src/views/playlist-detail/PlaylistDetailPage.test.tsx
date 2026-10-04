@@ -257,7 +257,9 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'More actions' })
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
     );
 
     expect(screen.getByRole('menuitem', { name: 'Share' })).toBeInTheDocument();
@@ -285,7 +287,9 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'More actions' })
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
 
@@ -372,7 +376,9 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'More actions' })
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
     );
 
     expect(
@@ -408,7 +414,9 @@ describe('PlaylistDetailPage', () => {
     await screen.findByRole('heading', { name: 'Rain On The Window' });
 
     expect(
-      screen.queryByRole('button', { name: 'More actions' })
+      screen.queryByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
     ).not.toBeInTheDocument();
   });
 

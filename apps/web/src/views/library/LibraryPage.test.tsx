@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axe from 'axe-core';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { server } from '../../testing/mocks/server';
@@ -67,6 +67,28 @@ const newPlaylist = {
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z'
 };
+
+/*
+ * An owned playlist. Two of these stand in a list when a test needs two
+ * deletable items to press Delete on inside one undo window.
+ */
+function ownedItem(id: string, name: string) {
+  return {
+    id,
+    ownerAccountId: 'account-1',
+    name,
+    coverUrl: null,
+    provider: 'youtube',
+    sourcePlaylistId: `PL-${id}`,
+    syncStatus: 'idle',
+    lastSyncedAt: '2026-09-29T12:00:00.000Z',
+    trackCount: 1,
+    access: 'owner',
+    hasShares: false,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-29T12:00:00.000Z'
+  };
+}
 
 /*
  * The list the base handlers return, repeated here so the create flow has a list
@@ -157,7 +179,8 @@ function createRefused(): { requests: Request[] } {
           type: 'about:blank',
           title: 'Invalid Request',
           status: 400,
-          detail: 'The URL is not a YouTube playlist or video URL.',
+          detail:
+            'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...',
           code: 'invalid_request'
         },
         { status: 400 }
@@ -218,6 +241,22 @@ describe('LibraryPage', () => {
     expect(results.violations).toEqual([]);
   });
 
+  it('reserves the shape of the list while the read is pending', async () => {
+    /* The read never answers, so the skeleton is the only state on the page. */
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists', async () => {
+        await delay('infinite');
+        return HttpResponse.json({ items: [], total: 0, limit: 50, offset: 0 });
+      })
+    );
+
+    renderLibraryPage();
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Loading playlists.');
+    expect(status.querySelectorAll('[aria-hidden="true"] > *')).toHaveLength(5);
+  });
+
   it('renders an owned playlist and a shared one as the same item in one list', async () => {
     renderLibraryPage();
 
@@ -248,7 +287,9 @@ describe('LibraryPage', () => {
     await screen.findByText('Rain On The Window');
 
     /* One menu: the owned item's. The read collaborator gets no button at all. */
-    const menus = screen.getAllByRole('button', { name: 'More actions' });
+    const menus = screen.getAllByRole('button', {
+      name: 'More actions for Rain On The Window'
+    });
     expect(menus).toHaveLength(1);
 
     fireEvent.click(menus[0]);
@@ -523,8 +564,45 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The URL is not a YouTube playlist or video URL.'
+      'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('names the playlist a second delete replaces', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists', () =>
+        HttpResponse.json({
+          items: [
+            ownedItem('playlist-1', 'Rain On The Window'),
+            ownedItem('playlist-2', 'Night Bus')
+          ],
+          total: 2,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Rain On The Window');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Night Bus' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+
+    const toast = screen.getByRole('status');
+    expect(toast).toHaveTextContent('Night Bus');
+    expect(toast).toHaveTextContent('“Rain On The Window” will not be deleted');
   });
 });

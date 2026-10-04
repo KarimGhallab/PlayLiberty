@@ -65,6 +65,17 @@
     text-overflow: ellipsis;
   }
 
+  /* The intent this window displaced, on the detail's own scale beneath the
+   * window's own sentence and name. */
+  &__replaced {
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   &__action {
     flex-shrink: 0;
     padding: 0;

@@ -601,9 +601,11 @@
     bottom: calc(100% + var(--space-2));
   }
 
-  /* The card's quiet controls draw 32 and are hit at 44 the way the row's are,
-   * and the band's --space-3 gap is wide enough that two targets meet in the
-   * middle rather than contesting the gap. */
+  /* The card's quiet controls draw 32 and are hit at 44, the target the card
+   * arrangement carries, and the band's --space-3 gap is wide enough that two
+   * targets meet in the middle rather than contesting the gap. The row is the
+   * pointer arrangement the specimen leaves at 32, and it grows to 44 on mobile
+   * below. */
   &[data-arrangement='card'] &__action-row {
     gap: var(--space-3);
   }
@@ -648,5 +650,20 @@
 @media (max-width: 767px) {
   .playlist-header {
     padding: var(--space-3);
+  }
+
+  /* On a phone the quiet controls grow to the 44px target the system owes a
+   * thumb: 6 a side around the 32px box, and the row's gap widens to --space-3 so
+   * two targets meet exactly instead of contesting the 8px. The desktop row keeps
+   * its 32px, where the pointer does not need the target and the specimen leaves
+   * the box alone. */
+  .playlist-header__icon-btn::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  .playlist-header__action-row {
+    gap: var(--space-3);
   }
 }

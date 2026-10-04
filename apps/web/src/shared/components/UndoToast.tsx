@@ -12,6 +12,12 @@ import styles from './UndoToast.module.scss';
  * `aria-hidden`, because a screen reader reading seconds would be a number that
  * changes with no action behind it; the sentence and the control are the whole
  * of what it announces.
+ *
+ * A second deferred action replaces the first, so this notice also carries the
+ * displaced intent when there was one: `replacedLabel` names what was dropped,
+ * and the live region announces it with the new sentence. The ring is keyed to
+ * `windowKey`, so a replacement restarts the sweep rather than letting the old
+ * window's progress stand for a fresh one.
  */
 
 interface UndoToastProps {
@@ -19,6 +25,10 @@ interface UndoToastProps {
   readonly message: string;
   /** The line under it, e.g. the playlist or track name. */
   readonly detail?: string | null;
+  /** The intent this window displaced, already worded, when there was one. */
+  readonly replacedLabel?: string | null;
+  /** The window's ordinal, so the ring restarts when a new window opens. */
+  readonly windowKey?: number;
   /** How long the window lasts, in milliseconds. Drives the ring. */
   readonly durationMs: number;
   /** The control's own word, `Cancel` or `Undo`. */
@@ -30,6 +40,8 @@ interface UndoToastProps {
 export default function UndoToast({
   message,
   detail = null,
+  replacedLabel = null,
+  windowKey = 0,
   durationMs,
   actionLabel,
   onAction,
@@ -38,6 +50,7 @@ export default function UndoToast({
   return (
     <div className={styles.toast} role="status">
       <span
+        key={windowKey}
         className={styles.toast__ring}
         aria-hidden="true"
         style={{ animationDuration: `${durationMs}ms` }}
@@ -46,6 +59,9 @@ export default function UndoToast({
         <span className={styles.toast__title}>{message}</span>
         {detail === null ? null : (
           <span className={styles.toast__detail}>{detail}</span>
+        )}
+        {replacedLabel === null ? null : (
+          <span className={styles.toast__replaced}>{replacedLabel}</span>
         )}
       </span>
       <button type="button" className={styles.toast__action} onClick={onAction}>

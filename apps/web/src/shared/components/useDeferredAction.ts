@@ -11,6 +11,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * which would be a call they thought they had cancelled. Replacing is the only
  * safe reading, and the toast shows whichever window is current.
  *
+ * Replacing is safe but not invisible: the hook reports the action the new window
+ * displaced as `replaced`, so the surface can name the intent that was dropped
+ * rather than swapping the toast without a word. A repeated press of the same
+ * action is the same intent and reports nothing. `windowId` marks the window
+ * itself, so a surface can restart with each one rather than letting a countdown
+ * or an entrance animation outlive the window it was drawn for.
+ *
  * The window is a timer, and the timer's timeout is the same duration the toast
  * draws its ring against, so the two cannot drift. The timer is not an
  * `animationend`, for the same reason the dialogs use a timer: a suppressed
@@ -32,14 +39,34 @@ export interface PendingAction {
 
 export interface DeferredAction {
   readonly pending: PendingAction | null;
+  /**
+   * The action the current window displaced, until the window ends. Null on the
+   * first window and when the same action is deferred twice.
+   */
+  readonly replaced: PendingAction | null;
+  /** The ordinal of the current window, so a surface can restart with it. */
+  readonly windowId: number;
   /** Open a window for `action`, replacing any window already open. */
   readonly defer: (action: PendingAction) => void;
   /** Close the window without running its commit. */
   readonly cancel: () => void;
 }
 
+interface Windows {
+  readonly pending: PendingAction | null;
+  readonly replaced: PendingAction | null;
+  readonly windowId: number;
+}
+
+const NO_WINDOW: Windows = { pending: null, replaced: null, windowId: 0 };
+
+/** Two windows for the same sentence and name are one intent, not a replacement. */
+function sameIntent(a: PendingAction, b: PendingAction): boolean {
+  return a.message === b.message && a.detail === b.detail;
+}
+
 export function useDeferredAction(durationMs = UNDO_WINDOW_MS): DeferredAction {
-  const [pending, setPending] = useState<PendingAction | null>(null);
+  const [windows, setWindows] = useState<Windows>(NO_WINDOW);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clear = useCallback((): void => {
@@ -49,26 +76,48 @@ export function useDeferredAction(durationMs = UNDO_WINDOW_MS): DeferredAction {
     }
   }, []);
 
+  /*
+   * Closing keeps the counter: the window that just ended is not the window that
+   * opened before it, and a reused id would restart a surface that had already
+   * moved on. Only the pending and displaced actions go.
+   */
+  const close = useCallback((): void => {
+    setWindows(current => ({ ...current, pending: null, replaced: null }));
+  }, []);
+
   const defer = useCallback(
     (action: PendingAction): void => {
       clear();
-      setPending(action);
+      setWindows(current => ({
+        pending: action,
+        replaced:
+          current.pending !== null && !sameIntent(current.pending, action)
+            ? current.pending
+            : null,
+        windowId: current.windowId + 1
+      }));
       timer.current = setTimeout(() => {
         timer.current = null;
-        setPending(null);
+        close();
         action.commit();
       }, durationMs);
     },
-    [clear, durationMs]
+    [clear, close, durationMs]
   );
 
   const cancel = useCallback((): void => {
     clear();
-    setPending(null);
-  }, [clear]);
+    close();
+  }, [clear, close]);
 
   /* A window that is open when the surface unmounts is a call that never runs. */
   useEffect(() => clear, [clear]);
 
-  return { pending, defer, cancel };
+  return {
+    pending: windows.pending,
+    replaced: windows.replaced,
+    windowId: windows.windowId,
+    defer,
+    cancel
+  };
 }

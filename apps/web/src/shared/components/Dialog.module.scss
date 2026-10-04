@@ -42,6 +42,12 @@
   animation: pl-dialog-arrive-in var(--dialog-motion, var(--motion-base))
     var(--ease-standard);
 
+  /* The container is a `tabindex="-1"` focus target for a dialog with nothing
+   * focusable inside; it is not a control, so it takes no ring. */
+  &:focus {
+    outline: none;
+  }
+
   &__head {
     margin: 0 0 var(--space-2);
     color: var(--ink);
@@ -236,9 +242,13 @@
     }
   }
 
+  /* The complaint sits at the label's size rather than the body's, and the
+   * medium weight is what lifts it out of the surrounding regular: an error a
+   * person skims past is an error the field did not report. */
   &__message {
     color: var(--tone-failed);
     font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-normal);
   }
 

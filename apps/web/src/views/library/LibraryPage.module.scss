@@ -4,7 +4,10 @@
   gap: var(--space-4);
   max-width: calc(1056px + var(--space-4) * 2);
   margin: 0 auto;
-  padding: 0 var(--space-4) calc(var(--space-9) + var(--space-8));
+  /* 97px is the docked player bar, which is an overlay and so has to be paid
+   * for here, and --space-5 is the gap the page keeps under its last row, the
+   * same step the header uses above the list. */
+  padding: 0 var(--space-4) calc(97px + var(--space-5));
 
   &__head {
     display: flex;
@@ -52,10 +55,15 @@
     color: var(--muted);
   }
 
+  /* The list's end edge. The page header names the screen and holds the add
+   * control, so the first row needs no rule above it; nothing follows the last
+   * row, so one hairline closes the list rather than the row's surface running
+   * into the page's own ground. */
   &__list {
     margin: 0;
     padding: 0;
     list-style: none;
+    border-block-end: 1px solid var(--line);
   }
 
   &__item + &__item {

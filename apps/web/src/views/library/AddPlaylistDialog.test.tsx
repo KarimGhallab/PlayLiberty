@@ -62,7 +62,9 @@ describe('AddPlaylistDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
+    );
   });
 
   it('refuses a malformed URL with the schema and makes no request', () => {
@@ -98,12 +100,12 @@ describe('AddPlaylistDialog', () => {
         open
         onSubmit={vi.fn()}
         onClose={vi.fn()}
-        problem="The URL is not a YouTube playlist or video URL."
+        problem="Paste a YouTube playlist link, such as https://youtube.com/playlist?list=..."
       />
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'The URL is not a YouTube playlist or video URL.'
+      'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
     );
     expect(screen.getByLabelText('Playlist link')).toHaveAttribute(
       'aria-invalid',

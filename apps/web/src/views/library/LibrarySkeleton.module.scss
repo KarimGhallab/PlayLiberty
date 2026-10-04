@@ -1,0 +1,97 @@
+/*
+ * The library's loading state, the item's own geometry held open: the header's
+ * --space-5 padding and 96px body, a 96px cover and the two lines the header
+ * draws, so the real list resolves into the space rather than pushing the page
+ * down. The two bars stand where the name and the sync line go.
+ */
+.library-skeleton {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  /* The sentence the status region announces, off screen. The drawn rows are
+   * `aria-hidden`, so a reader hears one line and not a wall of boxes. */
+  &__spoken {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    border: 0;
+    clip-path: inset(50%);
+  }
+
+  /* The list's closing hairline, so the shape the skeleton holds is the list's
+   * own end edge and the swap to the real rows adds nothing. */
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    border-block-end: 1px solid var(--line);
+  }
+
+  &__row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-5);
+    padding: var(--space-5) 0;
+
+    /* The separator the real list draws between two items. */
+    & + & {
+      border-block-start: 1px solid var(--line);
+    }
+  }
+
+  &__cover {
+    flex-shrink: 0;
+    width: 96px;
+    height: 96px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  &__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: 96px;
+  }
+
+  &__name {
+    width: 45%;
+    height: 16px;
+    background: var(--surface);
+    border-radius: var(--radius-control);
+  }
+
+  &__meta {
+    width: 24%;
+    height: 12px;
+    background: var(--surface);
+    border-radius: var(--radius-control);
+  }
+
+  /* One pulse, and the shape is what matters rather than the pulse: reduced
+   * motion drops it and leaves a still placeholder. */
+  &__cover,
+  &__name,
+  &__meta {
+    animation: pl-library-skeleton 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes pl-library-skeleton {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}

@@ -17,7 +17,23 @@ import {
 import AddPlaylistDialog from './AddPlaylistDialog';
 import EmptyGallery from './EmptyGallery';
 import styles from './LibraryPage.module.scss';
+import LibrarySkeleton from './LibrarySkeleton';
 import PlaylistListItem from './PlaylistListItem';
+
+/*
+ * The sentence for the intent a second delete dropped. The displaced action's
+ * name is the whole of it: the first delete never reaches the server, so saying
+ * which playlist is no longer going is the honest correction, not a count.
+ */
+function replacedSentence(replaced: { detail: string | null } | null) {
+  if (replaced === null) {
+    return null;
+  }
+  if (replaced.detail === null) {
+    return 'The earlier action was replaced.';
+  }
+  return `“${replaced.detail}” will not be deleted.`;
+}
 
 /*
  * The library, at `/`. The list of playlists is the only entry point to content,
@@ -89,9 +105,7 @@ export default function LibraryPage() {
           Add a playlist
         </button>
       </div>
-      {playlists.isPending ? (
-        <p className={styles.library__note}>Loading playlists.</p>
-      ) : null}
+      {playlists.isPending ? <LibrarySkeleton /> : null}
       {playlists.isError ? (
         <p className={styles.library__note} role="alert">
           Playlists could not be loaded.
@@ -130,6 +144,8 @@ export default function LibraryPage() {
         <UndoToast
           message={deferred.pending.message}
           detail={deferred.pending.detail}
+          replacedLabel={replacedSentence(deferred.replaced)}
+          windowKey={deferred.windowId}
           durationMs={UNDO_WINDOW_MS}
           actionLabel="Cancel"
           onAction={deferred.cancel}
