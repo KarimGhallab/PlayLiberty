@@ -45,7 +45,8 @@ test('a stored track plays and the seeker moves the real playhead', async ({
   /*
    * Press play and let the element actually run. A silent file still advances
    * `currentTime`, which is the fact that proves the browser is playing rather
-   * than the UI merely claiming it.
+   * than the UI merely claiming it. The whole row is the control, and the button
+   * that carries the label spans it, so the press lands on the row itself.
    */
   await play.click();
   const audio = page.locator('audio');

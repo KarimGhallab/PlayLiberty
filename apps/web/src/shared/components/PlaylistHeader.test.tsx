@@ -24,7 +24,11 @@ import PlaylistHeader from './PlaylistHeader';
  * way they do in the app. The route is a throwaway `/playlists/$playlistId` with
  * a stub component, because nothing here asserts what the destination draws.
  */
-function renderHeader(playlist: Playlist, ownerName: string | null = null) {
+function renderHeader(
+  playlist: Playlist,
+  ownerName: string | null = null,
+  props: Partial<Parameters<typeof PlaylistHeader>[0]> = {}
+) {
   const rootRoute = createRootRoute();
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -35,7 +39,7 @@ function renderHeader(playlist: Playlist, ownerName: string | null = null) {
     getParentRoute: () => rootRoute,
     path: '/',
     component: () => (
-      <PlaylistHeader playlist={playlist} ownerName={ownerName} />
+      <PlaylistHeader playlist={playlist} ownerName={ownerName} {...props} />
     )
   });
   const router = createRouter({
@@ -71,15 +75,23 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
 }
 
 describe('PlaylistHeader', () => {
-  it('renders the name, the count and the sync line', async () => {
+  it('renders the name, the sync state and the count', async () => {
     renderHeader(playlist());
 
     expect(
       await screen.findByRole('link', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
+    expect(screen.getByText('Up to date')).toBeInTheDocument();
     expect(screen.getByText('128')).toBeInTheDocument();
     expect(screen.getByText('tracks')).toBeInTheDocument();
-    expect(screen.getByText(/Synced/)).toBeInTheDocument();
+  });
+
+  it('draws no sync time, only the state', async () => {
+    renderHeader(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(screen.queryByText(/Synced/)).not.toBeInTheDocument();
   });
 
   it('announces one link per item by hiding the cover link', async () => {
@@ -155,12 +167,73 @@ describe('PlaylistHeader', () => {
     expect(await screen.findByText('Sync failed')).toBeInTheDocument();
   });
 
-  it('reads a never-synced playlist as never synced rather than a fault', async () => {
+  it('reads a never-synced playlist by its idle state, with no time line', async () => {
     renderHeader(
       playlist({ syncStatus: PlaylistSyncStatus.Idle, lastSyncedAt: null })
     );
 
-    expect(await screen.findByText('Never synced')).toBeInTheDocument();
+    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+    expect(screen.queryByText(/Never synced/)).not.toBeInTheDocument();
+  });
+
+  it('disables the next step when the queue has no next track', async () => {
+    renderHeader(playlist(), null, {
+      arrangement: 'card',
+      playing: true,
+      current: true,
+      onPlay: () => undefined,
+      onSkipBack: () => undefined,
+      onSkipNext: () => undefined,
+      hasNext: false
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Track next' })
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Skip back' })).toBeEnabled();
+  });
+
+  it('keeps the steps while the queue is paused on this playlist', async () => {
+    renderHeader(playlist(), null, {
+      arrangement: 'card',
+      playing: false,
+      current: true,
+      onPlay: () => undefined,
+      onSkipBack: () => undefined,
+      onSkipNext: () => undefined
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Skip back' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Track next' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).toBeInTheDocument();
+  });
+
+  it('sits the shuffle immediately left of the overflow on the card', async () => {
+    renderHeader(playlist(), null, {
+      arrangement: 'card',
+      onPlay: () => undefined,
+      onShuffle: () => undefined,
+      onSync: () => undefined
+    });
+
+    const shuffle = await screen.findByRole('button', { name: 'Shuffle' });
+    const menuAnchor = screen.getByRole('button', {
+      name: 'More actions'
+    }).parentElement;
+    const group = shuffle.parentElement;
+
+    expect(group).not.toBeNull();
+    expect(menuAnchor?.parentElement).toBe(group);
+    expect(Array.from(group?.children ?? []).indexOf(shuffle)).toBeLessThan(
+      Array.from(group?.children ?? []).indexOf(menuAnchor as Element)
+    );
+    expect(shuffle).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('has no axe violations', async () => {

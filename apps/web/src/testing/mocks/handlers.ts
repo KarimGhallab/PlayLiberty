@@ -62,6 +62,26 @@ export const handlers = [
       offset: 0
     })
   ),
+  /* The reader, which the share picker uses to leave the reader's own row out. */
+  http.get('http://localhost:3000/api/v1/me', () =>
+    HttpResponse.json({ id: 'account-1', displayName: 'You', avatarUrl: null })
+  ),
+  /* The shares of the first playlist, which starts empty. */
+  http.get('http://localhost:3000/api/v1/playlists/playlist-1/shares', () =>
+    HttpResponse.json([])
+  ),
+  http.post('http://localhost:3000/api/v1/playlists/playlist-1/shares', () =>
+    HttpResponse.json({
+      accountId: 'account-2',
+      account: { id: 'account-2', displayName: 'Ada', avatarUrl: null },
+      level: 'read',
+      createdAt: '2026-09-29T12:00:00.000Z'
+    })
+  ),
+  http.delete(
+    'http://localhost:3000/api/v1/playlists/playlist-1/shares/:accountId',
+    () => new HttpResponse(null, { status: 204 })
+  ),
   /*
    * The single playlist, which is where the detail reads its name. It is the same
    * row as the first list item, so a test can tell the two reads apart by their
@@ -83,6 +103,26 @@ export const handlers = [
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-29T12:00:00.000Z'
     })
+  ),
+  /*
+   * The latest sync run of the first playlist. A completed run, so the detail's
+   * left column draws the summary under the card rather than the error.
+   */
+  http.get(
+    'http://localhost:3000/api/v1/playlists/playlist-1/sync-runs/latest',
+    () =>
+      HttpResponse.json({
+        id: 'run-1',
+        playlistId: 'playlist-1',
+        status: 'completed',
+        addedCount: 3,
+        retainedCount: 128,
+        removedCount: 1,
+        failedCount: 2,
+        startedAt: '2026-09-29T11:59:00.000Z',
+        finishedAt: '2026-09-29T12:00:00.000Z',
+        error: null
+      })
   ),
   /*
    * The tracks of the first playlist, in the playlist's own order. Two stored and
@@ -147,6 +187,47 @@ export const handlers = [
       total: 3,
       limit: 50,
       offset: 0
+    })
+  ),
+  /*
+   * Retry and remove, so the row's action lane has a route to answer. The retry
+   * returns the track, now downloading, which is the shape the route sends back;
+   * the remove is a `204` with no body.
+   */
+  http.post('http://localhost:3000/api/v1/tracks/:trackId/retry', () =>
+    HttpResponse.json({
+      id: 'track-3',
+      provider: 'youtube',
+      videoId: 'video-3',
+      title: 'Flamenco Sketches',
+      durationSeconds: 565,
+      thumbnailPath: null,
+      fileStatus: 'downloading',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    })
+  ),
+  http.delete(
+    'http://localhost:3000/api/v1/playlists/:playlistId/tracks/:trackId',
+    () => new HttpResponse(null, { status: 204 })
+  ),
+  http.patch('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+    HttpResponse.json({
+      id: 'playlist-1',
+      ownerAccountId: 'account-1',
+      name: 'Renamed',
+      coverUrl: null,
+      provider: 'youtube',
+      sourcePlaylistId: 'PL-demo',
+      syncStatus: 'idle',
+      lastSyncedAt: '2026-09-29T12:00:00.000Z',
+      trackCount: 3,
+      access: 'owner',
+      hasShares: false,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
     })
   )
 ];

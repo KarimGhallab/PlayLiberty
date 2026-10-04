@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { currentIndex } from './types';
+import { currentIndex, nextIndex } from './types';
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from './types';
 
 /*
@@ -40,6 +40,15 @@ function clampVolume(volume: number): number {
   return Math.min(1, Math.max(0, volume));
 }
 
+/*
+ * How far into a track a previous press has to be before it means "restart this
+ * one" rather than "step back". Five seconds is enough that a listener who has
+ * just landed on the track and changed their mind steps back, while one who has
+ * heard the opening restarts it. The first track has nothing behind it, so a
+ * press there restarts rather than doing nothing.
+ */
+const SKIP_PREVIOUS_GRACE_SECONDS = 5;
+
 export const usePlayerStore = create<PlayerState>()(set => ({
   queue: [],
   currentId: null,
@@ -47,6 +56,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   volume: 1,
   seekTo: null,
   isPlaying: false,
+  shuffle: false,
   hydrate: (state: PersistedPlayerState) =>
     set({
       queue: [...state.queue],
@@ -192,35 +202,49 @@ export const usePlayerStore = create<PlayerState>()(set => ({
     }),
   skipNext: () =>
     set(state => {
-      const index = currentIndex(state);
+      const next = nextIndex(state);
 
-      if (index < 0 || index + 1 >= state.queue.length) {
+      if (next < 0) {
         return state;
       }
 
       return {
-        currentId: state.queue[index + 1].id,
+        currentId: state.queue[next].id,
         positionSeconds: 0,
-        seekTo: null
+        seekTo: null,
+        isPlaying: true
       };
     }),
   skipPrevious: () =>
     set(state => {
       const index = currentIndex(state);
 
-      if (index <= 0) {
+      if (index < 0) {
         return state;
       }
 
-      return {
-        currentId: state.queue[index - 1].id,
-        positionSeconds: 0,
-        seekTo: null
-      };
+      /*
+       * A press inside the grace window is "step back", which the first track
+       * cannot do. Anywhere else, past the window or at the start of the queue,
+       * the track restarts where it stands, and `seekTo` carries the jump so the
+       * element moves even though the current id does not change. Either way the
+       * transport resumes, because reaching for next or previous is a play
+       * gesture and not a way to move a paused cursor.
+       */
+      if (index > 0 && state.positionSeconds < SKIP_PREVIOUS_GRACE_SECONDS) {
+        return {
+          currentId: state.queue[index - 1].id,
+          positionSeconds: 0,
+          seekTo: null,
+          isPlaying: true
+        };
+      }
+
+      return { positionSeconds: 0, seekTo: 0, isPlaying: true };
     }),
   advance: () =>
     set(state => {
-      const index = currentIndex(state);
+      const next = nextIndex(state);
 
       /*
        * The end of the queue stops rather than wrapping. There is no next track, so
@@ -228,12 +252,12 @@ export const usePlayerStore = create<PlayerState>()(set => ({
        * is what "finish the album" means and is not the same as "skip at the end",
        * which does nothing.
        */
-      if (index < 0 || index + 1 >= state.queue.length) {
+      if (next < 0) {
         return { positionSeconds: 0, seekTo: null, isPlaying: false };
       }
 
       return {
-        currentId: state.queue[index + 1].id,
+        currentId: state.queue[next].id,
         positionSeconds: 0,
         seekTo: null,
         isPlaying: true
@@ -243,6 +267,43 @@ export const usePlayerStore = create<PlayerState>()(set => ({
     set(() => {
       const clamped = Math.max(0, seconds);
       return { positionSeconds: clamped, seekTo: clamped };
+    }),
+  setShuffle: (shuffle: boolean) =>
+    set(state => {
+      if (state.shuffle === shuffle) {
+        return state;
+      }
+
+      /*
+       * Shuffle reorders the queue in place, and its answer is the queue itself:
+       * Fisher-Yates over the whole thing. The current track stays where it is,
+       * so the music does not jump when the control is pressed, and the other
+       * tracks take their new places. Turning it off keeps the order the shuffle
+       * left rather than restoring one nobody wrote down.
+       */
+      const rest = state.queue.filter(track => track.id !== state.currentId);
+      const shuffled: PlayerTrack[] = [];
+
+      for (let i = rest.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [rest[i], rest[j]] = [rest[j], rest[i]];
+      }
+
+      const currentTrack = state.queue.find(
+        track => track.id === state.currentId
+      );
+
+      if (currentTrack === undefined) {
+        return { shuffle, queue: rest };
+      }
+
+      for (const track of rest) {
+        shuffled.push(track);
+      }
+
+      shuffled.splice(state.queue.indexOf(currentTrack), 0, currentTrack);
+
+      return { shuffle, queue: shuffled };
     }),
   clearSeek: () => set({ seekTo: null }),
   setPosition: (seconds: number) => set({ positionSeconds: seconds }),
@@ -254,6 +315,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       currentId: null,
       positionSeconds: 0,
       seekTo: null,
-      isPlaying: false
+      isPlaying: false,
+      shuffle: false
     })
 }));

@@ -23,8 +23,8 @@ const second = track('track-2');
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
-  HTMLMediaElement.prototype.play = vi.fn(
-    () => Promise.resolve()
+  HTMLMediaElement.prototype.play = vi.fn(() =>
+    Promise.resolve()
   ) as unknown as () => Promise<void>;
   HTMLMediaElement.prototype.pause = vi.fn() as unknown as () => void;
 });
@@ -66,6 +66,26 @@ describe('PlayerBar', () => {
     expect(usePlayerStore.getState().currentId).toBe('track-1');
   });
 
+  it('disables next on the last track', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    render(<PlayerBar />);
+
+    const next = screen.getByRole('button', { name: 'Next track' });
+    expect(next).toBeEnabled();
+
+    fireEvent.click(next);
+
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(screen.getByRole('button', { name: 'Next track' })).toBeDisabled();
+  });
+
+  it('disables next when the queue holds a single track', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    render(<PlayerBar />);
+
+    expect(screen.getByRole('button', { name: 'Next track' })).toBeDisabled();
+  });
+
   it('moves the playhead with the arrow keys and clamps at the ends', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     render(<PlayerBar />);
@@ -80,6 +100,48 @@ describe('PlayerBar', () => {
 
     fireEvent.keyDown(slider, { key: 'End' });
     expect(usePlayerStore.getState().positionSeconds).toBe(180);
+  });
+
+  it('toggles playback from the space bar wherever focus sits', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    render(<PlayerBar />);
+
+    fireEvent.keyDown(document.body, { key: ' ' });
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+
+    fireEvent.keyDown(document.body, { key: ' ' });
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('moves the playhead by five seconds with the arrows off the seeker', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    render(<PlayerBar />);
+
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(usePlayerStore.getState().positionSeconds).toBe(5);
+
+    fireEvent.keyDown(document.body, { key: 'ArrowLeft' });
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    usePlayerStore.getState().setPosition(180);
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+  });
+
+  it('leaves the transport keys to a text field', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    render(<PlayerBar />);
+
+    const input = document.createElement('input');
+    document.body.append(input);
+
+    fireEvent.keyDown(input, { key: ' ' });
+    fireEvent.keyDown(input, { key: 'ArrowRight' });
+
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    input.remove();
   });
 
   it('reports the position to assistive technology', () => {

@@ -1,16 +1,45 @@
 /*
  * The track row, mirroring docs/design/components/track-row.html. The artwork is
- * 40px, the duration is a fixed 52px lane, and the play lane is reserved at 28px
- * on every row whether the control is drawn or not. The row's own rules are
- * scoped under the component name by the module, so the design's unscoped names
- * become private here.
+ * 40px and the duration is a fixed 52px lane. The whole row is the control: a
+ * hit layer over it carries the press while the row carries the hover, so a
+ * stored row is one target and one tab stop rather than a small button at its
+ * end. The row's own rules are scoped under the component name by the module, so
+ * the design's unscoped names become private here.
  */
 .track-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
+  padding: var(--space-3);
   border-bottom: 1px solid var(--line);
+  border-radius: var(--radius-artwork);
+
+  /* Only a row with a stored file is a control, so only it is offered a press:
+   * the surface lifts one step and the pointer says so. A row with nothing to
+   * play keeps its plain surface and the default pointer, because a hover that
+   * promises a play a row cannot give is worse than no hover at all. */
+  &[data-playable='true'] {
+    cursor: pointer;
+
+    &:hover,
+    &:focus-within {
+      background: var(--surface-raised);
+    }
+  }
+
+  /* In-flight state: the row breathes. The artwork, the text, the duration and
+   * the lane dim and restore together, so nothing travels and no glyph run is
+   * redrawn, which is the property the whole row is built around. It is slow and
+   * shallow on purpose: three lanes move at once, so a deeper dip would cost the
+   * reader the row rather than announce it. The word "Downloading" is always
+   * present, which is what carries the state when reduced motion stops this. */
+  &[data-downloading='true'] &__art,
+  &[data-downloading='true'] &__body,
+  &[data-downloading='true'] &__duration,
+  &[data-downloading='true'] &__lane-slot {
+    animation: pl-track-breathe 2.1s var(--motion-slow) ease-in-out infinite;
+  }
 
   &__art {
     position: relative;
@@ -38,6 +67,58 @@
     object-fit: cover;
   }
 
+  /* The scrim over the current track's tile, whether it is playing or paused, so
+   * the accent bars land on a known dark ground rather than on an arbitrary
+   * image, and so the tile that is the queue's current track reads as marked even
+   * when the queue is stopped. It is the one place in the row where ink lands on
+   * a surface whose contrast cannot be computed, so a semi-opaque dark wash is
+   * what buys the bars their readability back. It sits below the strip in the
+   * document and the strip is positioned, so the scrim never covers it. */
+  &__scrim {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.45);
+  }
+
+  /* The equalizer on the current row's artwork. It is absolutely positioned
+   * against the art box, which clips it, so the outermost bars never square off
+   * the two bottom corners that --radius-artwork rounds. Six bars at a 7px pitch
+   * (3px wide, a 4px gap) fill the 40px tile; the strip reaches half way up. */
+  &__bars {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 50%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-1);
+  }
+
+  &__bar {
+    display: block;
+    width: 3px;
+    height: 100%;
+    border-radius: 1px;
+    background: var(--accent);
+    /* bottom, or a bar grows from its own middle and the strip's baseline drifts
+     * as the phases move. */
+    transform-origin: bottom;
+    /* transform, never height, so a moving bar relayouts nothing. */
+    animation: pl-equalize 1400ms linear infinite;
+    /* The resting scale, read only when the animation is switched off entirely
+     * (reduced motion), since a paused animation keeps its own current frame. */
+    transform: scaleY(var(--rest, 1));
+  }
+
+  /* Stopping does not remove the animation, it freezes it: `paused` holds each
+   * bar on the frame it had when the queue stopped, and resuming continues from
+   * that frame rather than restarting the loop. So the bars keep their shape and
+   * their phase across a pause, which is what "carry on where we were" means. */
+  &[data-state='paused'] &__bar {
+    animation-play-state: paused;
+  }
+
   &__body {
     display: flex;
     flex-direction: column;
@@ -55,12 +136,10 @@
     text-overflow: ellipsis;
   }
 
-  /* A removed track is dimmed, not struck: it is still playable, and a
-   * strikethrough would read as deleted, which is the opposite of the promise. */
-  &[data-removed='true'] &__title {
-    color: var(--muted);
-  }
-
+  /* A removed-from-source track keeps the ordinary title colour, the same as a
+   * fully available one: the file is still here and still plays, so dimming it
+   * would read as "less than" a track that is no different to press. The state
+   * line is what says the source dropped it. */
   &__sub {
     display: flex;
     align-items: center;
@@ -119,9 +198,33 @@
     }
   }
 
-  /* The lane holds its 28px on every row, whether the control is drawn or not,
-   * so the duration never shifts sideways under the pointer. */
-  &__lane {
+  /* The hit layer: an empty button spanning the row, so the whole row is one
+   * target and one tab stop and the label it carries is the only thing that
+   * turns the row into a control for assistive technology. It is inset from the
+   * border by the row's own box, which is why the focus ring draws inside.
+   *
+   * The action lane sits after it in the document and carries its own stacking
+   * context, so a press on the lane reaches the lane and not the layer beneath
+   * it. */
+  &__hit {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: calc(-1 * var(--focus-offset));
+    }
+  }
+
+  /* The lane is reserved on every row, so the duration column stays a column
+   * whether the row draws a control or nothing at all. */
+  &__lane-slot {
+    position: relative;
+    z-index: 1;
     display: grid;
     place-items: center;
     width: var(--control-size-inline);
@@ -129,64 +232,162 @@
     flex-shrink: 0;
   }
 
-  &__play {
+  &__menu-anchor {
     position: relative;
+    display: inline-flex;
+  }
+
+  /* The row's action, one control in two shapes: the retry for a failed track
+   * and the overflow for every other. A control boundary rather than a hairline,
+   * because the lane is a target and not a rule. */
+  &__action {
     display: grid;
     place-items: center;
     width: var(--control-size-inline);
     height: var(--control-size-inline);
-    flex-shrink: 0;
     padding: 0;
-    background: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-chip);
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
     cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--motion-fast) var(--ease-standard);
 
-    &:hover {
-      background: var(--accent-hover);
-      border-color: var(--accent-hover);
+    &:hover:not(:disabled) {
+      color: var(--ink);
+      border-color: var(--muted);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: var(--opacity-disabled);
     }
 
     &:focus-visible {
       outline: var(--focus-width) solid var(--accent);
       outline-offset: var(--focus-offset);
     }
-  }
 
-  /* A `visibility: hidden` control is out of the tab order, so focus-within
-   * could never fire and a keyboard user would tab past a control they can see
-   * once they reach it. Opacity leaves it focusable and pointer-events is taken
-   * back at the same moment, because an invisible control is still clickable. */
-  &:hover &__play,
-  &:focus-within &__play {
-    opacity: 1;
-    pointer-events: auto;
-  }
+    &[data-action='retry'] {
+      color: var(--accent);
+      border-color: var(--accent);
 
-  @media (hover: none) {
-    &__play {
-      opacity: 1;
-      pointer-events: auto;
+      &:hover:not(:disabled) {
+        color: var(--bg);
+        background: var(--accent);
+      }
     }
   }
 
-  &__glyph {
-    overflow: hidden;
-    color: var(--bg);
+  &__action-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
   }
 
-  &__strip {
-    transform: translateX(0);
+  /* The row's menu, the header's menu at the row's own scale: opens from the
+   * lane, upward because the lane is at the foot of a short row and a panel
+   * below it would run off the list. */
+  &__menu {
+    position: absolute;
+    top: auto;
+    right: 0;
+    bottom: calc(100% + var(--space-2));
+    z-index: var(--z-overlay);
+    display: flex;
+    flex-direction: column;
+    min-width: 176px;
+    padding: var(--space-2);
+    background: var(--surface-raised);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-card);
   }
 
-  /* The morph's resting frame. The play frame is resting and the pause frame is
-   * the last of the eight, so a playing row steps the strip a whole row across.
-   * The transition itself is the host's, and a client without one leaves the
-   * strip on the correct resting frame rather than mid-way. */
-  &[data-state='playing'] &__strip {
-    transform: translateX(-168px);
+  &__menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    height: 34px;
+    padding: 0 var(--space-3);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    text-align: left;
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: calc(-1 * var(--focus-offset));
+    }
+
+    &[data-destructive='true'] {
+      color: var(--tone-failed);
+    }
+  }
+
+  &__menu-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+  }
+}
+
+/* The in-flight breath. Only the row's parts, never the row itself: a row that
+ * dimmed its own focus ring would take the reader's placement with it. */
+@keyframes pl-track-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* The equalizer's shape. No `alternate`, deliberately: it would double the
+ * visible cycle and a palindromic shape shared by every bar reads as a metronome.
+ * Ending on the value it started on makes the seam invisible with no extra
+ * keyframe. The floor is 0.3 and never 0, because a bar at zero is a gap and the
+ * strip would momentarily read as carrying fewer bars. */
+@keyframes pl-equalize {
+  0% {
+    transform: scaleY(0.3);
+  }
+
+  22% {
+    transform: scaleY(1);
+  }
+
+  48% {
+    transform: scaleY(0.5);
+  }
+
+  72% {
+    transform: scaleY(0.78);
+  }
+
+  100% {
+    transform: scaleY(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-row[data-downloading='true'] .track-row__art,
+  .track-row[data-downloading='true'] .track-row__body,
+  .track-row[data-downloading='true'] .track-row__duration,
+  .track-row[data-downloading='true'] .track-row__lane-slot {
+    animation: none;
+  }
+
+  /* The bars rest at their --rest scales: a reader who asked for no motion loses
+   * the movement and keeps the mark. */
+  .track-row__bar {
+    animation: none;
   }
 }

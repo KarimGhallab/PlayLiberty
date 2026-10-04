@@ -220,14 +220,72 @@ describe('transport', () => {
     expect(usePlayerStore.getState().currentId).toBe('track-1');
   });
 
-  it('stops at the ends rather than wrapping', () => {
+  it('steps back inside the grace window and restarts after it', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], third.id);
+
+    usePlayerStore.getState().setPosition(3);
+    usePlayerStore.getState().skipPrevious();
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+
+    usePlayerStore.getState().setPosition(5);
+    usePlayerStore.getState().skipPrevious();
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBe(0);
+  });
+
+  it('resumes a paused queue when the transport steps or restarts', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], second.id);
+    usePlayerStore.getState().setPlaying(false);
+
+    usePlayerStore.getState().skipNext();
+    expect(usePlayerStore.getState().currentId).toBe('track-3');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+
+    usePlayerStore.getState().setPlaying(false);
+    usePlayerStore.getState().skipPrevious();
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+
+    usePlayerStore.getState().setPlaying(false);
+    usePlayerStore.getState().setPosition(30);
+    usePlayerStore.getState().skipPrevious();
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('restarts the first track because there is nothing behind it', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    usePlayerStore.getState().setPosition(3);
 
     usePlayerStore.getState().skipPrevious();
+
     expect(usePlayerStore.getState().currentId).toBe('track-1');
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBe(0);
+  });
+
+  it('does nothing when no track is current', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    usePlayerStore.getState().remove(first.id);
+
+    usePlayerStore.getState().skipPrevious();
+
+    expect(usePlayerStore.getState().currentId).toBeNull();
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('stops at the end rather than wrapping forward', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], second.id);
 
     usePlayerStore.getState().skipNext();
-    usePlayerStore.getState().skipNext();
+
     expect(usePlayerStore.getState().currentId).toBe('track-2');
   });
 
@@ -269,6 +327,43 @@ describe('transport', () => {
 
     usePlayerStore.getState().setPlaying(true);
     expect(usePlayerStore.getState().positionSeconds).toBe(45);
+  });
+});
+
+describe('shuffle', () => {
+  it('keeps the current track in place when the queue is shuffled', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], second.id);
+
+    usePlayerStore.getState().setShuffle(true);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.shuffle).toBe(true);
+    expect(state.currentId).toBe('track-2');
+    expect(state.queue).toHaveLength(3);
+    expect(state.queue.map(track => track.id)).toContain('track-1');
+    expect(state.queue.map(track => track.id)).toContain('track-3');
+  });
+
+  it('moves to another track when shuffled even at the order end', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], second.id);
+    usePlayerStore.getState().setShuffle(true);
+
+    usePlayerStore.getState().skipNext();
+
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('clears the shuffle with the queue', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    usePlayerStore.getState().setShuffle(true);
+
+    usePlayerStore.getState().clear();
+
+    expect(usePlayerStore.getState().shuffle).toBe(false);
   });
 });
 

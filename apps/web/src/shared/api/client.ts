@@ -162,3 +162,52 @@ export async function apiPost<T>(
 
   return schema.parse(await response.json());
 }
+
+/*
+ * A `POST` with no body, which is a verb the server reads as a command rather
+ * than as a document: starting a sync carries the playlist id in the path and
+ * nothing in the body, so sending `{}` would be a body the route does not read.
+ */
+export async function apiCommand<T>(
+  path: string,
+  schema: ResponseSchema<T>
+): Promise<T> {
+  const response = await send(path, { method: 'POST' });
+
+  if (!response.ok) {
+    throw await readError(response);
+  }
+
+  return schema.parse(await response.json());
+}
+
+/** A `PATCH` that sends a JSON body and parses the updated document. */
+export async function apiPatch<T>(
+  path: string,
+  body: unknown,
+  schema: ResponseSchema<T>
+): Promise<T> {
+  const response = await send(path, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw await readError(response);
+  }
+
+  return schema.parse(await response.json());
+}
+
+/*
+ * A `DELETE` whose success carries no body. `204` is the route's own answer for
+ * a deleted playlist, so there is nothing to parse and a schema would be a lie.
+ */
+export async function apiDelete(path: string): Promise<void> {
+  const response = await send(path, { method: 'DELETE' });
+
+  if (!response.ok) {
+    throw await readError(response);
+  }
+}

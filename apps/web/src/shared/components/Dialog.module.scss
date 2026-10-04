@@ -1,9 +1,9 @@
 /*
- * The add-playlist dialog's rules, mirroring the dialog specimen: a scrim over
- * the page, a 400px card on --surface-raised with a --control-border edge, one
- * field and two controls. The invalid field keeps its ink and moves the red to
- * the border and the message, so a person can still read what they typed while
- * correcting it.
+ * The shared dialog shell: a scrim over the page, a 400px card on
+ * --surface-raised with a --control-border edge, one body and one action row.
+ * Mirrors the dialog specimen. The invalid field keeps its ink and moves the red
+ * to the border and the message, so a person can still read what they typed
+ * while correcting it.
  *
  * Appearance motion is one transition at --motion-base on --ease-standard, and it
  * carries a state rather than decorating: the dialog arriving and leaving. The
@@ -127,66 +127,6 @@
   }
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-
-  &__label {
-    color: var(--muted);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-  }
-
-  &__input {
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-    height: var(--control-height);
-    padding: 0 var(--space-3);
-    color: var(--ink);
-    background: var(--bg);
-    border: 1px solid var(--control-border);
-    border-radius: var(--radius-control);
-    font-family: inherit;
-    font-size: var(--text-sm);
-
-    &::placeholder {
-      color: var(--muted);
-    }
-
-    /* The border is the focus indicator, not a ring: a hue shift to the accent. */
-    &:focus,
-    &:focus-visible {
-      outline: none;
-      border-color: var(--accent);
-      transition: border-color var(--motion-fast) var(--ease-standard);
-    }
-  }
-
-  &__message {
-    color: var(--tone-failed);
-    font-size: var(--text-xs);
-    line-height: var(--leading-normal);
-  }
-
-  &[data-invalid='true'] &__input {
-    border-color: var(--tone-failed);
-  }
-
-  &[data-disabled='true'] &__input {
-    color: var(--control-disabled-fg);
-    background: var(--control-disabled-bg);
-    border-color: var(--control-border);
-    cursor: not-allowed;
-  }
-
-  &[data-disabled='true'] &__label {
-    color: var(--control-disabled-fg);
-  }
-}
-
 @keyframes pl-spin {
   to {
     transform: rotate(360deg);
@@ -255,5 +195,65 @@
     border-top-color: currentColor;
     opacity: 0.6;
     animation: none;
+  }
+}
+
+/* The form field a dialog uses, which the field-bearing dialogs share. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+
+  &__label {
+    color: var(--muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+  }
+
+  &__input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: var(--control-height);
+    padding: 0 var(--space-3);
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
+    font-family: inherit;
+    font-size: var(--text-sm);
+
+    &::placeholder {
+      color: var(--muted);
+    }
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      transition: border-color var(--motion-fast) var(--ease-standard);
+    }
+  }
+
+  &__message {
+    color: var(--tone-failed);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
+  &[data-invalid='true'] &__input {
+    border-color: var(--tone-failed);
+  }
+
+  &[data-disabled='true'] &__input {
+    color: var(--control-disabled-fg);
+    background: var(--control-disabled-bg);
+    border-color: var(--control-border);
+    cursor: not-allowed;
+  }
+
+  &[data-disabled='true'] &__label {
+    color: var(--control-disabled-fg);
   }
 }

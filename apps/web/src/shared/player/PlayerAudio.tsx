@@ -181,6 +181,14 @@ export default function PlayerAudio() {
     clearSeek();
   }, [seekTo, clearSeek]);
 
+  /*
+   * The element follows playback and the current track together. A track change
+   * reloads the source, and `load()` leaves the element paused, so a skip while
+   * playing has to start the new source in the same commit or the bar shows pause
+   * over silence. `currentId` is therefore a dependency and not only the source
+   * effect's: the two effects run in order, the source first, and this one plays
+   * what the source just loaded.
+   */
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -194,7 +202,7 @@ export default function PlayerAudio() {
     }
 
     audio.pause();
-  }, [isPlaying, setPlaying]);
+  }, [isPlaying, currentId, setPlaying]);
 
   /*
    * The controls in both directions: metadata and the handlers are re-published

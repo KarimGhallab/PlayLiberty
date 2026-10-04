@@ -129,27 +129,33 @@ describe('AddPlaylistDialog', () => {
   it('closes on cancel after the exit animation', () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
-    render(<AddPlaylistDialog open onSubmit={vi.fn()} onClose={onClose} />);
+    const { rerender } = render(
+      <AddPlaylistDialog open onSubmit={vi.fn()} onClose={onClose} />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    /* Closing is a fade, so onClose is reported when the fade has finished. */
-    expect(onClose).not.toHaveBeenCalled();
+    /*
+     * The caller owns `open`, so the press only asks to close. The fade then runs
+     * once the caller flips `open`, and the node unmounts when it elapses.
+     */
+    expect(onClose).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
+    rerender(
+      <AddPlaylistDialog open={false} onSubmit={vi.fn()} onClose={onClose} />
+    );
     runExit();
 
-    expect(onClose).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('closes on Escape after the exit animation', () => {
+  it('asks to close on Escape', () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
     render(<AddPlaylistDialog open onSubmit={vi.fn()} onClose={onClose} />);
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    runExit();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

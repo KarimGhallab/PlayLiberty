@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { TrackFileStatus, TrackSourceStatus } from '@playliberty/contracts';
+import {
+  Provider,
+  TrackFileStatus,
+  TrackSourceStatus
+} from '@playliberty/contracts';
 
 import {
   formatDuration,
   formatLastSynced,
   formatRelativeTime,
   formatTrackCount,
+  providerLabel,
   trackCountUnit,
   trackStateLabel
 } from './formatters.js';
@@ -130,12 +135,24 @@ describe('trackStateLabel', () => {
     ).toBe('Unavailable');
   });
 
-  it('says the track is still here for a removed source, whatever the file', () => {
+  it('names the source for a removed track, whatever the file', () => {
     expect(
-      trackStateLabel(TrackFileStatus.Stored, TrackSourceStatus.Removed)
-    ).toBe('Removed, still here');
+      trackStateLabel(
+        TrackFileStatus.Stored,
+        TrackSourceStatus.Removed,
+        Provider.Youtube
+      )
+    ).toBe('Removed from YouTube');
     expect(
-      trackStateLabel(TrackFileStatus.Failed, TrackSourceStatus.Removed)
-    ).toBe('Removed, still here');
+      trackStateLabel(
+        TrackFileStatus.Failed,
+        TrackSourceStatus.Removed,
+        Provider.Youtube
+      )
+    ).toBe('Removed from YouTube');
+  });
+
+  it('names the provider as a person writes it', () => {
+    expect(providerLabel(Provider.Youtube)).toBe('YouTube');
   });
 });

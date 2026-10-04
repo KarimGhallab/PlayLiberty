@@ -1,0 +1,145 @@
+import { useId, useRef, useState } from 'react';
+
+import { RenamePlaylistInputSchema } from '@playliberty/contracts';
+
+import Dialog from './Dialog';
+import styles from './Dialog.module.scss';
+
+/*
+ * Rename one playlist. One field, because `RenamePlaylistInputSchema` has one,
+ * and the schema is the client's own half of the check: an empty or over-long
+ * name never leaves the browser. The field opens on the current name with its
+ * text selected, so a person can type a new one over it or adjust it.
+ *
+ * `problem` is the server's `detail`, passed down from the mutation. A refusal
+ * and the schema's own message share one slot, because a person sees one field
+ * and one thing wrong with it.
+ */
+
+interface RenamePlaylistDialogProps {
+  open: boolean;
+  currentName: string;
+  onSubmit: (name: string) => void;
+  onClose: () => void;
+  isWorking?: boolean;
+  problem?: string | null;
+}
+
+export default function RenamePlaylistDialog({
+  open,
+  currentName,
+  onSubmit,
+  onClose,
+  isWorking = false,
+  problem = null
+}: RenamePlaylistDialogProps) {
+  const fieldId = useId();
+  const messageId = useId();
+  const field = useRef<HTMLInputElement>(null);
+  const [name, setName] = useState(currentName);
+  const [invalid, setInvalid] = useState<string | null>(null);
+
+  /*
+   * The field opens on the current name, so the dialog arrives with the value it
+   * is about rather than an empty box the person has to retype. The value resets
+   * each time the dialog opens, so a cancelled edit does not linger.
+   */
+  const [wasOpen, setWasOpen] = useState(open);
+
+  if (open !== wasOpen) {
+    setWasOpen(open);
+
+    if (open) {
+      setName(currentName);
+      setInvalid(null);
+    }
+  }
+
+  const message = invalid ?? problem;
+
+  function submit(): void {
+    if (isWorking) {
+      return;
+    }
+
+    const trimmed = name.trim();
+    const parsed = RenamePlaylistInputSchema.safeParse({ name: trimmed });
+
+    if (!parsed.success) {
+      setInvalid('A name is required, up to 200 characters.');
+      return;
+    }
+
+    setInvalid(null);
+    onSubmit(parsed.data.name);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      title="Rename playlist"
+      description="The name is yours alone. It does not change the playlist on YouTube."
+      initialFocus={field}
+      onRequestClose={onClose}
+      actions={
+        <>
+          <button
+            className={styles.dialog__secondary}
+            type="button"
+            disabled={isWorking}
+            onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className={styles.dialog__primary}
+            type="button"
+            data-loading={isWorking ? 'true' : undefined}
+            aria-busy={isWorking}
+            onClick={submit}>
+            {isWorking ? (
+              <>
+                <span className={styles.dialog__spinner} aria-hidden="true" />
+                Saving
+              </>
+            ) : (
+              'Save'
+            )}
+          </button>
+        </>
+      }>
+      <div
+        className={styles.field}
+        data-invalid={message === null ? undefined : 'true'}
+        data-disabled={isWorking ? 'true' : undefined}>
+        <label className={styles.field__label} htmlFor={fieldId}>
+          Playlist name
+        </label>
+        <input
+          ref={field}
+          className={styles.field__input}
+          id={fieldId}
+          type="text"
+          value={name}
+          disabled={isWorking}
+          aria-invalid={message === null ? undefined : true}
+          aria-describedby={message === null ? undefined : messageId}
+          onFocus={event => event.target.select()}
+          onChange={event => {
+            setName(event.target.value);
+            setInvalid(null);
+          }}
+          onKeyDown={event => {
+            if (event.key === 'Enter') {
+              submit();
+            }
+          }}
+        />
+        {message === null ? null : (
+          <span className={styles.field__message} id={messageId} role="alert">
+            {message}
+          </span>
+        )}
+      </div>
+    </Dialog>
+  );
+}

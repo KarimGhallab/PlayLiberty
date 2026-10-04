@@ -39,8 +39,14 @@ function renderRow(options: {
   readonly association?: PlaylistTrack;
   readonly current?: boolean;
   readonly playing?: boolean;
-}): { onPlay: ReturnType<typeof vi.fn> } {
+  readonly onRetry?: (trackId: string) => void;
+  readonly onRemove?: ((trackId: string) => void) | null;
+  readonly retrying?: boolean;
+}): { onPlay: ReturnType<typeof vi.fn>; onRemove: ReturnType<typeof vi.fn> } {
   const onPlay = vi.fn();
+  const onRemove = vi.fn();
+  const resolvedRemove =
+    options.onRemove === null ? undefined : (options.onRemove ?? onRemove);
 
   render(
     <ul>
@@ -49,15 +55,18 @@ function renderRow(options: {
         current={options.current ?? false}
         playing={options.playing ?? false}
         onPlay={onPlay}
+        onRetry={options.onRetry}
+        onRemove={resolvedRemove}
+        retrying={options.retrying ?? false}
       />
     </ul>
   );
 
-  return { onPlay };
+  return { onPlay, onRemove };
 }
 
 describe('TrackRow', () => {
-  it('offers a play control for a stored track and starts there', () => {
+  it('plays the track when the row is pressed', () => {
     const { onPlay } = renderRow({});
 
     fireEvent.click(screen.getByRole('button', { name: 'Play Blue In Green' }));
@@ -65,7 +74,15 @@ describe('TrackRow', () => {
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
 
-  it('offers no play control for a track whose file is not stored', () => {
+  it('labels the row as a pause when it is the track playing', () => {
+    renderRow({ current: true, playing: true });
+
+    expect(
+      screen.getByRole('button', { name: 'Pause Blue In Green' })
+    ).toBeInTheDocument();
+  });
+
+  it('offers the play layer only for a stored track', () => {
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Pending })
     });
@@ -74,6 +91,103 @@ describe('TrackRow', () => {
     expect(
       screen.queryByRole('button', { name: 'Play Blue In Green' })
     ).not.toBeInTheDocument();
+  });
+
+  it('opens the action menu and removes the track', () => {
+    const { onRemove } = renderRow({});
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'Remove from playlist' })
+    );
+
+    expect(onRemove).toHaveBeenCalledWith('track-1');
+  });
+
+  it('draws no menu when the caller cannot curate', () => {
+    renderRow({ onRemove: null });
+
+    expect(
+      screen.queryByRole('button', { name: 'Actions for Blue In Green' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers retry instead of the menu on a failed track', () => {
+    const onRetry = vi.fn();
+
+    renderRow({
+      association: association({
+        fileStatus: TrackFileStatus.Failed,
+        failureReason: 'Download failed, will retry on the next sync'
+      }),
+      onRetry
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Actions for Blue In Green' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Retry Blue In Green' })
+    );
+
+    expect(onRetry).toHaveBeenCalledWith('track-1');
+  });
+
+  it('falls back to the menu on a failed track the caller cannot retry', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Failed })
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry Blue In Green' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('busies the retry while it is in flight', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Failed }),
+      onRetry: vi.fn(),
+      retrying: true
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Retry Blue In Green' })
+    ).toBeDisabled();
+  });
+
+  it('disables the menu while the track is downloading', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Downloading })
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    ).toBeDisabled();
+  });
+
+  it('marks a downloading track so the row can breathe', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Downloading })
+    });
+
+    expect(screen.getByRole('listitem')).toHaveAttribute(
+      'data-downloading',
+      'true'
+    );
+  });
+
+  it('does not mark a stored track as downloading', () => {
+    renderRow({});
+
+    expect(screen.getByRole('listitem')).not.toHaveAttribute(
+      'data-downloading'
+    );
   });
 
   it('says nothing for a stored track that is still available', () => {
@@ -97,18 +211,67 @@ describe('TrackRow', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps a removed track playable and says it is still here', () => {
+  it('keeps a removed track playable and names the source it left', () => {
     const { onPlay } = renderRow({
       association: association({ sourceStatus: TrackSourceStatus.Removed })
     });
 
-    expect(screen.getByText('Removed, still here')).toBeInTheDocument();
+    expect(screen.getByText('Removed from YouTube')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Play Blue In Green' }));
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
 
-  it('marks the current track with the resting morph state', () => {
+  it('keeps the removed title the same colour as an available one', () => {
+    renderRow({
+      association: association({ sourceStatus: TrackSourceStatus.Removed })
+    });
+
+    /* The removal is said on the state line, not by dimming the title. */
+    expect(screen.getByText('Blue In Green')).not.toHaveAttribute(
+      'data-removed'
+    );
+  });
+
+  it('draws the equalizer on the current track whether playing or paused', () => {
+    renderRow({ current: true, playing: true });
+    expect(screen.getByRole('img', { name: 'Playing' })).toBeInTheDocument();
+  });
+
+  it('keeps the equalizer still on the current track when paused', () => {
+    renderRow({ current: true, playing: false });
+    expect(screen.getByRole('img', { name: 'Playing' })).toBeInTheDocument();
+  });
+
+  it('draws no equalizer on a non-current row', () => {
+    renderRow({ current: false, playing: false });
+    expect(
+      screen.queryByRole('img', { name: 'Playing' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('darkens the current track whether it is playing or paused', () => {
+    renderRow({ current: true, playing: true });
+    expect(
+      screen.getByRole('listitem').querySelector('[class*="scrim"]')
+    ).not.toBeNull();
+  });
+
+  it('keeps the darkening when the current track is paused', () => {
+    renderRow({ current: true, playing: false });
+    expect(
+      screen.getByRole('listitem').querySelector('[class*="scrim"]')
+    ).not.toBeNull();
+  });
+
+  it('leaves a non-current track undarkened', () => {
+    renderRow({ current: false, playing: false });
+    expect(
+      screen.getByRole('listitem').querySelector('[class*="scrim"]')
+    ).toBeNull();
+  });
+
+  it('marks the current track with its playback state', () => {
     renderRow({ current: true, playing: true });
 
     expect(screen.getByRole('listitem')).toHaveAttribute(

@@ -1,5 +1,6 @@
 import {
   PlaylistSyncStatus,
+  Provider,
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
@@ -155,10 +156,11 @@ export function syncStateLabel(status: PlaylistSyncStatus): string {
  */
 export function trackStateLabel(
   fileStatus: TrackFileStatus,
-  sourceStatus: TrackSourceStatus
+  sourceStatus: TrackSourceStatus,
+  provider: Provider
 ): string | null {
   if (sourceStatus === TrackSourceStatus.Removed) {
-    return 'Removed, still here';
+    return `Removed from ${providerLabel(provider)}`;
   }
 
   if (fileStatus === TrackFileStatus.Stored) {
@@ -178,6 +180,19 @@ export function trackStateLabel(
   }
 
   return 'Unavailable';
+}
+
+/*
+ * The provider as a person writes it. Only YouTube exists today, but the label is
+ * a function rather than a literal so the removed-track sentence names the source
+ * without the row knowing which providers there are.
+ */
+export function providerLabel(provider: Provider): string {
+  if (provider === Provider.Youtube) {
+    return 'YouTube';
+  }
+
+  return provider;
 }
 
 /** The unit word for a track count, singular only at one. */

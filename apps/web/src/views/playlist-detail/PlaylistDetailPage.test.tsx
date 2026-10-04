@@ -7,6 +7,7 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import { fireEvent, render, screen } from '@testing-library/react';
+import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -93,11 +94,143 @@ describe('PlaylistDetailPage', () => {
     expect(state.positionSeconds).toBe(0);
   });
 
-  it('names the playlist in the heading from the playlist read', async () => {
+  it('disables the header next when the playing track is the last', async () => {
+    renderDetail();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Track next' })
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Skip back' })).toBeEnabled();
+  });
+
+  it('toggles playback when the current row is pressed again', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Play Blue In Green' })
+    );
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Pause Blue In Green' })
+    );
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('keeps the header steps while paused on this playlist', async () => {
+    renderDetail();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Pause this playlist' })
+    );
+
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(
+      screen.getByRole('button', { name: 'Skip back' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Track next' })
+    ).toBeInTheDocument();
+  });
+
+  it('offers the row menu to a writer, who may remove a track', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Blue In Green' })
+    );
+
+    expect(
+      screen.getByRole('menuitem', { name: 'Remove from playlist' })
+    ).toBeInTheDocument();
+  });
+
+  it('defers a track removal behind a cancellable toast', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Blue In Green' })
+    );
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'Remove from playlist' })
+    );
+
+    /* The press opens the window; the call waits for its deadline. */
+    expect(await screen.findByText('Removed track')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  it('cancels a deferred removal', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Blue In Green' })
+    );
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'Remove from playlist' })
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Removed track')).not.toBeInTheDocument();
+  });
+
+  it('shows Share and Rename to the owner and opens each dialog', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'More actions' })
+    );
+
+    expect(screen.getByRole('menuitem', { name: 'Share' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Rename' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Rename playlist' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  });
+
+  it('names the playlist from the playlist read', async () => {
     renderDetail();
 
     expect(
-      await screen.findByRole('heading', { name: 'Rain On The Window' })
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+  });
+
+  it('opens the share dialog with the accounts to share with', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'More actions' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Share playlist' })
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Ada')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Can listen' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Can edit' })
+    ).toBeInTheDocument();
+  });
+
+  it('names the playlist from the playlist read', async () => {
+    renderDetail();
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
   });
 
@@ -122,5 +255,68 @@ describe('PlaylistDetailPage', () => {
       await screen.findByText('Tracks could not be loaded.')
     ).toBeInTheDocument();
     expect(screen.queryByText('No tracks yet.')).not.toBeInTheDocument();
+  });
+
+  it('draws the summary of the latest run under the header card', async () => {
+    renderDetail();
+
+    expect(await screen.findByText('kept')).toBeInTheDocument();
+    expect(screen.getByText('128')).toBeInTheDocument();
+    expect(screen.getByText('failed')).toBeInTheDocument();
+  });
+
+  it('gates the owner overflow on the playlist access', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'More actions' })
+    );
+
+    expect(
+      screen.getByRole('menuitem', { name: 'Sync now' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Delete playlist' })
+    ).toBeInTheDocument();
+  });
+
+  it('draws no overflow at all for a read collaborator', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+        HttpResponse.json({
+          id: 'playlist-1',
+          ownerAccountId: 'account-1',
+          name: 'Rain On The Window',
+          coverUrl: null,
+          provider: 'youtube',
+          sourcePlaylistId: 'PL-demo',
+          syncStatus: 'idle',
+          lastSyncedAt: '2026-09-29T12:00:00.000Z',
+          trackCount: 3,
+          access: 'read',
+          hasShares: false,
+          createdAt: '2026-09-01T00:00:00.000Z',
+          updatedAt: '2026-09-29T12:00:00.000Z'
+        })
+      )
+    );
+    renderDetail();
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(
+      screen.queryByRole('button', { name: 'More actions' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('has no axe violations', async () => {
+    const { container } = renderDetail();
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const results = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } }
+    });
+    expect(results.violations).toEqual([]);
   });
 });

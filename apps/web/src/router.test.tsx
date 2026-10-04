@@ -7,9 +7,10 @@ import {
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { routeTree } from './router';
 import { usePlayerStore } from './shared/player/playerStore';
 import type { PlayerTrack } from './shared/player/types';
+
+import { routeTree } from './router';
 
 /*
  * The shell is where playback survives navigation, so the claim under test is
@@ -55,8 +56,8 @@ beforeEach(() => {
    * promise would throw. The shell mounts the real audio element, so the browser
    * half it lacks is supplied here.
    */
-  HTMLMediaElement.prototype.play = vi.fn(
-    () => Promise.resolve()
+  HTMLMediaElement.prototype.play = vi.fn(() =>
+    Promise.resolve()
   ) as unknown as () => Promise<void>;
   HTMLMediaElement.prototype.pause = vi.fn() as unknown as () => void;
 });
@@ -73,7 +74,9 @@ describe('AppShell', () => {
     /* Navigate to the library. The outlet re-renders; the siblings do not. */
     await router.navigate({ to: '/' });
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Playlists' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Playlists' })
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByLabelText('Player')).toBeInTheDocument();

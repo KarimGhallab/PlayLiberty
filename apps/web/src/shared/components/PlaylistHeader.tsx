@@ -1,25 +1,50 @@
-import { IconLock, IconLockShare, IconUserShare } from '@tabler/icons-react';
+import {
+  IconArrowsShuffle,
+  IconDots,
+  IconLock,
+  IconLockShare,
+  IconPencil,
+  IconPlayerSkipBack,
+  IconPlayerTrackNext,
+  IconRotate,
+  IconShare,
+  IconTrash,
+  IconUserShare
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import {
-  formatLastSynced,
-  syncStateLabel,
-  trackCountUnit
-} from '@playliberty/ui-foundation';
+import { syncStateLabel, trackCountUnit } from '@playliberty/ui-foundation';
 
+import PlayGlyph from './PlayGlyph';
 import styles from './PlaylistHeader.module.scss';
+import { usePlayPauseMorph } from './usePlayPauseMorph';
 
 /*
  * The playlist header: the cover, the name, the share indicator, the count and
  * the sync line. It is the library's item and the playlist detail's header, one
  * component at two arrangements, so no screen draws a second item that resembles
- * it. The actions column (play, shuffle, overflow) is not here; it arrives with
- * the player, and this ticket owns the identity block the list needs.
+ * it. It owns both arrangements and `arrangement` picks one: the row, the cover
+ * beside the identity block, and the card, the cover above it. The library draws
+ * the row on web; the playlist detail draws the card in its 320px left column.
  *
- * The cover and the name both link to the playlist. The cover's link carries
- * `aria-hidden` and `tabindex="-1"` so a reader announces one link per item, the
- * name carrying the label, rather than two links to one destination.
+ * The actions column is a column: the play, then the shuffle and the overflow
+ * beside each other under it. Every action is optional and its control is absent
+ * when the callback is absent, so the header is gated by what the caller can do
+ * rather than by a level string it would have to learn. The overflow is absent
+ * for a read collaborator entirely, and the menu's items follow: an owner gets
+ * the four it can act on, a writer the one it can.
+ *
+ * The card draws the shuffle and the menu as siblings in its own action band, so
+ * the shuffle sits immediately left of the menu icon, and the row keeps them
+ * wrapped in an action row under the play.
+ *
+ * While the queue is on this playlist the transport replaces the standalone
+ * play and sits above the action row, which is the header's own swap; it stays
+ * while paused, because the steps are the queue's and not the play's. It is
+ * drawn only when the caller offers both steps, so the library's item keeps its
+ * single control and the detail's header is the one that can skip.
  *
  * `ownerName` is the resolved display name of a playlist that is not the
  * account's, and null when the directory does not carry the owner. It is drawn
@@ -33,12 +58,58 @@ import styles from './PlaylistHeader.module.scss';
 interface PlaylistHeaderProps {
   playlist: Playlist;
   ownerName?: string | null;
+  /* The component's two arrangements. The row is the default and the library's
+   * item; the card is the playlist detail's left column at 320px. */
+  arrangement?: 'row' | 'card';
+  /*
+   * The action column. Each action is optional and its control is absent when
+   * the callback is absent, which is how the three access levels gate the menu
+   * by absence rather than by disabling: a control that is there and cannot be
+   * pressed is worse than no control. The play and the shuffle are playback
+   * facts and are offered at every level; the overflow and its items stay with
+   * the owner and the writer.
+   */
+  onPlay?: () => void;
+  playing?: boolean;
+  /*
+   * Whether this playlist is the one the queue is on, paused or playing. The
+   * transport's steps act on the queue, so they stay on the card whenever the
+   * card is the queue's own and the caller offers both, and a playlist the queue
+   * is not on keeps the single play that starts it.
+   */
+  current?: boolean;
+  /* The transport's steps. The pair and `current` together decide whether the
+   * transport replaces the standalone play; an absent pair keeps the standalone
+   * play, so a consumer that cannot skip does not lose its door. */
+  onSkipBack?: () => void;
+  onSkipNext?: () => void;
+  /*
+   * Whether the queue has a track after the current one. The transport is drawn
+   * while playing, and a last track's next has nowhere to go, so the control
+   * disables rather than offering a press that does nothing.
+   */
+  hasNext?: boolean;
+  onShuffle?: () => void;
+  shuffled?: boolean;
+  onSync?: () => void;
+  onRename?: () => void;
+  onShare?: () => void;
+  onDelete?: () => void;
+  syncing?: boolean;
 }
 
 interface ShareMark {
   readonly state: 'own-private' | 'own-shared' | 'collab';
   readonly label: string;
   readonly Icon: typeof IconLock;
+}
+
+interface MenuItem {
+  readonly key: string;
+  readonly label: string;
+  readonly Icon: typeof IconLock;
+  readonly onSelect: () => void;
+  readonly destructive?: true;
 }
 
 /*
@@ -69,17 +140,332 @@ function shareMark(playlist: Playlist): ShareMark {
 
 export default function PlaylistHeader({
   playlist,
-  ownerName = null
+  ownerName = null,
+  arrangement = 'row',
+  onPlay,
+  playing = false,
+  current = false,
+  onSkipBack,
+  onSkipNext,
+  hasNext = true,
+  onShuffle,
+  shuffled = false,
+  onSync,
+  onRename,
+  onShare,
+  onDelete,
+  syncing = false
 }: PlaylistHeaderProps) {
   const mark = shareMark(playlist);
-  const lastSyncedAt =
-    playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
-  const now = new Date();
   const sharedBy =
     playlist.access !== 'owner' && ownerName !== null ? ownerName : null;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnchorRef = useRef<HTMLSpanElement>(null);
+  const { run, endRun } = usePlayPauseMorph(playing);
+
+  /*
+   * The menu closes on a press outside it and on Escape, which is the whole
+   * behaviour of a menu button that opens onto a small set of items. A press
+   * inside is left alone so an item's own handler can run.
+   */
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent): void => {
+      if (!menuAnchorRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
+
+  /*
+   * The overflow's items, by access. A read collaborator gets no overflow at
+   * all, not an empty one: a menu with nothing in it is a control that opens
+   * onto a blank. A writer gets the one item it may use; the owner gets all
+   * four, and the rule before Delete is the header's own.
+   */
+  const menuItems = (() => {
+    if (playlist.access === 'owner') {
+      const items: (MenuItem | null)[] = [
+        onShare === undefined
+          ? null
+          : {
+              key: 'share',
+              label: 'Share',
+              Icon: IconShare,
+              onSelect: onShare
+            },
+        onRename === undefined
+          ? null
+          : {
+              key: 'rename',
+              label: 'Rename',
+              Icon: IconPencil,
+              onSelect: onRename
+            },
+        onSync === undefined
+          ? null
+          : {
+              key: 'sync',
+              label: 'Sync now',
+              Icon: IconRotate,
+              onSelect: onSync
+            },
+        onDelete === undefined
+          ? null
+          : {
+              key: 'delete',
+              label: 'Delete playlist',
+              Icon: IconTrash,
+              onSelect: onDelete,
+              destructive: true
+            }
+      ];
+
+      return items.filter((item): item is MenuItem => item !== null);
+    }
+
+    if (playlist.access === 'write') {
+      const items: (MenuItem | null)[] = [
+        onSync === undefined
+          ? null
+          : {
+              key: 'sync',
+              label: 'Sync now',
+              Icon: IconRotate,
+              onSelect: onSync
+            }
+      ];
+
+      return items.filter((item): item is MenuItem => item !== null);
+    }
+
+    return [];
+  })();
+
+  const playable = playlist.trackCount > 0;
+
+  /* The one door. It is a pause while the queue is this playlist, which is the
+   * header's own swap, and it is disabled rather than absent on a playlist with
+   * nothing to play: a control that is there and cannot be pressed is a
+   * different thing from a control that is not there. */
+  const playControl =
+    onPlay === undefined ? null : (
+      <button
+        type="button"
+        className={styles.playlistHeader__play}
+        aria-label={playing ? 'Pause this playlist' : 'Play this playlist'}
+        disabled={!playable}
+        data-run={run}
+        onAnimationEnd={endRun}
+        onClick={onPlay}>
+        <PlayGlyph
+          className={styles.playlistHeader__glyph}
+          stripClassName={styles.playlistHeader__strip}
+        />
+      </button>
+    );
+
+  /* The transport is the queue's own control, so it is drawn while this card is
+   * the queue, paused or playing, and it needs both steps and the play to be one
+   * control. A playlist the queue is not on has nowhere to step, so it keeps the
+   * single play. */
+  const showTransport =
+    current &&
+    onPlay !== undefined &&
+    onSkipBack !== undefined &&
+    onSkipNext !== undefined;
+
+  const primaryControl = showTransport ? (
+    <div className={styles.playlistHeader__transport}>
+      <button
+        type="button"
+        className={styles.playlistHeader__step}
+        aria-label="Skip back"
+        onClick={onSkipBack}>
+        <IconPlayerSkipBack
+          className={styles.playlistHeader__stepIcon}
+          aria-hidden="true"
+          focusable="false"
+        />
+      </button>
+      {playControl}
+      <button
+        type="button"
+        className={styles.playlistHeader__step}
+        aria-label="Track next"
+        disabled={!hasNext}
+        onClick={onSkipNext}>
+        <IconPlayerTrackNext
+          className={styles.playlistHeader__stepIcon}
+          aria-hidden="true"
+          focusable="false"
+        />
+      </button>
+    </div>
+  ) : (
+    playControl
+  );
+
+  const shuffleControl =
+    onShuffle === undefined ? null : (
+      <button
+        type="button"
+        className={styles.playlistHeader__iconBtn}
+        aria-pressed={shuffled}
+        aria-label="Shuffle"
+        onClick={onShuffle}>
+        <IconArrowsShuffle
+          className={styles.playlistHeader__icon}
+          aria-hidden="true"
+          focusable="false"
+        />
+      </button>
+    );
+
+  const menuControl =
+    menuItems.length === 0 ? null : (
+      <span className={styles.playlistHeader__menuAnchor} ref={menuAnchorRef}>
+        <button
+          type="button"
+          className={styles.playlistHeader__iconBtn}
+          aria-label="More actions"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(open => !open)}>
+          <IconDots
+            className={styles.playlistHeader__icon}
+            aria-hidden="true"
+            focusable="false"
+          />
+        </button>
+        {menuOpen ? (
+          <div className={styles.playlistHeader__menu} role="menu">
+            {menuItems.map((item, index) => (
+              <Fragment key={item.key}>
+                {item.destructive === true && index > 0 ? <hr /> : null}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.playlistHeader__menuItem}
+                  data-destructive={
+                    item.destructive === true ? 'true' : undefined
+                  }
+                  disabled={item.key === 'sync' && syncing}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    item.onSelect();
+                  }}>
+                  <item.Icon
+                    className={styles.playlistHeader__menuIcon}
+                    aria-hidden="true"
+                    focusable="false"
+                  />
+                  {item.label}
+                </button>
+              </Fragment>
+            ))}
+          </div>
+        ) : null}
+      </span>
+    );
+
+  const identity = (
+    <>
+      <div className={styles.playlistHeader__name}>
+        <Link
+          to="/playlists/$playlistId"
+          params={{ playlistId: playlist.id }}
+          className={styles.playlistHeader__nameText}>
+          {playlist.name}
+        </Link>
+        <span
+          className={styles.playlistHeader__share}
+          data-share={mark.state}
+          role="img"
+          aria-label={mark.label}>
+          <mark.Icon
+            className={styles.playlistHeader__shareIcon}
+            aria-hidden="true"
+            focusable="false"
+          />
+          <span className={styles.playlistHeader__shareTip} role="presentation">
+            {mark.label}
+          </span>
+        </span>
+      </div>
+      <div className={styles.playlistHeader__meta}>
+        <span
+          className={styles.playlistHeader__state}
+          data-state={playlist.syncStatus}>
+          {syncStateLabel(playlist.syncStatus)}
+        </span>
+        <span className={styles.playlistHeader__sep} aria-hidden="true">
+          &middot;
+        </span>
+        <span className={styles.playlistHeader__count}>
+          <span>{playlist.trackCount}</span>
+          <span className={styles.playlistHeader__countUnit}>
+            {trackCountUnit(playlist.trackCount)}
+          </span>
+        </span>
+      </div>
+      {sharedBy === null ? null : (
+        <p className={styles.playlistHeader__owner}>Shared by {sharedBy}</p>
+      )}
+    </>
+  );
+
+  if (arrangement === 'card') {
+    return (
+      <div
+        className={styles.playlistHeader}
+        data-arrangement="card"
+        data-state={playing ? 'playing' : 'paused'}>
+        <div
+          className={styles.playlistHeader__mart}
+          data-art={playlist.coverUrl === null ? 'no-art' : 'art'}>
+          {playlist.coverUrl === null ? null : (
+            <img
+              className={styles.playlistHeader__martArt}
+              src={playlist.coverUrl}
+              alt=""
+            />
+          )}
+          <div className={styles.playlistHeader__mscrim} aria-hidden="true" />
+          <div className={styles.playlistHeader__macts}>
+            {primaryControl}
+            <div className={styles.playlistHeader__mactsRight}>
+              {shuffleControl}
+              {menuControl}
+            </div>
+          </div>
+        </div>
+        <div className={styles.playlistHeader__munder}>{identity}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.playlistHeader}>
+    <div
+      className={styles.playlistHeader}
+      data-arrangement="row"
+      data-state={playing ? 'playing' : 'paused'}>
       <Link
         to="/playlists/$playlistId"
         params={{ playlistId: playlist.id }}
@@ -95,51 +481,15 @@ export default function PlaylistHeader({
           />
         )}
       </Link>
-      <div className={styles.playlistHeader__body}>
-        <div className={styles.playlistHeader__name}>
-          <Link
-            to="/playlists/$playlistId"
-            params={{ playlistId: playlist.id }}
-            className={styles.playlistHeader__nameText}>
-            {playlist.name}
-          </Link>
-          <span
-            className={styles.playlistHeader__share}
-            data-share={mark.state}
-            role="img"
-            aria-label={mark.label}>
-            <mark.Icon
-              className={styles.playlistHeader__shareIcon}
-              aria-hidden="true"
-              focusable="false"
-            />
-            <span
-              className={styles.playlistHeader__shareTip}
-              role="presentation">
-              {mark.label}
-            </span>
-          </span>
-        </div>
-        <div className={styles.playlistHeader__meta}>
-          <span
-            className={styles.playlistHeader__state}
-            data-state={playlist.syncStatus}>
-            {syncStateLabel(playlist.syncStatus)}
-          </span>
-          <span className={styles.playlistHeader__sep} aria-hidden="true">
-            &middot;
-          </span>
-          <span>{formatLastSynced(lastSyncedAt, now)}</span>
-        </div>
-        {sharedBy === null ? null : (
-          <p className={styles.playlistHeader__owner}>Shared by {sharedBy}</p>
+      <div className={styles.playlistHeader__body}>{identity}</div>
+      <div className={styles.playlistHeader__actions}>
+        {primaryControl}
+        {shuffleControl === null && menuControl === null ? null : (
+          <div className={styles.playlistHeader__actionRow}>
+            {shuffleControl}
+            {menuControl}
+          </div>
         )}
-        <div className={styles.playlistHeader__count}>
-          <span>{playlist.trackCount}</span>
-          <span className={styles.playlistHeader__countUnit}>
-            {trackCountUnit(playlist.trackCount)}
-          </span>
-        </div>
       </div>
     </div>
   );

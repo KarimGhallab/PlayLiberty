@@ -1,0 +1,146 @@
+/*
+ * The undo toast. Anchored bottom-left, clear of the player bar and of the
+ * library's own content, and stacked above the bar so a deferred delete is always
+ * reachable while music plays.
+ *
+ * The ring is a sweep rather than a number: the window is finite and the sweep
+ * shows it without asking anyone to read a countdown. It is one animation over
+ * the duration handed in as `--toast-duration`, so the ring and the timer that
+ * ends the window cannot drift; under `prefers-reduced-motion` the sweep stops
+ * and the toast simply rests, since the action's own deadline is the host's and
+ * not the ring's.
+ */
+.toast {
+  position: fixed;
+  left: var(--space-4);
+  bottom: calc(var(--space-4) + 98px);
+  z-index: calc(var(--z-player) + 1);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 280px;
+  max-width: min(420px, calc(100vw - var(--space-4) * 2));
+  padding: var(--space-3);
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  animation: pl-toast-in var(--motion-base) var(--ease-standard);
+
+  &__ring {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 2px solid var(--accent);
+    border-top-color: transparent;
+    border-radius: var(--radius-chip);
+    animation-name: pl-toast-ring;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__detail {
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__action {
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--accent-hover);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__dismiss {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    color: var(--muted);
+    font-size: var(--text-lg);
+    line-height: 1;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ink);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+}
+
+@keyframes pl-toast-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-2);
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes pl-toast-ring {
+  from {
+    rotate: 0deg;
+  }
+
+  to {
+    rotate: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+
+  .toast__ring {
+    /* The sweep is decoration; the window itself is the host's timer. */
+    animation: none;
+    border-top-color: var(--accent);
+    opacity: 0.6;
+  }
+}

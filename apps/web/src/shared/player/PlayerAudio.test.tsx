@@ -3,7 +3,6 @@ import { HttpResponse, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { server } from '../../testing/mocks/server';
-
 import PlayerAudio from './PlayerAudio';
 import { usePlayerStore } from './playerStore';
 import type { PlayerTrack } from './types';
@@ -80,6 +79,26 @@ describe('PlayerAudio', () => {
 
     expect(audio().getAttribute('src')).toBe('/api/v1/tracks/track-2/stream');
     expect(document.querySelectorAll('audio')).toHaveLength(1);
+  });
+
+  it('starts the new source whenever the track changes while playing', () => {
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    });
+    expect(playMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      usePlayerStore.getState().skipNext();
+    });
+    expect(playMock).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      usePlayerStore.getState().skipPrevious();
+    });
+    expect(audio().getAttribute('src')).toBe('/api/v1/tracks/track-1/stream');
+    expect(playMock).toHaveBeenCalledTimes(3);
   });
 
   it('pauses and resumes without losing the place', () => {
@@ -368,7 +387,9 @@ describe('PlayerAudio', () => {
      * ticket is the queue: an expired session is not a broken track, so nothing
      * is dropped and the listener is not moved.
      */
-    expect(window.sessionStorage.getItem('playliberty.re-auth-attempt')).toBe('1');
+    expect(window.sessionStorage.getItem('playliberty.re-auth-attempt')).toBe(
+      '1'
+    );
     expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
     expect(state.currentId).toBe('track-1');
   });

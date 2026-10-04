@@ -4,6 +4,7 @@ export {
   formatLastSynced,
   formatRelativeTime,
   formatTrackCount,
+  providerLabel,
   syncStateLabel,
   trackCountUnit,
   trackStateLabel

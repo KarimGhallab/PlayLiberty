@@ -99,6 +99,8 @@ export const ShareSchema = z.object({
   createdAt: isoDateTime
 });
 
+export const ShareListSchema = z.array(ShareSchema);
+
 export const SyncRunSchema = z.object({
   id: identifier,
   playlistId: identifier,

@@ -37,6 +37,12 @@ export interface PersistedPlayerState {
 export interface PlayerState extends PersistedPlayerState {
   readonly isPlaying: boolean;
   readonly seekTo: number | null;
+  /*
+   * Whether the queue is shuffled. It is a client fact like the queue itself,
+   * never persisted: a relaunch starts on the stored order, and turning it off
+   * keeps the order the shuffle left because there is no original to restore.
+   */
+  readonly shuffle: boolean;
   readonly hydrate: (state: PersistedPlayerState) => void;
   readonly startQueue: (
     playlistId: string,
@@ -57,14 +63,19 @@ export interface PlayerState extends PersistedPlayerState {
    */
   readonly dropAndAdvance: (id: string) => void;
   /*
-   * Transport. `skipNext` and `skipPrevious` move one place and do nothing at the
-   * ends rather than wrapping; `advance` is what a finished track does, which is
-   * the same move and a different answer at the last track, where it stops.
+   * Transport. `skipNext` moves one place and does nothing at the end rather
+   * than wrapping. `skipPrevious` steps back only inside a small grace window;
+   * after it, the press restarts the current track, and the first track restarts
+   * because there is nowhere to step back to. Both are play gestures and resume a
+   * paused queue rather than moving the cursor on a stopped one. `advance` is what
+   * a finished track does, which is the same move as `skipNext` and a different
+   * answer at the last track, where it stops.
    */
   readonly skipNext: () => void;
   readonly skipPrevious: () => void;
   readonly advance: () => void;
   readonly seek: (seconds: number) => void;
+  readonly setShuffle: (shuffle: boolean) => void;
   readonly clearSeek: () => void;
   readonly setPosition: (seconds: number) => void;
   readonly setPlaying: (playing: boolean) => void;
@@ -79,4 +90,30 @@ export function currentIndex(state: PersistedPlayerState): number {
   }
 
   return state.queue.findIndex(track => track.id === state.currentId);
+}
+
+/*
+ * The index the queue moves to after the current track, or -1 when there is
+ * none. Shuffled, it is any of the other tracks at random and there is always
+ * one whenever the queue holds more than the current track; unshuffled, it is
+ * the next place and is absent at the end. This is the one place the two
+ * answers to "what comes next" are decided, so the forward step and the end of
+ * a track cannot disagree about the end of the queue.
+ */
+export function nextIndex(state: PlayerState): number {
+  const index = currentIndex(state);
+
+  if (index < 0 || state.queue.length <= 1) {
+    return -1;
+  }
+
+  if (!state.shuffle) {
+    return index + 1 < state.queue.length ? index + 1 : -1;
+  }
+
+  const others = state.queue
+    .map((_track, other) => other)
+    .filter(other => other !== index);
+
+  return others[Math.floor(Math.random() * others.length)];
 }
