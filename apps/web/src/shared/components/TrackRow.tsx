@@ -213,8 +213,12 @@ export default function TrackRow({
               {stateLabel}
             </span>
           )}
+          {/* The server's own reason, kept as secondary copy: the mapped word is
+           * primary, and the sentence is bounded to one ellipsized line with the
+           * full text in `title`, so an untrusted, unbounded string cannot set
+           * the row's geometry or overflow toward the duration column. */}
           {track.failureReason === null ? null : (
-            <span className={styles.trackRow__reason}>
+            <span className={styles.trackRow__reason} title={track.failureReason}>
               {track.failureReason}
             </span>
           )}

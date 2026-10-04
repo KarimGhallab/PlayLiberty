@@ -136,10 +136,16 @@
     text-overflow: ellipsis;
   }
 
-  /* A removed-from-source track keeps the ordinary title colour, the same as a
-   * fully available one: the file is still here and still plays, so dimming it
-   * would read as "less than" a track that is no different to press. The state
-   * line is what says the source dropped it. */
+  /* A row that cannot be played steps its title down to the meta colour, so the
+   * list reads at a glance: playable rows carry full ink, unplayable ones are
+   * quieter. Downloading is the exception: its row already breathes, and a title
+   * dimming under a running animation would fight it. A removed-from-source
+   * track whose file is stored is playable, so it keeps full ink; the file is
+   * still here and still plays, and the state line says the source dropped it. */
+  &:not([data-playable='true']):not([data-downloading='true']) &__title {
+    color: var(--muted);
+  }
+
   &__sub {
     display: flex;
     align-items: center;
@@ -174,15 +180,19 @@
     }
   }
 
-  /* The reason is a full sentence, not a truncated fragment, so it wraps rather
-   * than ellipsing: the whole point of this anatomy is that the sentence
-   * survives. */
+  /* The server's failure sentence, secondary to the mapped word. It is untrusted
+   * and unbounded, so it is held to one line and ellipsized; the full sentence
+   * lives in the element's `title`, because a raw diagnostic that wraps would
+   * set the row's height and push the duration column. */
   &__reason {
     flex: 1;
     min-width: 0;
+    overflow: hidden;
     color: var(--tone-failed);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   &__duration {
@@ -374,6 +384,12 @@
 
   100% {
     transform: scaleY(0.3);
+  }
+}
+
+@media (max-width: 767px) {
+  .track-row {
+    padding: var(--space-3) 0;
   }
 }
 

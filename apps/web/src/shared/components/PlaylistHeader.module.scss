@@ -77,12 +77,16 @@
 
   /* An anchor does not inherit: the user agent's `a { color }` beats any
    * inherited value, so without `color: inherit` the name draws in the browser's
-   * link colour and the underline comes back. */
+   * link colour and the underline comes back. A heading does not inherit either:
+   * its UA size and margin would beat the block's, so both are reset and the
+   * element reads the same as the link it replaces on the detail route. */
   &__name-text {
     flex: 0 1 auto;
     min-width: 0;
+    margin: 0;
     overflow: hidden;
     color: inherit;
+    font: inherit;
     text-decoration: none;
     white-space: nowrap;
     text-overflow: ellipsis;

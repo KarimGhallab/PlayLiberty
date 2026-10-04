@@ -5,6 +5,12 @@
  * header's card arrangement with its one state component beneath it, and the
  * tracks on the right with whatever is left.
  *
+ * The 16px inline padding is the viewport gutter, which the design's drawn frame
+ * does not have, so the max-width carries it as well: `box-sizing: border-box`
+ * subtracts padding from a max-width, and 1056 alone would leave the content
+ * column 1024 and the track list 680 against the design's 712. Adding the
+ * gutter back keeps the column the stated 1056.
+ *
  * align-items: flex-start, so the two columns start on the same line: centring
  * them against each other would put the first track row hundreds of pixels down
  * the screen under the header's own height.
@@ -14,16 +20,19 @@
 .playlist-detail {
   display: flex;
   flex-direction: column;
-  max-width: 1056px;
+  max-width: calc(1056px + var(--space-4) * 2);
   margin: 0 auto;
   padding: 0 var(--space-4) calc(var(--space-9) + var(--space-8));
 
   /* The way home. A web fact: on mobile the platform gesture returns from a
-   * pushed route, so there is no counterpart there. */
+   * pushed route, so there is no counterpart there. The 20px is the design's own
+   * --space-5 at this row, and the header's own `padding: 20px 0` below it, so
+   * the two pieces of the screen speak the same vertical rhythm and the first
+   * rule sits the design's stated distance from the top. */
   &__wayhome {
     display: flex;
     align-items: center;
-    padding: var(--space-3) 0;
+    padding: var(--space-5) 0;
   }
 
   /* Type and an arrow, not a button. The link was easy to miss as a small muted
@@ -111,13 +120,6 @@
  */
 @media (max-width: 767px) {
   .playlist-detail {
-    /* No working inset on a phone. The design's own decision: the header's row
-     * declares `padding: 20px 0` and is written to sit at its container's inline
-     * edges, and insetting it would override a rule the header owns and take the
-     * name's column from 152.4px to 120px, 13 characters against 10. The track
-     * list is not inset for the same reason, so both sit at the frame's edges. */
-    padding-inline: 0;
-
     /* The way home is a web fact and is absent here rather than restyled: the
      * platform gesture returns from a pushed route, so a control that returns
      * does what the platform already does. */

@@ -15,7 +15,7 @@ import styles from './UndoToast.module.scss';
  */
 
 interface UndoToastProps {
-  /** The sentence, e.g. `Deleted “Evening Jazz”`. */
+  /** The sentence, in the present tense, e.g. `Deleting “Evening Jazz”`. */
   readonly message: string;
   /** The line under it, e.g. the playlist or track name. */
   readonly detail?: string | null;

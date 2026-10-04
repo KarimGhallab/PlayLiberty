@@ -95,6 +95,14 @@ control existed; a phone is where the control is most wanted, so it stays and th
 rather than flush to the edge. The bar's **98px** and its left artwork rail are unchanged from the desk, so
 the flush form is the centred one minus the centre and minus the seeker's 480px cap.
 
+Two corrections the implementation found in its own 1056 column. The content column was **1024**, not 1056:
+`box-sizing: border-box` subtracts padding from a `max-width`, so `max-width: 1056px` beside a 16px viewport
+gutter left the column 1024 and the track list **680** against the design's 712. The max-width now carries
+the gutter, `calc(1056px + var(--space-4) * 2)`, and the list measures **712px**. And the way-home row is
+**75px** rather than the design's **58.9px**, because the link carries 8px of padding for a taller touch
+target than the design's 18.9px text link; the row's own `--space-5` now matches the design's and the header's
+`20px 0`, so the screen keeps one vertical rhythm.
+
 ## The columns, and the number under the left one
 
 The left column is **320px**, 40px above its measured floor. The sync summary's band is four `1fr` cells with
@@ -173,6 +181,15 @@ child order and classes inside `.sub`, the same state widths to the digit (`Down
 the same 28px play, and the row's own 3px `.dot` on the in-flight row and on no other. While a run is active
 the count reads 131 and climbs, tabular so the line does not shift, and the summary's kept figure reads 0,
 which means "not counted yet".
+
+The removed word names the source, whatever the file's status is: a removed source reads `Removed from
+YouTube`, whether its file is stored (and the row still plays) or has no file. The provider is part of the
+word, and the stored-removed title stays at full ink because the row is playable. Unplayable rows step their
+title down to the meta colour so the list reads at a glance; downloading is the exception, because its row
+already breathes and a dim title under a running animation would fight it. The failed row keeps the design's
+word-then-reason sub-line, but the server's sentence is untrusted and unbounded, so it is held to one line,
+ellipsized, with the full text in the element's `title`: it can no longer set the row's height or run toward
+the duration column, and the mapped word stays primary.
 
 The tallest left column sets the shortest viewport: the side ends at 546.5px with the summary, 570.7px while
 syncing, 460.1px with the empty state and **640.1px** with the fault, so the error state sets the floor at
@@ -295,10 +312,13 @@ inside itself rather than its row, so the time comes off; the actions column is 
 against 72px at rest, which at 88.4px is the tightest width anywhere; and the height budget is spent by two
 76.1px track rows rather than by any component above them.
 
-**The not-found state.** It has no component and needs one. The empty state cannot stand in for it, because
-its words say nothing is here because the playlist has never synced, which is a lie for a playlist that was
-shared and is not any more. A playlist that does not exist and one the account cannot see both answer 404 at
-one status, so the state has to speak about both without claiming to know which happened.
+**The not-found state.** It is now built as `PlaylistNotFound`. The empty state cannot stand in for it,
+because its words say nothing is here because the playlist has never synced, which is a lie for a playlist
+that was shared and is not any more. A playlist that does not exist and one the account cannot see both
+answer 404 at one status, so the state has to speak about both without claiming to know which happened. It
+is drawn as the whole screen: a playlist read that answers 404 replaces the header and the list entirely,
+rather than drawing a header for a playlist the server denied. The heading is the screen's own `h1`, which
+the main detail does not otherwise carry: the name is a heading there too, and the library keeps it a link.
 
 **The share dialog and the add-a-video dialog.** Both are hosted here and nowhere else. The second carries
 this playlist preselected and any other writable playlist selectable, and issues one request per chosen

@@ -35,9 +35,11 @@ dot repeated down the list.
 
 **Four of the seven file states have no file to play**, which is downloading, pending, failed and
 unavailable. Their control is `disabled` rather than absent, so the lanes still line up, and a disabled
-control is not revealed either. Removed is not one of the four: that track is still on disk, which is the
-whole reason the row is dimmed rather than struck. Check `2p` holds both halves, that the control is
-disabled on those rows and present on all of them.
+control is not revealed either. Removed is not one of the four: a removed source whose file is stored is
+still on disk and still playable, and its state word names the source it left, `Removed from YouTube`, with
+the title kept at full ink because the row still plays. The unplayable rows step their title down to the meta
+colour so the list reads at a glance; downloading is the exception, because its row already breathes. Check
+`2p` holds both halves, that the control is disabled on those rows and present on all of them.
 
 **The cost of one control rather than two is fifteen path elements per button.** Sixteen rows carry 240 of
 them and a hundred and twenty eight tracks would carry 1920. The validator reports 315 computed frame

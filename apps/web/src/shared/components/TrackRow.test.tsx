@@ -42,13 +42,17 @@ function renderRow(options: {
   readonly onRetry?: (trackId: string) => void;
   readonly onRemove?: ((trackId: string) => void) | null;
   readonly retrying?: boolean;
-}): { onPlay: ReturnType<typeof vi.fn>; onRemove: ReturnType<typeof vi.fn> } {
+}): {
+  onPlay: ReturnType<typeof vi.fn>;
+  onRemove: ReturnType<typeof vi.fn>;
+  unmount: () => void;
+} {
   const onPlay = vi.fn();
   const onRemove = vi.fn();
   const resolvedRemove =
     options.onRemove === null ? undefined : (options.onRemove ?? onRemove);
 
-  render(
+  const { unmount } = render(
     <ul>
       <TrackRow
         association={options.association ?? association()}
@@ -62,7 +66,7 @@ function renderRow(options: {
     </ul>
   );
 
-  return { onPlay, onRemove };
+  return { onPlay, onRemove, unmount };
 }
 
 describe('TrackRow', () => {
@@ -197,7 +201,7 @@ describe('TrackRow', () => {
     expect(screen.queryByText('Failed')).not.toBeInTheDocument();
   });
 
-  it('names each state and carries the failure reason as a sentence', () => {
+  it('shows the mapped word and holds the raw reason to one line with a title', () => {
     renderRow({
       association: association({
         fileStatus: TrackFileStatus.Failed,
@@ -206,9 +210,13 @@ describe('TrackRow', () => {
     });
 
     expect(screen.getByText('Failed')).toBeInTheDocument();
-    expect(
-      screen.getByText('Download failed, will retry on the next sync')
-    ).toBeInTheDocument();
+    /* The raw sentence is secondary and bounded: present, but carrying its full
+     * text as a title so it cannot set the row's geometry. */
+    const reason = screen.getByText('Download failed, will retry on the next sync');
+    expect(reason).toHaveAttribute(
+      'title',
+      'Download failed, will retry on the next sync'
+    );
   });
 
   it('keeps a removed track playable and names the source it left', () => {
@@ -222,14 +230,39 @@ describe('TrackRow', () => {
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
 
-  it('keeps the removed title the same colour as an available one', () => {
+  it('keeps the removed title at full ink, because the row still plays', () => {
     renderRow({
       association: association({ sourceStatus: TrackSourceStatus.Removed })
     });
 
-    /* The removal is said on the state line, not by dimming the title. */
-    expect(screen.getByText('Blue In Green')).not.toHaveAttribute(
-      'data-removed'
+    /* Playable, so no quiet tier: the removal is said on the state line, not by
+     * stepping the title down. */
+    expect(screen.getByRole('listitem')).toHaveAttribute(
+      'data-playable',
+      'true'
+    );
+  });
+
+  it('steps an unplayable row down and leaves a downloading row alone', () => {
+    const { unmount } = renderRow({
+      association: association({ fileStatus: TrackFileStatus.Pending })
+    });
+
+    /* Not playable and not downloading: the title takes the quiet tier. */
+    expect(screen.getByRole('listitem')).not.toHaveAttribute('data-playable');
+    expect(screen.getByRole('listitem')).not.toHaveAttribute(
+      'data-downloading'
+    );
+
+    unmount();
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Downloading })
+    });
+
+    /* Downloading is the exception: the breathing animation is the cue. */
+    expect(screen.getByRole('listitem')).toHaveAttribute(
+      'data-downloading',
+      'true'
     );
   });
 

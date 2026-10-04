@@ -150,6 +150,13 @@ describe('trackStateLabel', () => {
         Provider.Youtube
       )
     ).toBe('Removed from YouTube');
+    expect(
+      trackStateLabel(
+        TrackFileStatus.Unavailable,
+        TrackSourceStatus.Removed,
+        Provider.Youtube
+      )
+    ).toBe('Removed from YouTube');
   });
 
   it('names the provider as a person writes it', () => {

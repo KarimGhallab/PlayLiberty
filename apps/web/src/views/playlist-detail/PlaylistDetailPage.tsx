@@ -19,6 +19,7 @@ import {
 } from '../../shared/api/queries';
 import EmptyState from '../../shared/components/EmptyState';
 import PlaylistHeader from '../../shared/components/PlaylistHeader';
+import PlaylistNotFound from '../../shared/components/PlaylistNotFound';
 import RenamePlaylistDialog from '../../shared/components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../../shared/components/SharePlaylistDialog';
 import SyncError from '../../shared/components/SyncError';
@@ -158,7 +159,7 @@ export default function PlaylistDetailPage() {
 
   const deletePlaylist = (): void => {
     deferred.defer({
-      message: 'Deleted playlist',
+      message: 'Deleting playlist',
       detail: playlist.data?.name ?? null,
       commit: () =>
         remove.mutate(undefined, {
@@ -181,7 +182,7 @@ export default function PlaylistDetailPage() {
         .title ?? 'Track';
 
     deferred.defer({
-      message: 'Removed track',
+      message: 'Removing track',
       detail: title,
       commit: () => removeTrack.mutate(trackId)
     });
@@ -208,6 +209,22 @@ export default function PlaylistDetailPage() {
         association.track.fileStatus === TrackFileStatus.Downloading
     ).length ?? 0;
 
+  /*
+   * A playlist query that answers 404, whether because the playlist does not
+   * exist or because the account can no longer see it, is the not-found state
+   * and not an error: the header for a playlist that is not there, and a list
+   * area with an error sentence, both assert something the server denied. The
+   * whole two-column body is replaced, and the state owns one action, back to
+   * the library.
+   */
+  if (playlist.isError) {
+    return (
+      <main className={styles.playlistDetail}>
+        <PlaylistNotFound />
+      </main>
+    );
+  }
+
   return (
     <main className={styles.playlistDetail}>
       <nav className={styles.playlistDetail__wayhome}>
@@ -228,6 +245,7 @@ export default function PlaylistDetailPage() {
               playlist={playlist.data}
               ownerName={ownerName}
               arrangement={isMobile ? 'row' : 'card'}
+              heading
               onPlay={playPlaylist}
               playing={playingThis}
               current={isQueue}

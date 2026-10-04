@@ -149,10 +149,11 @@ export function syncStateLabel(status: PlaylistSyncStatus): string {
  * the default and stays silent: a row with nothing wrong should not announce
  * that it is fine, and the absence of a word is the state.
  *
- * The precedence is `trackTone`'s: a removed track reads `Removed, still here`
- * whatever its file status is, because the source is gone and the file should
- * not compete with that news. `still here` is the product's whole promise, and
- * the exact string is the contract, so both clients render it identically.
+ * A removed source names the source, whatever the file's status is: the source
+ * is gone and the file should not compete with that news. `Removed from
+ * {{provider}}` is the word for a stored, playable track and for one with no
+ * file alike. The provider is a function rather than a literal so the sentence
+ * names the source without the row knowing which providers there are.
  */
 export function trackStateLabel(
   fileStatus: TrackFileStatus,

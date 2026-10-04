@@ -22,7 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export const UNDO_WINDOW_MS = 6000;
 
 export interface PendingAction {
-  /** The sentence the toast shows, e.g. `Deleted “Evening Jazz”`. */
+  /** The sentence the toast shows, in the present tense, e.g. `Deleting “Evening Jazz”`. */
   readonly message: string;
   /** The line under it, e.g. the playlist or track name. */
   readonly detail: string | null;

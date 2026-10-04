@@ -103,6 +103,16 @@ describe('PlaylistHeader', () => {
     expect(links[0]).toHaveAccessibleName('Rain On The Window');
   });
 
+  it('draws the name as a heading and not a link when the route owns it', async () => {
+    renderHeader(playlist(), null, { heading: true });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+    /* The route is the page it is on, so the self-link is gone. */
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
   it('names a private owned playlist', async () => {
     renderHeader(playlist());
 

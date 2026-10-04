@@ -96,6 +96,14 @@ interface PlaylistHeaderProps {
   onShare?: () => void;
   onDelete?: () => void;
   syncing?: boolean;
+  /*
+   * Whether the name is the page's own heading. On the detail route the name is
+   * the screen's `h1` and a link to the page it is already on, so it is drawn as
+   * a heading; in the library it is the link that opens the detail, so it stays a
+   * link. The two are different elements, which is why this is a prop and not a
+   * style.
+   */
+  heading?: boolean;
 }
 
 interface ShareMark {
@@ -154,7 +162,8 @@ export default function PlaylistHeader({
   onRename,
   onShare,
   onDelete,
-  syncing = false
+  syncing = false,
+  heading = false
 }: PlaylistHeaderProps) {
   const mark = shareMark(playlist);
   const sharedBy =
@@ -388,12 +397,16 @@ export default function PlaylistHeader({
   const identity = (
     <>
       <div className={styles.playlistHeader__name}>
-        <Link
-          to="/playlists/$playlistId"
-          params={{ playlistId: playlist.id }}
-          className={styles.playlistHeader__nameText}>
-          {playlist.name}
-        </Link>
+        {heading ? (
+          <h1 className={styles.playlistHeader__nameText}>{playlist.name}</h1>
+        ) : (
+          <Link
+            to="/playlists/$playlistId"
+            params={{ playlistId: playlist.id }}
+            className={styles.playlistHeader__nameText}>
+            {playlist.name}
+          </Link>
+        )}
         <span
           className={styles.playlistHeader__share}
           data-share={mark.state}

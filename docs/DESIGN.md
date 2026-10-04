@@ -84,9 +84,9 @@ These are the components, not their specs. Each links to the file that specifies
 
 ## What is not yet designed
 
-**The playlist detail's own components: the not-found state, the share dialog and the add-a-video
-dialog.** The screen is drawn, on web so far, and those three are the pieces of it that do not exist
-yet. The inventory is
+**The playlist detail's own components: the share dialog and the add-a-video
+dialog.** The screen is drawn, on web so far, and those two are the pieces of it that do not exist
+yet; the not-found state is now built as `PlaylistNotFound`. The inventory is
 [`13-settle-the-screen-inventory`](tracker/tasks/13-settle-the-screen-inventory.md), and a screen is a
 surface a user reaches by route, so there are two screens and two design tasks rather than four: the
 library, drawn in [`16-design-the-library`](tracker/tasks/16-design-the-library.md), and the playlist

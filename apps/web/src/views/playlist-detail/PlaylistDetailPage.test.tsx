@@ -232,8 +232,9 @@ describe('PlaylistDetailPage', () => {
       screen.getByRole('menuitem', { name: 'Remove from playlist' })
     );
 
-    /* The press opens the window; the call waits for its deadline. */
-    expect(await screen.findByText('Removed track')).toBeInTheDocument();
+    /* The press opens the window; the call waits for its deadline, and the
+     * toast speaks in the present because nothing has been removed yet. */
+    expect(await screen.findByText('Removing track')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
@@ -249,7 +250,7 @@ describe('PlaylistDetailPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByText('Removed track')).not.toBeInTheDocument();
+    expect(screen.queryByText('Removing track')).not.toBeInTheDocument();
   });
 
   it('shows Share and Rename to the owner and opens each dialog', async () => {
@@ -276,7 +277,7 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     expect(
-      await screen.findByRole('link', { name: 'Rain On The Window' })
+      await screen.findByRole('heading', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
   });
 
@@ -304,7 +305,7 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     expect(
-      await screen.findByRole('link', { name: 'Rain On The Window' })
+      await screen.findByRole('heading', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
   });
 
@@ -329,6 +330,34 @@ describe('PlaylistDetailPage', () => {
       await screen.findByText('Tracks could not be loaded.')
     ).toBeInTheDocument();
     expect(screen.queryByText('No tracks yet.')).not.toBeInTheDocument();
+  });
+
+  it('shows the not-found state and no header when the playlist 404s', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+        HttpResponse.json(
+          {
+            type: 'about:blank',
+            title: 'Not found',
+            status: 404,
+            detail: 'No playlist with that id.',
+            code: 'not_found'
+          },
+          { status: 404 }
+        )
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('heading', { name: 'This playlist is not here' })
+    ).toBeInTheDocument();
+    /* Neither cause is claimed, and the header for a playlist that is not there
+     * is not drawn. */
+    expect(screen.queryByText('Rain On The Window')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Nothing here yet' })
+    ).not.toBeInTheDocument();
   });
 
   it('draws the summary of the latest run under the header card', async () => {
@@ -376,7 +405,7 @@ describe('PlaylistDetailPage', () => {
     );
     renderDetail();
 
-    await screen.findByRole('link', { name: 'Rain On The Window' });
+    await screen.findByRole('heading', { name: 'Rain On The Window' });
 
     expect(
       screen.queryByRole('button', { name: 'More actions' })
@@ -386,7 +415,7 @@ describe('PlaylistDetailPage', () => {
   it('has no axe violations', async () => {
     const { container } = renderDetail();
 
-    await screen.findByRole('link', { name: 'Rain On The Window' });
+    await screen.findByRole('heading', { name: 'Rain On The Window' });
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }
