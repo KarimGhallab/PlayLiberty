@@ -12,6 +12,7 @@ import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { usePlayerStore } from '../../shared/player/playerStore';
+import { MOBILE_QUERY } from '../../shared/useMediaQuery';
 
 import { server } from '../../testing/mocks/server';
 import PlaylistDetailPage from './PlaylistDetailPage';
@@ -42,6 +43,32 @@ function renderDetail(playlistId = PLAYLIST_ID) {
   );
 }
 
+/*
+ * The media-query stub answers one query and delegates every other to the
+ * global default, so a test can move the viewport without disturbing the
+ * `prefers-reduced-motion` checks. The returned function puts the original back,
+ * because a stub left in place would follow every later test.
+ */
+function stubViewport(matchingQuery: string): () => void {
+  const original = window.matchMedia;
+
+  window.matchMedia = (query: string) =>
+    ({
+      matches: query === matchingQuery,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false
+    }) as MediaQueryList;
+
+  return () => {
+    window.matchMedia = original;
+  };
+}
+
 beforeEach(() => {
   usePlayerStore.getState().clear();
 });
@@ -53,6 +80,45 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('link', { name: 'Back to playlists' })
     ).toHaveAttribute('href', '/');
+  });
+
+  /*
+   * The header's two arrangements are different markup, so the viewport decides
+   * between them: the web draws the card, whose cover sits above the identity,
+   * and a phone draws the row, whose cover sits beside it. The assertion is the
+   * attribute the component renders, because that is what picks the markup the
+   * rest of the header hangs off.
+   */
+  it('draws the header as the card at the web width', async () => {
+    const { container } = renderDetail();
+
+    await screen.findByRole('button', { name: 'Play this playlist' });
+
+    expect(
+      container.querySelector('[data-arrangement="card"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-arrangement="row"]')
+    ).not.toBeInTheDocument();
+  });
+
+  it('draws the header as the row at the phone width', async () => {
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      const { container } = renderDetail();
+
+      await screen.findByRole('button', { name: 'Play this playlist' });
+
+      expect(
+        container.querySelector('[data-arrangement="row"]')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-arrangement="card"]')
+      ).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 
   it('lists the playlist tracks that are playable', async () => {

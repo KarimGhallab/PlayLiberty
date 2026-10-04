@@ -32,6 +32,7 @@ import {
 import { usePlayerStore } from '../../shared/player/playerStore';
 import { toPlayerTracks } from '../../shared/player/playerTracks';
 import { nextIndex } from '../../shared/player/types';
+import { MOBILE_QUERY, useMediaQuery } from '../../shared/useMediaQuery';
 
 import styles from './PlaylistDetailPage.module.scss';
 
@@ -48,6 +49,12 @@ import styles from './PlaylistDetailPage.module.scss';
  * never two, the summary when there is a run to summarise and the error when the
  * sync failed. A never-synced playlist has no run, so it has neither, and the
  * empty state in the list area says so on its own.
+ *
+ * Under 768px it is one column instead of two, and the header is the component's
+ * row rather than its card: the design's mobile arrangement, where the card
+ * would be 470.4px tall against the row's 136px. The way home is absent there,
+ * because the platform gesture returns from the pushed route and a control that
+ * returns would do what the platform already does.
  *
  * The list is drawn in the playlist's own order and every association appears,
  * playable or not, because a track that silently vanished from the list would
@@ -70,6 +77,14 @@ export default function PlaylistDetailPage() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const deferred = useDeferredAction();
+  /*
+   * The header's arrangement at this width. The design's mobile arrangement is
+   * the component's row, not its card: at 390 the card is 470.4px tall and the
+   * row is 136px, so the row is the one that fits, and the two are different
+   * markup rather than two stylesheets, which is why this asks the viewport
+   * rather than branching in CSS.
+   */
+  const isMobile = useMediaQuery(MOBILE_QUERY);
   const startQueue = usePlayerStore(state => state.startQueue);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const skipNext = usePlayerStore(state => state.skipNext);
@@ -212,7 +227,7 @@ export default function PlaylistDetailPage() {
             <PlaylistHeader
               playlist={playlist.data}
               ownerName={ownerName}
-              arrangement="card"
+              arrangement={isMobile ? 'row' : 'card'}
               onPlay={playPlaylist}
               playing={playingThis}
               current={isQueue}

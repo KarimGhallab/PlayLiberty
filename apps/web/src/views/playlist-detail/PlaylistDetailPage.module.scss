@@ -98,3 +98,50 @@
     border-top: 1px solid var(--line);
   }
 }
+
+/*
+ * The mobile arrangement, at 390 and under. One column rather than two, which
+ * is the whole difference: on the desk a width is a division and here it is the
+ * whole frame. The design draws two widths (1056 web, 390 phone) and names no
+ * breakpoint between them, so 768 is this implementation's own line, chosen as
+ * the first width at which a 320px card beside a track list stops leaving the
+ * list a usable title column. The header's arrangement is picked in the
+ * component, not here, because the card and the row are different markup and
+ * CSS cannot turn one into the other.
+ */
+@media (max-width: 767px) {
+  .playlist-detail {
+    /* No working inset on a phone. The design's own decision: the header's row
+     * declares `padding: 20px 0` and is written to sit at its container's inline
+     * edges, and insetting it would override a rule the header owns and take the
+     * name's column from 152.4px to 120px, 13 characters against 10. The track
+     * list is not inset for the same reason, so both sit at the frame's edges. */
+    padding-inline: 0;
+
+    /* The way home is a web fact and is absent here rather than restyled: the
+     * platform gesture returns from a pushed route, so a control that returns
+     * does what the platform already does. */
+    &__wayhome {
+      display: none;
+    }
+
+    /* One column. The side stops being a fixed 320px and takes the whole frame,
+     * so the header's own row fills it and the state block sits under it rather
+     * than beside the tracks. The side's own --space-5 gap is the distance the
+     * design puts between the header and the state, so nothing is added here. */
+    &__columns {
+      display: block;
+    }
+
+    &__side {
+      width: auto;
+    }
+
+    /* The list is full width under the header, with the same 20px the side uses
+     * between its own two blocks. Its top border closes it, the desk's own
+     * treatment. */
+    &__tracks {
+      margin-top: var(--space-5);
+    }
+  }
+}

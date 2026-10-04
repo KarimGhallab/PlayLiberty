@@ -291,3 +291,43 @@
     transform: translateX(-168px);
   }
 }
+
+/*
+ * The flush arrangement, at 390 and under, and the design's own rule at the two
+ * widths rather than a preference: the centre and the 480px cap are both web
+ * decisions and neither survives a phone. The centre has to go because a
+ * symmetric bar needs room for two halves and a 390px bar has 314px of content,
+ * which gave the title 21px; the cap has to go because 480px does not fit, so
+ * the seeker flexes rather than being capped to a smaller literal. The volume
+ * column stays: the design's own bar carries no volume, but this one does, and a
+ * core control the phone can reach is not something to drop on the way down.
+ *
+ * The breakpoint is this implementation's own line, matching the detail's, and
+ * not a token: the design draws 390 and 1056 and names nothing between them.
+ */
+@media (max-width: 767px) {
+  .player-bar {
+    /* A tighter box than the desk's, so the rail and the two rows keep more of
+     * their width for the title. */
+    padding: var(--space-3);
+
+    /* Two columns rather than three: the identity flexes and the transport lands
+     * on the right edge. The volume is the third and is unchanged. */
+    &__top {
+      grid-template-columns: 1fr auto;
+    }
+
+    /* The two time stamps and their 4px gap are what the seeker gives up on a
+     * phone; the times stay, because an elapsed time is a datum and not a
+     * label, and the design's own flush bar keeps them against the track's
+     * ends. */
+    &__position {
+      justify-content: stretch;
+    }
+
+    &__scrub {
+      width: auto;
+      flex: 1;
+    }
+  }
+}

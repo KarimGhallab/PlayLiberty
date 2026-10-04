@@ -197,6 +197,15 @@ dot survives when the colour cannot be seen. The words and what a run's counts m
 summary](sync-summary.md); this block gives up the ability to explain a fault, because that sentence is [a
 component in its own right](sync-error.md) with its own reassurance and action.
 
+**`Syncing` wears the emphasis amber, and this is the header's one glance.** Green means what you can act on,
+amber means what is happening, red means what broke, and a run in flight is the middle one. The dot already
+breathed, but motion is the first thing reduced-motion removes, so the colour has to stand on the word as
+well; the word is what survives when the animation does not. It is the same literal as `--tone-downloading`
+and the address is deliberate: a track downloading is a track-level fact carried by the track row's own
+tone, while this is the playlist-level fact that a run is in progress, and the header reaches for the
+emphasis role rather than borrowing the track vocabulary. The two are one amber because they are one
+"happening", and the validator holds them to the same value on purpose.
+
 `.state` inherits `--text-xs` from `.meta`, which a consumer has to put back: the library's grid pairs the
 state with the count on a line with no `.meta`, so the state rendered at `--text-sm`, 83.6px for "Sync
 failed" against this record's 73.8px. The consumer fixes it on its own line rather than here, because every
@@ -235,6 +244,14 @@ The card's menu opens upward and the row's downward. On the card the control is 
 so a menu opening upward is inside the artwork and clips nothing. On the row it opens below the item, 170px
 of panel against a 137px item, so two open at once in a list would overlap; in the product opening one closes
 the others, which is why the library draws its three access levels on cards.
+
+**A playing card carries an emphasis hairline along its foot, and it is the only colour the card spends on
+being alive.** While the queue is on this playlist the card is the one item in the gallery that is playing,
+and it had no mark for that beyond the accent on the play button, which is the control and not the state. The
+2px inset rule sits on the card's own bottom edge, so it adds a state without adding a box: no border, no
+radius change, and nothing moves. It is drawn on the card arrangement alone, because the library's item is
+the row, and a row is one of forty where a hairline repeated down a list is texture rather than a glance. On
+the card the block is alone in its column, so the rule reads as one item being active.
 
 ## Every text pairing here is one the token set already declares
 

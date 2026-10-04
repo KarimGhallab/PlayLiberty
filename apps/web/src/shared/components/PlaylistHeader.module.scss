@@ -25,6 +25,17 @@
     background: var(--surface);
   }
 
+  /* The card is the queue's own while playing, and the one fact worth a glance
+   * is that music is coming out of it. The accent is spent on the play control
+   * and cannot be spent twice; the emphasis amber is the system's "this is
+   * happening" and the card has never used it. It arrives as a hairline along
+   * the card's foot, the same 1px the sync line already speaks in, so the card
+   * gains a state without gaining a box. The play's glyph is the cue that
+   * survives without colour, which is why this may be colour-led. */
+  &[data-arrangement='card'][data-state='playing'] {
+    box-shadow: inset 0 -2px 0 var(--emphasis);
+  }
+
   &__cover {
     position: relative;
     width: 96px;
@@ -144,8 +155,12 @@
       color: var(--muted);
     }
 
+    /* A run in flight is the one moment a playlist is worth a glance, and the
+     * amber is the token the system reserves for exactly that. The word carries
+     * it, not the dot alone: the dot breathes, but motion is the first thing
+     * reduced-motion removes, so the colour has to stand on the word too. */
     &[data-state='syncing'] {
-      color: var(--tone-downloading);
+      color: var(--emphasis);
 
       &::before {
         animation: playlist-header-breathe 1.4s ease-in-out infinite;

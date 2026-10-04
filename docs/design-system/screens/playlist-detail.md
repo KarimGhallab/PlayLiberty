@@ -82,6 +82,19 @@ unscoped makes **every** row **120.8px**, all fourteen identical, and the rows c
 Removing `bar--flush` proves the bar's arrangement: the row becomes `93.4px 136px 93.4px`, the transport 0px
 off centre, and the seeker **45.8px** past the bar's edge.
 
+The implementation branches at **768px**, this corpus's own line: the design draws 390 and 1056 and names
+nothing between them, and 768 is the first width at which the desk's 320px card beside a track list stops
+leaving the list a usable title column. The header's arrangement is picked by width in the component rather
+than by a stylesheet, because the card and the row are different markup and CSS cannot turn one into the
+other; the way home, the single column, the padding and the bar's flush form are the stylesheet's branch on
+the same number.
+
+One departure from the design's own bar: the flush form keeps the **volume control**, which the drawn bar
+does not carry. The design's bar has no volume because it was drawn from the player bar record before the
+control existed; a phone is where the control is most wanted, so it stays and the transport lands left of it
+rather than flush to the edge. The bar's **98px** and its left artwork rail are unchanged from the desk, so
+the flush form is the centred one minus the centre and minus the seeker's 480px cap.
+
 ## The columns, and the number under the left one
 
 The left column is **320px**, 40px above its measured floor. The sync summary's band is four `1fr` cells with
