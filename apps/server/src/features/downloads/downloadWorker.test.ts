@@ -100,7 +100,11 @@ function fakeDownloader(options: FakeDownloaderOptions = {}): {
         await writeFile(request.outputPath, 'downloaded-audio');
         active -= 1;
 
-        return { videoId: request.videoId, filePath: request.outputPath };
+        return {
+          videoId: request.videoId,
+          filePath: request.outputPath,
+          durationSeconds: 2
+        };
       },
       fetchThumbnail: async (
         _url: string,
@@ -165,6 +169,7 @@ interface SeedOptions {
   filePath?: string | null;
   thumbnailUrl?: string | null;
   skipNonMusic?: boolean;
+  durationSeconds?: number | null;
 }
 
 interface Seeded {
@@ -191,7 +196,7 @@ function seed(
       provider: Provider.Youtube,
       videoId,
       title: 'Track',
-      durationSeconds: null,
+      durationSeconds: options.durationSeconds ?? null,
       skipNonMusic: options.skipNonMusic ?? true,
       thumbnailPath: null,
       thumbnailUrl: options.thumbnailUrl ?? null,
@@ -296,6 +301,41 @@ describe('the download worker', () => {
 
     // The worker has no playlist in scope, so the value comes from the track row.
     expect(fake.requests[0]?.skipNonMusic).toBe(false);
+  });
+
+  it('writes the duration the adapter reports, not the source duration', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      // What the source metadata said when the row was created.
+      durationSeconds: 180
+    });
+
+    await run(fake.youtube);
+
+    // The finished file is the truth; the fake reports two seconds for it.
+    expect(trackRow(seeded.trackId)?.durationSeconds).toBe(2);
+  });
+
+  it('leaves the duration alone when the download fails', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new Error('the download failed')
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      durationSeconds: 180
+    });
+
+    await run(fake.youtube);
+
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
+    // No probe ran, so no file duration was written and the row keeps the source
+    // value it was created with.
+    expect(row?.durationSeconds).toBe(180);
   });
 
   it('never claims a stored track and serves it to a second association', async () => {
@@ -508,7 +548,11 @@ describe('the download worker', () => {
         await gate;
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'downloaded-audio');
-        return { videoId: request.videoId, filePath: request.outputPath };
+        return {
+          videoId: request.videoId,
+          filePath: request.outputPath,
+          durationSeconds: 2
+        };
       },
       fetchThumbnail: async () => {
         throw new Error('the download worker must not fetch a thumbnail');
@@ -561,7 +605,11 @@ describe('the download worker', () => {
         downloads.push(request.videoId);
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'downloaded-audio');
-        return { videoId: request.videoId, filePath: request.outputPath };
+        return {
+          videoId: request.videoId,
+          filePath: request.outputPath,
+          durationSeconds: 2
+        };
       },
       fetchThumbnail: async () => {
         throw new Error('the download worker must not fetch a thumbnail');

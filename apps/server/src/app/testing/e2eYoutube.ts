@@ -142,7 +142,11 @@ export function createE2eYoutube(scriptPath: string): IYoutubeClient {
       await mkdir(dirname(request.outputPath), { recursive: true });
       await copyFile(AUDIO_FIXTURE, request.outputPath);
 
-      return { videoId: request.videoId, filePath: request.outputPath };
+      return {
+        videoId: request.videoId,
+        filePath: request.outputPath,
+        durationSeconds: AUDIO_FIXTURE_SECONDS
+      };
     },
 
     fetchThumbnail: async (_url: string, outputPath: string): Promise<void> => {

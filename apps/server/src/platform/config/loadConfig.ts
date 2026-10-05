@@ -42,6 +42,7 @@ const EnvSchema = z.object({
   PANGOLIN_INTEGRATION_API_KEY: optionalString,
   YTDLP_BINARY: z.string().default('yt-dlp'),
   FFMPEG_BINARY: z.string().default('ffmpeg'),
+  FFPROBE_BINARY: z.string().default('ffprobe'),
   E2E_FAKE_SCRIPT: optionalString
 });
 
@@ -70,6 +71,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     pruneCron: value.PRUNE_CRON,
     ytdlpBinary: value.YTDLP_BINARY,
     ffmpegBinary: value.FFMPEG_BINARY,
+    ffprobeBinary: value.FFPROBE_BINARY,
     downloadTimeoutMs: value.DOWNLOAD_TIMEOUT_MS,
     download: {
       concurrency: value.DOWNLOAD_CONCURRENCY,

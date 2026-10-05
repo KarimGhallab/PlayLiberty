@@ -62,6 +62,7 @@ function createYoutubeClient(
   return new YtdlpClient({
     binary: config.ytdlpBinary,
     ffmpegBinary: config.ffmpegBinary,
+    ffprobeBinary: config.ffprobeBinary,
     timeoutMs: config.downloadTimeoutMs,
     download: config.download
   });

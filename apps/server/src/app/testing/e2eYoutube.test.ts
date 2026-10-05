@@ -82,6 +82,9 @@ describe('the E2E fake adapter', () => {
     });
 
     expect(result.filePath).toBe(outputPath);
+    // The fake reports the committed fixture's own length, which is what a probe
+    // would return and what the worker writes to the track.
+    expect(result.durationSeconds).toBe(2);
     const bytes = await readFile(outputPath);
     expect(bytes.byteLength).toBeGreaterThan(0);
   });

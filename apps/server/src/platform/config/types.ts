@@ -27,6 +27,7 @@ export interface Config {
   pruneCron: string;
   ytdlpBinary: string;
   ffmpegBinary: string;
+  ffprobeBinary: string;
   downloadTimeoutMs: number;
   download: DownloadConfig;
   pangolin: PangolinConfig;

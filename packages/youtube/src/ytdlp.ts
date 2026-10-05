@@ -121,6 +121,24 @@ export function buildFaststartArgs(
   ];
 }
 
+/*
+ * The probe the adapter reads the finished file's own duration with. ffprobe is
+ * the companion binary to ffmpeg and the one tool that reports the container's
+ * duration as a bare number; parsing ffmpeg's human-readable banner instead would
+ * break on a version or a locale.
+ */
+export function buildProbeArgs(filePath: string): string[] {
+  return [
+    '-v',
+    'error',
+    '-show_entries',
+    'format=duration',
+    '-of',
+    'default=noprint_wrappers=1:nokey=1',
+    filePath
+  ];
+}
+
 interface RunResult {
   stdout: string;
   stderr: string;
@@ -194,6 +212,31 @@ function parseSourceJson(stdout: string, info: YoutubeUrlInfo): YoutubeSource {
     title,
     entries: rawEntries.map(entry => toEntry(entry))
   };
+}
+
+/*
+ * The finished file's own duration, as a whole number of seconds. ffprobe prints
+ * the container's duration as a bare float; anything that is not a number is a
+ * failed probe, and a failed probe fails the download rather than storing a track
+ * with a duration nobody can trust.
+ */
+async function probeDuration(
+  binary: string,
+  filePath: string,
+  timeoutMs: number
+): Promise<number> {
+  const { stdout } = await runProcess(
+    binary,
+    buildProbeArgs(filePath),
+    timeoutMs
+  );
+  const seconds = Number.parseFloat(stdout.trim());
+
+  if (!Number.isFinite(seconds)) {
+    throw new Error(`The duration probe returned no number for ${filePath}.`);
+  }
+
+  return Math.round(seconds);
 }
 
 function runProcess(
@@ -301,7 +344,20 @@ export class YtdlpClient implements IYoutubeClient {
     );
     await rm(downloadedPath, { force: true });
 
-    return { videoId: request.videoId, filePath: request.outputPath };
+    // The file is the truth. A trimmed file is shorter than its source, so the
+    // duration is read back from what was written, for every download, trimmed or
+    // not; the source metadata is only what the row carried before this.
+    const durationSeconds = await probeDuration(
+      this._options.ffprobeBinary,
+      request.outputPath,
+      this._options.timeoutMs
+    );
+
+    return {
+      videoId: request.videoId,
+      filePath: request.outputPath,
+      durationSeconds
+    };
   }
 
   public async fetchThumbnail(url: string, outputPath: string): Promise<void> {

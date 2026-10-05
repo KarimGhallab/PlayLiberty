@@ -190,6 +190,7 @@ async function storeTrack(
       .set({
         fileStatus: TrackFileStatus.Stored,
         filePath: relativePath,
+        durationSeconds: result.durationSeconds,
         failureReason: null,
         updatedAt: new Date().toISOString()
       })

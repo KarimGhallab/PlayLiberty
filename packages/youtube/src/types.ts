@@ -33,6 +33,7 @@ export interface DownloadTrackRequest {
 export interface DownloadTrackResult {
   videoId: string;
   filePath: string;
+  durationSeconds: number;
 }
 
 export interface DownloadOptions {
@@ -50,6 +51,7 @@ export interface DownloadOptions {
 export interface YtdlpOptions {
   binary: string;
   ffmpegBinary: string;
+  ffprobeBinary: string;
   timeoutMs: number;
   download: DownloadOptions;
 }

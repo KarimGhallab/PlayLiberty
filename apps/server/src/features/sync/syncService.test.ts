@@ -1379,7 +1379,11 @@ function storingYoutube(...sources: YoutubeSource[]): {
         downloads.push(request.videoId);
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'stored-audio');
-        return { videoId: request.videoId, filePath: request.outputPath };
+        return {
+          videoId: request.videoId,
+          filePath: request.outputPath,
+          durationSeconds: 2
+        };
       },
       fetchThumbnail: async (): Promise<never> => {
         throw new Error('a retry test does not fetch a thumbnail');
