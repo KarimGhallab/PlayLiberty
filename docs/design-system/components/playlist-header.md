@@ -269,6 +269,15 @@ playback state rather than playlist state, so forty `aria-pressed` toggles are m
 needs; dropping it and keeping it on the player bar and the detail header lost because the item is otherwise
 identical to the header and one exception is easier to notice than forty controls.
 
+**The shuffle starts the playlist it belongs to.** On a header the control is the playlist's own door opened
+shuffled, so pressing it from the library while another playlist plays is not a flag toggled on a queue the
+header does not own: the queue is replaced by this playlist's and started, and pressing a second time on this
+playlist's own queue turns the shuffle off and takes the queue back to the playlist's order. The queue the
+shuffle opens is led by the track it kept, so the transport is on the first entry rather than wherever the
+scatter would have put the kept one. The action is one hook the two surfaces share, so the library and this
+screen cannot answer a press differently; the screen record owns the refusal a press with nothing stored
+makes.
+
 **Each row's controls are named for their playlist.** Forty identical "Shuffle" and "More actions" labels in
 one list name nothing, so the shuffle is `Shuffle <name>` and the overflow is `More actions for <name>`. The
 overflow follows the menu button pattern: opening from a press focuses the first item, ArrowUp opens onto the

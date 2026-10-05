@@ -21,6 +21,7 @@ import {
 } from '../../shared/api/queries';
 import AddTrackDialog from '../../shared/components/AddTrackDialog';
 import EmptyState from '../../shared/components/EmptyState';
+import NoticeToast from '../../shared/components/NoticeToast';
 import PlaylistHeader from '../../shared/components/PlaylistHeader';
 import PlaylistNotFound from '../../shared/components/PlaylistNotFound';
 import RenamePlaylistDialog from '../../shared/components/RenamePlaylistDialog';
@@ -35,7 +36,13 @@ import {
 } from '../../shared/components/useDeferredAction';
 import { usePlayerStore } from '../../shared/player/playerStore';
 import { toPlayerTracks } from '../../shared/player/playerTracks';
+import { orderTracksByQueue } from '../../shared/player/queueOrder';
 import { nextIndex } from '../../shared/player/types';
+import {
+  NOTICE_WINDOW_MS,
+  refusalNotice,
+  useShufflePlaylist
+} from '../../shared/player/useShufflePlaylist';
 import { MOBILE_QUERY, useMediaQuery } from '../../shared/useMediaQuery';
 
 import styles from './PlaylistDetailPage.module.scss';
@@ -102,7 +109,9 @@ export default function PlaylistDetailPage() {
   const currentId = usePlayerStore(state => state.currentId);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const shuffled = usePlayerStore(state => state.shuffle);
-  const setShuffle = usePlayerStore(state => state.setShuffle);
+  const play = usePlayerStore(state => state.play);
+  const queue = usePlayerStore(state => state.queue);
+  const { shufflePlaylist, refusal } = useShufflePlaylist();
   const queuePlaylistId = usePlayerStore(
     state => state.queue[0]?.playlistId ?? null
   );
@@ -110,7 +119,8 @@ export default function PlaylistDetailPage() {
    * Whether the queue holds a track after the current one, which is what decides
    * if the header's forward step has anywhere to go. Derived from the queue
    * rather than the playlist because the transport acts on the queue, and from
-   * the shared next-index rule so a shuffled queue can always move on.
+   * the shared next-index rule, so a shuffled queue goes dead at its last entry
+   * exactly as an unshuffled one does.
    */
   const hasNext = usePlayerStore(state => nextIndex(state) >= 0);
 
@@ -119,9 +129,23 @@ export default function PlaylistDetailPage() {
       ? ownerNameFrom(directory.data, playlist.data.ownerAccountId)
       : null;
 
+  /*
+   * A row press moves the playhead, and moves it inside the queue the listener
+   * is looking at. When this playlist is already the queue, the queue's order is
+   * the order the list is drawn in, so rebuilding it would put the pressed track
+   * somewhere other than the row that was pressed; `play` moves the cursor and
+   * changes nothing else. A press that has to build a queue builds it in the
+   * playlist's own order and carries no shuffle, because the shuffle is the order
+   * of a queue and a fresh one is in the order the playlist gave.
+   */
   const playTrack = (trackId: string): void => {
     if (trackId === currentId) {
       setPlaying(!isPlaying);
+      return;
+    }
+
+    if (isQueue) {
+      play(trackId);
       return;
     }
 
@@ -163,7 +187,7 @@ export default function PlaylistDetailPage() {
       return;
     }
 
-    startQueue(playlistId, playerTracks, first.id);
+    startQueue(playlistId, playerTracks, first.id, shuffled);
   };
 
   const deletePlaylist = (): void => {
@@ -314,7 +338,12 @@ export default function PlaylistDetailPage() {
               onSkipBack={skipPrevious}
               onSkipNext={skipNext}
               hasNext={hasNext}
-              onShuffle={() => setShuffle(!shuffled)}
+              onShuffle={() =>
+                shufflePlaylist({
+                  id: playlistId,
+                  name: playlist.data?.name ?? 'This playlist'
+                })
+              }
               shuffled={shuffled}
               onSync={canSync ? () => sync.mutate() : undefined}
               syncing={sync.isPending}
@@ -378,7 +407,10 @@ export default function PlaylistDetailPage() {
           ) : null}
           {tracks.isSuccess && tracks.data.length > 0 ? (
             <ul className={styles.playlistDetail__list}>
-              {tracks.data.map(association => (
+              {(shuffled && isQueue
+                ? orderTracksByQueue(tracks.data, queue)
+                : tracks.data
+              ).map(association => (
                 <TrackRow
                   key={association.track.id}
                   association={association}
@@ -450,6 +482,12 @@ export default function PlaylistDetailPage() {
           onDismiss={deferred.cancel}
         />
       ) : null}
+      {refusal === null ? null : (
+        <NoticeToast
+          {...refusalNotice(refusal)}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
     </main>
   );
 }

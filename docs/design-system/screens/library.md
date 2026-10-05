@@ -227,6 +227,35 @@ header and one exception is easier to notice than forty controls. The cost is na
 quietly. Each toggle is named for its playlist, `Shuffle <name>`, so the forty are distinguishable; the
 component record owns the naming rule and the touch target that goes with it.
 
+**The press starts the playlist it was pressed on.** A toggle that only flipped a flag would act on a queue
+the item may not be the source of, so the control is the same action on both surfaces: an empty queue, or one
+belonging to another playlist, is replaced by this playlist's and started, shuffled; this playlist's own queue
+flips the mode, and turning it on resumes a paused transport because reaching for shuffle is a play gesture
+like the transport's. Turning it off puts the queue back in the playlist's own order, which is why that order
+is kept beside the queue rather than discarded.
+
+**The shuffled queue is led by the track the press kept.** The transport starts on the first entry, so the
+first entry is the one being played, or the first stored track when the queue is fresh: the leader is hoisted
+to the front and everything after it is a full scatter of the rest. Playing `D` in `A B C D E` gives
+`D C A E B` for one run, with `D` still sounding; the leader's own place in the playlist is not where it
+lands, which is what "keeps the current track" would have done and is not the rule. Undoing the shuffle
+returns `A B C D E` under a playhead still on `D`, so the next track is `E`.
+
+**A shuffle is an order, and the transport walks it.** The randomness is spent once, on the queue's order, and
+`next` is then the next entry whatever the mode is: `D C A E B` plays `C`, `A`, `E`, `B` and stops, and
+pressing previous steps back through the same list. Nothing re-rolls at the end of a shuffled queue, because a
+next that drew a fresh track each press would play an order the listener cannot see and could repeat a track
+it had already played. A press on a row moves the playhead inside the queue on screen rather than rebuilding
+it, so the row pressed is the row that plays.
+
+**A press with nothing stored refuses rather than being silent.** The library knows only a `trackCount` over
+every association, so a playlist whose tracks are all pending or failed still draws the control. The press
+reads the playlist's tracks, finds no playable one, and says so: `Nothing to play in “<name>”.` over
+`No track in it has finished downloading.` in the notice slot the volume already uses, which stands for
+`4s` and withdraws itself. A read that failed says `“<name>” could not be read.` instead, because nothing
+stored and nothing read are different facts. The refusal is a notice and not a control: there is nothing to
+press, so the notice has no dismiss.
+
 ## What the item deliberately does not carry
 
 A shared item names its owner, and an owned item carries no such line. The line is `Shared by <name>`,

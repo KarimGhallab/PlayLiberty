@@ -11,6 +11,8 @@ import axe from 'axe-core';
 import { HttpResponse, delay, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { usePlayerStore } from '../../shared/player/playerStore';
+
 import { server } from '../../testing/mocks/server';
 import LibraryPage from './LibraryPage';
 
@@ -226,6 +228,7 @@ function renderLibraryPage() {
 describe('LibraryPage', () => {
   afterEach(() => {
     window.localStorage.clear();
+    usePlayerStore.getState().clear();
   });
 
   it('renders a playlist from the API and has no axe violations', async () => {
@@ -479,6 +482,143 @@ describe('LibraryPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('No playlists yet')).not.toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('starts the pressed playlist, shuffled, from the library', async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+
+    const state = usePlayerStore.getState();
+
+    expect(state.shuffle).toBe(true);
+    expect(state.isPlaying).toBe(true);
+    expect(state.queue[0].playlistId).toBe('playlist-1');
+    expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+  });
+
+  it('refuses to shuffle a playlist with nothing stored yet', async () => {
+    const tracks = ['track-1', 'track-2', 'track-3'].map((id, index) => ({
+      track: {
+        id,
+        provider: 'youtube',
+        videoId: `video-${index + 1}`,
+        title: `Track ${index + 1}`,
+        durationSeconds: 200,
+        thumbnailPath: null,
+        fileStatus: 'stored',
+        sourceStatus: 'available',
+        failureReason: null,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        updatedAt: '2026-09-29T12:00:00.000Z'
+      },
+      origin: 'remote',
+      position: index
+    }));
+
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
+        HttpResponse.json({ items: tracks, total: 3, limit: 50, offset: 0 })
+      ),
+      http.get('http://localhost:3000/api/v1/playlists/playlist-2/tracks', () =>
+        HttpResponse.json({
+          items: [
+            {
+              track: {
+                id: 'track-8',
+                provider: 'youtube',
+                videoId: 'video-8',
+                title: 'Still Downloading',
+                durationSeconds: 200,
+                thumbnailPath: null,
+                fileStatus: 'pending',
+                sourceStatus: 'available',
+                failureReason: null,
+                createdAt: '2026-09-01T00:00:00.000Z',
+                updatedAt: '2026-09-29T12:00:00.000Z'
+              },
+              origin: 'remote',
+              position: 0
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(screen.getByRole('button', { name: 'Shuffle Shared Mix' }));
+
+    expect(
+      await screen.findByText('Nothing to play in “Shared Mix”.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('No track in it has finished downloading.')
+    ).toBeInTheDocument();
+    expect(usePlayerStore.getState().queue).toHaveLength(0);
+  });
+
+  it('starts a fresh shuffled queue on a second press and takes the order back on a third', async () => {
+    const tracks = ['track-1', 'track-2', 'track-3'].map((id, index) => ({
+      track: {
+        id,
+        provider: 'youtube',
+        videoId: `video-${index + 1}`,
+        title: `Track ${index + 1}`,
+        durationSeconds: 200,
+        thumbnailPath: null,
+        fileStatus: 'stored',
+        sourceStatus: 'available',
+        failureReason: null,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        updatedAt: '2026-09-29T12:00:00.000Z'
+      },
+      origin: 'remote',
+      position: index
+    }));
+
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
+        HttpResponse.json({ items: tracks, total: 3, limit: 50, offset: 0 })
+      )
+    );
+
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    const press = () =>
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' });
+
+    fireEvent.click(press());
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(3)
+    );
+
+    /* The mode is this playlist's now, so the next press only flips it. */
+    fireEvent.click(press());
+    expect(usePlayerStore.getState().shuffle).toBe(false);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
+      'track-1',
+      'track-2',
+      'track-3'
+    ]);
+
+    fireEvent.click(press());
+    expect(usePlayerStore.getState().shuffle).toBe(true);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().queue[0].id).toBe('track-1');
   });
 
   it('opens one dialog from the header and the gallery', async () => {

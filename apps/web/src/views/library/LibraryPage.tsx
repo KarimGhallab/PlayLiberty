@@ -8,11 +8,17 @@ import {
   useCreatePlaylist,
   usePlaylists
 } from '../../shared/api/queries';
+import NoticeToast from '../../shared/components/NoticeToast';
 import UndoToast from '../../shared/components/UndoToast';
 import {
   UNDO_WINDOW_MS,
   useDeferredAction
 } from '../../shared/components/useDeferredAction';
+import {
+  NOTICE_WINDOW_MS,
+  refusalNotice,
+  useShufflePlaylist
+} from '../../shared/player/useShufflePlaylist';
 
 import AddPlaylistDialog from './AddPlaylistDialog';
 import EmptyGallery from './EmptyGallery';
@@ -59,6 +65,7 @@ export default function LibraryPage() {
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
   const deferred = useDeferredAction();
+  const { shufflePlaylist, refusal } = useShufflePlaylist();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   /*
@@ -125,6 +132,7 @@ export default function LibraryPage() {
                   playlist.ownerAccountId
                 )}
                 defer={deferred.defer}
+                onShuffle={() => shufflePlaylist(playlist)}
               />
             </li>
           ))}
@@ -152,6 +160,12 @@ export default function LibraryPage() {
           onDismiss={deferred.cancel}
         />
       ) : null}
+      {refusal === null ? null : (
+        <NoticeToast
+          {...refusalNotice(refusal)}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
     </main>
   );
 }

@@ -21,6 +21,11 @@ export interface PlayerTrack {
  * never persisted, so a relaunch never starts audio on its own and never jumps
  * the playhead on the first frame.
  *
+ * The stored order is the playlist's own and not the order the listener last
+ * heard. The playback order is derived from it on hydrate, so a relaunch starts
+ * on the source order, and the order a shuffle replaced is kept, which is what
+ * turning shuffle off restores.
+ *
  * The current track is held as an id and not as an index. The queue is re-ordered
  * by a refetch merging by id, and a drop shifts every index after it; an index
  * that survived a reload would point at the wrong track the moment the queue
@@ -28,27 +33,45 @@ export interface PlayerTrack {
  * wants is derived from the id against the queue.
  */
 export interface PersistedPlayerState {
-  readonly queue: readonly PlayerTrack[];
+  readonly sourceQueue: readonly PlayerTrack[];
   readonly currentId: string | null;
   readonly positionSeconds: number;
   readonly volume: number;
 }
 
-export interface PlayerState extends PersistedPlayerState {
+export interface PlayerState {
+  /** The playback order: what the transport steps through and the list draws. */
+  readonly queue: readonly PlayerTrack[];
+  /*
+   * The playlist's own order, the order the queue was built in. Kept in step
+   * with every change to `queue`, so turning shuffle off restores an order
+   * somebody chose rather than the order the shuffle happened to leave.
+   */
+  readonly sourceQueue: readonly PlayerTrack[];
+  readonly currentId: string | null;
+  readonly positionSeconds: number;
+  readonly volume: number;
   readonly isPlaying: boolean;
   readonly seekTo: number | null;
   /*
-   * Whether the queue is shuffled. It is a client fact like the queue itself,
-   * never persisted: a relaunch starts on the stored order, and turning it off
-   * keeps the order the shuffle left because there is no original to restore.
+   * Whether the queue is shuffled. It is a client fact like the queue itself and
+   * never persisted: a relaunch starts on the source order, and turning it off
+   * puts the queue back in that order.
    */
   readonly shuffle: boolean;
   readonly muted: boolean;
   readonly hydrate: (state: PersistedPlayerState) => void;
+  /*
+   * Build the queue from one playlist and start on `startTrackId`. `shuffle` is
+   * the mode the new queue is drawn in and is spent on its order at once: a
+   * shuffled queue is a new arrangement that then plays front to back, so it is
+   * the caller's current mode being carried over and not a per-step coin toss.
+   */
   readonly startQueue: (
     playlistId: string,
     tracks: readonly PlayerTrack[],
-    startTrackId: string
+    startTrackId: string,
+    shuffle?: boolean
   ) => void;
   readonly applyRefetch: (
     playlistId: string,
@@ -65,12 +88,13 @@ export interface PlayerState extends PersistedPlayerState {
   readonly dropAndAdvance: (id: string) => void;
   /*
    * Transport. `skipNext` moves one place and does nothing at the end rather
-   * than wrapping. `skipPrevious` steps back only inside a small grace window;
-   * after it, the press restarts the current track, and the first track restarts
-   * because there is nowhere to step back to. Both are play gestures and resume a
-   * paused queue rather than moving the cursor on a stopped one. `advance` is what
-   * a finished track does, which is the same move as `skipNext` and a different
-   * answer at the last track, where it stops.
+   * than wrapping, over the queue as it stands: a shuffled queue is walked like
+   * any other, and this is not a second shuffle. `skipPrevious` steps back only
+   * inside a small grace window; after it, the press restarts the current track,
+   * and the first track restarts because there is nowhere to step back to. Both
+   * are play gestures and resume a paused queue rather than moving the cursor on
+   * a stopped one. `advance` is what a finished track does, which is the same
+   * move as `skipNext` and a different answer at the last track, where it stops.
    */
   readonly skipNext: () => void;
   readonly skipPrevious: () => void;
@@ -86,7 +110,7 @@ export interface PlayerState extends PersistedPlayerState {
 }
 
 /** The index of the current track, or -1 when nothing is current. */
-export function currentIndex(state: PersistedPlayerState): number {
+export function currentIndex(state: PlayerState): number {
   if (state.currentId === null) {
     return -1;
   }
@@ -96,26 +120,19 @@ export function currentIndex(state: PersistedPlayerState): number {
 
 /*
  * The index the queue moves to after the current track, or -1 when there is
- * none. Shuffled, it is any of the other tracks at random and there is always
- * one whenever the queue holds more than the current track; unshuffled, it is
- * the next place and is absent at the end. This is the one place the two
- * answers to "what comes next" are decided, so the forward step and the end of
- * a track cannot disagree about the end of the queue.
+ * none: the next place, and absent at the end. The randomness of a shuffle is
+ * spent on the queue's order rather than on this answer, so a shuffled queue is
+ * walked front to back like any other and stops at its last entry, the queue the
+ * listener can already see being the one that plays. This is the one place "what
+ * comes next" is decided, so the forward step and the end of a track cannot
+ * disagree about the end of the queue.
  */
 export function nextIndex(state: PlayerState): number {
   const index = currentIndex(state);
 
-  if (index < 0 || state.queue.length <= 1) {
+  if (index < 0) {
     return -1;
   }
 
-  if (!state.shuffle) {
-    return index + 1 < state.queue.length ? index + 1 : -1;
-  }
-
-  const others = state.queue
-    .map((_track, other) => other)
-    .filter(other => other !== index);
-
-  return others[Math.floor(Math.random() * others.length)];
+  return index + 1 < state.queue.length ? index + 1 : -1;
 }

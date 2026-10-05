@@ -146,18 +146,37 @@ export function useAddTrack(): UseMutationResult<
 }
 
 /*
- * The tracks of one playlist, which is the only list a queue is built from. The
- * read is per playlist and its key carries the id for the same reason the detail's
- * other reads do: invalidating one playlist's tracks must not touch another's.
+ * The key the tracks of one playlist are cached under. It carries the id for the
+ * same reason the detail's other reads do: invalidating one playlist's tracks
+ * must not touch another's. It is exported because the shuffle control builds a
+ * queue from a playlist the listener is not standing on, and reading it under the
+ * same key leaves the detail's own read already warm.
  */
+export function playlistTracksKey(playlistId: string) {
+  return ['playlist', playlistId, 'tracks'] as const;
+}
+
+/*
+ * The tracks of one playlist, which is the only list a queue is built from. A
+ * plain fetch beside the hook, so a caller that is not a component can build a
+ * queue from it without restating the route.
+ */
+export async function fetchPlaylistTracks(
+  playlistId: string
+): Promise<PlaylistTrack[]> {
+  const page = await apiGet(
+    `/playlists/${playlistId}/tracks`,
+    PlaylistTrackPageSchema
+  );
+  return page.items;
+}
+
 export function usePlaylistTracks(
   playlistId: string
 ): UseQueryResult<PlaylistTrack[], Error> {
   return useQuery({
-    queryKey: ['playlist', playlistId, 'tracks'],
-    queryFn: () =>
-      apiGet(`/playlists/${playlistId}/tracks`, PlaylistTrackPageSchema),
-    select: page => page.items
+    queryKey: playlistTracksKey(playlistId),
+    queryFn: () => fetchPlaylistTracks(playlistId)
   });
 }
 

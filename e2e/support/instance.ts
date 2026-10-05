@@ -50,6 +50,29 @@ export async function resetInstance(page: Page): Promise<void> {
 }
 
 /*
+ * Store every pending track now, rather than waiting out the worker's interval.
+ *
+ * The worker claims two tracks per pass and passes are 30 seconds apart, so a
+ * scenario with more than two stored tracks otherwise spends a whole interval
+ * waiting on the clock. The route asks the worker to run until the backlog is
+ * empty, and answers when it has, so this returns once the tracks are stored.
+ */
+export async function drainDownloads(page: Page): Promise<void> {
+  const status = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/__e2e__/download', {
+      method: 'POST',
+      headers: { 'X-PlayLiberty-Client': 'web' }
+    });
+
+    return response.status;
+  });
+
+  if (status !== 204) {
+    throw new Error(`The download drain answered ${status}, not 204.`);
+  }
+}
+
+/*
  * A URL whose playlist id is the scenario key. `validateYoutubeUrl` accepts a
  * playlist id of ten or more characters from the URL-safe alphabet, and the fake
  * maps the extracted id to the scenario's source, so a test names a scenario by
@@ -57,4 +80,14 @@ export async function resetInstance(page: Page): Promise<void> {
  */
 export function playlistUrl(sourceId: string): string {
   return `https://www.youtube.com/playlist?list=${sourceId}`;
+}
+
+/*
+ * A URL whose video id is the scenario key, for the add-a-track dialog, which
+ * takes a video and not a playlist. The fake adapter keys its scenario by the id
+ * `validateYoutubeUrl` extracts, and for a video that is the `v` parameter, so a
+ * video URL and a playlist URL name the same file by different keys.
+ */
+export function videoUrl(videoId: string): string {
+  return `https://www.youtube.com/watch?v=${videoId}`;
 }

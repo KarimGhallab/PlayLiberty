@@ -39,35 +39,54 @@ afterEach(() => {
 describe('player persistence', () => {
   it('round-trips the persisted slice and rejects junk', () => {
     writePlayerState(window.localStorage, {
-      queue: [track],
+      sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
       volume: 0.4
     });
 
     expect(readPlayerState(window.localStorage)).toEqual({
-      queue: [track],
+      sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
       volume: 0.4
     });
 
-    window.localStorage.setItem(PLAYER_STORAGE_KEY, '{"queue":"nope"}');
+    window.localStorage.setItem(PLAYER_STORAGE_KEY, '{"sourceQueue":"nope"}');
     expect(readPlayerState(window.localStorage)).toBeNull();
+  });
+
+  it('reads a payload written before the source order existed as its own order', () => {
+    window.localStorage.setItem(
+      PLAYER_STORAGE_KEY,
+      JSON.stringify({
+        queue: [track],
+        currentId: track.id,
+        positionSeconds: 12,
+        volume: 0.8
+      })
+    );
+
+    expect(readPlayerState(window.localStorage)).toEqual({
+      sourceQueue: [track],
+      currentId: track.id,
+      positionSeconds: 12,
+      volume: 0.8
+    });
   });
 
   it('keeps a payload written before the volume existed and defaults it', () => {
     window.localStorage.setItem(
       PLAYER_STORAGE_KEY,
       JSON.stringify({
-        queue: [track],
+        sourceQueue: [track],
         currentId: track.id,
         positionSeconds: 12
       })
     );
 
     expect(readPlayerState(window.localStorage)).toEqual({
-      queue: [track],
+      sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
       volume: 1
@@ -76,7 +95,7 @@ describe('player persistence', () => {
 
   it('hydrates once and never autoplays', () => {
     writePlayerState(window.localStorage, {
-      queue: [track],
+      sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
       volume: 1
@@ -92,6 +111,19 @@ describe('player persistence', () => {
     detach();
   });
 
+  it('persists the playlist order, not the order the shuffle left', () => {
+    const detach = attach();
+
+    usePlayerStore
+      .getState()
+      .startQueue(track.playlistId, [track], track.id, true);
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(readPlayerState(window.localStorage)?.sourceQueue).toEqual([track]);
+
+    detach();
+  });
+
   it('flushes a pending write when the page is hidden', () => {
     const detach = attach();
 
@@ -99,7 +131,7 @@ describe('player persistence', () => {
     expect(readPlayerState(window.localStorage)).toBeNull();
 
     window.dispatchEvent(new Event('pagehide'));
-    expect(readPlayerState(window.localStorage)?.queue).toEqual([track]);
+    expect(readPlayerState(window.localStorage)?.sourceQueue).toEqual([track]);
 
     detach();
   });

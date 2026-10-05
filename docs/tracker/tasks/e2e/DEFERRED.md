@@ -21,3 +21,18 @@ blocker lands, and delete its row.
   through `e2e/.scenario.json`.
 - Run with `pnpm run test:e2e`. It is separate from `pnpm run test`, which stays
   unit only, per the testing guideline.
+- A scenario that waits on the download worker calls `drainDownloads(page)`
+  (`POST /api/v1/__e2e__/download`) rather than waiting on the clock. The worker
+  claims `DOWNLOAD_CONCURRENCY` (two) tracks per pass on a 30-second interval, so
+  without the drain a scenario of more than two stored tracks spends a whole
+  interval waiting on a tick; the drain asks the worker to run until the backlog is
+  empty and returns once the tracks are stored.
+
+## Covered
+
+| Journey                                  | Spec                                                         |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| Open the library and add a playlist      | [`library.spec.ts`](../../../../e2e/tests/library.spec.ts)   |
+| Sync, curate, share                      | `sync.spec.ts`, `curate.spec.ts`, `share.spec.ts`            |
+| Play a stored track and seek             | [`playback.spec.ts`](../../../../e2e/tests/playback.spec.ts) |
+| Shuffle, walk it, unshuffle, press a row | [`shuffle.spec.ts`](../../../../e2e/tests/shuffle.spec.ts)   |

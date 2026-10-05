@@ -31,8 +31,10 @@ import { usePlayerStore } from '../../shared/player/playerStore';
  * What is offered follows `access`, and the header enforces the same gates by
  * absence: a write collaborator gets Sync now and no Share, Rename or Delete,
  * and a read collaborator gets no overflow at all. Shuffle is the one control
- * every item carries, because it is a property of playback and not of a
- * playlist.
+ * every item carries, because it is a property of playback and not of a playlist.
+ * The item does not own its action, because the press starts a queue from tracks
+ * this screen has not read and may have to refuse; the page's `onShuffle` owns
+ * both, and the item reads the flag only to press the control.
  */
 
 interface PlaylistListItemProps {
@@ -40,12 +42,15 @@ interface PlaylistListItemProps {
   ownerName: string | null;
   /* Open the page's one deferred-action window. */
   defer: (action: PendingAction) => void;
+  /* Start this playlist, shuffled, or turn its shuffle off. */
+  onShuffle: () => void;
 }
 
 export default function PlaylistListItem({
   playlist,
   ownerName,
-  defer
+  defer,
+  onShuffle
 }: PlaylistListItemProps) {
   const navigate = useNavigate();
   const sync = useSyncPlaylist(playlist.id);
@@ -54,7 +59,6 @@ export default function PlaylistListItem({
   const [renameOpen, setRenameOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shuffled = usePlayerStore(state => state.shuffle);
-  const setShuffle = usePlayerStore(state => state.setShuffle);
 
   const owner = playlist.access === 'owner';
   const canSync = owner || playlist.access === 'write';
@@ -71,7 +75,7 @@ export default function PlaylistListItem({
             params: { playlistId: playlist.id }
           });
         }}
-        onShuffle={() => setShuffle(!shuffled)}
+        onShuffle={onShuffle}
         shuffled={shuffled}
         onSync={canSync ? () => sync.mutate() : undefined}
         syncing={sync.isPending}

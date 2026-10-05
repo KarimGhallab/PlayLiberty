@@ -198,6 +198,20 @@ word-then-reason sub-line, but the server's sentence is untrusted and unbounded,
 ellipsized, with the full text in the element's `title`: it can no longer set the row's height or run toward
 the duration column, and the mapped word stays primary.
 
+**The list is the queue's order while the queue is this playlist and shuffled.** The rows are drawn in the
+playlist's own order by default, which is what the server returns; turning the header's shuffle on replaces
+that with the queue's order, and turning it off takes the list back, because the queue is restored to the
+playlist's order at the same moment. The gate is the shuffle and not merely the queue: unshuffled, the queue's
+order already is the playlist's own for every track it carries, so reordering on that alone would only move
+the rows the queue does not carry.
+
+The queue carries only the tracks that can play, while this list draws every association so a missing or
+downloading track stays answerable. A row the queue does not carry therefore joins the group opened by the
+stored row before it rather than being relegated to the end, which keeps a pending track inside the
+neighbourhood it has in the playlist's order; a row before the first stored one leads, because it has no
+group of its own. Proved by a fixture of four in the order `a b c d`, queued `a c b d`: the list draws
+`b c a d`, every stored row in the queue's place and `d` where the playlist already put it.
+
 The tallest left column sets the shortest viewport: the side ends at 546.5px with the summary, 570.7px while
 syncing, 460.1px with the empty state and **640.1px** with the fault, so the error state sets the floor at
 **737.1px** (640.1 plus the 97px bar).

@@ -192,7 +192,7 @@ describe('remove', () => {
 describe('hydrate', () => {
   it('restores the queue and offset without autoplay', () => {
     usePlayerStore.getState().hydrate({
-      queue: [first],
+      sourceQueue: [first],
       currentId: first.id,
       positionSeconds: 12,
       volume: 0.5
@@ -331,7 +331,7 @@ describe('transport', () => {
 });
 
 describe('shuffle', () => {
-  it('keeps the current track in place when the queue is shuffled', () => {
+  it('hoists the playing track to the front and scatters the rest', () => {
     usePlayerStore
       .getState()
       .startQueue(PLAYLIST, [first, second, third], second.id);
@@ -342,14 +342,52 @@ describe('shuffle', () => {
 
     expect(state.shuffle).toBe(true);
     expect(state.currentId).toBe('track-2');
+    expect(state.queue[0].id).toBe('track-2');
     expect(state.queue).toHaveLength(3);
     expect(state.queue.map(track => track.id)).toContain('track-1');
     expect(state.queue.map(track => track.id)).toContain('track-3');
   });
 
-  it('moves to another track when shuffled even at the order end', () => {
+  it('walks a shuffled queue in its own order and stops at its end', () => {
+    const a = track('a');
+    const b = track('b');
+    const c = track('c');
+    const d = track('d');
+    const e = track('e');
+
+    /* A fixed order, set directly so the walk is asserted rather than sampled:
+     * the shuffle under test is the queue's order, not the draw that made it. */
+    usePlayerStore.setState({
+      queue: [d, c, a, e, b],
+      sourceQueue: [a, b, c, d, e],
+      currentId: 'd',
+      isPlaying: true,
+      shuffle: true
+    });
+
+    const walked: string[] = [];
+
+    for (let step = 0; step < 5; step += 1) {
+      usePlayerStore.getState().skipNext();
+      walked.push(usePlayerStore.getState().currentId ?? 'stopped');
+    }
+
+    expect(walked).toEqual(['c', 'a', 'e', 'b', 'b']);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('stops rather than re-rolling at the end of a shuffled queue', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], second.id);
     usePlayerStore.getState().setShuffle(true);
+
+    /* The playing track leads, so the shuffled queue is the same two entries in
+     * the same order and its end is the second one. */
+    usePlayerStore.getState().skipNext();
+
+    expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
+      'track-2',
+      'track-1'
+    ]);
 
     usePlayerStore.getState().skipNext();
 
@@ -364,6 +402,117 @@ describe('shuffle', () => {
     usePlayerStore.getState().clear();
 
     expect(usePlayerStore.getState().shuffle).toBe(false);
+  });
+
+  it('puts a playing track at the front of the scatter, at every position', () => {
+    const a = track('a');
+    const b = track('b');
+    const c = track('c');
+    const d = track('d');
+    const e = track('e');
+    const order = [a, b, c, d, e];
+
+    /* Playing D, in the order A B C D E: D leads and the other four scatter. */
+    usePlayerStore.getState().startQueue(PLAYLIST, order, d.id);
+    usePlayerStore.getState().setShuffle(true);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.currentId).toBe('d');
+    expect(state.queue[0].id).toBe('d');
+    expect(state.queue).toHaveLength(5);
+    expect(new Set(state.queue.map(item => item.id))).toEqual(
+      new Set(['a', 'b', 'c', 'd', 'e'])
+    );
+
+    /* Every other track is after the leader, and the playlist order is intact. */
+    expect(state.queue.slice(1).map(item => item.id)).not.toEqual(
+      expect.arrayContaining(['d'])
+    );
+    expect(state.sourceQueue.map(item => item.id)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+      'e'
+    ]);
+  });
+
+  it('puts the queue back in the playlist order when the shuffle is turned off', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], second.id);
+    usePlayerStore.getState().setShuffle(true);
+
+    usePlayerStore.getState().setShuffle(false);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.shuffle).toBe(false);
+    expect(state.queue.map(item => item.id)).toEqual([
+      'track-1',
+      'track-2',
+      'track-3'
+    ]);
+    expect(state.currentId).toBe('track-2');
+  });
+
+  it('builds a shuffled queue led by the pressed track', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], second.id, true);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.shuffle).toBe(true);
+    expect(state.currentId).toBe('track-2');
+    expect(state.queue[0].id).toBe('track-2');
+    expect(state.queue).toHaveLength(3);
+    expect(state.queue.map(item => item.id)).toContain('track-1');
+    expect(state.queue.map(item => item.id)).toContain('track-3');
+  });
+
+  it('keeps the playlist order beside every queue change', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], first.id);
+
+    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
+      'track-1',
+      'track-2',
+      'track-3'
+    ]);
+
+    usePlayerStore.getState().setShuffle(true);
+
+    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
+      'track-1',
+      'track-2',
+      'track-3'
+    ]);
+
+    expect(usePlayerStore.getState().queue[0].id).toBe('track-1');
+  });
+
+  it('takes a track that arrived while shuffled into the source order', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    usePlayerStore.getState().setShuffle(true);
+
+    usePlayerStore.getState().applyRefetch(PLAYLIST, [first, second, third]);
+
+    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
+      'track-1',
+      'track-2',
+      'track-3'
+    ]);
+
+    usePlayerStore.getState().setShuffle(false);
+
+    expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
+      'track-1',
+      'track-2',
+      'track-3'
+    ]);
   });
 });
 

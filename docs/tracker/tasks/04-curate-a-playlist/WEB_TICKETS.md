@@ -11,10 +11,11 @@ record, and [`playlist-detail.md`](../../../design-system/screens/playlist-detai
 and its access rule. The code landed with them, so the set below is the record of what was built rather than a
 plan to build it.
 
-| Ticket                                                        | Status   | Blocked by                            | Blocks |
-| ------------------------------------------------------------- | -------- | ------------------------------------- | ------ |
-| [`08-the-add-a-track-control`](08-the-add-a-track-control.md) | resolved | none                                  | none   |
-| [`09-the-add-a-track-dialog`](09-the-add-a-track-dialog.md)   | resolved | [`08`](08-the-add-a-track-control.md) | none   |
+| Ticket                                                                | Status   | Blocked by                            | Blocks |
+| --------------------------------------------------------------------- | -------- | ------------------------------------- | ------ |
+| [`08-the-add-a-track-control`](08-the-add-a-track-control.md)         | resolved | none                                  | none   |
+| [`09-the-add-a-track-dialog`](09-the-add-a-track-dialog.md)           | resolved | [`08`](08-the-add-a-track-control.md) | none   |
+| [`10-the-add-a-track-e2e-journey`](10-the-add-a-track-e2e-journey.md) | resolved | [`09`](09-the-add-a-track-dialog.md)  | none   |
 
 ## Conventions
 

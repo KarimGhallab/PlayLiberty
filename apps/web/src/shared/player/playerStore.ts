@@ -41,6 +41,36 @@ function clampVolume(volume: number): number {
 }
 
 /*
+ * Fisher-Yates over every track but the one that leads the result. The leading
+ * track is the one being played, or the first stored one when a fresh queue is
+ * opened, and it is hoisted to the front rather than left where the shuffle
+ * happens to put it: the transport starts on the first entry, so the first entry
+ * is the track the press meant to keep. Shuffling is a change of order and not of
+ * track, so the leading track does not move out of the queue, and everything
+ * after it is a full scatter of the rest.
+ */
+function shuffledWithLeader(
+  queue: readonly PlayerTrack[],
+  leaderId: string | null
+): PlayerTrack[] {
+  const leader =
+    leaderId === null ? undefined : queue.find(track => track.id === leaderId);
+  const rest = queue.filter(track => track.id !== leader?.id);
+
+  for (let i = rest.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+
+  /*
+   * No leader to hoist: the caller named a track that is not in the queue, which
+   * a built queue and a hydrated one both rule out. The scatter is the honest
+   * answer, and nothing here claims a first entry is being kept.
+   */
+  return leader === undefined ? rest : [leader, ...rest];
+}
+
+/*
  * How far into a track a previous press has to be before it means "restart this
  * one" rather than "step back". Five seconds is enough that a listener who has
  * just landed on the track and changed their mind steps back, while one who has
@@ -51,6 +81,7 @@ const SKIP_PREVIOUS_GRACE_SECONDS = 5;
 
 export const usePlayerStore = create<PlayerState>()(set => ({
   queue: [],
+  sourceQueue: [],
   currentId: null,
   positionSeconds: 0,
   volume: 1,
@@ -60,15 +91,18 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   muted: false,
   hydrate: (state: PersistedPlayerState) =>
     set({
-      queue: [...state.queue],
+      queue: [...state.sourceQueue],
+      sourceQueue: [...state.sourceQueue],
       currentId: state.currentId,
       positionSeconds: state.positionSeconds,
-      volume: clampVolume(state.volume)
+      volume: clampVolume(state.volume),
+      shuffle: false
     }),
   startQueue: (
     playlistId: string,
     tracks: readonly PlayerTrack[],
-    startTrackId: string
+    startTrackId: string,
+    shuffle = false
   ) =>
     set(() => {
       /*
@@ -81,19 +115,23 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       if (!queue.some(track => track.id === startTrackId)) {
         return {
           queue: [],
+          sourceQueue: [],
           currentId: null,
           positionSeconds: 0,
           seekTo: null,
-          isPlaying: false
+          isPlaying: false,
+          shuffle: false
         };
       }
 
       return {
-        queue,
+        queue: shuffle ? shuffledWithLeader(queue, startTrackId) : queue,
+        sourceQueue: queue,
         currentId: startTrackId,
         positionSeconds: 0,
         seekTo: null,
-        isPlaying: true
+        isPlaying: true,
+        shuffle
       };
     }),
   applyRefetch: (playlistId: string, tracks: readonly PlayerTrack[]) =>
@@ -108,6 +146,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       }
 
       const queue = mergeQueue(state.queue, tracks);
+      const sourceQueue = mergeQueue(state.sourceQueue, tracks);
       const currentStillThere =
         state.currentId !== null &&
         queue.some(track => track.id === state.currentId);
@@ -122,6 +161,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       if (!currentStillThere) {
         return {
           queue,
+          sourceQueue,
           currentId: null,
           positionSeconds: 0,
           seekTo: null,
@@ -129,7 +169,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         };
       }
 
-      return { queue };
+      return { queue, sourceQueue };
     }),
   play: (id: string) =>
     set(state => {
@@ -151,13 +191,15 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   remove: (id: string) =>
     set(state => {
       const queue = state.queue.filter(track => track.id !== id);
+      const sourceQueue = state.sourceQueue.filter(track => track.id !== id);
 
       if (state.currentId !== id) {
-        return { queue };
+        return { queue, sourceQueue };
       }
 
       return {
         queue,
+        sourceQueue,
         currentId: null,
         positionSeconds: 0,
         seekTo: null,
@@ -169,9 +211,10 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       const index = state.queue.findIndex(track => track.id === id);
 
       const queue = state.queue.filter(track => track.id !== id);
+      const sourceQueue = state.sourceQueue.filter(track => track.id !== id);
 
       if (state.currentId !== id) {
-        return { queue };
+        return { queue, sourceQueue };
       }
 
       /*
@@ -186,6 +229,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       if (next === undefined) {
         return {
           queue,
+          sourceQueue,
           currentId: null,
           positionSeconds: 0,
           seekTo: null,
@@ -195,6 +239,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
 
       return {
         queue,
+        sourceQueue,
         currentId: next.id,
         positionSeconds: 0,
         seekTo: null,
@@ -276,35 +321,20 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       }
 
       /*
-       * Shuffle reorders the queue in place, and its answer is the queue itself:
-       * Fisher-Yates over the whole thing. The current track stays where it is,
-       * so the music does not jump when the control is pressed, and the other
-       * tracks take their new places. Turning it off keeps the order the shuffle
-       * left rather than restoring one nobody wrote down.
+       * Shuffle reorders the queue in place and its answer is the queue itself.
+       * Turning it on hoists the track being played to the front, so the press
+       * keeps the music where it stands and the transport is on the first entry;
+       * turning it off puts the queue back in the playlist's own order, which is
+       * why that order is kept beside it.
        */
-      const rest = state.queue.filter(track => track.id !== state.currentId);
-      const shuffled: PlayerTrack[] = [];
-
-      for (let i = rest.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [rest[i], rest[j]] = [rest[j], rest[i]];
+      if (!shuffle) {
+        return { shuffle, queue: [...state.sourceQueue] };
       }
 
-      const currentTrack = state.queue.find(
-        track => track.id === state.currentId
-      );
-
-      if (currentTrack === undefined) {
-        return { shuffle, queue: rest };
-      }
-
-      for (const track of rest) {
-        shuffled.push(track);
-      }
-
-      shuffled.splice(state.queue.indexOf(currentTrack), 0, currentTrack);
-
-      return { shuffle, queue: shuffled };
+      return {
+        shuffle,
+        queue: shuffledWithLeader(state.queue, state.currentId)
+      };
     }),
   clearSeek: () => set({ seekTo: null }),
   setPosition: (seconds: number) => set({ positionSeconds: seconds }),
@@ -314,6 +344,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   clear: () =>
     set({
       queue: [],
+      sourceQueue: [],
       currentId: null,
       positionSeconds: 0,
       seekTo: null,

@@ -146,6 +146,31 @@ describe('PlaylistDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('draws the list in the queue order while the queue is this playlist, shuffled', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    /* The queue holds the two stored tracks; a fresh shuffled queue starts on the
+     * first stored track, so `Naima` leads and `Blue In Green` follows, while the
+     * pending row joins the group before it. */
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue[0].id).toBe('track-1')
+    );
+
+    const titles = screen
+      .getAllByRole('button', { name: /^(Play|Pause) / })
+      .map(
+        button =>
+          button.getAttribute('aria-label')?.replace(/^(Play|Pause)\s+/, '') ??
+          ''
+      )
+      .filter(title => title !== 'this playlist');
+    expect(titles).toEqual(['Blue In Green', 'Naima']);
+  });
+
   it('builds the queue from the pressed track and starts there', async () => {
     renderDetail();
 
@@ -166,6 +191,32 @@ describe('PlaylistDetailPage', () => {
     expect(state.currentId).toBe('track-2');
     expect(state.isPlaying).toBe(true);
     expect(state.positionSeconds).toBe(0);
+  });
+
+  it('moves the playhead inside a shuffled queue rather than rebuilding it', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+
+    const shuffledQueue = usePlayerStore
+      .getState()
+      .queue.map(track => track.id);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
+
+    const state = usePlayerStore.getState();
+
+    /* The queue the listener can see is the queue that plays: the press moves the
+     * cursor and leaves the order, the mode and the position of every entry. */
+    expect(state.queue.map(track => track.id)).toEqual(shuffledQueue);
+    expect(state.shuffle).toBe(true);
+    expect(state.currentId).toBe('track-2');
+    expect(state.isPlaying).toBe(true);
   });
 
   it('disables the header next when the playing track is the last', async () => {

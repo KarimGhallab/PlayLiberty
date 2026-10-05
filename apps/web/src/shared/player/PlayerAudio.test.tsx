@@ -127,7 +127,7 @@ describe('PlayerAudio', () => {
 
     act(() => {
       usePlayerStore.getState().hydrate({
-        queue: [first],
+        sourceQueue: [first],
         currentId: first.id,
         positionSeconds: 42,
         volume: 1

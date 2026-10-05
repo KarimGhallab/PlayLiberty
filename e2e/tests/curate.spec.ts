@@ -1,3 +1,4 @@
+import { videoUrl } from '../support/instance';
 import {
   addPlaylist,
   openHeaderMenu,
@@ -165,6 +166,103 @@ test('retrying a failed track re-queues it and it recovers', async ({
     page,
     page.getByRole('button', { name: `Play ${FIRST.title}` })
   );
+});
+
+test('adding one video to two playlists puts the same track in both', async ({
+  page
+}) => {
+  await addPlaylist(page, { sourceId: SOURCE, title: TITLE, entries: [FIRST] });
+  await addPlaylist(page, {
+    sourceId: 'E2Ecurate02',
+    title: 'Late Night',
+    entries: [SECOND]
+  });
+
+  /*
+   * The video URL names the video by its own id, and the fake adapter keys the
+   * scenario by the id it extracts, so the entry has to exist under the video id
+   * as well as inside the playlist above. Adding a track takes a video and not a
+   * playlist, so this URL is the video's own.
+   */
+  scriptPlaylist({
+    sourceId: FIRST.videoId,
+    title: FIRST.title,
+    entries: [FIRST]
+  });
+
+  await openPlaylist(page, TITLE);
+  await page.getByRole('button', { name: 'Add a track' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add a track' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Video link').fill(videoUrl(FIRST.videoId));
+
+  // The current playlist is preselected; the second is chosen by its name.
+  await expect(dialog.getByRole('checkbox', { name: TITLE })).toBeChecked();
+  await dialog.getByRole('checkbox', { name: 'Late Night' }).check();
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
+
+  /*
+   * Every chosen playlist took it, so the dialog closes and there is no refusal
+   * to read. One request carried both ids, which is the batch route's whole
+   * shape.
+   */
+  await expect(dialog).toBeHidden();
+
+  // Both playlists carry the track, and it is the same one.
+  await expect(page.getByText(FIRST.title)).toBeVisible();
+  await page.getByRole('link', { name: 'Back to home' }).click();
+  await openPlaylist(page, 'Late Night');
+  await expect(page.getByText(FIRST.title)).toBeVisible();
+});
+
+test('an added video is fetched once and becomes playable', async ({
+  page
+}) => {
+  await addPlaylist(page, { sourceId: SOURCE, title: TITLE, entries: [FIRST] });
+  await addPlaylist(page, {
+    sourceId: 'E2Ecurate02',
+    title: 'Late Night',
+    entries: [SECOND]
+  });
+
+  scriptPlaylist({
+    sourceId: FIRST.videoId,
+    title: FIRST.title,
+    entries: [FIRST]
+  });
+
+  await openPlaylist(page, TITLE);
+  await page.getByRole('button', { name: 'Add a track' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add a track' });
+  await dialog.getByLabel('Video link').fill(videoUrl(FIRST.videoId));
+  await dialog.getByRole('checkbox', { name: 'Late Night' }).check();
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(dialog).toBeHidden();
+
+  /*
+   * The worker stores the one file both associations share, so both playlists
+   * offer the play control. The row is read again by reloading, because nothing
+   * polls and the download finishes on the server's own schedule.
+   */
+  await reloadUntil(
+    page,
+    page.getByRole('button', { name: `Play ${FIRST.title}` })
+  );
+  await expect(
+    page.getByRole('button', { name: `Play ${FIRST.title}` })
+  ).toBeVisible();
+
+  await page.getByRole('link', { name: 'Back to home' }).click();
+  await openPlaylist(page, 'Late Night');
+  await reloadUntil(
+    page,
+    page.getByRole('button', { name: `Play ${FIRST.title}` })
+  );
+  await expect(
+    page.getByRole('button', { name: `Play ${FIRST.title}` })
+  ).toBeVisible();
 });
 
 test('syncing a playlist picks up new source tracks and a second sync changes nothing', async ({

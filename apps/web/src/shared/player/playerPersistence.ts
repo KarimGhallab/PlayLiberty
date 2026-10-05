@@ -5,7 +5,7 @@ export const PLAYER_STORAGE_KEY = 'playliberty.player';
 /** The slice of the store the persistence writes, without `isPlaying` or `seekTo`. */
 function persistedSlice(state: PlayerState): PersistedPlayerState {
   return {
-    queue: state.queue,
+    sourceQueue: state.sourceQueue,
     currentId: state.currentId,
     positionSeconds: state.positionSeconds,
     volume: state.volume
@@ -44,11 +44,12 @@ function isPlayerTrack(value: unknown): value is PlayerTrack {
 }
 
 /*
- * The stored payload as a real state, or null when it is not one. `volume` is
- * newer than the rest, so a payload written before it existed is normalized to
- * the default rather than discarded: the queue and the offset are worth keeping
- * and a missing preference has an obvious answer. Everything else must be exactly
- * right, so the leniency is about one absent field and not about types.
+ * The stored payload as a real state, or null when it is not one. Two fields are
+ * newer than the rest and normalized rather than discarded, because both a
+ * preference and an order have an obvious answer when absent: `volume` defaults,
+ * and an order written before `sourceQueue` existed is read as the source order,
+ * which is what the queue was then. Everything else must be exactly right, so
+ * the leniency is about two absent fields and not about types.
  */
 function parsePersistedPlayerState(
   value: unknown
@@ -57,19 +58,19 @@ function parsePersistedPlayerState(
     return null;
   }
 
-  if (
-    !('queue' in value) ||
-    !Array.isArray(value.queue) ||
-    !value.queue.every(isPlayerTrack)
-  ) {
+  const stored = value as Record<string, unknown>;
+  const sourceQueue =
+    'sourceQueue' in stored ? stored.sourceQueue : stored.queue;
+
+  if (!Array.isArray(sourceQueue) || !sourceQueue.every(isPlayerTrack)) {
     return null;
   }
 
-  if (!('currentId' in value) || !('positionSeconds' in value)) {
+  if (!('currentId' in stored) || !('positionSeconds' in stored)) {
     return null;
   }
 
-  const { currentId, positionSeconds } = value;
+  const { currentId, positionSeconds } = stored;
 
   if (currentId !== null && typeof currentId !== 'string') {
     return null;
@@ -79,15 +80,14 @@ function parsePersistedPlayerState(
     return null;
   }
 
-  const rawVolume =
-    'volume' in value ? (value as { volume: unknown }).volume : 1;
+  const rawVolume = 'volume' in stored ? stored.volume : 1;
 
   if (typeof rawVolume !== 'number') {
     return null;
   }
 
   return {
-    queue: value.queue,
+    sourceQueue,
     currentId,
     positionSeconds,
     volume: rawVolume
