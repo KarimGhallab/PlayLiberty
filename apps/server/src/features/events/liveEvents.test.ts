@@ -234,6 +234,54 @@ describe('the playlist and track events', () => {
     ]);
   });
 
+  it('publishes a playlist change to the owner and the grantee when a share is granted', async () => {
+    context = await createTestContext();
+    const ownerAccountId = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, ownerAccountId);
+    const granteeId = seedAccount(context.database, 'grantee-1');
+    const ownerEvents = collect(ownerAccountId);
+    const granteeEvents = collect(granteeId);
+
+    const response = await request(
+      'POST',
+      `/api/v1/playlists/${playlistId}/shares`,
+      'owner-1',
+      { accountId: granteeId, level: ShareLevel.Read }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(ownerEvents).toEqual([
+      { type: LiveEventType.PlaylistChanged, playlistId }
+    ]);
+    expect(granteeEvents).toEqual([
+      { type: LiveEventType.PlaylistChanged, playlistId }
+    ]);
+  });
+
+  it('tells a revoked account the playlist is gone and the owner it changed', async () => {
+    context = await createTestContext();
+    const ownerAccountId = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, ownerAccountId);
+    const granteeId = seedAccount(context.database, 'grantee-1');
+    grantShare(context.database, playlistId, granteeId);
+    const ownerEvents = collect(ownerAccountId);
+    const granteeEvents = collect(granteeId);
+
+    const response = await request(
+      'DELETE',
+      `/api/v1/playlists/${playlistId}/shares/${granteeId}`,
+      'owner-1'
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(granteeEvents).toEqual([
+      { type: LiveEventType.PlaylistRemoved, playlistId }
+    ]);
+    expect(ownerEvents).toEqual([
+      { type: LiveEventType.PlaylistChanged, playlistId }
+    ]);
+  });
+
   it('publishes a track change when a video is added to a playlist', async () => {
     context = await createTestContext(
       {},

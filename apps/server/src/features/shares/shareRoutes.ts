@@ -5,6 +5,10 @@ import { exhaust } from '@playliberty/utils';
 
 import type { AppContext } from '../../shared/context.js';
 import {
+  publishPlaylistChanged,
+  publishPlaylistRemoved
+} from '../../shared/events/liveEvents.js';
+import {
   parseBody,
   sendInvalidRequest,
   sendProblem
@@ -91,6 +95,7 @@ export function registerShareRoutes(
       }
 
       if (result.outcome === GrantShareOutcome.Ok) {
+        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.share);
       }
 
@@ -117,6 +122,16 @@ export function registerShareRoutes(
             'The playlist does not exist, or this account cannot manage it.'
         });
       }
+
+      /*
+       * The revoked account is told the playlist is gone, so a screen open on it
+       * reads as not-found rather than as a fault; the owner and the accounts
+       * that remain hear the change, which is the audience read after the delete.
+       */
+      publishPlaylistRemoved(context, request.params.id, [
+        request.params.accountId
+      ]);
+      publishPlaylistChanged(context, request.params.id);
 
       return reply.code(204).send();
     }

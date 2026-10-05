@@ -10,7 +10,6 @@ blocker lands, and delete its row.
 | Journey                          | Blocked by                          | Why it cannot run                                                                                                                                                                    |
 | -------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Curate: add a video to playlists | spec 04's add-a-video client ticket | The route exists and is tested at the API, but the playlist detail has no dialog to paste a video into, so a browser has nothing to drive.                                           |
-| Live updates across accounts     | ticket 04                           | The library and detail journeys are covered by `live.spec.ts`; a share changing both libraries lands with its ticket.                                                                |
 | Names a shared item's owner      | not yet written                     | No test yet arranges a playlist another account owns. The account can be created over the API, as the share journey does, but no journey views that account's item from the browser. |
 
 ## Conventions
@@ -30,10 +29,10 @@ blocker lands, and delete its row.
 
 ## Covered
 
-| Journey                                          | Spec                                                         |
-| ------------------------------------------------ | ------------------------------------------------------------ |
-| Open the library and add a playlist              | [`library.spec.ts`](../../../../e2e/tests/library.spec.ts)   |
-| A live update reaches the library and the detail | [`live.spec.ts`](../../../../e2e/tests/live.spec.ts)         |
-| Sync, curate, share                              | `sync.spec.ts`, `curate.spec.ts`, `share.spec.ts`            |
-| Play a stored track and seek                     | [`playback.spec.ts`](../../../../e2e/tests/playback.spec.ts) |
-| Shuffle, walk it, unshuffle, press a row         | [`shuffle.spec.ts`](../../../../e2e/tests/shuffle.spec.ts)   |
+| Journey                                         | Spec                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------ |
+| Open the library and add a playlist             | [`library.spec.ts`](../../../../e2e/tests/library.spec.ts)   |
+| Live updates, including a share across accounts | [`live.spec.ts`](../../../../e2e/tests/live.spec.ts)         |
+| Sync, curate, share                             | `sync.spec.ts`, `curate.spec.ts`, `share.spec.ts`            |
+| Play a stored track and seek                    | [`playback.spec.ts`](../../../../e2e/tests/playback.spec.ts) |
+| Shuffle, walk it, unshuffle, press a row        | [`shuffle.spec.ts`](../../../../e2e/tests/shuffle.spec.ts)   |

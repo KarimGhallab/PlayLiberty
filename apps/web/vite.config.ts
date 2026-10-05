@@ -12,10 +12,12 @@ const apiTarget = process.env.VITE_API_TARGET ?? 'http://127.0.0.1:8080';
 /*
  * The dev server stands in for the Pangolin edge, which is the only thing that
  * injects these headers. Without them the server fails closed with a 401 and the
- * client has nothing to authenticate against. This lives under `server`, which
- * `vite build` ignores and nginx never reads, so the fail-closed path is still
- * the one production runs. The dev server is a local one: anyone who can reach
- * it becomes this user, so do not expose it.
+ * client has nothing to authenticate against. A request that supplies its own
+ * identity keeps it, so an end-to-end test can drive a second account from a
+ * second browser context; anything else becomes the local user. This lives under
+ * `server`, which `vite build` ignores and nginx never reads, so the fail-closed
+ * path is still the one production runs. The dev server is a local one: anyone
+ * who can reach it becomes this user, so do not expose it.
  */
 const devIdentity: Readonly<Record<string, string>> = {
   'Remote-User': 'dev-user',
@@ -33,9 +35,14 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: false,
         configure: proxy => {
-          proxy.on('proxyReq', proxyReq => {
+          proxy.on('proxyReq', (proxyReq, request) => {
             for (const [name, value] of Object.entries(devIdentity)) {
-              proxyReq.setHeader(name, value);
+              const supplied = request.headers[name.toLowerCase()];
+              const headerValue =
+                typeof supplied === 'string' && supplied.length > 0
+                  ? supplied
+                  : value;
+              proxyReq.setHeader(name, headerValue);
             }
           });
         }

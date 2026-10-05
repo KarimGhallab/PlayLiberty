@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 
 import '@playliberty/tokens/tokens.css';
 
+import { ApiError } from './shared/api/client';
 import { attachPlayerPersistence } from './shared/player/playerPersistence';
 import { usePlayerStore } from './shared/player/playerStore';
 import './shared/styles/base.scss';
@@ -18,7 +19,20 @@ attachPlayerPersistence({
   document: window.document
 });
 
-const queryClient = new QueryClient();
+/*
+ * A client error is the server's answer, not a transient fault: a `404` for a
+ * revoked share has to reach the gone state at once rather than after three
+ * retries. Only a server error, or a request that never reached the server, is
+ * worth trying again.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) =>
+        !(error instanceof ApiError && error.status < 500) && failureCount < 3
+    }
+  }
+});
 const rootElement = document.getElementById('root');
 
 if (rootElement === null) {

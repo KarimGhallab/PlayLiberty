@@ -4,6 +4,7 @@ import {
   videoUrl,
   writeScenario
 } from '../support/instance';
+import { SERVER_PORT } from '../support/paths';
 import {
   addPlaylist,
   openHeaderMenu,
@@ -169,5 +170,108 @@ test('a rename in one tab appears in another without a reload', async ({
     ).toBeVisible();
   } finally {
     await otherContext.close();
+  }
+});
+
+/*
+ * A share, and its revocation, crossing accounts. The dev proxy fixes one browser
+ * identity, so the partner is a second context that supplies its own `Remote-*`
+ * headers, and the account is provisioned over the API first. Both tabs hold a
+ * stream, so the grant and the revoke are what move the item, never a reload.
+ */
+
+const SHARE_SOURCE = 'E2Elive4001';
+const SHARE_TITLE = 'Live Shared Jazz';
+const SHARE_TRACK = { videoId: 'e2elive40a', title: 'Blue In Green' };
+const PARTNER = {
+  id: 'e2e-live-partner',
+  name: 'Priya Partner',
+  email: 'priya@example.test'
+};
+
+test('a granted share appears in the other account and a revoke takes it away, without a reload', async ({
+  page,
+  browser,
+  request
+}) => {
+  await addPlaylist(page, {
+    sourceId: SHARE_SOURCE,
+    title: SHARE_TITLE,
+    entries: [SHARE_TRACK]
+  });
+  await openPlaylist(page, SHARE_TITLE);
+  const playlistId = new URL(page.url()).pathname.split('/').pop() ?? '';
+
+  const partnerIdentity = {
+    'Remote-User': PARTNER.id,
+    'Remote-Name': PARTNER.name,
+    'Remote-Email': PARTNER.email
+  };
+
+  // The partner account is created by its own first read, as any account is.
+  const created = await request.get(
+    `http://127.0.0.1:${SERVER_PORT}/api/v1/me`,
+    { headers: partnerIdentity }
+  );
+  expect(created.ok()).toBe(true);
+  const partnerBody: unknown = await created.json();
+  const partnerAccountId =
+    typeof partnerBody === 'object' &&
+    partnerBody !== null &&
+    'id' in partnerBody &&
+    typeof partnerBody.id === 'string'
+      ? partnerBody.id
+      : '';
+
+  if (partnerAccountId === '') {
+    throw new Error('The partner account read answered without an id.');
+  }
+
+  const partnerContext = await browser.newContext({
+    extraHTTPHeaders: partnerIdentity
+  });
+  const partnerPage = await partnerContext.newPage();
+
+  try {
+    await partnerPage.goto('/');
+    await expect(partnerPage.getByText('No playlists yet')).toBeVisible();
+
+    const ownerHeaders = {
+      'Remote-User': 'dev-user',
+      'X-PlayLiberty-Client': 'web'
+    };
+
+    // The owner grants over the API, so the owner's own tab does not invalidate
+    // locally and the stream is what carries the share to the partner.
+    const granted = await request.post(
+      `http://127.0.0.1:${SERVER_PORT}/api/v1/playlists/${playlistId}/shares`,
+      {
+        headers: ownerHeaders,
+        data: { accountId: partnerAccountId, level: 'read' }
+      }
+    );
+    expect(granted.ok()).toBe(true);
+
+    await expect(
+      partnerPage.getByRole('link', { name: SHARE_TITLE })
+    ).toBeVisible();
+
+    // Open the detail, so the revoke has a screen that must read as gone.
+    await partnerPage.getByRole('link', { name: SHARE_TITLE }).click();
+    await expect(
+      partnerPage.getByRole('heading', { name: SHARE_TITLE })
+    ).toBeVisible();
+
+    const revoked = await request.delete(
+      `http://127.0.0.1:${SERVER_PORT}/api/v1/playlists/${playlistId}/shares/${partnerAccountId}`,
+      { headers: ownerHeaders }
+    );
+    expect(revoked.ok()).toBe(true);
+
+    await expect(
+      partnerPage.getByRole('heading', { name: 'This playlist is not here' })
+    ).toBeVisible();
+  } finally {
+    await partnerContext.close();
   }
 });

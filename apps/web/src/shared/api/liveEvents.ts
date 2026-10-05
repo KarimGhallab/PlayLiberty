@@ -31,7 +31,13 @@ export function invalidateForLiveEvent(
   }
 
   if (event.type === LiveEventType.PlaylistRemoved) {
-    queryClient.removeQueries({ queryKey: ['playlist', event.playlistId] });
+    /*
+     * Reset rather than remove: a detail open on the playlist has an active
+     * observer, and removing its query leaves that observer with nothing to read.
+     * A reset clears the cached data and refetches the active reads, so the open
+     * detail reaches the gone state and the library drops the item.
+     */
+    void queryClient.resetQueries({ queryKey: ['playlist', event.playlistId] });
     void queryClient.invalidateQueries({ queryKey: ['playlists'] });
     return;
   }
