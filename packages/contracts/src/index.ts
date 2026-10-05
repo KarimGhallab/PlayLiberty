@@ -6,6 +6,7 @@ export type {
   AddTrackInput,
   AddTrackResult,
   CreatePlaylistInput,
+  LiveEvent,
   Page,
   PageQuery,
   Playlist,

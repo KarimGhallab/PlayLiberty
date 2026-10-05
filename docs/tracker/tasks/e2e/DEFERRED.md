@@ -7,11 +7,11 @@ test drives a browser and there is nothing to drive yet.
 This file is the tracker for that gap. Move a journey into `e2e/tests/` when its
 blocker lands, and delete its row.
 
-| Journey                          | Blocked by                                                                 | Why it cannot run                                                                                                                                                                    |
-| -------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Curate: add a video to playlists | spec 04's add-a-video client ticket                                        | The route exists and is tested at the API, but the playlist detail has no dialog to paste a video into, so a browser has nothing to drive.                                           |
-| Keep the screens current         | [`09-keep-the-screens-current`](../09-keep-the-screens-current/TICKETS.md) | The event stream does not exist yet, so a journey that reaches a new server state reads it again by reloading. The browser journeys for the stream land with the tickets.            |
-| Names a shared item's owner      | not yet written                                                            | No test yet arranges a playlist another account owns. The account can be created over the API, as the share journey does, but no journey views that account's item from the browser. |
+| Journey                                        | Blocked by                          | Why it cannot run                                                                                                                                                                    |
+| ---------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Curate: add a video to playlists               | spec 04's add-a-video client ticket | The route exists and is tested at the API, but the playlist detail has no dialog to paste a video into, so a browser has nothing to drive.                                           |
+| Live updates on the detail and across accounts | ticket 02, ticket 04                | The library journey is covered by `live.spec.ts`; a track's download state on the detail and a share changing both libraries land with their tickets.                                |
+| Names a shared item's owner                    | not yet written                     | No test yet arranges a playlist another account owns. The account can be created over the API, as the share journey does, but no journey views that account's item from the browser. |
 
 ## Conventions
 
@@ -33,6 +33,7 @@ blocker lands, and delete its row.
 | Journey                                  | Spec                                                         |
 | ---------------------------------------- | ------------------------------------------------------------ |
 | Open the library and add a playlist      | [`library.spec.ts`](../../../../e2e/tests/library.spec.ts)   |
+| A live update reaches the library        | [`live.spec.ts`](../../../../e2e/tests/live.spec.ts)         |
 | Sync, curate, share                      | `sync.spec.ts`, `curate.spec.ts`, `share.spec.ts`            |
 | Play a stored track and seek             | [`playback.spec.ts`](../../../../e2e/tests/playback.spec.ts) |
 | Shuffle, walk it, unshuffle, press a row | [`shuffle.spec.ts`](../../../../e2e/tests/shuffle.spec.ts)   |

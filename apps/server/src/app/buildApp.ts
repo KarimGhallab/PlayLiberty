@@ -8,15 +8,21 @@ import type {
 } from 'fastify';
 import Fastify from 'fastify';
 
+import type { LiveEvent } from '@playliberty/contracts';
 import { YtdlpClient } from '@playliberty/youtube';
 
 import type { AppContext } from '../shared/context.js';
+import { EventBus } from '../shared/events/EventBus.js';
 import { sendProblem } from '../shared/problem.js';
 
 import { registerAccountRoutes } from '../features/accounts/accountRoutes.js';
 import type { DownloadWorkerHandle } from '../features/downloads/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/downloadWorker.js';
 import { runStartupSweep } from '../features/downloads/startupSweep.js';
+import {
+  DEFAULT_EVENT_HEARTBEAT_MS,
+  registerEventRoutes
+} from '../features/events/eventRoutes.js';
 import { registerPlaylistRoutes } from '../features/playlists/playlistRoutes.js';
 import { pruneOrphanTracks } from '../features/prune/pruneService.js';
 import { registerShareRoutes } from '../features/shares/shareRoutes.js';
@@ -54,6 +60,12 @@ export interface AppOptions {
    * than thirty seconds away.
    */
   startBackgroundJobs?: boolean;
+  /*
+   * How long the live stream may sit idle before it writes a heartbeat. The
+   * default is the real one; a test that watches the heartbeat shortens it so it
+   * does not wait twenty seconds for a comment frame.
+   */
+  sseHeartbeatMs?: number;
 }
 
 function createYoutubeClient(
@@ -102,7 +114,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     database: options.database,
     mediaPaths: options.mediaPaths,
     youtube: options.youtube ?? createYoutubeClient(options.config),
-    kickDownloads: options.kickDownloads ?? (() => undefined)
+    kickDownloads: options.kickDownloads ?? (() => undefined),
+    events: new EventBus<LiveEvent>()
   };
 
   const app = Fastify({
@@ -155,6 +168,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       registerShareRoutes(api, context);
       registerSyncRunRoutes(api, context);
       registerTrackRoutes(api, context);
+      registerEventRoutes(api, context, {
+        heartbeatMs: options.sseHeartbeatMs ?? DEFAULT_EVENT_HEARTBEAT_MS
+      });
 
       /*
        * The E2E reset, only in a test process and only under the API prefix so

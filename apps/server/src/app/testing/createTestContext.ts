@@ -45,6 +45,11 @@ export interface TestContextOptions {
    * assertions. A test that wants the loop passes `true`.
    */
   startBackgroundJobs?: boolean;
+  /*
+   * How long the live stream may sit idle before it writes a heartbeat. A test
+   * that watches the heartbeat shortens it rather than waiting out the default.
+   */
+  sseHeartbeatMs?: number;
 }
 
 export async function createTestContext(
@@ -71,7 +76,8 @@ export async function createTestContext(
     mediaPaths,
     youtube: options.youtube,
     kickDownloads: options.kickDownloads,
-    startBackgroundJobs: options.startBackgroundJobs ?? false
+    startBackgroundJobs: options.startBackgroundJobs ?? false,
+    sseHeartbeatMs: options.sseHeartbeatMs
   });
   await app.ready();
 

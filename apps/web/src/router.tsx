@@ -5,6 +5,7 @@ import {
   createRouter
 } from '@tanstack/react-router';
 
+import { useEventStream } from './shared/api/useEventStream';
 import PlayerAudio from './shared/player/PlayerAudio';
 import PlayerBar from './shared/player/PlayerBar';
 
@@ -20,8 +21,13 @@ import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage';
  * of a route, which is what makes playback survive navigation: a route change
  * re-renders the outlet and leaves both mounted. This is exported so the shell
  * test can mount it over a memory history and watch that hold.
+ *
+ * The live stream is mounted here for the same reason: one connection for the
+ * tab, held across navigation rather than reopened per route.
  */
 export function AppShell() {
+  useEventStream();
+
   return (
     <>
       <Outlet />

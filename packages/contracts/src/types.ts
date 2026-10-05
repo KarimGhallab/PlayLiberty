@@ -6,6 +6,7 @@ import {
   AddTrackInputSchema,
   AddTrackResultSchema,
   CreatePlaylistInputSchema,
+  LiveEventSchema,
   PageQuerySchema,
   PlaylistAccessSchema,
   PlaylistSchema,
@@ -28,6 +29,7 @@ export type PlaylistTrack = z.infer<typeof PlaylistTrackSchema>;
 export type Share = z.infer<typeof ShareSchema>;
 export type SyncRun = z.infer<typeof SyncRunSchema>;
 export type Problem = z.infer<typeof ProblemSchema>;
+export type LiveEvent = z.infer<typeof LiveEventSchema>;
 export type CreatePlaylistInput = z.infer<typeof CreatePlaylistInputSchema>;
 export type AddTrackInput = z.infer<typeof AddTrackInputSchema>;
 export type AddTrackResult = z.infer<typeof AddTrackResultSchema>;

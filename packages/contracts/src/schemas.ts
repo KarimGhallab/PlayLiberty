@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   AddTrackOutcome,
   AssociationOrigin,
+  LiveEventType,
   PlaylistSyncStatus,
   Provider,
   ShareLevel,
@@ -124,6 +125,19 @@ export const ProblemSchema = z.object({
   detail: z.string().optional(),
   instance: z.string().optional()
 });
+
+/*
+ * The live stream's payload. A discriminated union on `type`, so a new event
+ * kind is a compile error at every handler that switches on it rather than a
+ * silent drop, and the server and the client parse the same schema.
+ */
+export const LiveEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal(LiveEventType.Ready) }),
+  z.object({
+    type: z.literal(LiveEventType.PlaylistChanged),
+    playlistId: identifier
+  })
+]);
 
 export const CreatePlaylistInputSchema = z.object({
   url: z.url(),

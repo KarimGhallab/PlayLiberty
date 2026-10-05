@@ -1,4 +1,4 @@
-import { inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 
 import type { PlaylistAccess } from '@playliberty/contracts';
@@ -188,4 +188,34 @@ export function sharedPlaylistIds(
     .all();
 
   return new Set(rows.map(row => row.playlistId));
+}
+
+/*
+ * Every account that can see a playlist: the owner and each collaborator. It is
+ * the audience a live event about the playlist is published to, so the rule for
+ * who may see a playlist and the rule for who is told it changed are the same
+ * rule read two ways rather than two lists that can drift. A playlist that does
+ * not exist has no audience, and a publisher of nothing is a no-op.
+ */
+export function playlistAudience(
+  database: DatabaseHandle,
+  playlistId: string
+): string[] {
+  const owner = database.db
+    .select({ ownerAccountId: playlists.ownerAccountId })
+    .from(playlists)
+    .where(eq(playlists.id, playlistId))
+    .get();
+
+  if (owner === undefined) {
+    return [];
+  }
+
+  const collaborators = database.db
+    .select({ accountId: shares.accountId })
+    .from(shares)
+    .where(eq(shares.playlistId, playlistId))
+    .all();
+
+  return [owner.ownerAccountId, ...collaborators.map(row => row.accountId)];
 }

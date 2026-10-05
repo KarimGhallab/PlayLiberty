@@ -53,3 +53,14 @@ export enum SyncRunStatus {
   Completed = 'completed',
   Failed = 'failed'
 }
+
+/*
+ * The events the server pushes to a client over the live stream, one connection
+ * per tab. An event is an invalidation hint and never data: it names what
+ * changed, and the client refetches the reads it already owns. `ready` is sent
+ * when a connection opens, so a client that reconnects re-reads what it holds.
+ */
+export enum LiveEventType {
+  Ready = 'ready',
+  PlaylistChanged = 'playlist.changed'
+}

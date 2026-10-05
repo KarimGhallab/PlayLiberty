@@ -7,10 +7,12 @@ import {
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { EventStreamContext } from './shared/api/useEventStream';
 import { usePlayerStore } from './shared/player/playerStore';
 import type { PlayerTrack } from './shared/player/types';
 
 import { routeTree } from './router';
+import { createFakeEventStream } from './testing/fakeEventStream';
 
 /*
  * The shell is where playback survives navigation, so the claim under test is
@@ -39,10 +41,13 @@ function renderShell(initialEntry: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } }
   });
+  const eventStream = createFakeEventStream();
 
   const view = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <EventStreamContext.Provider value={eventStream.factory}>
+        <RouterProvider router={router} />
+      </EventStreamContext.Provider>
     </QueryClientProvider>
   );
 
