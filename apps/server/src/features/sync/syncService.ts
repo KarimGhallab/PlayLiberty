@@ -66,7 +66,8 @@ export type StartSyncResult =
 export function startSyncForSource(
   context: AppContext,
   accountId: string,
-  info: YoutubeUrlInfo
+  info: YoutubeUrlInfo,
+  skipNonMusic: boolean
 ): StartOrConflict {
   const database = context.database;
 
@@ -84,7 +85,8 @@ export function startSyncForSource(
       provider: Provider.Youtube,
       sourcePlaylistId: info.sourceId,
       sourceUrl: info.url,
-      syncStatus: PlaylistSyncStatus.Syncing
+      syncStatus: PlaylistSyncStatus.Syncing,
+      skipNonMusic
     })
     .onConflictDoNothing()
     .returning()
@@ -240,7 +242,8 @@ async function reconcile(
         item.videoId,
         item.title,
         item.durationSeconds,
-        item.thumbnailUrl
+        item.thumbnailUrl,
+        playlist.skipNonMusic
       );
 
       if (hasAssociation(database, playlist.id, trackId)) {
@@ -439,7 +442,8 @@ function ensureTrack(
   videoId: string,
   title: string,
   durationSeconds: number | null,
-  thumbnailUrl: string | null
+  thumbnailUrl: string | null,
+  skipNonMusic: boolean
 ): string {
   const existing = findTrackByVideoId(database, videoId);
 
@@ -467,7 +471,11 @@ function ensureTrack(
     videoId,
     title,
     durationSeconds,
-    thumbnailUrl
+    thumbnailUrl,
+    // The syncing playlist's frozen value. A second playlist that later references
+    // this track does not re-fetch it and cannot change it: first-wins is the dedup
+    // restated.
+    skipNonMusic
   });
 }
 

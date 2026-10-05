@@ -23,6 +23,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     syncStatus: PlaylistSyncStatus.Idle,
     lastSyncedAt: '2026-09-29T12:00:00.000Z',
     trackCount: 3,
+    skipNonMusic: true,
     access: 'owner',
     hasShares: false,
     createdAt: '2026-09-01T00:00:00.000Z',

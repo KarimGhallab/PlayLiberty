@@ -57,6 +57,9 @@ export const playlists = sqliteTable(
       .$type<PlaylistSyncStatus>()
       .notNull()
       .default(PlaylistSyncStatus.Idle),
+    skipNonMusic: integer('skip_non_music', { mode: 'boolean' })
+      .notNull()
+      .default(true),
     lastSyncedAt: text('last_synced_at'),
     trackCount: integer('track_count').notNull().default(0),
     createdAt: text('created_at').notNull().$defaultFn(createdAt),
@@ -82,6 +85,9 @@ export const tracks = sqliteTable(
     videoId: text('video_id').notNull().unique(),
     title: text('title').notNull(),
     durationSeconds: integer('duration_seconds'),
+    skipNonMusic: integer('skip_non_music', { mode: 'boolean' })
+      .notNull()
+      .default(true),
     thumbnailPath: text('thumbnail_path'),
     thumbnailUrl: text('thumbnail_url'),
     fileStatus: text('file_status')

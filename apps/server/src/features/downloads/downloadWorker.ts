@@ -179,7 +179,8 @@ async function storeTrack(
     const result = await context.youtube.downloadTrack({
       videoId: track.videoId,
       outputPath: tempPath,
-      tempDir: context.mediaPaths.tempDir
+      tempDir: context.mediaPaths.tempDir,
+      skipNonMusic: track.skipNonMusic
     });
 
     await rename(result.filePath, storedPath);

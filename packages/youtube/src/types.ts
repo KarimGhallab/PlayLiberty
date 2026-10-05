@@ -27,6 +27,7 @@ export interface DownloadTrackRequest {
   videoId: string;
   outputPath: string;
   tempDir: string;
+  skipNonMusic: boolean;
 }
 
 export interface DownloadTrackResult {

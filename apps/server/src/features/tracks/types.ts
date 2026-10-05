@@ -34,6 +34,7 @@ export interface TrackSeed {
   title: string;
   durationSeconds: number | null;
   thumbnailUrl: string | null;
+  skipNonMusic: boolean;
 }
 
 export enum RetryTrackOutcome {

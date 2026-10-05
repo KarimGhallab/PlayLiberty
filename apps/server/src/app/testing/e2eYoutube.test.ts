@@ -77,7 +77,8 @@ describe('the E2E fake adapter', () => {
     const result = await createE2eYoutube(scriptPath).downloadTrack({
       videoId: 'v',
       outputPath,
-      tempDir: directory
+      tempDir: directory,
+      skipNonMusic: true
     });
 
     expect(result.filePath).toBe(outputPath);
@@ -92,7 +93,8 @@ describe('the E2E fake adapter', () => {
       createE2eYoutube(scriptPath).downloadTrack({
         videoId: 'v',
         outputPath: join(directory, 'out.m4a'),
-        tempDir: directory
+        tempDir: directory,
+        skipNonMusic: true
       })
     ).rejects.toThrow(/fail this download/);
   });
@@ -104,7 +106,8 @@ describe('the E2E fake adapter', () => {
       createE2eYoutube(scriptPath).downloadTrack({
         videoId: 'v',
         outputPath: join(directory, 'out.m4a'),
-        tempDir: directory
+        tempDir: directory,
+        skipNonMusic: true
       })
     ).rejects.toBeInstanceOf(YoutubeVideoUnavailableError);
   });

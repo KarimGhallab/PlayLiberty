@@ -41,6 +41,7 @@ export const TrackSchema = z.object({
   videoId: z.string().min(1),
   title: z.string(),
   durationSeconds: z.number().int().nonnegative().nullable(),
+  skipNonMusic: z.boolean(),
   thumbnailPath: z.string().nullable(),
   fileStatus: z.enum(TrackFileStatus),
   sourceStatus: z.enum(TrackSourceStatus),
@@ -80,6 +81,7 @@ export const PlaylistSchema = z.object({
   syncStatus: z.enum(PlaylistSyncStatus),
   lastSyncedAt: isoDateTime.nullable(),
   trackCount: z.number().int().nonnegative(),
+  skipNonMusic: z.boolean(),
   access: PlaylistAccessSchema,
   hasShares: z.boolean(),
   createdAt: isoDateTime,
@@ -124,7 +126,8 @@ export const ProblemSchema = z.object({
 });
 
 export const CreatePlaylistInputSchema = z.object({
-  url: z.url()
+  url: z.url(),
+  skipNonMusic: z.boolean().default(true)
 });
 
 export const AddTrackInputSchema = z.object({

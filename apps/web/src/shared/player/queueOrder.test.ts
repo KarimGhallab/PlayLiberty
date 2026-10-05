@@ -29,6 +29,7 @@ function association(id: string) {
       videoId: id,
       title: id,
       durationSeconds: 180,
+      skipNonMusic: true,
       thumbnailPath: null,
       fileStatus: TrackFileStatus.Stored,
       sourceStatus: TrackSourceStatus.Available,

@@ -85,7 +85,7 @@ function seedAccount(): { accountId: string; pangolinUserId: string } {
   return { accountId, pangolinUserId };
 }
 
-function seedPlaylist(ownerAccountId: string): string {
+function seedPlaylist(ownerAccountId: string, skipNonMusic = true): string {
   const playlistId = randomUUID();
 
   database()
@@ -96,7 +96,8 @@ function seedPlaylist(ownerAccountId: string): string {
       name: 'Playlist',
       coverUrl: null,
       provider: Provider.Youtube,
-      sourcePlaylistId: `source-${playlistId}`
+      sourcePlaylistId: `source-${playlistId}`,
+      skipNonMusic
     })
     .run();
 
@@ -106,7 +107,8 @@ function seedPlaylist(ownerAccountId: string): string {
 function seedTrack(
   videoId: string,
   fileStatus: TrackFileStatus = TrackFileStatus.Stored,
-  failureReason: string | null = null
+  failureReason: string | null = null,
+  skipNonMusic = true
 ): string {
   const trackId = randomUUID();
 
@@ -118,6 +120,7 @@ function seedTrack(
       videoId,
       title: 'Track',
       durationSeconds: 180,
+      skipNonMusic,
       thumbnailPath: null,
       fileStatus,
       sourceStatus: TrackSourceStatus.Available,
@@ -233,6 +236,34 @@ describe('POST /tracks', () => {
       expect(association?.origin).toBe(AssociationOrigin.Manual);
       expect(association?.position).toBe(0);
     }
+  });
+
+  it('records the first writable playlist value on the track it creates', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
+    );
+    const caller = seedAccount();
+    const other = seedAccount();
+    // A refused playlist comes first and a writable one second, so the value must
+    // come from the first *writable* id, not the first id. The writable one is off,
+    // so the track is fetched whole.
+    const readOnly = seedPlaylist(other.accountId, true);
+    seedShare(readOnly, caller.accountId, ShareLevel.Read);
+    const writable = seedPlaylist(caller.accountId, false);
+
+    const response = await post('/api/v1/tracks', caller.pangolinUserId, {
+      url: VIDEO_URL,
+      playlistIds: [readOnly, writable]
+    });
+
+    expect(AddTrackResultSchema.parse(response.json()).results).toEqual([
+      { playlistId: readOnly, outcome: AddTrackOutcome.Refused },
+      { playlistId: writable, outcome: AddTrackOutcome.Added }
+    ]);
+
+    const track = database().db.select().from(tracks).get();
+    expect(track?.skipNonMusic).toBe(false);
   });
 
   it('reports a refusal per playlist while the writable playlists in the same batch succeed', async () => {

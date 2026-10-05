@@ -23,6 +23,7 @@ function association(
       videoId: `video-${id}`,
       title: id,
       durationSeconds: 180,
+      skipNonMusic: true,
       thumbnailPath: null,
       fileStatus,
       sourceStatus,

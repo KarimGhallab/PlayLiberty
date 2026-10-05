@@ -18,6 +18,7 @@ function track(id: string, fileStatus = 'stored') {
       videoId: `video-${id}`,
       title: id,
       durationSeconds: 200,
+      skipNonMusic: true,
       thumbnailPath: null,
       fileStatus,
       sourceStatus: 'available',

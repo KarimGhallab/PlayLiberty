@@ -1,5 +1,5 @@
-import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -7,7 +7,6 @@ import {
   YoutubeVideoUnavailableError,
   isVideoUnavailableMessage
 } from './errors.js';
-import { YoutubeSourceKind } from './types.js';
 import type {
   DownloadOptions,
   DownloadTrackRequest,
@@ -18,6 +17,7 @@ import type {
   YoutubeUrlInfo,
   YtdlpOptions
 } from './types.js';
+import { YoutubeSourceKind } from './types.js';
 import { validateYoutubeUrl } from './validateYoutubeUrl.js';
 
 /*
@@ -35,6 +35,14 @@ import { validateYoutubeUrl } from './validateYoutubeUrl.js';
  * is what makes that a decision rather than an omission.
  */
 const YOUTUBE_EXTRACTORS = 'youtube,youtube:tab';
+
+/*
+ * The SponsorBlock categories the app cuts. `music_offtopic` is the only one that
+ * literally means the music stopped; `sponsor` and `selfpromo` cover the spoken
+ * breaks in long uploads. Fixed in code, because this is one behaviour and not a
+ * configuration surface.
+ */
+const SPONSORBLOCK_CATEGORIES = 'music_offtopic,sponsor,selfpromo';
 
 export function buildListArgs(info: YoutubeUrlInfo): string[] {
   return [
@@ -57,7 +65,8 @@ export function buildListArgs(info: YoutubeUrlInfo): string[] {
 export function buildDownloadArgs(
   url: string,
   outputTemplate: string,
-  options: DownloadOptions
+  options: DownloadOptions,
+  skipNonMusic: boolean
 ): string[] {
   return [
     '--ignore-config',
@@ -67,6 +76,7 @@ export function buildDownloadArgs(
     'node',
     '-f',
     'bestaudio[ext=m4a]/bestaudio',
+    ...(skipNonMusic ? ['--sponsorblock-remove', SPONSORBLOCK_CATEGORIES] : []),
     '--no-playlist',
     '--newline',
     '--no-progress',
@@ -265,7 +275,12 @@ export class YtdlpClient implements IYoutubeClient {
     try {
       await runProcess(
         this._options.binary,
-        buildDownloadArgs(url, outputTemplate, this._options.download),
+        buildDownloadArgs(
+          url,
+          outputTemplate,
+          this._options.download,
+          request.skipNonMusic
+        ),
         this._options.timeoutMs
       );
     } catch (error) {

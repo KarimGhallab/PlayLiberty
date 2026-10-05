@@ -67,7 +67,12 @@ export function registerPlaylistRoutes(
 
     // The playlist and its run exist before this answers, so the client has an id
     // to read the run from; the reconcile itself finishes behind the response.
-    const started = startSyncForSource(context, request.account.id, info);
+    const started = startSyncForSource(
+      context,
+      request.account.id,
+      info,
+      parsed.data.skipNonMusic
+    );
 
     if (started.outcome === StartSyncOutcome.AlreadyRunning) {
       return sendProblem(reply, {

@@ -70,7 +70,8 @@ describe('buildDownloadArgs', () => {
     const args = buildDownloadArgs(
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       '/media/.tmp/dQw4w9WgXcQ.%(ext)s',
-      downloadOptions
+      downloadOptions,
+      false
     );
     const selector = args[args.indexOf('--use-extractors') + 1];
 
@@ -81,7 +82,8 @@ describe('buildDownloadArgs', () => {
     const args = buildDownloadArgs(
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       '/media/.tmp/dQw4w9WgXcQ.%(ext)s',
-      downloadOptions
+      downloadOptions,
+      false
     );
 
     expect(args).toContain('-f');
@@ -90,6 +92,46 @@ describe('buildDownloadArgs', () => {
     expect(args).toContain('5M');
     expect(args.at(-2)).toBe('--');
     expect(args.at(-1)).toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  });
+
+  it('asks SponsorBlock to cut the three categories when the track skips them', () => {
+    const args = buildDownloadArgs(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      '/media/.tmp/dQw4w9WgXcQ.%(ext)s',
+      downloadOptions,
+      true
+    );
+
+    expect(args).toContain('--sponsorblock-remove');
+    expect(args[args.indexOf('--sponsorblock-remove') + 1]).toBe(
+      'music_offtopic,sponsor,selfpromo'
+    );
+  });
+
+  it('passes no SponsorBlock flag for a track fetched whole', () => {
+    const args = buildDownloadArgs(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      '/media/.tmp/dQw4w9WgXcQ.%(ext)s',
+      downloadOptions,
+      false
+    );
+
+    expect(args).not.toContain('--sponsorblock-remove');
+  });
+
+  it('never passes the flag that would re-encode the audio', () => {
+    for (const skipNonMusic of [true, false]) {
+      const args = buildDownloadArgs(
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        '/media/.tmp/dQw4w9WgXcQ.%(ext)s',
+        downloadOptions,
+        skipNonMusic
+      );
+
+      // `--force-keyframes-at-cuts` re-encodes the whole file first, which would
+      // break ADR 0002's no-transcoding rule. The cut is a stream copy.
+      expect(args).not.toContain('--force-keyframes-at-cuts');
+    }
   });
 });
 

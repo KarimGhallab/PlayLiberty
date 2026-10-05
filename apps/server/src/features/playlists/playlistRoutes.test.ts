@@ -77,6 +77,7 @@ function seedPlaylist(
     sourceUrl?: string | null;
     lastSyncedAt?: string | null;
     syncStatus?: PlaylistSyncStatus;
+    skipNonMusic?: boolean;
   } = {}
 ): string {
   const playlistId = randomUUID();
@@ -92,6 +93,7 @@ function seedPlaylist(
       sourcePlaylistId: `source-${playlistId}`,
       sourceUrl: options.sourceUrl ?? null,
       syncStatus: options.syncStatus ?? PlaylistSyncStatus.Idle,
+      skipNonMusic: options.skipNonMusic ?? true,
       lastSyncedAt: options.lastSyncedAt ?? null,
       createdAt: options.createdAt ?? new Date().toISOString()
     })
@@ -110,6 +112,7 @@ function seedTrack(
     thumbnailPath?: string | null;
     filePath?: string | null;
     failureReason?: string | null;
+    skipNonMusic?: boolean;
   } = {}
 ): string {
   const trackId = randomUUID();
@@ -126,7 +129,8 @@ function seedTrack(
       fileStatus: options.fileStatus ?? TrackFileStatus.Stored,
       filePath: options.filePath ?? null,
       sourceStatus: options.sourceStatus ?? TrackSourceStatus.Available,
-      failureReason: options.failureReason ?? null
+      failureReason: options.failureReason ?? null,
+      skipNonMusic: options.skipNonMusic ?? true
     })
     .run();
 
@@ -324,7 +328,8 @@ describe('GET /playlists', () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
     const playlistId = seedPlaylist(context.database, owner.accountId, {
-      name: 'Evening'
+      name: 'Evening',
+      skipNonMusic: false
     });
     addTrack(context.database, playlistId, seedTrack(context.database));
     addTrack(context.database, playlistId, seedTrack(context.database));
@@ -339,6 +344,8 @@ describe('GET /playlists', () => {
     expect(page.items).toHaveLength(1);
     expect(page.items[0]?.name).toBe('Evening');
     expect(page.items[0]?.trackCount).toBe(2);
+    /* The library list carries the frozen setting too, not just the single read. */
+    expect(page.items[0]?.skipNonMusic).toBe(false);
   });
 
   it('reports a playlist with no associations as 0 rather than null', async () => {
@@ -529,7 +536,9 @@ describe('GET /playlists/:id', () => {
   it('returns the playlist with its count', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      skipNonMusic: false
+    });
     addTrack(context.database, playlistId, seedTrack(context.database));
 
     const response = await get(
@@ -541,6 +550,8 @@ describe('GET /playlists/:id', () => {
     const playlist = PlaylistSchema.parse(response.json());
     expect(playlist.id).toBe(playlistId);
     expect(playlist.trackCount).toBe(1);
+    /* The frozen setting crosses the wire, so a client can show it read-only. */
+    expect(playlist.skipNonMusic).toBe(false);
   });
 
   it('agrees with the list route about the same playlist', async () => {
@@ -933,7 +944,7 @@ describe('GET /playlists/:id/tracks', () => {
     const owner = seedAccount(context.database);
     const playlistId = seedPlaylist(context.database, owner.accountId);
     const third = seedTrack(context.database);
-    const first = seedTrack(context.database);
+    const first = seedTrack(context.database, { skipNonMusic: false });
     const second = seedTrack(context.database);
 
     // Inserted out of position order, so an implementation that returned
@@ -967,6 +978,10 @@ describe('GET /playlists/:id/tracks', () => {
       AssociationOrigin.Remote,
       AssociationOrigin.Manual
     ]);
+    /* The recorded policy crosses the wire on the track, so a client can show why
+     * a track is full length. */
+    expect(page.items[0]?.track.skipNonMusic).toBe(false);
+    expect(page.items[1]?.track.skipNonMusic).toBe(true);
   });
 
   it('never returns a track the playlist does not associate', async () => {
@@ -1483,7 +1498,8 @@ describe('PATCH /playlists/:id', () => {
       coverUrl: 'https://example.com/cover.jpg',
       sourceUrl: 'https://www.youtube.com/playlist?list=PL1234567890abcdef',
       lastSyncedAt: '2020-06-01T00:00:00.000Z',
-      syncStatus: PlaylistSyncStatus.Error
+      syncStatus: PlaylistSyncStatus.Error,
+      skipNonMusic: false
     });
     context.database.db
       .update(playlists)
@@ -1512,6 +1528,8 @@ describe('PATCH /playlists/:id', () => {
     expect(after?.coverUrl).toBe(before?.coverUrl);
     expect(after?.lastSyncedAt).toBe(before?.lastSyncedAt);
     expect(after?.syncStatus).toBe(before?.syncStatus);
+    /* The setting is frozen: the update route cannot change it. */
+    expect(after?.skipNonMusic).toBe(false);
   });
 
   it('refuses a request without the client header', async () => {

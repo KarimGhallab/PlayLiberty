@@ -22,6 +22,7 @@ function association(
       videoId: 'video-1',
       title: 'Blue In Green',
       durationSeconds: 337,
+      skipNonMusic: true,
       thumbnailPath: null,
       fileStatus: TrackFileStatus.Stored,
       sourceStatus: TrackSourceStatus.Available,

@@ -59,6 +59,7 @@ function toPlaylistView(
     syncStatus: row.syncStatus,
     lastSyncedAt: row.lastSyncedAt,
     trackCount: row.trackCount,
+    skipNonMusic: row.skipNonMusic,
     access,
     hasShares,
     createdAt: row.createdAt,

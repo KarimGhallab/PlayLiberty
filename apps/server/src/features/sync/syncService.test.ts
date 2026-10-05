@@ -57,7 +57,11 @@ afterEach(async () => {
   context = undefined;
 });
 
-function post(url: string, pangolinUserId: string) {
+function post(
+  url: string,
+  pangolinUserId: string,
+  extra: Record<string, unknown> = {}
+) {
   if (context === undefined) {
     throw new Error('the test context is not created');
   }
@@ -66,7 +70,7 @@ function post(url: string, pangolinUserId: string) {
     method: 'POST',
     url: '/api/v1/playlists',
     headers: { 'remote-user': pangolinUserId, 'x-playliberty-client': 'test' },
-    payload: { url }
+    payload: { url, ...extra }
   });
 }
 
@@ -134,6 +138,7 @@ function readAssociations(playlistId: string) {
       videoId: tracks.videoId,
       fileStatus: tracks.fileStatus,
       sourceStatus: tracks.sourceStatus,
+      skipNonMusic: tracks.skipNonMusic,
       origin: associations.origin,
       position: associations.position
     })
@@ -167,6 +172,61 @@ describe('POST /playlists', () => {
     expect(playlist.syncStatus).toBe(PlaylistSyncStatus.Idle);
     expect(playlist.lastSyncedAt).not.toBeNull();
     expect(playlist.trackCount).toBe(2);
+    /* Skip non-music parts is on by default. */
+    expect(playlist.skipNonMusic).toBe(true);
+  });
+
+  it('records the setting off when the create asks for it off', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('a')])) }
+    );
+
+    const run = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1', { skipNonMusic: false })).json()
+    );
+
+    const playlist = await readPlaylist(run.playlistId, 'owner-1');
+    expect(playlist.skipNonMusic).toBe(false);
+  });
+
+  it('creates tracks carrying the syncing playlist value', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('a'), entry('b')])) }
+    );
+
+    const run = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1', { skipNonMusic: false })).json()
+    );
+    await runFinished(run.playlistId, 'owner-1');
+
+    const rows = readAssociations(run.playlistId);
+    expect(rows).toHaveLength(2);
+    expect(rows.every(row => row.skipNonMusic === false)).toBe(true);
+  });
+
+  it('keeps the first paste value when the same source is pasted again', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('a')]), source([entry('a')])) }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1', { skipNonMusic: false })).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    // The second paste finds the owner's existing playlist and keeps its value:
+    // the setting is frozen at the first creation, not re-chosen on each paste.
+    const second = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(second.playlistId, 'owner-1');
+
+    expect(second.playlistId).toBe(first.playlistId);
+    const playlist = await readPlaylist(first.playlistId, 'owner-1');
+    expect(playlist.skipNonMusic).toBe(false);
   });
 
   it('kicks the download worker when the sync queued tracks', async () => {

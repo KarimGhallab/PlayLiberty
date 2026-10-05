@@ -62,15 +62,18 @@ interface FakeDownloaderOptions {
 function fakeDownloader(options: FakeDownloaderOptions = {}): {
   youtube: IYoutubeClient;
   downloads: string[];
+  requests: DownloadTrackRequest[];
   stats: { maxActive: number };
 } {
   const downloads: string[] = [];
+  const requests: DownloadTrackRequest[] = [];
   const stats = { maxActive: 0 };
   let active = 0;
   let failures = options.failTimes ?? 0;
 
   return {
     downloads,
+    requests,
     stats,
     youtube: {
       listSource: async () => {
@@ -80,6 +83,7 @@ function fakeDownloader(options: FakeDownloaderOptions = {}): {
         request: DownloadTrackRequest
       ): Promise<DownloadTrackResult> => {
         downloads.push(request.videoId);
+        requests.push(request);
 
         if (failures > 0) {
           failures -= 1;
@@ -160,6 +164,7 @@ interface SeedOptions {
   fileStatus?: TrackFileStatus;
   filePath?: string | null;
   thumbnailUrl?: string | null;
+  skipNonMusic?: boolean;
 }
 
 interface Seeded {
@@ -187,6 +192,7 @@ function seed(
       videoId,
       title: 'Track',
       durationSeconds: null,
+      skipNonMusic: options.skipNonMusic ?? true,
       thumbnailPath: null,
       thumbnailUrl: options.thumbnailUrl ?? null,
       fileStatus: options.fileStatus ?? TrackFileStatus.Pending,
@@ -278,15 +284,33 @@ describe('the download worker', () => {
     expect(fake.downloads).toEqual([seeded.videoId]);
   });
 
+  it('passes the policy recorded on the row to the adapter', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    seed(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      skipNonMusic: false
+    });
+
+    await run(fake.youtube);
+
+    // The worker has no playlist in scope, so the value comes from the track row.
+    expect(fake.requests[0]?.skipNonMusic).toBe(false);
+  });
+
   it('never claims a stored track and serves it to a second association', async () => {
     const fake = fakeDownloader();
     context = await createTestContext({}, { youtube: fake.youtube });
-    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+    const seeded = seed(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      skipNonMusic: false
+    });
 
     await run(fake.youtube);
     expect(fake.downloads).toEqual([seeded.videoId]);
 
-    // A second account associates the same track row.
+    // A second account associates the same track row. Its playlist is on, but the
+    // track keeps the policy of the fetch that stored it: first-wins.
     const otherAccountId = createAccount(context.database, 'owner-2');
     const otherPlaylistId = seedPlaylist(context.database, otherAccountId);
     context.database.db
@@ -304,6 +328,7 @@ describe('the download worker', () => {
     await run(fake.youtube);
 
     expect(fake.downloads).toEqual([]);
+    expect(trackRow(seeded.trackId)?.skipNonMusic).toBe(false);
 
     const response = await context.app.inject({
       method: 'GET',

@@ -1,10 +1,14 @@
-import { AddTrackOutcome, AssociationOrigin } from '@playliberty/contracts';
+import { eq } from 'drizzle-orm';
+
 import type { AddTrackResult } from '@playliberty/contracts';
+import { AddTrackOutcome, AssociationOrigin } from '@playliberty/contracts';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
 import { canWritePlaylist } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
 
+import type { DatabaseHandle } from '../../platform/database/client.js';
+import { playlists } from '../../platform/database/schema.js';
 import {
   AssociationOutcome,
   addAssociation,
@@ -58,7 +62,11 @@ export async function addTrackToPlaylists(
         videoId: info.sourceId,
         title: entry.title,
         durationSeconds: entry.durationSeconds,
-        thumbnailUrl: entry.thumbnailUrl
+        thumbnailUrl: entry.thumbnailUrl,
+        skipNonMusic: firstWritableSkipNonMusic(
+          database,
+          playlistIds[writable.indexOf(true)]
+        )
       });
     }
   }
@@ -79,6 +87,31 @@ export async function addTrackToPlaylists(
   });
 
   return { results };
+}
+
+/*
+ * The policy a batch-created track is fetched under: the first writable playlist's
+ * frozen value, in request order. Read from the playlist row rather than passed
+ * in, because the batch is the one caller that creates a track for a list of
+ * playlists and the rule is which one comes first. A missing row cannot happen
+ * here (the index is only taken when the playlist is writable), so the fallback is
+ * unreachable and matches the column default.
+ */
+function firstWritableSkipNonMusic(
+  database: DatabaseHandle,
+  playlistId: string | undefined
+): boolean {
+  if (playlistId === undefined) {
+    return true;
+  }
+
+  return (
+    database.db
+      .select({ skipNonMusic: playlists.skipNonMusic })
+      .from(playlists)
+      .where(eq(playlists.id, playlistId))
+      .get()?.skipNonMusic ?? true
+  );
 }
 
 /*

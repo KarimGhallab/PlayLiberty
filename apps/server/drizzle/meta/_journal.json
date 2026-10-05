@@ -36,6 +36,20 @@
       "when": 1790874207471,
       "tag": "0004_bouncy_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791193309791,
+      "tag": "0005_easy_ezekiel",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791194119283,
+      "tag": "0006_shallow_omega_red",
+      "breakpoints": true
     }
   ]
 }
