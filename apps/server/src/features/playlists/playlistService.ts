@@ -186,6 +186,33 @@ export function renamePlaylistForAccount(
 }
 
 /*
+ * Changing the playlist's skip-non-music setting, which the owner and a write
+ * collaborator may do and a read collaborator may not. The change is not
+ * retroactive: it sets the default for tracks created from now on, and every
+ * track already created keeps the value it was born with, because a track
+ * snapshots the setting at creation and a stored file is shared. The write
+ * touches the setting and the row's timestamp and nothing else.
+ */
+export function updateSkipNonMusicForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string,
+  skipNonMusic: boolean
+): ReadPlaylistResult {
+  if (!canWritePlaylist(database, playlistId, accountId)) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  database.db
+    .update(playlists)
+    .set({ skipNonMusic, updatedAt: new Date().toISOString() })
+    .where(eq(playlists.id, playlistId))
+    .run();
+
+  return readPlaylistForAccount(database, playlistId, accountId);
+}
+
+/*
  * Deleting belongs to the owner alone, so the not-found is the same one a stranger
  * gets. The associations and the shares go with the row through the foreign key
  * cascade, which is the one place the association service's rule, that an

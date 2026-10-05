@@ -197,6 +197,53 @@
       .side .sum {
         margin-top: var(--space-5);
       }
+      /* The read-only skip setting, under the header in both arrangements. No
+       * border and no fill: it is a statement and not a control, so it stays
+       * quieter than the card above it. The --space-5 margin is the distance the
+       * header-to-state gap already uses, so the column keeps one rhythm. */
+      .skip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        margin-top: var(--space-5);
+      }
+      .skip__label {
+        color: var(--ink);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-medium);
+        line-height: var(--leading-normal);
+      }
+      /* The switch: a track and a thumb. On takes the accent, off the control
+       * border, and the thumb's position carries the value. */
+      .skip__switch {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        flex-shrink: 0;
+        padding: 0;
+        background: var(--control-border);
+        border: 1px solid var(--control-border);
+        border-radius: var(--radius-chip);
+        cursor: pointer;
+      }
+      .skip__switch[data-on='true'] {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .skip__thumb {
+        position: absolute;
+        top: 50%;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: var(--ink);
+        border-radius: 50%;
+        transform: translateY(-50%);
+      }
+      .skip__switch[data-on='true'] .skip__thumb {
+        left: calc(100% - 18px);
+      }
 
       /* The track list. .tl is the scope the row's own rules are namespaced
        * into, and the reason it exists is in the record: five of the row's class
@@ -1746,6 +1793,18 @@
                   </div>
                 </div>
               </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
+              </div>
               <div class="sum">
                 <div class="sum__band">
                   <div class="sum__cell">
@@ -3213,6 +3272,18 @@
                   </div>
                 </div>
               </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
+              </div>
               <div class="sum">
                 <div class="sum__band">
                   <div class="sum__cell">
@@ -4667,6 +4738,18 @@
                   </div>
                 </div>
               </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
             <div class="tl">
               <div class="empty">
@@ -4846,6 +4929,18 @@
                     <span class="unit">tracks</span>
                   </div>
                 </div>
+              </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
               </div>
               <div class="sum">
                 <div class="sum__band">
@@ -6277,6 +6372,18 @@
                     <span class="unit">tracks</span>
                   </div>
                 </div>
+              </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
               </div>
               <div class="fault">
                 <div class="fault__band">
@@ -7764,6 +7871,18 @@
                   </div>
                 </div>
               </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
+              </div>
               <div class="sum">
                 <div class="sum__band">
                   <div class="sum__cell">
@@ -9193,6 +9312,18 @@
                   </div>
                 </div>
               </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
+              </div>
               <div class="sum">
                 <div class="sum__band">
                   <div class="sum__cell">
@@ -10594,6 +10725,18 @@
                     <span class="unit">tracks</span>
                   </div>
                 </div>
+              </div>
+              <div class="skip">
+                <span class="skip__label">Skip non-music parts</span>
+                <button
+                  class="skip__switch"
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Skip non-music parts"
+                  data-on="true">
+                  <span class="skip__thumb" aria-hidden="true"></span>
+                </button>
               </div>
               <div class="sum">
                 <div class="sum__band">
@@ -12132,6 +12275,18 @@
                 </div>
               </div>
             </div>
+            <div class="skip">
+              <span class="skip__label">Skip non-music parts</span>
+              <button
+                class="skip__switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Skip non-music parts"
+                data-on="true">
+                <span class="skip__thumb" aria-hidden="true"></span>
+              </button>
+            </div>
             <div class="mob__state"></div>
             <div class="tl">
               <div class="empty">
@@ -12309,6 +12464,18 @@
                   </span>
                 </div>
               </div>
+            </div>
+            <div class="skip">
+              <span class="skip__label">Skip non-music parts</span>
+              <button
+                class="skip__switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Skip non-music parts"
+                data-on="true">
+                <span class="skip__thumb" aria-hidden="true"></span>
+              </button>
             </div>
             <div class="mob__state">
               <div class="sum">
@@ -13739,6 +13906,18 @@
                   </span>
                 </div>
               </div>
+            </div>
+            <div class="skip">
+              <span class="skip__label">Skip non-music parts</span>
+              <button
+                class="skip__switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Skip non-music parts"
+                data-on="true">
+                <span class="skip__thumb" aria-hidden="true"></span>
+              </button>
             </div>
             <div class="mob__state">
               <div class="fault">
@@ -15185,6 +15364,18 @@
                   </span>
                 </div>
               </div>
+            </div>
+            <div class="skip">
+              <span class="skip__label">Skip non-music parts</span>
+              <button
+                class="skip__switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Skip non-music parts"
+                data-on="true">
+                <span class="skip__thumb" aria-hidden="true"></span>
+              </button>
             </div>
             <div class="mob__state">
               <div class="sum">
@@ -16640,6 +16831,18 @@
                 </div>
               </div>
             </div>
+            <div class="skip">
+              <span class="skip__label">Skip non-music parts</span>
+              <button
+                class="skip__switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Skip non-music parts"
+                data-on="true">
+                <span class="skip__thumb" aria-hidden="true"></span>
+              </button>
+            </div>
             <div class="mob__state">
               <div class="sum">
                 <div class="sum__band">
@@ -18069,6 +18272,18 @@
                 </div>
               </div>
             </div>
+            <div class="skip">
+              <span class="skip__label">Skip non-music parts</span>
+              <button
+                class="skip__switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Skip non-music parts"
+                data-on="true">
+                <span class="skip__thumb" aria-hidden="true"></span>
+              </button>
+            </div>
             <div class="mob__state">
               <div class="sum">
                 <div class="sum__band">
@@ -19472,6 +19687,18 @@
                   </button>
                 </div>
               </div>
+            </div>
+            <div class="skip">
+              <span class="skip__label">Skip non-music parts</span>
+              <button
+                class="skip__switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Skip non-music parts"
+                data-on="true">
+                <span class="skip__thumb" aria-hidden="true"></span>
+              </button>
             </div>
             <div class="mob__state">
               <div class="sum">

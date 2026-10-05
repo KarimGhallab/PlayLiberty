@@ -150,6 +150,10 @@ export const RenamePlaylistInputSchema = z.object({
   name: z.string().trim().min(1).max(200)
 });
 
+export const SkipNonMusicInputSchema = z.object({
+  skipNonMusic: z.boolean()
+});
+
 export const SharePlaylistInputSchema = z.object({
   accountId: identifier,
   level: z.enum(ShareLevel)

@@ -91,7 +91,7 @@ export async function addTrackToPlaylists(
 
 /*
  * The policy a batch-created track is fetched under: the first writable playlist's
- * frozen value, in request order. Read from the playlist row rather than passed
+ * current value, in request order. Read from the playlist row rather than passed
  * in, because the batch is the one caller that creates a track for a list of
  * playlists and the rule is which one comes first. A missing row cannot happen
  * here (the index is only taken when the playlist is writable), so the fallback is

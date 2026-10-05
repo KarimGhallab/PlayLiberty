@@ -472,7 +472,7 @@ function ensureTrack(
     title,
     durationSeconds,
     thumbnailUrl,
-    // The syncing playlist's frozen value. A second playlist that later references
+    // The syncing playlist's current value. A second playlist that later references
     // this track does not re-fetch it and cannot change it: first-wins is the dedup
     // restated.
     skipNonMusic

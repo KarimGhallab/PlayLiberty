@@ -275,6 +275,48 @@ export function useRenamePlaylist(
 }
 
 /*
+ * Changing the playlist's skip-non-music setting. The route answers with the
+ * updated playlist, and the write is optimistic: the cache takes the new value on
+ * the press so the switch moves at once, and a failure puts it back. The change is
+ * not retroactive, so no track read moves; only the playlist and the library list
+ * are touched.
+ */
+export function useUpdateSkipNonMusic(
+  playlistId: string
+): UseMutationResult<Playlist, Error, boolean> {
+  const queryClient = useQueryClient();
+  const key = ['playlist', playlistId];
+
+  return useMutation({
+    mutationFn: (skipNonMusic: boolean) =>
+      apiPatch(
+        `/playlists/${playlistId}/skip-non-music`,
+        { skipNonMusic },
+        PlaylistSchema
+      ),
+    onMutate: async (skipNonMusic: boolean) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Playlist>(key);
+
+      if (previous !== undefined) {
+        queryClient.setQueryData<Playlist>(key, { ...previous, skipNonMusic });
+      }
+
+      return { previous };
+    },
+    onError: (_error, _skipNonMusic, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSuccess: playlist => {
+      queryClient.setQueryData(key, playlist);
+      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    }
+  });
+}
+
+/*
  * Deleting one playlist. The route answers `204`, so there is nothing to return;
  * the library is invalidated and the page navigates home on success, which the
  * caller owns because a component does not decide where a deletion lands.

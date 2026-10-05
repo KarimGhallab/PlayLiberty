@@ -14,6 +14,7 @@ import {
   RenamePlaylistInputSchema,
   SharePlaylistInputSchema,
   ShareSchema,
+  SkipNonMusicInputSchema,
   SyncRunSchema,
   TrackSchema
 } from './schemas.js';
@@ -32,6 +33,7 @@ export type AddTrackInput = z.infer<typeof AddTrackInputSchema>;
 export type AddTrackResult = z.infer<typeof AddTrackResultSchema>;
 export type RenamePlaylistInput = z.infer<typeof RenamePlaylistInputSchema>;
 export type SharePlaylistInput = z.infer<typeof SharePlaylistInputSchema>;
+export type SkipNonMusicInput = z.infer<typeof SkipNonMusicInputSchema>;
 export type PageQuery = z.infer<typeof PageQuerySchema>;
 
 export interface Page<T> {

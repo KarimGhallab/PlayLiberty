@@ -21,9 +21,10 @@ and then lived with.
 ## Solution
 
 At download time the server asks SponsorBlock which parts of a track are not music, and cuts those ranges out
-of the stored audio with a lossless stream copy. A playlist carries a frozen "Skip non-music parts" setting,
-on by default and chosen when the playlist is created, and the track records the decision the first time any
-playlist fetches it. A track is therefore stored already trimmed, one file per video, with its stored duration
+of the stored audio with a lossless stream copy. A playlist carries a "Skip non-music parts" setting, on by
+default and chosen when the playlist is created and editable later by the owner and a write collaborator; the
+track records the decision the first time any playlist fetches it, so a change is the default for tracks
+created from then on and is never retroactive. A track is therefore stored already trimmed, one file per video, with its stored duration
 matching what is heard. A video with no SponsorBlock data is stored whole. A video whose SponsorBlock lookup
 fails fails the track and waits for the next sync, and the listener can force a single fileless track to be
 fetched whole when the trimmed result is wrong.
@@ -39,10 +40,10 @@ fetched whole when the trimmed result is wrong.
 5. As a listener, I want "Skip non-music parts" on by default when I add a playlist, so that I get the
    behaviour without hunting for a setting.
 6. As a listener, I want to turn it off when I add the playlist, so that a source I want whole stays whole.
-7. As a listener, I want the setting to read as fixed, so that I do not expect changing it later to change
-   tracks I already have.
-8. As a listener, I want one line explaining what the setting does and why it is fixed, so that the sharing
-   between playlists is not a surprise.
+7. As a listener, I want to change the setting later, so that a playlist I set up before I knew about it is not
+   stuck.
+8. As a listener, I want a change not to be retroactive, so that turning it off does not disturb tracks I
+   already have.
 9. As a listener, I want the audio not to be re-encoded, so that it sounds as it did and plays natively
    everywhere.
 10. As a listener, I want the stored duration to match what I hear, so that the player's clock and the scrub bar
@@ -61,8 +62,8 @@ fetched whole when the trimmed result is wrong.
     one copy and YouTube sees one request.
 17. As a member of a household, I want the first playlist to fetch a video to set its trimming for everyone, so
     that the single stored file is a rule and not a race.
-18. As an owner, I want my playlist's setting frozen at creation, so that my playlist does not change its
-    behaviour under me.
+18. As an owner, I want to change my playlist's setting after creation, so that the default follows what I now
+    want, without touching tracks already fetched.
 19. As an owner, I want to see why a track in my playlist is full length when I expected it trimmed, so that
     the store is not a black box.
 20. As an operator, I want the cut to be a stream copy, so that the server stays a file server and the
@@ -78,16 +79,17 @@ fetched whole when the trimmed result is wrong.
 
 ## Implementation Decisions
 
-- **The policy is one boolean, `skipNonMusic`, frozen at playlist creation.** It defaults to `true`, is set
-  when a playlist is created, is returned on the playlist read, and is shown read-only in playlist settings
-  with the one-line explanation. _Decided here:_ frozen rather than editable. An editable toggle over a shared
-  file with no reprocessing would be a setting that lies, because flipping it could not change tracks already
-  fetched and could not re-fetch them either.
+- **The policy is one boolean, `skipNonMusic`, chosen at playlist creation and editable after it.** It defaults
+  to `true`, is set when a playlist is created, is returned on the playlist read, and is drawn as a switch the
+  owner and a write collaborator may flip and a read collaborator sees disabled. _Decided here:_ editable rather
+  than frozen. The write is not retroactive, because the setting is the default for tracks created from then on
+  and a track records its own value at creation; an editable setting is therefore honest, since it changes the
+  default rather than lying about tracks already stored.
 - **The worker cannot see a playlist, so the decision is recorded on the track at creation.** The `track` row
   gains a `skip_non_music` column, written once when the track row is created, from the creating playlist's
   value. A sync uses the playlist being synced. The manual add, which creates one track for a list of
   playlists, uses the first writable playlist id in request order. First-wins is not a new rule: it is the
-  existing one-file-per-video dedup restated, and it is why the setting can be frozen.
+  existing one-file-per-video dedup restated, and it is why the setting's write is not retroactive.
 - **The flag reaches yt-dlp through the adapter, never through the worker's SQL.** `DownloadTrackRequest`
   carries `skipNonMusic`, and the download arguments add `--sponsorblock-remove music_offtopic,sponsor,selfpromo`
   when it is true. The three categories are fixed in code. `music_offtopic` is the only one that literally
@@ -124,8 +126,8 @@ fetched whole when the trimmed result is wrong.
   marked `mute` is never returned and is neither skipped nor silenced. Recorded so that nobody later expects
   muting.
 - **No segment list is persisted.** The file is the record of what was removed; the per-track count and the
-  outcome are logged, not stored. This is what the frozen setting and the no-reprocess rule require: there is
-  no second copy of the decision to drift from the file.
+  outcome are logged, not stored. This is what the non-retroactive write and the no-reprocess rule require:
+  there is no second copy of the decision to drift from the file.
 - **The stored duration is the file's truth.** The adapter probes the finished file and returns its duration,
   and the worker writes it to the track on success. This is required because a trimmed file is shorter than its
   source, and it also removes the existing drift between the source metadata and the actual stream. The probe
@@ -180,8 +182,8 @@ fetched whole when the trimmed result is wrong.
 - Muting a segment as opposed to skipping it.
 - Any transcoding, and any format work beyond the existing AAC-first selector and its Opus fallback.
 - Healing an already-stored track, which is an operator action on the media object.
-- The client's view of a failed track's reason and the bypass control, beyond the read-only setting, which the
-  web client owns in [09](09-keep-the-screens-current.md) and [04](04-curate-a-playlist.md).
+- The client's view of a failed track's reason and the bypass control, beyond the editable setting switch, which
+  the web client owns in [09](09-keep-the-screens-current.md) and [04](04-curate-a-playlist.md).
 
 ## Further Notes
 
@@ -195,6 +197,6 @@ fetched whole when the trimmed result is wrong.
 - **The failure signature** is `Unable to communicate with SponsorBlock API` and `SponsorBlock information is
 unavailable`, and on an outage yt-dlp still writes a complete, untrimmed file before exiting non-zero. That is
   where the accepted outage cost comes from.
-- **The residual risk is the residual risk.** With no guard, no reprocessing, and a frozen setting, a wrong
-  segment set is unrecoverable for a track that already has a file. This is a deliberate choice, recorded here
-  so a later reader does not read it as an oversight.
+- **The residual risk is the residual risk.** With no guard, no reprocessing, and a non-retroactive write, a
+  wrong segment set is unrecoverable for a track that already has a file. This is a deliberate choice, recorded
+  here so a later reader does not read it as an oversight.

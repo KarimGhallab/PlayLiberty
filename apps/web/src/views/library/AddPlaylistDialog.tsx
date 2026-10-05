@@ -189,8 +189,7 @@ export default function AddPlaylistDialog({
           <span className={styles.check__name}>Skip non-music parts</span>
         </label>
         <span className={styles.check__hint} id={hintId}>
-          Cut the intros, sponsor reads and outros out of the audio. Chosen
-          once, when the playlist is added.
+          Cut the intros, sponsor reads and outros out of the audio.
         </span>
       </div>
     </Dialog>

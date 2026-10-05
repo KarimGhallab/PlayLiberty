@@ -344,7 +344,7 @@ describe('GET /playlists', () => {
     expect(page.items).toHaveLength(1);
     expect(page.items[0]?.name).toBe('Evening');
     expect(page.items[0]?.trackCount).toBe(2);
-    /* The library list carries the frozen setting too, not just the single read. */
+    /* The library list carries the setting too, not just the single read. */
     expect(page.items[0]?.skipNonMusic).toBe(false);
   });
 
@@ -550,7 +550,7 @@ describe('GET /playlists/:id', () => {
     const playlist = PlaylistSchema.parse(response.json());
     expect(playlist.id).toBe(playlistId);
     expect(playlist.trackCount).toBe(1);
-    /* The frozen setting crosses the wire, so a client can show it read-only. */
+    /* The setting crosses the wire, so a client can show it. */
     expect(playlist.skipNonMusic).toBe(false);
   });
 
@@ -1528,7 +1528,7 @@ describe('PATCH /playlists/:id', () => {
     expect(after?.coverUrl).toBe(before?.coverUrl);
     expect(after?.lastSyncedAt).toBe(before?.lastSyncedAt);
     expect(after?.syncStatus).toBe(before?.syncStatus);
-    /* The setting is frozen: the update route cannot change it. */
+    /* Renaming cannot change the setting; only the skip-non-music route can. */
     expect(after?.skipNonMusic).toBe(false);
   });
 
@@ -1542,6 +1542,137 @@ describe('PATCH /playlists/:id', () => {
       url: `/api/v1/playlists/${playlistId}`,
       headers: { 'remote-user': owner.pangolinUserId },
       payload: { name: 'Renamed' }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+describe('PATCH /playlists/:id/skip-non-music', () => {
+  it('flips the setting for the owner and returns the playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      skipNonMusic: true
+    });
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/skip-non-music`,
+      owner.pangolinUserId,
+      { skipNonMusic: false }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).skipNonMusic).toBe(false);
+    expect(
+      context.database.db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get()?.skipNonMusic
+    ).toBe(false);
+  });
+
+  it('lets a write collaborator change it and refuses a read collaborator', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      skipNonMusic: true
+    });
+    const writer = seedAccount(context.database);
+    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+
+    const writerResponse = await patch(
+      `/api/v1/playlists/${playlistId}/skip-non-music`,
+      writer.pangolinUserId,
+      { skipNonMusic: false }
+    );
+    expect(writerResponse.statusCode).toBe(200);
+
+    const readerResponse = await patch(
+      `/api/v1/playlists/${playlistId}/skip-non-music`,
+      reader.pangolinUserId,
+      { skipNonMusic: true }
+    );
+    expect(readerResponse.statusCode).toBe(404);
+    expect(readerResponse.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it('answers 404 for a stranger and a missing playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const attempts: [string, string][] = [
+      [playlistId, stranger.pangolinUserId],
+      [randomUUID(), owner.pangolinUserId]
+    ];
+
+    for (const [targetId, pangolinUserId] of attempts) {
+      const response = await patch(
+        `/api/v1/playlists/${targetId}/skip-non-music`,
+        pangolinUserId,
+        { skipNonMusic: false }
+      );
+
+      expect(response.statusCode).toBe(404);
+    }
+  });
+
+  it('refuses a body that is not a boolean', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/skip-non-music`,
+      owner.pangolinUserId,
+      { skipNonMusic: 'yes' }
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+  });
+
+  it('does not change a track that was already created', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId, {
+      skipNonMusic: true
+    });
+    // The track snapshotted the setting it was born with.
+    const trackId = seedTrack(context.database, { skipNonMusic: false });
+    addTrack(context.database, playlistId, trackId);
+
+    await patch(
+      `/api/v1/playlists/${playlistId}/skip-non-music`,
+      owner.pangolinUserId,
+      { skipNonMusic: true }
+    );
+
+    expect(
+      context.database.db
+        .select()
+        .from(tracks)
+        .where(eq(tracks.id, trackId))
+        .get()?.skipNonMusic
+    ).toBe(false);
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+
+    const response = await context.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/playlists/${playlistId}/skip-non-music`,
+      headers: { 'remote-user': owner.pangolinUserId },
+      payload: { skipNonMusic: false }
     });
 
     expect(response.statusCode).toBe(403);

@@ -222,7 +222,7 @@ describe('POST /playlists', () => {
     await runFinished(first.playlistId, 'owner-1');
 
     // The second paste finds the owner's existing playlist and keeps its value:
-    // the setting is frozen at the first creation, not re-chosen on each paste.
+    // the setting is kept from the first creation, not re-chosen on each paste.
     const second = SyncRunSchema.parse(
       (await post(PLAYLIST_URL, 'owner-1')).json()
     );

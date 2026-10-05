@@ -44,6 +44,29 @@ function renderDetail(playlistId = PLAYLIST_ID) {
 }
 
 /*
+ * The playlist read the skip-setting tests answer with, so a handler can echo the
+ * value it was sent without repeating the whole shape.
+ */
+function playlistJson(skipNonMusic: boolean) {
+  return {
+    id: 'playlist-1',
+    ownerAccountId: 'account-1',
+    name: 'Rain On The Window',
+    coverUrl: null,
+    provider: 'youtube',
+    sourcePlaylistId: 'PL-demo',
+    syncStatus: 'idle',
+    lastSyncedAt: '2026-09-29T12:00:00.000Z',
+    trackCount: 3,
+    skipNonMusic,
+    access: 'owner',
+    hasShares: false,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-29T12:00:00.000Z'
+  };
+}
+
+/*
  * The media-query stub answers one query and delegates every other to the
  * global default, so a test can move the viewport without disturbing the
  * `prefers-reduced-motion` checks. The returned function puts the original back,
@@ -364,6 +387,85 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows the skip setting as a switch, on and enabled for the owner', async () => {
+    renderDetail();
+
+    const control = await screen.findByRole('switch', {
+      name: 'Skip non-music parts'
+    });
+
+    expect(control).toHaveAttribute('aria-checked', 'true');
+    expect(control).toBeEnabled();
+  });
+
+  it('flips the switch optimistically and locks it until the server answers', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const bodies: unknown[] = [];
+    server.use(
+      http.patch(
+        'http://localhost:3000/api/v1/playlists/playlist-1/skip-non-music',
+        async ({ request }) => {
+          bodies.push(await request.json());
+          await gate;
+          return HttpResponse.json(playlistJson(false));
+        }
+      )
+    );
+    renderDetail();
+
+    const control = await screen.findByRole('switch', {
+      name: 'Skip non-music parts'
+    });
+    fireEvent.click(control);
+
+    /* The switch moves before the answer, and is locked while it waits. */
+    await waitFor(() => {
+      expect(control).toHaveAttribute('aria-checked', 'false');
+    });
+    expect(control).toBeDisabled();
+    expect(bodies).toEqual([{ skipNonMusic: false }]);
+
+    release();
+    await waitFor(() => {
+      expect(control).toBeEnabled();
+    });
+  });
+
+  it('puts the switch back and says why when the change is refused', async () => {
+    server.use(
+      http.patch(
+        'http://localhost:3000/api/v1/playlists/playlist-1/skip-non-music',
+        () =>
+          HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Forbidden',
+              status: 403,
+              code: 'forbidden',
+              detail: 'You cannot change this playlist.'
+            },
+            { status: 403 }
+          )
+      )
+    );
+    renderDetail();
+
+    const control = await screen.findByRole('switch', {
+      name: 'Skip non-music parts'
+    });
+    fireEvent.click(control);
+
+    expect(
+      await screen.findByText('The skip setting was not changed.')
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(control).toHaveAttribute('aria-checked', 'true');
+    });
+  });
+
   it('shows a read failure rather than an empty list', async () => {
     server.use(
       http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
@@ -474,6 +576,10 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Add a track' })
     ).not.toBeInTheDocument();
+    /* The setting is still theirs to read, so the switch is drawn disabled. */
+    expect(
+      screen.getByRole('switch', { name: 'Skip non-music parts' })
+    ).toBeDisabled();
   });
 
   it('draws the add control for the owner and opens the dialog', async () => {

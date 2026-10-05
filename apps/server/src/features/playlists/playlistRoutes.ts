@@ -3,7 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import {
   CreatePlaylistInputSchema,
   PageQuerySchema,
-  RenamePlaylistInputSchema
+  RenamePlaylistInputSchema,
+  SkipNonMusicInputSchema
 } from '@playliberty/contracts';
 import { exhaust } from '@playliberty/utils';
 
@@ -27,7 +28,8 @@ import {
   listPlaylistsForAccount,
   readPlaylistForAccount,
   removeTrackForAccount,
-  renamePlaylistForAccount
+  renamePlaylistForAccount,
+  updateSkipNonMusicForAccount
 } from './playlistService.js';
 
 export function registerPlaylistRoutes(
@@ -168,6 +170,47 @@ export function registerPlaylistRoutes(
           title: 'Playlist Not Found',
           detail:
             'The playlist does not exist, or this account cannot manage it.'
+        });
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  /*
+   * The skip-non-music setting, which the owner and a write collaborator may
+   * change. The write is not retroactive: it sets the default for tracks created
+   * from now on, and every track already created keeps the value it was born
+   * with. A read collaborator, a stranger and a missing playlist are one
+   * not-found.
+   */
+  app.patch<{ Params: { id: string } }>(
+    '/playlists/:id/skip-non-music',
+    async (request, reply) => {
+      const parsed = parseBody(SkipNonMusicInputSchema, request.body);
+
+      if (!parsed.success) {
+        return sendInvalidRequest(reply, parsed.message);
+      }
+
+      const result = updateSkipNonMusicForAccount(
+        context.database,
+        request.params.id,
+        request.account.id,
+        parsed.data.skipNonMusic
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'playlist_not_found',
+          title: 'Playlist Not Found',
+          detail:
+            'The playlist does not exist, or this account cannot write it.'
         });
       }
 

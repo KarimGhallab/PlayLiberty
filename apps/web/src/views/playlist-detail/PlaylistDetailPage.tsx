@@ -17,13 +17,15 @@ import {
   useRemoveTrack,
   useRenamePlaylist,
   useRetryTrack,
-  useSyncPlaylist
+  useSyncPlaylist,
+  useUpdateSkipNonMusic
 } from '../../shared/api/queries';
 import AddTrackDialog from '../../shared/components/AddTrackDialog';
 import EmptyState from '../../shared/components/EmptyState';
 import NoticeToast from '../../shared/components/NoticeToast';
 import PlaylistHeader from '../../shared/components/PlaylistHeader';
 import PlaylistNotFound from '../../shared/components/PlaylistNotFound';
+import PlaylistSkipSetting from '../../shared/components/PlaylistSkipSetting';
 import RenamePlaylistDialog from '../../shared/components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../../shared/components/SharePlaylistDialog';
 import SyncError from '../../shared/components/SyncError';
@@ -89,10 +91,12 @@ export default function PlaylistDetailPage() {
   const retry = useRetryTrack(playlistId);
   const removeTrack = useRemoveTrack(playlistId);
   const rename = useRenamePlaylist(playlistId);
+  const updateSkip = useUpdateSkipNonMusic(playlistId);
   const addTrack = useAddTrack();
   const [renameOpen, setRenameOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [settingRefused, setSettingRefused] = useState<string | null>(null);
   const deferred = useDeferredAction();
   /*
    * The header's arrangement at this width. The design's mobile arrangement is
@@ -257,6 +261,20 @@ export default function PlaylistDetailPage() {
       addTrack.reset();
     }
   }, [addTrack.isSuccess, batchRefused]);
+
+  /*
+   * The setting's refusal withdraws itself, on the same window the shuffle notice
+   * uses, so a failed change does not stand over the screen once it is read.
+   */
+  useEffect(() => {
+    if (settingRefused === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setSettingRefused(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [settingRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
   const isQueue = queuePlaylistId === playlistId;
   const playingThis = isPlaying && isQueue;
@@ -354,6 +372,31 @@ export default function PlaylistDetailPage() {
                 access === 'owner' ? () => setRenameOpen(true) : undefined
               }
               onDelete={access === 'owner' ? deletePlaylist : undefined}
+            />
+          ) : null}
+
+          {/*
+           * The skip setting, under the card. The owner and a write collaborator
+           * may change it; a read collaborator sees the same switch disabled,
+           * because the value is still theirs to read. The write is optimistic,
+           * and a refusal puts the switch back and says why.
+           */}
+          {playlist.isSuccess ? (
+            <PlaylistSkipSetting
+              skipNonMusic={playlist.data.skipNonMusic}
+              canEdit={canWrite}
+              saving={updateSkip.isPending}
+              onChange={value =>
+                updateSkip.mutate(value, {
+                  onError: error =>
+                    setSettingRefused(
+                      error instanceof ApiError
+                        ? (error.problem?.detail ??
+                          'The setting could not be changed.')
+                        : 'The setting could not be changed.'
+                    )
+                })
+              }
             />
           ) : null}
 
@@ -485,6 +528,13 @@ export default function PlaylistDetailPage() {
       {refusal === null ? null : (
         <NoticeToast
           {...refusalNotice(refusal)}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {settingRefused === null ? null : (
+        <NoticeToast
+          message="The skip setting was not changed."
+          detail={settingRefused}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

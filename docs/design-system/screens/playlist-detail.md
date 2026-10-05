@@ -135,6 +135,17 @@ own swap. The cover draws no equalizer strip: the strip's bar count solves `7n -
 at 288px, which the strip's record calls a texture rather than an equalizer, and on this screen the playing
 row says so with a shape on its own 40px tile in the list, where a reader scanning looks.
 
+## The skip setting
+
+Under the card, the column states the playlist's skip-non-music setting as a switch: the name on the left and a
+40 by 22px switch at the end. The owner and a write collaborator may change it; a read collaborator sees the
+same switch disabled, because the value is still theirs to read. It is a switch and not a checkbox because the
+write is immediate and there is no form to submit. The change is not retroactive: it is the default for tracks
+created from now on, and every track already created keeps the value it was born with, because a stored file is
+shared and cannot be re-cut for one playlist. There is no hint line, because the name is self-explicit. The row
+carries no border and no fill, so it stays quieter than the card above it. It is **22px** tall at the 320px
+column, and with its `--space-5` it takes the column **42px** taller in every frame.
+
 ## The way home
 
 A word and a chevron, both load-bearing: the word names the destination and the chevron says which
@@ -165,7 +176,7 @@ one is never unknown. The play is **disabled** rather than absent there: a contr
 be pressed is a different thing from a control that is not there. Both buttons this screen composes carry
 `rotate-clockwise` at `--icon-sm`, the glyph the overflow already drew on the same verb; a `Sync now` button
 is **126.81px** with the mark and **115.8px** busy, the mark costing the layout nothing because the two
-columns are centred and the left column still ends at **460.1px** with the empty state and **640.1px** with
+columns are centred and the left column still ends at **441.9px** with the empty state and **621.9px** with
 the fault.
 
 One frame has no player bar, which is the bar's own record: a bar present with nothing to play is not drawn,
@@ -212,9 +223,9 @@ neighbourhood it has in the playlist's order; a row before the first stored one 
 group of its own. Proved by a fixture of four in the order `a b c d`, queued `a c b d`: the list draws
 `b c a d`, every stored row in the queue's place and `d` where the playlist already put it.
 
-The tallest left column sets the shortest viewport: the side ends at 546.5px with the summary, 570.7px while
-syncing, 460.1px with the empty state and **640.1px** with the fault, so the error state sets the floor at
-**737.1px** (640.1 plus the 97px bar).
+The tallest left column sets the shortest viewport: the side ends at 528.3px with the summary, 552.4px while
+syncing, 441.9px with the empty state and **621.9px** with the fault, so the error state sets the floor at
+**718.9px** (621.9 plus the 97px bar).
 
 ## The three access levels
 
