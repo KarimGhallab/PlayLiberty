@@ -213,8 +213,10 @@ async function storeTrack(
 
     // Any other failure is transient: the reason is a bounded single line rather
     // than the adapter's raw output, because the row carries it and a stack trace is
-    // not something a person acts on; the full error goes to the log. The next sync
-    // returns the track to `pending` so it is tried again.
+    // not something a person acts on; the full error goes to the log. A SponsorBlock
+    // failure is one of these, and its reason is the typed error's fixed sentence
+    // rather than the tool's stderr, so it reads the same on every track. The next
+    // sync returns the track to `pending` so it is tried again.
     context.database.db
       .update(tracks)
       .set({

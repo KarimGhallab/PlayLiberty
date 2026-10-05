@@ -12,7 +12,11 @@ import {
   TrackSourceStatus,
   UserRole
 } from '@playliberty/contracts';
-import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
+import {
+  SPONSORBLOCK_FAILURE_REASON,
+  YoutubeSponsorBlockError,
+  YoutubeVideoUnavailableError
+} from '@playliberty/youtube';
 import type {
   DownloadTrackRequest,
   DownloadTrackResult,
@@ -443,6 +447,27 @@ describe('the download worker', () => {
     expect(row?.filePath).toBeNull();
 
     // A later pass does not retry it, and neither does a sync.
+    await run(fake.youtube);
+    expect(fake.downloads).toEqual([seeded.videoId]);
+  });
+
+  it('treats a SponsorBlock failure as retryable, not a gone video', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new YoutubeSponsorBlockError('aaaaaaaaaaa')
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
+    // Not terminal: the source is still there, so the next sync retries it.
+    expect(row?.sourceStatus).toBe(TrackSourceStatus.Available);
+    expect(row?.failureReason).toBe(SPONSORBLOCK_FAILURE_REASON);
+
+    // A later pass does not retry it on its own; the next sync does.
     await run(fake.youtube);
     expect(fake.downloads).toEqual([seeded.videoId]);
   });

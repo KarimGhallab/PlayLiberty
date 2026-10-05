@@ -25,6 +25,10 @@ import type {
   IYoutubeClient,
   YoutubeSource
 } from '@playliberty/youtube';
+import {
+  SPONSORBLOCK_FAILURE_REASON,
+  YoutubeSponsorBlockError
+} from '@playliberty/youtube';
 
 import type { TestContext } from '../../app/testing/createTestContext.js';
 import { createTestContext } from '../../app/testing/createTestContext.js';
@@ -1352,14 +1356,19 @@ describe('authorizing a sync', () => {
 /*
  * A fake that both reads a source and stores a file, for the end-to-end retry:
  * a sync creates the track, a fetch fails, the next sync re-queues it, and a
- * worker pass stores it.
+ * worker pass stores it. `failFirstWith` makes the first download fail with a
+ * chosen typed error, so a test can drive the classification the worker records.
  */
-function storingYoutube(...sources: YoutubeSource[]): {
+function storingYoutube(
+  options: { failFirstWith?: Error } = {},
+  ...sources: YoutubeSource[]
+): {
   youtube: IYoutubeClient;
   downloads: string[];
 } {
   const queue = [...sources];
   const downloads: string[] = [];
+  let failures = options.failFirstWith === undefined ? 0 : 1;
 
   return {
     downloads,
@@ -1377,6 +1386,12 @@ function storingYoutube(...sources: YoutubeSource[]): {
         request: DownloadTrackRequest
       ): Promise<DownloadTrackResult> => {
         downloads.push(request.videoId);
+
+        if (failures > 0 && options.failFirstWith !== undefined) {
+          failures -= 1;
+          throw options.failFirstWith;
+        }
+
         await mkdir(dirname(request.outputPath), { recursive: true });
         await writeFile(request.outputPath, 'stored-audio');
         return {
@@ -1395,6 +1410,7 @@ function storingYoutube(...sources: YoutubeSource[]): {
 describe('retrying a failed download', () => {
   it('returns a failed track to pending on the next sync and then stores it', async () => {
     const fake = storingYoutube(
+      {},
       source([entry('aaaaaaaaaaa')]),
       source([entry('aaaaaaaaaaa')])
     );
@@ -1433,6 +1449,57 @@ describe('retrying a failed download', () => {
     const stored = trackByVideoId('aaaaaaaaaaa');
     expect(stored?.fileStatus).toBe(TrackFileStatus.Stored);
     expect(stored?.filePath).toBe(mediaRelativePath('aaaaaaaaaaa', '.m4a'));
+  });
+
+  it('classifies a SponsorBlock failure as retryable and stores it on the next sync', async () => {
+    const fake = storingYoutube(
+      { failFirstWith: new YoutubeSponsorBlockError('aaaaaaaaaaa') },
+      source([entry('aaaaaaaaaaa')]),
+      source([entry('aaaaaaaaaaa')])
+    );
+    context = await createTestContext({}, { youtube: fake.youtube });
+
+    const created = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(created.playlistId, 'owner-1');
+
+    // The first worker pass fails on the SponsorBlock lookup.
+    await processPendingTracks(
+      {
+        database: context.database,
+        mediaPaths: context.mediaPaths,
+        youtube: fake.youtube
+      },
+      context.app.log,
+      1
+    );
+
+    const failed = trackByVideoId('aaaaaaaaaaa');
+    expect(failed?.fileStatus).toBe(TrackFileStatus.Failed);
+    // Not a gone video: the source status stays available, so the sync retries it.
+    expect(failed?.sourceStatus).toBe(TrackSourceStatus.Available);
+    expect(failed?.failureReason).toBe(SPONSORBLOCK_FAILURE_REASON);
+
+    // The next sync returns it to pending, and the next pass stores it.
+    await postSync(created.playlistId, 'owner-1');
+    await runFinished(created.playlistId, 'owner-1');
+    expect(trackByVideoId('aaaaaaaaaaa')?.fileStatus).toBe(
+      TrackFileStatus.Pending
+    );
+
+    await processPendingTracks(
+      {
+        database: context.database,
+        mediaPaths: context.mediaPaths,
+        youtube: fake.youtube
+      },
+      context.app.log,
+      1
+    );
+    expect(trackByVideoId('aaaaaaaaaaa')?.fileStatus).toBe(
+      TrackFileStatus.Stored
+    );
   });
 });
 

@@ -4,7 +4,9 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import {
+  YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError,
+  isSponsorBlockFailureMessage,
   isVideoUnavailableMessage
 } from './errors.js';
 import type {
@@ -331,6 +333,14 @@ export class YtdlpClient implements IYoutubeClient {
 
       if (isVideoUnavailableMessage(message)) {
         throw new YoutubeVideoUnavailableError(request.videoId);
+      }
+
+      // A SponsorBlock failure is checked after the gone-video patterns, and the
+      // two do not overlap: yt-dlp's SponsorBlock phrases never match the
+      // unavailable ones. This one is transient, so it becomes a typed error the
+      // worker records as `failed` rather than as a terminal `unavailable`.
+      if (isSponsorBlockFailureMessage(message)) {
+        throw new YoutubeSponsorBlockError(request.videoId);
       }
 
       throw error;
