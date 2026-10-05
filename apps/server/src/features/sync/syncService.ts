@@ -5,7 +5,6 @@ import { and, eq, inArray } from 'drizzle-orm';
 import type { SyncRun } from '@playliberty/contracts';
 import {
   AssociationOrigin,
-  LiveEventType,
   PlaylistSyncStatus,
   Provider,
   SyncRunStatus,
@@ -14,11 +13,9 @@ import {
 } from '@playliberty/contracts';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
-import {
-  canWritePlaylist,
-  playlistAudience
-} from '../../shared/access/playlistAccess.js';
+import { canWritePlaylist } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
+import { publishPlaylistChanged } from '../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type { PlaylistRow } from '../../platform/database/schema.js';
@@ -206,19 +203,6 @@ function beginRun(context: AppContext, playlist: PlaylistRow): StartOrConflict {
   void reconcile(context, run.id, playlist);
 
   return { outcome: StartSyncOutcome.Started, playlistId: playlist.id, run };
-}
-
-/*
- * Tell every account that can see the playlist that it changed. The event names
- * the playlist and nothing else: the client refetches the reads it holds, so no
- * server fact is copied onto the wire, and the audience is the same rule that
- * decides who may see the playlist at all.
- */
-function publishPlaylistChanged(context: AppContext, playlistId: string): void {
-  context.events.publish(
-    { type: LiveEventType.PlaylistChanged, playlistId },
-    playlistAudience(context.database, playlistId)
-  );
 }
 
 /*

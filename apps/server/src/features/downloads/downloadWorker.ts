@@ -4,11 +4,11 @@ import { dirname, join } from 'node:path';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
-import { LiveEventType, TrackFileStatus } from '@playliberty/contracts';
+import { TrackFileStatus } from '@playliberty/contracts';
 import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
 
-import { trackAudience } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
+import { publishTrackChanged } from '../../shared/events/liveEvents.js';
 
 import type { TrackRow } from '../../platform/database/schema.js';
 import { tracks } from '../../platform/database/schema.js';
@@ -121,25 +121,6 @@ export async function processPendingTracks(
   }
 
   await Promise.all(claimed.map(track => storeTrack(context, logger, track)));
-}
-
-/*
- * Tell every account that can see a playlist holding the track that its file
- * changed. The event names the playlists and nothing else: the client refetches,
- * so the row's state word and the playlist's counts come from the server rather
- * than from the wire.
- */
-function publishTrackChanged(context: WorkerContext, trackId: string): void {
-  const audience = trackAudience(context.database, trackId);
-
-  if (audience.playlistIds.length === 0) {
-    return;
-  }
-
-  context.events.publish(
-    { type: LiveEventType.TrackChanged, playlistIds: audience.playlistIds },
-    audience.accountIds
-  );
 }
 
 /*

@@ -5,6 +5,7 @@ import { exhaust } from '@playliberty/utils';
 import { YoutubeSourceKind } from '@playliberty/youtube';
 
 import type { AppContext } from '../../shared/context.js';
+import { publishTrackChanged } from '../../shared/events/liveEvents.js';
 import {
   parseBody,
   sendProblem,
@@ -166,6 +167,7 @@ export function registerTrackRoutes(
 
       if (result.outcome === RetryTrackOutcome.Ok) {
         context.kickDownloads();
+        publishTrackChanged(context, result.track.id);
         return reply.send(result.track);
       }
 
@@ -202,6 +204,7 @@ export function registerTrackRoutes(
 
       if (result.outcome === FetchWholeOutcome.Ok) {
         context.kickDownloads();
+        publishTrackChanged(context, result.track.id);
         return reply.send(result.track);
       }
 

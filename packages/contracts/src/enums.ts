@@ -63,5 +63,6 @@ export enum SyncRunStatus {
 export enum LiveEventType {
   Ready = 'ready',
   PlaylistChanged = 'playlist.changed',
+  PlaylistRemoved = 'playlist.removed',
   TrackChanged = 'track.changed'
 }

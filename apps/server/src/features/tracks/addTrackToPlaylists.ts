@@ -6,6 +6,7 @@ import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
 import { canWritePlaylist } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
+import { publishTracksChangedForPlaylists } from '../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import { playlists } from '../../platform/database/schema.js';
@@ -85,6 +86,11 @@ export async function addTrackToPlaylists(
 
     return { playlistId, outcome: toAddTrackOutcome(outcome) };
   });
+
+  const addedPlaylistIds = results
+    .filter(entry => entry.outcome === AddTrackOutcome.Added)
+    .map(entry => entry.playlistId);
+  publishTracksChangedForPlaylists(context, addedPlaylistIds);
 
   return { results };
 }

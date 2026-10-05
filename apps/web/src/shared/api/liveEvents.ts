@@ -30,6 +30,12 @@ export function invalidateForLiveEvent(
     return;
   }
 
+  if (event.type === LiveEventType.PlaylistRemoved) {
+    queryClient.removeQueries({ queryKey: ['playlist', event.playlistId] });
+    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    return;
+  }
+
   if (event.type === LiveEventType.TrackChanged) {
     for (const playlistId of event.playlistIds) {
       void queryClient.invalidateQueries({

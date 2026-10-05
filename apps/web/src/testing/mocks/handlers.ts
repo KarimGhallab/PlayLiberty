@@ -75,7 +75,13 @@ export const handlers = [
   http.post('http://localhost:3000/api/v1/playlists/playlist-1/shares', () =>
     HttpResponse.json({
       accountId: 'account-2',
-      account: { id: 'account-2', displayName: 'Ada', avatarUrl: null },
+      account: {
+        id: 'account-2',
+        displayName: 'Ada',
+        email: null,
+        avatarUrl: null,
+        role: 'user'
+      },
       level: 'read',
       createdAt: '2026-09-29T12:00:00.000Z'
     })
@@ -273,5 +279,46 @@ export const handlers = [
     HttpResponse.json({
       results: [{ playlistId: 'playlist-1', outcome: 'added' }]
     })
+  ),
+  /* Creating a playlist answers the run it started, as the route does. */
+  http.post('http://localhost:3000/api/v1/playlists', () =>
+    HttpResponse.json(
+      {
+        id: 'run-created',
+        playlistId: 'playlist-created',
+        status: 'running',
+        addedCount: 0,
+        retainedCount: 0,
+        removedCount: 0,
+        failedCount: 0,
+        startedAt: '2026-09-29T12:00:00.000Z',
+        finishedAt: null,
+        error: null
+      },
+      { status: 202 }
+    )
+  ),
+  /* Starting a sync answers the run it started. */
+  http.post('http://localhost:3000/api/v1/playlists/playlist-1/sync', () =>
+    HttpResponse.json(
+      {
+        id: 'run-sync',
+        playlistId: 'playlist-1',
+        status: 'running',
+        addedCount: 0,
+        retainedCount: 0,
+        removedCount: 0,
+        failedCount: 0,
+        startedAt: '2026-09-29T12:00:00.000Z',
+        finishedAt: null,
+        error: null
+      },
+      { status: 202 }
+    )
+  ),
+  /* Deleting a playlist answers `204` with no body. */
+  http.delete(
+    'http://localhost:3000/api/v1/playlists/playlist-1',
+    () => new HttpResponse(null, { status: 204 })
   )
 ];

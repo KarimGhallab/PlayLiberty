@@ -8,8 +8,9 @@ import { invalidateForLiveEvent } from './liveEvents';
 function spyOnInvalidation() {
   const queryClient = new QueryClient();
   const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+  const remove = vi.spyOn(queryClient, 'removeQueries');
 
-  return { queryClient, invalidate };
+  return { queryClient, invalidate, remove };
 }
 
 /*
@@ -40,6 +41,20 @@ describe('invalidateForLiveEvent', () => {
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ['playlist', 'playlist-1']
     });
+  });
+
+  it('removes a deleted playlist from the cache and refreshes the library', () => {
+    const { queryClient, invalidate, remove } = spyOnInvalidation();
+
+    invalidateForLiveEvent(queryClient, {
+      type: LiveEventType.PlaylistRemoved,
+      playlistId: 'playlist-1'
+    });
+
+    expect(remove).toHaveBeenCalledWith({
+      queryKey: ['playlist', 'playlist-1']
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
   });
 
   it('invalidates every playlist holding a changed track, and no other', () => {

@@ -4,7 +4,10 @@ import { join } from 'node:path';
 
 import type { FastifyInstance } from 'fastify';
 
+import type { LiveEvent } from '@playliberty/contracts';
 import type { IYoutubeClient } from '@playliberty/youtube';
+
+import { EventBus } from '../../shared/events/EventBus.js';
 
 import { loadConfig } from '../../platform/config/loadConfig.js';
 import { createDatabase } from '../../platform/database/client.js';
@@ -21,6 +24,7 @@ export interface TestContext {
   app: FastifyInstance;
   database: DatabaseHandle;
   mediaPaths: MediaPaths;
+  events: EventBus<LiveEvent>;
   directory: string;
   cleanup(): Promise<void>;
 }
@@ -70,6 +74,8 @@ export async function createTestContext(
   const mediaPaths = createMediaPaths(config.mediaRoot);
   await ensureMediaDirectories(mediaPaths);
 
+  const events = new EventBus<LiveEvent>();
+
   const app = await buildApp({
     config,
     database,
@@ -77,7 +83,8 @@ export async function createTestContext(
     youtube: options.youtube,
     kickDownloads: options.kickDownloads,
     startBackgroundJobs: options.startBackgroundJobs ?? false,
-    sseHeartbeatMs: options.sseHeartbeatMs
+    sseHeartbeatMs: options.sseHeartbeatMs,
+    events
   });
   await app.ready();
 
@@ -85,6 +92,7 @@ export async function createTestContext(
     app,
     database,
     mediaPaths,
+    events,
     directory,
     cleanup: async (): Promise<void> => {
       await app.close();

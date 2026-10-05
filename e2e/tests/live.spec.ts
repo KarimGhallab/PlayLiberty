@@ -4,7 +4,11 @@ import {
   videoUrl,
   writeScenario
 } from '../support/instance';
-import { addPlaylist, openPlaylist } from '../support/playlists';
+import {
+  addPlaylist,
+  openHeaderMenu,
+  openPlaylist
+} from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
@@ -121,4 +125,49 @@ test('an added video moves through the download states to playable without a rel
   await expect(
     page.getByRole('button', { name: `Play ${ADDED.title}` })
   ).toBeVisible();
+});
+
+/*
+ * A mutation in one tab reaching another. The two tabs are two browser contexts
+ * and the same account, because the edge identity is the Vite proxy's, so the
+ * event is the only thing that can carry the rename across: the second tab never
+ * made a request and never reloads.
+ */
+
+const OTHER_SOURCE = 'E2Elive3001';
+const OTHER_TITLE = 'Live Sunday Jazz';
+const OTHER_TRACK = { videoId: 'e2elive30a', title: 'Flamenco Sketches' };
+
+test('a rename in one tab appears in another without a reload', async ({
+  page,
+  browser
+}) => {
+  await addPlaylist(page, {
+    sourceId: OTHER_SOURCE,
+    title: OTHER_TITLE,
+    entries: [OTHER_TRACK]
+  });
+
+  const otherContext = await browser.newContext();
+  const otherPage = await otherContext.newPage();
+
+  try {
+    await otherPage.goto('/');
+    await expect(
+      otherPage.getByRole('link', { name: OTHER_TITLE })
+    ).toBeVisible();
+
+    await openHeaderMenu(page);
+    await page.getByRole('menuitem', { name: 'Rename' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Playlist name').fill('Morning Jazz');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+
+    await expect(
+      otherPage.getByRole('link', { name: 'Morning Jazz' })
+    ).toBeVisible();
+  } finally {
+    await otherContext.close();
+  }
 });

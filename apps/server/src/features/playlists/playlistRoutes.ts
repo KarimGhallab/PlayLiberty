@@ -8,7 +8,13 @@ import {
 } from '@playliberty/contracts';
 import { exhaust } from '@playliberty/utils';
 
+import { playlistAudience } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
+import {
+  publishPlaylistChanged,
+  publishPlaylistRemoved,
+  publishTracksChangedForPlaylists
+} from '../../shared/events/liveEvents.js';
 import {
   parseBody,
   sendInvalidRequest,
@@ -174,6 +180,7 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
+        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -215,6 +222,7 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
+        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -225,6 +233,7 @@ export function registerPlaylistRoutes(
   app.delete<{ Params: { id: string } }>(
     '/playlists/:id',
     async (request, reply) => {
+      const audience = playlistAudience(context.database, request.params.id);
       const outcome = deletePlaylistForAccount(
         context.database,
         request.params.id,
@@ -242,6 +251,7 @@ export function registerPlaylistRoutes(
       }
 
       if (outcome === PlaylistOutcome.Ok) {
+        publishPlaylistRemoved(context, request.params.id, audience);
         return reply.code(204).send();
       }
 
@@ -302,6 +312,7 @@ export function registerPlaylistRoutes(
       }
 
       if (outcome === PlaylistOutcome.Ok) {
+        publishTracksChangedForPlaylists(context, [request.params.id]);
         return reply.code(204).send();
       }
 

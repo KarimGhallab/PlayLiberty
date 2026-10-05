@@ -66,6 +66,11 @@ export interface AppOptions {
    * does not wait twenty seconds for a comment frame.
    */
   sseHeartbeatMs?: number;
+  /*
+   * The live bus. A real process gets one built here; a test passes its own so it
+   * can subscribe and observe what a feature published.
+   */
+  events?: AppContext['events'];
 }
 
 function createYoutubeClient(
@@ -115,7 +120,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     mediaPaths: options.mediaPaths,
     youtube: options.youtube ?? createYoutubeClient(options.config),
     kickDownloads: options.kickDownloads ?? (() => undefined),
-    events: new EventBus<LiveEvent>()
+    events: options.events ?? new EventBus<LiveEvent>()
   };
 
   const app = Fastify({
