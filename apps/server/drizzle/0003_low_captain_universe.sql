@@ -1,1 +1,0 @@
-ALTER TABLE `playlist` ADD `source_url` text;

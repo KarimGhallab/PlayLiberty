@@ -31,14 +31,17 @@ CREATE TABLE `playlist` (
 	`cover_url` text,
 	`provider` text NOT NULL,
 	`source_playlist_id` text NOT NULL,
+	`source_url` text,
 	`sync_status` text DEFAULT 'idle' NOT NULL,
+	`skip_non_music` integer DEFAULT true NOT NULL,
 	`last_synced_at` text,
+	`track_count` integer DEFAULT 0 NOT NULL,
 	`created_at` text NOT NULL,
 	`updated_at` text NOT NULL,
 	FOREIGN KEY (`owner_account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `playlist_source_unique` ON `playlist` (`provider`,`source_playlist_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `playlist_source_unique` ON `playlist` (`owner_account_id`,`provider`,`source_playlist_id`);--> statement-breakpoint
 CREATE INDEX `playlist_owner_idx` ON `playlist` (`owner_account_id`);--> statement-breakpoint
 CREATE TABLE `share` (
 	`id` text PRIMARY KEY NOT NULL,
@@ -81,7 +84,9 @@ CREATE TABLE `track` (
 	`video_id` text NOT NULL,
 	`title` text NOT NULL,
 	`duration_seconds` integer,
+	`skip_non_music` integer DEFAULT true NOT NULL,
 	`thumbnail_path` text,
+	`thumbnail_url` text,
 	`file_status` text DEFAULT 'pending' NOT NULL,
 	`source_status` text DEFAULT 'available' NOT NULL,
 	`file_path` text,

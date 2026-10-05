@@ -1,1 +1,0 @@
-ALTER TABLE `track` ADD `skip_non_music` integer DEFAULT true NOT NULL;
