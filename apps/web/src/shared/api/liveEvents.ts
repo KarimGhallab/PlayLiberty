@@ -27,5 +27,16 @@ export function invalidateForLiveEvent(
     void queryClient.invalidateQueries({
       queryKey: ['playlist', event.playlistId]
     });
+    return;
+  }
+
+  if (event.type === LiveEventType.TrackChanged) {
+    for (const playlistId of event.playlistIds) {
+      void queryClient.invalidateQueries({
+        queryKey: ['playlist', playlistId]
+      });
+    }
+
+    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
   }
 }

@@ -1,4 +1,10 @@
-import { playlistUrl, writeScenario } from '../support/instance';
+import {
+  drainDownloads,
+  playlistUrl,
+  videoUrl,
+  writeScenario
+} from '../support/instance';
+import { addPlaylist, openPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
@@ -50,4 +56,69 @@ test('a playlist created outside this tab appears in the library without a reloa
   // No reload and no navigation: the stream is what makes the tab ask again.
   await expect(page.getByRole('link', { name: TITLE })).toBeVisible();
   await expect(page.getByText('Up to date')).toBeVisible();
+});
+
+/*
+ * The other half of the stream: a track's own state. The video is added through
+ * the API rather than the dialog, so the detail never asked about it and only the
+ * worker's events can make its row appear and change. The download is slowed, so
+ * the downloading state is observable rather than gone before the browser reads
+ * it.
+ */
+
+const TRACK_SOURCE = 'E2Elive2001';
+const TRACK_TITLE = 'Live Evening Jazz';
+const STORED = { videoId: 'e2elive20a', title: 'Blue In Green' };
+const ADDED = { videoId: 'e2elive20b', title: 'Naima' };
+
+test('an added video moves through the download states to playable without a reload', async ({
+  page
+}) => {
+  await addPlaylist(page, {
+    sourceId: TRACK_SOURCE,
+    title: TRACK_TITLE,
+    entries: [STORED]
+  });
+  await drainDownloads(page);
+  await page.reload();
+  await openPlaylist(page, TRACK_TITLE);
+  await expect(
+    page.getByRole('button', { name: `Play ${STORED.title}` })
+  ).toBeVisible();
+
+  writeScenario({
+    sources: {
+      [TRACK_SOURCE]: { title: TRACK_TITLE, entries: [STORED] },
+      [ADDED.videoId]: { title: ADDED.title, entries: [ADDED] }
+    },
+    downloadDelayMs: 1500
+  });
+
+  const playlistId = new URL(page.url()).pathname.split('/').pop() ?? '';
+
+  await page.evaluate(
+    async ({ url, id }) => {
+      await fetch('/api/v1/tracks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-PlayLiberty-Client': 'web'
+        },
+        body: JSON.stringify({ url, playlistIds: [id] })
+      });
+    },
+    { url: videoUrl(ADDED.videoId), id: playlistId }
+  );
+
+  /*
+   * The worker claims the track and answers while the download is still in
+   * flight, so the row's downloading state is the stream's to deliver; nothing
+   * here reloads the page.
+   */
+  await drainDownloads(page);
+
+  await expect(page.getByText('Downloading')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: `Play ${ADDED.title}` })
+  ).toBeVisible();
 });

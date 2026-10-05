@@ -28,6 +28,8 @@ export interface ScenarioSource {
 export interface Scenario {
   sources: Record<string, ScenarioSource>;
   downloads?: Record<string, 'ok' | 'fail' | 'gone'>;
+  /** How long a successful download takes, so a test can watch the states. */
+  downloadDelayMs?: number;
 }
 
 export function writeScenario(scenario: Scenario): void {

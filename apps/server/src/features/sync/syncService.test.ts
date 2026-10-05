@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SyncRun } from '@playliberty/contracts';
+import type { LiveEvent, SyncRun } from '@playliberty/contracts';
 import {
   AssociationOrigin,
   PlaylistSchema,
@@ -29,6 +29,8 @@ import {
   SPONSORBLOCK_FAILURE_REASON,
   YoutubeSponsorBlockError
 } from '@playliberty/youtube';
+
+import { EventBus } from '../../shared/events/EventBus.js';
 
 import type { TestContext } from '../../app/testing/createTestContext.js';
 import { createTestContext } from '../../app/testing/createTestContext.js';
@@ -1440,7 +1442,8 @@ describe('retrying a failed download', () => {
       {
         database: context.database,
         mediaPaths: context.mediaPaths,
-        youtube: fake.youtube
+        youtube: fake.youtube,
+        events: new EventBus<LiveEvent>()
       },
       context.app.log,
       1
@@ -1469,7 +1472,8 @@ describe('retrying a failed download', () => {
       {
         database: context.database,
         mediaPaths: context.mediaPaths,
-        youtube: fake.youtube
+        youtube: fake.youtube,
+        events: new EventBus<LiveEvent>()
       },
       context.app.log,
       1
@@ -1492,7 +1496,8 @@ describe('retrying a failed download', () => {
       {
         database: context.database,
         mediaPaths: context.mediaPaths,
-        youtube: fake.youtube
+        youtube: fake.youtube,
+        events: new EventBus<LiveEvent>()
       },
       context.app.log,
       1

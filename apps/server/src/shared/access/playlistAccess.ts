@@ -5,7 +5,11 @@ import type { PlaylistAccess } from '@playliberty/contracts';
 import type { ShareLevel } from '@playliberty/contracts';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import { playlists, shares } from '../../platform/database/schema.js';
+import {
+  associations,
+  playlists,
+  shares
+} from '../../platform/database/schema.js';
 
 /*
  * Who may see and who may write, for a playlist. One module, because this rule was
@@ -218,4 +222,48 @@ export function playlistAudience(
     .all();
 
   return [owner.ownerAccountId, ...collaborators.map(row => row.accountId)];
+}
+
+/*
+ * Who hears a change to a track: the playlists that hold it, and the accounts
+ * that can see any of them. A track is shared across playlists and one file is
+ * fetched once, so a change to it is a change to every playlist that associates
+ * it; the answer names both, because the event carries the playlist ids and the
+ * bus needs the accounts. A track no playlist holds has no audience, and a
+ * publisher of nothing is a no-op.
+ */
+export interface TrackAudience {
+  playlistIds: string[];
+  accountIds: string[];
+}
+
+export function trackAudience(
+  database: DatabaseHandle,
+  trackId: string
+): TrackAudience {
+  const rows = database.db
+    .select({
+      playlistId: associations.playlistId,
+      ownerAccountId: playlists.ownerAccountId,
+      sharedAccountId: shares.accountId
+    })
+    .from(associations)
+    .innerJoin(playlists, eq(associations.playlistId, playlists.id))
+    .leftJoin(shares, eq(shares.playlistId, associations.playlistId))
+    .where(eq(associations.trackId, trackId))
+    .all();
+
+  const playlistIds = new Set<string>();
+  const accountIds = new Set<string>();
+
+  for (const row of rows) {
+    playlistIds.add(row.playlistId);
+    accountIds.add(row.ownerAccountId);
+
+    if (row.sharedAccountId !== null) {
+      accountIds.add(row.sharedAccountId);
+    }
+  }
+
+  return { playlistIds: [...playlistIds], accountIds: [...accountIds] };
 }

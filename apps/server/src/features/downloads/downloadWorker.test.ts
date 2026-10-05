@@ -7,11 +7,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AssociationOrigin,
+  LiveEventType,
   Provider,
+  ShareLevel,
   TrackFileStatus,
   TrackSourceStatus,
   UserRole
 } from '@playliberty/contracts';
+import type { LiveEvent } from '@playliberty/contracts';
 import {
   SPONSORBLOCK_FAILURE_REASON,
   YoutubeSponsorBlockError,
@@ -23,6 +26,8 @@ import type {
   IYoutubeClient
 } from '@playliberty/youtube';
 
+import { EventBus } from '../../shared/events/EventBus.js';
+
 import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
 
@@ -31,6 +36,7 @@ import {
   accounts,
   associations,
   playlists,
+  shares,
   tracks
 } from '../../platform/database/schema.js';
 import {
@@ -167,6 +173,22 @@ function seedPlaylist(
   return id;
 }
 
+function grantShare(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string
+): void {
+  database.db
+    .insert(shares)
+    .values({
+      id: randomUUID(),
+      playlistId,
+      accountId,
+      level: ShareLevel.Read
+    })
+    .run();
+}
+
 interface SeedOptions {
   videoId?: string;
   fileStatus?: TrackFileStatus;
@@ -178,6 +200,7 @@ interface SeedOptions {
 
 interface Seeded {
   pangolinUserId: string;
+  accountId: string;
   playlistId: string;
   trackId: string;
   videoId: string;
@@ -222,7 +245,7 @@ function seed(
     })
     .run();
 
-  return { pangolinUserId, playlistId, trackId, videoId };
+  return { pangolinUserId, accountId, playlistId, trackId, videoId };
 }
 
 function trackRow(trackId: string) {
@@ -237,7 +260,11 @@ function trackRow(trackId: string) {
     .get();
 }
 
-function run(youtube: IYoutubeClient, concurrency = 1) {
+function run(
+  youtube: IYoutubeClient,
+  concurrency = 1,
+  events = new EventBus<LiveEvent>()
+) {
   if (context === undefined) {
     throw new Error('the test context is not created');
   }
@@ -246,7 +273,8 @@ function run(youtube: IYoutubeClient, concurrency = 1) {
     {
       database: context.database,
       mediaPaths: context.mediaPaths,
-      youtube
+      youtube,
+      events
     },
     context.app.log,
     concurrency
@@ -618,7 +646,8 @@ describe('the download worker', () => {
       context: {
         database: context.database,
         mediaPaths: context.mediaPaths,
-        youtube
+        youtube,
+        events: new EventBus<LiveEvent>()
       },
       concurrency: 1,
       logger: context.app.log,
@@ -675,7 +704,8 @@ describe('the download worker', () => {
       context: {
         database: context.database,
         mediaPaths: context.mediaPaths,
-        youtube
+        youtube,
+        events: new EventBus<LiveEvent>()
       },
       concurrency: 1,
       logger: context.app.log,
@@ -691,5 +721,77 @@ describe('the download worker', () => {
     });
 
     expect(downloads).toEqual([seeded.videoId]);
+  });
+
+  it('publishes a track change when it claims and when it stores', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    const events = new EventBus<LiveEvent>();
+    const received: LiveEvent[] = [];
+    events.subscribe(seeded.accountId, event => received.push(event));
+
+    await run(fake.youtube, 1, events);
+
+    expect(received).toEqual([
+      { type: LiveEventType.TrackChanged, playlistIds: [seeded.playlistId] },
+      { type: LiveEventType.TrackChanged, playlistIds: [seeded.playlistId] }
+    ]);
+  });
+
+  it('publishes a track change when a download fails', async () => {
+    const fake = fakeDownloader({ failTimes: 1 });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    const events = new EventBus<LiveEvent>();
+    const received: LiveEvent[] = [];
+    events.subscribe(seeded.accountId, event => received.push(event));
+
+    await run(fake.youtube, 1, events);
+
+    expect(received).toHaveLength(2);
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Failed);
+  });
+
+  it('publishes a track change when a video is gone', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new YoutubeVideoUnavailableError('aaaaaaaaaaa')
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    const events = new EventBus<LiveEvent>();
+    const received: LiveEvent[] = [];
+    events.subscribe(seeded.accountId, event => received.push(event));
+
+    await run(fake.youtube, 1, events);
+
+    expect(received).toHaveLength(2);
+    expect(trackRow(seeded.trackId)?.sourceStatus).toBe(
+      TrackSourceStatus.Removed
+    );
+  });
+
+  it('publishes a track change to a collaborator and not to a stranger', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+    const collaboratorId = createAccount(context.database, 'collaborator-1');
+    const strangerId = createAccount(context.database, 'stranger-1');
+    grantShare(context.database, seeded.playlistId, collaboratorId);
+
+    const events = new EventBus<LiveEvent>();
+    const collaboratorEvents: LiveEvent[] = [];
+    const strangerEvents: LiveEvent[] = [];
+    events.subscribe(collaboratorId, event => collaboratorEvents.push(event));
+    events.subscribe(strangerId, event => strangerEvents.push(event));
+
+    await run(fake.youtube, 1, events);
+
+    expect(collaboratorEvents).toHaveLength(2);
+    expect(strangerEvents).toEqual([]);
   });
 });

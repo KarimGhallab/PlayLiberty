@@ -136,6 +136,10 @@ export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal(LiveEventType.PlaylistChanged),
     playlistId: identifier
+  }),
+  z.object({
+    type: z.literal(LiveEventType.TrackChanged),
+    playlistIds: z.array(identifier).min(1)
   })
 ]);
 

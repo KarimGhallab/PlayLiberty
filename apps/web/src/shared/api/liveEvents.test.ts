@@ -41,4 +41,24 @@ describe('invalidateForLiveEvent', () => {
       queryKey: ['playlist', 'playlist-1']
     });
   });
+
+  it('invalidates every playlist holding a changed track, and no other', () => {
+    const { queryClient, invalidate } = spyOnInvalidation();
+
+    invalidateForLiveEvent(queryClient, {
+      type: LiveEventType.TrackChanged,
+      playlistIds: ['playlist-1', 'playlist-2']
+    });
+
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ['playlist', 'playlist-1']
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ['playlist', 'playlist-2']
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ['playlist', 'playlist-3']
+    });
+  });
 });

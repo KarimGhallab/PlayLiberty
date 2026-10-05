@@ -4,9 +4,10 @@ import { dirname, join } from 'node:path';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
-import { TrackFileStatus } from '@playliberty/contracts';
+import { LiveEventType, TrackFileStatus } from '@playliberty/contracts';
 import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
 
+import { trackAudience } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
 
 import type { TrackRow } from '../../platform/database/schema.js';
@@ -43,11 +44,15 @@ export interface DownloadWorkerHandle {
 }
 
 /*
- * The worker reads three things from the context: the database it claims rows in,
- * the media paths it writes under, and the adapter it fetches through. Naming just
- * those lets a test drive one pass with a fake adapter and no server around it.
+ * The worker reads four things from the context: the database it claims rows in,
+ * the media paths it writes under, the adapter it fetches through, and the bus it
+ * publishes a track's state changes to. Naming just those lets a test drive one
+ * pass with a fake adapter and a bus of its own and no server around it.
  */
-type WorkerContext = Pick<AppContext, 'database' | 'mediaPaths' | 'youtube'>;
+type WorkerContext = Pick<
+  AppContext,
+  'database' | 'mediaPaths' | 'youtube' | 'events'
+>;
 
 const WORKER_INTERVAL_MS = 30_000;
 
@@ -111,7 +116,30 @@ export async function processPendingTracks(
 ): Promise<void> {
   const claimed = claimPendingTracks(context, concurrency);
 
+  for (const track of claimed) {
+    publishTrackChanged(context, track.id);
+  }
+
   await Promise.all(claimed.map(track => storeTrack(context, logger, track)));
+}
+
+/*
+ * Tell every account that can see a playlist holding the track that its file
+ * changed. The event names the playlists and nothing else: the client refetches,
+ * so the row's state word and the playlist's counts come from the server rather
+ * than from the wire.
+ */
+function publishTrackChanged(context: WorkerContext, trackId: string): void {
+  const audience = trackAudience(context.database, trackId);
+
+  if (audience.playlistIds.length === 0) {
+    return;
+  }
+
+  context.events.publish(
+    { type: LiveEventType.TrackChanged, playlistIds: audience.playlistIds },
+    audience.accountIds
+  );
 }
 
 /*
@@ -204,6 +232,7 @@ async function storeTrack(
     // values the sync's retention pass produces.
     if (error instanceof YoutubeVideoUnavailableError) {
       markTrackSourceRemoved(context.database, track.id, track.fileStatus);
+      publishTrackChanged(context, track.id);
       logger.info(
         { trackId: track.id, videoId: track.videoId },
         'track source is gone'
@@ -227,6 +256,8 @@ async function storeTrack(
       .where(eq(tracks.id, track.id))
       .run();
 
+    publishTrackChanged(context, track.id);
+
     logger.warn(
       { trackId: track.id, videoId: track.videoId, err: error },
       'track download failed'
@@ -236,6 +267,7 @@ async function storeTrack(
 
   // The audio is stored; the artwork is best effort and never changes that.
   await fetchThumbnail(context, logger, track);
+  publishTrackChanged(context, track.id);
 }
 
 /*

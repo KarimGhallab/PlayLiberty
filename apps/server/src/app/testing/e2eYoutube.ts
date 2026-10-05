@@ -57,6 +57,13 @@ interface Scenario {
    * terminal case, `fail` the transient one.
    */
   downloads?: Record<string, 'ok' | 'fail' | 'gone'>;
+  /*
+   * How long a successful download takes. Zero or missing is immediate. A test
+   * that watches a row move from downloading to playable sets it, so the
+   * intermediate state is observable rather than gone before the browser reads
+   * it.
+   */
+  downloadDelayMs?: number;
 }
 
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -137,6 +144,14 @@ export function createE2eYoutube(scriptPath: string): IYoutubeClient {
 
       if (outcome === 'fail') {
         throw new Error('The E2E fake was told to fail this download.');
+      }
+
+      const delay = scenario.downloadDelayMs;
+
+      if (delay !== undefined && delay > 0) {
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, delay);
+        });
       }
 
       await mkdir(dirname(request.outputPath), { recursive: true });
