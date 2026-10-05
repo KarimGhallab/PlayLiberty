@@ -14,18 +14,18 @@ behaviour does not.
 
 The second problem is the one the server deliberately left open. [`01-sync-a-playlist`](01-sync-a-playlist.md)
 adds no polling route and says a client learns the outcome from the latest-run route, which already exists and
-already separates "no run" from "a failed run". Something has to decide how often the client asks, when it
-stops asking, and what it does when the answer is a refusal, or the server's decision has no client half.
+already separates "no run" from "a failed run". Something has to decide how the client learns a change
+happened, what it does when the answer is a refusal, and what the server's decision has no client half for.
 
 ## Solution
 
-The web client keeps itself current by reading three resources and refreshing them only while they are
-changing. While a playlist is syncing, or a track in the visible list is pending or downloading, the client
-refetches on a short interval; when nothing is in flight it stops, so a settled library is a still screen and
-an idle instance is not polled. Every mutation invalidates the reads it changed, so a rename, delete, add,
-remove, retry, share or sync shows its result without a manual reload. An expired session is handled once per
-tab by navigating so the edge can re-authenticate, and a second refusal is shown as the problem it is rather
-than reloading forever.
+The web client keeps itself current by reading three resources and refetching them when the server says they
+changed. One `GET /api/v1/events` stream per tab carries an event when a playlist's state moves, a track moves
+through the download states, or a playlist, its associations or its shares change; the client invalidates the
+reads the event names, so a settled library is a still screen and an idle instance is not asked anything.
+Every mutation invalidates the reads it changed, so a rename, delete, add, remove, retry, share or sync shows
+its result without a manual reload. An expired session is handled once per tab by navigating so the edge can
+re-authenticate, and a second refusal is shown as the problem it is rather than reloading forever.
 
 ## User Stories
 
@@ -55,8 +55,8 @@ than reloading forever.
     site cannot change my library.
 14. As an account, I want a refusal to be shown as the problem the server sent, so that the message I read is
     the one the server wrote.
-15. As an operator, I want the client to poll only while work is in flight, so that an idle instance is not
-    answering a request a second forever.
+15. As an operator, I want the client to be told when work changes rather than to ask, so that an idle
+    instance answers nothing until there is something to say.
 
 ## Implementation Decisions
 
@@ -69,19 +69,19 @@ than reloading forever.
   latest run under `['playlist', id, 'sync-run', 'latest']`. The shares of a playlist are
   `['playlist', id, 'shares']` and the directory is `['accounts']`. The keys are the invalidation surface, and
   naming them here is what lets the map below be exact rather than approximate.
-- **The client refreshes only while something is changing.** A query is given an interval when its own answer
-  says work is in flight and no interval when it says settled:
-  - the playlist query and the latest-run query refresh while the playlist's `syncStatus` is `syncing`;
-  - the tracks query refreshes while any track in the fetched page is `pending` or `downloading`, because those
-    are the two states the download worker moves on its own;
-  - the library refreshes while any visible playlist is `syncing`.
-    A `stored`, `failed` or `unavailable` track, and an `idle` or `error` playlist, are settled: the interval is
-    off and the screen is still until a person acts. _Decided here:_ the alternative, one global interval, polls
-    a settled instance forever, and the alternative, a fixed number of attempts, gives up on a long download.
-- **The interval is short and the stop condition is the data, not a counter.** The work being watched is a
-  download that takes seconds and a sync that takes longer, so the interval is a few seconds; what ends it is
-  the answer itself. There is no maximum attempt count, because a stalled sync would then stop being watched
-  while it is still running, and the design system has a state for an active run that must keep updating.
+- **The server pushes when a watched resource changes, and the client refetches.** One
+  `GET /api/v1/events` stream per tab carries invalidation hints, not data: the server emits when a playlist's
+  `syncStatus` moves, when a track's `fileStatus` moves through `pending` and `downloading` to `stored`,
+  `failed` or `unavailable`, and when a playlist, its associations or its shares change. The client maps each
+  event to the reads the mutation map below already names and invalidates them, so the freshness a screen needs
+  arrives on the change rather than on a timer. There is no interval and no attempt count; a settled instance
+  sends nothing. [ADR 0013](../../adr/0013-live-updates-over-server-sent-events.md) owns the decision and the
+  transport.
+- **The connection is long-lived, and the client re-reads when it opens.** The server sends a heartbeat so an
+  idle connection stays open and a dead one is noticed, and the client re-reads every query it holds the first
+  time the stream opens and again on every reconnect, so a gap between the last event and the connection is
+  closed without a timer. [ADR 0013](../../adr/0013-live-updates-over-server-sent-events.md) owns the liveness
+  and reconnect rules.
 - **A read also refreshes when the window regains focus and when the connection returns.** TanStack Query's
   defaults do both, and they are kept: a person who leaves the tab and comes back, or whose laptop slept, gets
   the current answer rather than the one from before. This is the one refresh that is not tied to work in
@@ -123,9 +123,9 @@ than reloading forever.
   the Vite dev proxy, forwards it and no CORS is in play. In development the proxy stands in for the edge and
   injects the identity headers the server reads; in production the edge does. The client never sends an
   identity header of its own.
-- **There is no push, no websocket, and no server-sent event.** The server's surfaces are reads and mutations,
-  and the freshness the product needs is seconds, not milliseconds. A stream of updates would be a second
-  protocol to build, secure and test for a cadence a poll already meets.
+- **The transport is Server-Sent Events, and not a WebSocket.** One `EventSource` per tab, one-way, with the
+  platform's own reconnection and no second protocol to secure. [ADR
+  0013](../../adr/0013-live-updates-over-server-sent-events.md) owns the choice and the alternatives.
 - **The detail screen composes three reads rather than one aggregate**, which
   [`03-read-a-playlist`](03-read-a-playlist.md) records. The playlist gives the header and the state, the tracks
   give the list, and the latest run gives the summary or the error. They are three resources with three
@@ -138,16 +138,19 @@ than reloading forever.
   an MSW server, so what is asserted is the requests the client makes and the state the screen reaches, never
   the internals of a hook. The player's own tests are
   [`07-play-stored-audio`](07-play-stored-audio.md)'s and are not repeated here.
-- **What makes a good test here** is the behavior over time: a query that refreshes while a state says running
-  and stops when it does not. A test that asserts a hook was called is a test of the wiring; one that advances
-  the clock and asserts a second request happened only while the answer said `syncing` is a test of the
-  feature. Fake timers are the seam for the interval, and the mocked network is the seam for the answers.
+- **What makes a good test here** is the behavior over a change: an event arrives, the client invalidates the
+  reads the event names, and the screen reaches the server's new answer. A test that asserts a hook was called
+  is a test of the wiring; one that emits an event through the injected `EventSource` port and asserts the
+  refetch is a test of the feature. The port is the seam for the stream, and the mocked network is the seam for
+  the answers; the real wire is covered end to end, because MSW cannot fake an `EventSource`.
 - **The cases that must exist:**
-  - a playlist in `syncing` causes the playlist, tracks and latest-run queries to refresh, and the refreshing
-    stops once the playlist is `idle`;
-  - a page containing a `pending` track refreshes, and one where every track is `stored`, `failed` or
-    `unavailable` does not;
-  - the library refreshes while a visible playlist is `syncing` and is still otherwise;
+  - a sync-status event invalidates the playlist, its run and its tracks, and the screen settles on the
+    server's new answer;
+  - a track file-status event invalidates the tracks and the playlist, and an event for a track in another
+    playlist leaves this screen alone;
+  - a playlist, association or share event invalidates the reads the map names, in this tab and in a second
+    one;
+  - a reconnect re-reads every query the client holds, and a settled instance receives no event at all;
   - creating a playlist invalidates the library and the new item appears from the server;
   - starting a sync invalidates the playlist, its run and its tracks;
   - rename, delete, the batch add, remove and retry each invalidate the reads the map names;

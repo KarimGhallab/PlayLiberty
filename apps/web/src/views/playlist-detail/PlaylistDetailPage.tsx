@@ -392,7 +392,7 @@ export default function PlaylistDetailPage() {
                     setSettingRefused(
                       error instanceof ApiError
                         ? (error.problem?.detail ??
-                          'The setting could not be changed.')
+                            'The setting could not be changed.')
                         : 'The setting could not be changed.'
                     )
                 })
