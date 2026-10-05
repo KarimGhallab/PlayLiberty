@@ -342,6 +342,33 @@ describe('the download worker', () => {
     expect(row?.durationSeconds).toBe(180);
   });
 
+  it('fetches a track whole after the route flips its policy', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      fileStatus: TrackFileStatus.Failed,
+      skipNonMusic: true
+    });
+
+    const response = await context.app.inject({
+      method: 'POST',
+      url: `/api/v1/tracks/${seeded.trackId}/fetch-whole`,
+      headers: {
+        'remote-user': seeded.pangolinUserId,
+        'x-playliberty-client': 'test'
+      },
+      payload: {}
+    });
+    expect(response.statusCode).toBe(200);
+
+    await run(fake.youtube);
+
+    // The route set the row to false, so the worker asks the adapter for no cut.
+    expect(fake.requests[0]?.skipNonMusic).toBe(false);
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
+  });
+
   it('never claims a stored track and serves it to a second association', async () => {
     const fake = fakeDownloader();
     context = await createTestContext({}, { youtube: fake.youtube });

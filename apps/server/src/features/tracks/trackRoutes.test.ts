@@ -672,3 +672,162 @@ describe('POST /tracks/:id/retry', () => {
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
   });
 });
+
+describe('POST /tracks/:id/fetch-whole', () => {
+  it.each([TrackFileStatus.Failed, TrackFileStatus.Pending])(
+    'flips the policy to false and returns a %s track to pending',
+    async fileStatus => {
+      const kick = vi.fn();
+      context = await createTestContext(
+        {},
+        { youtube: createFakeYoutube(), kickDownloads: kick }
+      );
+      const owner = seedAccount();
+      const playlistId = seedPlaylist(owner.accountId);
+      const trackId = seedTrack(VIDEO_ID, fileStatus, 'a reason', true);
+      associate(playlistId, trackId);
+
+      const response = await post(
+        `/api/v1/tracks/${trackId}/fetch-whole`,
+        owner.pangolinUserId,
+        {}
+      );
+
+      expect(response.statusCode).toBe(200);
+      /* The track is fetched now, not at the worker's next tick. */
+      expect(kick).toHaveBeenCalledTimes(1);
+      const track = TrackSchema.parse(response.json());
+      expect(track.fileStatus).toBe(TrackFileStatus.Pending);
+      expect(track.skipNonMusic).toBe(false);
+      expect(track.failureReason).toBeNull();
+
+      const row = database()
+        .db.select()
+        .from(tracks)
+        .where(eq(tracks.id, trackId))
+        .get();
+      expect(row?.fileStatus).toBe(TrackFileStatus.Pending);
+      expect(row?.skipNonMusic).toBe(false);
+    }
+  );
+
+  it('lets a write collaborator of a playlist holding the track fetch it whole', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom', true);
+    associate(playlistId, trackId);
+    const writer = seedAccount();
+    seedShare(playlistId, writer.accountId, ShareLevel.Write);
+
+    const response = await post(
+      `/api/v1/tracks/${trackId}/fetch-whole`,
+      writer.pangolinUserId,
+      {}
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(TrackSchema.parse(response.json()).skipNonMusic).toBe(false);
+  });
+
+  it.each([
+    TrackFileStatus.Stored,
+    TrackFileStatus.Downloading,
+    TrackFileStatus.Unavailable
+  ])('refuses a %s track and leaves it alone', async fileStatus => {
+    const kick = vi.fn();
+    context = await createTestContext(
+      {},
+      { youtube: createFakeYoutube(), kickDownloads: kick }
+    );
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, fileStatus, null, true);
+    associate(playlistId, trackId);
+
+    const response = await post(
+      `/api/v1/tracks/${trackId}/fetch-whole`,
+      owner.pangolinUserId,
+      {}
+    );
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ code: 'track_not_fetchable' });
+    expect(kick).not.toHaveBeenCalled();
+    const row = database()
+      .db.select()
+      .from(tracks)
+      .where(eq(tracks.id, trackId))
+      .get();
+    expect(row?.fileStatus).toBe(fileStatus);
+    /* A stored track's shared file is never re-cut behind the other playlists. */
+    expect(row?.skipNonMusic).toBe(true);
+  });
+
+  it('answers 404 for a read collaborator, a stranger, an orphan track and a missing track', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom', true);
+    associate(playlistId, trackId);
+    const reader = seedAccount();
+    seedShare(playlistId, reader.accountId, ShareLevel.Read);
+    const stranger = seedAccount();
+    const orphan = seedTrack(
+      'orphanVideo',
+      TrackFileStatus.Failed,
+      'boom',
+      true
+    );
+    const missing = randomUUID();
+
+    const attempts: [string, string][] = [
+      [trackId, reader.pangolinUserId],
+      [trackId, stranger.pangolinUserId],
+      [orphan, owner.pangolinUserId],
+      [missing, owner.pangolinUserId]
+    ];
+
+    for (const [targetTrack, pangolinUserId] of attempts) {
+      const response = await post(
+        `/api/v1/tracks/${targetTrack}/fetch-whole`,
+        pangolinUserId,
+        {}
+      );
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ code: 'track_not_found' });
+    }
+
+    // No refused attempt changed the track.
+    const row = database()
+      .db.select()
+      .from(tracks)
+      .where(eq(tracks.id, trackId))
+      .get();
+    expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(row?.skipNonMusic).toBe(true);
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext({}, { youtube: createFakeYoutube() });
+    const owner = seedAccount();
+    const playlistId = seedPlaylist(owner.accountId);
+    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom', true);
+    associate(playlistId, trackId);
+
+    if (context === undefined) {
+      throw new Error('the test context is not created');
+    }
+
+    const response = await context.app.inject({
+      method: 'POST',
+      url: `/api/v1/tracks/${trackId}/fetch-whole`,
+      headers: { 'remote-user': owner.pangolinUserId },
+      payload: {}
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});

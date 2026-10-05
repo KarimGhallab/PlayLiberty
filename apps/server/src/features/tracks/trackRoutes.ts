@@ -14,11 +14,13 @@ import { resolveSourceUrl } from '../../shared/resolveSourceUrl.js';
 
 import { addTrackToPlaylists } from './addTrackToPlaylists.js';
 import {
+  fetchTrackWholeForAccount,
   resolveTrackForStream,
   resolveTrackForThumbnail,
   retryTrackForAccount
 } from './trackService.js';
 import {
+  FetchWholeOutcome,
   RetryTrackOutcome,
   TrackStreamOutcome,
   TrackThumbnailOutcome
@@ -163,6 +165,42 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === RetryTrackOutcome.Ok) {
+        context.kickDownloads();
+        return reply.send(result.track);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/tracks/:id/fetch-whole',
+    async (request, reply) => {
+      const result = fetchTrackWholeForAccount(
+        context.database,
+        request.params.id,
+        request.account.id
+      );
+
+      if (result.outcome === FetchWholeOutcome.NotFound) {
+        return sendProblem(reply, {
+          status: 404,
+          code: 'track_not_found',
+          title: 'Track Not Found'
+        });
+      }
+
+      if (result.outcome === FetchWholeOutcome.NotEligible) {
+        return sendProblem(reply, {
+          status: 409,
+          code: 'track_not_fetchable',
+          title: 'Track Not Fetchable',
+          detail:
+            'Only a track that is waiting to be fetched can be fetched whole.'
+        });
+      }
+
+      if (result.outcome === FetchWholeOutcome.Ok) {
         context.kickDownloads();
         return reply.send(result.track);
       }

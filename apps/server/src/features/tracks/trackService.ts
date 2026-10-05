@@ -18,12 +18,14 @@ import type { DatabaseHandle } from '../../platform/database/client.js';
 import type { TrackRow } from '../../platform/database/schema.js';
 import { tracks } from '../../platform/database/schema.js';
 import type {
+  FetchWholeResult,
   RetryTrackResult,
   TrackSeed,
   TrackStreamResult,
   TrackThumbnailResult
 } from './types.js';
 import {
+  FetchWholeOutcome,
   RetryTrackOutcome,
   TrackStreamOutcome,
   TrackThumbnailOutcome
@@ -201,6 +203,71 @@ export function retryTrackForAccount(
   // changed applied; a second read would only fetch back what was just written.
   return {
     outcome: RetryTrackOutcome.Ok,
+    track: toTrackView({
+      ...track,
+      ...trackUpdatedFields
+    })
+  };
+}
+
+/*
+ * Forcing one track to be fetched whole. The bypass exists for a track whose
+ * SponsorBlock lookup failed, or one the listener knows should stay whole, and it
+ * is offered only when there is no stored file: a stored file is shared by every
+ * association, so overwriting it would change every other playlist that references
+ * the video. Healing an already-stored track is an operator action on the media
+ * object, not a per-listener one.
+ *
+ * It flips the recorded policy to false and returns the track to `pending`, so the
+ * next pass fetches it without the cut. The right follows the track the way retry
+ * does: the owner of a playlist that holds it or a write collaborator on one, and
+ * a read collaborator, a stranger, an orphan and a missing track are one
+ * not-found.
+ */
+export function fetchTrackWholeForAccount(
+  database: DatabaseHandle,
+  trackId: string,
+  accountId: string
+): FetchWholeResult {
+  const track = loadTrack(database, trackId);
+
+  if (
+    track === undefined ||
+    !canAccountWriteTrack(database, track.id, accountId)
+  ) {
+    return { outcome: FetchWholeOutcome.NotFound };
+  }
+
+  // Only a track waiting to be fetched is eligible. A stored one has a file to
+  // protect, a downloading one is mid-fetch and moving it would race the worker,
+  // and an unavailable one is gone.
+  if (
+    track.fileStatus !== TrackFileStatus.Pending &&
+    track.fileStatus !== TrackFileStatus.Failed
+  ) {
+    return { outcome: FetchWholeOutcome.NotEligible };
+  }
+
+  const updatedAt = new Date().toISOString();
+  const trackUpdatedFields: Partial<Track> = {
+    skipNonMusic: false,
+    fileStatus: TrackFileStatus.Pending,
+    failureReason: null,
+    updatedAt
+  };
+
+  const updated = database.db
+    .update(tracks)
+    .set(trackUpdatedFields)
+    .where(eq(tracks.id, track.id))
+    .run();
+
+  if (updated.changes === 0) {
+    return { outcome: FetchWholeOutcome.NotFound };
+  }
+
+  return {
+    outcome: FetchWholeOutcome.Ok,
     track: toTrackView({
       ...track,
       ...trackUpdatedFields

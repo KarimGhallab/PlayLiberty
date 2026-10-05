@@ -47,3 +47,19 @@ export type RetryTrackResult =
   | { outcome: RetryTrackOutcome.Ok; track: Track }
   | { outcome: RetryTrackOutcome.NotFound }
   | { outcome: RetryTrackOutcome.NotRetryable };
+
+/*
+ * Forcing one track to be fetched whole. `NotEligible` covers every state the
+ * bypass cannot act on: a stored track has a shared file, a downloading one is
+ * already being fetched, and an unavailable one is gone.
+ */
+export enum FetchWholeOutcome {
+  Ok = 'ok',
+  NotFound = 'not_found',
+  NotEligible = 'not_eligible'
+}
+
+export type FetchWholeResult =
+  | { outcome: FetchWholeOutcome.Ok; track: Track }
+  | { outcome: FetchWholeOutcome.NotFound }
+  | { outcome: FetchWholeOutcome.NotEligible };
