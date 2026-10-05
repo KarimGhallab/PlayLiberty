@@ -4,7 +4,7 @@ import type { IYoutubeClient } from '@playliberty/youtube';
 import type { Config } from '../platform/config/types.js';
 import type { DatabaseHandle } from '../platform/database/client.js';
 import type { MediaPaths } from '../platform/media/mediaPaths.js';
-import type { EventBus } from './events/EventBus.js';
+import type { EventBus } from './events/eventBus/EventBus.js';
 
 /*
  * Everything a feature is allowed to reach, in one shape.

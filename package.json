@@ -6,7 +6,6 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "console:start": "pnpm --filter @playliberty/console run start",
     "server:start": "pnpm --filter @playliberty/server run start",
     "server:dev": "pnpm --filter @playliberty/server run dev",
     "web:dev": "pnpm --filter @playliberty/web run dev",

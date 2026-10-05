@@ -7,8 +7,8 @@ import {
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EventStreamContext } from './shared/api/useEventStream';
-import { usePlayerStore } from './shared/player/playerStore';
+import { EventStreamContext } from './shared/api/useEventStream/useEventStream';
+import { usePlayerStore } from './shared/player/playerStore/playerStore';
 import type { PlayerTrack } from './shared/player/types';
 
 import { routeTree } from './router';

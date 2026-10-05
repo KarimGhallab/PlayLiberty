@@ -5,9 +5,9 @@ import { createRoot } from 'react-dom/client';
 
 import '@playliberty/tokens/tokens.css';
 
-import { ApiError } from './shared/api/client';
-import { attachPlayerPersistence } from './shared/player/playerPersistence';
-import { usePlayerStore } from './shared/player/playerStore';
+import { ApiError } from './shared/api/client/client';
+import { attachPlayerPersistence } from './shared/player/playerPersistence/playerPersistence';
+import { usePlayerStore } from './shared/player/playerStore/playerStore';
 import './shared/styles/base.scss';
 
 import { router } from './router';

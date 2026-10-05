@@ -1,7 +1,7 @@
 import type {
   EventStreamFactory,
   EventStreamHandlers
-} from '../shared/api/useEventStream';
+} from '../shared/api/useEventStream/useEventStream';
 
 /*
  * A stand-in for `EventSource`, which jsdom does not have and MSW cannot fake. A

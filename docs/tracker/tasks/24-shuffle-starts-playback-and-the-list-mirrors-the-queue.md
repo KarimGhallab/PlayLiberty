@@ -60,7 +60,7 @@ Done, and the restore is the change that forced the rest.
   because "nothing stored" and "could not be read" are different facts.
 - **The list.** [`orderTracksByQueue`](../../../apps/web/src/shared/player/queueOrder.ts) opens a group at
   each queued track and carries a row the queue does not hold into the group before it, so a pending track
-  stays in its neighbourhood; [`PlaylistDetailPage`](../../../apps/web/src/views/playlist-detail/PlaylistDetailPage.tsx)
+  stays in its neighbourhood; [`PlaylistDetailPage`](../../../apps/web/src/views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage.tsx)
   draws in that order only while the queue is this playlist and the shuffle is on, because unshuffled the
   queue's order already is the playlist's own.
 

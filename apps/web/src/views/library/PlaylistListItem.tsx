@@ -3,17 +3,17 @@ import { useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 
-import { ApiError } from '../../shared/api/client';
+import { ApiError } from '../../shared/api/client/client';
 import {
   useDeletePlaylist,
   useRenamePlaylist,
   useSyncPlaylist
-} from '../../shared/api/queries';
-import PlaylistHeader from '../../shared/components/PlaylistHeader';
+} from '../../shared/api/queries/queries';
+import PlaylistHeader from '../../shared/components/PlaylistHeader/PlaylistHeader';
 import RenamePlaylistDialog from '../../shared/components/RenamePlaylistDialog';
-import SharePlaylistDialog from '../../shared/components/SharePlaylistDialog';
-import type { PendingAction } from '../../shared/components/useDeferredAction';
-import { usePlayerStore } from '../../shared/player/playerStore';
+import SharePlaylistDialog from '../../shared/components/SharePlaylistDialog/SharePlaylistDialog';
+import type { PendingAction } from '../../shared/components/useDeferredAction/useDeferredAction';
+import { usePlayerStore } from '../../shared/player/playerStore/playerStore';
 
 /*
  * One item in the library: the shared playlist header with this item's own

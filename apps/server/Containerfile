@@ -15,7 +15,6 @@ RUN apt-get update \
 
 FROM tools AS deps
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
-COPY apps/console/package.json apps/console/package.json
 COPY apps/server/package.json apps/server/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/utils/package.json packages/utils/package.json
@@ -31,7 +30,6 @@ RUN pnpm --filter @playliberty/utils run build \
 
 FROM tools AS prod-deps
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
-COPY apps/console/package.json apps/console/package.json
 COPY apps/server/package.json apps/server/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/utils/package.json packages/utils/package.json

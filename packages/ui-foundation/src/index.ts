@@ -1,4 +1,4 @@
-export { standardEasingBezier } from './easing.js';
+export { standardEasingBezier } from './easing/easing.js';
 export {
   formatDuration,
   formatLastSynced,
@@ -8,7 +8,7 @@ export {
   syncStateLabel,
   trackCountUnit,
   trackStateLabel
-} from './formatters.js';
-export { trackTone } from './tones.js';
-export { sleeveIndex } from './sleeve.js';
+} from './formatters/formatters.js';
+export { sleeveIndex } from './sleeve/sleeve.js';
+export { trackTone } from './tones/tones.js';
 export { TrackTone } from './types.js';

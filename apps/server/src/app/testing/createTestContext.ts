@@ -7,17 +7,17 @@ import type { FastifyInstance } from 'fastify';
 import type { LiveEvent } from '@playliberty/contracts';
 import type { IYoutubeClient } from '@playliberty/youtube';
 
-import { EventBus } from '../../shared/events/EventBus.js';
+import { EventBus } from '../../shared/events/eventBus/EventBus.js';
 
-import { loadConfig } from '../../platform/config/loadConfig.js';
-import { createDatabase } from '../../platform/database/client.js';
+import { loadConfig } from '../../platform/config/loadConfig/loadConfig.js';
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import { runMigrations } from '../../platform/database/migrate.js';
+import { createDatabase } from '../../platform/database/client.js';
+import { runMigrations } from '../../platform/database/migrate/migrate.js';
+import type { MediaPaths } from '../../platform/media/mediaPaths.js';
 import {
   createMediaPaths,
   ensureMediaDirectories
 } from '../../platform/media/mediaPaths.js';
-import type { MediaPaths } from '../../platform/media/mediaPaths.js';
 import { buildApp } from '../buildApp.js';
 
 export interface TestContext {

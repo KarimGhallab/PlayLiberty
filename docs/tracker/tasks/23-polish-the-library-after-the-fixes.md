@@ -3,7 +3,7 @@
 **What to build:** A final pass over the small things, once the earlier tickets have landed, so it polishes
 the settled state rather than a moving one.
 
-1. **Bottom padding.** [`LibraryPage.module.scss`](../../../apps/web/src/views/library/LibraryPage.module.scss)
+1. **Bottom padding.** [`LibraryPage.module.scss`](../../../apps/web/src/views/library/LibraryPage/LibraryPage.module.scss)
    ends the page at `calc(var(--space-9) + var(--space-8))`, about 88px, while the docked player bar is about
    97px, so the last row can sit behind the bar at full scroll.
 2. **Loading.** The loading state is the bare string "Loading playlists." with no skeleton, so the list
@@ -38,9 +38,9 @@ All five, and one of them a record decision rather than a drawing change.
 
 - **Bottom padding.** Both pages that dock the bar now end at `calc(97px + var(--space-5))`, the bar's own
   97px plus the gap the header uses above the list: the old 88px left the last row **9px** behind the bar.
-  [The playlist detail](../../../apps/web/src/views/playlist-detail/PlaylistDetailPage.module.scss) had the
+  [The playlist detail](../../../apps/web/src/views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage.module.scss) had the
   same defect and the same false comment, so it was fixed with the library.
-- **Loading.** [`LibrarySkeleton.tsx`](../../../apps/web/src/views/library/LibrarySkeleton.tsx) draws five
+- **Loading.** [`LibrarySkeleton.tsx`](../../../apps/web/src/views/library/LibrarySkeleton/LibrarySkeleton.tsx) draws five
   rows of the item's own 136px, a 96px cover and two bars where the name and the sync line go, so the read
   resolves into the space rather than flashing text. The shapes are `aria-hidden` and the status sentence
   "Loading playlists." is the only thing read; reduced motion drops the pulse and leaves the shape.

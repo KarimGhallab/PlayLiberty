@@ -12,27 +12,27 @@ import type { LiveEvent } from '@playliberty/contracts';
 import { YtdlpClient } from '@playliberty/youtube';
 
 import type { AppContext } from '../shared/context.js';
-import { EventBus } from '../shared/events/EventBus.js';
+import { EventBus } from '../shared/events/eventBus/EventBus.js';
 import { sendProblem } from '../shared/problem.js';
 
-import { registerAccountRoutes } from '../features/accounts/accountRoutes.js';
-import type { DownloadWorkerHandle } from '../features/downloads/downloadWorker.js';
-import { startDownloadWorker } from '../features/downloads/downloadWorker.js';
-import { runStartupSweep } from '../features/downloads/startupSweep.js';
+import { registerAccountRoutes } from '../features/accounts/routes/accountRoutes.js';
+import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
+import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
+import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
 import {
   DEFAULT_EVENT_HEARTBEAT_MS,
   registerEventRoutes
-} from '../features/events/eventRoutes.js';
-import { registerPlaylistRoutes } from '../features/playlists/playlistRoutes.js';
-import { pruneOrphanTracks } from '../features/prune/pruneService.js';
-import { registerShareRoutes } from '../features/shares/shareRoutes.js';
-import { registerSyncRunRoutes } from '../features/sync/syncRunRoutes.js';
-import { registerTrackRoutes } from '../features/tracks/trackRoutes.js';
+} from '../features/events/routes/eventRoutes.js';
+import { registerPlaylistRoutes } from '../features/playlists/routes/playlistRoutes.js';
+import { pruneOrphanTracks } from '../features/prune/service/pruneService.js';
+import { registerShareRoutes } from '../features/shares/routes/shareRoutes.js';
+import { registerSyncRunRoutes } from '../features/sync/routes/syncRunRoutes.js';
+import { registerTrackRoutes } from '../features/tracks/routes/trackRoutes.js';
 import type { JobHandle } from '../platform/jobs/cronJob.js';
 import { startCronJob } from '../platform/jobs/cronJob.js';
-import { registerHealthRoutes } from './health/healthRoutes.js';
-import { registerCsrfHook } from './hooks/csrf.js';
-import { registerIdentityHook } from './hooks/identity.js';
+import { registerHealthRoutes } from './health/healthRoutes/healthRoutes.js';
+import { registerCsrfHook } from './hooks/csrf/csrf.js';
+import { registerIdentityHook } from './hooks/identity/identity.js';
 
 /*
  * What the composition root is given. `youtube` is the one optional field, and it

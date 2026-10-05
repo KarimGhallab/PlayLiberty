@@ -27,7 +27,7 @@ import {
   playlists,
   tracks
 } from '../../platform/database/schema.js';
-import { toTrackView } from '../tracks/trackService.js';
+import { toTrackView } from '../tracks/service/trackService.js';
 import { AssociationOutcome, removeAssociation } from './associationService.js';
 
 export enum PlaylistOutcome {

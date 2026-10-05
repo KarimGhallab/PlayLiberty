@@ -2,8 +2,8 @@ import { useId, useRef, useState } from 'react';
 
 import { RenamePlaylistInputSchema } from '@playliberty/contracts';
 
-import Dialog from './Dialog';
-import styles from './Dialog.module.scss';
+import Dialog from './Dialog/Dialog';
+import styles from './Dialog/Dialog.module.scss';
 
 /*
  * Rename one playlist. One field, because `RenamePlaylistInputSchema` has one,

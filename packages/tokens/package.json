@@ -14,8 +14,8 @@
     "./tokens.css": "./dist/tokens.css"
   },
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig.build.json && node dist/emitTokens.js",
-    "watch": "tsc-watch --noClear -p tsconfig.build.json --onSuccess \"node dist/emitTokens.js\"",
+    "build": "npm run clean && tsc -p tsconfig.build.json && node dist/emitTokens/emitTokens.js",
+    "watch": "tsc-watch --noClear -p tsconfig.build.json --onSuccess \"node dist/emitTokens/emitTokens.js\"",
     "clean": "rm -rf dist",
     "test": "vitest run"
   },

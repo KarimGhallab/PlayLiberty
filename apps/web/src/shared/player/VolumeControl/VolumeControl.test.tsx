@@ -1,0 +1,217 @@
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { usePlayerStore } from '../playerStore/playerStore';
+import VolumeControl from './VolumeControl';
+
+/*
+ * The window-level key handler is what these tests drive, so the control is
+ * mounted once and the presses are dispatched on the document. The store is the
+ * real one, because the mute-versus-level rule is the thing under test.
+ */
+
+beforeEach(() => {
+  usePlayerStore.getState().clear();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('VolumeControl', () => {
+  it('shows the rail only while the pointer is on it', () => {
+    render(<VolumeControl />);
+
+    expect(
+      screen.queryByRole('slider', { name: 'Volume' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }), {});
+
+    expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+  });
+
+  it('mutes on press and keeps the level', () => {
+    usePlayerStore.getState().setVolume(0.7);
+    render(<VolumeControl />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mute' }));
+
+    expect(usePlayerStore.getState().muted).toBe(true);
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.7);
+    expect(screen.getByRole('button', { name: 'Unmute' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('raises and lowers the level with the window arrows', () => {
+    usePlayerStore.getState().setVolume(0.5);
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.55);
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.45);
+  });
+
+  it('shows the new level when the arrows change it', () => {
+    usePlayerStore.getState().setVolume(0.5);
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 55 percent');
+  });
+
+  it('keeps one notice and restarts its life on the next press', () => {
+    vi.useFakeTimers();
+    usePlayerStore.getState().setVolume(0.5);
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+
+    /* Not yet at the notice's own end. */
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 55 percent');
+
+    /* A second press disposes the notice and mounts the newer level. */
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 60 percent');
+
+    /* Past the first press's expiry, so this holds only if the timer restarted. */
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('disposes the notice when its life ends', () => {
+    vi.useFakeTimers();
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('changes the level without clearing the mute', () => {
+    usePlayerStore.getState().setVolume(0.5);
+    usePlayerStore.getState().setMuted(true);
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.55);
+    expect(usePlayerStore.getState().muted).toBe(true);
+  });
+
+  it('toggles the mute with M and leaves text fields alone', () => {
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'm' });
+    expect(usePlayerStore.getState().muted).toBe(true);
+
+    fireEvent.keyDown(window, { key: 'm' });
+    expect(usePlayerStore.getState().muted).toBe(false);
+
+    const field = document.createElement('input');
+    document.body.append(field);
+    fireEvent.keyDown(field, { key: 'm' });
+    expect(usePlayerStore.getState().muted).toBe(false);
+    field.remove();
+  });
+
+  it('clamps the arrows at the ends', () => {
+    usePlayerStore.getState().setVolume(1);
+    render(<VolumeControl />);
+
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(usePlayerStore.getState().volume).toBe(1);
+
+    usePlayerStore.getState().setVolume(0);
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(usePlayerStore.getState().volume).toBe(0);
+  });
+
+  it('sets the level from where the pointer lands on the rail', () => {
+    render(<VolumeControl />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 100,
+      left: 0,
+      right: 4,
+      width: 4,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+
+    /* A quarter down from the top is three quarters loud. */
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: 25, pointerId: 1 });
+
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.75);
+  });
+
+  it('keeps the level moving while the pointer drags and stops on release', () => {
+    render(<VolumeControl />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 100,
+      left: 0,
+      right: 4,
+      width: 4,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: 10, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.9);
+
+    fireEvent.pointerMove(rail, { clientX: 2, clientY: 60, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
+
+    fireEvent.pointerUp(rail, { clientX: 2, clientY: 60, pointerId: 1 });
+
+    fireEvent.pointerMove(rail, { clientX: 2, clientY: 90, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
+  });
+
+  it('clamps a pointer beyond the rail to the ends', () => {
+    render(<VolumeControl />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 100,
+      left: 0,
+      right: 4,
+      width: 4,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: -40, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBe(1);
+
+    fireEvent.pointerDown(rail, { clientX: 2, clientY: 140, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBe(0);
+  });
+});

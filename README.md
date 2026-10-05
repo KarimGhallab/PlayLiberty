@@ -14,6 +14,5 @@ Tooling lives at the root: TypeScript, ESLint, Prettier with import sorting, Hus
 
 - `pnpm install` - install all workspace dependencies.
 - `pnpm run build` - build every workspace package in dependency order.
-- `pnpm run console:start` - run the console app.
 - `pnpm run lint` - lint the repository.
 - `pnpm run format` - format the repository.

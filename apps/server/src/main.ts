@@ -2,9 +2,9 @@ import type { IYoutubeClient } from '@playliberty/youtube';
 
 import { buildApp } from './app/buildApp.js';
 
-import { loadConfig } from './platform/config/loadConfig.js';
+import { loadConfig } from './platform/config/loadConfig/loadConfig.js';
 import { createDatabase } from './platform/database/client.js';
-import { runMigrations } from './platform/database/migrate.js';
+import { runMigrations } from './platform/database/migrate/migrate.js';
 import {
   createMediaPaths,
   ensureMediaDirectories
@@ -25,7 +25,8 @@ async function createYoutubeOverride(
     return undefined;
   }
 
-  const { createE2eYoutube } = await import('./app/testing/e2eYoutube.js');
+  const { createE2eYoutube } =
+    await import('./app/testing/e2eYoutube/e2eYoutube.js');
 
   return createE2eYoutube(scriptPath);
 }

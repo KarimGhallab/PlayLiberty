@@ -5,12 +5,12 @@ import {
   createRouter
 } from '@tanstack/react-router';
 
-import { useEventStream } from './shared/api/useEventStream';
-import PlayerAudio from './shared/player/PlayerAudio';
-import PlayerBar from './shared/player/PlayerBar';
+import { useEventStream } from './shared/api/useEventStream/useEventStream';
+import PlayerAudio from './shared/player/PlayerAudio/PlayerAudio';
+import PlayerBar from './shared/player/PlayerBar/PlayerBar';
 
-import LibraryPage from './views/library/LibraryPage';
-import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage';
+import LibraryPage from './views/library/LibraryPage/LibraryPage';
+import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage';
 
 /*
  * The shell is the outlet, the player bar and the audio element, and nothing

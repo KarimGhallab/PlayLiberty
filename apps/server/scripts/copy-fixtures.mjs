@@ -13,8 +13,24 @@ import { fileURLToPath } from 'node:url';
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
-const source = join(here, '..', 'src', 'app', 'testing', 'fixtures');
-const destination = join(here, '..', 'dist', 'app', 'testing', 'fixtures');
+const source = join(
+  here,
+  '..',
+  'src',
+  'app',
+  'testing',
+  'e2eYoutube',
+  'fixtures'
+);
+const destination = join(
+  here,
+  '..',
+  'dist',
+  'app',
+  'testing',
+  'e2eYoutube',
+  'fixtures'
+);
 
 await mkdir(destination, { recursive: true });
 await cp(source, destination, { recursive: true });

@@ -2,7 +2,6 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "paths": {
-      "@playliberty/console": ["./apps/console/src"],
       "@playliberty/contracts": ["./packages/contracts/src"],
       "@playliberty/server": ["./apps/server/src"],
       "@playliberty/tokens": ["./packages/tokens/src"],

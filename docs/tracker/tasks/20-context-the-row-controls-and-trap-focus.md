@@ -2,13 +2,13 @@
 
 **What to build:** Two accessibility gaps on the library.
 
-1. **Repeated controls carry context-free names.** [`PlaylistHeader.tsx`](../../../apps/web/src/shared/components/PlaylistHeader.tsx)
+1. **Repeated controls carry context-free names.** [`PlaylistHeader.tsx`](../../../apps/web/src/shared/components/PlaylistHeader/PlaylistHeader.tsx)
    gives every row the same `aria-label="Shuffle"` and `aria-label="More actions"`, so a screen reader hears
    the same two controls N times with no tie to the row each belongs to. Append the playlist name to each
    control's accessible name, or scope the controls with `aria-labelledby` pointing at the name, so every
    row's controls are distinguishable. The share indicator is a `role="img"` labelled only "Private
    playlist" (and its siblings); decide whether it needs the playlist in its name.
-2. **The dialog does not trap focus.** [`Dialog.tsx`](../../../apps/web/src/shared/components/Dialog.tsx)
+2. **The dialog does not trap focus.** [`Dialog.tsx`](../../../apps/web/src/shared/components/Dialog/Dialog.tsx)
    declares `role="dialog"` and `aria-modal="true"` but implements no trap, so Tab from the add button walks
    the page behind the scrim. Cycle Tab and Shift+Tab among the dialog's focusable elements, and restore
    focus to the control that opened it on close. Escape and the scrim close already work and must keep it.
@@ -42,8 +42,8 @@ moves on, with the items `tabindex="-1"` so the button stays the one tab stop.
 else the first focusable, else the `tabindex="-1"` container), and returns focus to the element that opened
 it on unmount. Escape and the scrim close are unchanged. The title is an `h2`. A `Dialog.test.tsx` was added
 for the trap, the wrap, the initial-focus fallbacks and the restore; `PlaylistHeader.test.tsx` gained the
-two-row distinct-names test. `apps/web/src/views/library/LibraryPage.test.tsx` and
-`apps/web/src/views/playlist-detail/PlaylistDetailPage.test.tsx` were updated for the new names.
+two-row distinct-names test. `apps/web/src/views/library/LibraryPage/LibraryPage.test.tsx` and
+`apps/web/src/views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage.test.tsx` were updated for the new names.
 
 Two follow-ups the audit found are out of this ticket's scope: the row's quiet controls keep their 32px box
 on desktop by design (`docs/design-system/components/playlist-header.md`) and now reach 44px on mobile, and
