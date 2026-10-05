@@ -1,10 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect } from 'react';
 
-import { LiveEventSchema } from '@playliberty/contracts';
+import { AccountSummarySchema, LiveEventSchema } from '@playliberty/contracts';
 import type { LiveEvent } from '@playliberty/contracts';
 
-import { API_PREFIX } from './client';
+import { API_PREFIX, ApiError, apiGet } from './client';
 import { invalidateForLiveEvent } from './liveEvents';
 
 /*
@@ -13,15 +13,23 @@ import { invalidateForLiveEvent } from './liveEvents';
  * invalidation hint when server state changes; the hook hands it to the mapping
  * in `liveEvents`, which refetches the reads it names.
  *
+ * A connection that drops is reopened on a backoff, and the reopen re-reads
+ * everything the tab holds, so the gap between the last event and the new
+ * connection is closed without a timer. A connection the edge refuses is the
+ * other case: the hook runs the same re-authentication guard every other request
+ * uses, through an ordinary authenticated read, so an expired session is
+ * re-established by one navigation and a second refusal is left to the screens
+ * rather than retried in a loop.
+ *
  * The factory is a seam, not indirection for its own sake: jsdom has no
  * `EventSource` and MSW cannot fake one, so a component test injects a factory
- * that emits a frame, and the real wire is covered end to end. The default is the
- * browser's own `EventSource`, which reconnects on its own and re-delivers
- * `ready` when it does.
+ * that emits a frame, and the real wire is covered end to end.
  */
 
 export interface EventStreamHandlers {
+  onOpen: () => void;
   onMessage: (data: string) => void;
+  onError: () => void;
 }
 
 export interface EventStreamConnection {
@@ -38,7 +46,9 @@ export function browserEventStream(
   handlers: EventStreamHandlers
 ): EventStreamConnection {
   const source = new EventSource(url);
+  source.onopen = () => handlers.onOpen();
   source.onmessage = event => handlers.onMessage(event.data);
+  source.onerror = () => handlers.onError();
 
   return { close: () => source.close() };
 }
@@ -46,23 +56,96 @@ export function browserEventStream(
 export const EventStreamContext =
   createContext<EventStreamFactory>(browserEventStream);
 
+/** The first delay before a dropped connection is reopened, doubling each time. */
+export const RECONNECT_BASE_MS = 1_000;
+/** The longest delay between reopen attempts. */
+const RECONNECT_MAX_MS = 30_000;
+
 export function useEventStream(): void {
   const factory = useContext(EventStreamContext);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const connection = factory(`${API_PREFIX}/events`, {
-      onMessage: data => {
-        const event = parseLiveEvent(data);
+    let stopped = false;
+    let connection: EventStreamConnection | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
 
-        if (event !== null) {
-          invalidateForLiveEvent(queryClient, event);
-        }
+    function connect(): void {
+      if (stopped) {
+        return;
       }
-    });
+
+      connection = factory(`${API_PREFIX}/events`, {
+        onOpen: () => {
+          failures = 0;
+        },
+        onMessage: data => {
+          const event = parseLiveEvent(data);
+
+          if (event !== null) {
+            invalidateForLiveEvent(queryClient, event);
+          }
+        },
+        onError: () => {
+          connection?.close();
+          connection = null;
+          void recover();
+        }
+      });
+    }
+
+    /*
+     * The backoff. The browser would retry an `EventSource` on its own, but a
+     * refusal would then be retried on the same schedule forever; owning the
+     * retry lets a refused session stop it and a transient drop wait longer each
+     * time rather than hammering a dead edge.
+     */
+    function reconnect(): void {
+      if (stopped) {
+        return;
+      }
+
+      const delay = Math.min(
+        RECONNECT_BASE_MS * 2 ** failures,
+        RECONNECT_MAX_MS
+      );
+      failures += 1;
+      timer = setTimeout(connect, delay);
+    }
+
+    /*
+     * A dropped connection is not necessarily an expired session, so the hook
+     * asks the API a question it can answer: an ordinary authenticated read,
+     * which runs the re-authentication guard exactly as every other request
+     * does. A refusal means the session is gone, so the retry stops and the
+     * reads are asked again, which is how the problem reaches a screen. Anything
+     * else is transient, and the connection is reopened on the backoff.
+     */
+    async function recover(): Promise<void> {
+      try {
+        await apiGet('/me', AccountSummarySchema);
+        reconnect();
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          stopped = true;
+          void queryClient.invalidateQueries();
+          return;
+        }
+
+        reconnect();
+      }
+    }
+
+    connect();
 
     return () => {
-      connection.close();
+      stopped = true;
+      connection?.close();
+
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
     };
   }, [factory, queryClient]);
 }

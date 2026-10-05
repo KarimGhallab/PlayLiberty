@@ -14,3 +14,5 @@ Alternatives rejected:
 - Conditional requests (`ETag` and `If-None-Match`): they make a poll cheaper, not absent; the client still decides when to ask.
 - Refetching only on a mutation, on focus and on reconnect: insufficient. A sync or a download that finishes while the tab sits idle would not move until a person acts, which is the behavior the spec exists to fix.
 - Web Push: a service worker and a push service for a foreground SPA, and offline is out of scope in v1.
+
+Amendment, from ticket 05 of [`09`](../tracker/specs/09-keep-the-screens-current.md): the client owns the reconnect rather than leaving it to `EventSource`. Closing on `error` and reopening from a backoff timer lets a session the edge keeps refusing stop the retry instead of being retried on the browser's fixed schedule, and lets a transient drop wait longer each time. `ready` is still sent on every open, so the reopen re-reads everything the tab holds, and the rest of the choice is unchanged.
