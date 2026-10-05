@@ -296,6 +296,75 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('forces a failed track to be fetched whole from its row menu', async () => {
+    const posted: string[] = [];
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
+        HttpResponse.json({
+          items: [
+            {
+              track: {
+                id: 'track-9',
+                provider: 'youtube',
+                videoId: 'video-9',
+                title: 'The Great Below',
+                durationSeconds: 337,
+                skipNonMusic: false,
+                thumbnailPath: null,
+                fileStatus: 'failed',
+                sourceStatus: 'available',
+                failureReason:
+                  'SponsorBlock lookup failed, will retry on the next sync',
+                createdAt: '2026-09-01T00:00:00.000Z',
+                updatedAt: '2026-09-29T12:00:00.000Z'
+              },
+              origin: 'remote',
+              position: 0
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post(
+        'http://localhost:3000/api/v1/tracks/track-9/fetch-whole',
+        () => {
+          posted.push('fetch-whole');
+
+          return HttpResponse.json({
+            id: 'track-9',
+            provider: 'youtube',
+            videoId: 'video-9',
+            title: 'The Great Below',
+            durationSeconds: 337,
+            skipNonMusic: false,
+            thumbnailPath: null,
+            fileStatus: 'pending',
+            sourceStatus: 'available',
+            failureReason: null,
+            createdAt: '2026-09-01T00:00:00.000Z',
+            updatedAt: '2026-09-29T12:00:00.000Z'
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    /* The recorded policy is drawn, so the failed track reads as deliberately
+     * full length rather than as a trim that failed silently. */
+    expect(await screen.findByText('Full length')).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for The Great Below' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Fetch whole' }));
+
+    await waitFor(() => {
+      expect(posted).toEqual(['fetch-whole']);
+    });
+  });
+
   it('defers a track removal behind a cancellable toast', async () => {
     renderDetail();
 

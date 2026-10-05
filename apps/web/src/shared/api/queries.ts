@@ -358,6 +358,29 @@ export function useRetryTrack(
 }
 
 /*
+ * Re-fetching one failed fileless track whole, without trimming. The route flips
+ * the track's recorded policy to full length and returns it to `pending`, and the
+ * playlist's tracks are read again so the row leaves the failed state. The
+ * playlist is invalidated too, because its failed count has moved.
+ */
+export function useFetchTrackWhole(
+  playlistId: string
+): UseMutationResult<Track, Error, string> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (trackId: string) =>
+      apiCommand(`/tracks/${trackId}/fetch-whole`, TrackSchema),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['playlist', playlistId]
+      });
+      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    }
+  });
+}
+
+/*
  * Removing one track from a playlist. The route answers `204`; the server writes
  * a suppression so the next sync does not put the video back, and the playlist's
  * track count moves, so both the tracks read and the playlist read are

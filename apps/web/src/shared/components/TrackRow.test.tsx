@@ -41,8 +41,9 @@ function renderRow(options: {
   readonly current?: boolean;
   readonly playing?: boolean;
   readonly onRetry?: (trackId: string) => void;
+  readonly onFetchWhole?: (trackId: string) => void;
   readonly onRemove?: ((trackId: string) => void) | null;
-  readonly retrying?: boolean;
+  readonly busy?: boolean;
 }): {
   onPlay: ReturnType<typeof vi.fn>;
   onRemove: ReturnType<typeof vi.fn>;
@@ -61,8 +62,9 @@ function renderRow(options: {
         playing={options.playing ?? false}
         onPlay={onPlay}
         onRetry={options.onRetry}
+        onFetchWhole={options.onFetchWhole}
         onRemove={resolvedRemove}
-        retrying={options.retrying ?? false}
+        busy={options.busy ?? false}
       />
     </ul>
   );
@@ -119,50 +121,94 @@ describe('TrackRow', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers retry instead of the menu on a failed track', () => {
+  it('offers retry, fetch whole and remove in the menu on a failed track', () => {
     const onRetry = vi.fn();
+    const onFetchWhole = vi.fn();
 
     renderRow({
       association: association({
         fileStatus: TrackFileStatus.Failed,
         failureReason: 'Download failed, will retry on the next sync'
       }),
-      onRetry
+      onRetry,
+      onFetchWhole
     });
 
-    expect(
-      screen.queryByRole('button', { name: 'Actions for Blue In Green' })
-    ).not.toBeInTheDocument();
-
     fireEvent.click(
-      screen.getByRole('button', { name: 'Retry Blue In Green' })
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
     );
 
+    expect(screen.getByRole('menuitem', { name: 'Retry' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Fetch whole' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Retry' }));
     expect(onRetry).toHaveBeenCalledWith('track-1');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Fetch whole' }));
+    expect(onFetchWhole).toHaveBeenCalledWith('track-1');
   });
 
-  it('falls back to the menu on a failed track the caller cannot retry', () => {
+  it('offers no fetch whole on a stored track', () => {
+    renderRow({ onFetchWhole: vi.fn() });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+
+    expect(
+      screen.queryByRole('menuitem', { name: 'Fetch whole' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers no fetch whole when the caller cannot act', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Failed }),
+      onRetry: vi.fn()
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+
+    expect(
+      screen.queryByRole('menuitem', { name: 'Fetch whole' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers only the remove on a failed track the caller cannot retry', () => {
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Failed })
     });
 
-    expect(
+    fireEvent.click(
       screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    ).toBeInTheDocument();
+    );
+
     expect(
-      screen.queryByRole('button', { name: 'Retry Blue In Green' })
+      screen.queryByRole('menuitem', { name: 'Retry' })
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Fetch whole' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Remove from playlist' })
+    ).toBeInTheDocument();
   });
 
-  it('busies the retry while it is in flight', () => {
+  it('disables the menu while a row action is in flight', () => {
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Failed }),
       onRetry: vi.fn(),
-      retrying: true
+      busy: true
     });
 
     expect(
-      screen.getByRole('button', { name: 'Retry Blue In Green' })
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
     ).toBeDisabled();
   });
 
@@ -200,6 +246,18 @@ describe('TrackRow', () => {
 
     expect(screen.queryByText('Pending')).not.toBeInTheDocument();
     expect(screen.queryByText('Failed')).not.toBeInTheDocument();
+  });
+
+  it('says full length for a track recorded without trimming', () => {
+    renderRow({ association: association({ skipNonMusic: false }) });
+
+    expect(screen.getByText('Full length')).toBeInTheDocument();
+  });
+
+  it('says nothing about the policy on a track that skips non-music parts', () => {
+    renderRow({});
+
+    expect(screen.queryByText('Full length')).not.toBeInTheDocument();
   });
 
   it('shows the mapped word and holds the raw reason to one line with a title', () => {

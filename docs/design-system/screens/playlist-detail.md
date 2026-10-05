@@ -227,6 +227,22 @@ The tallest left column sets the shortest viewport: the side ends at 528.3px wit
 syncing, 441.9px with the empty state and **621.9px** with the fault, so the error state sets the floor at
 **718.9px** (621.9 plus the 97px bar).
 
+## The row's actions
+
+The action lane at the end of a track row is one control, the row's actions menu, and what it holds is the
+row's rule. A track the account can curate gets the menu; a track it cannot gets an inert lane, because a
+control that cannot be pressed is worse than no control. The menu is one door rather than several: a failed
+fileless track's menu holds **Retry**, **Fetch whole** and **Remove from playlist**, and every other row's
+holds **Remove from playlist** alone. Retry re-runs the same download; Fetch whole is the bypass from
+`10-skip-non-music-parts`, which re-fetches the one fileless track without trimming and is offered only where
+the route accepts it, so only a failed track. The lane stays **28px** and the title column keeps its **516px**,
+because the retry and the bypass moved into the menu rather than standing beside it, which is the trade this
+screen's record settles: one control at the cost of the retry being one press down.
+
+A track recorded as full length carries the word **`Full length`** on its state line, muted and never a tone,
+because it is a fact about the track and not a fault. The default, trimmed, says nothing, so a track fetched
+whole reads as deliberate rather than as a trim that silently failed.
+
 ## The three access levels
 
 The rule is one sentence: a collaborator may add a track, remove a track and sync, and may not rename, delete

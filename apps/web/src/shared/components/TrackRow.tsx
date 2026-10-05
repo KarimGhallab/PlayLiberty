@@ -1,5 +1,11 @@
-import { IconDotsVertical, IconRotate, IconTrash } from '@tabler/icons-react';
+import {
+  IconDotsVertical,
+  IconRotate,
+  IconScissorsOff,
+  IconTrash
+} from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { TrackFileStatus } from '@playliberty/contracts';
 import type { PlaylistTrack } from '@playliberty/contracts';
@@ -24,16 +30,22 @@ import styles from './TrackRow.module.scss';
  * starting the track. A track with no stored file has no play layer, but its lane
  * is still there: a failed download has something to be done about.
  *
- * The lane is one control in two shapes, by the row's own rule. A failed track
- * gets a retry, because that is the one state the listener can act on right now;
- * every other row gets the overflow. The two are never both drawn: the action is
- * the row's answer, and a menu beside it would be a second door onto the same
- * question.
+ * The lane is one overflow menu, and the row's rule is what it holds. A track the
+ * caller can curate gets the menu; a track it cannot gets an inert lane, because a
+ * control that cannot be pressed is worse than no control. The menu is the row's
+ * actions in one door rather than several: for a failed fileless track it offers
+ * Retry, Fetch whole and Remove, and for every other track it offers Remove
+ * alone. Fetch whole is the bypass from
+ * `10-skip-non-music-parts/05-fetch-one-fileless-track-whole`: it re-fetches the
+ * one fileless track without trimming, so it is offered only where the route
+ * accepts it, which is a failed track.
  *
  * Two rules from the design record hold here and not one more:
  *
  *   Stored says nothing. The default state draws no word, because a row with
- *   nothing wrong should not announce that it is fine.
+ *   nothing wrong should not announce that it is fine. The one exception is the
+ *   policy: a track recorded as full length carries the word, because a
+ *   full-length track when a trimmed one was expected must read as deliberate.
  *
  *   A state is never carried by colour alone. Every other state has a word, and
  *   a failed or unavailable row also carries the server's own reason.
@@ -48,10 +60,22 @@ interface TrackRowProps {
   readonly onPlay: (trackId: string) => void;
   /** Retry a failed download. Absent when the caller cannot act on the track. */
   readonly onRetry?: (trackId: string) => void;
+  /**
+   * Re-fetch a failed fileless track whole, without trimming. Absent when the
+   * caller cannot act on the track.
+   */
+  readonly onFetchWhole?: (trackId: string) => void;
   /** Remove the track from the playlist. Absent when the caller cannot curate. */
   readonly onRemove?: (trackId: string) => void;
-  /** Whether a retry is in flight, so the control is not pressed twice. */
-  readonly retrying?: boolean;
+  /** Whether a row action is in flight, so the menu is not opened onto a no-op. */
+  readonly busy?: boolean;
+}
+
+interface LaneItem {
+  readonly label: string;
+  readonly icon: ReactNode;
+  readonly destructive?: boolean;
+  readonly run: () => void;
 }
 
 export default function TrackRow({
@@ -60,8 +84,9 @@ export default function TrackRow({
   playing,
   onPlay,
   onRetry,
+  onFetchWhole,
   onRemove,
-  retrying = false
+  busy = false
 }: TrackRowProps) {
   const { track } = association;
   const stateLabel = trackStateLabel(
@@ -113,37 +138,66 @@ export default function TrackRow({
   }, [menuOpen]);
 
   /*
-   * The lane's one control. A failed row offers the retry only when the caller
-   * can act; otherwise it falls back to the menu, which is the row's other
-   * question. A row with nothing to do keeps a reserved, inert lane so the
-   * duration column never moves. A downloading row keeps the menu but disables
-   * it: the download owns the track while it runs, and a remove or retry would
-   * race it.
+   * The lane's one control, and the row's rule is what its menu holds. A failed
+   * fileless track the caller can act on gets Retry and Fetch whole beside the
+   * remove; every other curatable row gets the remove alone. A row with nothing
+   * to do keeps a reserved, inert lane so the duration column never moves. A
+   * downloading row keeps the menu but disables it: the download owns the track
+   * while it runs, and a remove or retry would race it.
    */
-  const lane = (() => {
-    if (failed && onRetry !== undefined) {
-      return (
-        <button
-          type="button"
-          className={styles.trackRow__action}
-          data-action="retry"
-          aria-label={`Retry ${track.title}`}
-          disabled={retrying}
-          onClick={() => onRetry(track.id)}>
-          <IconRotate
-            className={styles.trackRow__actionIcon}
-            aria-hidden="true"
-            focusable="false"
-          />
-        </button>
-      );
-    }
+  const laneItems: LaneItem[] = [
+    ...(failed && onRetry !== undefined
+      ? [
+          {
+            label: 'Retry',
+            icon: (
+              <IconRotate
+                className={styles.trackRow__menuIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+            ),
+            run: () => onRetry(track.id)
+          }
+        ]
+      : []),
+    ...(failed && onFetchWhole !== undefined
+      ? [
+          {
+            label: 'Fetch whole',
+            icon: (
+              <IconScissorsOff
+                className={styles.trackRow__menuIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+            ),
+            run: () => onFetchWhole(track.id)
+          }
+        ]
+      : []),
+    ...(onRemove === undefined
+      ? []
+      : [
+          {
+            label: 'Remove from playlist',
+            icon: (
+              <IconTrash
+                className={styles.trackRow__menuIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+            ),
+            destructive: true,
+            run: () => onRemove(track.id)
+          }
+        ])
+  ];
 
-    if (onRemove === undefined) {
-      return <span className={styles.trackRow__lane} aria-hidden="true" />;
-    }
-
-    return (
+  const lane =
+    laneItems.length === 0 ? (
+      <span className={styles.trackRow__lane} aria-hidden="true" />
+    ) : (
       <span className={styles.trackRow__menuAnchor} ref={menuAnchorRef}>
         <button
           type="button"
@@ -151,7 +205,7 @@ export default function TrackRow({
           aria-label={`Actions for ${track.title}`}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          disabled={downloading}
+          disabled={downloading || busy}
           onClick={() => setMenuOpen(open => !open)}>
           <IconDotsVertical
             className={styles.trackRow__actionIcon}
@@ -161,27 +215,25 @@ export default function TrackRow({
         </button>
         {menuOpen ? (
           <div className={styles.trackRow__menu} role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.trackRow__menuItem}
-              data-destructive="true"
-              onClick={() => {
-                setMenuOpen(false);
-                onRemove(track.id);
-              }}>
-              <IconTrash
-                className={styles.trackRow__menuIcon}
-                aria-hidden="true"
-                focusable="false"
-              />
-              Remove from playlist
-            </button>
+            {laneItems.map(item => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                className={styles.trackRow__menuItem}
+                data-destructive={item.destructive ? 'true' : undefined}
+                onClick={() => {
+                  setMenuOpen(false);
+                  item.run();
+                }}>
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
           </div>
         ) : null}
       </span>
     );
-  })();
 
   return (
     <li
@@ -212,6 +264,12 @@ export default function TrackRow({
             <span className={styles.trackRow__state} data-tone={tone}>
               {stateLabel}
             </span>
+          )}
+          {/* The recorded policy, and only when it is the non-default one: a
+           * track fetched whole reads as deliberate rather than as a trim that
+           * silently failed. The default, trimmed, says nothing. */}
+          {track.skipNonMusic ? null : (
+            <span className={styles.trackRow__policy}>Full length</span>
           )}
           {/* The server's own reason, kept as secondary copy: the mapped word is
            * primary, and the sentence is bounded to one ellipsized line with the

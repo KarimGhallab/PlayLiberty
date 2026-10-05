@@ -182,8 +182,8 @@ fetched whole when the trimmed result is wrong.
 - Muting a segment as opposed to skipping it.
 - Any transcoding, and any format work beyond the existing AAC-first selector and its Opus fallback.
 - Healing an already-stored track, which is an operator action on the media object.
-- The client's view of a failed track's reason and the bypass control, beyond the editable setting switch, which
-  the web client owns in [09](09-keep-the-screens-current.md) and [04](04-curate-a-playlist.md).
+- Any client surface beyond the playlist detail's track row, where the state word, the server's failure sentence
+  and the bypass control live.
 
 ## Further Notes
 

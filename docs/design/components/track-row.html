@@ -302,17 +302,10 @@
         outline: var(--focus-width) solid var(--accent);
         outline-offset: var(--focus-offset);
       }
-      /* The retry control is the one place a row offers an action rather than a
-         menu, because a failed download is the one state the user can do
-         something about right now. */
-      .lane.retry {
-        color: var(--accent);
-        border-color: var(--accent);
-      }
-      .lane.retry:hover {
-        background: var(--accent);
-        color: var(--bg);
-      }
+      /* The lane is one control on every curatable row: the actions menu. A
+         failed fileless track's menu holds Retry and Fetch whole beside Remove,
+         because a failed download is the one state the user can do something
+         about right now; every other row's holds Remove alone. */
 
       /* In-flight state: the row breathes.
          Chosen over a travelling highlight because the text is never redrawn,
@@ -376,9 +369,11 @@
       rules out the icon font, and this is what both of those are protecting
       against. See docs/adr/0010-tabler-icons.md.
 
-      Both replacements are glyphs the pin already carried for another role,
-      which is the right way round: the retry control and the menu item that
-      re-fetches a playlist are the same verb, so they are the same glyph.
+      The menu glyph is one the pin already carried for another role, which is
+      the right way round: the row's actions menu and the playlist header's
+      overflow are the same verb, so they are the same glyph. The retry and the
+      fetch-whole glyphs are drawn only inside that menu, which the specimen
+      does not open, so the sprite carries the dots alone.
 
       There is deliberately no symbol for the play or the pause glyph. The row's
       play control is the header's eight-frame morph, and the morph draws both
@@ -400,12 +395,6 @@
           <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
           <path d="M11 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
           <path d="M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-        </symbol>
-        <symbol
-          id="i-rotate"
-          data-icon="rotate-clockwise@3.48.0"
-          viewBox="0 0 24 24">
-          <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
         </symbol>
       </defs>
     </svg>
@@ -781,7 +770,7 @@
             </button>
           </div>
 
-          <!-- failed, with the reason as a sentence, and a retry -->
+          <!-- failed, with the reason as a sentence, and the actions menu -->
           <div class="row" data-state="paused">
             <div class="art"></div>
             <div class="body">
@@ -859,9 +848,9 @@
             </button>
 
             <div class="dur">6:13</div>
-            <button class="lane retry" aria-label="Retry The Great Below">
+            <button class="lane" aria-label="Actions for The Great Below">
               <svg class="icon icon--sm" aria-hidden="true" focusable="false">
-                <use href="#i-rotate" />
+                <use href="#i-dots" />
               </svg>
             </button>
           </div>
@@ -1290,10 +1279,10 @@
 
             <div class="dur">3:31</div>
             <button
-              class="lane retry"
-              aria-label="Retry Track whose failure reason is unusually long">
+              class="lane"
+              aria-label="Actions for Track whose failure reason is unusually long">
               <svg class="icon icon--sm" aria-hidden="true" focusable="false">
-                <use href="#i-rotate" />
+                <use href="#i-dots" />
               </svg>
             </button>
           </div>
@@ -1770,9 +1759,9 @@
               </button>
 
               <div class="dur">6:13</div>
-              <button class="lane retry" aria-label="Retry The Great Below">
+              <button class="lane" aria-label="Actions for The Great Below">
                 <svg class="icon icon--sm" aria-hidden="true" focusable="false">
-                  <use href="#i-rotate" />
+                  <use href="#i-dots" />
                 </svg>
               </button>
             </div>
@@ -1918,13 +1907,14 @@
           show the reason when there is one, since the user cannot reconstruct
           it. Do keep "Removed" dimmed rather than struck, because a
           strikethrough reads as deleted and the track is still playable. Do
-          offer retry only where retrying can work, which is why a failed row
-          has it and an unavailable one does not. Do not label the default
-          state, since a row with nothing wrong should not announce it. Do not
-          make the whole row a target. Do reserve the play control's lane on
-          every row, including the ones that cannot be played, since a lane that
-          appears and disappears moves the duration column. Do not reveal a
-          disabled control; there is nothing to press.
+          offer retry and fetch whole only where they can work, which is why
+          only a failed fileless row's menu carries them and an unavailable one
+          does not. Do not label the default state, since a row with nothing
+          wrong should not announce it. Do not make the whole row a target. Do
+          reserve the play control's lane on every row, including the ones that
+          cannot be played, since a lane that appears and disappears moves the
+          duration column. Do not reveal a disabled control; there is nothing to
+          press.
         </p>
       </section>
     </main>

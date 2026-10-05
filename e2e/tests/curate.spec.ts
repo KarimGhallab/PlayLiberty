@@ -149,17 +149,23 @@ test('retrying a failed track re-queues it and it recovers', async ({
   });
   await openPlaylist(page, TITLE);
 
-  const retry = page.getByRole('button', { name: `Retry ${FIRST.title}` });
-  await reloadUntil(page, retry);
+  const rowActions = page.getByRole('button', {
+    name: `Actions for ${FIRST.title}`
+  });
+  await reloadUntil(page, rowActions);
   // Exact, because the summary's lower-case "failed" count is on the page too.
   await expect(page.getByText('Failed', { exact: true })).toBeVisible();
 
-  // The video is downloadable now, and the retry queues it for the worker.
+  // The video is downloadable now, and the retry queues it for the worker. The
+  // retry lives in the row's actions menu, so the press is two: open, then pick.
   scriptPlaylist({ sourceId: SOURCE, title: TITLE, entries: [FIRST] });
-  await retry.click();
+  await rowActions.click();
+  await page.getByRole('menuitem', { name: 'Retry' }).click();
 
   // The row leaves the failed state, which is the retry's own, immediate effect.
-  await expect(retry).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText('Failed', { exact: true })).toBeHidden({
+    timeout: 15_000
+  });
 
   // The worker stores it on its next pass, and the row offers its play control.
   await reloadUntil(

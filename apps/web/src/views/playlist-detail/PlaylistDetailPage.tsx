@@ -10,6 +10,7 @@ import {
   useAccountDirectory,
   useAddTrack,
   useDeletePlaylist,
+  useFetchTrackWhole,
   useLatestSyncRun,
   usePlaylist,
   usePlaylistTracks,
@@ -89,6 +90,7 @@ export default function PlaylistDetailPage() {
   const sync = useSyncPlaylist(playlistId);
   const remove = useDeletePlaylist(playlistId);
   const retry = useRetryTrack(playlistId);
+  const fetchWhole = useFetchTrackWhole(playlistId);
   const removeTrack = useRemoveTrack(playlistId);
   const rename = useRenamePlaylist(playlistId);
   const updateSkip = useUpdateSkipNonMusic(playlistId);
@@ -228,7 +230,13 @@ export default function PlaylistDetailPage() {
   const access = playlist.data?.access;
   const canSync = access === 'owner' || access === 'write';
   const canWrite = canSync;
-  const retryingTrackId = retry.isPending ? retry.variables : undefined;
+  /* The one track whose row action is in flight, so its menu is not opened onto
+   * a second press while the first is still running. */
+  const busyTrackId = retry.isPending
+    ? retry.variables
+    : fetchWhole.isPending
+      ? fetchWhole.variables
+      : undefined;
   const neverSynced = playlist.data?.lastSyncedAt === null;
 
   /*
@@ -461,10 +469,13 @@ export default function PlaylistDetailPage() {
                   playing={isPlaying}
                   onPlay={playTrack}
                   onRetry={canWrite ? id => retry.mutate(id) : undefined}
+                  onFetchWhole={
+                    canWrite ? id => fetchWhole.mutate(id) : undefined
+                  }
                   onRemove={
                     canWrite ? id => removeTrackDeferred(id) : undefined
                   }
-                  retrying={retryingTrackId === association.track.id}
+                  busy={busyTrackId === association.track.id}
                 />
               ))}
             </ul>

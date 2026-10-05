@@ -613,17 +613,10 @@
         outline: var(--focus-width) solid var(--accent);
         outline-offset: var(--focus-offset);
       }
-      /* The retry control is the one place a row offers an action rather than a
-         menu, because a failed download is the one state the user can do
-         something about right now. */
-      .tl .lane.retry {
-        color: var(--accent);
-        border-color: var(--accent);
-      }
-      .tl .lane.retry:hover {
-        background: var(--accent);
-        color: var(--bg);
-      }
+      /* The lane is one control on every curatable row: the actions menu. A
+         failed fileless track's menu holds Retry and Fetch whole beside Remove,
+         because a failed download is the one state the user can do something
+         about right now; every other row's holds Remove alone. */
       /* In-flight state: the row breathes.
          Chosen over a travelling highlight because the text is never redrawn,
          and over a progress bar because the API carries no percentage, so a bar
@@ -2227,12 +2220,12 @@
                     </svg>
                   </button>
                   <div class="dur">6:13</div>
-                  <button class="lane retry" aria-label="Retry The Great Below">
+                  <button class="lane" aria-label="Actions for The Great Below">
                     <svg
                       class="icon icon--sm"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-rotate" />
+                      <use href="#i-dots" />
                     </svg>
                   </button>
                 </div>
@@ -3706,12 +3699,12 @@
                     </svg>
                   </button>
                   <div class="dur">6:13</div>
-                  <button class="lane retry" aria-label="Retry The Great Below">
+                  <button class="lane" aria-label="Actions for The Great Below">
                     <svg
                       class="icon icon--sm"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-rotate" />
+                      <use href="#i-dots" />
                     </svg>
                   </button>
                 </div>
@@ -5367,12 +5360,12 @@
                     </svg>
                   </button>
                   <div class="dur">6:13</div>
-                  <button class="lane retry" aria-label="Retry The Great Below">
+                  <button class="lane" aria-label="Actions for The Great Below">
                     <svg
                       class="icon icon--sm"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-rotate" />
+                      <use href="#i-dots" />
                     </svg>
                   </button>
                 </div>
@@ -6810,12 +6803,12 @@
                     </svg>
                   </button>
                   <div class="dur">6:13</div>
-                  <button class="lane retry" aria-label="Retry The Great Below">
+                  <button class="lane" aria-label="Actions for The Great Below">
                     <svg
                       class="icon icon--sm"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-rotate" />
+                      <use href="#i-dots" />
                     </svg>
                   </button>
                 </div>
@@ -8305,12 +8298,12 @@
                     </svg>
                   </button>
                   <div class="dur">6:13</div>
-                  <button class="lane retry" aria-label="Retry The Great Below">
+                  <button class="lane" aria-label="Actions for The Great Below">
                     <svg
                       class="icon icon--sm"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-rotate" />
+                      <use href="#i-dots" />
                     </svg>
                   </button>
                 </div>
@@ -9746,12 +9739,12 @@
                     </svg>
                   </button>
                   <div class="dur">6:13</div>
-                  <button class="lane retry" aria-label="Retry The Great Below">
+                  <button class="lane" aria-label="Actions for The Great Below">
                     <svg
                       class="icon icon--sm"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-rotate" />
+                      <use href="#i-dots" />
                     </svg>
                   </button>
                 </div>
@@ -11160,12 +11153,12 @@
                     </svg>
                   </button>
                   <div class="dur">6:13</div>
-                  <button class="lane retry" aria-label="Retry The Great Below">
+                  <button class="lane" aria-label="Actions for The Great Below">
                     <svg
                       class="icon icon--sm"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-rotate" />
+                      <use href="#i-dots" />
                     </svg>
                   </button>
                 </div>
@@ -12905,13 +12898,13 @@
                     </button>
                     <div class="dur">6:13</div>
                     <button
-                      class="lane retry"
-                      aria-label="Retry The Great Below">
+                      class="lane"
+                      aria-label="Actions for The Great Below">
                       <svg
                         class="icon icon--sm"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-rotate" />
+                        <use href="#i-dots" />
                       </svg>
                     </button>
                   </div>
@@ -14347,13 +14340,13 @@
                     </button>
                     <div class="dur">6:13</div>
                     <button
-                      class="lane retry"
-                      aria-label="Retry The Great Below">
+                      class="lane"
+                      aria-label="Actions for The Great Below">
                       <svg
                         class="icon icon--sm"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-rotate" />
+                        <use href="#i-dots" />
                       </svg>
                     </button>
                   </div>
@@ -15802,13 +15795,13 @@
                     </button>
                     <div class="dur">6:13</div>
                     <button
-                      class="lane retry"
-                      aria-label="Retry The Great Below">
+                      class="lane"
+                      aria-label="Actions for The Great Below">
                       <svg
                         class="icon icon--sm"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-rotate" />
+                        <use href="#i-dots" />
                       </svg>
                     </button>
                   </div>
@@ -17268,13 +17261,13 @@
                     </button>
                     <div class="dur">6:13</div>
                     <button
-                      class="lane retry"
-                      aria-label="Retry The Great Below">
+                      class="lane"
+                      aria-label="Actions for The Great Below">
                       <svg
                         class="icon icon--sm"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-rotate" />
+                        <use href="#i-dots" />
                       </svg>
                     </button>
                   </div>
@@ -18709,13 +18702,13 @@
                     </button>
                     <div class="dur">6:13</div>
                     <button
-                      class="lane retry"
-                      aria-label="Retry The Great Below">
+                      class="lane"
+                      aria-label="Actions for The Great Below">
                       <svg
                         class="icon icon--sm"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-rotate" />
+                        <use href="#i-dots" />
                       </svg>
                     </button>
                   </div>
@@ -20125,13 +20118,13 @@
                     </button>
                     <div class="dur">6:13</div>
                     <button
-                      class="lane retry"
-                      aria-label="Retry The Great Below">
+                      class="lane"
+                      aria-label="Actions for The Great Below">
                       <svg
                         class="icon icon--sm"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-rotate" />
+                        <use href="#i-dots" />
                       </svg>
                     </button>
                   </div>
