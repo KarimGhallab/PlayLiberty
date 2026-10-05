@@ -80,7 +80,7 @@ describe('AddPlaylistDialog', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
-  it('submits a valid URL and the trimmed value', () => {
+  it('submits a valid URL and the trimmed value, with the setting on', () => {
     const onSubmit = vi.fn();
     render(<AddPlaylistDialog open onSubmit={onSubmit} onClose={vi.fn()} />);
 
@@ -90,7 +90,34 @@ describe('AddPlaylistDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
-      'https://www.youtube.com/playlist?list=PL-demo'
+      'https://www.youtube.com/playlist?list=PL-demo',
+      true
+    );
+  });
+
+  it('starts with the skip control on', () => {
+    render(<AddPlaylistDialog open onSubmit={vi.fn()} onClose={vi.fn()} />);
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Skip non-music parts' })
+    ).toBeChecked();
+  });
+
+  it('sends the setting off when the control is turned off', () => {
+    const onSubmit = vi.fn();
+    render(<AddPlaylistDialog open onSubmit={onSubmit} onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('Playlist link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PL-demo' }
+    });
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Skip non-music parts' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      'https://www.youtube.com/playlist?list=PL-demo',
+      false
     );
   });
 

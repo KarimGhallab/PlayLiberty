@@ -669,7 +669,32 @@ describe('LibraryPage', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0].headers.get('X-PlayLiberty-Client')).toBe('web');
     await expect(requests[0].json()).resolves.toEqual({
-      url: 'https://www.youtube.com/playlist?list=PL-new'
+      url: 'https://www.youtube.com/playlist?list=PL-new',
+      skipNonMusic: true
+    });
+  });
+
+  it('sends the setting off when the control is turned off before adding', async () => {
+    const { requests } = createSucceeds();
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(screen.getByRole('button', { name: 'Add a playlist' }));
+    fireEvent.change(screen.getByLabelText('Playlist link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PL-new' }
+    });
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Skip non-music parts' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(await screen.findByText('New Mix')).toBeInTheDocument();
+    await waitForDialogExit();
+
+    expect(requests).toHaveLength(1);
+    await expect(requests[0].json()).resolves.toEqual({
+      url: 'https://www.youtube.com/playlist?list=PL-new',
+      skipNonMusic: false
     });
   });
 

@@ -106,11 +106,16 @@ export function ownerNameFrom(
  * caller: it has the problem document and shows the server's `detail` beside the
  * field.
  */
-export function useCreatePlaylist(): UseMutationResult<SyncRun, Error, string> {
+export function useCreatePlaylist(): UseMutationResult<
+  SyncRun,
+  Error,
+  { url: string; skipNonMusic: boolean }
+> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (url: string) => apiPost('/playlists', { url }, SyncRunSchema),
+    mutationFn: (input: { url: string; skipNonMusic: boolean }) =>
+      apiPost('/playlists', input, SyncRunSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['playlists'] });
     }

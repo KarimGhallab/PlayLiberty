@@ -140,7 +140,9 @@ export default function LibraryPage() {
       ) : null}
       <AddPlaylistDialog
         open={dialogOpen}
-        onSubmit={url => createPlaylist.mutate(url)}
+        onSubmit={(url, skipNonMusic) =>
+          createPlaylist.mutate({ url, skipNonMusic })
+        }
         onClose={() => {
           setDialogOpen(false);
           createPlaylist.reset();

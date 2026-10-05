@@ -2,14 +2,23 @@
 
 > Part of the design system. Index and cross-cutting rules: [`DESIGN.md`](../../DESIGN.md).
 
-The dialog the [library](../screens/library.md) hosts, on both clients, and the only one it hosts. One
-field, because `CreatePlaylistInputSchema` has one.
+The dialog the [library](../screens/library.md) hosts, on both clients, and the only one it hosts. One URL
+field and one choice: `CreatePlaylistInputSchema` takes the URL, and whether the playlist skips the non-music
+parts of its videos.
 
 **Two arrangements: a 400px centred dialog on web, a full-width sheet on mobile.** Not one centred box
 at two widths. A sheet is the platform's own idiom for a short task on a phone and a centred card
-fights it, so the two clients get their own idiom over the same scrim and the same one field. The
-measurements are **400 by 255.6px** on web and **388.4 by 234.8px** as a sheet, and the sheet is 20.8px
+fights it, so the two clients get their own idiom over the same scrim and the same field and choice. The
+measurements are **400 by 327.2px** on web and **388.4 by 306.2px** as a sheet, and the sheet is 21px
 shorter because it has no `--space-6` padding, carrying `--space-4` at its bottom instead.
+
+**The skip choice is on by default, and this dialog is the only place it is made.** The setting is frozen at
+creation, so the control is a choice and not a toggle: no later screen changes it, and a person who wants a
+source whole turns it off here. The hint under the label says what it does and that it is chosen once. The
+label carries the name and the hint is reached through `aria-describedby`, so the control's accessible name is
+the four words and not the sentence. The row is `--space-4` above the verbs and **55.3px** tall: a 16px box,
+the name on `--text-sm`, a `--space-1` gap, and the hint on `--text-xs` wrapping to two lines at the card's
+width. It is the same checkbox row the add-a-track dialog uses, so a choice reads the same in both dialogs.
 
 **The sheet is the same dialog with different corners.** Rounded at the top, square at the bottom,
 because a sheet is attached to something and a centred card is not. The edge is `--control-border`
@@ -32,7 +41,7 @@ while being corrected. **The message is `--weight-medium` at `--text-xs`**, the 
 above the body's regular, because a complaint the eye skims past is a complaint the field did not make; the
 weight does not change the line. The 76-character sentence wraps inside the 400px card, so the message is
 **two lines at 350px** and the dialog grows **40.4px** to take it: two 16.2px lines and one `--space-2` gap,
-for an invalid dialog of **296px** against the resting **255.6px**.
+for an invalid dialog of **367.6px** against the resting **327.2px**.
 
 **The working state is a spinner and a changed label, and it costs 43.36px of button.** `Add` becomes
 `Adding` and gains a 16px spinner and an 8px gap, so the button goes from **67.43px to 110.79px**. That

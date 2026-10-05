@@ -201,6 +201,46 @@
       .field.disabled .label {
         color: var(--control-disabled-fg);
       }
+      /* The skip-non-music choice. The tick is the checkbox's own and the label
+       * carries the name, so a hand-drawn mark beside the name would be a mark
+       * that costs a rule, which form-controls forbids. The hint sits outside the
+       * label, so the control's name is the label and the hint is its
+       * description. */
+      .check {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        margin-top: var(--space-4);
+      }
+      .check__row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        cursor: pointer;
+      }
+      .check__box {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        flex-shrink: 0;
+        accent-color: var(--accent);
+      }
+      .check__name {
+        color: var(--ink);
+        font-size: var(--text-sm);
+        line-height: var(--leading-normal);
+      }
+      .check__hint {
+        color: var(--muted);
+        font-size: var(--text-xs);
+        line-height: var(--leading-normal);
+      }
+      .check.disabled .check__row {
+        cursor: not-allowed;
+      }
+      .check.disabled .check__name {
+        color: var(--control-disabled-fg);
+      }
       /* currentColor, not a token: the spinner sits on whatever fill the variant
        * has. */
       /* 16px, and it is the form controls' own number. The spinner is restated
@@ -305,10 +345,10 @@
         <h1 class="page-title">Add a playlist</h1>
         <p class="prose">
           The dialog the library hosts, on both clients, and the only one it
-          hosts. It has one field, because
-          <span class="token-sm">CreatePlaylistInputSchema</span> has one, and
-          two arrangements: a 400px centred dialog on web and a full-width sheet
-          on mobile.
+          hosts. It has one URL field and one choice, because
+          <span class="token-sm">CreatePlaylistInputSchema</span> takes both,
+          and two arrangements: a 400px centred dialog on web and a full-width
+          sheet on mobile.
         </p>
         <p class="prose">
           Drawn as it appears on
@@ -333,7 +373,7 @@
         <div class="cols">
           <div class="col">
             <p class="section-note">At rest, 1056, web</p>
-            <div class="screen" style="position: relative; height: 300px">
+            <div class="screen" style="position: relative; height: 400px">
               <div class="scrim"></div>
               <div
                 class="dialog"
@@ -353,6 +393,21 @@
                     type="url"
                     placeholder="https://youtube.com/playlist?list=..." />
                 </div>
+                <div class="check">
+                  <label class="check__row" for="rest-skip">
+                    <input
+                      class="check__box"
+                      id="rest-skip"
+                      type="checkbox"
+                      checked
+                      aria-describedby="rest-skip-hint" />
+                    <span class="check__name">Skip non-music parts</span>
+                  </label>
+                  <span class="check__hint" id="rest-skip-hint">
+                    Cut the intros, sponsor reads and outros out of the audio.
+                    Chosen once, when the playlist is added.
+                  </span>
+                </div>
                 <div class="dlg__actions">
                   <button class="btn btn-secondary" type="button">
                     Cancel
@@ -365,7 +420,7 @@
 
           <div class="col">
             <p class="section-note">Invalid, and what is wrong</p>
-            <div class="screen" style="position: relative; height: 300px">
+            <div class="screen" style="position: relative; height: 400px">
               <div class="scrim"></div>
               <div
                 class="dialog"
@@ -391,6 +446,21 @@
                     https://youtube.com/playlist?list=...
                   </span>
                 </div>
+                <div class="check">
+                  <label class="check__row" for="bad-skip">
+                    <input
+                      class="check__box"
+                      id="bad-skip"
+                      type="checkbox"
+                      checked
+                      aria-describedby="bad-skip-hint" />
+                    <span class="check__name">Skip non-music parts</span>
+                  </label>
+                  <span class="check__hint" id="bad-skip-hint">
+                    Cut the intros, sponsor reads and outros out of the audio.
+                    Chosen once, when the playlist is added.
+                  </span>
+                </div>
                 <div class="dlg__actions">
                   <button class="btn btn-secondary" type="button">
                     Cancel
@@ -405,7 +475,7 @@
         <div class="cols">
           <div class="col">
             <p class="section-note">Working, 1056, web</p>
-            <div class="screen" style="position: relative; height: 300px">
+            <div class="screen" style="position: relative; height: 400px">
               <div class="scrim"></div>
               <div
                 class="dialog"
@@ -425,6 +495,22 @@
                     type="url"
                     value="https://youtube.com/playlist?list=PL9pQ0NsQ2Vw"
                     disabled />
+                </div>
+                <div class="check disabled">
+                  <label class="check__row" for="busy-skip">
+                    <input
+                      class="check__box"
+                      id="busy-skip"
+                      type="checkbox"
+                      checked
+                      disabled
+                      aria-describedby="busy-skip-hint" />
+                    <span class="check__name">Skip non-music parts</span>
+                  </label>
+                  <span class="check__hint" id="busy-skip-hint">
+                    Cut the intros, sponsor reads and outros out of the audio.
+                    Chosen once, when the playlist is added.
+                  </span>
                 </div>
                 <div class="dlg__actions">
                   <button class="btn btn-secondary" type="button" disabled>
@@ -482,6 +568,21 @@
                     id="sheet-url"
                     type="url"
                     placeholder="https://youtube.com/playlist?list=..." />
+                </div>
+                <div class="check">
+                  <label class="check__row" for="sheet-skip">
+                    <input
+                      class="check__box"
+                      id="sheet-skip"
+                      type="checkbox"
+                      checked
+                      aria-describedby="sheet-skip-hint" />
+                    <span class="check__name">Skip non-music parts</span>
+                  </label>
+                  <span class="check__hint" id="sheet-skip-hint">
+                    Cut the intros, sponsor reads and outros out of the audio.
+                    Chosen once, when the playlist is added.
+                  </span>
                 </div>
                 <div class="dlg__actions">
                   <button class="btn btn-secondary" type="button">

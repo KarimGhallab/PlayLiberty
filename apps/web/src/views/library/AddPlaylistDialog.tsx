@@ -3,14 +3,21 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { CreatePlaylistInputSchema } from '@playliberty/contracts';
 
 import Dialog from '../../shared/components/Dialog';
-import styles from '../../shared/components/Dialog.module.scss';
+import dialogStyles from '../../shared/components/Dialog.module.scss';
+
+import styles from './AddPlaylistDialog.module.scss';
 
 /*
  * The add-playlist dialog, and the library's only door to a new playlist. One
- * field, because `CreatePlaylistInputSchema` has one. The schema is the client's
- * own half of the check and the server's is the other: an empty or malformed URL
- * never leaves the browser, and a URL the server refuses comes back as a problem
- * shown in this same slot. The dialog never invents a message for a refusal.
+ * field and one choice: the URL, because `CreatePlaylistInputSchema` takes it, and
+ * whether the playlist skips the non-music parts of its videos, on by default so
+ * the common case gets the behaviour without hunting for a setting. The setting is
+ * frozen at creation, so this dialog is the only place it is chosen.
+ *
+ * The schema is the client's own half of the check and the server's is the other:
+ * an empty or malformed URL never leaves the browser, and a URL the server refuses
+ * comes back as a problem shown in this same slot. The dialog never invents a
+ * message for a refusal.
  *
  * `problem` is the server's `detail`, passed down from the mutation. While there
  * is none, a submit that the schema refuses writes the same refusal here, so the
@@ -19,12 +26,12 @@ import styles from '../../shared/components/Dialog.module.scss';
  * layers.
  *
  * The shell, the motion and the two-phase presence belong to `Dialog`; this
- * component is the field and the two verbs.
+ * component is the field, the choice and the two verbs.
  */
 
 interface AddPlaylistDialogProps {
   open: boolean;
-  onSubmit: (url: string) => void;
+  onSubmit: (url: string, skipNonMusic: boolean) => void;
   onClose: () => void;
   isWorking?: boolean;
   problem?: string | null;
@@ -39,20 +46,24 @@ export default function AddPlaylistDialog({
 }: AddPlaylistDialogProps) {
   const fieldId = useId();
   const messageId = useId();
+  const checkId = useId();
+  const hintId = useId();
   const field = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState('');
+  const [skipNonMusic, setSkipNonMusic] = useState(true);
   const [invalid, setInvalid] = useState<string | null>(null);
   const [wasOpen, setWasOpen] = useState(open);
 
   /*
-   * A fresh dialog opens on an empty field, so a cancelled paste does not linger
-   * into the next open.
+   * A fresh dialog opens on an empty field and the setting on, so a cancelled
+   * paste and a cancelled choice do not linger into the next open.
    */
   if (open !== wasOpen) {
     setWasOpen(open);
 
     if (open) {
       setUrl('');
+      setSkipNonMusic(true);
       setInvalid(null);
     }
   }
@@ -84,7 +95,7 @@ export default function AddPlaylistDialog({
     }
 
     setInvalid(null);
-    onSubmit(trimmed);
+    onSubmit(trimmed, skipNonMusic);
   }
 
   return (
@@ -97,21 +108,24 @@ export default function AddPlaylistDialog({
       actions={
         <>
           <button
-            className={styles.dialog__secondary}
+            className={dialogStyles.dialog__secondary}
             type="button"
             disabled={isWorking}
             onClick={onClose}>
             Cancel
           </button>
           <button
-            className={styles.dialog__primary}
+            className={dialogStyles.dialog__primary}
             type="button"
             data-loading={isWorking ? 'true' : undefined}
             aria-busy={isWorking}
             onClick={submit}>
             {isWorking ? (
               <>
-                <span className={styles.dialog__spinner} aria-hidden="true" />
+                <span
+                  className={dialogStyles.dialog__spinner}
+                  aria-hidden="true"
+                />
                 Adding
               </>
             ) : (
@@ -121,15 +135,15 @@ export default function AddPlaylistDialog({
         </>
       }>
       <div
-        className={styles.field}
+        className={dialogStyles.field}
         data-invalid={message === null ? undefined : 'true'}
         data-disabled={isWorking ? 'true' : undefined}>
-        <label className={styles.field__label} htmlFor={fieldId}>
+        <label className={dialogStyles.field__label} htmlFor={fieldId}>
           Playlist link
         </label>
         <input
           ref={field}
-          className={styles.field__input}
+          className={dialogStyles.field__input}
           id={fieldId}
           type="url"
           placeholder="https://youtube.com/playlist?list=..."
@@ -148,10 +162,36 @@ export default function AddPlaylistDialog({
           }}
         />
         {message === null ? null : (
-          <span className={styles.field__message} id={messageId} role="alert">
+          <span
+            className={dialogStyles.field__message}
+            id={messageId}
+            role="alert">
             {message}
           </span>
         )}
+      </div>
+      {/*
+       * The one choice, and the only place it is made: the server freezes the
+       * setting at creation, so it cannot be changed later. The label carries the
+       * name and the hint carries what it does and why it does not move.
+       */}
+      <div className={styles.check}>
+        <label className={styles.check__row} htmlFor={checkId}>
+          <input
+            className={styles.check__box}
+            id={checkId}
+            type="checkbox"
+            checked={skipNonMusic}
+            disabled={isWorking}
+            aria-describedby={hintId}
+            onChange={event => setSkipNonMusic(event.target.checked)}
+          />
+          <span className={styles.check__name}>Skip non-music parts</span>
+        </label>
+        <span className={styles.check__hint} id={hintId}>
+          Cut the intros, sponsor reads and outros out of the audio. Chosen
+          once, when the playlist is added.
+        </span>
       </div>
     </Dialog>
   );
