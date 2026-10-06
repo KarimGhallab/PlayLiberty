@@ -54,3 +54,9 @@ anything about playback and a hidden graphic would say nothing at all. The row a
 `data-state`, on purpose: the strip's presence is the state, and the header needs the attribute only
 because an animation beats a plain declaration, so the morph's resting frame has to be a state rule. An
 attribute that carries nothing is chrome.
+
+**A pending removal marks the row.** While a deferred removal waits out its undo window, the row dims to
+`--opacity-disabled`, carries `aria-busy`, and its lane and its play layer are disabled, so a track the
+toast says is going cannot be played or removed again. Cancelling lifts the mark and the row is live again.
+The mark is keyed to the track's id rather than its title, because two rows can read alike, and it lasts
+exactly the window: the commit that follows is the removal the toast named.

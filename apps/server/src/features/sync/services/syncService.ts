@@ -82,7 +82,6 @@ export function startSyncForSource(
       id: randomUUID(),
       ownerAccountId: accountId,
       name: info.sourceId,
-      coverUrl: null,
       provider: Provider.Youtube,
       sourcePlaylistId: info.sourceId,
       sourceUrl: info.url,
@@ -267,7 +266,6 @@ async function reconcile(
 
     const name =
       source.title.trim().length > 0 ? source.title : playlist.sourcePlaylistId;
-    const coverUrl = source.entries[0]?.thumbnailUrl ?? null;
     const finishedAt = new Date().toISOString();
 
     // In one transaction, so a client never reads a finished run beside a
@@ -288,7 +286,6 @@ async function reconcile(
         .update(playlists)
         .set({
           name,
-          coverUrl,
           lastSyncedAt: finishedAt,
           syncStatus: PlaylistSyncStatus.Idle,
           updatedAt: finishedAt

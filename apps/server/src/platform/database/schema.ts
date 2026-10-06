@@ -45,7 +45,6 @@ export const playlists = sqliteTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    coverUrl: text('cover_url'),
     provider: text('provider').$type<Provider>().notNull(),
     sourcePlaylistId: text('source_playlist_id').notNull(),
     // The normalized source URL the adapter produced when the playlist was

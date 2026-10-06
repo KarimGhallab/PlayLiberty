@@ -54,6 +54,105 @@
     }
   }
 
+  &__ground {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-position: center;
+    background-size: cover;
+    opacity: 0.2;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+
+  &__ground[data-ground='sleeve'] {
+    background-color: var(--sleeve, var(--surface-raised));
+  }
+
+  &__ground[data-sleeve='1'] {
+    --sleeve: var(--sleeve-1);
+  }
+
+  &__ground[data-sleeve='2'] {
+    --sleeve: var(--sleeve-2);
+  }
+
+  &__ground[data-sleeve='3'] {
+    --sleeve: var(--sleeve-3);
+  }
+
+  &__ground[data-sleeve='4'] {
+    --sleeve: var(--sleeve-4);
+  }
+
+  &__ground[data-sleeve='5'] {
+    --sleeve: var(--sleeve-5);
+  }
+
+  &__ground[data-sleeve='6'] {
+    --sleeve: var(--sleeve-6);
+  }
+
+  &[data-arrangement='row'][data-ground='true'] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  &[data-arrangement='row'][data-ground='true'] &__ground {
+    mask-image: linear-gradient(90deg, #000 0%, transparent 75%);
+  }
+
+  &[data-arrangement='row'][data-ground='true']:hover &__ground,
+  &[data-arrangement='row'][data-ground='true']:focus-within &__ground {
+    opacity: 0.2;
+  }
+
+  &[data-arrangement='card'][data-ground='true'] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    background: transparent;
+  }
+
+  &[data-arrangement='card'][data-ground='true'] &__ground {
+    opacity: 0.2;
+  }
+
+  /* The playing mark: the same TrackBars equalizer a playing track row draws, on
+   * the cover, with the same scrim so the accent bars land on a known ground. */
+  &__bars-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.42);
+  }
+
+  &__bars {
+    position: absolute;
+    inset-inline: var(--space-3);
+    bottom: var(--space-3);
+    height: 48%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-1);
+  }
+
+  &__bar {
+    display: block;
+    width: 3px;
+    height: 100%;
+    border-radius: 1px;
+    background: var(--accent);
+    transform-origin: bottom;
+    animation: pl-equalize 1400ms linear infinite;
+    transform: scaleY(var(--rest, 1));
+  }
+
+  &[data-pending='true'] {
+    opacity: var(--opacity-disabled);
+  }
+
   &__cover {
     position: relative;
     width: 96px;
@@ -136,8 +235,19 @@
     border-radius: var(--radius-card);
   }
 
-  &__share:hover &__share-tip {
+  &__share:hover &__share-tip,
+  &__share:focus-visible &__share-tip {
     display: block;
+  }
+
+  &__share[data-tip-dismissed='true'] &__share-tip {
+    display: none;
+  }
+
+  &__share:focus-visible {
+    outline: var(--focus-width) solid var(--accent);
+    outline-offset: var(--focus-offset);
+    border-radius: var(--radius-control);
   }
 
   &__share-icon {
@@ -665,5 +775,31 @@
 
   .playlist-header__action-row {
     gap: var(--space-3);
+  }
+}
+
+/* The equalizer's shape, the same keyframe the track row's bars use. It is
+ * redeclared here because a CSS module scopes a keyframe name, so the header
+ * cannot read the track row's; the phase table itself stays the TrackBars
+ * component's. */
+@keyframes pl-equalize {
+  0% {
+    transform: scaleY(0.3);
+  }
+
+  22% {
+    transform: scaleY(1);
+  }
+
+  48% {
+    transform: scaleY(0.5);
+  }
+
+  72% {
+    transform: scaleY(0.78);
+  }
+
+  100% {
+    transform: scaleY(0.3);
   }
 }

@@ -1,14 +1,13 @@
-import { render, screen } from '@testing-library/react';
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { PlaylistTrack } from '@playliberty/contracts';
 import {
   AssociationOrigin,
   Provider,
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
-import type { PlaylistTrack } from '@playliberty/contracts';
 
 import TrackRow from './TrackRow';
 
@@ -44,17 +43,19 @@ function renderRow(options: {
   readonly onFetchWhole?: (trackId: string) => void;
   readonly onRemove?: ((trackId: string) => void) | null;
   readonly busy?: boolean;
+  readonly pending?: boolean;
 }): {
   onPlay: ReturnType<typeof vi.fn>;
   onRemove: ReturnType<typeof vi.fn>;
   unmount: () => void;
+  container: HTMLElement;
 } {
   const onPlay = vi.fn();
   const onRemove = vi.fn();
   const resolvedRemove =
     options.onRemove === null ? undefined : (options.onRemove ?? onRemove);
 
-  const { unmount } = render(
+  const { unmount, container } = render(
     <ul>
       <TrackRow
         association={options.association ?? association()}
@@ -65,14 +66,29 @@ function renderRow(options: {
         onFetchWhole={options.onFetchWhole}
         onRemove={resolvedRemove}
         busy={options.busy ?? false}
+        pending={options.pending ?? false}
       />
     </ul>
   );
 
-  return { onPlay, onRemove, unmount };
+  return { onPlay, onRemove, unmount, container };
 }
 
 describe('TrackRow', () => {
+  it('marks a pending row and disables its lane and play', () => {
+    const { container } = renderRow({ pending: true });
+
+    const row = container.querySelector('li');
+    expect(row).toHaveAttribute('data-pending', 'true');
+    expect(row).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Play Blue In Green' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    ).toBeDisabled();
+  });
+
   it('plays the track when the row is pressed', () => {
     const { onPlay } = renderRow({});
 

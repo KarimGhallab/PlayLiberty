@@ -1,4 +1,4 @@
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import type {
   Page,
@@ -44,16 +44,81 @@ export interface ListPlaylistsQuery {
   offset: number;
 }
 
+/*
+ * The playlist's cover is its first track's thumbnail, so the view carries that
+ * track's id and the client renders the track's own thumbnail route. The first
+ * association is the lowest position; the single read takes one row, and the
+ * batch read groups to the minimum position and joins back to it, so a page of
+ * playlists costs one statement and never fetches the whole association table.
+ */
+function coverTrackId(
+  database: DatabaseHandle,
+  playlistId: string
+): string | null {
+  const row = database.db
+    .select({ trackId: associations.trackId })
+    .from(associations)
+    .where(eq(associations.playlistId, playlistId))
+    .orderBy(asc(associations.position))
+    .limit(1)
+    .get();
+
+  return row?.trackId ?? null;
+}
+
+function coverTrackIds(
+  database: DatabaseHandle,
+  playlistIds: string[]
+): Map<string, string> {
+  const resolved = new Map<string, string>();
+
+  if (playlistIds.length === 0) {
+    return resolved;
+  }
+
+  const firstPositions = database.db
+    .select({
+      playlistId: associations.playlistId,
+      position: sql<number>`min(${associations.position})`.as('first_position')
+    })
+    .from(associations)
+    .where(inArray(associations.playlistId, playlistIds))
+    .groupBy(associations.playlistId)
+    .as('first_positions');
+
+  const rows = database.db
+    .select({
+      playlistId: associations.playlistId,
+      trackId: associations.trackId
+    })
+    .from(associations)
+    .innerJoin(
+      firstPositions,
+      and(
+        eq(associations.playlistId, firstPositions.playlistId),
+        eq(associations.position, firstPositions.position)
+      )
+    )
+    .all();
+
+  for (const row of rows) {
+    resolved.set(row.playlistId, row.trackId);
+  }
+
+  return resolved;
+}
+
 function toPlaylistView(
   row: PlaylistRow,
   access: PlaylistAccess,
-  hasShares: boolean
+  hasShares: boolean,
+  coverTrackId: string | null
 ): Playlist {
   return {
     id: row.id,
     ownerAccountId: row.ownerAccountId,
     name: row.name,
-    coverUrl: row.coverUrl,
+    coverTrackId,
     provider: row.provider,
     sourcePlaylistId: row.sourcePlaylistId,
     syncStatus: row.syncStatus,
@@ -103,6 +168,10 @@ export function listPlaylistsForAccount(
     database,
     rows.map(row => row.id)
   );
+  const covers = coverTrackIds(
+    database,
+    rows.map(row => row.id)
+  );
 
   const counted = database.db
     .select({ total: sql<number>`count(*)` })
@@ -115,7 +184,8 @@ export function listPlaylistsForAccount(
       toPlaylistView(
         playlist,
         accessById.get(playlist.id) ?? 'owner',
-        sharedIds.has(playlist.id)
+        sharedIds.has(playlist.id),
+        covers.get(playlist.id) ?? null
       )
     ),
     total: counted[0]?.total ?? 0,
@@ -153,7 +223,8 @@ export function readPlaylistForAccount(
     playlist: toPlaylistView(
       row,
       access,
-      sharedPlaylistIds(database, [playlistId]).has(playlistId)
+      sharedPlaylistIds(database, [playlistId]).has(playlistId),
+      coverTrackId(database, playlistId)
     )
   };
 }

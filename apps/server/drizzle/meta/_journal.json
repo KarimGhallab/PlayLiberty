@@ -8,6 +8,13 @@
       "when": 1791207288781,
       "tag": "0000_pale_mandrill",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791300446581,
+      "tag": "0001_drop_playlist_cover_url",
+      "breakpoints": true
     }
   ]
 }

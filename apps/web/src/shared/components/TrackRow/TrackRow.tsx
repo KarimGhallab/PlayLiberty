@@ -4,11 +4,11 @@ import {
   IconScissorsOff,
   IconTrash
 } from '@tabler/icons-react';
-import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { TrackFileStatus } from '@playliberty/contracts';
 import type { PlaylistTrack } from '@playliberty/contracts';
+import { TrackFileStatus } from '@playliberty/contracts';
 import {
   formatDuration,
   trackStateLabel,
@@ -69,6 +69,7 @@ interface TrackRowProps {
   readonly onRemove?: (trackId: string) => void;
   /** Whether a row action is in flight, so the menu is not opened onto a no-op. */
   readonly busy?: boolean;
+  readonly pending?: boolean;
 }
 
 interface LaneItem {
@@ -86,7 +87,8 @@ export default function TrackRow({
   onRetry,
   onFetchWhole,
   onRemove,
-  busy = false
+  busy = false,
+  pending = false
 }: TrackRowProps) {
   const { track } = association;
   const stateLabel = trackStateLabel(
@@ -205,7 +207,7 @@ export default function TrackRow({
           aria-label={`Actions for ${track.title}`}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          disabled={downloading || busy}
+          disabled={downloading || busy || pending}
           onClick={() => setMenuOpen(open => !open)}>
           <IconDotsVertical
             className={styles.trackRow__actionIcon}
@@ -240,7 +242,9 @@ export default function TrackRow({
       className={styles.trackRow}
       data-state={current ? (playing ? 'playing' : 'paused') : undefined}
       data-playable={playable ? 'true' : undefined}
-      data-downloading={downloading ? 'true' : undefined}>
+      data-downloading={downloading ? 'true' : undefined}
+      data-pending={pending ? 'true' : undefined}
+      aria-busy={pending ? true : undefined}>
       <span
         className={styles.trackRow__art}
         data-art={artwork === null ? 'no-art' : 'art'}>
@@ -297,6 +301,7 @@ export default function TrackRow({
           type="button"
           className={styles.trackRow__hit}
           aria-label={label}
+          disabled={pending}
           onClick={() => onPlay(track.id)}
         />
       ) : null}

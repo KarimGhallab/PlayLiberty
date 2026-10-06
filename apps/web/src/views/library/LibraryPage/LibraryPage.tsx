@@ -9,6 +9,7 @@ import {
   usePlaylists
 } from '../../../shared/api/queries/queries';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
+import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoToast from '../../../shared/components/UndoToast/UndoToast';
 import {
   UNDO_WINDOW_MS,
@@ -48,9 +49,11 @@ function replacedSentence(replaced: { detail: string | null } | null) {
  * playlist header with its own actions wired, one `PlaylistListItem` per row; the
  * page itself draws the list and nothing that resembles a header.
  *
- * The add control lives in the header and, when there is nothing at all, again on
- * the gallery. Both open one dialog, and the dialog is the screen's only. On
- * success the dialog closes and the list is invalidated, so the new playlist
+ * The add control lives in the header, and on the empty state it is the gallery's
+ * framed action alone: the header's is suppressed there so the one screen where a
+ * person has seen neither control offers one invitation, not two. Both open one
+ * dialog, and the dialog is the screen's only. On success the dialog closes and
+ * the list is invalidated, so the new playlist
  * arrives from the server carrying the state the route wrote rather than from a
  * row this screen invented; the person stays here and watches it appear, rather
  * than being taken into a playlist they have not seen yet.
@@ -82,6 +85,8 @@ export default function LibraryPage() {
       ? (createPlaylist.error.problem?.detail ?? null)
       : null;
 
+  const isEmpty = playlists.isSuccess && playlists.data.items.length === 0;
+
   /*
    * The dialog reports the end of its exit, which is the moment to drop anything
    * it was holding. Success is the one close the dialog does not initiate, so the
@@ -100,23 +105,28 @@ export default function LibraryPage() {
     <main className={styles.library}>
       <div className={styles.library__head}>
         <h1 className={styles.library__title}>PlayLiberty</h1>
-        <button
-          type="button"
-          className={styles.library__add}
-          onClick={() => setDialogOpen(true)}>
-          <IconPlus
-            className={styles.library__addIcon}
-            aria-hidden="true"
-            focusable="false"
-          />
-          Add a playlist
-        </button>
+        {isEmpty ? null : (
+          <button
+            type="button"
+            className={styles.library__add}
+            onClick={() => setDialogOpen(true)}>
+            <IconPlus
+              className={styles.library__addIcon}
+              aria-hidden="true"
+              focusable="false"
+            />
+            Add a playlist
+          </button>
+        )}
       </div>
       {playlists.isPending ? <LibrarySkeleton /> : null}
       {playlists.isError ? (
-        <p className={styles.library__note} role="alert">
-          Playlists could not be loaded.
-        </p>
+        <ReadFailure
+          message="Playlists could not be loaded."
+          error={playlists.error}
+          onRetry={() => void playlists.refetch()}
+          retrying={playlists.isFetching}
+        />
       ) : null}
       {playlists.isSuccess && playlists.data.items.length === 0 ? (
         <EmptyGallery onAdd={() => setDialogOpen(true)} />
@@ -131,6 +141,7 @@ export default function LibraryPage() {
                   directoryItems,
                   playlist.ownerAccountId
                 )}
+                pending={deferred.pending?.id === playlist.id}
                 defer={deferred.defer}
                 onShuffle={() => shufflePlaylist(playlist)}
               />

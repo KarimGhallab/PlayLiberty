@@ -14,7 +14,12 @@ describe('useDeferredAction', () => {
     const { result } = renderHook(() => useDeferredAction(1000));
 
     act(() =>
-      result.current.defer({ message: 'Removed track', detail: 'x', commit })
+      result.current.defer({
+        id: 'x',
+        message: 'Removed track',
+        detail: 'x',
+        commit
+      })
     );
 
     expect(commit).not.toHaveBeenCalled();
@@ -32,7 +37,12 @@ describe('useDeferredAction', () => {
     const { result } = renderHook(() => useDeferredAction(1000));
 
     act(() =>
-      result.current.defer({ message: 'Removed track', detail: 'x', commit })
+      result.current.defer({
+        id: 'x',
+        message: 'Removed track',
+        detail: 'x',
+        commit
+      })
     );
     act(() => result.current.cancel());
     act(() => vi.advanceTimersByTime(5000));
@@ -48,10 +58,20 @@ describe('useDeferredAction', () => {
     const { result } = renderHook(() => useDeferredAction(1000));
 
     act(() =>
-      result.current.defer({ message: 'first', detail: null, commit: first })
+      result.current.defer({
+        id: 'first',
+        message: 'first',
+        detail: null,
+        commit: first
+      })
     );
     act(() =>
-      result.current.defer({ message: 'second', detail: null, commit: second })
+      result.current.defer({
+        id: 'second',
+        message: 'second',
+        detail: null,
+        commit: second
+      })
     );
     act(() => vi.advanceTimersByTime(1000));
 
@@ -67,6 +87,7 @@ describe('useDeferredAction', () => {
 
     act(() =>
       result.current.defer({
+        id: 'a',
         message: 'Deleting playlist',
         detail: 'A',
         commit: first
@@ -77,6 +98,7 @@ describe('useDeferredAction', () => {
 
     act(() =>
       result.current.defer({
+        id: 'b',
         message: 'Deleting playlist',
         detail: 'B',
         commit: second
@@ -100,6 +122,7 @@ describe('useDeferredAction', () => {
 
     act(() =>
       result.current.defer({
+        id: 'a',
         message: 'Deleting playlist',
         detail: 'A',
         commit: vi.fn()
@@ -107,6 +130,7 @@ describe('useDeferredAction', () => {
     );
     act(() =>
       result.current.defer({
+        id: 'a',
         message: 'Deleting playlist',
         detail: 'A',
         commit: vi.fn()
@@ -114,5 +138,30 @@ describe('useDeferredAction', () => {
     );
 
     expect(result.current.replaced).toBeNull();
+  });
+
+  it('treats the same name on a different subject as a replacement', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useDeferredAction(1000));
+
+    act(() =>
+      result.current.defer({
+        id: 'playlist-a',
+        message: 'Deleting playlist',
+        detail: 'Same Name',
+        commit: vi.fn()
+      })
+    );
+    act(() =>
+      result.current.defer({
+        id: 'playlist-b',
+        message: 'Deleting playlist',
+        detail: 'Same Name',
+        commit: vi.fn()
+      })
+    );
+
+    expect(result.current.replaced?.id).toBe('playlist-a');
+    expect(result.current.pending?.id).toBe('playlist-b');
   });
 });

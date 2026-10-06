@@ -1,0 +1,48 @@
+/*
+ * A failed blocking read: the sentence, and the one control that retries it. The
+ * sentence is the note colour the surfaces already use, so the failure reads as
+ * the same kind of text as the loading and empty notes around it.
+ */
+.read-failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+
+  &__say {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  /* The secondary control the dialogs already draw, restated here so this
+   * surface does not depend on another specimen's stylesheet. */
+  &__retry {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    height: var(--control-height);
+    padding: 0 var(--space-5);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      border-color: var(--muted);
+    }
+
+    &:disabled {
+      cursor: progress;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+}

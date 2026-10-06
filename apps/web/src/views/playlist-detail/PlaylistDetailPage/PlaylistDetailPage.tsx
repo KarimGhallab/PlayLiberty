@@ -27,6 +27,7 @@ import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import PlaylistHeader from '../../../shared/components/PlaylistHeader/PlaylistHeader';
 import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/PlaylistNotFound';
 import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/PlaylistSkipSetting';
+import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import RenamePlaylistDialog from '../../../shared/components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../../../shared/components/SharePlaylistDialog/SharePlaylistDialog';
 import SyncError from '../../../shared/components/SyncError/SyncError';
@@ -201,6 +202,7 @@ export default function PlaylistDetailPage() {
 
   const deletePlaylist = (): void => {
     deferred.defer({
+      id: playlistId,
       message: 'Deleting playlist',
       detail: playlist.data?.name ?? null,
       commit: () =>
@@ -224,6 +226,7 @@ export default function PlaylistDetailPage() {
         .title ?? 'Track';
 
     deferred.defer({
+      id: trackId,
       message: 'Removing track',
       detail: title,
       commit: () => removeTrack.mutate(trackId)
@@ -288,6 +291,7 @@ export default function PlaylistDetailPage() {
   }, [settingRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
   const isQueue = queuePlaylistId === playlistId;
+  const playlistPending = deferred.pending?.id === playlistId;
   const playingThis = isPlaying && isQueue;
 
   /*
@@ -361,9 +365,11 @@ export default function PlaylistDetailPage() {
               ownerName={ownerName}
               arrangement={isMobile ? 'row' : 'card'}
               heading
+              ground
               onPlay={playPlaylist}
               playing={playingThis}
               current={isQueue}
+              pending={playlistPending}
               onSkipBack={skipPrevious}
               onSkipNext={skipNext}
               hasNext={hasNext}
@@ -446,9 +452,12 @@ export default function PlaylistDetailPage() {
             <p className={styles.playlistDetail__note}>Loading tracks.</p>
           ) : null}
           {tracks.isError ? (
-            <p className={styles.playlistDetail__note} role="alert">
-              Tracks could not be loaded.
-            </p>
+            <ReadFailure
+              message="Tracks could not be loaded."
+              error={tracks.error}
+              onRetry={() => void tracks.refetch()}
+              retrying={tracks.isFetching}
+            />
           ) : null}
           {neverSynced && tracks.isSuccess && tracks.data.length === 0 ? (
             <EmptyState
@@ -470,6 +479,10 @@ export default function PlaylistDetailPage() {
                   association={association}
                   current={association.track.id === currentId}
                   playing={isPlaying}
+                  pending={
+                    playlistPending ||
+                    deferred.pending?.id === association.track.id
+                  }
                   onPlay={playTrack}
                   onRetry={canWrite ? id => retry.mutate(id) : undefined}
                   onFetchWhole={

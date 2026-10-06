@@ -37,6 +37,7 @@ interface SeededTrack {
   accountId: string;
   playlistId: string;
   trackId: string;
+  videoId: string;
 }
 
 let context: TestContext | undefined;
@@ -69,6 +70,7 @@ function seedTrack(
   const accountId = createAccount(database);
   const playlistId = randomUUID();
   const trackId = randomUUID();
+  const videoId = `video-${trackId}`;
 
   database.db
     .insert(playlists)
@@ -76,7 +78,6 @@ function seedTrack(
       id: playlistId,
       ownerAccountId: accountId,
       name: 'Playlist',
-      coverUrl: null,
       provider: Provider.Youtube,
       sourcePlaylistId: `source-${playlistId}`
     })
@@ -87,7 +88,7 @@ function seedTrack(
     .values({
       id: trackId,
       provider: Provider.Youtube,
-      videoId: `video-${trackId}`,
+      videoId,
       title: 'Track',
       durationSeconds: null,
       thumbnailPath: options.thumbnailPath ?? null,
@@ -107,7 +108,7 @@ function seedTrack(
     })
     .run();
 
-  return { accountId, playlistId, trackId };
+  return { accountId, playlistId, trackId, videoId };
 }
 
 describe('trackService', () => {

@@ -52,7 +52,7 @@ function playlistJson(skipNonMusic: boolean) {
     id: 'playlist-1',
     ownerAccountId: 'account-1',
     name: 'Rain On The Window',
-    coverUrl: null,
+    coverTrackId: null,
     provider: 'youtube',
     sourcePlaylistId: 'PL-demo',
     syncStatus: 'idle',
@@ -192,6 +192,50 @@ describe('PlaylistDetailPage', () => {
       )
       .filter(title => title !== 'this playlist');
     expect(titles).toEqual(['Blue In Green', 'Naima']);
+  });
+
+  /*
+   * The header's shuffle presses on the queue's own playlist, so the detail's
+   * control is pressed while this playlist is the queue and unpressed while the
+   * queue is another one, even though the player is shuffled either way.
+   */
+  it('presses the header shuffle while this playlist is the queue', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
+
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('leaves the header shuffle unpressed while the queue is another playlist', async () => {
+    /* A shuffled foreign queue, so only the per-playlist half can leave this
+     * header unpressed. */
+    usePlayerStore.getState().startQueue(
+      'other-playlist',
+      [
+        {
+          id: 'other-track',
+          title: 'Elsewhere',
+          playlistId: 'other-playlist',
+          playlistName: 'Elsewhere',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      'other-track',
+      true
+    );
+
+    renderDetail();
+
+    expect(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('builds the queue from the pressed track and starts there', async () => {
@@ -381,6 +425,86 @@ describe('PlaylistDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
+  /*
+   * The row the toast names is marked while the removal waits: dimmed, busy, and
+   * its play and lane disabled, so a track that is going cannot be played or
+   * removed again. Cancel lifts the mark and the row is live again.
+   */
+  it('marks a track pending while its removal waits, and lifts it on Cancel', async () => {
+    const { container } = renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Blue In Green' })
+    );
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'Remove from playlist' })
+    );
+
+    expect(container.querySelector('li[data-pending="true"]')).toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Play Blue In Green' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(container.querySelector('li[data-pending="true"]')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Play Blue In Green' })
+    ).toBeEnabled();
+  });
+
+  /*
+   * The header is the target of the playlist's own deferred delete, so it wears
+   * the same mark: dimmed and busy, its door and controls disabled.
+   */
+  it('marks the header pending while its delete waits', async () => {
+    const { container } = renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+
+    const header = container.querySelector('[data-arrangement="card"]');
+    expect(header).toHaveAttribute('data-pending', 'true');
+    expect(header).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeDisabled();
+  });
+
+  /*
+   * The playlist's own delete takes its tracks with it: every row wears the same
+   * mark, so a track that cannot survive its playlist's deletion stays unplayable
+   * while the window waits.
+   */
+  it('marks the track rows pending while the playlist delete waits', async () => {
+    const { container } = renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+
+    /* The header's mark reaches every row, not only the header itself. */
+    expect(
+      container.querySelectorAll('li[data-pending="true"]').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('button', { name: 'Play Blue In Green' })
+    ).toBeDisabled();
+  });
+
   it('cancels a deferred removal', async () => {
     renderDetail();
 
@@ -446,6 +570,53 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.getByRole('button', { name: 'Can edit' })
     ).toBeInTheDocument();
+  });
+
+  it('recovers the share dialog when its failed read is retried', async () => {
+    let attempts = 0;
+    server.use(
+      http.get(
+        'http://localhost:3000/api/v1/playlists/playlist-1/shares',
+        () => {
+          attempts += 1;
+
+          if (attempts === 1) {
+            return HttpResponse.json(
+              {
+                type: 'about:blank',
+                title: 'Service unavailable',
+                status: 503,
+                detail: 'The shares are unavailable.',
+                code: 'service_unavailable'
+              },
+              { status: 503 }
+            );
+          }
+
+          return HttpResponse.json([]);
+        }
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
+
+    expect(
+      await screen.findByText('The shares are unavailable.')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    /* The dialog's body arrives: the directory's accounts, the reader left out. */
+    expect(await screen.findByText('Ada')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Try again' })
+    ).not.toBeInTheDocument();
   });
 
   it('names the playlist from the playlist read', async () => {
@@ -553,9 +724,74 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     expect(
-      await screen.findByText('Tracks could not be loaded.')
+      await screen.findByText('The tracks are unavailable.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
     ).toBeInTheDocument();
     expect(screen.queryByText('No tracks yet.')).not.toBeInTheDocument();
+  });
+
+  it('recovers the track list when the failed read is retried', async () => {
+    let attempts = 0;
+    server.use(
+      http.get(
+        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        () => {
+          attempts += 1;
+
+          if (attempts === 1) {
+            return HttpResponse.json(
+              {
+                type: 'about:blank',
+                title: 'Service unavailable',
+                status: 503,
+                detail: 'The tracks are unavailable.',
+                code: 'service_unavailable'
+              },
+              { status: 503 }
+            );
+          }
+
+          return HttpResponse.json({
+            items: [
+              {
+                track: {
+                  id: 'track-1',
+                  provider: 'youtube',
+                  videoId: 'video-1',
+                  title: 'Blue In Green',
+                  durationSeconds: 337,
+                  skipNonMusic: true,
+                  thumbnailPath: null,
+                  fileStatus: 'stored',
+                  sourceStatus: 'available',
+                  failureReason: null,
+                  createdAt: '2026-09-01T00:00:00.000Z',
+                  updatedAt: '2026-09-29T12:00:00.000Z'
+                },
+                origin: 'remote',
+                position: 0
+              }
+            ],
+            total: 1,
+            limit: 50,
+            offset: 0
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    await screen.findByText('The tracks are unavailable.');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Play Blue In Green' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Try again' })
+    ).not.toBeInTheDocument();
   });
 
   it('shows the not-found state and no header when the playlist 404s', async () => {
@@ -667,7 +903,7 @@ describe('PlaylistDetailPage', () => {
           id: 'playlist-1',
           ownerAccountId: 'account-1',
           name: 'Rain On The Window',
-          coverUrl: null,
+          coverTrackId: null,
           provider: 'youtube',
           sourcePlaylistId: 'PL-demo',
           syncStatus: 'idle',
@@ -752,7 +988,7 @@ describe('PlaylistDetailPage', () => {
               id: 'playlist-1',
               ownerAccountId: 'account-1',
               name: 'Rain On The Window',
-              coverUrl: null,
+              coverTrackId: null,
               provider: 'youtube',
               sourcePlaylistId: 'PL-demo',
               syncStatus: 'idle',
@@ -768,7 +1004,7 @@ describe('PlaylistDetailPage', () => {
               id: 'playlist-9',
               ownerAccountId: 'account-1',
               name: 'Night Bus',
-              coverUrl: null,
+              coverTrackId: null,
               provider: 'youtube',
               sourcePlaylistId: 'PL-two',
               syncStatus: 'idle',

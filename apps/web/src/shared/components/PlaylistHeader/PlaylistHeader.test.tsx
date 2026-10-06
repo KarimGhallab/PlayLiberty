@@ -65,7 +65,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     id: 'playlist-1',
     ownerAccountId: 'account-1',
     name: 'Rain On The Window',
-    coverUrl: null,
+    coverTrackId: null,
     provider: Provider.Youtube,
     sourcePlaylistId: 'PL-demo',
     syncStatus: PlaylistSyncStatus.Idle,
@@ -225,6 +225,109 @@ describe('PlaylistHeader', () => {
     expect(index).toBeLessThanOrEqual(6);
   });
 
+  it('draws the cover from the first track thumbnail when the playlist has one', async () => {
+    const { container } = renderHeader(playlist({ coverTrackId: 'track-9' }));
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    /* The cover is the track's own route, not a third-party URL. */
+    expect(container.querySelector('[data-art="art"]')).not.toBeNull();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/v1/tracks/track-9/thumbnail'
+    );
+  });
+
+  it('falls back to the sleeve when the cover image fails to load', async () => {
+    const { container } = renderHeader(playlist({ coverTrackId: 'track-9' }));
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const image = container.querySelector('img');
+    expect(image).not.toBeNull();
+    fireEvent.error(image as HTMLImageElement);
+
+    /* No empty box: the failed image becomes the sleeve. */
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('[data-art="no-art"]')).not.toBeNull();
+    expect(container.querySelector('[data-sleeve]')).not.toBeNull();
+  });
+
+  it('draws the cover as a blurred ground behind the row when asked', async () => {
+    const { container } = renderHeader(
+      playlist({ coverTrackId: 'track-9' }),
+      null,
+      { ground: true }
+    );
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const ground = container.querySelector(
+      '[data-ground="art"]'
+    ) as HTMLElement | null;
+    expect(ground).not.toBeNull();
+    /* The ground is the full cover, blurred by the stylesheet, not the small
+     * derivative the server used to write. */
+    expect(ground?.style.backgroundImage).toContain(
+      '/tracks/track-9/thumbnail'
+    );
+    expect(ground?.style.backgroundImage).not.toContain('size=small');
+  });
+
+  it('gives the ground the sleeve hue when the playlist has no cover', async () => {
+    const { container } = renderHeader(playlist(), null, { ground: true });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const ground = container.querySelector('[data-ground="sleeve"]');
+    expect(ground).not.toBeNull();
+    expect(ground?.getAttribute('data-sleeve')).not.toBeNull();
+  });
+
+  it('draws the cover as a ground behind the card when asked', async () => {
+    const { container } = renderHeader(
+      playlist({ coverTrackId: 'track-9' }),
+      null,
+      { arrangement: 'card', ground: true }
+    );
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    /* The card is marked as grounded, so its own surface drops and the ground
+     * shows through it. */
+    expect(
+      container
+        .querySelector('[data-arrangement="card"]')
+        ?.getAttribute('data-ground')
+    ).toBe('true');
+
+    const ground = container.querySelector(
+      '[data-ground="art"]'
+    ) as HTMLElement | null;
+    expect(ground).not.toBeNull();
+    expect(ground?.style.backgroundImage).toContain(
+      '/tracks/track-9/thumbnail'
+    );
+  });
+
+  it('marks the playing row with the equalizer bars', async () => {
+    const { container } = renderHeader(playlist(), null, {
+      current: true,
+      playing: true
+    });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(container.querySelector('[aria-label="Playing"]')).not.toBeNull();
+  });
+
+  it('draws no playing mark on a row that is not the queue', async () => {
+    const { container } = renderHeader(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
+  });
+
   it('marks the sync state on the item so the cover can carry its tone', async () => {
     renderHeader(playlist({ syncStatus: PlaylistSyncStatus.Error }));
 
@@ -364,6 +467,123 @@ describe('PlaylistHeader', () => {
       Array.from(group?.children ?? []).indexOf(menuAnchor as Element)
     );
     expect(shuffle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  /*
+   * The pressed state is the player's shuffle AND this playlist being the queue.
+   * A row that is not the queue reports unpressed even while the player is
+   * shuffled, so a reader can tell which playlist the shuffle belongs to.
+   */
+  it('leaves a row unpressed while the player is shuffled on another playlist', async () => {
+    renderHeader(playlist(), null, {
+      onShuffle: () => undefined,
+      shuffled: true
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('presses the shuffle while the player is shuffled and this playlist is the queue', async () => {
+    renderHeader(playlist(), null, {
+      onShuffle: () => undefined,
+      shuffled: true,
+      current: true
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  /*
+   * A deferred removal marks the row: dimmed through `data-pending`, `aria-busy`,
+   * and every door and control disabled, so the thing the toast says is going
+   * cannot still be opened, played, shuffled or acted on.
+   */
+  it('marks a pending row and disables every door and control', async () => {
+    const { container } = renderHeader(playlist(), null, {
+      onOpen: () => undefined,
+      onPlay: () => undefined,
+      onShuffle: () => undefined,
+      onSync: () => undefined,
+      pending: true
+    });
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    const row = container.querySelector('[data-arrangement="row"]');
+    expect(row).toHaveAttribute('data-pending', 'true');
+    expect(row).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    ).toBeDisabled();
+  });
+
+  /*
+   * The share tooltip is WCAG 1.4.13 content: the glyph's meaning has to be
+   * available to a keyboard or touch user, not only a pointer. The reveal itself
+   * is `:hover` and `:focus-visible` in the stylesheet, which jsdom does not
+   * compute, so these hold the two things the component owns: the mark is a tab
+   * stop, and Escape's dismissal flag outranks the reveal and lifts on the next
+   * focus or hover.
+   */
+  it('puts the share indicator in the tab order', async () => {
+    renderHeader(playlist());
+
+    const mark = await screen.findByRole('img', { name: 'Private playlist' });
+    expect(mark).toHaveAttribute('tabindex', '0');
+
+    mark.focus();
+    expect(mark).toHaveFocus();
+  });
+
+  it('dismisses the share tooltip on Escape and reveals it again on the next focus', async () => {
+    renderHeader(playlist());
+
+    const mark = await screen.findByRole('img', { name: 'Private playlist' });
+    mark.focus();
+    expect(mark).not.toHaveAttribute('data-tip-dismissed');
+
+    fireEvent.keyDown(mark, { key: 'Escape' });
+    expect(mark).toHaveAttribute('data-tip-dismissed', 'true');
+
+    fireEvent.blur(mark);
+    mark.focus();
+    expect(mark).not.toHaveAttribute('data-tip-dismissed');
+  });
+
+  it('reveals the share tooltip again when the pointer returns to the mark', async () => {
+    renderHeader(playlist());
+
+    const mark = await screen.findByRole('img', { name: 'Private playlist' });
+    fireEvent.focus(mark);
+    fireEvent.keyDown(mark, { key: 'Escape' });
+    expect(mark).toHaveAttribute('data-tip-dismissed', 'true');
+
+    fireEvent.mouseEnter(mark);
+    expect(mark).not.toHaveAttribute('data-tip-dismissed');
+  });
+
+  it('keeps the share tooltip decorative so the state is not read twice', async () => {
+    renderHeader(playlist());
+
+    const mark = await screen.findByRole('img', { name: 'Private playlist' });
+    const tip = mark.querySelector('[role="presentation"]');
+
+    expect(tip).not.toBeNull();
+    expect(tip).toHaveTextContent('Private playlist');
   });
 
   it('has no axe violations', async () => {

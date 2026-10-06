@@ -17,7 +17,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     id: 'playlist-1',
     ownerAccountId: 'account-1',
     name: 'Rain On The Window',
-    coverUrl: null,
+    coverTrackId: null,
     provider: Provider.Youtube,
     sourcePlaylistId: 'PL-demo',
     syncStatus: PlaylistSyncStatus.Idle,

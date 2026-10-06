@@ -34,12 +34,15 @@ import { usePlayerStore } from '../../shared/player/playerStore/playerStore';
  * every item carries, because it is a property of playback and not of a playlist.
  * The item does not own its action, because the press starts a queue from tracks
  * this screen has not read and may have to refuse; the page's `onShuffle` owns
- * both, and the item reads the flag only to press the control.
+ * both, and the item reads the flag and the queue's playlist only to press the
+ * control on the row the queue belongs to.
  */
 
 interface PlaylistListItemProps {
   playlist: Playlist;
   ownerName: string | null;
+  /* Whether a deferred action is about to remove this playlist. */
+  pending: boolean;
   /* Open the page's one deferred-action window. */
   defer: (action: PendingAction) => void;
   /* Start this playlist, shuffled, or turn its shuffle off. */
@@ -49,6 +52,7 @@ interface PlaylistListItemProps {
 export default function PlaylistListItem({
   playlist,
   ownerName,
+  pending,
   defer,
   onShuffle
 }: PlaylistListItemProps) {
@@ -59,9 +63,14 @@ export default function PlaylistListItem({
   const [renameOpen, setRenameOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shuffled = usePlayerStore(state => state.shuffle);
+  const isPlaying = usePlayerStore(state => state.isPlaying);
+  const queuePlaylistId = usePlayerStore(
+    state => state.queue[0]?.playlistId ?? null
+  );
 
   const owner = playlist.access === 'owner';
   const canSync = owner || playlist.access === 'write';
+  const isQueue = queuePlaylistId === playlist.id;
 
   return (
     <>
@@ -76,6 +85,10 @@ export default function PlaylistListItem({
           });
         }}
         onShuffle={onShuffle}
+        ground
+        current={isQueue}
+        playing={isQueue && isPlaying}
+        pending={pending}
         shuffled={shuffled}
         onSync={canSync ? () => sync.mutate() : undefined}
         syncing={sync.isPending}
@@ -85,6 +98,7 @@ export default function PlaylistListItem({
           owner
             ? () =>
                 defer({
+                  id: playlist.id,
                   message: 'Deleting playlist',
                   detail: playlist.name,
                   commit: () => remove.mutate()

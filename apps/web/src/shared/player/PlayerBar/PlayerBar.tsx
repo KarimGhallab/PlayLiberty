@@ -255,7 +255,7 @@ export default function PlayerBar() {
           }}>
           <div
             className={styles.playerBar__fill}
-            style={{ width: `${fraction * 100}%` }}
+            style={{ transform: `scaleX(${fraction})` }}
           />
           <div
             className={styles.playerBar__knob}

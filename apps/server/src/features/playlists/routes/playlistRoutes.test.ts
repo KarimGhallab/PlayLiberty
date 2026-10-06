@@ -73,7 +73,6 @@ function seedPlaylist(
   options: {
     createdAt?: string;
     name?: string;
-    coverUrl?: string | null;
     sourceUrl?: string | null;
     lastSyncedAt?: string | null;
     syncStatus?: PlaylistSyncStatus;
@@ -88,7 +87,6 @@ function seedPlaylist(
       id: playlistId,
       ownerAccountId,
       name: options.name ?? 'Playlist',
-      coverUrl: options.coverUrl ?? null,
       provider: Provider.Youtube,
       sourcePlaylistId: `source-${playlistId}`,
       sourceUrl: options.sourceUrl ?? null,
@@ -1495,7 +1493,6 @@ describe('PATCH /playlists/:id', () => {
     const owner = seedAccount(context.database);
     const playlistId = seedPlaylist(context.database, owner.accountId, {
       name: 'Before',
-      coverUrl: 'https://example.com/cover.jpg',
       sourceUrl: 'https://www.youtube.com/playlist?list=PL1234567890abcdef',
       lastSyncedAt: '2020-06-01T00:00:00.000Z',
       syncStatus: PlaylistSyncStatus.Error,
@@ -1525,7 +1522,6 @@ describe('PATCH /playlists/:id', () => {
     expect(after?.name).toBe('After');
     expect(after?.updatedAt).not.toBe(before?.updatedAt);
     expect(after?.sourceUrl).toBe(before?.sourceUrl);
-    expect(after?.coverUrl).toBe(before?.coverUrl);
     expect(after?.lastSyncedAt).toBe(before?.lastSyncedAt);
     expect(after?.syncStatus).toBe(before?.syncStatus);
     /* Renaming cannot change the setting; only the skip-non-music route can. */
@@ -1546,6 +1542,34 @@ describe('PATCH /playlists/:id', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+
+  it('names the first association as the cover', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const first = seedTrack(context.database);
+    const second = seedTrack(context.database);
+    addAssociation(context.database, {
+      playlistId,
+      trackId: second,
+      origin: AssociationOrigin.Remote,
+      position: 1
+    });
+    addAssociation(context.database, {
+      playlistId,
+      trackId: first,
+      origin: AssociationOrigin.Remote,
+      position: 0
+    });
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}`,
+      owner.pangolinUserId
+    );
+
+    /* The cover is the first track by position, not the last one added. */
+    expect(PlaylistSchema.parse(response.json()).coverTrackId).toBe(first);
   });
 });
 

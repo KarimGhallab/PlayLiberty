@@ -58,7 +58,7 @@ const newPlaylist = {
   id: 'playlist-3',
   ownerAccountId: 'account-1',
   name: 'New Mix',
-  coverUrl: null,
+  coverTrackId: null,
   provider: 'youtube',
   sourcePlaylistId: 'PL-new',
   syncStatus: 'syncing',
@@ -80,7 +80,7 @@ function ownedItem(id: string, name: string) {
     id,
     ownerAccountId: 'account-1',
     name,
-    coverUrl: null,
+    coverTrackId: null,
     provider: 'youtube',
     sourcePlaylistId: `PL-${id}`,
     syncStatus: 'idle',
@@ -103,7 +103,7 @@ const baseItems = [
     id: 'playlist-1',
     ownerAccountId: 'account-1',
     name: 'Rain On The Window',
-    coverUrl: null,
+    coverTrackId: null,
     provider: 'youtube',
     sourcePlaylistId: 'PL-demo',
     syncStatus: 'idle',
@@ -247,6 +247,40 @@ describe('LibraryPage', () => {
     expect(results.violations).toEqual([]);
   });
 
+  /*
+   * The shuffle is a property of the queue, so a row reports pressed only while
+   * the queue is that playlist and shuffle is on. Shuffling one item must leave
+   * every other row unpressed, which is what tells a reader which playlist the
+   * shuffle belongs to.
+   */
+  it('presses only the playlist the queue belongs to', async () => {
+    renderLibraryPage();
+
+    const own = await screen.findByRole('button', {
+      name: 'Shuffle Rain On The Window'
+    });
+    const other = screen.getByRole('button', { name: 'Shuffle Shared Mix' });
+
+    fireEvent.click(own);
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
+
+    expect(own).toHaveAttribute('aria-pressed', 'true');
+    expect(other).toHaveAttribute('aria-pressed', 'false');
+
+    /* A second press on this playlist's own queue turns the shuffle off. */
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(false));
+
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toHaveAttribute('aria-pressed', 'false');
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Shared Mix' })
+    ).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('reserves the shape of the list while the read is pending', async () => {
     /* The read never answers, so the skeleton is the only state on the page. */
     server.use(
@@ -364,7 +398,7 @@ describe('LibraryPage', () => {
                 id: 'playlist-1',
                 ownerAccountId: 'account-1',
                 name: 'Rain On The Window',
-                coverUrl: null,
+                coverTrackId: null,
                 provider: 'youtube',
                 sourcePlaylistId: 'PL-demo',
                 syncStatus: 'idle',
@@ -380,7 +414,7 @@ describe('LibraryPage', () => {
                 id: 'playlist-2',
                 ownerAccountId: 'account-2',
                 name: 'Shared Mix',
-                coverUrl: null,
+                coverTrackId: null,
                 provider: 'youtube',
                 sourcePlaylistId: 'PL-shared',
                 syncStatus: 'idle',
@@ -405,7 +439,7 @@ describe('LibraryPage', () => {
               id: 'playlist-1',
               ownerAccountId: 'account-1',
               name: 'Rain On The Window',
-              coverUrl: null,
+              coverTrackId: null,
               provider: 'youtube',
               sourcePlaylistId: 'PL-demo',
               syncStatus: 'idle',
@@ -458,13 +492,13 @@ describe('LibraryPage', () => {
 
     expect(await screen.findByText('No playlists yet')).toBeInTheDocument();
     /*
-     * The header's control and the gallery's are the same label by design: the
-     * header is chrome in every state and the gallery's is the invitation that
-     * stands in for the list. Both are present here.
+     * One invitation, not two: the header's add is suppressed on the empty state
+     * so the gallery's framed action is the only control, and the two never
+     * duplicate.
      */
     expect(
       screen.getAllByRole('button', { name: 'Add a playlist' })
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
@@ -483,11 +517,74 @@ describe('LibraryPage', () => {
     failedPage();
     renderLibraryPage();
 
+    /* The server's own detail, and the one control that refetches the read. */
     expect(
-      await screen.findByText('Playlists could not be loaded.')
+      await screen.findByText('The library is unavailable.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
     ).toBeInTheDocument();
     expect(screen.queryByText('No playlists yet')).not.toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('shows the fallback sentence when the failed read carries no detail', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists', () =>
+        HttpResponse.json(
+          {
+            type: 'about:blank',
+            title: 'Service unavailable',
+            status: 503,
+            code: 'service_unavailable'
+          },
+          { status: 503 }
+        )
+      )
+    );
+    renderLibraryPage();
+
+    expect(
+      await screen.findByText('Playlists could not be loaded.')
+    ).toBeInTheDocument();
+  });
+
+  it('recovers the library when the failed read is retried', async () => {
+    let attempts = 0;
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists', () => {
+        attempts += 1;
+
+        if (attempts === 1) {
+          return HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Service unavailable',
+              status: 503,
+              detail: 'The library is unavailable.',
+              code: 'service_unavailable'
+            },
+            { status: 503 }
+          );
+        }
+
+        return HttpResponse.json({
+          items: baseItems,
+          total: 1,
+          limit: 50,
+          offset: 0
+        });
+      })
+    );
+    renderLibraryPage();
+
+    await screen.findByText('The library is unavailable.');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Try again' })
+    ).not.toBeInTheDocument();
   });
 
   it('starts the pressed playlist, shuffled, from the library', async () => {
@@ -630,20 +727,16 @@ describe('LibraryPage', () => {
     expect(usePlayerStore.getState().queue[0].id).toBe('track-1');
   });
 
-  it('opens one dialog from the header and the gallery', async () => {
+  it('opens the dialog from the gallery invitation on the empty state', async () => {
     emptyPage();
     renderLibraryPage();
 
     await screen.findByText('No playlists yet');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    const [header, gallery] = screen.getAllByRole('button', {
-      name: 'Add a playlist'
-    });
-    fireEvent.click(gallery);
+    fireEvent.click(screen.getByRole('button', { name: 'Add a playlist' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(header).toBeInTheDocument();
   });
 
   it('submits a valid URL, closes the dialog and stays in the library', async () => {
@@ -778,5 +871,38 @@ describe('LibraryPage', () => {
     const toast = screen.getByRole('status');
     expect(toast).toHaveTextContent('Night Bus');
     expect(toast).toHaveTextContent('“Rain On The Window” will not be deleted');
+  });
+
+  it('marks a playlist pending while its delete waits, and lifts it on Cancel', async () => {
+    const { container } = renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+
+    /* The row the toast names is marked: dimmed, busy, and its door and controls
+     * disabled, so the thing that is going cannot be opened or deleted again. */
+    const row = container.querySelector('[data-arrangement="row"]');
+    expect(row).toHaveAttribute('data-pending', 'true');
+    expect(row).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(row).not.toHaveAttribute('data-pending');
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeEnabled();
   });
 });

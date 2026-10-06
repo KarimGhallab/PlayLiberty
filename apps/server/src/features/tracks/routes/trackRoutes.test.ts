@@ -97,7 +97,6 @@ function seedPlaylist(ownerAccountId: string, skipNonMusic = true): string {
       id: playlistId,
       ownerAccountId,
       name: 'Playlist',
-      coverUrl: null,
       provider: Provider.Youtube,
       sourcePlaylistId: `source-${playlistId}`,
       skipNonMusic

@@ -50,11 +50,6 @@
     flex-shrink: 0;
   }
 
-  &__note {
-    margin: 0;
-    color: var(--muted);
-  }
-
   /* The list's end edge. The page header names the screen and holds the add
    * control, so the first row needs no rule above it; nothing follows the last
    * row, so one hairline closes the list rather than the row's surface running

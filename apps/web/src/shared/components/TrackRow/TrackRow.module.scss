@@ -32,6 +32,11 @@
     }
   }
 
+  &[data-pending='true'] {
+    cursor: default;
+    opacity: var(--opacity-disabled);
+  }
+
   /* In-flight state: the row breathes. The artwork, the text, the duration and
    * the lane dim and restore together, so nothing travels and no glyph run is
    * redrawn, which is the property the whole row is built around. It is slow and

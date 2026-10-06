@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { LiveEvent } from '@playliberty/contracts';
 import {
   AssociationOrigin,
   LiveEventType,
@@ -11,10 +12,9 @@ import {
   TrackSourceStatus,
   UserRole
 } from '@playliberty/contracts';
-import type { LiveEvent } from '@playliberty/contracts';
 
-import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
+import { createTestContext } from '../../app/testing/createTestContext.js';
 import { createFakeYoutube, testVideo } from '../../app/testing/fakeYoutube.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
@@ -75,7 +75,6 @@ function seedPlaylist(
       id,
       ownerAccountId,
       name: 'Playlist',
-      coverUrl: null,
       provider: Provider.Youtube,
       sourcePlaylistId: `source-${id}`
     })

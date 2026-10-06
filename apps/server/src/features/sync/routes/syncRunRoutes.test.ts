@@ -89,7 +89,6 @@ function seedPlaylist(
       id: playlistId,
       ownerAccountId: owner.accountId,
       name: 'Playlist',
-      coverUrl: null,
       provider: Provider.Youtube,
       sourcePlaylistId: `source-${playlistId}`
     })

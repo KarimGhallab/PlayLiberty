@@ -76,7 +76,7 @@ export const PlaylistSchema = z.object({
   id: identifier,
   ownerAccountId: identifier,
   name: z.string(),
-  coverUrl: z.url().nullable(),
+  coverTrackId: identifier.nullable(),
   provider: z.enum(Provider),
   sourcePlaylistId: z.string().min(1),
   syncStatus: z.enum(PlaylistSyncStatus),

@@ -71,6 +71,12 @@ same reasoning one size down puts a 2px `--surface-raised` ring between the seek
 fill, because `--ink` straight onto `--accent` is the pairing this system forbids at 2.73:1 and the ring
 puts the knob back on a surface that measures 13.42:1.
 
+**The fill is scaled, not resized.** The progress is a full-width accent block carrying
+`transform: scaleX(fraction)` from `transform-origin: left center`, and the stylesheet transitions `transform`.
+A `width` transition would lay the bar out on every frame, and the bar is mounted across the app; the scale
+keeps the movement on the compositor and the drawn progress is the same. `border-radius: inherit` keeps the
+track's pill, and the leading cap sits under the knob, so the one radius the scale softens is covered.
+
 **`data-state` is on the bar and it drives two things and not a third.** The artwork's equalizer strip and
 the morph's resting frame read it. The transport does not, and that is where the bar differs from the
 header: the header's steps are absent unless the playlist is playing, because a paused playlist has no

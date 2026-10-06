@@ -1,7 +1,79 @@
 # 03: The library cannot recover from a failed read
 
-**State:** `needs-triage`
+**State:** resolved
 **Category:** `bug`
+
+## Agent Brief
+
+**Category:** bug
+**Summary:** A blocking read failure is a dead end. It draws one sentence, offers no retry, and drops
+the server's `detail`. The library's read is the named instance; the same dead end exists on the detail's
+tracks read and on the share dialog's read.
+
+**Current behavior:**
+When a blocking read fails, the surface replaces its content with a single `role="alert"` sentence and
+stops. There is no control to try again, and the `ApiError` the read threw is discarded, so the server's
+`problem.detail` never reaches the screen. On the library this is the state where the whole product is
+unreachable; the detail's tracks read and the share dialog's read fail in exactly the same way.
+
+**Desired behavior:**
+Every blocking read failure offers a way back. It renders the server's `detail` when the error is an
+`ApiError` that carries one, falling back to the existing sentence otherwise, and it renders one labelled
+retry that refetches the read that failed. On success the retry replaces the failure with the real content:
+the populated list or the empty gallery on the library, the track list on the detail, the dialog's body on
+the share dialog. The retry refetches only the failed read and never reloads the page. It is a real button,
+reachable and operable by keyboard, and named so a screen reader announces it.
+
+**Key interfaces:**
+
+- The read hooks already expose `refetch` and `error`; use them and add no query.
+- `ApiError` carries a nullable `problem.detail` and a `problem.code`; the recovery surface reads the
+  detail through it and falls back when the error is not an `ApiError` or the detail is null.
+- The share dialog's failure can come from either of two reads; its retry refetches both.
+
+**Acceptance criteria:**
+
+- [x] The library's failed read renders the retry and, when the error is an `ApiError` with a detail, that
+      detail; pressing the retry refetches the playlists read and renders the populated list or the empty
+      gallery on success.
+- [x] The detail's failed tracks read does the same for the tracks read and renders the track list on
+      success.
+- [x] The share dialog's failed read does the same for its reads and renders the dialog's body on success.
+- [x] A non-`ApiError` failure, or an `ApiError` with no detail, shows the existing sentence.
+- [x] The retry is a labelled button, reachable and operable by keyboard.
+- [x] Each surface has a test covering the failed read, the detail, and the recovered state after the retry;
+      the existing failed-read tests keep passing.
+- [x] The library design record's state list covers the failed-read state, as it already covers loading,
+      empty and signed-out.
+- [x] `pnpm run build`, `pnpm run lint` and the unit suites pass.
+
+**Out of scope:**
+
+- The failed-sync reassurance on the library row. Issue 01's split is confirmed: the row keeps `Sync failed`
+  plus its link and the detail keeps the reassurance.
+- Automatic retry, backoff or polling. The recovery is one manual press.
+- Localization. The new copy stays plain English like the surrounding code; wiring it into the catalog
+  belongs to spec 11.
+- Making `Sync now` more discoverable, which the critique raises alongside the reassurance and which issue
+  01's split does not own.
+
+## Outcome
+
+Done. A blocking read failure now offers a way back, on all three surfaces.
+
+- A new `ReadFailure` component draws the server's `detail` when the error is an `ApiError` that carries one,
+  the fallback sentence otherwise, and one secondary **Try again** that refetches the read that failed and
+  locks while it works. It is a real button, named by its own word.
+- The library, the playlist detail's tracks read and the share dialog all draw it; the dialog's retry
+  refetches both of its reads.
+- Tests: the component (the detail, the fallback, the retry, the locked state), the library (the detail, the
+  fallback, the recovery), the detail (the detail, the recovery) and the share dialog (the detail, the
+  recovery).
+- Records: [`library.md`](../../design-system/screens/library.md) now has a "The failed read offers a way
+  back" state beside loading, empty and signed-out. The library's now-unused `&__note` style was removed.
+
+Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (328 tests), the full unit suite, the e2e
+suite (27 tests) and `node docs/design/scripts/validate-design-tokens.cjs` all pass. Not committed.
 
 ## Observed
 

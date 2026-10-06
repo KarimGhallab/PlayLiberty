@@ -174,7 +174,7 @@ describe('POST /playlists', () => {
 
     const playlist = await readPlaylist(run.playlistId, 'owner-1');
     expect(playlist.name).toBe('Evening Jazz');
-    expect(playlist.coverUrl).toBe('https://i.ytimg.com/vi/a/hq.jpg');
+    expect(playlist.coverTrackId).not.toBeNull();
     expect(playlist.syncStatus).toBe(PlaylistSyncStatus.Idle);
     expect(playlist.lastSyncedAt).not.toBeNull();
     expect(playlist.trackCount).toBe(2);
@@ -1154,7 +1154,7 @@ describe('a single video source', () => {
     const playlist = await readPlaylist(started.playlistId, 'owner-1');
     expect(playlist.sourcePlaylistId).toBe(videoId);
     expect(playlist.name).toBe('A Song');
-    expect(playlist.coverUrl).toBe(videoEntry.thumbnailUrl);
+    expect(playlist.coverTrackId).not.toBeNull();
     expect(playlist.trackCount).toBe(1);
 
     const rows = readAssociations(started.playlistId);

@@ -26,7 +26,9 @@ import {
   trackCountUnit
 } from '@playliberty/ui-foundation';
 
+import { API_PREFIX } from '../../api/client/client';
 import PlayGlyph from '../PlayGlyph';
+import TrackBars from '../TrackBars';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
 
@@ -87,6 +89,13 @@ interface PlaylistHeaderProps {
    * is not on keeps the single play that starts it.
    */
   current?: boolean;
+  /*
+   * Whether a deferred action is about to remove this playlist. It dims the row,
+   * sets `aria-busy`, and disables every control and door it offers, so the thing
+   * the toast says is going cannot still be opened, renamed, shuffled or deleted
+   * again.
+   */
+  pending?: boolean;
   /* The transport's steps. The pair and `current` together decide whether the
    * transport replaces the standalone play; an absent pair keeps the standalone
    * play, so a consumer that cannot skip does not lose its door. */
@@ -106,6 +115,7 @@ interface PlaylistHeaderProps {
   onDelete?: () => void;
   syncing?: boolean;
   heading?: boolean;
+  ground?: boolean;
   onOpen?: () => void;
   showSyncTime?: boolean;
   now?: Date;
@@ -158,6 +168,7 @@ export default function PlaylistHeader({
   onPlay,
   playing = false,
   current = false,
+  pending = false,
   onSkipBack,
   onSkipNext,
   hasNext = true,
@@ -169,6 +180,7 @@ export default function PlaylistHeader({
   onDelete,
   syncing = false,
   heading = false,
+  ground = false,
   onOpen,
   showSyncTime = false,
   now = new Date()
@@ -179,13 +191,37 @@ export default function PlaylistHeader({
   /* The identity hue a no-artwork cover draws. Derived from the id, so it is the
    * same sleeve wherever this playlist appears and it survives a reload. */
   const sleeve = sleeveIndex(playlist.id);
+  const coverSrc =
+    playlist.coverTrackId === null
+      ? null
+      : `${API_PREFIX}/tracks/${playlist.coverTrackId}/thumbnail`;
+  const [coverFailed, setCoverFailed] = useState(false);
+  const cover = coverFailed ? null : coverSrc;
+
+  const groundElement = ground ? (
+    <span
+      className={styles.playlistHeader__ground}
+      aria-hidden="true"
+      data-ground={cover === null ? 'sleeve' : 'art'}
+      data-sleeve={cover === null ? sleeve : undefined}
+      style={
+        cover === null ? undefined : { backgroundImage: `url("${cover}")` }
+      }
+    />
+  ) : null;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   /* Whether the next open should land on the last item (ArrowUp) or the first. */
   const menuFocusLastRef = useRef(false);
+  const [shareTipDismissed, setShareTipDismissed] = useState(false);
   const { run, endRun } = usePlayPauseMorph(playing);
+
+  /* The cover's failure flag resets when the playlist points at a new track. */
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [playlist.coverTrackId]);
 
   const openFromClick =
     onOpen === undefined
@@ -397,7 +433,7 @@ export default function PlaylistHeader({
         type="button"
         className={styles.playlistHeader__play}
         aria-label={playing ? 'Pause this playlist' : 'Play this playlist'}
-        disabled={!playable}
+        disabled={!playable || pending}
         data-run={run}
         onAnimationEnd={endRun}
         onClick={onPlay}>
@@ -454,8 +490,9 @@ export default function PlaylistHeader({
       <button
         type="button"
         className={styles.playlistHeader__iconBtn}
-        aria-pressed={shuffled}
+        aria-pressed={shuffled && current}
         aria-label={`Shuffle ${playlist.name}`}
+        disabled={pending}
         onClick={onShuffle}>
         <IconArrowsShuffle
           className={styles.playlistHeader__icon}
@@ -475,6 +512,7 @@ export default function PlaylistHeader({
           aria-label={`More actions for ${playlist.name}`}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
+          disabled={pending}
           onClick={() => {
             menuFocusLastRef.current = false;
             setMenuOpen(open => !open);
@@ -543,22 +581,28 @@ export default function PlaylistHeader({
             to="/playlists/$playlistId"
             params={{ playlistId: playlist.id }}
             className={styles.playlistHeader__nameText}
-            title={playlist.name}>
+            title={playlist.name}
+            aria-disabled={pending ? true : undefined}
+            tabIndex={pending ? -1 : undefined}
+            onClick={pending ? event => event.preventDefault() : undefined}>
             {playlist.name}
           </Link>
         )}
         <span
           className={styles.playlistHeader__share}
           data-share={mark.state}
+          data-tip-dismissed={shareTipDismissed ? 'true' : undefined}
           role="img"
-          aria-label={mark.label}>
-          {/*
-           * The indicator is not a control and it sits inside the same name block
-           * as the link, so its state is read with the playlist name already in
-           * earshot. Naming the playlist here too would announce it twice on every
-           * row, the same reason the cover link is hidden; the state is the whole
-           * of what the mark adds, so the name stays out.
-           */}
+          aria-label={mark.label}
+          tabIndex={0}
+          onFocus={() => setShareTipDismissed(false)}
+          onBlur={() => setShareTipDismissed(false)}
+          onMouseEnter={() => setShareTipDismissed(false)}
+          onKeyDown={event => {
+            if (event.key === 'Escape') {
+              setShareTipDismissed(true);
+            }
+          }}>
           <mark.Icon
             className={styles.playlistHeader__shareIcon}
             aria-hidden="true"
@@ -603,18 +647,23 @@ export default function PlaylistHeader({
       <div
         className={styles.playlistHeader}
         data-arrangement="card"
-        data-open={onOpen === undefined ? undefined : 'true'}
-        onClick={openFromClick}
+        data-ground={ground ? 'true' : undefined}
+        data-open={onOpen === undefined || pending ? undefined : 'true'}
+        data-pending={pending ? 'true' : undefined}
+        aria-busy={pending ? true : undefined}
+        onClick={pending ? undefined : openFromClick}
         data-state={playing ? 'playing' : 'paused'}>
+        {groundElement}
         <div
           className={styles.playlistHeader__mart}
-          data-art={playlist.coverUrl === null ? 'no-art' : 'art'}
-          data-sleeve={playlist.coverUrl === null ? sleeve : undefined}>
-          {playlist.coverUrl === null ? null : (
+          data-art={cover === null ? 'no-art' : 'art'}
+          data-sleeve={cover === null ? sleeve : undefined}>
+          {cover === null ? null : (
             <img
               className={styles.playlistHeader__martArt}
-              src={playlist.coverUrl}
+              src={cover}
               alt=""
+              onError={() => setCoverFailed(true)}
             />
           )}
           <div className={styles.playlistHeader__mscrim} aria-hidden="true" />
@@ -635,24 +684,43 @@ export default function PlaylistHeader({
     <div
       className={styles.playlistHeader}
       data-arrangement="row"
-      data-open={onOpen === undefined ? undefined : 'true'}
-      onClick={openFromClick}
+      data-ground={ground ? 'true' : undefined}
+      data-open={onOpen === undefined || pending ? undefined : 'true'}
+      data-pending={pending ? 'true' : undefined}
+      aria-busy={pending ? true : undefined}
+      onClick={pending ? undefined : openFromClick}
       data-state={playing ? 'playing' : 'paused'}>
+      {groundElement}
       <Link
         to="/playlists/$playlistId"
         params={{ playlistId: playlist.id }}
         className={styles.playlistHeader__cover}
         aria-hidden="true"
         tabIndex={-1}
-        data-art={playlist.coverUrl === null ? 'no-art' : 'art'}
-        data-sleeve={playlist.coverUrl === null ? sleeve : undefined}>
-        {playlist.coverUrl === null ? null : (
+        aria-disabled={pending ? true : undefined}
+        onClick={pending ? event => event.preventDefault() : undefined}
+        data-art={cover === null ? 'no-art' : 'art'}
+        data-sleeve={cover === null ? sleeve : undefined}>
+        {cover === null ? null : (
           <img
             className={styles.playlistHeader__art}
-            src={playlist.coverUrl}
+            src={cover}
             alt=""
+            onError={() => setCoverFailed(true)}
           />
         )}
+        {current && playing ? (
+          <>
+            <span
+              className={styles.playlistHeader__barsScrim}
+              aria-hidden="true"
+            />
+            <TrackBars
+              className={styles.playlistHeader__bars}
+              barClassName={styles.playlistHeader__bar}
+            />
+          </>
+        ) : null}
       </Link>
       <div className={styles.playlistHeader__body}>{identity}</div>
       <div className={styles.playlistHeader__actions}>

@@ -1,7 +1,47 @@
 # 07: Make the library read as a personal gallery
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `enhancement`
+
+## Grilling
+
+Settled so far:
+
+- **Q2, the playing mark:** the equalizer strip on the playing row's cover. A state, not a control, so it
+  marks what is playing without implying the row is a transport.
+- **Q3, the empty gallery:** one invitation. Suppress the header's Add on the empty state so the gallery's
+  framed action is the only one, and re-balance the empty state off the top.
+- **Q4, scope:** 07 owns the identity, the playing mark, the empty state and the count line. The shuffle's
+  form and the cover's durability are not 07's (issues 02 and 05).
+- **Q5, the identity move:** dropped. The layout is kept and the item is untouched, so the sync line is not
+  raised and retention stays in the empty state's copy.
+- **Q6, the count line:** kept on its own line. No change.
+- **Q7, the cover-derived ambience:** every row's ground is its own cover, blurred, fading from full
+  strength on the leading edge to nothing across the row. On hover or focus the row keeps its colour and
+  lightens. The ground is per row, not per page.
+- **Q8, the row's ground:** the cover reused, blurred (variant E), chosen over a computed tone.
+- **Q9, a computed tone:** not needed. Dropped with the choice of E, so there is no extraction and no
+  `coverTone` field.
+- **Q10, the fallback:** a no-cover playlist takes the existing `sleeveIndex` hue, so the sleeve and the
+  row's ground are one system.
+
+- **Q11, how the cover becomes the ground:** the small derivative stored beside the cover at fetch time,
+  served as `?size=small`, so no filter runs per row and it ports to mobile. Issue 10 builds it.
+- **Q12, the playing mark against the coloured ground:** the equalizer strip stays the playing mark, and it
+  is the same music-bars animation a playing track row draws, so "playing" reads the same on both screens.
+
+## Outcome
+
+Implemented. The library's rows draw their cover as a blurred ground: the small derivative behind the
+content, full strength at the leading edge and gone across the row, lightening on hover or focus; a
+no-cover row takes the sleeve hue. The playing playlist is marked with the same `TrackBars` equalizer a
+playing track row draws. The empty state offers one invitation: the header's add control is suppressed
+there and the gallery is re-balanced off the top. The layout, the item and the count line are unchanged.
+
+The ground draws the full cover, not the small derivative that was prototyped: the derivative was too
+blurred, so it and its `?size=small` route were dropped, and no filter is applied either.
+
+Verified: `pnpm run build`, `pnpm run lint`, and the unit suites (server 272, web 347).
 
 ## Observed
 

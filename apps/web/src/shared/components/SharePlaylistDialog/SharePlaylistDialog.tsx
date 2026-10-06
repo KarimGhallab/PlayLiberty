@@ -11,6 +11,7 @@ import {
 } from '../../api/queries/queries';
 import Dialog from '../Dialog/Dialog';
 import styles from '../Dialog/Dialog.module.scss';
+import ReadFailure from '../ReadFailure/ReadFailure';
 import shareStyles from './SharePlaylistDialog.module.scss';
 
 /*
@@ -92,9 +93,15 @@ export default function SharePlaylistDialog({
         <p className={shareStyles.share__note}>Loading accounts.</p>
       ) : null}
       {directory.isError || shares.isError ? (
-        <p className={shareStyles.share__note} role="alert">
-          Accounts could not be loaded.
-        </p>
+        <ReadFailure
+          message="Accounts could not be loaded."
+          error={directory.error ?? shares.error}
+          onRetry={() => {
+            void directory.refetch();
+            void shares.refetch();
+          }}
+          retrying={directory.isFetching || shares.isFetching}
+        />
       ) : null}
       {candidates.length === 0 && directory.isSuccess && shares.isSuccess ? (
         <p className={shareStyles.share__note}>

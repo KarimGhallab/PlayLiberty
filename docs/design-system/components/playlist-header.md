@@ -194,18 +194,28 @@ you are not the owner and nothing about what you may do. On a gallery that matte
 rename one row and not the next, and the indicator cannot tell them apart; the overflow can, and does, so
 the level is shown where it acts.
 
-## The tooltip reveals on hover, and the library inherits that
+## The tooltip reveals on hover or focus, and answers Escape
 
 `display: none` at rest rather than `opacity: 0`, because a transparent panel is still in the accessibility
 tree and still takes hit tests. The panel is a child of the indicator it labels, so hovering the panel keeps
 the indicator hovered, satisfying WCAG 1.4.13's hoverable requirement structurally. It carries
 `role="presentation"` and repeats the indicator's accessible name rather than adding to it. The library
 reveals it too, because a component whose markup differs from the component it is a size of is how the cover
-drifted in the first place. This block cannot answer Escape, which 1.4.13 also requires and which is the
-client's job, and on a card none of it fires because there is no hover. The indicator's own name is the state
-alone and not the playlist's: the mark is not a control and sits inside the same name block as the link, so a
-reader has the playlist in earshot when the state is announced, and naming the playlist there would say it
-twice on every row, the same reason the cover link is hidden.
+drifted in the first place.
+
+**The indicator is a tab stop, and the tooltip answers the keyboard, which closes 1.4.13's two remaining
+requirements.** The mark takes `tabindex="0"` and keeps `role="img"` and its name: it is an indicator and not
+a control, so it is focusable without becoming a button. The tip reveals on `:focus-visible` as well as
+`:hover`, so a sighted keyboard user can decode the glyph, and it persists while either holds. Escape on the
+focused mark dismisses it through a flag the component renders as `data-tip-dismissed`, which outranks both
+reveal rules; the flag lifts on blur and on the next focus or hover, so the tip returns. `:focus-visible`
+rather than `:focus` keeps a mouse press from pinning a tip the pointer never asked for, and the mark takes
+the same `--accent` ring every control takes, because a tab stop owes a visible focus indicator. On a card the
+hover half still never fires, but the focus half does, so a keyboard user reads the state there too.
+
+The indicator's own name is the state alone and not the playlist's: the mark is not a control and sits inside
+the same name block as the link, so a reader has the playlist in earshot when the state is announced, and
+naming the playlist there would say it twice on every row, the same reason the cover link is hidden.
 
 The three glyphs do not have equal ink: measured as a share of the 24 unit grid they are 24.39%, 25.83% and
 19.29%, and against the pin's own 5.43% to 28.43% spread the argument collapses, since `user-share` at 19.29%
@@ -265,9 +275,10 @@ overflow button rather than an empty panel. The panel is present only when open,
 tooltip's arrangement: a tooltip labels something already on screen, a menu is not there until asked for.
 
 A gallery puts forty shuffle toggles on one screen, the price of reusing the component exactly. Shuffle is
-playback state rather than playlist state, so forty `aria-pressed` toggles are more state than the screen
-needs; dropping it and keeping it on the player bar and the detail header lost because the item is otherwise
-identical to the header and one exception is easier to notice than forty controls.
+playback state rather than playlist state, and the pressed state is the player's shuffle AND the queue
+belonging to the header's playlist, so only the queue's own row reports pressed. Dropping it and keeping it
+on the player bar and the detail header lost because the item is otherwise identical to the header and one
+exception is easier to notice than forty controls.
 
 **The shuffle starts the playlist it belongs to.** On a header the control is the playlist's own door opened
 shuffled, so pressing it from the library while another playlist plays is not a flag toggled on a queue the
@@ -307,6 +318,18 @@ and it had no mark for that beyond the accent on the play button, which is the c
 radius change, and nothing moves. It is drawn on the card arrangement alone, because the library's item is
 the row, and a row is one of forty where a hairline repeated down a list is texture rather than a glance. On
 the card the block is alone in its column, so the rule reads as one item being active.
+
+## A pending removal marks the row
+
+A deferred destructive action lifts its target into a pending state for the undo window, so the screen does
+not claim a deletion it is not showing. The row dims to `--opacity-disabled`, carries `aria-busy`, and every
+door and control it offers is disabled: the row press and its two links, the play, the shuffle and the
+overflow. The thing the toast says is going cannot be opened, renamed, shuffled or deleted again, and
+cancelling lifts the mark so the row is fully live again.
+
+The mark is keyed to the action's subject and not to its name, because two playlists can share a name; a
+second action replaces the first and the first target's mark lifts with its displaced window. The library's
+item and the detail's card wear the same mark, because they are the same component.
 
 ## Every text pairing here is one the token set already declares
 

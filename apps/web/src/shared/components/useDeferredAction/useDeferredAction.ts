@@ -29,6 +29,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export const UNDO_WINDOW_MS = 6000;
 
 export interface PendingAction {
+  /**
+   * The subject's id: the playlist or the track the action is about. A surface
+   * matches its target by this id and not by `detail`, because `detail` is a name
+   * and two playlists can share one.
+   */
+  readonly id: string;
   /** The sentence the toast shows, in the present tense, e.g. `Deleting “Evening Jazz”`. */
   readonly message: string;
   /** The line under it, e.g. the playlist or track name. */
@@ -60,9 +66,9 @@ interface Windows {
 
 const NO_WINDOW: Windows = { pending: null, replaced: null, windowId: 0 };
 
-/** Two windows for the same sentence and name are one intent, not a replacement. */
+/** Two windows for the same subject and sentence are one intent, not a replacement. */
 function sameIntent(a: PendingAction, b: PendingAction): boolean {
-  return a.message === b.message && a.detail === b.detail;
+  return a.id === b.id && a.message === b.message && a.detail === b.detail;
 }
 
 export function useDeferredAction(durationMs = UNDO_WINDOW_MS): DeferredAction {

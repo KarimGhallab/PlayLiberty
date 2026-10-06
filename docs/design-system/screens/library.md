@@ -220,10 +220,11 @@ against a 137px item, so two would overlap by 33px.
 
 ## Shuffle is on every item
 
-Forty items means forty `aria-pressed` shuffle toggles for one player's shuffle, and shuffle is a property
-of playback rather than of a playlist. Dropping it from the item and keeping it on the player bar and the
-detail screen's header was the alternative, and it lost because the item is otherwise identical to the
-header and one exception is easier to notice than forty controls. The cost is named rather than paid
+Forty items means forty shuffle toggles, and only the row whose playlist the queue belongs to reports
+pressed: shuffle is a property of the queue rather than of a playlist, so a row the queue does not belong
+to is unpressed even while the player is shuffled. Dropping it from the item and keeping it on the player
+bar and the detail screen's header was the alternative, and it lost because the item is otherwise identical
+to the header and one exception is easier to notice than forty controls. The cost is named rather than paid
 quietly. Each toggle is named for its playlist, `Shuffle <name>`, so the forty are distinguishable; the
 component record owns the naming rule and the touch target that goes with it.
 
@@ -299,6 +300,21 @@ The shapes hold `--surface` on `--bg`, the step the track list's own surface tak
 **1.6s**; reduced motion drops the pulse and leaves the shape, and the shape is the part that matters. The
 shapes are `aria-hidden` and the only thing a screen reader hears is the status sentence "Loading playlists.",
 which is why the sentence is still on the page and off screen rather than gone.
+
+## The failed read offers a way back
+
+A blocking read that fails is not a dead end. The library draws the server's own `detail` when the error
+carries one, the fallback sentence "Playlists could not be loaded." when it does not, and one secondary
+**Try again** that refetches the playlists read and nothing else. On success the failure is replaced by the
+real content, the list or the empty gallery, and no reload moves the page: it is one manual press, never an
+automatic retry or a timer.
+
+The control is a real button, so it is reached and pressed by keyboard and announced by its own word rather
+than by an icon. The same surface serves the playlist detail's tracks read and the share dialog's reads,
+which is why it is one component and not three sentences; the dialog's retry refetches both of its reads,
+because either one failing is the same dead end. This is the fourth of the screen's states, beside loading,
+the empty gallery and the list, and it is the one that keeps the promise that a transient fault is a press
+away from the music rather than a wall.
 
 ## The empty gallery
 
