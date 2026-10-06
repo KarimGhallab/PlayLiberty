@@ -52,6 +52,24 @@ describe('PlayerBar', () => {
     expect(screen.getByText('3:00')).toBeInTheDocument();
   });
 
+  /*
+   * The rail is in the fixed bar and always visible, so it is not deferred; it
+   * only decodes off the main thread.
+   */
+  it('async-decodes the artwork without deferring it', () => {
+    const withArt = {
+      ...first,
+      thumbnailPath: '/api/v1/tracks/track-1/thumbnail'
+    };
+    usePlayerStore.getState().startQueue(PLAYLIST, [withArt], withArt.id);
+    const { container } = render(<PlayerBar />);
+
+    const image = container.querySelector('img');
+
+    expect(image).toHaveAttribute('decoding', 'async');
+    expect(image).not.toHaveAttribute('loading', 'lazy');
+  });
+
   it('toggles playback and skips within the queue', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
     render(<PlayerBar />);

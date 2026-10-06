@@ -27,6 +27,22 @@ import {
   TrackThumbnailOutcome
 } from '../types.js';
 
+/*
+ * The media is content-stable, so it is worth caching in the browser and worth
+ * nothing to a shared cache. A track's audio is written once and the track only
+ * becomes playable once stored, so the client never holds a failed one; a
+ * thumbnail is keyed by a video id that never changes and the client only asks
+ * for it once the path is set. Both are `private`, so no shared cache may store
+ * or replay one account's media to another, and both keep their validators, so a
+ * request past the window revalidates into a 304 rather than a re-download.
+ *
+ * The values are the `Cache-Control` string, so they are seconds; `sendFile`'s
+ * `maxAge` option is milliseconds and can only produce `public`, which is why the
+ * header is written here and `cacheControl` is turned off below.
+ */
+const AUDIO_CACHE_CONTROL = 'private, max-age=604800';
+const THUMBNAIL_CACHE_CONTROL = 'private, max-age=2592000';
+
 export function registerTrackRoutes(
   app: FastifyInstance,
   context: AppContext
@@ -91,11 +107,13 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === TrackStreamOutcome.Ok) {
-        return reply.type('audio/mp4').sendFile(result.filePath, {
-          contentType: false,
-          maxAge: 0,
-          immutable: false
-        });
+        return reply
+          .header('Cache-Control', AUDIO_CACHE_CONTROL)
+          .type('audio/mp4')
+          .sendFile(result.filePath, {
+            contentType: false,
+            cacheControl: false
+          });
       }
 
       return exhaust(result);
@@ -128,11 +146,13 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === TrackThumbnailOutcome.Ok) {
-        return reply.type('image/jpeg').sendFile(result.thumbnailPath, {
-          contentType: false,
-          maxAge: 86400,
-          immutable: true
-        });
+        return reply
+          .header('Cache-Control', THUMBNAIL_CACHE_CONTROL)
+          .type('image/jpeg')
+          .sendFile(result.thumbnailPath, {
+            contentType: false,
+            cacheControl: false
+          });
       }
 
       return exhaust(result);

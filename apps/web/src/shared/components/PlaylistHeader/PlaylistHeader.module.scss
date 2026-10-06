@@ -130,7 +130,7 @@
   &__bars {
     position: absolute;
     inset-inline: var(--space-3);
-    bottom: var(--space-3);
+    bottom: 0px;
     height: 48%;
     display: flex;
     align-items: flex-end;
@@ -760,6 +760,18 @@
 @media (max-width: 767px) {
   .playlist-header {
     padding: var(--space-3);
+  }
+
+  .playlist-header[data-arrangement='row'][data-heading='true'] {
+    flex-wrap: wrap;
+  }
+
+  .playlist-header[data-arrangement='row'][data-heading='true']
+    .playlist-header__actions {
+    flex-basis: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   /* On a phone the quiet controls grow to the 44px target the system owes a

@@ -28,7 +28,6 @@ CREATE TABLE `playlist` (
 	`id` text PRIMARY KEY NOT NULL,
 	`owner_account_id` text NOT NULL,
 	`name` text NOT NULL,
-	`cover_url` text,
 	`provider` text NOT NULL,
 	`source_playlist_id` text NOT NULL,
 	`source_url` text,

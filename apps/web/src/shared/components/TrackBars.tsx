@@ -3,6 +3,12 @@
  * 3px wide at a 7px pitch, growing from the bottom on `transform: scaleY` so a
  * moving bar relayouts nothing. The strip reaches half way up the tile.
  *
+ * The strip is the current track's mark, drawn while the queue plays and held
+ * still while it pauses, so its `role="img"` label carries that state: "Playing"
+ * while the queue runs and "Paused" while it is held. The label is the state and
+ * not the row's presence, because the row is the current track either way, and
+ * the header's mark takes the same rule from the same component.
+ *
  * The phase table is not hand-written. Phase i is `(i * stride) mod M` where
  * `M = 2n - 1`, and the delay is `-(phase / M) * period`. `M = 2n - 1` rather
  * than `n` is what stops the phases being an evenly spaced staircase, which reads
@@ -28,11 +34,20 @@ interface TrackBarsProps {
   /** The class names the host's stylesheet gives the strip and its bars. */
   readonly className: string;
   readonly barClassName: string;
+  /** Whether the queue is playing, which decides the announced state. */
+  readonly playing: boolean;
 }
 
-export default function TrackBars({ className, barClassName }: TrackBarsProps) {
+export default function TrackBars({
+  className,
+  barClassName,
+  playing
+}: TrackBarsProps) {
   return (
-    <span className={className} role="img" aria-label="Playing">
+    <span
+      className={className}
+      role="img"
+      aria-label={playing ? 'Playing' : 'Paused'}>
       {RESTS.map((rest, index) => (
         <span
           key={rest + ':' + DELAYS[index]}

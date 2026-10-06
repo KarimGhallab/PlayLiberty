@@ -30,11 +30,12 @@ function names(database: DatabaseHandle, query: string): string[] {
  * starts from an empty database, runs the real migrator, and checks the schema
  * the initial migration carries.
  *
- * There is a single migration because the app is not live and the history was
- * squashed, so there is no earlier state to migrate from and no backfill to
- * exercise. The columns the squashed history had added one at a time are still
- * asserted, because that is what proves the squash kept the whole schema rather
- * than the first draft.
+ * There is a single migration because the app is not live: while no database is
+ * deployed there is no earlier state to migrate from and no backfill to
+ * exercise, so a schema change regenerates the initial migration instead of
+ * appending to it. The columns the schema carries are still asserted, because
+ * that is what proves a regenerated initial migration creates the whole schema
+ * rather than the first draft.
  */
 describe('runMigrations', () => {
   it('applies the initial migration to an empty database', async () => {

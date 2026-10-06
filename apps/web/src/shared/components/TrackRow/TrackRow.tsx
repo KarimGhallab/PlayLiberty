@@ -5,7 +5,7 @@ import {
   IconTrash
 } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
@@ -79,7 +79,7 @@ interface LaneItem {
   readonly run: () => void;
 }
 
-export default function TrackRow({
+function TrackRow({
   association,
   current,
   playing,
@@ -249,7 +249,13 @@ export default function TrackRow({
         className={styles.trackRow__art}
         data-art={artwork === null ? 'no-art' : 'art'}>
         {artwork === null ? null : (
-          <img className={styles.trackRow__image} src={artwork} alt="" />
+          <img
+            className={styles.trackRow__image}
+            src={artwork}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
         )}
         {current ? (
           <span className={styles.trackRow__scrim} aria-hidden="true" />
@@ -258,6 +264,7 @@ export default function TrackRow({
           <TrackBars
             className={styles.trackRow__bars}
             barClassName={styles.trackRow__bar}
+            playing={playing}
           />
         ) : null}
       </span>
@@ -308,3 +315,11 @@ export default function TrackRow({
     </li>
   );
 }
+
+/*
+ * Memoized so a parent render skips a row whose own props did not change. The
+ * detail page holds the callbacks it passes stable, which is what makes the
+ * comparison meaningful: without both halves a queue change re-renders every
+ * row, which is the long-list cost this guards.
+ */
+export default memo(TrackRow);

@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -31,6 +33,10 @@ import {
   syncRuns,
   tracks
 } from '../../../platform/database/schema.js';
+import {
+  mediaRelativePath,
+  thumbnailRelativePath
+} from '../../../platform/media/mediaPaths.js';
 import { addAssociation } from '../../playlists/associationService.js';
 
 const VIDEO_ID = 'dQw4w9WgXcQ';
@@ -66,6 +72,18 @@ function post(
     url,
     headers: { 'remote-user': pangolinUserId, 'x-playliberty-client': 'test' },
     payload
+  });
+}
+
+function get(url: string, pangolinUserId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.app.inject({
+    method: 'GET',
+    url,
+    headers: { 'remote-user': pangolinUserId, 'x-playliberty-client': 'test' }
   });
 }
 
@@ -159,6 +177,39 @@ function seedShare(
     .db.insert(shares)
     .values({ id: randomUUID(), playlistId, accountId, level })
     .run();
+}
+
+/*
+ * A stored track with a real file and thumbnail on disk, so the two media routes
+ * reach `sendFile` and the cache header can be read off the response. The paths
+ * are stored relative to the media root, exactly as the download worker writes
+ * them.
+ */
+async function seedStoredTrackWithMedia(
+  testContext: TestContext,
+  videoId: string
+): Promise<{ trackId: string; pangolinUserId: string }> {
+  const { accountId, pangolinUserId } = seedAccount();
+  const playlistId = seedPlaylist(accountId);
+  const trackId = seedTrack(videoId);
+  associate(playlistId, trackId);
+
+  const audioRelative = mediaRelativePath(videoId, '.m4a');
+  const thumbnailRelative = thumbnailRelativePath(videoId);
+
+  for (const relative of [audioRelative, thumbnailRelative]) {
+    const absolute = join(testContext.mediaPaths.root, relative);
+    await mkdir(dirname(absolute), { recursive: true });
+    await writeFile(absolute, 'media');
+  }
+
+  database()
+    .db.update(tracks)
+    .set({ filePath: audioRelative, thumbnailPath: thumbnailRelative })
+    .where(eq(tracks.id, trackId))
+    .run();
+
+  return { trackId, pangolinUserId };
 }
 
 function countTracks(): number {
@@ -831,5 +882,58 @@ describe('POST /tracks/:id/fetch-whole', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+/*
+ * The cache headers are a contract, not an implementation detail: they are what
+ * keeps the media out of a shared cache and decide how much the browser reuses.
+ * These read the header off a real response, so a regression is caught here
+ * rather than in a browser.
+ */
+describe('media cache headers', () => {
+  it('caches a stored track audio privately for a week', async () => {
+    context = await createTestContext();
+    const { trackId, pangolinUserId } = await seedStoredTrackWithMedia(
+      context,
+      'cache-video-audio'
+    );
+
+    const response = await get(
+      `/api/v1/tracks/${trackId}/stream`,
+      pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, max-age=604800');
+  });
+
+  it('caches a stored track thumbnail privately for a month', async () => {
+    context = await createTestContext();
+    const { trackId, pangolinUserId } = await seedStoredTrackWithMedia(
+      context,
+      'cache-video-thumbnail'
+    );
+
+    const response = await get(
+      `/api/v1/tracks/${trackId}/thumbnail`,
+      pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, max-age=2592000');
+  });
+
+  it('never stores a refusal', async () => {
+    context = await createTestContext();
+    const owner = seedAccount();
+
+    const response = await get(
+      '/api/v1/tracks/missing/stream',
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers['cache-control']).toBe('no-store');
   });
 });

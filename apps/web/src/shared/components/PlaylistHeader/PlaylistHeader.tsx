@@ -647,6 +647,7 @@ export default function PlaylistHeader({
       <div
         className={styles.playlistHeader}
         data-arrangement="card"
+        data-heading={heading ? 'true' : undefined}
         data-ground={ground ? 'true' : undefined}
         data-open={onOpen === undefined || pending ? undefined : 'true'}
         data-pending={pending ? 'true' : undefined}
@@ -663,6 +664,7 @@ export default function PlaylistHeader({
               className={styles.playlistHeader__martArt}
               src={cover}
               alt=""
+              decoding="async"
               onError={() => setCoverFailed(true)}
             />
           )}
@@ -684,6 +686,7 @@ export default function PlaylistHeader({
     <div
       className={styles.playlistHeader}
       data-arrangement="row"
+      data-heading={heading ? 'true' : undefined}
       data-ground={ground ? 'true' : undefined}
       data-open={onOpen === undefined || pending ? undefined : 'true'}
       data-pending={pending ? 'true' : undefined}
@@ -706,6 +709,8 @@ export default function PlaylistHeader({
             className={styles.playlistHeader__art}
             src={cover}
             alt=""
+            loading="lazy"
+            decoding="async"
             onError={() => setCoverFailed(true)}
           />
         )}
@@ -718,6 +723,7 @@ export default function PlaylistHeader({
             <TrackBars
               className={styles.playlistHeader__bars}
               barClassName={styles.playlistHeader__bar}
+              playing={playing}
             />
           </>
         ) : null}

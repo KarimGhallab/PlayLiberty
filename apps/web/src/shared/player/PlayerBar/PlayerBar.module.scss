@@ -259,6 +259,15 @@
     background: var(--control-border);
     cursor: pointer;
 
+    /* 4px is a report, not a target: the visible track stays 4px and the target
+     * grows to the 44px the system owes a thumb through a box that paints
+     * nothing, the same pattern the transport's steps carry. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -20px 0;
+    }
+
     &:focus-visible {
       outline: var(--focus-width) solid var(--accent);
       outline-offset: var(--focus-offset);

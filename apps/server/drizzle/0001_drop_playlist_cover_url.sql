@@ -1,1 +1,0 @@
-ALTER TABLE `playlist` DROP COLUMN `cover_url`;

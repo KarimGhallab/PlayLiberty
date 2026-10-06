@@ -7,10 +7,13 @@ import styles from './VolumeControl.module.scss';
 
 /*
  * The volume control, the player bar's rightmost item. A speaker button whose
- * glyph reads the level, and a vertical rail that appears while the pointer is on
- * it. It is the bar's one disclosure: the rail is 96px of vertical travel that
- * would dwarf the 98px bar if it stood open, so it is shown on hover and gone the
- * moment the pointer leaves.
+ * glyph reads the level, and a vertical rail that appears while the control has
+ * the pointer, the focus or a tap. It is the bar's one disclosure: the rail is
+ * 96px of vertical travel that would dwarf the 98px bar if it stood open, so it
+ * is shown while the pointer is on the pair, focus is inside it or a tap has just
+ * landed, and gone once none holds. The focus and pointer halves are what let a
+ * keyboard and a touch user reach the level: focus opens the rail and a tap opens
+ * it too, where hover alone never would.
  *
  * The button is a mute, not an open. A press silences the output and leaves the
  * level alone, so unmuting returns to exactly where the listener had it; the rail
@@ -69,6 +72,7 @@ export default function VolumeControl() {
   const root = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const hovering = useRef(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -145,8 +149,30 @@ export default function VolumeControl() {
     <div
       ref={root}
       className={styles.volume}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}>
+      onMouseEnter={() => {
+        hovering.current = true;
+        setOpen(true);
+      }}
+      onMouseLeave={() => {
+        hovering.current = false;
+
+        if (!root.current?.contains(document.activeElement)) {
+          setOpen(false);
+        }
+      }}
+      /* The pointer's own open. Hover reaches a mouse, but a touch browser may
+       * never synthesize a mouseenter before the tap lands, so the rail opens on
+       * the pointerdown itself and a tap is not at the mercy of that synthesis. */
+      onPointerDown={() => setOpen(true)}
+      onFocus={() => setOpen(true)}
+      onBlur={event => {
+        if (
+          !hovering.current &&
+          !root.current?.contains(event.relatedTarget as Node | null)
+        ) {
+          setOpen(false);
+        }
+      }}>
       {open ? (
         <div className={styles.volume__panel}>
           <div

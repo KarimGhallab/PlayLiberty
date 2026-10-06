@@ -31,6 +31,59 @@ describe('VolumeControl', () => {
     expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
   });
 
+  /*
+   * Hover alone never reaches a keyboard or a touch user, so focus opens the
+   * rail too and holds it while focus stays inside the control.
+   */
+  it('opens the rail on focus and keeps it while focus is inside', () => {
+    render(<VolumeControl />);
+
+    expect(
+      screen.queryByRole('slider', { name: 'Volume' })
+    ).not.toBeInTheDocument();
+
+    const button = screen.getByRole('button', { name: 'Mute' });
+    fireEvent.focus(button);
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    expect(rail).toBeInTheDocument();
+
+    /* Moving focus from the button to the rail keeps the panel. */
+    fireEvent.blur(button, { relatedTarget: rail });
+    expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+  });
+
+  it('closes the rail once focus leaves the control', () => {
+    render(<VolumeControl />);
+
+    const button = screen.getByRole('button', { name: 'Mute' });
+    fireEvent.focus(button);
+    expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+
+    fireEvent.blur(button, { relatedTarget: document.body });
+    expect(
+      screen.queryByRole('slider', { name: 'Volume' })
+    ).not.toBeInTheDocument();
+  });
+
+  /*
+   * A touch browser may never synthesize the mouseenter a tap would need, so the
+   * pointerdown itself opens the rail.
+   */
+  it('opens the rail on a tap', () => {
+    render(<VolumeControl />);
+
+    expect(
+      screen.queryByRole('slider', { name: 'Volume' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Mute' }), {
+      pointerId: 1
+    });
+
+    expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+  });
+
   it('mutes on press and keeps the level', () => {
     usePlayerStore.getState().setVolume(0.7);
     render(<VolumeControl />);

@@ -89,6 +89,24 @@ describe('TrackRow', () => {
     ).toBeDisabled();
   });
 
+  /*
+   * A playlist draws one artwork per track, so the list defers it and decodes it
+   * off the main thread. The tile's box is fixed by CSS, so nothing shifts when
+   * the deferred image arrives.
+   */
+  it('defers and async-decodes the artwork', () => {
+    const { container } = renderRow({
+      association: association({
+        thumbnailPath: '/api/v1/tracks/track-1/thumbnail'
+      })
+    });
+
+    const image = container.querySelector('img');
+
+    expect(image).toHaveAttribute('loading', 'lazy');
+    expect(image).toHaveAttribute('decoding', 'async');
+  });
+
   it('plays the track when the row is pressed', () => {
     const { onPlay } = renderRow({});
 
@@ -343,21 +361,27 @@ describe('TrackRow', () => {
     );
   });
 
-  it('draws the equalizer on the current track whether playing or paused', () => {
+  it('announces playing on the current track while the queue runs', () => {
     renderRow({ current: true, playing: true });
     expect(screen.getByRole('img', { name: 'Playing' })).toBeInTheDocument();
   });
 
-  it('keeps the equalizer still on the current track when paused', () => {
+  /*
+   * The mark is drawn for the current track in both states, so its label is the
+   * state and not the row's presence: a held queue must not announce "Playing".
+   */
+  it('announces paused, not playing, on the current track while the queue is held', () => {
     renderRow({ current: true, playing: false });
-    expect(screen.getByRole('img', { name: 'Playing' })).toBeInTheDocument();
+
+    expect(screen.getByRole('img', { name: 'Paused' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('img', { name: 'Playing' })
+    ).not.toBeInTheDocument();
   });
 
   it('draws no equalizer on a non-current row', () => {
     renderRow({ current: false, playing: false });
-    expect(
-      screen.queryByRole('img', { name: 'Playing' })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('darkens the current track whether it is playing or paused', () => {

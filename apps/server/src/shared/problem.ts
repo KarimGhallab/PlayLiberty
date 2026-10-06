@@ -21,11 +21,19 @@ export function createProblem(input: ProblemInput): Problem {
   };
 }
 
+/*
+ * Every refusal carries `no-store`. A problem is a state, not a resource: a 404
+ * for a thumbnail that has not landed yet must not be remembered, or the browser
+ * keeps drawing the sleeve after the artwork arrives, and a 404 is exactly the
+ * status a cache is allowed to store by heuristic. `private` alone would not fix
+ * it, so the whole document is barred from every cache.
+ */
 export function sendProblem(
   reply: FastifyReply,
   input: ProblemInput
 ): FastifyReply {
   return reply
+    .header('Cache-Control', 'no-store')
     .code(input.status)
     .type('application/problem+json')
     .send(createProblem(input));

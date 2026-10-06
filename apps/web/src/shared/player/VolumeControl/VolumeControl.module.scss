@@ -89,6 +89,15 @@
     background: var(--control-border);
     cursor: pointer;
 
+    /* The rail is 4px wide, which a thumb cannot reliably grab; the target grows
+     * to 44px through a box that paints nothing, so the drawn geometry stays 4px
+     * wide and the level is still read against the rail's own box. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0 -20px;
+    }
+
     &:focus-visible {
       outline: var(--focus-width) solid var(--accent);
       outline-offset: var(--focus-offset);

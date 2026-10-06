@@ -166,7 +166,12 @@ export default function PlayerBar() {
         className={styles.playerBar__art}
         data-art={artwork === null ? 'no-art' : 'art'}>
         {artwork === null ? null : (
-          <img className={styles.playerBar__image} src={artwork} alt="" />
+          <img
+            className={styles.playerBar__image}
+            src={artwork}
+            alt=""
+            decoding="async"
+          />
         )}
       </span>
       <div className={styles.playerBar__top}>

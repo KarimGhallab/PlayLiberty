@@ -129,6 +129,49 @@ describe('PlaylistHeader', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
+  /*
+   * The detail draws this header as the page heading, and at 390 it is the one
+   * consumer whose action column is wide enough to starve the name: the
+   * stylesheet wraps that column onto a line of its own, and `data-heading` is
+   * what picks the detail's row out. The library's item keeps its single line.
+   */
+  it('marks the detail header so the narrow row can give the name its width', async () => {
+    const { container } = renderHeader(playlist(), null, {
+      heading: true,
+      current: true,
+      onPlay: () => undefined,
+      onSkipBack: () => undefined,
+      onSkipNext: () => undefined,
+      onShuffle: () => undefined,
+      onSync: () => undefined
+    });
+
+    await screen.findByRole('heading', { name: 'Rain On The Window' });
+
+    const row = container.querySelector('[data-arrangement="row"]');
+    expect(row).toHaveAttribute('data-heading', 'true');
+
+    /* The identity body and the action column are the row's last two children,
+     * which is what lets the narrow stylesheet put the column on its own line
+     * and hand the body the width beside the cover. */
+    const body = row?.querySelector('[class*="__body"]');
+    const actions = row?.querySelector('[class*="__actions"]');
+    expect(body).not.toBeNull();
+    expect(actions).not.toBeNull();
+    expect(actions?.previousElementSibling).toBe(body);
+    expect(row?.lastElementChild).toBe(actions);
+  });
+
+  it('leaves the library item unmarked, so it keeps its single row', async () => {
+    const { container } = renderHeader(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(
+      container.querySelector('[data-arrangement="row"]')
+    ).not.toHaveAttribute('data-heading');
+  });
+
   it('carries the full name when the line is cut to fit its column', async () => {
     const name =
       'A playlist name long enough that the gallery column cannot show it in one line';
@@ -235,6 +278,37 @@ describe('PlaylistHeader', () => {
     expect(container.querySelector('img')?.getAttribute('src')).toBe(
       '/api/v1/tracks/track-9/thumbnail'
     );
+  });
+
+  /*
+   * The library draws one of these per item, so the row defers its cover; the
+   * detail's card is the hero and is not deferred. Both decode off the main
+   * thread.
+   */
+  it('defers the row cover and async-decodes it', async () => {
+    const { container } = renderHeader(playlist({ coverTrackId: 'track-9' }));
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const image = container.querySelector('img');
+
+    expect(image).toHaveAttribute('loading', 'lazy');
+    expect(image).toHaveAttribute('decoding', 'async');
+  });
+
+  it('loads the card cover eagerly and async-decodes it', async () => {
+    const { container } = renderHeader(
+      playlist({ coverTrackId: 'track-9' }),
+      null,
+      { arrangement: 'card' }
+    );
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const image = container.querySelector('img');
+
+    expect(image).not.toHaveAttribute('loading', 'lazy');
+    expect(image).toHaveAttribute('decoding', 'async');
   });
 
   it('falls back to the sleeve when the cover image fails to load', async () => {

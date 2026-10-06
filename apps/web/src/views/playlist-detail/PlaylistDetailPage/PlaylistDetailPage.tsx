@@ -1,6 +1,6 @@
 import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
 
@@ -119,7 +119,6 @@ export default function PlaylistDetailPage() {
   const currentId = usePlayerStore(state => state.currentId);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const shuffled = usePlayerStore(state => state.shuffle);
-  const play = usePlayerStore(state => state.play);
   const queue = usePlayerStore(state => state.queue);
   const { shufflePlaylist, refusal } = useShufflePlaylist();
   const queuePlaylistId = usePlayerStore(
@@ -147,28 +146,38 @@ export default function PlaylistDetailPage() {
    * changes nothing else. A press that has to build a queue builds it in the
    * playlist's own order and carries no shuffle, because the shuffle is the order
    * of a queue and a fresh one is in the order the playlist gave.
+   *
+   * It reads the store at call time rather than closing over `currentId` and
+   * `isPlaying`, and is memoized, so its identity is stable across a queue
+   * change. A fresh function each render would re-render every row that receives
+   * it, which is the cost `TrackRow`'s memo exists to avoid.
    */
-  const playTrack = (trackId: string): void => {
-    if (trackId === currentId) {
-      setPlaying(!isPlaying);
-      return;
-    }
+  const playTrack = useCallback(
+    (trackId: string): void => {
+      const player = usePlayerStore.getState();
 
-    if (isQueue) {
-      play(trackId);
-      return;
-    }
+      if (trackId === player.currentId) {
+        player.setPlaying(!player.isPlaying);
+        return;
+      }
 
-    if (tracks.data === undefined || playlist.data === undefined) {
-      return;
-    }
+      if (player.queue[0]?.playlistId === playlistId) {
+        player.play(trackId);
+        return;
+      }
 
-    startQueue(
-      playlistId,
-      toPlayerTracks(tracks.data, playlistId, playlist.data.name),
-      trackId
-    );
-  };
+      if (tracks.data === undefined || playlist.data === undefined) {
+        return;
+      }
+
+      player.startQueue(
+        playlistId,
+        toPlayerTracks(tracks.data, playlistId, playlist.data.name),
+        trackId
+      );
+    },
+    [playlistId, tracks.data, playlist.data]
+  );
 
   /*
    * The header's play is the queue's own door: it builds the whole playlist and
@@ -220,18 +229,34 @@ export default function PlaylistDetailPage() {
    * because two rows can read alike and the toast is the only place the removal is
    * still reversible.
    */
-  const removeTrackDeferred = (trackId: string): void => {
-    const title =
-      tracks.data?.find(association => association.track.id === trackId)?.track
-        .title ?? 'Track';
+  const removeTrackDeferred = useCallback(
+    (trackId: string): void => {
+      const title =
+        tracks.data?.find(association => association.track.id === trackId)
+          ?.track.title ?? 'Track';
 
-    deferred.defer({
-      id: trackId,
-      message: 'Removing track',
-      detail: title,
-      commit: () => removeTrack.mutate(trackId)
-    });
-  };
+      deferred.defer({
+        id: trackId,
+        message: 'Removing track',
+        detail: title,
+        commit: () => removeTrack.mutate(trackId)
+      });
+    },
+    [tracks.data, deferred.defer, removeTrack.mutate]
+  );
+
+  /*
+   * The lane's two actions, stable for the same reason `playTrack` is: each is
+   * passed to every row, so a fresh identity would defeat the row's memo.
+   */
+  const retryTrack = useCallback(
+    (trackId: string): void => retry.mutate(trackId),
+    [retry.mutate]
+  );
+  const fetchWholeTrack = useCallback(
+    (trackId: string): void => fetchWhole.mutate(trackId),
+    [fetchWhole.mutate]
+  );
 
   const access = playlist.data?.access;
   const canSync = access === 'owner' || access === 'write';
@@ -473,27 +498,33 @@ export default function PlaylistDetailPage() {
               {(shuffled && isQueue
                 ? orderTracksByQueue(tracks.data, queue)
                 : tracks.data
-              ).map(association => (
-                <TrackRow
-                  key={association.track.id}
-                  association={association}
-                  current={association.track.id === currentId}
-                  playing={isPlaying}
-                  pending={
-                    playlistPending ||
-                    deferred.pending?.id === association.track.id
-                  }
-                  onPlay={playTrack}
-                  onRetry={canWrite ? id => retry.mutate(id) : undefined}
-                  onFetchWhole={
-                    canWrite ? id => fetchWhole.mutate(id) : undefined
-                  }
-                  onRemove={
-                    canWrite ? id => removeTrackDeferred(id) : undefined
-                  }
-                  busy={busyTrackId === association.track.id}
-                />
-              ))}
+              ).map(association => {
+                /*
+                 * `playing` is only read by a current row, so a non-current row
+                 * is told `false` rather than the queue's state: the global
+                 * `isPlaying` would change every row's props on a play or a
+                 * pause and re-render the whole list.
+                 */
+                const isCurrent = association.track.id === currentId;
+
+                return (
+                  <TrackRow
+                    key={association.track.id}
+                    association={association}
+                    current={isCurrent}
+                    playing={isCurrent && isPlaying}
+                    pending={
+                      playlistPending ||
+                      deferred.pending?.id === association.track.id
+                    }
+                    onPlay={playTrack}
+                    onRetry={canWrite ? retryTrack : undefined}
+                    onFetchWhole={canWrite ? fetchWholeTrack : undefined}
+                    onRemove={canWrite ? removeTrackDeferred : undefined}
+                    busy={busyTrackId === association.track.id}
+                  />
+                );
+              })}
             </ul>
           ) : null}
         </div>
