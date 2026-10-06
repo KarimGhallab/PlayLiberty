@@ -13,7 +13,7 @@
    says the invalid message names the host: "Paste a YouTube playlist link, such as https://youtube.com/playlist?list=..." The
    dialog surfaces the server's `detail`, which reads "The URL is not a YouTube playlist or video URL."
    ([`AddPlaylistDialog.tsx`](../../../apps/web/src/views/library/AddPlaylistDialog/AddPlaylistDialog.tsx) passes the problem
-   through; [`playlistRoutes.ts`](../../../apps/server/src/features/playlists/playlistRoutes.ts) writes the
+   through; [`playlistRoutes.ts`](../../../apps/server/src/features/playlists/routes/playlistRoutes.ts) writes the
    text). Align them: change the server message, map it to the specified sentence in the dialog, or amend the
    record to the shipped wording.
 
@@ -40,7 +40,7 @@ Done, and neither drift needed a control or a new arrangement.
   is served at: below 1056 the row narrows with the content column, the name truncates and is recoverable
   through its `title`, and the shared components grow their quiet controls to the 44px target under the
   `max-width: 767px` breakpoint. It draws no grid, no floating button and no sheet.
-- **The refusal copy is one sentence in three places.** [`playlistRoutes.ts`](../../../apps/server/src/features/playlists/playlistRoutes.ts)
+- **The refusal copy is one sentence in three places.** [`playlistRoutes.ts`](../../../apps/server/src/features/playlists/routes/playlistRoutes.ts)
   now ships "Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...", and
   [`AddPlaylistDialog.tsx`](../../../apps/web/src/views/library/AddPlaylistDialog/AddPlaylistDialog.tsx) uses the same sentence
   for its schema refusal, so the one slot reads the same whichever layer said no; the record says so. The

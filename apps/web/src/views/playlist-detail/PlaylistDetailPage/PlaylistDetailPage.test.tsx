@@ -594,6 +594,55 @@ describe('PlaylistDetailPage', () => {
     expect(screen.getByText('failed')).toBeInTheDocument();
   });
 
+  /*
+   * The failure half of the page's one-state pairing: a playlist the server
+   * marked failed draws the band with the run's own reason, the reassurance and
+   * the retry, and not the summary. This is the page pairing the status with the
+   * reason, which the component test alone cannot prove.
+   */
+  it('draws the run reason instead of the summary when the sync failed', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+        HttpResponse.json({ ...playlistJson(true), syncStatus: 'error' })
+      ),
+      http.get(
+        'http://localhost:3000/api/v1/playlists/playlist-1/sync-runs/latest',
+        () =>
+          HttpResponse.json({
+            id: 'run-1',
+            playlistId: 'playlist-1',
+            status: 'failed',
+            addedCount: 0,
+            retainedCount: 3,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T11:59:00.000Z',
+            finishedAt: '2026-09-29T12:00:00.000Z',
+            error: 'The source playlist is unavailable.'
+          })
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByText(
+        'Could not reach YouTube, so this playlist is not up to date with its source.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/All 3 tracks are still here and still playable/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Sync now' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('kept')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show details' }));
+    expect(
+      screen.getByText('The source playlist is unavailable.')
+    ).toBeInTheDocument();
+  });
+
   it('gates the owner overflow on the playlist access', async () => {
     renderDetail();
 

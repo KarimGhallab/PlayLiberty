@@ -8,7 +8,7 @@
    the name is recoverable, or state the decided alternative.
 2. **A replaced delete is silent.** A second delete inside the undo window swaps the pending action and the
    toast updates to the second playlist, but nothing says the first intent was dropped.
-   [`useDeferredAction`](../../../apps/web/src/shared/components/useDeferredAction.ts) already states the
+   [`useDeferredAction`](../../../apps/web/src/shared/components/useDeferredAction/useDeferredAction.ts) already states the
    swap as the rule; make the replacement visible, or state why the swap is acceptable as it is.
 
 Do not invent controls the glossary rules out. There is no search, sort, filter or pagination, and the

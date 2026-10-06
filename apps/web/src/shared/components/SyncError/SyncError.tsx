@@ -57,26 +57,31 @@ export default function SyncError({
             removed from YouTube later will not empty this playlist.
           </p>
         )}
-        <div>
-          <button
-            type="button"
-            className={styles.syncError__retry}
-            data-loading={retrying ? 'true' : undefined}
-            aria-busy={retrying ? true : undefined}
-            onClick={onRetry}
-            disabled={retrying || onRetry === undefined}>
-            {retrying ? (
-              <span className={styles.syncError__spinner} aria-hidden="true" />
-            ) : (
-              <IconRotateClockwise
-                className={styles.syncError__retryIcon}
-                aria-hidden="true"
-                focusable="false"
-              />
-            )}
-            {retrying ? 'Syncing' : 'Sync now'}
-          </button>
-        </div>
+        {onRetry === undefined ? null : (
+          <div>
+            <button
+              type="button"
+              className={styles.syncError__retry}
+              data-loading={retrying ? 'true' : undefined}
+              aria-busy={retrying ? true : undefined}
+              onClick={onRetry}
+              disabled={retrying}>
+              {retrying ? (
+                <span
+                  className={styles.syncError__spinner}
+                  aria-hidden="true"
+                />
+              ) : (
+                <IconRotateClockwise
+                  className={styles.syncError__retryIcon}
+                  aria-hidden="true"
+                  focusable="false"
+                />
+              )}
+              {retrying ? 'Syncing' : 'Sync now'}
+            </button>
+          </div>
+        )}
         {rawError === null ? null : (
           <>
             <button
