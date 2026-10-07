@@ -8,6 +8,7 @@ import {
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
+import { I18nProvider } from '@playliberty/i18n';
 
 import TrackRow from './TrackRow';
 
@@ -56,19 +57,21 @@ function renderRow(options: {
     options.onRemove === null ? undefined : (options.onRemove ?? onRemove);
 
   const { unmount, container } = render(
-    <ul>
-      <TrackRow
-        association={options.association ?? association()}
-        current={options.current ?? false}
-        playing={options.playing ?? false}
-        onPlay={onPlay}
-        onRetry={options.onRetry}
-        onFetchWhole={options.onFetchWhole}
-        onRemove={resolvedRemove}
-        busy={options.busy ?? false}
-        pending={options.pending ?? false}
-      />
-    </ul>
+    <I18nProvider preferred={['en']}>
+      <ul>
+        <TrackRow
+          association={options.association ?? association()}
+          current={options.current ?? false}
+          playing={options.playing ?? false}
+          onPlay={onPlay}
+          onRetry={options.onRetry}
+          onFetchWhole={options.onFetchWhole}
+          onRemove={resolvedRemove}
+          busy={options.busy ?? false}
+          pending={options.pending ?? false}
+        />
+      </ul>
+    </I18nProvider>
   );
 
   return { onPlay, onRemove, unmount, container };

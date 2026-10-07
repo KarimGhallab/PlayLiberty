@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 
 import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
+import { useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
 import {
@@ -81,6 +82,7 @@ import styles from './PlaylistDetailPage.module.scss';
  * on, so the list and the queue agree by construction.
  */
 export default function PlaylistDetailPage() {
+  const { t } = useI18n();
   const { playlistId } = useParams({ from: '/playlists/$playlistId' });
   const navigate = useNavigate();
   const playlist = usePlaylist(playlistId);
@@ -212,7 +214,7 @@ export default function PlaylistDetailPage() {
   const deletePlaylist = (): void => {
     deferred.defer({
       id: playlistId,
-      message: 'Deleting playlist',
+      message: t('detail.deleteDeferred'),
       detail: playlist.data?.name ?? null,
       commit: () =>
         remove.mutate(undefined, {
@@ -233,16 +235,16 @@ export default function PlaylistDetailPage() {
     (trackId: string): void => {
       const title =
         tracks.data?.find(association => association.track.id === trackId)
-          ?.track.title ?? 'Track';
+          ?.track.title ?? t('detail.trackFallback');
 
       deferred.defer({
         id: trackId,
-        message: 'Removing track',
+        message: t('detail.removeDeferred'),
         detail: title,
         commit: () => removeTrack.mutate(trackId)
       });
     },
-    [tracks.data, deferred.defer, removeTrack.mutate]
+    [t, tracks.data, deferred.defer, removeTrack.mutate]
   );
 
   /*
@@ -356,7 +358,7 @@ export default function PlaylistDetailPage() {
             aria-hidden="true"
             focusable="false"
           />
-          Back to home
+          {t('detail.back')}
         </Link>
         {/*
          * The add control, mirroring the library's own: the same pill, the same
@@ -377,7 +379,7 @@ export default function PlaylistDetailPage() {
               aria-hidden="true"
               focusable="false"
             />
-            Add a track
+            {t('detail.addTrack')}
           </button>
         ) : null}
       </nav>
@@ -433,9 +435,8 @@ export default function PlaylistDetailPage() {
                   onError: error =>
                     setSettingRefused(
                       error instanceof ApiError
-                        ? (error.problem?.detail ??
-                            'The setting could not be changed.')
-                        : 'The setting could not be changed.'
+                        ? (error.problem?.detail ?? t('detail.settingFailed'))
+                        : t('detail.settingFailed')
                     )
                 })
               }
@@ -474,11 +475,13 @@ export default function PlaylistDetailPage() {
 
         <div className={styles.playlistDetail__tracks}>
           {tracks.isPending ? (
-            <p className={styles.playlistDetail__note}>Loading tracks.</p>
+            <p className={styles.playlistDetail__note}>
+              {t('detail.loadingTracks')}
+            </p>
           ) : null}
           {tracks.isError ? (
             <ReadFailure
-              message="Tracks could not be loaded."
+              message={t('detail.readFailed')}
               error={tracks.error}
               onRetry={() => void tracks.refetch()}
               retrying={tracks.isFetching}
@@ -491,7 +494,9 @@ export default function PlaylistDetailPage() {
             />
           ) : null}
           {!neverSynced && tracks.isSuccess && tracks.data.length === 0 ? (
-            <p className={styles.playlistDetail__note}>No tracks yet.</p>
+            <p className={styles.playlistDetail__note}>
+              {t('detail.noTracks')}
+            </p>
           ) : null}
           {tracks.isSuccess && tracks.data.length > 0 ? (
             <ul className={styles.playlistDetail__list}>
@@ -578,7 +583,7 @@ export default function PlaylistDetailPage() {
           message={deferred.pending.message}
           detail={deferred.pending.detail}
           durationMs={UNDO_WINDOW_MS}
-          actionLabel="Cancel"
+          actionLabel={t('common.cancel')}
           onAction={deferred.cancel}
           onDismiss={deferred.cancel}
         />
@@ -591,7 +596,7 @@ export default function PlaylistDetailPage() {
       )}
       {settingRefused === null ? null : (
         <NoticeToast
-          message="The skip setting was not changed."
+          message={t('detail.settingNotice')}
           detail={settingRefused}
           durationMs={NOTICE_WINDOW_MS}
         />

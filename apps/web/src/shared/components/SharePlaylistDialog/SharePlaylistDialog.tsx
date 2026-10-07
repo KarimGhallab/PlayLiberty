@@ -1,6 +1,8 @@
 import { useId, useState } from 'react';
 
 import { ShareLevel } from '@playliberty/contracts';
+import type { MessageKey, Messages } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
 
 import {
   useAccountDirectory,
@@ -33,17 +35,20 @@ interface SharePlaylistDialogProps {
 }
 
 /* The invitation nobody writes down: what a share offers. */
-const LEVELS: readonly { readonly level: ShareLevel; readonly word: string }[] =
-  [
-    { level: ShareLevel.Read, word: 'Can listen' },
-    { level: ShareLevel.Write, word: 'Can edit' }
-  ];
+const LEVELS: readonly {
+  readonly level: ShareLevel;
+  readonly label: MessageKey<Messages>;
+}[] = [
+  { level: ShareLevel.Read, label: 'shareDialog.listen' },
+  { level: ShareLevel.Write, label: 'shareDialog.edit' }
+];
 
 export default function SharePlaylistDialog({
   open,
   playlistId,
   onClose
 }: SharePlaylistDialogProps) {
+  const { t } = useI18n();
   const listId = useId();
   const directory = useAccountDirectory();
   const me = useCurrentAccount();
@@ -78,23 +83,23 @@ export default function SharePlaylistDialog({
   return (
     <Dialog
       open={open}
-      title="Share playlist"
-      description="Everyone you share with can find the playlist and hear its tracks. Editing also lets them change what is in it."
+      title={t('shareDialog.title')}
+      description={t('shareDialog.description')}
       onRequestClose={onClose}
       actions={
         <button
           className={styles.dialog__secondary}
           type="button"
           onClick={onClose}>
-          Done
+          {t('shareDialog.done')}
         </button>
       }>
       {directory.isPending || shares.isPending ? (
-        <p className={shareStyles.share__note}>Loading accounts.</p>
+        <p className={shareStyles.share__note}>{t('shareDialog.loading')}</p>
       ) : null}
       {directory.isError || shares.isError ? (
         <ReadFailure
-          message="Accounts could not be loaded."
+          message={t('shareDialog.readFailed')}
           error={directory.error ?? shares.error}
           onRetry={() => {
             void directory.refetch();
@@ -104,9 +109,7 @@ export default function SharePlaylistDialog({
         />
       ) : null}
       {candidates.length === 0 && directory.isSuccess && shares.isSuccess ? (
-        <p className={shareStyles.share__note}>
-          There is no one else here to share with yet.
-        </p>
+        <p className={shareStyles.share__note}>{t('shareDialog.empty')}</p>
       ) : null}
       {candidates.length > 0 ? (
         <ul className={shareStyles.share__list} id={listId}>
@@ -132,7 +135,7 @@ export default function SharePlaylistDialog({
                           level === option.level ? null : option.level
                         )
                       }>
-                      {option.word}
+                      {t(option.label)}
                     </button>
                   ))}
                 </span>

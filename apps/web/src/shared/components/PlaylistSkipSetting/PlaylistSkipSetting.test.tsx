@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
 
+import { I18nProvider } from '@playliberty/i18n';
+
 import PlaylistSkipSetting from './PlaylistSkipSetting';
 
 /*
@@ -14,7 +16,9 @@ function renderSetting(
   props: Partial<Parameters<typeof PlaylistSkipSetting>[0]> = {}
 ) {
   return render(
-    <PlaylistSkipSetting skipNonMusic canEdit onChange={vi.fn()} {...props} />
+    <I18nProvider preferred={['en']}>
+      <PlaylistSkipSetting skipNonMusic canEdit onChange={vi.fn()} {...props} />
+    </I18nProvider>
   );
 }
 

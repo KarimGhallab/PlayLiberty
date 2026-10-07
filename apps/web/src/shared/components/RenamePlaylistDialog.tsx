@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react';
 
 import { RenamePlaylistInputSchema } from '@playliberty/contracts';
+import { useI18n } from '@playliberty/i18n';
 
 import Dialog from './Dialog/Dialog';
 import styles from './Dialog/Dialog.module.scss';
@@ -33,6 +34,7 @@ export default function RenamePlaylistDialog({
   isWorking = false,
   problem = null
 }: RenamePlaylistDialogProps) {
+  const { t } = useI18n();
   const fieldId = useId();
   const messageId = useId();
   const field = useRef<HTMLInputElement>(null);
@@ -66,7 +68,7 @@ export default function RenamePlaylistDialog({
     const parsed = RenamePlaylistInputSchema.safeParse({ name: trimmed });
 
     if (!parsed.success) {
-      setInvalid('A name is required, up to 200 characters.');
+      setInvalid(t('renameDialog.invalid'));
       return;
     }
 
@@ -77,8 +79,8 @@ export default function RenamePlaylistDialog({
   return (
     <Dialog
       open={open}
-      title="Rename playlist"
-      description="The name is yours alone. It does not change the playlist on YouTube."
+      title={t('renameDialog.title')}
+      description={t('renameDialog.description')}
       initialFocus={field}
       onRequestClose={onClose}
       actions={
@@ -88,7 +90,7 @@ export default function RenamePlaylistDialog({
             type="button"
             disabled={isWorking}
             onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             className={styles.dialog__primary}
@@ -99,10 +101,10 @@ export default function RenamePlaylistDialog({
             {isWorking ? (
               <>
                 <span className={styles.dialog__spinner} aria-hidden="true" />
-                Saving
+                {t('renameDialog.saving')}
               </>
             ) : (
-              'Save'
+              t('renameDialog.save')
             )}
           </button>
         </>
@@ -112,7 +114,7 @@ export default function RenamePlaylistDialog({
         data-invalid={message === null ? undefined : 'true'}
         data-disabled={isWorking ? 'true' : undefined}>
         <label className={styles.field__label} htmlFor={fieldId}>
-          Playlist name
+          {t('renameDialog.nameLabel')}
         </label>
         <input
           ref={field}

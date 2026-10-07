@@ -9,6 +9,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
+import { useI18n } from '@playliberty/i18n';
 import {
   formatDuration,
   trackStateLabel,
@@ -90,6 +91,7 @@ function TrackRow({
   busy = false,
   pending = false
 }: TrackRowProps) {
+  const { t } = useI18n();
   const { track } = association;
   const stateLabel = trackStateLabel(
     track.fileStatus,
@@ -105,7 +107,9 @@ function TrackRow({
       ? null
       : `${API_PREFIX}/tracks/${track.id}/thumbnail`;
   const label =
-    current && playing ? `Pause ${track.title}` : `Play ${track.title}`;
+    current && playing
+      ? t('trackRow.pause', { title: track.title })
+      : t('trackRow.play', { title: track.title });
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
 
@@ -151,7 +155,7 @@ function TrackRow({
     ...(failed && onRetry !== undefined
       ? [
           {
-            label: 'Retry',
+            label: t('trackRow.retry'),
             icon: (
               <IconRotate
                 className={styles.trackRow__menuIcon}
@@ -166,7 +170,7 @@ function TrackRow({
     ...(failed && onFetchWhole !== undefined
       ? [
           {
-            label: 'Fetch whole',
+            label: t('trackRow.fetchWhole'),
             icon: (
               <IconScissorsOff
                 className={styles.trackRow__menuIcon}
@@ -182,7 +186,7 @@ function TrackRow({
       ? []
       : [
           {
-            label: 'Remove from playlist',
+            label: t('trackRow.remove'),
             icon: (
               <IconTrash
                 className={styles.trackRow__menuIcon}
@@ -204,7 +208,7 @@ function TrackRow({
         <button
           type="button"
           className={styles.trackRow__action}
-          aria-label={`Actions for ${track.title}`}
+          aria-label={t('trackRow.actions', { title: track.title })}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           disabled={downloading || busy || pending}
@@ -280,7 +284,9 @@ function TrackRow({
            * track fetched whole reads as deliberate rather than as a trim that
            * silently failed. The default, trimmed, says nothing. */}
           {track.skipNonMusic ? null : (
-            <span className={styles.trackRow__policy}>Full length</span>
+            <span className={styles.trackRow__policy}>
+              {t('trackRow.fullLength')}
+            </span>
           )}
           {/* The server's own reason, kept as secondary copy: the mapped word is
            * primary, and the sentence is bounded to one ellipsized line with the

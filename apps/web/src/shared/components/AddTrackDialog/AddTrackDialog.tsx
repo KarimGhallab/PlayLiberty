@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import { AddTrackInputSchema, AddTrackOutcome } from '@playliberty/contracts';
 import type { AddTrackResult, Playlist } from '@playliberty/contracts';
+import { useI18n } from '@playliberty/i18n';
 
 import Dialog from '../Dialog/Dialog';
 import dialogStyles from '../Dialog/Dialog.module.scss';
@@ -58,6 +59,7 @@ export default function AddTrackDialog({
   result = null,
   problem = null
 }: AddTrackDialogProps) {
+  const { t } = useI18n();
   const fieldId = useId();
   const messageId = useId();
   const field = useRef<HTMLInputElement>(null);
@@ -139,9 +141,7 @@ export default function AddTrackDialog({
       parsed.success && new URL(parsed.data.url).searchParams.has('list');
 
     if (!parsed.success || isPlaylistUrl) {
-      setInvalid(
-        'Paste a YouTube video link, such as https://youtube.com/watch?v=...'
-      );
+      setInvalid(t('addTrackDialog.invalid'));
       return;
     }
 
@@ -152,8 +152,8 @@ export default function AddTrackDialog({
   return (
     <Dialog
       open={open}
-      title="Add a track"
-      description="Paste a YouTube video link, then choose the playlists to add it to."
+      title={t('addTrackDialog.title')}
+      description={t('addTrackDialog.description')}
       initialFocus={field}
       onRequestClose={onClose}
       actions={
@@ -163,7 +163,7 @@ export default function AddTrackDialog({
             type="button"
             disabled={isWorking}
             onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             className={dialogStyles.dialog__primary}
@@ -177,10 +177,10 @@ export default function AddTrackDialog({
                   className={dialogStyles.dialog__spinner}
                   aria-hidden="true"
                 />
-                Adding
+                {t('addTrackDialog.adding')}
               </>
             ) : (
-              'Add'
+              t('addTrackDialog.add')
             )}
           </button>
         </>
@@ -189,8 +189,8 @@ export default function AddTrackDialog({
         <div className={styles.addTrack__refused}>
           <p className={styles.addTrack__refusedLead}>
             {everyRefused
-              ? 'Nothing was added. Not added to:'
-              : 'Added to the rest. Not added to:'}
+              ? t('addTrackDialog.refusedAll')
+              : t('addTrackDialog.refusedSome')}
           </p>
           <ul className={styles.addTrack__refusedList}>
             {refusedIds.map(playlistId => (
@@ -204,7 +204,7 @@ export default function AddTrackDialog({
         data-invalid={message === null ? undefined : 'true'}
         data-disabled={isWorking ? 'true' : undefined}>
         <label className={dialogStyles.field__label} htmlFor={fieldId}>
-          Video link
+          {t('addTrackDialog.videoLabel')}
         </label>
         <input
           ref={field}

@@ -1,5 +1,7 @@
 import { useId } from 'react';
 
+import { useI18n } from '@playliberty/i18n';
+
 import styles from './PlaylistSkipSetting.module.scss';
 
 /*
@@ -29,12 +31,13 @@ export default function PlaylistSkipSetting({
   saving = false,
   onChange
 }: PlaylistSkipSettingProps) {
+  const { t } = useI18n();
   const labelId = useId();
 
   return (
     <div className={styles.setting}>
       <span className={styles.setting__label} id={labelId}>
-        Skip non-music parts
+        {t('skipSetting.label')}
       </span>
       <button
         type="button"

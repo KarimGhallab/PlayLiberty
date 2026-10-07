@@ -9,6 +9,7 @@ import {
   ShareLevel
 } from '@playliberty/contracts';
 import type { Playlist } from '@playliberty/contracts';
+import { I18nProvider } from '@playliberty/i18n';
 
 import AddTrackDialog from './AddTrackDialog';
 
@@ -42,17 +43,26 @@ const PLAYLISTS = [
   })
 ];
 
-describe('AddTrackDialog', () => {
-  it('opens on the video field with only the current playlist checked', () => {
-    render(
+function renderDialog(
+  props: Partial<Parameters<typeof AddTrackDialog>[0]> = {}
+) {
+  return render(
+    <I18nProvider preferred={['en']}>
       <AddTrackDialog
         open
         currentPlaylistId="playlist-1"
         playlists={PLAYLISTS}
         onSubmit={vi.fn()}
         onClose={vi.fn()}
+        {...props}
       />
-    );
+    </I18nProvider>
+  );
+}
+
+describe('AddTrackDialog', () => {
+  it('opens on the video field with only the current playlist checked', () => {
+    renderDialog();
 
     expect(
       screen.getByRole('dialog', { name: 'Add a track' })
@@ -68,15 +78,7 @@ describe('AddTrackDialog', () => {
 
   it('submits the video and every chosen playlist as one batch', () => {
     const onSubmit = vi.fn();
-    render(
-      <AddTrackDialog
-        open
-        currentPlaylistId="playlist-1"
-        playlists={PLAYLISTS}
-        onSubmit={onSubmit}
-        onClose={vi.fn()}
-      />
-    );
+    renderDialog({ onSubmit });
 
     fireEvent.change(screen.getByLabelText('Video link'), {
       target: { value: '  https://youtube.com/watch?v=dQw4w9WgXcQ  ' }
@@ -92,15 +94,7 @@ describe('AddTrackDialog', () => {
 
   it('refuses a playlist URL with the schema and makes no request', () => {
     const onSubmit = vi.fn();
-    render(
-      <AddTrackDialog
-        open
-        currentPlaylistId="playlist-1"
-        playlists={PLAYLISTS}
-        onSubmit={onSubmit}
-        onClose={vi.fn()}
-      />
-    );
+    renderDialog({ onSubmit });
 
     fireEvent.change(screen.getByLabelText('Video link'), {
       target: { value: 'https://youtube.com/playlist?list=PL-demo' }
@@ -112,21 +106,14 @@ describe('AddTrackDialog', () => {
   });
 
   it('names the refused playlists and claims no cause', async () => {
-    render(
-      <AddTrackDialog
-        open
-        currentPlaylistId="playlist-1"
-        playlists={PLAYLISTS}
-        onSubmit={vi.fn()}
-        onClose={vi.fn()}
-        result={{
-          results: [
-            { playlistId: 'playlist-1', outcome: AddTrackOutcome.Added },
-            { playlistId: 'playlist-3', outcome: AddTrackOutcome.Refused }
-          ]
-        }}
-      />
-    );
+    renderDialog({
+      result: {
+        results: [
+          { playlistId: 'playlist-1', outcome: AddTrackOutcome.Added },
+          { playlistId: 'playlist-3', outcome: AddTrackOutcome.Refused }
+        ]
+      }
+    });
 
     expect(
       await screen.findByText(/Added to the rest\. Not added to:/)
@@ -140,20 +127,13 @@ describe('AddTrackDialog', () => {
   });
 
   it('says nothing was added when every playlist refused', () => {
-    render(
-      <AddTrackDialog
-        open
-        currentPlaylistId="playlist-1"
-        playlists={PLAYLISTS}
-        onSubmit={vi.fn()}
-        onClose={vi.fn()}
-        result={{
-          results: [
-            { playlistId: 'playlist-1', outcome: AddTrackOutcome.Refused }
-          ]
-        }}
-      />
-    );
+    renderDialog({
+      result: {
+        results: [
+          { playlistId: 'playlist-1', outcome: AddTrackOutcome.Refused }
+        ]
+      }
+    });
 
     expect(
       screen.getByText('Nothing was added. Not added to:')
@@ -161,38 +141,23 @@ describe('AddTrackDialog', () => {
   });
 
   it('shows no refusal block for an all-success batch', () => {
-    render(
-      <AddTrackDialog
-        open
-        currentPlaylistId="playlist-1"
-        playlists={PLAYLISTS}
-        onSubmit={vi.fn()}
-        onClose={vi.fn()}
-        result={{
-          results: [
-            { playlistId: 'playlist-1', outcome: AddTrackOutcome.Added },
-            {
-              playlistId: 'playlist-2',
-              outcome: AddTrackOutcome.AlreadyPresent
-            }
-          ]
-        }}
-      />
-    );
+    renderDialog({
+      result: {
+        results: [
+          { playlistId: 'playlist-1', outcome: AddTrackOutcome.Added },
+          {
+            playlistId: 'playlist-2',
+            outcome: AddTrackOutcome.AlreadyPresent
+          }
+        ]
+      }
+    });
 
     expect(screen.queryByText(/Not added to/)).not.toBeInTheDocument();
   });
 
   it('has no axe violations', async () => {
-    const { container } = render(
-      <AddTrackDialog
-        open
-        currentPlaylistId="playlist-1"
-        playlists={PLAYLISTS}
-        onSubmit={vi.fn()}
-        onClose={vi.fn()}
-      />
-    );
+    const { container } = renderDialog();
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }
