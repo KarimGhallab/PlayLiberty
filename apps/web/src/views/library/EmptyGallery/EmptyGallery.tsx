@@ -1,5 +1,7 @@
 import { IconPlus } from '@tabler/icons-react';
 
+import { useI18n } from '@playliberty/i18n';
+
 import styles from './EmptyGallery.module.scss';
 
 /*
@@ -17,12 +19,13 @@ interface EmptyGalleryProps {
 }
 
 export default function EmptyGallery({ onAdd }: EmptyGalleryProps) {
+  const { t } = useI18n();
+
   return (
     <div className={styles.emptyGallery}>
-      <p className={styles.emptyGallery__head}>No playlists yet</p>
+      <p className={styles.emptyGallery__head}>{t('library.empty.heading')}</p>
       <p className={styles.emptyGallery__promise}>
-        Paste a YouTube playlist link, then sync it. Every track you download is
-        yours from then on, even if the video is taken down later.
+        {t('library.empty.promise')}
       </p>
       <button
         type="button"
@@ -33,7 +36,7 @@ export default function EmptyGallery({ onAdd }: EmptyGalleryProps) {
           aria-hidden="true"
           focusable="false"
         />
-        Add a playlist
+        {t('library.add')}
       </button>
     </div>
   );

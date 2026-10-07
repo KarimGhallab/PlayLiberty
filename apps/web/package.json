@@ -16,6 +16,7 @@
   "packageManager": "pnpm@12.4.2",
   "dependencies": {
     "@playliberty/contracts": "workspace:*",
+    "@playliberty/i18n": "workspace:*",
     "@playliberty/tokens": "workspace:*",
     "@playliberty/ui-foundation": "workspace:*",
     "@tabler/icons-react": "3.48.0",

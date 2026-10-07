@@ -1,6 +1,8 @@
 import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
+import { useI18n } from '@playliberty/i18n';
+
 import { ApiError } from '../../../shared/api/client/client';
 import {
   ownerNameFrom,
@@ -23,6 +25,7 @@ import {
 
 import AddPlaylistDialog from '../AddPlaylistDialog/AddPlaylistDialog';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
+import LanguageMenu from '../LanguageMenu/LanguageMenu';
 import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
 import PlaylistListItem from '../PlaylistListItem';
 import styles from './LibraryPage.module.scss';
@@ -64,6 +67,7 @@ function replacedSentence(replaced: { detail: string | null } | null) {
  * page's single surface for it.
  */
 export default function LibraryPage() {
+  const { t } = useI18n();
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
@@ -104,25 +108,28 @@ export default function LibraryPage() {
   return (
     <main className={styles.library}>
       <div className={styles.library__head}>
-        <h1 className={styles.library__title}>PlayLiberty</h1>
-        {isEmpty ? null : (
-          <button
-            type="button"
-            className={styles.library__add}
-            onClick={() => setDialogOpen(true)}>
-            <IconPlus
-              className={styles.library__addIcon}
-              aria-hidden="true"
-              focusable="false"
-            />
-            Add a playlist
-          </button>
-        )}
+        <h1 className={styles.library__title}>{t('app.name')}</h1>
+        <div className={styles.library__actions}>
+          <LanguageMenu />
+          {isEmpty ? null : (
+            <button
+              type="button"
+              className={styles.library__add}
+              onClick={() => setDialogOpen(true)}>
+              <IconPlus
+                className={styles.library__addIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+              {t('library.add')}
+            </button>
+          )}
+        </div>
       </div>
       {playlists.isPending ? <LibrarySkeleton /> : null}
       {playlists.isError ? (
         <ReadFailure
-          message="Playlists could not be loaded."
+          message={t('library.readFailed')}
           error={playlists.error}
           onRetry={() => void playlists.refetch()}
           retrying={playlists.isFetching}

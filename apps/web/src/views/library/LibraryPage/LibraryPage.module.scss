@@ -23,6 +23,13 @@
     font-weight: var(--weight-semibold);
   }
 
+  /* The header's right side: the language control and the add, one row. */
+  &__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
   &__add {
     display: inline-flex;
     align-items: center;

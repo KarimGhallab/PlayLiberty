@@ -11,6 +11,8 @@ import axe from 'axe-core';
 import { HttpResponse, delay, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { I18nProvider } from '@playliberty/i18n';
+
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 
 import { server } from '../../../testing/mocks/server';
@@ -223,7 +225,9 @@ function renderLibraryPage() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <I18nProvider preferred={['en']}>
+        <RouterProvider router={router} />
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
@@ -904,5 +908,30 @@ describe('LibraryPage', () => {
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toBeEnabled();
+  });
+
+  it('switches the library to French at once and remembers the choice', async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Language' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Ajouter une playlist' })
+    ).toBeInTheDocument();
+    expect(window.localStorage.getItem('playliberty.language')).toBe('fr');
+    expect(document.documentElement.lang).toBe('fr');
+  });
+
+  it('renders in the remembered language on the next visit', async () => {
+    window.localStorage.setItem('playliberty.language', 'fr');
+    renderLibraryPage();
+
+    expect(
+      await screen.findByRole('button', { name: 'Ajouter une playlist' })
+    ).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('fr');
   });
 });

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@playliberty/contracts": ["./packages/contracts/src"],
+      "@playliberty/i18n": ["./packages/i18n/src"],
       "@playliberty/server": ["./apps/server/src"],
       "@playliberty/tokens": ["./packages/tokens/src"],
       "@playliberty/ui-foundation": ["./packages/ui-foundation/src"],

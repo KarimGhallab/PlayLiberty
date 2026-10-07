@@ -7,6 +7,8 @@ import {
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { I18nProvider } from '@playliberty/i18n';
+
 import { EventStreamContext } from './shared/api/useEventStream/useEventStream';
 import { usePlayerStore } from './shared/player/playerStore/playerStore';
 import type { PlayerTrack } from './shared/player/types';
@@ -45,9 +47,11 @@ function renderShell(initialEntry: string) {
 
   const view = render(
     <QueryClientProvider client={queryClient}>
-      <EventStreamContext.Provider value={eventStream.factory}>
-        <RouterProvider router={router} />
-      </EventStreamContext.Provider>
+      <I18nProvider preferred={['en']}>
+        <EventStreamContext.Provider value={eventStream.factory}>
+          <RouterProvider router={router} />
+        </EventStreamContext.Provider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 

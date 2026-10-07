@@ -1,3 +1,5 @@
+import { useI18n } from '@playliberty/i18n';
+
 import styles from './LibrarySkeleton.module.scss';
 
 /*
@@ -14,9 +16,13 @@ import styles from './LibrarySkeleton.module.scss';
 const ROWS = 5;
 
 export default function LibrarySkeleton() {
+  const { t } = useI18n();
+
   return (
     <div className={styles.librarySkeleton} role="status">
-      <span className={styles.librarySkeleton__spoken}>Loading playlists.</span>
+      <span className={styles.librarySkeleton__spoken}>
+        {t('library.loading')}
+      </span>
       <div className={styles.librarySkeleton__rows} aria-hidden="true">
         {Array.from({ length: ROWS }, (_, index) => (
           <div className={styles.librarySkeleton__row} key={index}>
