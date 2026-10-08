@@ -49,7 +49,10 @@ import {
   refusalNotice,
   useShufflePlaylist
 } from '../../../shared/player/useShufflePlaylist/useShufflePlaylist';
-import { usePlaylistActions } from '../../../shared/playlistActions/playlistActions';
+import {
+  canWritePlaylist,
+  usePlaylistActions
+} from '../../../shared/playlistActions/playlistActions';
 import {
   MOBILE_QUERY,
   useMediaQuery
@@ -253,7 +256,7 @@ export default function PlaylistDetailPage() {
    * account can write to it, which is the state this control is drawn in.
    */
   const writablePlaylists = (playlists.data?.items ?? []).filter(
-    item => item.access === 'owner' || item.access === 'write'
+    canWritePlaylist
   );
 
   /*

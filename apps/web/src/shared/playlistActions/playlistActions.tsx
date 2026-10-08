@@ -71,6 +71,18 @@ export interface PlaylistActions {
   readonly canWrite: boolean;
 }
 
+/*
+ * Whether the account may write to a playlist: it owns it or holds a write
+ * share. A playlist that has not loaded is not writable, which is the same
+ * answer a reader gets. It is exported so the menu's gating here and the
+ * detail's writable set are one rule rather than two that must agree.
+ */
+export function canWritePlaylist(playlist: Playlist | undefined): boolean {
+  const access = playlist?.access ?? null;
+
+  return access === 'owner' || access === 'write';
+}
+
 export function usePlaylistActions(
   playlistId: string,
   playlist: Playlist | undefined,
@@ -84,7 +96,7 @@ export function usePlaylistActions(
   const [shareOpen, setShareOpen] = useState(false);
 
   const access = playlist?.access ?? null;
-  const canWrite = access === 'owner' || access === 'write';
+  const canWrite = canWritePlaylist(playlist);
 
   const syncItem = (): PlaylistAction => ({
     key: 'sync',

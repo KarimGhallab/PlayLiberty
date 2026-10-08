@@ -12,7 +12,7 @@ import type { Playlist } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import type { PlaylistActionsOptions } from './playlistActions';
-import { usePlaylistActions } from './playlistActions';
+import { canWritePlaylist, usePlaylistActions } from './playlistActions';
 
 /*
  * The rule under test is the one that used to be written twice: which of the four
@@ -126,5 +126,22 @@ describe('usePlaylistActions', () => {
 
     expect(result.current.menu.some(item => item.key === 'delete')).toBe(false);
     expect(defer).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * The predicate the menu's gating and the detail's writable set both consume.
+ * It is the one place `owner || write` is written, so it is tested on its own
+ * rather than only through the hook.
+ */
+describe('canWritePlaylist', () => {
+  it('is true for the owner and a write collaborator', () => {
+    expect(canWritePlaylist(playlist())).toBe(true);
+    expect(canWritePlaylist(playlist({ access: ShareLevel.Write }))).toBe(true);
+  });
+
+  it('is false for a read collaborator and an unloaded playlist', () => {
+    expect(canWritePlaylist(playlist({ access: ShareLevel.Read }))).toBe(false);
+    expect(canWritePlaylist(undefined)).toBe(false);
   });
 });
