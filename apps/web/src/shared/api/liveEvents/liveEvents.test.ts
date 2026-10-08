@@ -1,79 +1,78 @@
 import { QueryClient } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { LiveEventType } from '@playliberty/contracts';
 
+import { cacheEffects } from '../cacheEffects/cacheEffects';
 import { invalidateForLiveEvent } from './liveEvents';
 
-function spyOnInvalidation() {
+function spyOnFacts() {
   const queryClient = new QueryClient();
-  const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
-  const reset = vi.spyOn(queryClient, 'resetQueries');
+  const everythingChanged = vi.spyOn(cacheEffects, 'everythingChanged');
+  const playlistChanged = vi.spyOn(cacheEffects, 'playlistChanged');
+  const playlistRemoved = vi.spyOn(cacheEffects, 'playlistRemoved');
+  const trackChanged = vi.spyOn(cacheEffects, 'trackChanged');
 
-  return { queryClient, invalidate, reset };
+  return {
+    queryClient,
+    everythingChanged,
+    playlistChanged,
+    playlistRemoved,
+    trackChanged
+  };
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 /*
- * The mapping is the whole client half of the stream: an event names what
- * changed, and this decides which reads are asked again. It is pure, so it is
- * tested without a component and without a socket.
+ * The mapping names one cache fact per event; the keys that fact asks again are
+ * pinned in `cacheEffects.test.ts`. It is pure, so it is tested without a
+ * component and without a socket.
  */
 describe('invalidateForLiveEvent', () => {
-  it('invalidates every read when ready arrives', () => {
-    const { queryClient, invalidate } = spyOnInvalidation();
+  it('names everything changed when ready arrives', () => {
+    const { queryClient, everythingChanged } = spyOnFacts();
 
     invalidateForLiveEvent(queryClient, { type: LiveEventType.Ready });
 
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith();
+    expect(everythingChanged).toHaveBeenCalledWith(queryClient);
   });
 
-  it('invalidates the library and the named playlist on a change', () => {
-    const { queryClient, invalidate } = spyOnInvalidation();
+  it('names the playlist changed for a playlist change', () => {
+    const { queryClient, playlistChanged } = spyOnFacts();
 
     invalidateForLiveEvent(queryClient, {
       type: LiveEventType.PlaylistChanged,
       playlistId: 'playlist-1'
     });
 
-    expect(invalidate).toHaveBeenCalledTimes(2);
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', 'playlist-1']
-    });
+    expect(playlistChanged).toHaveBeenCalledWith(queryClient, 'playlist-1');
   });
 
-  it('resets a removed playlist and refreshes the library', () => {
-    const { queryClient, invalidate, reset } = spyOnInvalidation();
+  it('names the playlist removed for a removal', () => {
+    const { queryClient, playlistRemoved } = spyOnFacts();
 
     invalidateForLiveEvent(queryClient, {
       type: LiveEventType.PlaylistRemoved,
       playlistId: 'playlist-1'
     });
 
-    expect(reset).toHaveBeenCalledWith({
-      queryKey: ['playlist', 'playlist-1']
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(playlistRemoved).toHaveBeenCalledWith(queryClient, 'playlist-1');
   });
 
-  it('invalidates every playlist holding a changed track, and no other', () => {
-    const { queryClient, invalidate } = spyOnInvalidation();
+  it('names the track changed for every playlist holding it', () => {
+    const { queryClient, trackChanged } = spyOnFacts();
 
     invalidateForLiveEvent(queryClient, {
       type: LiveEventType.TrackChanged,
       playlistIds: ['playlist-1', 'playlist-2']
     });
 
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', 'playlist-1']
-    });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', 'playlist-2']
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
-    expect(invalidate).not.toHaveBeenCalledWith({
-      queryKey: ['playlist', 'playlist-3']
-    });
+    expect(trackChanged).toHaveBeenCalledWith(queryClient, [
+      'playlist-1',
+      'playlist-2'
+    ]);
   });
 });

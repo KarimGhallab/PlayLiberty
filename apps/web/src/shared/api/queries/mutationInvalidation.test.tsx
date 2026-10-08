@@ -1,28 +1,30 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ShareLevel } from '@playliberty/contracts';
 
+import { cacheEffects } from '../cacheEffects/cacheEffects';
 import {
   useAddTrack,
   useCreatePlaylist,
   useDeletePlaylist,
+  useFetchTrackWhole,
   useGrantShare,
   useRemoveTrack,
   useRenamePlaylist,
   useRetryTrack,
   useRevokeShare,
-  useSyncPlaylist
+  useSyncPlaylist,
+  useUpdateSkipNonMusic
 } from './queries';
 
 /*
- * The invalidation map spec 09 names, pinned one mutation at a time. A mutation
- * that invalidates nothing is a screen that shows the old answer, so each hook is
- * driven through a mocked network and the reads it asked again are asserted.
- * Prefix keys are the surface: `['playlist', id]` is the invalidation that
- * carries the playlist, its run, its tracks and its shares.
+ * Each mutation names one cache fact; the reads that fact asks again are pinned
+ * in `cacheEffects.test.ts`. A mutation that names nothing is a screen that shows
+ * the old answer, so each hook is driven through a mocked network and the fact it
+ * named is asserted.
  */
 
 const PLAYLIST = 'playlist-1';
@@ -34,19 +36,28 @@ function setup() {
       mutations: { retry: false }
     }
   });
-  const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
-  const remove = vi.spyOn(queryClient, 'removeQueries');
+  const facts = {
+    libraryChanged: vi.spyOn(cacheEffects, 'libraryChanged'),
+    playlistChanged: vi.spyOn(cacheEffects, 'playlistChanged'),
+    trackChanged: vi.spyOn(cacheEffects, 'trackChanged'),
+    everyPlaylistChanged: vi.spyOn(cacheEffects, 'everyPlaylistChanged'),
+    playlistRemoved: vi.spyOn(cacheEffects, 'playlistRemoved')
+  };
 
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  return { invalidate, remove, wrapper };
+  return { queryClient, facts, wrapper };
 }
 
-describe('the mutation invalidation map', () => {
-  it('creating a playlist invalidates the library', async () => {
-    const { invalidate, wrapper } = setup();
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('the mutation cache facts', () => {
+  it('creating a playlist refreshes the library', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useCreatePlaylist(), { wrapper });
 
     await act(async () => {
@@ -59,11 +70,11 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.libraryChanged).toHaveBeenCalledWith(queryClient);
   });
 
-  it('starting a sync invalidates the playlist and the library', async () => {
-    const { invalidate, wrapper } = setup();
+  it('starting a sync refreshes the playlist', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useSyncPlaylist(PLAYLIST), { wrapper });
 
     await act(async () => {
@@ -73,14 +84,11 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST]
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.playlistChanged).toHaveBeenCalledWith(queryClient, PLAYLIST);
   });
 
-  it('renaming a playlist invalidates the playlist and the library', async () => {
-    const { invalidate, wrapper } = setup();
+  it('renaming a playlist refreshes the playlist', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useRenamePlaylist(PLAYLIST), {
       wrapper
     });
@@ -92,14 +100,27 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST]
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.playlistChanged).toHaveBeenCalledWith(queryClient, PLAYLIST);
   });
 
-  it('deleting a playlist removes it from the cache and invalidates the library', async () => {
-    const { invalidate, remove, wrapper } = setup();
+  it('changing the setting refreshes the library', async () => {
+    const { queryClient, facts, wrapper } = setup();
+    const { result } = renderHook(() => useUpdateSkipNonMusic(PLAYLIST), {
+      wrapper
+    });
+
+    await act(async () => {
+      result.current.mutate(false);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(facts.libraryChanged).toHaveBeenCalledWith(queryClient);
+  });
+
+  it('deleting a playlist removes it through the removal fact', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useDeletePlaylist(PLAYLIST), {
       wrapper
     });
@@ -111,12 +132,11 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(remove).toHaveBeenCalledWith({ queryKey: ['playlist', PLAYLIST] });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.playlistRemoved).toHaveBeenCalledWith(queryClient, PLAYLIST);
   });
 
-  it('the batch add invalidates the library and every playlist read', async () => {
-    const { invalidate, wrapper } = setup();
+  it('the batch add refreshes every playlist read', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useAddTrack(), { wrapper });
 
     await act(async () => {
@@ -129,12 +149,11 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlist'] });
+    expect(facts.everyPlaylistChanged).toHaveBeenCalledWith(queryClient);
   });
 
-  it('removing a track invalidates the playlist and the library', async () => {
-    const { invalidate, wrapper } = setup();
+  it('removing a track refreshes the playlist', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useRemoveTrack(PLAYLIST), { wrapper });
 
     await act(async () => {
@@ -144,14 +163,11 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST]
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.trackChanged).toHaveBeenCalledWith(queryClient, [PLAYLIST]);
   });
 
-  it('retrying a track invalidates the playlist and the library', async () => {
-    const { invalidate, wrapper } = setup();
+  it('retrying a track refreshes the playlist', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useRetryTrack(PLAYLIST), { wrapper });
 
     await act(async () => {
@@ -161,14 +177,27 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST]
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.trackChanged).toHaveBeenCalledWith(queryClient, [PLAYLIST]);
   });
 
-  it('granting a share invalidates the shares, the playlist and the library', async () => {
-    const { invalidate, wrapper } = setup();
+  it('fetching a track whole refreshes the playlist', async () => {
+    const { queryClient, facts, wrapper } = setup();
+    const { result } = renderHook(() => useFetchTrackWhole(PLAYLIST), {
+      wrapper
+    });
+
+    await act(async () => {
+      result.current.mutate('track-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(facts.trackChanged).toHaveBeenCalledWith(queryClient, [PLAYLIST]);
+  });
+
+  it('granting a share refreshes the playlist', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useGrantShare(PLAYLIST), { wrapper });
 
     await act(async () => {
@@ -178,17 +207,11 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST, 'shares']
-    });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST]
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.playlistChanged).toHaveBeenCalledWith(queryClient, PLAYLIST);
   });
 
-  it('revoking a share invalidates the shares, the playlist and the library', async () => {
-    const { invalidate, wrapper } = setup();
+  it('revoking a share refreshes the playlist', async () => {
+    const { queryClient, facts, wrapper } = setup();
     const { result } = renderHook(() => useRevokeShare(PLAYLIST), { wrapper });
 
     await act(async () => {
@@ -198,12 +221,6 @@ describe('the mutation invalidation map', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST, 'shares']
-    });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', PLAYLIST]
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
+    expect(facts.playlistChanged).toHaveBeenCalledWith(queryClient, PLAYLIST);
   });
 });

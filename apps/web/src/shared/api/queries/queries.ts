@@ -23,6 +23,7 @@ import type {
   Track
 } from '@playliberty/contracts';
 
+import { cacheEffects } from '../cacheEffects/cacheEffects';
 import {
   ApiError,
   apiCommand,
@@ -117,7 +118,7 @@ export function useCreatePlaylist(): UseMutationResult<
     mutationFn: (input: { url: string; skipNonMusic: boolean }) =>
       apiPost('/playlists', input, SyncRunSchema),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.libraryChanged(queryClient);
     }
   });
 }
@@ -144,8 +145,7 @@ export function useAddTrack(): UseMutationResult<
     mutationFn: (input: { url: string; playlistIds: string[] }) =>
       apiPost('/tracks', input, AddTrackResultSchema),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
-      void queryClient.invalidateQueries({ queryKey: ['playlist'] });
+      cacheEffects.everyPlaylistChanged(queryClient);
     }
   });
 }
@@ -248,10 +248,7 @@ export function useSyncPlaylist(
     mutationFn: () =>
       apiCommand(`/playlists/${playlistId}/sync`, SyncRunSchema),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
-      });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
 }
@@ -266,10 +263,7 @@ export function useRenamePlaylist(
     mutationFn: (name: string) =>
       apiPatch(`/playlists/${playlistId}`, { name }, PlaylistSchema),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
-      });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
 }
@@ -311,7 +305,7 @@ export function useUpdateSkipNonMusic(
     },
     onSuccess: playlist => {
       queryClient.setQueryData(key, playlist);
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.libraryChanged(queryClient);
     }
   });
 }
@@ -329,8 +323,7 @@ export function useDeletePlaylist(
   return useMutation({
     mutationFn: () => apiDelete(`/playlists/${playlistId}`),
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: ['playlist', playlistId] });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.playlistRemoved(queryClient, playlistId);
     }
   });
 }
@@ -350,10 +343,7 @@ export function useRetryTrack(
     mutationFn: (trackId: string) =>
       apiCommand(`/tracks/${trackId}/retry`, TrackSchema),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
-      });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.trackChanged(queryClient, [playlistId]);
     }
   });
 }
@@ -373,10 +363,7 @@ export function useFetchTrackWhole(
     mutationFn: (trackId: string) =>
       apiCommand(`/tracks/${trackId}/fetch-whole`, TrackSchema),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
-      });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.trackChanged(queryClient, [playlistId]);
     }
   });
 }
@@ -396,10 +383,7 @@ export function useRemoveTrack(
     mutationFn: (trackId: string) =>
       apiDelete(`/playlists/${playlistId}/tracks/${trackId}`),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
-      });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.trackChanged(queryClient, [playlistId]);
     }
   });
 }
@@ -435,13 +419,7 @@ export function useGrantShare(
     mutationFn: (input: { accountId: string; level: ShareLevel }) =>
       apiPost(`/playlists/${playlistId}/shares`, input, ShareSchema),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId, 'shares']
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
-      });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
 }
@@ -456,13 +434,7 @@ export function useRevokeShare(
     mutationFn: (accountId: string) =>
       apiDelete(`/playlists/${playlistId}/shares/${accountId}`),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId, 'shares']
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
-      });
-      void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
 }

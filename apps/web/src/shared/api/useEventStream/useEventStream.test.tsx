@@ -8,6 +8,7 @@ import { LiveEventType } from '@playliberty/contracts';
 import { createFakeEventStream } from '../../../testing/fakeEventStream';
 import { restoreLocation, stubLocationAssign } from '../../../testing/location';
 import { server } from '../../../testing/mocks/server';
+import { cacheEffects } from '../cacheEffects/cacheEffects';
 import {
   EventStreamContext,
   RECONNECT_BASE_MS,
@@ -43,6 +44,10 @@ function renderStream() {
   return { invalidate, eventStream, view };
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('useEventStream', () => {
   it('opens one connection for the tab at the events route', () => {
     const { eventStream } = renderStream();
@@ -61,8 +66,9 @@ describe('useEventStream', () => {
     expect(invalidate).toHaveBeenCalledWith();
   });
 
-  it('invalidates the library and the named playlist on a change', () => {
-    const { invalidate, eventStream } = renderStream();
+  it('hands a playlist change to the mapping', () => {
+    const { eventStream } = renderStream();
+    const playlistChanged = vi.spyOn(cacheEffects, 'playlistChanged');
 
     act(() => {
       eventStream.emit(
@@ -73,10 +79,10 @@ describe('useEventStream', () => {
       );
     });
 
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['playlists'] });
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['playlist', 'playlist-1']
-    });
+    expect(playlistChanged).toHaveBeenCalledWith(
+      expect.anything(),
+      'playlist-1'
+    );
   });
 
   it('ignores a frame that is not a live event', () => {

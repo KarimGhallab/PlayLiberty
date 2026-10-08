@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect } from 'react';
 import { AccountSummarySchema, LiveEventSchema } from '@playliberty/contracts';
 import type { LiveEvent } from '@playliberty/contracts';
 
+import { cacheEffects } from '../cacheEffects/cacheEffects';
 import { API_PREFIX, ApiError, apiGet } from '../client/client';
 import { invalidateForLiveEvent } from '../liveEvents/liveEvents';
 
@@ -129,7 +130,7 @@ export function useEventStream(): void {
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           stopped = true;
-          void queryClient.invalidateQueries();
+          cacheEffects.everythingChanged(queryClient);
           return;
         }
 

@@ -220,6 +220,22 @@ export const handlers = [
       updatedAt: '2026-09-29T12:00:00.000Z'
     })
   ),
+  http.post('http://localhost:3000/api/v1/tracks/:trackId/fetch-whole', () =>
+    HttpResponse.json({
+      id: 'track-3',
+      provider: 'youtube',
+      videoId: 'video-3',
+      title: 'Flamenco Sketches',
+      durationSeconds: 565,
+      skipNonMusic: false,
+      thumbnailPath: null,
+      fileStatus: 'pending',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    })
+  ),
   http.delete(
     'http://localhost:3000/api/v1/playlists/:playlistId/tracks/:trackId',
     () => new HttpResponse(null, { status: 204 })
