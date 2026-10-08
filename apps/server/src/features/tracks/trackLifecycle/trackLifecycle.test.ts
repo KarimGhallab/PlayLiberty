@@ -3,14 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  Provider,
-  TrackFileStatus,
-  TrackSourceStatus
-} from '@playliberty/contracts';
+import { TrackFileStatus, TrackSourceStatus } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import { seedTrack } from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import { tracks } from '../../../platform/database/schema.js';
@@ -35,48 +32,12 @@ afterEach(async () => {
   context = undefined;
 });
 
-interface SeedOptions {
-  fileStatus?: TrackFileStatus;
-  sourceStatus?: TrackSourceStatus;
-  filePath?: string | null;
-  failureReason?: string | null;
-  durationSeconds?: number | null;
-  skipNonMusic?: boolean;
-  thumbnailPath?: string | null;
-}
-
 function database(): DatabaseHandle {
   if (context === undefined) {
     throw new Error('the test context is not created');
   }
 
   return context.database;
-}
-
-function seedTrack(
-  database: DatabaseHandle,
-  options: SeedOptions = {}
-): string {
-  const id = randomUUID();
-
-  database.db
-    .insert(tracks)
-    .values({
-      id,
-      provider: Provider.Youtube,
-      videoId: `video-${id}`,
-      title: 'Track',
-      durationSeconds: options.durationSeconds ?? null,
-      skipNonMusic: options.skipNonMusic ?? true,
-      thumbnailPath: options.thumbnailPath ?? null,
-      fileStatus: options.fileStatus ?? TrackFileStatus.Pending,
-      sourceStatus: options.sourceStatus ?? TrackSourceStatus.Available,
-      filePath: options.filePath ?? null,
-      failureReason: options.failureReason ?? null
-    })
-    .run();
-
-  return id;
 }
 
 function readTrack(trackId: string) {
@@ -110,8 +71,14 @@ describe('creating a track', () => {
 describe('claiming pending tracks for download', () => {
   it('moves the oldest pending rows to downloading and returns them', async () => {
     context = await createTestContext();
-    const first = seedTrack(database());
-    const second = seedTrack(database());
+    const first = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending,
+      durationSeconds: null
+    }).trackId;
+    const second = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending,
+      durationSeconds: null
+    }).trackId;
 
     const claimed = claimPendingTracks(database(), 2);
 
@@ -122,8 +89,14 @@ describe('claiming pending tracks for download', () => {
 
   it('claims no more than the cap and leaves the rest pending', async () => {
     context = await createTestContext();
-    seedTrack(database());
-    seedTrack(database());
+    seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending,
+      durationSeconds: null
+    });
+    seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending,
+      durationSeconds: null
+    });
 
     const claimed = claimPendingTracks(database(), 1);
 
@@ -133,8 +106,9 @@ describe('claiming pending tracks for download', () => {
   it('never claims a track that is not pending', async () => {
     context = await createTestContext();
     const stored = seedTrack(database(), {
-      fileStatus: TrackFileStatus.Stored
-    });
+      fileStatus: TrackFileStatus.Stored,
+      durationSeconds: null
+    }).trackId;
 
     const claimed = claimPendingTracks(database(), 5);
 
@@ -146,7 +120,7 @@ describe('claiming pending tracks for download', () => {
 describe('storing and failing a claimed download', () => {
   it('stores a downloading track with its file and the duration the adapter reported', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Downloading,
       durationSeconds: 180,
       failureReason: 'a stale reason'
@@ -167,8 +141,9 @@ describe('storing and failing a claimed download', () => {
 
   it('refuses to store a track that was not downloading', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
-      fileStatus: TrackFileStatus.Pending
+    const { trackId } = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending,
+      durationSeconds: null
     });
 
     const result = storeTrack(database(), trackId, {
@@ -182,8 +157,9 @@ describe('storing and failing a claimed download', () => {
 
   it('fails a downloading track with its reason', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
-      fileStatus: TrackFileStatus.Downloading
+    const { trackId } = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Downloading,
+      durationSeconds: null
     });
 
     const result = failTrack(database(), trackId, 'the download failed');
@@ -196,8 +172,9 @@ describe('storing and failing a claimed download', () => {
 
   it('refuses to fail a stored track', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Stored,
+      durationSeconds: null,
       filePath: 'media/aa/video.m4a'
     });
 
@@ -222,8 +199,9 @@ describe('storing and failing a claimed download', () => {
 describe('returning a track to the queue', () => {
   it('retries a failed track to pending and clears the reason', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Failed,
+      durationSeconds: null,
       failureReason: 'a failure'
     });
 
@@ -242,7 +220,10 @@ describe('returning a track to the queue', () => {
     TrackFileStatus.Unavailable
   ])('refuses to retry a %s track', async fileStatus => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), { fileStatus });
+    const { trackId } = seedTrack(database(), {
+      fileStatus,
+      durationSeconds: null
+    });
 
     expect(retryTrack(database(), trackId).outcome).toBe(
       TrackTransitionOutcome.Refused
@@ -252,9 +233,10 @@ describe('returning a track to the queue', () => {
 
   it('fetches a pending track whole, turning the policy off', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Pending,
-      skipNonMusic: true
+      skipNonMusic: true,
+      durationSeconds: null
     });
 
     const result = fetchTrackWhole(database(), trackId);
@@ -268,10 +250,11 @@ describe('returning a track to the queue', () => {
 
   it('fetches a failed track whole, turning the policy off', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Failed,
       failureReason: 'boom',
-      skipNonMusic: true
+      skipNonMusic: true,
+      durationSeconds: null
     });
 
     expect(fetchTrackWhole(database(), trackId).outcome).toBe(
@@ -288,7 +271,11 @@ describe('returning a track to the queue', () => {
     TrackFileStatus.Unavailable
   ])('refuses to fetch a %s track whole', async fileStatus => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), { fileStatus, skipNonMusic: true });
+    const { trackId } = seedTrack(database(), {
+      fileStatus,
+      skipNonMusic: true,
+      durationSeconds: null
+    });
 
     expect(fetchTrackWhole(database(), trackId).outcome).toBe(
       TrackTransitionOutcome.Refused
@@ -302,8 +289,9 @@ describe('returning a track to the queue', () => {
 describe('marking a track removed from its source', () => {
   it('keeps a stored file and moves only the source status', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Stored,
+      durationSeconds: null,
       filePath: 'media/aa/video.m4a'
     });
 
@@ -318,8 +306,9 @@ describe('marking a track removed from its source', () => {
 
   it('makes a track with no file unavailable', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
-      fileStatus: TrackFileStatus.Pending
+    const { trackId } = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending,
+      durationSeconds: null
     });
 
     markTrackSourceRemoved(database(), trackId);
@@ -332,9 +321,10 @@ describe('marking a track removed from its source', () => {
 
   it('refuses a track already marked removed', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Stored,
       sourceStatus: TrackSourceStatus.Removed,
+      durationSeconds: null,
       filePath: 'media/aa/video.m4a'
     });
 
@@ -349,11 +339,13 @@ describe('the startup reset', () => {
   it('returns every downloading track to pending and counts only those', async () => {
     context = await createTestContext();
     const downloading = seedTrack(database(), {
-      fileStatus: TrackFileStatus.Downloading
-    });
+      fileStatus: TrackFileStatus.Downloading,
+      durationSeconds: null
+    }).trackId;
     const stored = seedTrack(database(), {
-      fileStatus: TrackFileStatus.Stored
-    });
+      fileStatus: TrackFileStatus.Stored,
+      durationSeconds: null
+    }).trackId;
 
     const reset = resetDownloadingTracks(database());
 
@@ -366,8 +358,9 @@ describe('the startup reset', () => {
 describe('the artwork and the row', () => {
   it('records a stored thumbnail path', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database(), {
-      fileStatus: TrackFileStatus.Stored
+    const { trackId } = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Stored,
+      durationSeconds: null
     });
 
     storeThumbnail(database(), trackId, 'thumbnails/aa/video.jpg');
@@ -377,7 +370,10 @@ describe('the artwork and the row', () => {
 
   it('removes a track row', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(database());
+    const { trackId } = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending,
+      durationSeconds: null
+    });
 
     removeTrack(database(), trackId);
 

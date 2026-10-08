@@ -150,6 +150,34 @@ describe('TrackRow', () => {
     expect(onRemove).toHaveBeenCalledWith('track-1');
   });
 
+  it('returns focus to the lane button on Escape', () => {
+    renderRow({});
+
+    const trigger = screen.getByRole('button', {
+      name: 'Actions for Blue In Green'
+    });
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('closes the menu on an outside press without moving focus', () => {
+    renderRow({});
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
   it('draws no menu when the caller cannot curate', () => {
     renderRow({ onRemove: null });
 

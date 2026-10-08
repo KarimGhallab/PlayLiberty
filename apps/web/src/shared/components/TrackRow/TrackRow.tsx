@@ -5,7 +5,7 @@ import {
   IconTrash
 } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
@@ -14,6 +14,7 @@ import { trackTone } from '@playliberty/ui-foundation';
 
 import { API_PREFIX } from '../../api/client/client';
 import TrackBars from '../TrackBars';
+import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
 
 /*
@@ -109,36 +110,16 @@ function TrackRow({
       : t('trackRow.play', { title: track.title });
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  /*
-   * The menu closes on a press outside it and on Escape, which is the whole
-   * behaviour of an overflow that opens onto a small set of items. A press inside
-   * is left alone so an item's own handler can run.
-   */
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-
-    const onPointerDown = (event: PointerEvent): void => {
-      if (!menuAnchorRef.current?.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [menuOpen]);
+  /* The menu's own dismissal: an outside press closes it, Escape closes it and
+   * returns the keyboard to the lane button. */
+  useDismissibleMenu({
+    open: menuOpen,
+    containerRef: menuAnchorRef,
+    onClose: () => setMenuOpen(false),
+    returnFocusTo: menuButtonRef
+  });
 
   /*
    * The lane's one control, and the row's rule is what its menu holds. A failed
@@ -203,6 +184,7 @@ function TrackRow({
     ) : (
       <span className={styles.trackRow__menuAnchor} ref={menuAnchorRef}>
         <button
+          ref={menuButtonRef}
           type="button"
           className={styles.trackRow__action}
           aria-label={t('trackRow.actions', { title: track.title })}

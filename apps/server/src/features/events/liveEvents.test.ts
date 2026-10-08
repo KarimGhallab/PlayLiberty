@@ -1,30 +1,22 @@
-import { randomUUID } from 'node:crypto';
-
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import {
-  AssociationOrigin,
   LiveEventType,
-  Provider,
   ShareLevel,
-  TrackFileStatus,
-  TrackSourceStatus,
-  UserRole
+  TrackFileStatus
 } from '@playliberty/contracts';
 
 import type { TestContext } from '../../app/testing/createTestContext.js';
 import { createTestContext } from '../../app/testing/createTestContext.js';
 import { createFakeYoutube, testVideo } from '../../app/testing/fakeYoutube.js';
-
-import type { DatabaseHandle } from '../../platform/database/client.js';
 import {
-  accounts,
-  associations,
-  playlists,
-  shares,
-  tracks
-} from '../../platform/database/schema.js';
+  associate,
+  seedAccount,
+  seedPlaylist,
+  seedShare,
+  seedTrack
+} from '../../app/testing/fixtures.js';
 
 /*
  * The events the playlist and track features publish, observed on the bus the
@@ -41,102 +33,6 @@ afterEach(async () => {
   await context?.cleanup();
   context = undefined;
 });
-
-function seedAccount(
-  database: DatabaseHandle,
-  pangolinUserId = 'owner-1'
-): string {
-  const id = randomUUID();
-
-  database.db
-    .insert(accounts)
-    .values({
-      id,
-      pangolinUserId,
-      displayName: 'Account',
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-
-  return id;
-}
-
-function seedPlaylist(
-  database: DatabaseHandle,
-  ownerAccountId: string
-): string {
-  const id = randomUUID();
-
-  database.db
-    .insert(playlists)
-    .values({
-      id,
-      ownerAccountId,
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${id}`
-    })
-    .run();
-
-  return id;
-}
-
-function seedTrack(
-  database: DatabaseHandle,
-  playlistId: string,
-  fileStatus: TrackFileStatus = TrackFileStatus.Stored
-): string {
-  const trackId = randomUUID();
-
-  database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId: `v${trackId.replaceAll('-', '').slice(0, 11)}`,
-      title: 'Track',
-      durationSeconds: null,
-      skipNonMusic: true,
-      thumbnailPath: null,
-      thumbnailUrl: null,
-      fileStatus,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: null,
-      failureReason: null
-    })
-    .run();
-
-  database.db
-    .insert(associations)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Remote,
-      position: 0
-    })
-    .run();
-
-  return trackId;
-}
-
-function grantShare(
-  database: DatabaseHandle,
-  playlistId: string,
-  accountId: string
-): void {
-  database.db
-    .insert(shares)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      accountId,
-      level: ShareLevel.Read
-    })
-    .run();
-}
 
 function request(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
@@ -172,9 +68,11 @@ function collect(accountId: string): LiveEvent[] {
 describe('the playlist and track events', () => {
   it('publishes a playlist change when a playlist is renamed', async () => {
     context = await createTestContext();
-    const accountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, accountId);
-    const received = collect(accountId);
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const { playlistId } = seedPlaylist(context.database, account.accountId);
+    const received = collect(account.accountId);
 
     const response = await request(
       'PATCH',
@@ -191,13 +89,17 @@ describe('the playlist and track events', () => {
 
   it('publishes a rename to a collaborator and not to a stranger', async () => {
     context = await createTestContext();
-    const ownerAccountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, ownerAccountId);
-    const collaboratorId = seedAccount(context.database, 'collaborator-1');
-    const strangerId = seedAccount(context.database, 'stranger-1');
-    grantShare(context.database, playlistId, collaboratorId);
-    const collaboratorEvents = collect(collaboratorId);
-    const strangerEvents = collect(strangerId);
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const collaborator = seedAccount(context.database, {
+      pangolinUserId: 'collaborator-1'
+    });
+    const stranger = seedAccount(context.database, {
+      pangolinUserId: 'stranger-1'
+    });
+    seedShare(context.database, playlistId, collaborator.accountId);
+    const collaboratorEvents = collect(collaborator.accountId);
+    const strangerEvents = collect(stranger.accountId);
 
     await request('PATCH', `/api/v1/playlists/${playlistId}`, 'owner-1', {
       name: 'Morning Jazz'
@@ -211,12 +113,14 @@ describe('the playlist and track events', () => {
 
   it('publishes a playlist removal to the owner and a collaborator', async () => {
     context = await createTestContext();
-    const ownerAccountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, ownerAccountId);
-    const collaboratorId = seedAccount(context.database, 'collaborator-1');
-    grantShare(context.database, playlistId, collaboratorId);
-    const ownerEvents = collect(ownerAccountId);
-    const collaboratorEvents = collect(collaboratorId);
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const collaborator = seedAccount(context.database, {
+      pangolinUserId: 'collaborator-1'
+    });
+    seedShare(context.database, playlistId, collaborator.accountId);
+    const ownerEvents = collect(owner.accountId);
+    const collaboratorEvents = collect(collaborator.accountId);
 
     const response = await request(
       'DELETE',
@@ -235,17 +139,19 @@ describe('the playlist and track events', () => {
 
   it('publishes a playlist change to the owner and the grantee when a share is granted', async () => {
     context = await createTestContext();
-    const ownerAccountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, ownerAccountId);
-    const granteeId = seedAccount(context.database, 'grantee-1');
-    const ownerEvents = collect(ownerAccountId);
-    const granteeEvents = collect(granteeId);
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const grantee = seedAccount(context.database, {
+      pangolinUserId: 'grantee-1'
+    });
+    const ownerEvents = collect(owner.accountId);
+    const granteeEvents = collect(grantee.accountId);
 
     const response = await request(
       'POST',
       `/api/v1/playlists/${playlistId}/shares`,
       'owner-1',
-      { accountId: granteeId, level: ShareLevel.Read }
+      { accountId: grantee.accountId, level: ShareLevel.Read }
     );
 
     expect(response.statusCode).toBe(200);
@@ -259,16 +165,18 @@ describe('the playlist and track events', () => {
 
   it('tells a revoked account the playlist is gone and the owner it changed', async () => {
     context = await createTestContext();
-    const ownerAccountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, ownerAccountId);
-    const granteeId = seedAccount(context.database, 'grantee-1');
-    grantShare(context.database, playlistId, granteeId);
-    const ownerEvents = collect(ownerAccountId);
-    const granteeEvents = collect(granteeId);
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const grantee = seedAccount(context.database, {
+      pangolinUserId: 'grantee-1'
+    });
+    seedShare(context.database, playlistId, grantee.accountId);
+    const ownerEvents = collect(owner.accountId);
+    const granteeEvents = collect(grantee.accountId);
 
     const response = await request(
       'DELETE',
-      `/api/v1/playlists/${playlistId}/shares/${granteeId}`,
+      `/api/v1/playlists/${playlistId}/shares/${grantee.accountId}`,
       'owner-1'
     );
 
@@ -286,9 +194,11 @@ describe('the playlist and track events', () => {
       {},
       { youtube: createFakeYoutube(testVideo('bbbbbbbbbbb')) }
     );
-    const accountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, accountId);
-    const received = collect(accountId);
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const { playlistId } = seedPlaylist(context.database, account.accountId);
+    const received = collect(account.accountId);
 
     const response = await request('POST', '/api/v1/tracks', 'owner-1', {
       url: VIDEO_URL,
@@ -303,10 +213,13 @@ describe('the playlist and track events', () => {
 
   it('publishes a track change when a track is removed from a playlist', async () => {
     context = await createTestContext();
-    const accountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, accountId);
-    const trackId = seedTrack(context.database, playlistId);
-    const received = collect(accountId);
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const { playlistId } = seedPlaylist(context.database, account.accountId);
+    const { trackId } = seedTrack(context.database);
+    associate(context.database, playlistId, trackId);
+    const received = collect(account.accountId);
 
     const response = await request(
       'DELETE',
@@ -322,14 +235,15 @@ describe('the playlist and track events', () => {
 
   it('publishes a track change when a failed track is retried', async () => {
     context = await createTestContext();
-    const accountId = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, accountId);
-    const trackId = seedTrack(
-      context.database,
-      playlistId,
-      TrackFileStatus.Failed
-    );
-    const received = collect(accountId);
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const { playlistId } = seedPlaylist(context.database, account.accountId);
+    const { trackId } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+    associate(context.database, playlistId, trackId);
+    const received = collect(account.accountId);
 
     const response = await request(
       'POST',
@@ -345,35 +259,35 @@ describe('the playlist and track events', () => {
 
   it('tells each account only about the holding playlists it can see', async () => {
     context = await createTestContext();
-    const ownerA = seedAccount(context.database, 'owner-a');
-    const ownerB = seedAccount(context.database, 'owner-b');
-    const collaborator = seedAccount(context.database, 'collaborator-1');
-    const stranger = seedAccount(context.database, 'stranger-1');
-    const playlistA = seedPlaylist(context.database, ownerA);
-    const playlistB = seedPlaylist(context.database, ownerB);
-    grantShare(context.database, playlistA, collaborator);
+    const ownerA = seedAccount(context.database, { pangolinUserId: 'owner-a' });
+    const ownerB = seedAccount(context.database, { pangolinUserId: 'owner-b' });
+    const collaborator = seedAccount(context.database, {
+      pangolinUserId: 'collaborator-1'
+    });
+    const stranger = seedAccount(context.database, {
+      pangolinUserId: 'stranger-1'
+    });
+    const { playlistId: playlistA } = seedPlaylist(
+      context.database,
+      ownerA.accountId
+    );
+    const { playlistId: playlistB } = seedPlaylist(
+      context.database,
+      ownerB.accountId
+    );
+    seedShare(context.database, playlistA, collaborator.accountId);
 
     // One track held by both playlists, so a change to it is a change to both.
-    const trackId = seedTrack(
-      context.database,
-      playlistA,
-      TrackFileStatus.Failed
-    );
-    context.database.db
-      .insert(associations)
-      .values({
-        id: randomUUID(),
-        playlistId: playlistB,
-        trackId,
-        origin: AssociationOrigin.Remote,
-        position: 0
-      })
-      .run();
+    const { trackId } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+    associate(context.database, playlistA, trackId);
+    associate(context.database, playlistB, trackId);
 
-    const ownerAEvents = collect(ownerA);
-    const ownerBEvents = collect(ownerB);
-    const collaboratorEvents = collect(collaborator);
-    const strangerEvents = collect(stranger);
+    const ownerAEvents = collect(ownerA.accountId);
+    const ownerBEvents = collect(ownerB.accountId);
+    const collaboratorEvents = collect(collaborator.accountId);
+    const strangerEvents = collect(stranger.accountId);
 
     const response = await request(
       'POST',
@@ -401,14 +315,22 @@ describe('the playlist and track events', () => {
       {},
       { youtube: createFakeYoutube(testVideo('bbbbbbbbbbb')) }
     );
-    const owner = seedAccount(context.database, 'owner-a');
-    const collaborator = seedAccount(context.database, 'collaborator-1');
-    const playlistA = seedPlaylist(context.database, owner);
-    const playlistB = seedPlaylist(context.database, owner);
-    grantShare(context.database, playlistA, collaborator);
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-a' });
+    const collaborator = seedAccount(context.database, {
+      pangolinUserId: 'collaborator-1'
+    });
+    const { playlistId: playlistA } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
+    const { playlistId: playlistB } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
+    seedShare(context.database, playlistA, collaborator.accountId);
 
-    const ownerEvents = collect(owner);
-    const collaboratorEvents = collect(collaborator);
+    const ownerEvents = collect(owner.accountId);
+    const collaboratorEvents = collect(collaborator.accountId);
 
     const response = await request('POST', '/api/v1/tracks', 'owner-a', {
       url: VIDEO_URL,

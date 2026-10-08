@@ -1,8 +1,10 @@
 import { IconCheck, IconWorld } from '@tabler/icons-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { Language, useI18n } from '@playliberty/i18n';
+
+import { useDismissibleMenu } from '../../../shared/components/useDismissibleMenu/useDismissibleMenu';
 
 import styles from './LanguageMenu.module.scss';
 
@@ -31,42 +33,19 @@ export default function LanguageMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  /* A close that returns the keyboard to the trigger, for Escape and a choice. */
+  /* A choice closes the menu and returns the keyboard to the trigger. Escape is
+   * the hook's. */
   const close = useCallback((): void => {
     setOpen(false);
     triggerRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const onPointerDown = (event: PointerEvent): void => {
-      const target = event.target;
-
-      if (
-        rootRef.current !== null &&
-        target instanceof Node &&
-        !rootRef.current.contains(target)
-      ) {
-        setOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        close();
-      }
-    };
-
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open, close]);
+  useDismissibleMenu({
+    open,
+    containerRef: rootRef,
+    onClose: () => setOpen(false),
+    returnFocusTo: triggerRef
+  });
 
   return (
     <div className={styles.languageMenu} ref={rootRef}>

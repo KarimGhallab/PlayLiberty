@@ -24,6 +24,7 @@ import { sleeveIndex } from '@playliberty/ui-foundation';
 import { API_PREFIX } from '../../api/client/client';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import PlayGlyph from '../PlayGlyph';
+import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
 
@@ -240,36 +241,14 @@ export function usePlaylistHeader({
     menuButtonRef.current?.focus();
   };
 
-  /*
-   * The menu closes on a press outside it and on Escape, which is the whole
-   * behaviour of a menu button that opens onto a small set of items. Escape hands
-   * focus back to the button, so the keyboard never lands on nothing. A press
-   * inside is left alone so an item's own handler can run.
-   */
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-
-    const onPointerDown = (event: PointerEvent): void => {
-      if (!menuAnchorRef.current?.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        closeMenu();
-      }
-    };
-
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [menuOpen]);
+  /* The menu's own dismissal: an outside press closes it, Escape closes it and
+   * returns the keyboard to the button. */
+  useDismissibleMenu({
+    open: menuOpen,
+    containerRef: menuAnchorRef,
+    onClose: () => setMenuOpen(false),
+    returnFocusTo: menuButtonRef
+  });
 
   /*
    * Opening moves focus onto an item, which is where a menu button leaves it and

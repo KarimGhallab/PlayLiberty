@@ -1,20 +1,15 @@
-import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  Provider,
-  TrackFileStatus,
-  TrackSourceStatus
-} from '@playliberty/contracts';
+import { TrackFileStatus } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import { seedTrack } from '../../../app/testing/fixtures.js';
 
-import type { DatabaseHandle } from '../../../platform/database/client.js';
 import { tracks } from '../../../platform/database/schema.js';
 import { mediaRelativePath } from '../../../platform/media/mediaPaths.js';
 import { runStartupSweep } from './startupSweep.js';
@@ -25,32 +20,6 @@ afterEach(async () => {
   await context?.cleanup();
   context = undefined;
 });
-
-function seedTrack(
-  database: DatabaseHandle,
-  options: { fileStatus: TrackFileStatus; filePath?: string | null }
-): string {
-  const id = randomUUID();
-
-  database.db
-    .insert(tracks)
-    .values({
-      id,
-      provider: Provider.Youtube,
-      videoId: 'aaaaaaaaaaa',
-      title: 'Track',
-      durationSeconds: null,
-      thumbnailPath: null,
-      thumbnailUrl: null,
-      fileStatus: options.fileStatus,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: options.filePath ?? null,
-      failureReason: null
-    })
-    .run();
-
-  return id;
-}
 
 function trackRow(trackId: string) {
   if (context === undefined) {
@@ -67,7 +36,9 @@ function trackRow(trackId: string) {
 describe('the startup sweep', () => {
   it('empties the temporary directory and re-queues an interrupted download', async () => {
     context = await createTestContext();
-    const trackId = seedTrack(context.database, {
+    const { trackId } = seedTrack(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      durationSeconds: null,
       fileStatus: TrackFileStatus.Downloading
     });
 
@@ -94,7 +65,9 @@ describe('the startup sweep', () => {
   it('leaves a stored track and its file alone', async () => {
     context = await createTestContext();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-    const trackId = seedTrack(context.database, {
+    const { trackId } = seedTrack(context.database, {
+      videoId: 'aaaaaaaaaaa',
+      durationSeconds: null,
       fileStatus: TrackFileStatus.Stored,
       filePath: relativePath
     });

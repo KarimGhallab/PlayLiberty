@@ -9,11 +9,8 @@ import type { LiveEvent } from '@playliberty/contracts';
 import {
   AssociationOrigin,
   LiveEventType,
-  Provider,
-  ShareLevel,
   TrackFileStatus,
-  TrackSourceStatus,
-  UserRole
+  TrackSourceStatus
 } from '@playliberty/contracts';
 import type {
   DownloadTrackRequest,
@@ -30,15 +27,16 @@ import { EventBus } from '../../../shared/events/eventBus/EventBus.js';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import {
+  associate,
+  seedAccount,
+  seedPlaylist,
+  seedShare,
+  seedTrack
+} from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
-import {
-  accounts,
-  associations,
-  playlists,
-  shares,
-  tracks
-} from '../../../platform/database/schema.js';
+import { associations, tracks } from '../../../platform/database/schema.js';
 import {
   mediaRelativePath,
   thumbnailRelativePath
@@ -131,63 +129,6 @@ function fakeDownloader(options: FakeDownloaderOptions = {}): {
   };
 }
 
-function createAccount(
-  database: DatabaseHandle,
-  pangolinUserId: string
-): string {
-  const id = randomUUID();
-
-  database.db
-    .insert(accounts)
-    .values({
-      id,
-      pangolinUserId,
-      displayName: 'Account',
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-
-  return id;
-}
-
-function seedPlaylist(
-  database: DatabaseHandle,
-  ownerAccountId: string
-): string {
-  const id = randomUUID();
-
-  database.db
-    .insert(playlists)
-    .values({
-      id,
-      ownerAccountId,
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${id}`
-    })
-    .run();
-
-  return id;
-}
-
-function grantShare(
-  database: DatabaseHandle,
-  playlistId: string,
-  accountId: string
-): void {
-  database.db
-    .insert(shares)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      accountId,
-      level: ShareLevel.Read
-    })
-    .run();
-}
-
 interface SeedOptions {
   videoId?: string;
   fileStatus?: TrackFileStatus;
@@ -210,41 +151,28 @@ function seed(
   options: SeedOptions = {},
   pangolinUserId = 'owner-1'
 ): Seeded {
-  const accountId = createAccount(database, pangolinUserId);
-  const playlistId = seedPlaylist(database, accountId);
-  const trackId = randomUUID();
+  const account = seedAccount(database, { pangolinUserId });
+  const playlist = seedPlaylist(database, account.accountId);
   const videoId = options.videoId ?? 'aaaaaaaaaaa';
 
-  database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId,
-      title: 'Track',
-      durationSeconds: options.durationSeconds ?? null,
-      skipNonMusic: options.skipNonMusic ?? true,
-      thumbnailPath: null,
-      thumbnailUrl: options.thumbnailUrl ?? null,
-      fileStatus: options.fileStatus ?? TrackFileStatus.Pending,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: options.filePath ?? null,
-      failureReason: null
-    })
-    .run();
+  const track = seedTrack(database, {
+    videoId,
+    durationSeconds: options.durationSeconds ?? null,
+    skipNonMusic: options.skipNonMusic,
+    thumbnailUrl: options.thumbnailUrl,
+    fileStatus: options.fileStatus ?? TrackFileStatus.Pending,
+    filePath: options.filePath
+  });
 
-  database.db
-    .insert(associations)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Remote,
-      position: 0
-    })
-    .run();
+  associate(database, playlist.playlistId, track.trackId);
 
-  return { pangolinUserId, accountId, playlistId, trackId, videoId };
+  return {
+    pangolinUserId: account.pangolinUserId,
+    accountId: account.accountId,
+    playlistId: playlist.playlistId,
+    trackId: track.trackId,
+    videoId: track.videoId
+  };
 }
 
 function trackRow(trackId: string) {
@@ -409,13 +337,18 @@ describe('the download worker', () => {
 
     // A second account associates the same track row. Its playlist is on, but the
     // track keeps the policy of the fetch that stored it: first-wins.
-    const otherAccountId = createAccount(context.database, 'owner-2');
-    const otherPlaylistId = seedPlaylist(context.database, otherAccountId);
+    const otherAccount = seedAccount(context.database, {
+      pangolinUserId: 'owner-2'
+    });
+    const otherPlaylist = seedPlaylist(
+      context.database,
+      otherAccount.accountId
+    );
     context.database.db
       .insert(associations)
       .values({
         id: randomUUID(),
-        playlistId: otherPlaylistId,
+        playlistId: otherPlaylist.playlistId,
         trackId: seeded.trackId,
         origin: AssociationOrigin.Remote,
         position: 0
@@ -778,15 +711,21 @@ describe('the download worker', () => {
     const fake = fakeDownloader();
     context = await createTestContext({}, { youtube: fake.youtube });
     const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
-    const collaboratorId = createAccount(context.database, 'collaborator-1');
-    const strangerId = createAccount(context.database, 'stranger-1');
-    grantShare(context.database, seeded.playlistId, collaboratorId);
+    const collaborator = seedAccount(context.database, {
+      pangolinUserId: 'collaborator-1'
+    });
+    const stranger = seedAccount(context.database, {
+      pangolinUserId: 'stranger-1'
+    });
+    seedShare(context.database, seeded.playlistId, collaborator.accountId);
 
     const events = new EventBus<LiveEvent>();
     const collaboratorEvents: LiveEvent[] = [];
     const strangerEvents: LiveEvent[] = [];
-    events.subscribe(collaboratorId, event => collaboratorEvents.push(event));
-    events.subscribe(strangerId, event => strangerEvents.push(event));
+    events.subscribe(collaborator.accountId, event =>
+      collaboratorEvents.push(event)
+    );
+    events.subscribe(stranger.accountId, event => strangerEvents.push(event));
 
     await run(fake.youtube, 1, events);
 

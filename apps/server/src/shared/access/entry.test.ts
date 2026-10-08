@@ -1,28 +1,19 @@
-import { randomUUID } from 'node:crypto';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  AssociationOrigin,
-  Provider,
-  ShareLevel,
-  TrackFileStatus,
-  TrackSourceStatus,
-  UserRole
-} from '@playliberty/contracts';
+import { ShareLevel } from '@playliberty/contracts';
 import type { PlaylistAccess } from '@playliberty/contracts';
 
 import type { TestContext } from '../../app/testing/createTestContext.js';
 import { createTestContext } from '../../app/testing/createTestContext.js';
+import {
+  associate,
+  seedAccount,
+  seedPlaylist,
+  seedShare,
+  seedTrack
+} from '../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
-import {
-  accounts,
-  associations,
-  playlists,
-  shares,
-  tracks
-} from '../../platform/database/schema.js';
 import {
   AccessNeed,
   EntryOutcome,
@@ -53,85 +44,6 @@ function database(): DatabaseHandle {
   return context.database;
 }
 
-function seedAccount(displayName: string): string {
-  const id = randomUUID();
-
-  database()
-    .db.insert(accounts)
-    .values({
-      id,
-      pangolinUserId: `pangolin-${id}`,
-      displayName,
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-
-  return id;
-}
-
-function seedPlaylist(ownerAccountId: string): string {
-  const id = randomUUID();
-
-  database()
-    .db.insert(playlists)
-    .values({
-      id,
-      ownerAccountId,
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${id}`
-    })
-    .run();
-
-  return id;
-}
-
-function seedShare(
-  playlistId: string,
-  accountId: string,
-  level: ShareLevel
-): void {
-  database()
-    .db.insert(shares)
-    .values({ id: randomUUID(), playlistId, accountId, level })
-    .run();
-}
-
-function seedTrack(playlistId: string): string {
-  const trackId = randomUUID();
-
-  database()
-    .db.insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId: `video-${trackId}`,
-      title: 'Track',
-      durationSeconds: 180,
-      thumbnailPath: null,
-      fileStatus: TrackFileStatus.Stored,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: 'media/ee/song.m4a',
-      failureReason: null
-    })
-    .run();
-
-  database()
-    .db.insert(associations)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Remote,
-      position: 0
-    })
-    .run();
-
-  return trackId;
-}
-
 /* Owner, a read collaborator, a write collaborator and a stranger. */
 function seedCast(): {
   owner: string;
@@ -141,15 +53,18 @@ function seedCast(): {
   playlistId: string;
   trackId: string;
 } {
-  const owner = seedAccount('Owner');
-  const reader = seedAccount('Reader');
-  const writer = seedAccount('Writer');
-  const stranger = seedAccount('Stranger');
-  const playlistId = seedPlaylist(owner);
-  const trackId = seedTrack(playlistId);
+  const db = database();
+  const owner = seedAccount(db, { displayName: 'Owner' }).accountId;
+  const reader = seedAccount(db, { displayName: 'Reader' }).accountId;
+  const writer = seedAccount(db, { displayName: 'Writer' }).accountId;
+  const stranger = seedAccount(db, { displayName: 'Stranger' }).accountId;
+  const { playlistId } = seedPlaylist(db, owner);
+  const { trackId } = seedTrack(db, { filePath: 'media/ee/song.m4a' });
 
-  seedShare(playlistId, reader, ShareLevel.Read);
-  seedShare(playlistId, writer, ShareLevel.Write);
+  associate(db, playlistId, trackId);
+
+  seedShare(db, playlistId, reader, { level: ShareLevel.Read });
+  seedShare(db, playlistId, writer, { level: ShareLevel.Write });
 
   return { owner, reader, writer, stranger, playlistId, trackId };
 }

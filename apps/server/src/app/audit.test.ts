@@ -3,11 +3,11 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { Provider, ShareLevel, UserRole } from '@playliberty/contracts';
+import { ShareLevel } from '@playliberty/contracts';
 
-import { accounts, playlists } from '../platform/database/schema.js';
 import type { TestContext } from './testing/createTestContext.js';
 import { createTestContext } from './testing/createTestContext.js';
+import { seedAccount, seedPlaylist } from './testing/fixtures.js';
 
 type Line = Record<string, unknown>;
 
@@ -55,45 +55,6 @@ function database(): NonNullable<TestContext>['database'] {
   }
 
   return context.database;
-}
-
-function seedAccount(
-  displayName: string,
-  role: UserRole = UserRole.User
-): { id: string; pangolinUserId: string } {
-  const id = randomUUID();
-  const pangolinUserId = `pangolin-${id}`;
-
-  database()
-    .db.insert(accounts)
-    .values({
-      id,
-      pangolinUserId,
-      displayName,
-      email: null,
-      avatarUrl: null,
-      role
-    })
-    .run();
-
-  return { id, pangolinUserId };
-}
-
-function seedPlaylist(ownerAccountId: string): string {
-  const id = randomUUID();
-
-  database()
-    .db.insert(playlists)
-    .values({
-      id,
-      ownerAccountId,
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${id}`
-    })
-    .run();
-
-  return id;
 }
 
 function lineFor(lines: Line[], action: string): Line | undefined {
@@ -144,7 +105,7 @@ describe('audit lines', () => {
   it('records a CSRF refusal with its path and reason', async () => {
     const { logger, lines } = recordingLogger();
     context = await createTestContext({}, { loggerInstance: logger });
-    const owner = seedAccount('Owner');
+    const owner = seedAccount(database(), { displayName: 'Owner' });
 
     const response = await context.app.inject({
       method: 'POST',
@@ -168,9 +129,9 @@ describe('audit lines', () => {
   it('records a share grant and a revoke with actor, playlist and target', async () => {
     const { logger, lines } = recordingLogger();
     context = await createTestContext({}, { loggerInstance: logger });
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.id);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
 
     const granted = await context.app.inject({
       method: 'POST',
@@ -179,21 +140,21 @@ describe('audit lines', () => {
         'remote-user': owner.pangolinUserId,
         'x-playliberty-client': 'test'
       },
-      payload: { accountId: target.id, level: ShareLevel.Read }
+      payload: { accountId: target.accountId, level: ShareLevel.Read }
     });
     expect(granted.statusCode).toBe(200);
 
     expect(lineFor(lines, 'share_granted')).toMatchObject({
       outcome: 'allowed',
-      actor: owner.id,
+      actor: owner.accountId,
       playlist: playlistId,
-      account: target.id,
+      account: target.accountId,
       level: 'read'
     });
 
     const revoked = await context.app.inject({
       method: 'DELETE',
-      url: `/api/v1/playlists/${playlistId}/shares/${target.id}`,
+      url: `/api/v1/playlists/${playlistId}/shares/${target.accountId}`,
       headers: {
         'remote-user': owner.pangolinUserId,
         'x-playliberty-client': 'test'
@@ -203,17 +164,17 @@ describe('audit lines', () => {
 
     expect(lineFor(lines, 'share_revoked')).toMatchObject({
       outcome: 'allowed',
-      actor: owner.id,
+      actor: owner.accountId,
       playlist: playlistId,
-      account: target.id
+      account: target.accountId
     });
   });
 
   it('records a playlist delete with the actor and the playlist', async () => {
     const { logger, lines } = recordingLogger();
     context = await createTestContext({}, { loggerInstance: logger });
-    const owner = seedAccount('Owner');
-    const playlistId = seedPlaylist(owner.id);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
 
     const response = await context.app.inject({
       method: 'DELETE',
@@ -227,31 +188,23 @@ describe('audit lines', () => {
 
     expect(lineFor(lines, 'playlist_deleted')).toMatchObject({
       outcome: 'allowed',
-      actor: owner.id,
+      actor: owner.accountId,
       playlist: playlistId
     });
   });
 
   it('records a role change with the account and the new role', async () => {
-    const accountId = randomUUID();
-    const pangolinUserId = `pangolin-${accountId}`;
+    const pangolinUserId = `pangolin-${randomUUID()}`;
     const { logger, lines } = recordingLogger();
     context = await createTestContext(
       { ADMIN_PANGOLIN_USER_IDS: pangolinUserId },
       { loggerInstance: logger }
     );
 
-    database()
-      .db.insert(accounts)
-      .values({
-        id: accountId,
-        pangolinUserId,
-        displayName: 'Owner',
-        email: null,
-        avatarUrl: null,
-        role: UserRole.User
-      })
-      .run();
+    const { accountId } = seedAccount(database(), {
+      pangolinUserId,
+      displayName: 'Owner'
+    });
 
     const response = await context.app.inject({
       method: 'GET',
@@ -270,7 +223,7 @@ describe('audit lines', () => {
   it('records the test reset', async () => {
     const { logger, lines } = recordingLogger();
     context = await createTestContext({}, { loggerInstance: logger });
-    const owner = seedAccount('Owner');
+    const owner = seedAccount(database(), { displayName: 'Owner' });
 
     const response = await context.app.inject({
       method: 'POST',

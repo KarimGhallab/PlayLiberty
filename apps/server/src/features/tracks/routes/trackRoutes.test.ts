@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,12 +7,9 @@ import {
   AddTrackOutcome,
   AddTrackResultSchema,
   AssociationOrigin,
-  Provider,
   ShareLevel,
   TrackFileStatus,
-  TrackSchema,
-  TrackSourceStatus,
-  UserRole
+  TrackSchema
 } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
@@ -23,20 +18,22 @@ import {
   createFakeYoutube,
   testVideo
 } from '../../../app/testing/fakeYoutube.js';
+import {
+  associate,
+  seedAccount,
+  seedPlaylist,
+  seedShare,
+  seedStoredTrack,
+  seedTrack
+} from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import {
-  accounts,
   associations,
   playlists,
-  shares,
   syncRuns,
   tracks
 } from '../../../platform/database/schema.js';
-import {
-  mediaRelativePath,
-  thumbnailRelativePath
-} from '../../../platform/media/mediaPaths.js';
 import { addAssociation } from '../../playlists/associationService.js';
 
 const VIDEO_ID = 'dQw4w9WgXcQ';
@@ -87,131 +84,6 @@ function get(url: string, pangolinUserId: string) {
   });
 }
 
-function seedAccount(): { accountId: string; pangolinUserId: string } {
-  const accountId = randomUUID();
-  const pangolinUserId = `pangolin-${accountId}`;
-
-  database()
-    .db.insert(accounts)
-    .values({
-      id: accountId,
-      pangolinUserId,
-      displayName: 'Account',
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-
-  return { accountId, pangolinUserId };
-}
-
-function seedPlaylist(ownerAccountId: string, skipNonMusic = true): string {
-  const playlistId = randomUUID();
-
-  database()
-    .db.insert(playlists)
-    .values({
-      id: playlistId,
-      ownerAccountId,
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${playlistId}`,
-      skipNonMusic
-    })
-    .run();
-
-  return playlistId;
-}
-
-function seedTrack(
-  videoId: string,
-  fileStatus: TrackFileStatus = TrackFileStatus.Stored,
-  failureReason: string | null = null,
-  skipNonMusic = true
-): string {
-  const trackId = randomUUID();
-
-  database()
-    .db.insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId,
-      title: 'Track',
-      durationSeconds: 180,
-      skipNonMusic,
-      thumbnailPath: null,
-      fileStatus,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: null,
-      failureReason
-    })
-    .run();
-
-  return trackId;
-}
-
-/*
- * The association is created through the service rather than inserted, because
- * that is the only path that keeps the playlist's stored count honest, and the
- * retry access rule reads the association table.
- */
-function associate(playlistId: string, trackId: string): void {
-  expect(
-    addAssociation(database(), {
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Remote,
-      position: 0
-    })
-  ).toBe('added');
-}
-
-function seedShare(
-  playlistId: string,
-  accountId: string,
-  level: ShareLevel
-): void {
-  database()
-    .db.insert(shares)
-    .values({ id: randomUUID(), playlistId, accountId, level })
-    .run();
-}
-
-/*
- * A stored track with a real file and thumbnail on disk, so the two media routes
- * reach `sendFile` and the cache header can be read off the response. The paths
- * are stored relative to the media root, exactly as the download worker writes
- * them.
- */
-async function seedStoredTrackWithMedia(
-  testContext: TestContext,
-  videoId: string
-): Promise<{ trackId: string; pangolinUserId: string }> {
-  const { accountId, pangolinUserId } = seedAccount();
-  const playlistId = seedPlaylist(accountId);
-  const trackId = seedTrack(videoId);
-  associate(playlistId, trackId);
-
-  const audioRelative = mediaRelativePath(videoId, '.m4a');
-  const thumbnailRelative = thumbnailRelativePath(videoId);
-
-  for (const relative of [audioRelative, thumbnailRelative]) {
-    const absolute = join(testContext.mediaPaths.root, relative);
-    await mkdir(dirname(absolute), { recursive: true });
-    await writeFile(absolute, 'media');
-  }
-
-  database()
-    .db.update(tracks)
-    .set({ filePath: audioRelative, thumbnailPath: thumbnailRelative })
-    .where(eq(tracks.id, trackId))
-    .run();
-
-  return { trackId, pangolinUserId };
-}
-
 function countTracks(): number {
   return (
     database()
@@ -259,11 +131,11 @@ describe('POST /tracks', () => {
         kickDownloads: kick
       }
     );
-    const owner = seedAccount();
+    const owner = seedAccount(database());
     const playlistIds = [
-      seedPlaylist(owner.accountId),
-      seedPlaylist(owner.accountId),
-      seedPlaylist(owner.accountId)
+      seedPlaylist(database(), owner.accountId).playlistId,
+      seedPlaylist(database(), owner.accountId).playlistId,
+      seedPlaylist(database(), owner.accountId).playlistId
     ];
 
     const response = await post('/api/v1/tracks', owner.pangolinUserId, {
@@ -312,14 +184,20 @@ describe('POST /tracks', () => {
       {},
       { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
     );
-    const caller = seedAccount();
-    const other = seedAccount();
+    const caller = seedAccount(database());
+    const other = seedAccount(database());
     // A refused playlist comes first and a writable one second, so the value must
     // come from the first *writable* id, not the first id. The writable one is off,
     // so the track is fetched whole.
-    const readOnly = seedPlaylist(other.accountId, true);
-    seedShare(readOnly, caller.accountId, ShareLevel.Read);
-    const writable = seedPlaylist(caller.accountId, false);
+    const readOnly = seedPlaylist(database(), other.accountId, {
+      skipNonMusic: true
+    }).playlistId;
+    seedShare(database(), readOnly, caller.accountId, {
+      level: ShareLevel.Read
+    });
+    const writable = seedPlaylist(database(), caller.accountId, {
+      skipNonMusic: false
+    }).playlistId;
 
     const response = await post('/api/v1/tracks', caller.pangolinUserId, {
       url: VIDEO_URL,
@@ -340,11 +218,13 @@ describe('POST /tracks', () => {
       {},
       { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
     );
-    const caller = seedAccount();
-    const other = seedAccount();
-    const writable = seedPlaylist(caller.accountId);
-    const readOnly = seedPlaylist(other.accountId);
-    seedShare(readOnly, caller.accountId, ShareLevel.Read);
+    const caller = seedAccount(database());
+    const other = seedAccount(database());
+    const writable = seedPlaylist(database(), caller.accountId).playlistId;
+    const readOnly = seedPlaylist(database(), other.accountId).playlistId;
+    seedShare(database(), readOnly, caller.accountId, {
+      level: ShareLevel.Read
+    });
     const missing = randomUUID();
 
     const response = await post('/api/v1/tracks', caller.pangolinUserId, {
@@ -393,10 +273,10 @@ describe('POST /tracks', () => {
   it('reports a playlist that already holds the video as already_present and succeeds', async () => {
     // No source is queued: the track exists, so the route must not read the source.
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const holding = seedPlaylist(owner.accountId);
-    const fresh = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID);
+    const owner = seedAccount(database());
+    const holding = seedPlaylist(database(), owner.accountId).playlistId;
+    const fresh = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), { videoId: VIDEO_ID });
     expect(
       addAssociation(database(), {
         playlistId: holding,
@@ -440,7 +320,7 @@ describe('POST /tracks', () => {
         {},
         { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
       );
-      const owner = seedAccount();
+      const owner = seedAccount(database());
 
       const response = await post(
         '/api/v1/tracks',
@@ -458,9 +338,12 @@ describe('POST /tracks', () => {
   it('reuses an existing stored track untouched and does not read the source again', async () => {
     // No source is queued, so a read would throw and fail the request.
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Stored);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Stored
+    });
 
     const response = await post('/api/v1/tracks', owner.pangolinUserId, {
       url: VIDEO_URL,
@@ -481,9 +364,12 @@ describe('POST /tracks', () => {
 
   it('reuses an existing failed track untouched rather than re-queuing it', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed
+    });
 
     await post('/api/v1/tracks', owner.pangolinUserId, {
       url: VIDEO_URL,
@@ -502,9 +388,11 @@ describe('POST /tracks', () => {
       {},
       { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
     );
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const existingTrack = seedTrack('existingVideo');
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId: existingTrack } = seedTrack(database(), {
+      videoId: 'existingVideo'
+    });
     expect(
       addAssociation(database(), {
         playlistId,
@@ -540,8 +428,8 @@ describe('POST /tracks', () => {
       {},
       { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
     );
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     const response = await post(
       `/api/v1/playlists/${playlistId}/tracks`,
@@ -557,7 +445,7 @@ describe('POST /tracks', () => {
       {},
       { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
     );
-    const owner = seedAccount();
+    const owner = seedAccount(database());
 
     if (context === undefined) {
       throw new Error('the test context is not created');
@@ -582,14 +470,14 @@ describe('POST /tracks/:id/retry', () => {
       {},
       { youtube: createFakeYoutube(), kickDownloads: kick }
     );
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(
-      VIDEO_ID,
-      TrackFileStatus.Failed,
-      'yt-dlp exited with code 1'
-    );
-    associate(playlistId, trackId);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'yt-dlp exited with code 1'
+    });
+    associate(database(), playlistId, trackId);
 
     const response = await post(
       `/api/v1/tracks/${trackId}/retry`,
@@ -615,12 +503,18 @@ describe('POST /tracks/:id/retry', () => {
 
   it('lets a write collaborator of a playlist holding the track retry it', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
-    associate(playlistId, trackId);
-    const writer = seedAccount();
-    seedShare(playlistId, writer.accountId, ShareLevel.Write);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom'
+    });
+    associate(database(), playlistId, trackId);
+    const writer = seedAccount(database());
+    seedShare(database(), playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
 
     const response = await post(
       `/api/v1/tracks/${trackId}/retry`,
@@ -636,10 +530,14 @@ describe('POST /tracks/:id/retry', () => {
 
   it('starts no sync and creates no run', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
-    associate(playlistId, trackId);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom'
+    });
+    associate(database(), playlistId, trackId);
 
     await post(`/api/v1/tracks/${trackId}/retry`, owner.pangolinUserId, {});
 
@@ -662,10 +560,13 @@ describe('POST /tracks/:id/retry', () => {
       {},
       { youtube: createFakeYoutube(), kickDownloads: kick }
     );
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, fileStatus);
-    associate(playlistId, trackId);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus
+    });
+    associate(database(), playlistId, trackId);
 
     const response = await post(
       `/api/v1/tracks/${trackId}/retry`,
@@ -684,14 +585,24 @@ describe('POST /tracks/:id/retry', () => {
 
   it('answers 404 for a read collaborator, a stranger, an orphan track and a missing track', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
-    associate(playlistId, trackId);
-    const reader = seedAccount();
-    seedShare(playlistId, reader.accountId, ShareLevel.Read);
-    const stranger = seedAccount();
-    const orphan = seedTrack('orphanVideo', TrackFileStatus.Failed, 'boom');
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom'
+    });
+    associate(database(), playlistId, trackId);
+    const reader = seedAccount(database());
+    seedShare(database(), playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+    const stranger = seedAccount(database());
+    const { trackId: orphan } = seedTrack(database(), {
+      videoId: 'orphanVideo',
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom'
+    });
     const missing = randomUUID();
 
     const attempts: [string, string][] = [
@@ -721,10 +632,14 @@ describe('POST /tracks/:id/retry', () => {
 
   it('refuses a request without the client header', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom');
-    associate(playlistId, trackId);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom'
+    });
+    associate(database(), playlistId, trackId);
 
     if (context === undefined) {
       throw new Error('the test context is not created');
@@ -751,10 +666,15 @@ describe('POST /tracks/:id/fetch-whole', () => {
         {},
         { youtube: createFakeYoutube(), kickDownloads: kick }
       );
-      const owner = seedAccount();
-      const playlistId = seedPlaylist(owner.accountId);
-      const trackId = seedTrack(VIDEO_ID, fileStatus, 'a reason', true);
-      associate(playlistId, trackId);
+      const owner = seedAccount(database());
+      const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+      const { trackId } = seedTrack(database(), {
+        videoId: VIDEO_ID,
+        fileStatus,
+        failureReason: 'a reason',
+        skipNonMusic: true
+      });
+      associate(database(), playlistId, trackId);
 
       const response = await post(
         `/api/v1/tracks/${trackId}/fetch-whole`,
@@ -782,12 +702,19 @@ describe('POST /tracks/:id/fetch-whole', () => {
 
   it('lets a write collaborator of a playlist holding the track fetch it whole', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom', true);
-    associate(playlistId, trackId);
-    const writer = seedAccount();
-    seedShare(playlistId, writer.accountId, ShareLevel.Write);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom',
+      skipNonMusic: true
+    });
+    associate(database(), playlistId, trackId);
+    const writer = seedAccount(database());
+    seedShare(database(), playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
 
     const response = await post(
       `/api/v1/tracks/${trackId}/fetch-whole`,
@@ -809,10 +736,15 @@ describe('POST /tracks/:id/fetch-whole', () => {
       {},
       { youtube: createFakeYoutube(), kickDownloads: kick }
     );
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, fileStatus, null, true);
-    associate(playlistId, trackId);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus,
+      failureReason: null,
+      skipNonMusic: true
+    });
+    associate(database(), playlistId, trackId);
 
     const response = await post(
       `/api/v1/tracks/${trackId}/fetch-whole`,
@@ -835,19 +767,26 @@ describe('POST /tracks/:id/fetch-whole', () => {
 
   it('answers 404 for a read collaborator, a stranger, an orphan track and a missing track', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom', true);
-    associate(playlistId, trackId);
-    const reader = seedAccount();
-    seedShare(playlistId, reader.accountId, ShareLevel.Read);
-    const stranger = seedAccount();
-    const orphan = seedTrack(
-      'orphanVideo',
-      TrackFileStatus.Failed,
-      'boom',
-      true
-    );
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom',
+      skipNonMusic: true
+    });
+    associate(database(), playlistId, trackId);
+    const reader = seedAccount(database());
+    seedShare(database(), playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+    const stranger = seedAccount(database());
+    const { trackId: orphan } = seedTrack(database(), {
+      videoId: 'orphanVideo',
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom',
+      skipNonMusic: true
+    });
     const missing = randomUUID();
 
     const attempts: [string, string][] = [
@@ -880,10 +819,15 @@ describe('POST /tracks/:id/fetch-whole', () => {
 
   it('refuses a request without the client header', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount();
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = seedTrack(VIDEO_ID, TrackFileStatus.Failed, 'boom', true);
-    associate(playlistId, trackId);
+    const owner = seedAccount(database());
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { trackId } = seedTrack(database(), {
+      videoId: VIDEO_ID,
+      fileStatus: TrackFileStatus.Failed,
+      failureReason: 'boom',
+      skipNonMusic: true
+    });
+    associate(database(), playlistId, trackId);
 
     if (context === undefined) {
       throw new Error('the test context is not created');
@@ -910,10 +854,10 @@ describe('POST /tracks/:id/fetch-whole', () => {
 describe('media cache headers', () => {
   it('caches a stored track audio privately for a week', async () => {
     context = await createTestContext();
-    const { trackId, pangolinUserId } = await seedStoredTrackWithMedia(
-      context,
-      'cache-video-audio'
-    );
+    const {
+      account: { pangolinUserId },
+      track: { trackId }
+    } = await seedStoredTrack(context, { videoId: 'cache-video-audio' });
 
     const response = await get(
       `/api/v1/tracks/${trackId}/stream`,
@@ -926,10 +870,10 @@ describe('media cache headers', () => {
 
   it('caches a stored track thumbnail privately for a month', async () => {
     context = await createTestContext();
-    const { trackId, pangolinUserId } = await seedStoredTrackWithMedia(
-      context,
-      'cache-video-thumbnail'
-    );
+    const {
+      account: { pangolinUserId },
+      track: { trackId }
+    } = await seedStoredTrack(context, { videoId: 'cache-video-thumbnail' });
 
     const response = await get(
       `/api/v1/tracks/${trackId}/thumbnail`,
@@ -942,7 +886,7 @@ describe('media cache headers', () => {
 
   it('never stores a refusal', async () => {
     context = await createTestContext();
-    const owner = seedAccount();
+    const owner = seedAccount(database());
 
     const response = await get(
       '/api/v1/tracks/missing/stream',

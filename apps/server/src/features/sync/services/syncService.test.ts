@@ -16,7 +16,6 @@ import {
   SyncRunStatus,
   TrackFileStatus,
   TrackSourceStatus,
-  UserRole,
   createPageSchema
 } from '@playliberty/contracts';
 import type {
@@ -40,11 +39,10 @@ import {
   createFakeYoutube as fakeYoutube,
   testSource as source
 } from '../../../app/testing/fakeYoutube.js';
+import { seedAccount, seedShare } from '../../../app/testing/fixtures.js';
 
 import {
-  accounts,
   associations,
-  shares,
   suppressions,
   tracks
 } from '../../../platform/database/schema.js';
@@ -1203,48 +1201,6 @@ describe('a single video source', () => {
   });
 });
 
-function seedAccount(pangolinUserId: string): string {
-  if (context === undefined) {
-    throw new Error('the test context is not created');
-  }
-
-  const id = randomUUID();
-
-  context.database.db
-    .insert(accounts)
-    .values({
-      id,
-      pangolinUserId,
-      displayName: 'Account',
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-
-  return id;
-}
-
-/*
- * A share is seeded rather than created by a route: the three share routes are
- * still stubs (spec 05), so inserting the row is the only way to put the database
- * in the state a shared playlist is actually in.
- */
-function sharePlaylist(
-  playlistId: string,
-  accountId: string,
-  level: ShareLevel
-): void {
-  if (context === undefined) {
-    throw new Error('the test context is not created');
-  }
-
-  context.database.db
-    .insert(shares)
-    .values({ id: randomUUID(), playlistId, accountId, level })
-    .run();
-}
-
 describe('authorizing a sync', () => {
   it('lets an owner and a write collaborator sync, and refuses a read collaborator like a stranger', async () => {
     context = await createTestContext(
@@ -1263,10 +1219,23 @@ describe('authorizing a sync', () => {
     );
     await runFinished(created.playlistId, 'owner-1');
 
-    const writerId = seedAccount('writer-1');
-    const readerId = seedAccount('reader-1');
-    sharePlaylist(created.playlistId, writerId, ShareLevel.Write);
-    sharePlaylist(created.playlistId, readerId, ShareLevel.Read);
+    /*
+     * A share is seeded rather than created by a route: the three share routes
+     * are still stubs (spec 05), so inserting the row is the only way to put the
+     * database in the state a shared playlist is actually in.
+     */
+    const writerAccount = seedAccount(context.database, {
+      pangolinUserId: 'writer-1'
+    });
+    const readerAccount = seedAccount(context.database, {
+      pangolinUserId: 'reader-1'
+    });
+    seedShare(context.database, created.playlistId, writerAccount.accountId, {
+      level: ShareLevel.Write
+    });
+    seedShare(context.database, created.playlistId, readerAccount.accountId, {
+      level: ShareLevel.Read
+    });
 
     const writer = await postSync(created.playlistId, 'writer-1');
     expect(writer.statusCode).toBe(202);

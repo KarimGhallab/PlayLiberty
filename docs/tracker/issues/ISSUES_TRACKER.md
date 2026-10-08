@@ -57,6 +57,8 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`34-one-writability-rule`](34-one-writability-rule.md)                                                                                                   | `resolved` | `enhancement` | The owner-or-write rule is computed in the actions module and again in the detail page.                                     |
 | [`35-one-derivation-seam-in-the-player-store`](35-one-derivation-seam-in-the-player-store.md)                                                             | `resolved` | `enhancement` | The store's queue, current-track and next-index facts are re-derived across the player.                                     |
 | [`36-retire-the-utils-package`](36-retire-the-utils-package.md)                                                                                           | `resolved` | `enhancement` | `@playliberty/utils` is a 21-export grab-bag with two used symbols, no tests and a bug in unused `debounce`.                |
+| [`37-one-fixture-module-for-the-server-test-data`](37-one-fixture-module-for-the-server-test-data.md)                                                     | `resolved` | `enhancement` | Every server test suite re-declares its own seed builders against the schema, and the copies have drifted.                  |
+| [`38-one-dismissible-menu-seam`](38-one-dismissible-menu-seam.md)                                                                                         | `resolved` | `enhancement` | The menu dismissal is hand-written three times and the track row drops focus on Escape.                                     |
 
 ## Conventions
 

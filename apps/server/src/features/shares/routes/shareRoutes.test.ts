@@ -1,42 +1,30 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
-  AssociationOrigin,
   PlaylistSchema,
-  Provider,
   ShareSchema,
-  TrackFileStatus,
-  TrackSourceStatus,
   UserRole,
   createPageSchema
 } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import type { SeededAccount } from '../../../app/testing/fixtures.js';
+import {
+  seedAccount,
+  seedPlaylist,
+  seedStoredTrack
+} from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
-import {
-  accounts,
-  associations,
-  playlists,
-  shares,
-  tracks
-} from '../../../platform/database/schema.js';
+import { shares } from '../../../platform/database/schema.js';
 
 const PlaylistPageSchema = createPageSchema(PlaylistSchema);
 const ShareListSchema = z.array(ShareSchema);
-
-interface SeededAccount {
-  accountId: string;
-  pangolinUserId: string;
-  displayName: string;
-}
 
 let context: TestContext | undefined;
 
@@ -51,45 +39,6 @@ function database(): DatabaseHandle {
   }
 
   return context.database;
-}
-
-function seedAccount(
-  displayName: string,
-  options: { email?: string | null; role?: UserRole } = {}
-): SeededAccount {
-  const accountId = randomUUID();
-  const pangolinUserId = `pangolin-${accountId}`;
-
-  database()
-    .db.insert(accounts)
-    .values({
-      id: accountId,
-      pangolinUserId,
-      displayName,
-      email: options.email ?? null,
-      avatarUrl: null,
-      role: options.role ?? UserRole.User
-    })
-    .run();
-
-  return { accountId, pangolinUserId, displayName };
-}
-
-function seedPlaylist(ownerAccountId: string): string {
-  const playlistId = randomUUID();
-
-  database()
-    .db.insert(playlists)
-    .values({
-      id: playlistId,
-      ownerAccountId,
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${playlistId}`
-    })
-    .run();
-
-  return playlistId;
 }
 
 function get(url: string, account: SeededAccount) {
@@ -164,56 +113,6 @@ function revoke(
   });
 }
 
-/*
- * A stored track the playlist holds, so the stream and the thumbnail answer before
- * a revocation and are refused after one.
- */
-async function seedStoredTrack(playlistId: string): Promise<string> {
-  if (context === undefined) {
-    throw new Error('the test context is not created');
-  }
-
-  const trackId = randomUUID();
-  const relativePath = 'media/dd/song.m4a';
-
-  context.database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId: `video-${trackId}`,
-      title: 'Track',
-      durationSeconds: 180,
-      thumbnailPath: 'thumbnails/dd/song.jpg',
-      fileStatus: TrackFileStatus.Stored,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: relativePath,
-      failureReason: null
-    })
-    .run();
-
-  context.database.db
-    .insert(associations)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Remote,
-      position: 0
-    })
-    .run();
-
-  const storedPath = join(context.mediaPaths.root, relativePath);
-  await mkdir(dirname(storedPath), { recursive: true });
-  await writeFile(storedPath, 'the-audio');
-
-  const thumbnailPath = join(context.mediaPaths.root, 'thumbnails/dd/song.jpg');
-  await mkdir(dirname(thumbnailPath), { recursive: true });
-  await writeFile(thumbnailPath, 'the-picture');
-
-  return trackId;
-}
-
 function grant(
   playlistId: string,
   owner: SeededAccount,
@@ -229,9 +128,9 @@ function grant(
 describe('GET and POST /playlists/:id/shares', () => {
   it('lists the shares to the owner with the account, the level and the time', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     const granted = await grant(playlistId, owner, target.accountId, 'read');
     expect(granted.statusCode).toBe(200);
@@ -249,12 +148,13 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('names the collaborator with no email address and no role', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea', {
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), {
+      displayName: 'Bea',
       email: 'bea@example.com',
       role: UserRole.Admin
     });
-    const playlistId = seedPlaylist(owner.accountId);
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     const granted = await grant(playlistId, owner, target.accountId, 'read');
     expect(granted.statusCode).toBe(200);
@@ -281,11 +181,11 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('refuses a read collaborator, a write collaborator and a stranger on both routes', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const playlistId = seedPlaylist(owner.accountId);
-    const reader = seedAccount('Reader');
-    const writer = seedAccount('Writer');
-    const stranger = seedAccount('Stranger');
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const reader = seedAccount(database(), { displayName: 'Reader' });
+    const writer = seedAccount(database(), { displayName: 'Writer' });
+    const stranger = seedAccount(database(), { displayName: 'Stranger' });
     await grant(playlistId, owner, reader.accountId, 'read');
     await grant(playlistId, owner, writer.accountId, 'write');
 
@@ -309,9 +209,9 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('grants read and the target sees the playlist in its library with read access', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     await grant(playlistId, owner, target.accountId, 'read');
 
@@ -324,9 +224,9 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('changes the level on the same share when a higher level is granted', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     await grant(playlistId, owner, target.accountId, 'read');
     await grant(playlistId, owner, target.accountId, 'write');
@@ -342,8 +242,8 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('refuses a share to the account that owns the playlist', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     const response = await grant(playlistId, owner, owner.accountId, 'read');
 
@@ -354,8 +254,8 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('refuses a share to an account that does not exist', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     const response = await grant(playlistId, owner, randomUUID(), 'read');
 
@@ -366,8 +266,8 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('answers 404 for a playlist that does not exist on both routes', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
     const missing = randomUUID();
 
     const listed = await get(`/api/v1/playlists/${missing}/shares`, owner);
@@ -379,9 +279,9 @@ describe('GET and POST /playlists/:id/shares', () => {
 
   it('refuses a grant without the client header', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
 
     const response = await context.app.inject({
       method: 'POST',
@@ -398,9 +298,9 @@ describe('GET and POST /playlists/:id/shares', () => {
 describe('DELETE /playlists/:id/shares/:accountId', () => {
   it('revokes a share and it is gone from the listing', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
     await grant(playlistId, owner, target.accountId, 'read');
 
     const response = await revoke(playlistId, owner, target.accountId);
@@ -415,10 +315,13 @@ describe('DELETE /playlists/:id/shares/:accountId', () => {
 
   it('removes the playlist from the target library, the read and the tracks', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
-    const trackId = await seedStoredTrack(playlistId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const { track: storedTrack } = await seedStoredTrack(context, {
+      playlist: { playlistId, ownerAccountId: owner.accountId }
+    });
+    const trackId = storedTrack.trackId;
     await grant(playlistId, owner, target.accountId, 'read');
 
     // Before revocation the target reaches all four.
@@ -462,13 +365,13 @@ describe('DELETE /playlists/:id/shares/:accountId', () => {
 
   it('revokes a share that is not there, and a target account that does not exist, without changing the playlist', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
     await grant(playlistId, owner, target.accountId, 'read');
 
     // A different account holds nothing, and a random id holds nothing.
-    const outsider = seedAccount('Outsider');
+    const outsider = seedAccount(database(), { displayName: 'Outsider' });
     const absent = await revoke(playlistId, owner, outsider.accountId);
     const missingAccount = await revoke(playlistId, owner, randomUUID());
 
@@ -480,11 +383,11 @@ describe('DELETE /playlists/:id/shares/:accountId', () => {
 
   it('answers 404 for a write collaborator, a read collaborator and a stranger', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const playlistId = seedPlaylist(owner.accountId);
-    const reader = seedAccount('Reader');
-    const writer = seedAccount('Writer');
-    const stranger = seedAccount('Stranger');
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+    const reader = seedAccount(database(), { displayName: 'Reader' });
+    const writer = seedAccount(database(), { displayName: 'Writer' });
+    const stranger = seedAccount(database(), { displayName: 'Stranger' });
     await grant(playlistId, owner, reader.accountId, 'read');
     await grant(playlistId, owner, writer.accountId, 'write');
 
@@ -499,9 +402,9 @@ describe('DELETE /playlists/:id/shares/:accountId', () => {
 
   it('refuses a revocation without the client header', async () => {
     context = await createTestContext();
-    const owner = seedAccount('Owner');
-    const target = seedAccount('Bea');
-    const playlistId = seedPlaylist(owner.accountId);
+    const owner = seedAccount(database(), { displayName: 'Owner' });
+    const target = seedAccount(database(), { displayName: 'Bea' });
+    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
     await grant(playlistId, owner, target.accountId, 'read');
 
     const response = await revoke(playlistId, owner, target.accountId, false);

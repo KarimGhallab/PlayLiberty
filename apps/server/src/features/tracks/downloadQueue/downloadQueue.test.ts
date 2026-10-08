@@ -1,16 +1,11 @@
-import { randomUUID } from 'node:crypto';
-
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  Provider,
-  TrackFileStatus,
-  TrackSourceStatus
-} from '@playliberty/contracts';
+import { TrackFileStatus } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import { seedTrack } from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import { tracks } from '../../../platform/database/schema.js';
@@ -40,29 +35,6 @@ function database(): DatabaseHandle {
 
 function queueContext(kick: () => void): DownloadQueueContext {
   return { database: database(), kickDownloads: kick };
-}
-
-function seedTrack(fileStatus: TrackFileStatus): string {
-  const id = randomUUID();
-
-  database()
-    .db.insert(tracks)
-    .values({
-      id,
-      provider: Provider.Youtube,
-      videoId: `video-${id}`,
-      title: 'Track',
-      durationSeconds: 180,
-      skipNonMusic: true,
-      thumbnailPath: null,
-      fileStatus,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: null,
-      failureReason: null
-    })
-    .run();
-
-  return id;
 }
 
 function readFileStatus(trackId: string): TrackFileStatus | undefined {
@@ -95,7 +67,9 @@ describe('withDownloadQueue', () => {
   it('wakes once for a whole batch of queued tracks', async () => {
     context = await createTestContext();
     const kick = vi.fn();
-    const failed = seedTrack(TrackFileStatus.Failed);
+    const failed = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Failed
+    }).trackId;
 
     withDownloadQueue(queueContext(kick), queue => {
       queue.create({
@@ -121,8 +95,12 @@ describe('withDownloadQueue', () => {
   it('wakes when a retry applies and not when it is refused', async () => {
     context = await createTestContext();
     const kick = vi.fn();
-    const failed = seedTrack(TrackFileStatus.Failed);
-    const stored = seedTrack(TrackFileStatus.Stored);
+    const failed = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Failed
+    }).trackId;
+    const stored = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Stored
+    }).trackId;
 
     withDownloadQueue(queueContext(kick), queue => {
       queue.retry(failed);
@@ -143,8 +121,12 @@ describe('withDownloadQueue', () => {
   it('wakes when a whole-fetch applies and not when it is refused', async () => {
     context = await createTestContext();
     const kick = vi.fn();
-    const pending = seedTrack(TrackFileStatus.Pending);
-    const stored = seedTrack(TrackFileStatus.Stored);
+    const pending = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending
+    }).trackId;
+    const stored = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Stored
+    }).trackId;
 
     withDownloadQueue(queueContext(kick), queue => {
       queue.fetchWhole(pending);

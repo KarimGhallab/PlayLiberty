@@ -2,42 +2,29 @@ import { randomUUID } from 'node:crypto';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  AssociationOrigin,
-  Provider,
-  ShareLevel,
-  TrackFileStatus,
-  UserRole
-} from '@playliberty/contracts';
+import { AssociationOrigin, TrackFileStatus } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import {
+  associate,
+  seedAccount,
+  seedPlaylist,
+  seedShare,
+  seedTrack
+} from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
-import {
-  accounts,
-  associations,
-  playlists,
-  shares,
-  tracks
-} from '../../../platform/database/schema.js';
 import { TrackStreamOutcome, TrackThumbnailOutcome } from '../types.js';
 import {
   resolveTrackForStream,
   resolveTrackForThumbnail
 } from './trackService.js';
 
-interface SeedTrackOptions {
+interface SeedOwnedTrackOptions {
   fileStatus?: TrackFileStatus;
   filePath?: string | null;
   thumbnailPath?: string | null;
-}
-
-interface SeededTrack {
-  accountId: string;
-  playlistId: string;
-  trackId: string;
-  videoId: string;
 }
 
 let context: TestContext | undefined;
@@ -47,68 +34,34 @@ afterEach(async () => {
   context = undefined;
 });
 
-function createAccount(database: DatabaseHandle): string {
-  const id = randomUUID();
-  database.db
-    .insert(accounts)
-    .values({
-      id,
-      pangolinUserId: `pangolin-${id}`,
-      displayName: 'Account',
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-  return id;
-}
-
-function seedTrack(
+/*
+ * The owned track this suite reads: an account that owns a playlist holding the
+ * track, composed from the shared builders. The association is manual at
+ * position zero, the same shape an owner adding their own track produces.
+ */
+function seedOwnedTrack(
   database: DatabaseHandle,
-  options: SeedTrackOptions = {}
-): SeededTrack {
-  const accountId = createAccount(database);
-  const playlistId = randomUUID();
-  const trackId = randomUUID();
-  const videoId = `video-${trackId}`;
+  options: SeedOwnedTrackOptions = {}
+): { accountId: string; playlistId: string; trackId: string } {
+  const account = seedAccount(database);
+  const playlist = seedPlaylist(database, account.accountId);
+  const track = seedTrack(database, {
+    durationSeconds: null,
+    fileStatus: options.fileStatus ?? TrackFileStatus.Pending,
+    filePath: options.filePath,
+    thumbnailPath: options.thumbnailPath
+  });
 
-  database.db
-    .insert(playlists)
-    .values({
-      id: playlistId,
-      ownerAccountId: accountId,
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${playlistId}`
-    })
-    .run();
+  associate(database, playlist.playlistId, track.trackId, {
+    origin: AssociationOrigin.Manual,
+    position: 0
+  });
 
-  database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId,
-      title: 'Track',
-      durationSeconds: null,
-      thumbnailPath: options.thumbnailPath ?? null,
-      fileStatus: options.fileStatus ?? TrackFileStatus.Pending,
-      filePath: options.filePath ?? null
-    })
-    .run();
-
-  database.db
-    .insert(associations)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Manual,
-      position: 0
-    })
-    .run();
-
-  return { accountId, playlistId, trackId, videoId };
+  return {
+    accountId: account.accountId,
+    playlistId: playlist.playlistId,
+    trackId: track.trackId
+  };
 }
 
 describe('trackService', () => {
@@ -126,7 +79,7 @@ describe('trackService', () => {
 
   it('forbids an account with no association to the track', async () => {
     context = await createTestContext();
-    const seeded = seedTrack(context.database, {
+    const seeded = seedOwnedTrack(context.database, {
       fileStatus: TrackFileStatus.Stored,
       filePath: 'media/ab/video.m4a'
     });
@@ -142,7 +95,7 @@ describe('trackService', () => {
 
   it('returns the file path for a stored track the account owns', async () => {
     context = await createTestContext();
-    const seeded = seedTrack(context.database, {
+    const seeded = seedOwnedTrack(context.database, {
       fileStatus: TrackFileStatus.Stored,
       filePath: 'media/ab/video.m4a'
     });
@@ -161,7 +114,7 @@ describe('trackService', () => {
 
   it('reports an associated track that is not stored yet', async () => {
     context = await createTestContext();
-    const seeded = seedTrack(context.database, {
+    const seeded = seedOwnedTrack(context.database, {
       fileStatus: TrackFileStatus.Pending
     });
 
@@ -176,25 +129,17 @@ describe('trackService', () => {
 
   it('grants access through a share', async () => {
     context = await createTestContext();
-    const seeded = seedTrack(context.database, {
+    const seeded = seedOwnedTrack(context.database, {
       fileStatus: TrackFileStatus.Stored,
       filePath: 'media/ab/video.m4a'
     });
-    const viewerId = createAccount(context.database);
-    context.database.db
-      .insert(shares)
-      .values({
-        id: randomUUID(),
-        playlistId: seeded.playlistId,
-        accountId: viewerId,
-        level: ShareLevel.Read
-      })
-      .run();
+    const viewer = seedAccount(context.database);
+    seedShare(context.database, seeded.playlistId, viewer.accountId);
 
     const result = resolveTrackForStream(
       context.database,
       seeded.trackId,
-      viewerId
+      viewer.accountId
     );
 
     expect(result.outcome).toBe(TrackStreamOutcome.Ok);
@@ -202,7 +147,7 @@ describe('trackService', () => {
 
   it('reports a thumbnail as not found when the track has none', async () => {
     context = await createTestContext();
-    const seeded = seedTrack(context.database);
+    const seeded = seedOwnedTrack(context.database);
 
     const result = resolveTrackForThumbnail(
       context.database,
@@ -215,7 +160,7 @@ describe('trackService', () => {
 
   it('returns the thumbnail path to an authorized account', async () => {
     context = await createTestContext();
-    const seeded = seedTrack(context.database, {
+    const seeded = seedOwnedTrack(context.database, {
       thumbnailPath: 'thumbnails/ab/video.jpg'
     });
 

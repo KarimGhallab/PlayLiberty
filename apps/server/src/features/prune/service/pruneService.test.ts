@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { access, chmod, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -6,22 +5,20 @@ import { eq } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  AssociationOrigin,
-  Provider,
-  TrackFileStatus,
-  TrackSourceStatus,
-  UserRole
-} from '@playliberty/contracts';
+import { TrackFileStatus, TrackSourceStatus } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import {
+  associate,
+  seedAccount,
+  seedPlaylist,
+  seedTrack
+} from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import {
-  accounts,
   associations,
-  playlists,
   suppressions,
   tracks
 } from '../../../platform/database/schema.js';
@@ -100,84 +97,6 @@ function abortsOnWarning(controller: AbortController): {
   return { logger, warnings: recording.warnings };
 }
 
-function seedTrack(
-  database: DatabaseHandle,
-  options: {
-    fileStatus?: TrackFileStatus;
-    sourceStatus?: TrackSourceStatus;
-    filePath?: string | null;
-    thumbnailPath?: string | null;
-  } = {}
-): string {
-  const trackId = randomUUID();
-
-  database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId: `video-${trackId}`,
-      title: 'Track',
-      durationSeconds: 180,
-      thumbnailPath: options.thumbnailPath ?? null,
-      fileStatus: options.fileStatus ?? TrackFileStatus.Stored,
-      sourceStatus: options.sourceStatus ?? TrackSourceStatus.Available,
-      filePath: options.filePath ?? null,
-      failureReason: null
-    })
-    .run();
-
-  return trackId;
-}
-
-function seedAccount(): string {
-  const accountId = randomUUID();
-
-  database()
-    .db.insert(accounts)
-    .values({
-      id: accountId,
-      pangolinUserId: `pangolin-${accountId}`,
-      displayName: 'Owner',
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-
-  return accountId;
-}
-
-function seedPlaylist(): string {
-  const playlistId = randomUUID();
-
-  database()
-    .db.insert(playlists)
-    .values({
-      id: playlistId,
-      ownerAccountId: seedAccount(),
-      name: 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${playlistId}`
-    })
-    .run();
-
-  return playlistId;
-}
-
-function associate(playlistId: string, trackId: string): void {
-  database()
-    .db.insert(associations)
-    .values({
-      id: randomUUID(),
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Remote,
-      position: 0
-    })
-    .run();
-}
-
 async function writeBytes(relativePath: string): Promise<string> {
   if (context === undefined) {
     throw new Error('the test context is not created');
@@ -224,7 +143,7 @@ describe('pruning orphaned tracks', () => {
     const { logger } = recordingLogger();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
     const thumbPath = thumbnailRelativePath('aaaaaaaaaaa');
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       filePath: relativePath,
       thumbnailPath: thumbPath
     });
@@ -250,12 +169,16 @@ describe('pruning orphaned tracks', () => {
       context = await createTestContext();
       const { logger } = recordingLogger();
       const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-      const trackId = seedTrack(database(), {
+      const { trackId } = seedTrack(database(), {
         fileStatus,
         filePath: relativePath
       });
       const audio = await writeBytes(relativePath);
-      associate(seedPlaylist(), trackId);
+      associate(
+        database(),
+        seedPlaylist(database(), seedAccount(database()).accountId).playlistId,
+        trackId
+      );
 
       const removed = await prune(logger);
 
@@ -269,13 +192,17 @@ describe('pruning orphaned tracks', () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Stored,
       sourceStatus: TrackSourceStatus.Removed,
       filePath: relativePath
     });
     const audio = await writeBytes(relativePath);
-    associate(seedPlaylist(), trackId);
+    associate(
+      database(),
+      seedPlaylist(database(), seedAccount(database()).accountId).playlistId,
+      trackId
+    );
 
     const removed = await prune(logger);
 
@@ -287,7 +214,7 @@ describe('pruning orphaned tracks', () => {
   it('skips a downloading track and survives', async () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Downloading
     });
 
@@ -301,7 +228,7 @@ describe('pruning orphaned tracks', () => {
     context = await createTestContext();
     const { logger, warnings } = recordingLogger();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-    const trackId = seedTrack(database(), { filePath: relativePath });
+    const { trackId } = seedTrack(database(), { filePath: relativePath });
     const audio = await writeBytes(relativePath);
 
     // The parent directory is made read-only, so the file cannot be unlinked while
@@ -326,7 +253,7 @@ describe('pruning orphaned tracks', () => {
   it('removes a failed track with no associations', async () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
-    const trackId = seedTrack(database(), {
+    const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Failed
     });
 
@@ -340,10 +267,13 @@ describe('pruning orphaned tracks', () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-    const trackId = seedTrack(database(), { filePath: relativePath });
+    const { trackId } = seedTrack(database(), { filePath: relativePath });
     const audio = await writeBytes(relativePath);
-    const playlistId = seedPlaylist();
-    associate(playlistId, trackId);
+    const playlistId = seedPlaylist(
+      database(),
+      seedAccount(database()).accountId
+    ).playlistId;
+    associate(database(), playlistId, trackId);
 
     database()
       .db.delete(associations)
@@ -364,8 +294,12 @@ describe('pruning orphaned tracks', () => {
   it('removes nothing and returns zero when there is nothing to prune', async () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
-    const trackId = seedTrack(database());
-    associate(seedPlaylist(), trackId);
+    const { trackId } = seedTrack(database());
+    associate(
+      database(),
+      seedPlaylist(database(), seedAccount(database()).accountId).playlistId,
+      trackId
+    );
 
     const removed = await prune(logger);
 
@@ -376,8 +310,12 @@ describe('pruning orphaned tracks', () => {
   it('counts only the tracks it actually removed', async () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
-    const kept = seedTrack(database());
-    associate(seedPlaylist(), kept);
+    const { trackId: kept } = seedTrack(database());
+    associate(
+      database(),
+      seedPlaylist(database(), seedAccount(database()).accountId).playlistId,
+      kept
+    );
     seedTrack(database());
     seedTrack(database());
 
@@ -390,8 +328,11 @@ describe('pruning orphaned tracks', () => {
   it('treats a track only a suppressed video would re-add as an orphan', async () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
-    const trackId = seedTrack(database());
-    const playlistId = seedPlaylist();
+    const { trackId } = seedTrack(database());
+    const playlistId = seedPlaylist(
+      database(),
+      seedAccount(database()).accountId
+    ).playlistId;
 
     // A suppression names a video id, not a track, and is not a reference.
     database()
@@ -409,9 +350,13 @@ describe('pruning orphaned tracks', () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-    const trackId = seedTrack(database(), { filePath: relativePath });
+    const { trackId } = seedTrack(database(), { filePath: relativePath });
     const audio = await writeBytes(relativePath);
-    associate(seedPlaylist(), trackId);
+    associate(
+      database(),
+      seedPlaylist(database(), seedAccount(database()).accountId).playlistId,
+      trackId
+    );
 
     const removed = await prune(logger);
 
@@ -425,7 +370,7 @@ describe('pruning orphaned tracks', () => {
     context = await createTestContext();
     const { logger } = recordingLogger();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-    const trackId = seedTrack(database(), { filePath: relativePath });
+    const { trackId } = seedTrack(database(), { filePath: relativePath });
     const audio = await writeBytes(relativePath);
     const controller = new AbortController();
     controller.abort();
@@ -444,7 +389,7 @@ describe('pruning orphaned tracks', () => {
     // remove its media. That failure is the hook: the logger warns, the controller
     // is aborted, and the run then stops before claiming the second track.
     const controller = new AbortController();
-    const first = seedTrack(database(), {
+    const { trackId: first } = seedTrack(database(), {
       filePath: mediaRelativePath('aaaaaaaaaaa', '.m4a')
     });
     const firstAudio = await writeBytes(
@@ -452,8 +397,8 @@ describe('pruning orphaned tracks', () => {
     );
     await chmod(dirname(firstAudio), 0o500);
 
-    const second = seedTrack(database());
-    const third = seedTrack(database());
+    const { trackId: second } = seedTrack(database());
+    const { trackId: third } = seedTrack(database());
 
     const { logger } = abortsOnWarning(controller);
 
@@ -484,7 +429,7 @@ describe('pruning orphaned tracks', () => {
     // then stops before the second. The second is therefore untouched, not half
     // removed, which is the property: the stop lands between tracks.
     const controller = new AbortController();
-    const blocked = seedTrack(database(), {
+    const { trackId: blocked } = seedTrack(database(), {
       filePath: mediaRelativePath('aaaaaaaaaaa', '.m4a')
     });
     const blockedAudio = await writeBytes(
@@ -492,7 +437,7 @@ describe('pruning orphaned tracks', () => {
     );
     await chmod(dirname(blockedAudio), 0o500);
 
-    const untouched = seedTrack(database());
+    const { trackId: untouched } = seedTrack(database());
     const { logger } = abortsOnWarning(controller);
 
     const removed = await prune(logger, controller.signal);

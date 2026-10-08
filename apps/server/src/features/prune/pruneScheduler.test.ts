@@ -1,16 +1,9 @@
-import { randomUUID } from 'node:crypto';
-
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  Provider,
-  TrackFileStatus,
-  TrackSourceStatus
-} from '@playliberty/contracts';
-
 import { createTestContext } from '../../app/testing/createTestContext.js';
 import type { TestContext } from '../../app/testing/createTestContext.js';
+import { seedTrack } from '../../app/testing/fixtures.js';
 
 import { tracks } from '../../platform/database/schema.js';
 
@@ -34,23 +27,10 @@ describe('the prune scheduler', () => {
       { PRUNE_CRON: '* * * * * *' },
       { startBackgroundJobs: true }
     );
-    const trackId = randomUUID();
-
-    context.database.db
-      .insert(tracks)
-      .values({
-        id: trackId,
-        provider: Provider.Youtube,
-        videoId: `video-${trackId}`,
-        title: 'Orphan',
-        durationSeconds: null,
-        thumbnailPath: null,
-        fileStatus: TrackFileStatus.Stored,
-        sourceStatus: TrackSourceStatus.Available,
-        filePath: null,
-        failureReason: null
-      })
-      .run();
+    const { trackId } = seedTrack(context.database, {
+      title: 'Orphan',
+      durationSeconds: null
+    });
 
     // Wait for the tick, polling rather than sleeping a fixed second, so the test
     // is as fast as the job is and no slower.

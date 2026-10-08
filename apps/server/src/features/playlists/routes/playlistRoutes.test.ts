@@ -10,20 +10,23 @@ import {
   PlaylistSchema,
   PlaylistSyncStatus,
   PlaylistTrackSchema,
-  Provider,
   ShareLevel,
   TrackFileStatus,
   TrackSourceStatus,
-  UserRole,
   createPageSchema
 } from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import {
+  seedAccount,
+  seedPlaylist,
+  seedShare,
+  seedTrack
+} from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import {
-  accounts,
   playlists,
   shares,
   suppressions,
@@ -40,119 +43,6 @@ afterEach(async () => {
   await context?.cleanup();
   context = undefined;
 });
-
-interface SeededAccount {
-  accountId: string;
-  pangolinUserId: string;
-}
-
-function seedAccount(
-  database: DatabaseHandle,
-  pangolinUserId = `pangolin-${randomUUID()}`
-): SeededAccount {
-  const accountId = randomUUID();
-
-  database.db
-    .insert(accounts)
-    .values({
-      id: accountId,
-      pangolinUserId,
-      displayName: 'Account',
-      email: null,
-      avatarUrl: null,
-      role: UserRole.User
-    })
-    .run();
-
-  return { accountId, pangolinUserId };
-}
-
-function seedPlaylist(
-  database: DatabaseHandle,
-  ownerAccountId: string,
-  options: {
-    createdAt?: string;
-    name?: string;
-    sourceUrl?: string | null;
-    lastSyncedAt?: string | null;
-    syncStatus?: PlaylistSyncStatus;
-    skipNonMusic?: boolean;
-  } = {}
-): string {
-  const playlistId = randomUUID();
-
-  database.db
-    .insert(playlists)
-    .values({
-      id: playlistId,
-      ownerAccountId,
-      name: options.name ?? 'Playlist',
-      provider: Provider.Youtube,
-      sourcePlaylistId: `source-${playlistId}`,
-      sourceUrl: options.sourceUrl ?? null,
-      syncStatus: options.syncStatus ?? PlaylistSyncStatus.Idle,
-      skipNonMusic: options.skipNonMusic ?? true,
-      lastSyncedAt: options.lastSyncedAt ?? null,
-      createdAt: options.createdAt ?? new Date().toISOString()
-    })
-    .run();
-
-  return playlistId;
-}
-
-function seedTrack(
-  database: DatabaseHandle,
-  options: {
-    fileStatus?: TrackFileStatus;
-    sourceStatus?: TrackSourceStatus;
-    title?: string;
-    durationSeconds?: number | null;
-    thumbnailPath?: string | null;
-    filePath?: string | null;
-    failureReason?: string | null;
-    skipNonMusic?: boolean;
-  } = {}
-): string {
-  const trackId = randomUUID();
-
-  database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId: `video-${trackId}`,
-      title: options.title ?? 'Track',
-      durationSeconds: options.durationSeconds ?? null,
-      thumbnailPath: options.thumbnailPath ?? null,
-      fileStatus: options.fileStatus ?? TrackFileStatus.Stored,
-      filePath: options.filePath ?? null,
-      sourceStatus: options.sourceStatus ?? TrackSourceStatus.Available,
-      failureReason: options.failureReason ?? null,
-      skipNonMusic: options.skipNonMusic ?? true
-    })
-    .run();
-
-  return trackId;
-}
-
-/*
- * A share is seeded by inserting the row directly, and that is deliberate rather
- * than a shortcut. No route writes one: all three of /playlists/:id/shares are
- * sendNotImplemented stubs, so the service has no writer to go through. Inserting
- * the row is the only way to put the database in the state a shared playlist is
- * actually in, which is the state the access fields exist to describe.
- */
-function seedShare(
-  database: DatabaseHandle,
-  playlistId: string,
-  accountId: string,
-  level: ShareLevel = ShareLevel.Read
-): void {
-  database.db
-    .insert(shares)
-    .values({ id: randomUUID(), playlistId, accountId, level })
-    .run();
-}
 
 /*
  * The statements a piece of work causes the driver to prepare.
@@ -325,12 +215,12 @@ describe('GET /playlists', () => {
   it('returns a page whose items parse against the contract', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       name: 'Evening',
       skipNonMusic: false
     });
-    addTrack(context.database, playlistId, seedTrack(context.database));
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
 
     const response = await get('/api/v1/playlists', owner.pangolinUserId);
 
@@ -361,21 +251,24 @@ describe('GET /playlists', () => {
   it('counts associations whose track is unavailable or removed from the source', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     addTrack(
       context.database,
       playlistId,
       seedTrack(context.database, { fileStatus: TrackFileStatus.Unavailable })
+        .trackId
     );
     addTrack(
       context.database,
       playlistId,
       seedTrack(context.database, { sourceStatus: TrackSourceStatus.Removed })
+        .trackId
     );
     addTrack(
       context.database,
       playlistId,
       seedTrack(context.database, { fileStatus: TrackFileStatus.Pending })
+        .trackId
     );
 
     const response = await get('/api/v1/playlists', owner.pangolinUserId);
@@ -387,18 +280,20 @@ describe('GET /playlists', () => {
   it('counts pending tracks, because the count is a total and not a promise', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     for (let index = 0; index < 4; index += 1) {
       addTrack(
         context.database,
         playlistId,
         seedTrack(context.database, { fileStatus: TrackFileStatus.Pending })
+          .trackId
       );
     }
     addTrack(
       context.database,
       playlistId,
       seedTrack(context.database, { fileStatus: TrackFileStatus.Stored })
+        .trackId
     );
 
     const response = await get('/api/v1/playlists', owner.pangolinUserId);
@@ -410,21 +305,23 @@ describe('GET /playlists', () => {
   it('reads the count from the playlist row and does not count anything to produce it', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistIds = Array.from({ length: 6 }, (_, index) =>
-      seedPlaylist(context!.database, owner.accountId, {
-        name: `Playlist ${index}`,
-        createdAt: `2026-09-2${index}T10:00:00.000Z`
-      })
+    const playlistIds = Array.from(
+      { length: 6 },
+      (_, index) =>
+        seedPlaylist(context!.database, owner.accountId, {
+          name: `Playlist ${index}`,
+          createdAt: `2026-09-2${index}T10:00:00.000Z`
+        }).playlistId
     );
     addTrack(
       context.database,
       playlistIds[0] ?? '',
-      seedTrack(context.database)
+      seedTrack(context.database).trackId
     );
     addTrack(
       context.database,
       playlistIds[0] ?? '',
-      seedTrack(context.database)
+      seedTrack(context.database).trackId
     );
 
     const response = await get('/api/v1/playlists', owner.pangolinUserId);
@@ -475,12 +372,18 @@ describe('GET /playlists', () => {
       name: 'Mine',
       createdAt: '2026-09-01T10:00:00.000Z'
     });
-    const sharedId = seedPlaylist(context.database, owner.accountId, {
-      name: 'Shared',
-      createdAt: '2026-09-02T10:00:00.000Z'
-    });
+    const { playlistId: sharedId } = seedPlaylist(
+      context.database,
+      owner.accountId,
+      {
+        name: 'Shared',
+        createdAt: '2026-09-02T10:00:00.000Z'
+      }
+    );
     const stranger = seedAccount(context.database);
-    seedShare(context.database, sharedId, stranger.accountId, ShareLevel.Read);
+    seedShare(context.database, sharedId, stranger.accountId, {
+      level: ShareLevel.Read
+    });
 
     const page = PageSchema.parse(
       (await get('/api/v1/playlists', stranger.pangolinUserId)).json()
@@ -537,10 +440,10 @@ describe('GET /playlists/:id', () => {
   it('returns the playlist with its count', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       skipNonMusic: false
     });
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
 
     const response = await get(
       `/api/v1/playlists/${playlistId}`,
@@ -558,9 +461,9 @@ describe('GET /playlists/:id', () => {
   it('agrees with the list route about the same playlist', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    addTrack(context.database, playlistId, seedTrack(context.database));
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
 
     const read = PlaylistSchema.parse(
       (
@@ -592,7 +495,7 @@ describe('GET /playlists/:id', () => {
   it('answers 404 rather than 403 for a playlist the account cannot see', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const stranger = seedAccount(context.database);
 
     const response = await get(
@@ -607,10 +510,12 @@ describe('GET /playlists/:id', () => {
   it('returns a shared playlist to a collaborator', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
     const reader = seedAccount(context.database);
-    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
 
     const response = await get(
       `/api/v1/playlists/${playlistId}`,
@@ -626,7 +531,7 @@ describe("the requesting account's access to a playlist", () => {
   it('tells the owner of an unshared playlist that it is theirs and that nobody else has it', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const playlist = PlaylistSchema.parse(
       (
@@ -643,9 +548,11 @@ describe("the requesting account's access to a playlist", () => {
   it('tells the owner of a shared playlist that they still hold the keys', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const reader = seedAccount(context.database);
-    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
 
     const playlist = PlaylistSchema.parse(
       (
@@ -665,9 +572,11 @@ describe("the requesting account's access to a playlist", () => {
     async level => {
       context = await createTestContext();
       const owner = seedAccount(context.database);
-      const playlistId = seedPlaylist(context.database, owner.accountId);
+      const { playlistId } = seedPlaylist(context.database, owner.accountId);
       const collaborator = seedAccount(context.database);
-      seedShare(context.database, playlistId, collaborator.accountId, level);
+      seedShare(context.database, playlistId, collaborator.accountId, {
+        level
+      });
 
       const playlist = PlaylistSchema.parse(
         (
@@ -691,9 +600,11 @@ describe("the requesting account's access to a playlist", () => {
   it('gives the owner and the collaborator different access to the same playlist', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const writer = seedAccount(context.database);
-    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+    seedShare(context.database, playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
 
     const asOwner = PlaylistSchema.parse(
       (
@@ -727,11 +638,17 @@ describe("the requesting account's access to a playlist", () => {
       name: 'Mine',
       createdAt: '2026-09-01T10:00:00.000Z'
     });
-    const sharedId = seedPlaylist(context.database, other.accountId, {
-      name: 'Theirs',
-      createdAt: '2026-09-02T10:00:00.000Z'
+    const { playlistId: sharedId } = seedPlaylist(
+      context.database,
+      other.accountId,
+      {
+        name: 'Theirs',
+        createdAt: '2026-09-02T10:00:00.000Z'
+      }
+    );
+    seedShare(context.database, sharedId, reader.accountId, {
+      level: ShareLevel.Read
     });
-    seedShare(context.database, sharedId, reader.accountId, ShareLevel.Read);
 
     const page = PageSchema.parse(
       (await get('/api/v1/playlists', reader.pangolinUserId)).json()
@@ -757,7 +674,7 @@ describe("the requesting account's access to a playlist", () => {
   it('answers 404 for a playlist neither owned nor shared, and says nothing about shares', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const stranger = seedAccount(context.database);
 
     const response = await get(
@@ -855,9 +772,9 @@ describe('the stored track count', () => {
   it('matches the number of association rows after adds and removes', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const first = seedTrack(context.database);
-    const second = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database);
 
     addTrack(context.database, playlistId, first);
     addTrack(context.database, playlistId, second);
@@ -876,8 +793,8 @@ describe('the stored track count', () => {
   it('does not count an association that is already there twice', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const trackId = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
     addTrack(context.database, playlistId, trackId);
 
     const repeat = addAssociation(context.database, {
@@ -897,8 +814,8 @@ describe('the stored track count', () => {
   it('does not go below zero when a track is removed twice', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const trackId = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
     addTrack(context.database, playlistId, trackId);
 
     const first = removeAssociation(context.database, { playlistId, trackId });
@@ -915,18 +832,26 @@ describe('the stored track count', () => {
   it('keeps two playlists counts independent', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const first = seedPlaylist(context.database, owner.accountId, {
-      name: 'First',
-      createdAt: '2026-09-02T10:00:00.000Z'
-    });
-    const second = seedPlaylist(context.database, owner.accountId, {
-      name: 'Second',
-      createdAt: '2026-09-01T10:00:00.000Z'
-    });
-    addTrack(context.database, first, seedTrack(context.database));
-    addTrack(context.database, first, seedTrack(context.database));
-    addTrack(context.database, first, seedTrack(context.database));
-    addTrack(context.database, second, seedTrack(context.database));
+    const { playlistId: first } = seedPlaylist(
+      context.database,
+      owner.accountId,
+      {
+        name: 'First',
+        createdAt: '2026-09-02T10:00:00.000Z'
+      }
+    );
+    const { playlistId: second } = seedPlaylist(
+      context.database,
+      owner.accountId,
+      {
+        name: 'Second',
+        createdAt: '2026-09-01T10:00:00.000Z'
+      }
+    );
+    addTrack(context.database, first, seedTrack(context.database).trackId);
+    addTrack(context.database, first, seedTrack(context.database).trackId);
+    addTrack(context.database, first, seedTrack(context.database).trackId);
+    addTrack(context.database, second, seedTrack(context.database).trackId);
 
     const page = PageSchema.parse(
       (await get('/api/v1/playlists', owner.pangolinUserId)).json()
@@ -943,10 +868,12 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns the associations in position order, each with its origin and position', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const third = seedTrack(context.database);
-    const first = seedTrack(context.database, { skipNonMusic: false });
-    const second = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: third } = seedTrack(context.database);
+    const { trackId: first } = seedTrack(context.database, {
+      skipNonMusic: false
+    });
+    const { trackId: second } = seedTrack(context.database);
 
     // Inserted out of position order, so an implementation that returned
     // insertion order would fail here.
@@ -988,10 +915,13 @@ describe('GET /playlists/:id/tracks', () => {
   it('never returns a track the playlist does not associate', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const otherId = seedPlaylist(context.database, owner.accountId);
-    const mine = seedTrack(context.database);
-    const theirs = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { playlistId: otherId } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
+    const { trackId: mine } = seedTrack(context.database);
+    const { trackId: theirs } = seedTrack(context.database);
     addTrack(context.database, playlistId, mine);
     addTrack(context.database, otherId, theirs);
 
@@ -1011,9 +941,15 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns a track held by two playlists once', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const first = seedPlaylist(context.database, owner.accountId);
-    const second = seedPlaylist(context.database, owner.accountId);
-    const shared = seedTrack(context.database);
+    const { playlistId: first } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
+    const { playlistId: second } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
+    const { trackId: shared } = seedTrack(context.database);
     addTrack(context.database, first, shared);
     addTrack(context.database, second, shared);
 
@@ -1030,9 +966,9 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns associations that share a position in the same order across two calls', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const firstInserted = seedTrack(context.database);
-    const secondInserted = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: firstInserted } = seedTrack(context.database);
+    const { trackId: secondInserted } = seedTrack(context.database);
     // Position is assigned by the writers, so two associations in one run can
     // share it; insertion order is the tiebreak.
     addTrackAt(context.database, playlistId, firstInserted, 5);
@@ -1058,7 +994,7 @@ describe('GET /playlists/:id/tracks', () => {
   it('answers a playlist with no associations as an empty page, not an error', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const response = await get(
       `/api/v1/playlists/${playlistId}/tracks`,
@@ -1076,7 +1012,7 @@ describe('GET /playlists/:id/tracks', () => {
   it('answers 404 rather than 403 for a playlist the account cannot see', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const stranger = seedAccount(context.database);
 
     const response = await get(
@@ -1104,12 +1040,12 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns the requested window with the true total and a short last page', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     for (let index = 0; index < 5; index += 1) {
       addTrackAt(
         context.database,
         playlistId,
-        seedTrack(context.database),
+        seedTrack(context.database).trackId,
         index
       );
     }
@@ -1142,8 +1078,8 @@ describe('GET /playlists/:id/tracks', () => {
   it('changes nothing when it reads', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
 
     const before = countAssociations(context.database, playlistId);
     const recording = recordStatements(context.database);
@@ -1166,7 +1102,7 @@ describe('GET /playlists/:id/tracks', () => {
   it('rejects a query string the page schema refuses', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const response = await get(
       `/api/v1/playlists/${playlistId}/tracks?limit=0`,
@@ -1180,8 +1116,8 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns the playlist to its owner', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
 
     const response = await get(
       `/api/v1/playlists/${playlistId}/tracks`,
@@ -1199,10 +1135,16 @@ describe('GET /playlists/:id/tracks', () => {
     async level => {
       context = await createTestContext();
       const owner = seedAccount(context.database);
-      const playlistId = seedPlaylist(context.database, owner.accountId);
-      addTrack(context.database, playlistId, seedTrack(context.database));
+      const { playlistId } = seedPlaylist(context.database, owner.accountId);
+      addTrack(
+        context.database,
+        playlistId,
+        seedTrack(context.database).trackId
+      );
       const collaborator = seedAccount(context.database);
-      seedShare(context.database, playlistId, collaborator.accountId, level);
+      seedShare(context.database, playlistId, collaborator.accountId, {
+        level
+      });
 
       const response = await get(
         `/api/v1/playlists/${playlistId}/tracks`,
@@ -1219,15 +1161,12 @@ describe('GET /playlists/:id/tracks', () => {
   it('answers 404 after a share is revoked, the same as never having had one', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
     const collaborator = seedAccount(context.database);
-    seedShare(
-      context.database,
-      playlistId,
-      collaborator.accountId,
-      ShareLevel.Read
-    );
+    seedShare(context.database, playlistId, collaborator.accountId, {
+      level: ShareLevel.Read
+    });
 
     const before = await get(
       `/api/v1/playlists/${playlistId}/tracks`,
@@ -1258,11 +1197,11 @@ describe('GET /playlists/:id/tracks', () => {
   ])('returns a track in the %s file state', async fileStatus => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     addTrack(
       context.database,
       playlistId,
-      seedTrack(context.database, { fileStatus })
+      seedTrack(context.database, { fileStatus }).trackId
     );
 
     const page = PlaylistTrackPageSchema.parse(
@@ -1282,11 +1221,11 @@ describe('GET /playlists/:id/tracks', () => {
     async sourceStatus => {
       context = await createTestContext();
       const owner = seedAccount(context.database);
-      const playlistId = seedPlaylist(context.database, owner.accountId);
+      const { playlistId } = seedPlaylist(context.database, owner.accountId);
       addTrack(
         context.database,
         playlistId,
-        seedTrack(context.database, { sourceStatus })
+        seedTrack(context.database, { sourceStatus }).trackId
       );
 
       const page = PlaylistTrackPageSchema.parse(
@@ -1305,14 +1244,14 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns a failed track with its reason', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     addTrack(
       context.database,
       playlistId,
       seedTrack(context.database, {
         fileStatus: TrackFileStatus.Failed,
         failureReason: 'yt-dlp exited with code 1'
-      })
+      }).trackId
     );
 
     const page = PlaylistTrackPageSchema.parse(
@@ -1333,7 +1272,7 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns a failure reason as stored, however long', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const reason = `the download failed while fetching the stream: ${'x'.repeat(300)}`;
     addTrack(
       context.database,
@@ -1341,7 +1280,7 @@ describe('GET /playlists/:id/tracks', () => {
       seedTrack(context.database, {
         fileStatus: TrackFileStatus.Failed,
         failureReason: reason
-      })
+      }).trackId
     );
 
     const page = PlaylistTrackPageSchema.parse(
@@ -1361,14 +1300,14 @@ describe('GET /playlists/:id/tracks', () => {
   it('returns a null thumbnail and a null duration as nulls, not absent keys', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     addTrack(
       context.database,
       playlistId,
       seedTrack(context.database, {
         thumbnailPath: null,
         durationSeconds: null
-      })
+      }).trackId
     );
 
     const page = PlaylistTrackPageSchema.parse(
@@ -1392,7 +1331,7 @@ describe('PATCH /playlists/:id', () => {
   it('renames as the owner and stores the trimmed name', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       name: 'Before'
     });
 
@@ -1416,7 +1355,7 @@ describe('PATCH /playlists/:id', () => {
   it('refuses a name that is empty after trimming and leaves the playlist alone', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       name: 'Kept'
     });
 
@@ -1440,7 +1379,7 @@ describe('PATCH /playlists/:id', () => {
   it('refuses a name longer than two hundred characters', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const response = await patch(
       `/api/v1/playlists/${playlistId}`,
@@ -1455,13 +1394,17 @@ describe('PATCH /playlists/:id', () => {
   it('answers 404 for a write collaborator, a read collaborator, a stranger and a missing playlist', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       name: 'Kept'
     });
     const writer = seedAccount(context.database);
-    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+    seedShare(context.database, playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
     const reader = seedAccount(context.database);
-    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
     const stranger = seedAccount(context.database);
 
     const attempts: [string, string][] = [
@@ -1494,7 +1437,7 @@ describe('PATCH /playlists/:id', () => {
   it('changes the name and the updated timestamp and nothing else', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       name: 'Before',
       sourceUrl: 'https://www.youtube.com/playlist?list=PL1234567890abcdef',
       lastSyncedAt: '2020-06-01T00:00:00.000Z',
@@ -1534,7 +1477,7 @@ describe('PATCH /playlists/:id', () => {
   it('refuses a request without the client header', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const response = await context.app.inject({
       method: 'PATCH',
@@ -1550,9 +1493,9 @@ describe('PATCH /playlists/:id', () => {
   it('names the first association as the cover', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const first = seedTrack(context.database);
-    const second = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database);
     addAssociation(context.database, {
       playlistId,
       trackId: second,
@@ -1580,7 +1523,7 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
   it('flips the setting for the owner and returns the playlist', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       skipNonMusic: true
     });
 
@@ -1604,13 +1547,17 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
   it('lets a write collaborator change it and refuses a read collaborator', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       skipNonMusic: true
     });
     const writer = seedAccount(context.database);
-    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+    seedShare(context.database, playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
     const reader = seedAccount(context.database);
-    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
 
     const writerResponse = await patch(
       `/api/v1/playlists/${playlistId}/skip-non-music`,
@@ -1631,7 +1578,7 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
   it('answers 404 for a stranger and a missing playlist', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const stranger = seedAccount(context.database);
 
     const attempts: [string, string][] = [
@@ -1653,7 +1600,7 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
   it('refuses a body that is not a boolean', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const response = await patch(
       `/api/v1/playlists/${playlistId}/skip-non-music`,
@@ -1668,11 +1615,11 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
   it('does not change a track that was already created', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId, {
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
       skipNonMusic: true
     });
     // The track snapshotted the setting it was born with.
-    const trackId = seedTrack(context.database, { skipNonMusic: false });
+    const { trackId } = seedTrack(context.database, { skipNonMusic: false });
     addTrack(context.database, playlistId, trackId);
 
     await patch(
@@ -1693,7 +1640,7 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
   it('refuses a request without the client header', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const response = await context.app.inject({
       method: 'PATCH',
@@ -1711,9 +1658,9 @@ describe('DELETE /playlists/:id', () => {
   it('deletes the playlist and its associations as the owner', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    addTrack(context.database, playlistId, seedTrack(context.database));
-    addTrack(context.database, playlistId, seedTrack(context.database));
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
+    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
 
     const response = await del(
       `/api/v1/playlists/${playlistId}`,
@@ -1728,9 +1675,9 @@ describe('DELETE /playlists/:id', () => {
   it('leaves the stored files on disk for the prune to reclaim', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const relativePath = 'media/aa/keep.m4a';
-    const trackId = seedTrack(context.database, {
+    const { trackId } = seedTrack(context.database, {
       fileStatus: TrackFileStatus.Stored,
       filePath: relativePath
     });
@@ -1750,10 +1697,16 @@ describe('DELETE /playlists/:id', () => {
   it('leaves another playlist that holds the same track untouched and playing', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const doomed = seedPlaylist(context.database, owner.accountId);
-    const keeper = seedPlaylist(context.database, owner.accountId);
+    const { playlistId: doomed } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
+    const { playlistId: keeper } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
     const relativePath = 'media/bb/song.m4a';
-    const trackId = seedTrack(context.database, {
+    const { trackId } = seedTrack(context.database, {
       fileStatus: TrackFileStatus.Stored,
       filePath: relativePath
     });
@@ -1780,11 +1733,15 @@ describe('DELETE /playlists/:id', () => {
   it('answers 404 for a write collaborator, a read collaborator, a stranger and a missing playlist', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const writer = seedAccount(context.database);
-    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+    seedShare(context.database, playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
     const reader = seedAccount(context.database);
-    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
     const stranger = seedAccount(context.database);
 
     const attempts: [string, string][] = [
@@ -1811,9 +1768,11 @@ describe('DELETE /playlists/:id', () => {
   it('reads not-found from the moment it is deleted', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
     const reader = seedAccount(context.database);
-    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
 
     expect(
       (await get(`/api/v1/playlists/${playlistId}`, reader.pangolinUserId))
@@ -1832,7 +1791,7 @@ describe('DELETE /playlists/:id', () => {
   it('refuses a request without the client header', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
     const response = await context.app.inject({
       method: 'DELETE',
@@ -1850,8 +1809,8 @@ describe('DELETE /playlists/:id/tracks/:trackId', () => {
   it('removes the track for the owner, moves the count and writes a suppression', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const trackId = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
     addTrack(context.database, playlistId, trackId);
     expect(selectPlaylist(playlistId)?.trackCount).toBe(1);
 
@@ -1871,11 +1830,13 @@ describe('DELETE /playlists/:id/tracks/:trackId', () => {
   it('lets a write collaborator remove a track', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const trackId = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
     addTrack(context.database, playlistId, trackId);
     const writer = seedAccount(context.database);
-    seedShare(context.database, playlistId, writer.accountId, ShareLevel.Write);
+    seedShare(context.database, playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
 
     const response = await del(
       `/api/v1/playlists/${playlistId}/tracks/${trackId}`,
@@ -1892,12 +1853,14 @@ describe('DELETE /playlists/:id/tracks/:trackId', () => {
   it('answers 404 for a read collaborator, a stranger, a missing playlist and an absent association, writing nothing', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const trackId = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
     addTrack(context.database, playlistId, trackId);
-    const absentTrack = seedTrack(context.database);
+    const { trackId: absentTrack } = seedTrack(context.database);
     const reader = seedAccount(context.database);
-    seedShare(context.database, playlistId, reader.accountId, ShareLevel.Read);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
     const stranger = seedAccount(context.database);
 
     const attempts: [string, string, string][] = [
@@ -1928,10 +1891,16 @@ describe('DELETE /playlists/:id/tracks/:trackId', () => {
   it('leaves the track and its file for a playlist that still holds it', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const doomed = seedPlaylist(context.database, owner.accountId);
-    const keeper = seedPlaylist(context.database, owner.accountId);
+    const { playlistId: doomed } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
+    const { playlistId: keeper } = seedPlaylist(
+      context.database,
+      owner.accountId
+    );
     const relativePath = 'media/cc/song.m4a';
-    const trackId = seedTrack(context.database, {
+    const { trackId } = seedTrack(context.database, {
       fileStatus: TrackFileStatus.Stored,
       filePath: relativePath
     });
@@ -1962,8 +1931,8 @@ describe('DELETE /playlists/:id/tracks/:trackId', () => {
   it('refuses a request without the client header', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistId = seedPlaylist(context.database, owner.accountId);
-    const trackId = seedTrack(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
     addTrack(context.database, playlistId, trackId);
 
     const response = await context.app.inject({
