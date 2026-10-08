@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - e2e
+verifyDepsBeforeRun: false
 allowBuilds:
   '@parcel/watcher': false
   better-sqlite3: true
