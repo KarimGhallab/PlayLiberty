@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import type { Playlist } from '@playliberty/contracts';
 
-import PlaylistHeader from '../../shared/components/PlaylistHeader/PlaylistHeader';
+import PlaylistRowHeader from '../../shared/components/PlaylistHeader/PlaylistRowHeader';
 import type { PendingAction } from '../../shared/components/useDeferredAction/useDeferredAction';
 import { usePlayerStore } from '../../shared/player/playerStore/playerStore';
 import { usePlaylistActions } from '../../shared/playlistActions/playlistActions';
@@ -60,7 +60,7 @@ export default function PlaylistListItem({
 
   return (
     <>
-      <PlaylistHeader
+      <PlaylistRowHeader
         playlist={playlist}
         ownerName={ownerName}
         showSyncTime

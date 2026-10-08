@@ -8,10 +8,7 @@ import {
   IconUserShare
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent as ReactMouseEvent
-} from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
@@ -27,35 +24,25 @@ import { sleeveIndex } from '@playliberty/ui-foundation';
 import { API_PREFIX } from '../../api/client/client';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import PlayGlyph from '../PlayGlyph';
-import TrackBars from '../TrackBars';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
 
 /*
- * The playlist header: the cover, the name, the share indicator, the count and
- * the sync line. It is the library's item and the playlist detail's header, one
- * component at two arrangements, so no screen draws a second item that resembles
- * it. It owns both arrangements and `arrangement` picks one: the row, the cover
- * beside the identity block, and the card, the cover above it. The library draws
- * the row on web; the playlist detail draws the card in its 320px left column.
+ * The playlist header's shared seam: what the row and the card both draw, built
+ * once. The cover's state, the identity block and the menu model live here, and
+ * each arrangement composes them into its own markup, so the two cannot drift
+ * on the name, the share mark, the count, the sync line or the overflow.
  *
- * The actions column is a column: the play, then the shuffle and the overflow
- * beside each other under it. The play and the shuffle are optional and their
- * control is absent when the callback is absent, so the header is gated by what
- * the caller can do rather than by a level string it would have to learn. The
- * overflow's items are not the header's to decide: the actions module builds
- * them by access and hands them in as `menu`, so an owner gets the four it can
- * act on, a writer the one it can, and a reader an empty menu and no overflow.
- *
- * The card draws the shuffle and the menu as siblings in its own action band, so
- * the shuffle sits immediately left of the menu icon, and the row keeps them
- * wrapped in an action row under the play.
- *
- * While the queue is on this playlist the transport replaces the standalone
- * play and sits above the action row, which is the header's own swap; it stays
- * while paused, because the steps are the queue's and not the play's. It is
- * drawn only when the caller offers both steps, so the library's item keeps its
- * single control and the detail's header is the one that can skip.
+ * The identity is the cover's fallback to a derived sleeve, the name as a link
+ * or a heading, the share indicator, the sync state and its optional elapsed
+ * time, the track count and the owner line of a shared playlist. The actions
+ * column is the play, the transport that replaces it while the queue is this
+ * playlist, the shuffle and the overflow, each absent when the caller offers no
+ * callback: the header is gated by what the caller can do rather than by a level
+ * string it would have to learn. The overflow's items are not the header's to
+ * decide: the actions module builds them by access and hands them in as `menu`,
+ * so an owner gets the four it can act on, a writer the one it can, and a reader
+ * an empty menu and no overflow.
  *
  * `ownerName` is the resolved display name of a playlist that is not the
  * account's, and null when the directory does not carry the owner. It is drawn
@@ -66,36 +53,33 @@ import styles from './PlaylistHeader.module.scss';
  * the playlist, and the share indicator beside the name is the honest fallback.
  */
 
-interface PlaylistHeaderProps {
+export interface PlaylistHeaderSeam {
   playlist: Playlist;
   ownerName?: string | null;
-  /* The component's two arrangements. The row is the default and the library's
-   * item; the card is the playlist detail's left column at 320px. */
-  arrangement?: 'row' | 'card';
   /*
-   * The action column. Each action is optional and its control is absent when
-   * the callback is absent, which is how the three access levels gate the menu
-   * by absence rather than by disabling: a control that is there and cannot be
-   * pressed is worse than no control. The play and the shuffle are playback
-   * facts and are offered at every level; the overflow and its items stay with
-   * the owner and the writer.
+   * Whether the name is the page heading rather than a self-link. The detail's
+   * header owns the route it names, so its name is a heading; the library's item
+   * is a door and its name is the link beside the cover's own.
    */
+  heading?: boolean;
+  /*
+   * Whether a deferred action is about to remove this playlist. It dims the
+   * header, sets `aria-busy`, and disables every control and door it offers, so
+   * the thing the toast says is going cannot still be opened, renamed, shuffled
+   * or deleted again.
+   */
+  pending?: boolean;
+  /* The one play door. Optional, so a consumer that cannot start playback
+   * simply does not draw it. */
   onPlay?: () => void;
   playing?: boolean;
   /*
    * Whether this playlist is the one the queue is on, paused or playing. The
-   * transport's steps act on the queue, so they stay on the card whenever the
-   * card is the queue's own and the caller offers both, and a playlist the queue
-   * is not on keeps the single play that starts it.
+   * transport's steps act on the queue, so they stay whenever the header is the
+   * queue's own and the caller offers both, and a playlist the queue is not on
+   * keeps the single play that starts it.
    */
   current?: boolean;
-  /*
-   * Whether a deferred action is about to remove this playlist. It dims the row,
-   * sets `aria-busy`, and disables every control and door it offers, so the thing
-   * the toast says is going cannot still be opened, renamed, shuffled or deleted
-   * again.
-   */
-  pending?: boolean;
   /* The transport's steps. The pair and `current` together decide whether the
    * transport replaces the standalone play; an absent pair keeps the standalone
    * play, so a consumer that cannot skip does not lose its door. */
@@ -110,11 +94,26 @@ interface PlaylistHeaderProps {
   onShuffle?: () => void;
   shuffled?: boolean;
   menu?: readonly PlaylistAction[];
-  heading?: boolean;
+  /* The cover as a blurred ground behind the header. The library's row and the
+   * detail's card both ask for it. */
   ground?: boolean;
-  onOpen?: () => void;
+  /* The elapsed sync time beside the state, which only the row asks for. */
   showSyncTime?: boolean;
   now?: Date;
+}
+
+export interface PlaylistHeaderParts {
+  /* The sleeve index a no-artwork cover draws, derived from the id. */
+  readonly sleeve: number;
+  /* The cover's source, or null once it has failed or the playlist has none. */
+  readonly cover: string | null;
+  /* The cover's fallback to the sleeve, for the arrangement's own `img`. */
+  readonly onCoverError: () => void;
+  readonly ground: ReactNode;
+  readonly primaryControl: ReactNode;
+  readonly shuffleControl: ReactNode;
+  readonly menuControl: ReactNode;
+  readonly identity: ReactNode;
 }
 
 interface ShareMark {
@@ -149,26 +148,24 @@ function shareMark(playlist: Playlist): ShareMark {
   return { state: 'own-private', label: 'header.private', Icon: IconLock };
 }
 
-export default function PlaylistHeader({
+export function usePlaylistHeader({
   playlist,
   ownerName = null,
-  arrangement = 'row',
+  heading = false,
+  pending = false,
   onPlay,
   playing = false,
   current = false,
-  pending = false,
   onSkipBack,
   onSkipNext,
   hasNext = true,
   onShuffle,
   shuffled = false,
   menu = [],
-  heading = false,
   ground = false,
-  onOpen,
   showSyncTime = false,
   now = new Date()
-}: PlaylistHeaderProps) {
+}: PlaylistHeaderSeam): PlaylistHeaderParts {
   const { t } = useI18n();
   const mark = shareMark(playlist);
   const sharedBy =
@@ -207,19 +204,6 @@ export default function PlaylistHeader({
   useEffect(() => {
     setCoverFailed(false);
   }, [playlist.coverTrackId]);
-
-  const openFromClick =
-    onOpen === undefined
-      ? undefined
-      : (event: ReactMouseEvent<HTMLDivElement>): void => {
-          const target = event.target as HTMLElement;
-
-          if (target.closest('a, button, [role="menu"]') !== null) {
-            return;
-          }
-
-          onOpen();
-        };
 
   /*
    * The enabled items of the open panel, read from the DOM on each use rather
@@ -564,102 +548,14 @@ export default function PlaylistHeader({
     </>
   );
 
-  if (arrangement === 'card') {
-    return (
-      <div
-        className={styles.playlistHeader}
-        data-arrangement="card"
-        data-heading={heading ? 'true' : undefined}
-        data-ground={ground ? 'true' : undefined}
-        data-open={onOpen === undefined || pending ? undefined : 'true'}
-        data-pending={pending ? 'true' : undefined}
-        aria-busy={pending ? true : undefined}
-        onClick={pending ? undefined : openFromClick}
-        data-state={playing ? 'playing' : 'paused'}>
-        {groundElement}
-        <div
-          className={styles.playlistHeader__mart}
-          data-art={cover === null ? 'no-art' : 'art'}
-          data-sleeve={cover === null ? sleeve : undefined}>
-          {cover === null ? null : (
-            <img
-              className={styles.playlistHeader__martArt}
-              src={cover}
-              alt=""
-              decoding="async"
-              onError={() => setCoverFailed(true)}
-            />
-          )}
-          <div className={styles.playlistHeader__mscrim} aria-hidden="true" />
-          <div className={styles.playlistHeader__macts}>
-            {primaryControl}
-            <div className={styles.playlistHeader__mactsRight}>
-              {shuffleControl}
-              {menuControl}
-            </div>
-          </div>
-        </div>
-        <div className={styles.playlistHeader__munder}>{identity}</div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={styles.playlistHeader}
-      data-arrangement="row"
-      data-heading={heading ? 'true' : undefined}
-      data-ground={ground ? 'true' : undefined}
-      data-open={onOpen === undefined || pending ? undefined : 'true'}
-      data-pending={pending ? 'true' : undefined}
-      aria-busy={pending ? true : undefined}
-      onClick={pending ? undefined : openFromClick}
-      data-state={playing ? 'playing' : 'paused'}>
-      {groundElement}
-      <Link
-        to="/playlists/$playlistId"
-        params={{ playlistId: playlist.id }}
-        className={styles.playlistHeader__cover}
-        aria-hidden="true"
-        tabIndex={-1}
-        aria-disabled={pending ? true : undefined}
-        onClick={pending ? event => event.preventDefault() : undefined}
-        data-art={cover === null ? 'no-art' : 'art'}
-        data-sleeve={cover === null ? sleeve : undefined}>
-        {cover === null ? null : (
-          <img
-            className={styles.playlistHeader__art}
-            src={cover}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            onError={() => setCoverFailed(true)}
-          />
-        )}
-        {current && playing ? (
-          <>
-            <span
-              className={styles.playlistHeader__barsScrim}
-              aria-hidden="true"
-            />
-            <TrackBars
-              className={styles.playlistHeader__bars}
-              barClassName={styles.playlistHeader__bar}
-              playing={playing}
-            />
-          </>
-        ) : null}
-      </Link>
-      <div className={styles.playlistHeader__body}>{identity}</div>
-      <div className={styles.playlistHeader__actions}>
-        {primaryControl}
-        {shuffleControl === null && menuControl === null ? null : (
-          <div className={styles.playlistHeader__actionRow}>
-            {shuffleControl}
-            {menuControl}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return {
+    sleeve,
+    cover,
+    onCoverError: () => setCoverFailed(true),
+    ground: groundElement,
+    primaryControl,
+    shuffleControl,
+    menuControl,
+    identity
+  };
 }

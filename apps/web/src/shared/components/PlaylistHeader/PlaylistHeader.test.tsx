@@ -21,7 +21,8 @@ import type { Playlist } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
-import PlaylistHeader from './PlaylistHeader';
+import PlaylistCardHeader from './PlaylistCardHeader';
+import PlaylistRowHeader from './PlaylistRowHeader';
 
 /*
  * The header under test sits inside a real router so its two links resolve the
@@ -55,13 +56,23 @@ function renderInRouter(element: ReactNode) {
   );
 }
 
-function renderHeader(
+function renderRow(
   playlist: Playlist,
   ownerName: string | null = null,
-  props: Partial<Parameters<typeof PlaylistHeader>[0]> = {}
+  props: Partial<Parameters<typeof PlaylistRowHeader>[0]> = {}
 ) {
   return renderInRouter(
-    <PlaylistHeader playlist={playlist} ownerName={ownerName} {...props} />
+    <PlaylistRowHeader playlist={playlist} ownerName={ownerName} {...props} />
+  );
+}
+
+function renderCard(
+  playlist: Playlist,
+  ownerName: string | null = null,
+  props: Partial<Parameters<typeof PlaylistCardHeader>[0]> = {}
+) {
+  return renderInRouter(
+    <PlaylistCardHeader playlist={playlist} ownerName={ownerName} {...props} />
   );
 }
 
@@ -103,7 +114,7 @@ function menu(): PlaylistAction[] {
 
 describe('PlaylistHeader', () => {
   it('renders the name, the sync state and the count', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     expect(
       await screen.findByRole('link', { name: 'Rain On The Window' })
@@ -114,7 +125,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws the elapsed time beside the state when the caller asks for it', async () => {
-    renderHeader(playlist(), null, {
+    renderRow(playlist(), null, {
       showSyncTime: true,
       now: new Date('2026-10-01T12:00:00.000Z')
     });
@@ -124,7 +135,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws no sync time when the caller does not ask for it', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -132,7 +143,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('announces one link per item by hiding the cover link', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     const links = await screen.findAllByRole('link');
 
@@ -141,7 +152,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws the name as a heading and not a link when the route owns it', async () => {
-    renderHeader(playlist(), null, { heading: true });
+    renderRow(playlist(), null, { heading: true });
 
     expect(
       await screen.findByRole('heading', { name: 'Rain On The Window' })
@@ -157,7 +168,7 @@ describe('PlaylistHeader', () => {
    * what picks the detail's row out. The library's item keeps its single line.
    */
   it('marks the detail header so the narrow row can give the name its width', async () => {
-    const { container } = renderHeader(playlist(), null, {
+    const { container } = renderRow(playlist(), null, {
       heading: true,
       current: true,
       onPlay: () => undefined,
@@ -184,7 +195,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('leaves the library item unmarked, so it keeps its single row', async () => {
-    const { container } = renderHeader(playlist());
+    const { container } = renderRow(playlist());
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -196,7 +207,7 @@ describe('PlaylistHeader', () => {
   it('carries the full name when the line is cut to fit its column', async () => {
     const name =
       'A playlist name long enough that the gallery column cannot show it in one line';
-    renderHeader(playlist({ name }));
+    renderRow(playlist({ name }));
 
     const link = await screen.findByRole('link', { name });
 
@@ -206,7 +217,7 @@ describe('PlaylistHeader', () => {
   it('carries the full name on the heading arrangement too', async () => {
     const name =
       'Another playlist name too long for the detail column it is drawn in';
-    renderHeader(playlist({ name }), null, { heading: true });
+    renderRow(playlist({ name }), null, { heading: true });
 
     const heading = await screen.findByRole('heading', { name });
 
@@ -214,7 +225,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('names a private owned playlist', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     expect(
       await screen.findByRole('img', { name: 'Private playlist' })
@@ -222,7 +233,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('names a shared owned playlist', async () => {
-    renderHeader(playlist({ hasShares: true }));
+    renderRow(playlist({ hasShares: true }));
 
     expect(
       await screen.findByRole('img', { name: 'Shared playlist' })
@@ -230,7 +241,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('names a collaborator playlist', async () => {
-    renderHeader(playlist({ access: ShareLevel.Write }));
+    renderRow(playlist({ access: ShareLevel.Write }));
 
     expect(
       await screen.findByRole('img', { name: 'You are a collaborator' })
@@ -238,7 +249,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('names the owner of a shared playlist', async () => {
-    renderHeader(playlist({ access: ShareLevel.Read }), 'Ada');
+    renderRow(playlist({ access: ShareLevel.Read }), 'Ada');
 
     expect(
       await screen.findByRole('link', { name: 'Rain On The Window' })
@@ -247,7 +258,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws no owner line on an owned playlist, even when a name is passed', async () => {
-    renderHeader(playlist(), 'Ada');
+    renderRow(playlist(), 'Ada');
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -255,7 +266,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws no owner line when the owner is missing from the directory', async () => {
-    renderHeader(playlist({ access: ShareLevel.Read }), null);
+    renderRow(playlist({ access: ShareLevel.Read }), null);
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -266,19 +277,19 @@ describe('PlaylistHeader', () => {
   });
 
   it('renders a syncing playlist as syncing', async () => {
-    renderHeader(playlist({ syncStatus: PlaylistSyncStatus.Syncing }));
+    renderRow(playlist({ syncStatus: PlaylistSyncStatus.Syncing }));
 
     expect(await screen.findByText('Syncing')).toBeInTheDocument();
   });
 
   it('renders a failed playlist as failed', async () => {
-    renderHeader(playlist({ syncStatus: PlaylistSyncStatus.Error }));
+    renderRow(playlist({ syncStatus: PlaylistSyncStatus.Error }));
 
     expect(await screen.findByText('Sync failed')).toBeInTheDocument();
   });
 
   it('gives a no-artwork cover its derived sleeve', async () => {
-    const { container } = renderHeader(playlist({ id: 'playlist-1' }));
+    const { container } = renderRow(playlist({ id: 'playlist-1' }));
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -290,7 +301,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws the cover from the first track thumbnail when the playlist has one', async () => {
-    const { container } = renderHeader(playlist({ coverTrackId: 'track-9' }));
+    const { container } = renderRow(playlist({ coverTrackId: 'track-9' }));
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -307,7 +318,7 @@ describe('PlaylistHeader', () => {
    * thread.
    */
   it('defers the row cover and async-decodes it', async () => {
-    const { container } = renderHeader(playlist({ coverTrackId: 'track-9' }));
+    const { container } = renderRow(playlist({ coverTrackId: 'track-9' }));
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -318,11 +329,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('loads the card cover eagerly and async-decodes it', async () => {
-    const { container } = renderHeader(
-      playlist({ coverTrackId: 'track-9' }),
-      null,
-      { arrangement: 'card' }
-    );
+    const { container } = renderCard(playlist({ coverTrackId: 'track-9' }));
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -333,7 +340,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('falls back to the sleeve when the cover image fails to load', async () => {
-    const { container } = renderHeader(playlist({ coverTrackId: 'track-9' }));
+    const { container } = renderRow(playlist({ coverTrackId: 'track-9' }));
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -348,7 +355,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws the cover as a blurred ground behind the row when asked', async () => {
-    const { container } = renderHeader(
+    const { container } = renderRow(
       playlist({ coverTrackId: 'track-9' }),
       null,
       { ground: true }
@@ -369,7 +376,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('gives the ground the sleeve hue when the playlist has no cover', async () => {
-    const { container } = renderHeader(playlist(), null, { ground: true });
+    const { container } = renderRow(playlist(), null, { ground: true });
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -379,10 +386,12 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws the cover as a ground behind the card when asked', async () => {
-    const { container } = renderHeader(
+    const { container } = renderCard(
       playlist({ coverTrackId: 'track-9' }),
       null,
-      { arrangement: 'card', ground: true }
+      {
+        ground: true
+      }
     );
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
@@ -405,7 +414,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('marks the playing row with the equalizer bars', async () => {
-    const { container } = renderHeader(playlist(), null, {
+    const { container } = renderRow(playlist(), null, {
       current: true,
       playing: true
     });
@@ -416,7 +425,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('draws no playing mark on a row that is not the queue', async () => {
-    const { container } = renderHeader(playlist());
+    const { container } = renderRow(playlist());
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
@@ -424,7 +433,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('marks the sync state on the item so the cover can carry its tone', async () => {
-    renderHeader(playlist({ syncStatus: PlaylistSyncStatus.Error }));
+    renderRow(playlist({ syncStatus: PlaylistSyncStatus.Error }));
 
     const state = await screen.findByText('Sync failed');
 
@@ -432,7 +441,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('reads a never-synced playlist by its idle state, beside a never-synced line', async () => {
-    renderHeader(
+    renderRow(
       playlist({ syncStatus: PlaylistSyncStatus.Idle, lastSyncedAt: null }),
       null,
       { showSyncTime: true }
@@ -444,7 +453,7 @@ describe('PlaylistHeader', () => {
 
   it('opens the playlist from a press on the item, but not from its controls', async () => {
     const onOpen = vi.fn();
-    renderHeader(playlist(), null, {
+    renderRow(playlist(), null, {
       onOpen,
       onShuffle: () => undefined,
       menu: menu()
@@ -469,12 +478,12 @@ describe('PlaylistHeader', () => {
   it('ties each row control to its own playlist', async () => {
     renderInRouter(
       <>
-        <PlaylistHeader
+        <PlaylistRowHeader
           playlist={playlist({ id: 'playlist-a', name: 'Rain On The Window' })}
           onShuffle={() => undefined}
           menu={menu()}
         />
-        <PlaylistHeader
+        <PlaylistRowHeader
           playlist={playlist({ id: 'playlist-b', name: 'A Second Playlist' })}
           onShuffle={() => undefined}
           menu={menu()}
@@ -503,8 +512,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('disables the next step when the queue has no next track', async () => {
-    renderHeader(playlist(), null, {
-      arrangement: 'card',
+    renderCard(playlist(), null, {
       playing: true,
       current: true,
       onPlay: () => undefined,
@@ -520,8 +528,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('keeps the steps while the queue is paused on this playlist', async () => {
-    renderHeader(playlist(), null, {
-      arrangement: 'card',
+    renderCard(playlist(), null, {
       playing: false,
       current: true,
       onPlay: () => undefined,
@@ -541,8 +548,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('sits the shuffle immediately left of the overflow on the card', async () => {
-    renderHeader(playlist(), null, {
-      arrangement: 'card',
+    renderCard(playlist(), null, {
       onPlay: () => undefined,
       onShuffle: () => undefined,
       menu: menu()
@@ -570,7 +576,7 @@ describe('PlaylistHeader', () => {
    * shuffled, so a reader can tell which playlist the shuffle belongs to.
    */
   it('leaves a row unpressed while the player is shuffled on another playlist', async () => {
-    renderHeader(playlist(), null, {
+    renderRow(playlist(), null, {
       onShuffle: () => undefined,
       shuffled: true
     });
@@ -581,7 +587,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('presses the shuffle while the player is shuffled and this playlist is the queue', async () => {
-    renderHeader(playlist(), null, {
+    renderRow(playlist(), null, {
       onShuffle: () => undefined,
       shuffled: true,
       current: true
@@ -598,7 +604,7 @@ describe('PlaylistHeader', () => {
    * cannot still be opened, played, shuffled or acted on.
    */
   it('marks a pending row and disables every door and control', async () => {
-    const { container } = renderHeader(playlist(), null, {
+    const { container } = renderRow(playlist(), null, {
       onOpen: () => undefined,
       onPlay: () => undefined,
       onShuffle: () => undefined,
@@ -635,7 +641,7 @@ describe('PlaylistHeader', () => {
    * focus or hover.
    */
   it('puts the share indicator in the tab order', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     const mark = await screen.findByRole('img', { name: 'Private playlist' });
     expect(mark).toHaveAttribute('tabindex', '0');
@@ -645,7 +651,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('dismisses the share tooltip on Escape and reveals it again on the next focus', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     const mark = await screen.findByRole('img', { name: 'Private playlist' });
     mark.focus();
@@ -660,7 +666,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('reveals the share tooltip again when the pointer returns to the mark', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     const mark = await screen.findByRole('img', { name: 'Private playlist' });
     fireEvent.focus(mark);
@@ -672,7 +678,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('keeps the share tooltip decorative so the state is not read twice', async () => {
-    renderHeader(playlist());
+    renderRow(playlist());
 
     const mark = await screen.findByRole('img', { name: 'Private playlist' });
     const tip = mark.querySelector('[role="presentation"]');
@@ -682,7 +688,7 @@ describe('PlaylistHeader', () => {
   });
 
   it('has no axe violations', async () => {
-    const { container } = renderHeader(playlist());
+    const { container } = renderRow(playlist());
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 

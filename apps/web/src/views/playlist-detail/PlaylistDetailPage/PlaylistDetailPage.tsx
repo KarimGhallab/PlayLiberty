@@ -26,7 +26,8 @@ import {
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
-import PlaylistHeader from '../../../shared/components/PlaylistHeader/PlaylistHeader';
+import PlaylistCardHeader from '../../../shared/components/PlaylistHeader/PlaylistCardHeader';
+import PlaylistRowHeader from '../../../shared/components/PlaylistHeader/PlaylistRowHeader';
 import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/PlaylistNotFound';
 import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/PlaylistSkipSetting';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
@@ -111,9 +112,9 @@ export default function PlaylistDetailPage() {
   });
   /*
    * The header's arrangement at this width. The design's mobile arrangement is
-   * the component's row, not its card: at 390 the card is 470.4px tall and the
+   * the row header, not the card header: at 390 the card is 470.4px tall and the
    * row is 136px, so the row is the one that fits, and the two are different
-   * markup rather than two stylesheets, which is why this asks the viewport
+   * modules rather than two stylesheets, which is why this asks the viewport
    * rather than branching in CSS.
    */
   const isMobile = useMediaQuery(MOBILE_QUERY);
@@ -336,6 +337,34 @@ export default function PlaylistDetailPage() {
     );
   }
 
+  /*
+   * The props both header arrangements take. The detail is the one surface that
+   * draws both: the card in its left column above 768px and the row below it.
+   * They are different modules with different prop surfaces, but every prop the
+   * detail passes is honoured by both, so the set is named once and each module
+   * is handed it. The card takes no `onOpen` and no sync time, which the detail
+   * never passes; the row takes both, and neither is in this set.
+   */
+  const headerProps = {
+    ownerName,
+    heading: true,
+    ground: true,
+    onPlay: playPlaylist,
+    playing: playingThis,
+    current: isQueue,
+    pending: playlistPending,
+    onSkipBack: skipPrevious,
+    onSkipNext: skipNext,
+    hasNext,
+    onShuffle: () =>
+      shufflePlaylist({
+        id: playlistId,
+        name: playlist.data?.name ?? 'This playlist'
+      }),
+    shuffled,
+    menu: actions.menu
+  };
+
   return (
     <main className={styles.playlistDetail}>
       <nav className={styles.playlistDetail__wayhome}>
@@ -374,36 +403,13 @@ export default function PlaylistDetailPage() {
       <div className={styles.playlistDetail__columns}>
         <div className={styles.playlistDetail__side}>
           {playlist.isSuccess ? (
-            <PlaylistHeader
-              playlist={playlist.data}
-              ownerName={ownerName}
-              arrangement={isMobile ? 'row' : 'card'}
-              heading
-              ground
-              onPlay={playPlaylist}
-              playing={playingThis}
-              current={isQueue}
-              pending={playlistPending}
-              onSkipBack={skipPrevious}
-              onSkipNext={skipNext}
-              hasNext={hasNext}
-              onShuffle={() =>
-                shufflePlaylist({
-                  id: playlistId,
-                  name: playlist.data?.name ?? 'This playlist'
-                })
-              }
-              shuffled={shuffled}
-              menu={actions.menu}
-            />
+            isMobile ? (
+              <PlaylistRowHeader {...headerProps} playlist={playlist.data} />
+            ) : (
+              <PlaylistCardHeader {...headerProps} playlist={playlist.data} />
+            )
           ) : null}
 
-          {/*
-           * The skip setting, under the card. The owner and a write collaborator
-           * may change it; a read collaborator sees the same switch disabled,
-           * because the value is still theirs to read. The write is optimistic,
-           * and a refusal puts the switch back and says why.
-           */}
           {playlist.isSuccess ? (
             <PlaylistSkipSetting
               skipNonMusic={playlist.data.skipNonMusic}
