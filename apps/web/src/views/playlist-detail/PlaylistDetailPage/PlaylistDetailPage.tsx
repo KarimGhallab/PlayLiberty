@@ -43,7 +43,7 @@ import { startPlaylistQueue } from '../../../shared/player/playerQueue/playerQue
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
-import { nextIndex } from '../../../shared/player/types';
+import { hasNext, queuePlaylistId } from '../../../shared/player/types';
 import {
   NOTICE_WINDOW_MS,
   refusalNotice,
@@ -130,18 +130,15 @@ export default function PlaylistDetailPage() {
   const shuffled = usePlayerStore(state => state.shuffle);
   const queue = usePlayerStore(state => state.queue);
   const { shufflePlaylist, refusal } = useShufflePlaylist();
-  const queuePlaylistId = usePlayerStore(
-    state => state.queue[0]?.playlistId ?? null
-  );
+  const playingPlaylistId = usePlayerStore(queuePlaylistId);
   useQueueRefetch(playlist.data, tracks.data);
   /*
    * Whether the queue holds a track after the current one, which is what decides
-   * if the header's forward step has anywhere to go. Derived from the queue
-   * rather than the playlist because the transport acts on the queue, and from
-   * the shared next-index rule, so a shuffled queue goes dead at its last entry
-   * exactly as an unshuffled one does.
+   * if the header's forward step has anywhere to go. It is the queue's own
+   * derivation, so a shuffled queue goes dead at its last entry exactly as an
+   * unshuffled one does.
    */
-  const hasNext = usePlayerStore(state => nextIndex(state) >= 0);
+  const canSkipNext = usePlayerStore(hasNext);
 
   const ownerName =
     playlist.data !== undefined && directory.data !== undefined
@@ -171,7 +168,7 @@ export default function PlaylistDetailPage() {
         return;
       }
 
-      if (player.queue[0]?.playlistId === playlistId) {
+      if (queuePlaylistId(player) === playlistId) {
         player.play(trackId);
         return;
       }
@@ -192,7 +189,7 @@ export default function PlaylistDetailPage() {
    * pause and resume, so the one control keeps the two meanings it has on a row.
    */
   const playPlaylist = (): void => {
-    if (queuePlaylistId === playlistId) {
+    if (playingPlaylistId === playlistId) {
       setPlaying(!isPlaying);
       return;
     }
@@ -294,7 +291,7 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [settingRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
-  const isQueue = queuePlaylistId === playlistId;
+  const isQueue = playingPlaylistId === playlistId;
   const playlistPending = deferred.pending?.id === playlistId;
   const playingThis = isPlaying && isQueue;
 
@@ -344,7 +341,7 @@ export default function PlaylistDetailPage() {
     pending: playlistPending,
     onSkipBack: skipPrevious,
     onSkipNext: skipNext,
-    hasNext,
+    hasNext: canSkipNext,
     onShuffle: () =>
       shufflePlaylist({
         id: playlistId,

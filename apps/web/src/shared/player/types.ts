@@ -136,3 +136,29 @@ export function nextIndex(state: PlayerState): number {
 
   return index + 1 < state.queue.length ? index + 1 : -1;
 }
+
+/*
+ * The playlist the queue is playing. The queue is built from one playlist, so the
+ * first entry names it and an empty queue names none. The store's refetch guard
+ * and every surface's "is this the queue?" ask this one question, so they cannot
+ * disagree about which playlist is playing.
+ */
+export function queuePlaylistId(state: PlayerState): string | null {
+  return state.queue[0]?.playlistId ?? null;
+}
+
+/** The track the transport is on, or null when nothing is playing. */
+export function currentTrack(state: PlayerState): PlayerTrack | null {
+  const index = currentIndex(state);
+
+  return index < 0 ? null : state.queue[index];
+}
+
+/*
+ * Whether the queue holds a track after the current one. The end-of-queue rule is
+ * `nextIndex`'s, so the forward control of the bar and of the header cannot
+ * disagree about the last track.
+ */
+export function hasNext(state: PlayerState): boolean {
+  return nextIndex(state) >= 0;
+}

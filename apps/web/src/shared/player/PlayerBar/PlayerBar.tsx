@@ -8,6 +8,7 @@ import PlayGlyph from '../../components/PlayGlyph';
 import { usePlayPauseMorph } from '../../components/usePlayPauseMorph/usePlayPauseMorph';
 import VolumeControl from '../VolumeControl/VolumeControl';
 import { usePlayerStore } from '../playerStore/playerStore';
+import { currentTrack, hasNext } from '../types';
 import styles from './PlayerBar.module.scss';
 
 /*
@@ -50,20 +51,14 @@ function releasePointer(element: HTMLElement, pointerId: number): void {
 
 export default function PlayerBar() {
   const { t } = useI18n();
-  const current = usePlayerStore(
-    state => state.queue.find(track => track.id === state.currentId) ?? null
-  );
+  const current = usePlayerStore(currentTrack);
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const seek = usePlayerStore(state => state.seek);
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
-  const hasNext = usePlayerStore(state => {
-    const index = state.queue.findIndex(track => track.id === state.currentId);
-
-    return index >= 0 && index + 1 < state.queue.length;
-  });
+  const canSkipNext = usePlayerStore(hasNext);
   const scrubRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const { run, endRun } = usePlayPauseMorph(isPlaying);
@@ -108,9 +103,7 @@ export default function PlayerBar() {
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault();
 
-        const duration =
-          state.queue.find(track => track.id === state.currentId)
-            ?.durationSeconds ?? 0;
+        const duration = currentTrack(state)?.durationSeconds ?? 0;
         const step =
           event.key === 'ArrowRight'
             ? KEYBOARD_STEP_SECONDS
@@ -212,7 +205,7 @@ export default function PlayerBar() {
             type="button"
             className={styles.playerBar__step}
             aria-label={t('playerBar.next')}
-            disabled={!hasNext}
+            disabled={!canSkipNext}
             onClick={() => skipNext()}>
             <IconPlayerSkipForward
               className={styles.playerBar__stepIcon}

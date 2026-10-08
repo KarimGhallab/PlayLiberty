@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { currentIndex, nextIndex } from '../types';
+import { currentIndex, nextIndex, queuePlaylistId } from '../types';
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
 
 /*
@@ -141,7 +141,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
        * playlist, and merging a second one in would extend the queue across
        * playlists, which is the thing the queue is built to avoid.
        */
-      if (state.queue.every(track => track.playlistId !== playlistId)) {
+      if (queuePlaylistId(state) !== playlistId) {
         return state;
       }
 

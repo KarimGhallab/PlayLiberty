@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { currentIndex } from '../types';
+import {
+  currentIndex,
+  currentTrack,
+  hasNext,
+  nextIndex,
+  queuePlaylistId
+} from '../types';
 import type { PlayerTrack } from '../types';
 import { usePlayerStore } from './playerStore';
 
@@ -174,6 +180,43 @@ describe('currentIndex', () => {
 
     usePlayerStore.getState().clear();
     expect(currentIndex(usePlayerStore.getState())).toBe(-1);
+  });
+});
+
+describe('the queue derivations', () => {
+  it('names the queue playlist, and nothing when the queue is empty', () => {
+    expect(queuePlaylistId(usePlayerStore.getState())).toBeNull();
+
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    expect(queuePlaylistId(usePlayerStore.getState())).toBe(PLAYLIST);
+
+    usePlayerStore.getState().startQueue(OTHER, [elsewhere], elsewhere.id);
+    expect(queuePlaylistId(usePlayerStore.getState())).toBe(OTHER);
+  });
+
+  it('derives the current track from the id against the queue', () => {
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], second.id);
+
+    expect(currentTrack(usePlayerStore.getState())?.id).toBe('track-2');
+
+    usePlayerStore.getState().remove(second.id);
+    expect(currentTrack(usePlayerStore.getState())).toBeNull();
+  });
+
+  it('has a next everywhere but the last entry, and nowhere with no cursor', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+
+    expect(hasNext(usePlayerStore.getState())).toBe(true);
+    expect(nextIndex(usePlayerStore.getState())).toBe(1);
+
+    usePlayerStore.getState().skipNext();
+    expect(hasNext(usePlayerStore.getState())).toBe(false);
+    expect(nextIndex(usePlayerStore.getState())).toBe(-1);
+
+    usePlayerStore.getState().clear();
+    expect(hasNext(usePlayerStore.getState())).toBe(false);
   });
 });
 

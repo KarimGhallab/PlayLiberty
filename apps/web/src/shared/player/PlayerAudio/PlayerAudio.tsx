@@ -10,6 +10,7 @@ import {
   StreamFailureKind,
   classifyStreamFailure
 } from '../streamFailure/streamFailure';
+import { currentTrack } from '../types';
 
 /*
  * The one global audio element. It lives in the shell so playback survives a
@@ -27,20 +28,7 @@ const SEEK_EPSILON = 0.5;
 export default function PlayerAudio() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const currentId = usePlayerStore(state => state.currentId);
-  const currentTitle = usePlayerStore(
-    state =>
-      state.queue.find(track => track.id === state.currentId)?.title ?? null
-  );
-  const currentThumbnail = usePlayerStore(
-    state =>
-      state.queue.find(track => track.id === state.currentId)?.thumbnailPath ??
-      null
-  );
-  const currentPlaylistName = usePlayerStore(
-    state =>
-      state.queue.find(track => track.id === state.currentId)?.playlistName ??
-      null
-  );
+  const current = usePlayerStore(currentTrack);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const seekTo = usePlayerStore(state => state.seekTo);
@@ -217,30 +205,30 @@ export default function PlayerAudio() {
    * whenever the track changes, so they never describe a track that is gone.
    */
   useEffect(() => {
-    if (currentTitle === null || currentId === null) {
+    if (current === null) {
       publishMetadata(null);
       return;
     }
 
     const artwork =
-      currentThumbnail === null
+      current.thumbnailPath === null
         ? []
         : [
             {
               src: new URL(
-                `${API_PREFIX}/tracks/${currentId}/thumbnail`,
+                `${API_PREFIX}/tracks/${current.id}/thumbnail`,
                 window.location.origin
               ).href
             }
           ];
 
     publishMetadata({
-      title: currentTitle,
+      title: current.title,
       artist: '',
-      album: currentPlaylistName ?? 'PlayLiberty',
+      album: current.playlistName,
       artwork
     });
-  }, [currentTitle, currentThumbnail, currentId, currentPlaylistName]);
+  }, [current]);
 
   useEffect(
     () =>

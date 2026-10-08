@@ -10,6 +10,7 @@ import {
 } from '../../api/queries/queries';
 import { startPlaylistQueue } from '../playerQueue/playerQueue';
 import { usePlayerStore } from '../playerStore/playerStore';
+import { queuePlaylistId } from '../types';
 
 /*
  * The shuffle control's action, in one place because two surfaces draw the same
@@ -45,7 +46,7 @@ export function useShufflePlaylist(): ShuffleControl {
     (playlist: Pick<Playlist, 'id' | 'name'>) => {
       const player = usePlayerStore.getState();
 
-      if (player.queue[0]?.playlistId === playlist.id) {
+      if (queuePlaylistId(player) === playlist.id) {
         /*
          * The queue is already this playlist's, so the press changes the mode and
          * nothing else. Turning it on resumes as well, because reaching for

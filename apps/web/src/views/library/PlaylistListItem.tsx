@@ -5,6 +5,7 @@ import type { Playlist } from '@playliberty/contracts';
 import PlaylistRowHeader from '../../shared/components/PlaylistHeader/PlaylistRowHeader';
 import type { PendingAction } from '../../shared/components/useDeferredAction/useDeferredAction';
 import { usePlayerStore } from '../../shared/player/playerStore/playerStore';
+import { queuePlaylistId } from '../../shared/player/types';
 import { usePlaylistActions } from '../../shared/playlistActions/playlistActions';
 
 /*
@@ -52,11 +53,8 @@ export default function PlaylistListItem({
   });
   const shuffled = usePlayerStore(state => state.shuffle);
   const isPlaying = usePlayerStore(state => state.isPlaying);
-  const queuePlaylistId = usePlayerStore(
-    state => state.queue[0]?.playlistId ?? null
-  );
 
-  const isQueue = queuePlaylistId === playlist.id;
+  const isQueue = usePlayerStore(queuePlaylistId) === playlist.id;
 
   return (
     <>
