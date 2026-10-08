@@ -43,15 +43,23 @@ ENV MEDIA_ROOT=/media
 ENV DATABASE_PATH=/data/playliberty.db
 
 ARG YTDLP_VERSION=2026.08.19
+# The expected digest of `yt-dlp_linux` for that version, committed here so the
+# check does not trust the same release that served the binary. Bump the version
+# and this digest together, taking the value from the release's SHA2-256SUMS.
+ARG YTDLP_SHA256=58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a
+
+# ffmpeg ships ffprobe and is pinned to the exact Debian build, so the audio
+# toolchain does not drift under a rebuild. The pin is updated deliberately.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg ca-certificates curl \
+ && apt-get install -y --no-install-recommends \
+      ffmpeg=7:5.1.9-0+deb12u1 \
+      ca-certificates \
+      curl \
  && rm -rf /var/lib/apt/lists/* \
  && curl -fsSL -o /tmp/yt-dlp_linux "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_linux" \
- && curl -fsSL -o /tmp/SHA2-256SUMS "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/SHA2-256SUMS" \
- && cd /tmp \
- && grep 'yt-dlp_linux$' SHA2-256SUMS | sha256sum -c - \
+ && echo "${YTDLP_SHA256}  /tmp/yt-dlp_linux" | sha256sum -c - \
  && install -m 0755 /tmp/yt-dlp_linux /usr/local/bin/yt-dlp \
- && rm -f /tmp/yt-dlp_linux /tmp/SHA2-256SUMS
+ && rm -f /tmp/yt-dlp_linux
 
 WORKDIR /app
 COPY --from=prod-deps /app ./
