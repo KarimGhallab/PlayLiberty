@@ -39,6 +39,7 @@ than misleading a reader.
 | Playlist header              | [playlist header](design-system/components/playlist-header.md)         | [playlist header](design/components/playlist-header.html)    |
 | Add a playlist               | [add a playlist](design-system/components/add-playlist-dialog.md)      | [add a playlist](design/components/add-playlist-dialog.html) |
 | Add a track                  | [add a track](design-system/components/add-track-dialog.md)            | [add a track](design/components/add-track-dialog.html)       |
+| Language menu                | [language menu](design-system/components/language-menu.md)             | not drawn                                                    |
 | Empty gallery                | [empty gallery](design-system/components/empty-gallery.md)             | [library](design/screens/library.html)                       |
 | Library                      | [library](design-system/screens/library.md)                            | [library](design/screens/library.html)                       |
 | Playlist detail              | [playlist detail](design-system/screens/playlist-detail.md)            | [playlist detail](design/screens/playlist-detail.html)       |
@@ -86,6 +87,10 @@ These are the components, not their specs. Each links to the file that specifies
   video. It takes a video URL and a set of writable playlists and fires one batch request, and it stays open
   on a refusal so the refused playlists can be named. Specified in
   [add a track](design-system/components/add-track-dialog.md).
+- **Language menu**, the library header's only language control: a globe opening a two-row menu with the
+  active language checked, and the switch the copy follows. Specified in
+  [the language menu](design-system/components/language-menu.md). It is on the library only, because there
+  is no account surface and no settings.
 
 ## What is not yet designed
 

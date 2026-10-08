@@ -128,7 +128,7 @@ cannot touch.
 - **A lint rule flags a hardcoded user-facing string.** JSX text and the known label props are checked, with
   an allowlist for non-copy strings, so new copy cannot bypass the catalog. _Decided here:_ the rule is
   required, not optional, and its selector follows the runtime chosen above.
-- **The change owes documentation, and the documentation is part of the work.** ADR `0014` records the
+- **The change owes documentation, and the documentation is part of the work.** [ADR `0014`](../../adr/0014-client-owns-user-facing-copy.md) records the
   client-owns-copy decision, the shared package and the hand-rolled runtime; the glossary gains `Language`
   and `Locale`; the design system gains a record for the language button and its menu; the specs tracker
   gains this spec's row. _Decided here._

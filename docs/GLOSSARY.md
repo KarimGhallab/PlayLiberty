@@ -59,6 +59,13 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | Queue         | Per-client playback state. Not stored on the server.                                        |
 | Offline       | A client-side copy for playback without the server. Out of scope in v1.                     |
 
+## Language
+
+| Term     | Meaning                                                                                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language | `en` or `fr`. The language the interface is rendered in. Resolved once per browser, from an explicit choice, then the browser's preference, then `en`. Per browser, never on the account, and never known to the server. |
+| Locale   | A browser preference tag such as `fr-CA`, matched to a supported Language by its base. The app stores the resolved Language, never the tag.                                                                              |
+
 ## Out of scope in v1
 
 Sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, favorites, ratings, play counts, and search.
@@ -70,3 +77,5 @@ Sharing outside the instance, public or unauthenticated access, casting, social 
 - **Playlist** vs **Source**: the playlist is ours and lives on the server; the source is YouTube's and is only read during sync.
 - **Removal** vs **Remote-removed** vs **Deletion**: removal suppresses one association; remote-removed means the source video is gone but the track is retained; deletion is the orphan prune removing media.
 - **Stream** vs **Download**: streaming is the only delivery. A download endpoint would be file export, a non-goal.
+- **Language** vs **Locale**: a language is one of the two the interface is written in, `en` or `fr`; a locale is the browser's preference tag, `fr-CA`, that resolves to one. The app stores the language and never the tag.
+- **Interface language** vs **user content**: the interface language is the app's and switches with the language button; a playlist name, a track title and an account name are the source's or the user's and are never translated.
