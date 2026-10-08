@@ -163,7 +163,8 @@ the same sentences and figures from one place. `ui-foundation` keeps only the pr
   - `t` interpolates a parameter, and a plural entry is selected for one and for many;
   - a screen renders in the chosen language, and the switch changes it without a reload;
   - the document's `lang` follows the choice;
-  - the lint rule rejects a hardcoded string and accepts a translated one;
+  - the lint rule rejects a hardcoded string and accepts a translated one, which `pnpm run lint` itself
+    exercises rather than a unit test;
   - a problem code renders as the localized sentence, and an unmapped code falls back to the server's
     English.
 - **Prior art:** the `@playliberty/i18n` formatter tests, which pin exact English strings and are the level the

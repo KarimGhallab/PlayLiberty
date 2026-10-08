@@ -95,7 +95,19 @@
   &[data-arrangement='row'][data-ground='true'] {
     position: relative;
     isolation: isolate;
-    overflow: hidden;
+    /* No `overflow: hidden`: the row's menu opens downward past it and the share
+     * tip opens upward past it, so a clip here crops both. The ground is
+     * `inset: 0` and is contained without one. */
+  }
+
+  /* The row is its own stacking context, so a later sibling would paint over the
+   * menu and the tip that overflow it. Lifting the row above its siblings while
+   * either is open keeps them whole, on a tier below the overlay the header's own
+   * language menu uses. */
+  &[data-arrangement='row'][data-ground='true']:hover,
+  &[data-arrangement='row'][data-ground='true']:focus-within,
+  &[data-arrangement='row'][data-ground='true']:has(&__menu) {
+    z-index: var(--z-sticky);
   }
 
   &[data-arrangement='row'][data-ground='true'] &__ground {

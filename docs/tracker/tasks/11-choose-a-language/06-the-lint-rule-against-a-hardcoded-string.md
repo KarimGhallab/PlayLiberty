@@ -28,8 +28,9 @@ Done. A custom ESLint rule rejects hardcoded copy in the web client.
   strings are the assertion rather than copy.
 
 An incidental fix: the config change invalidated the ESLint cache and surfaced a latent `no-empty-pattern` in
-`e2e/support/test.ts`, whose Playwright fixture's unused first parameter is now named `_fixtures`.
+`e2e/support/test.ts`. The empty pattern is required there, because Playwright reads the first parameter's
+destructuring to resolve a fixture's dependencies, so it now carries an `eslint-disable-next-line
+no-empty-pattern` with the reason.
 
-Verification: `pnpm run build`, `pnpm run lint` and the unit suites (i18n 39, ui-foundation 6, server 275, web
-366) pass. The rule was checked by hand: a temporary `<p>Back to home</p>` in a web file fails lint and is
+Verification: `pnpm run build`, `pnpm run lint` and the unit suites (i18n 39, ui-foundation 6, server 275, web 366) pass. The rule was checked by hand: a temporary `<p>Back to home</p>` in a web file fails lint and is
 removed. Not committed.
