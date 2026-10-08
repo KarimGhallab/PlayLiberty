@@ -30,12 +30,10 @@ import {
   addAssociation,
   nextPositionFor
 } from '../../playlists/associationService.js';
+import { withDownloadQueue } from '../../tracks/downloadQueue/downloadQueue.js';
+import type { DownloadQueue } from '../../tracks/downloadQueue/downloadQueue.js';
 import { findTrackByVideoId } from '../../tracks/service/trackService.js';
-import {
-  createPendingTrack,
-  markTrackSourceRemoved,
-  retryTrack
-} from '../../tracks/trackLifecycle/trackLifecycle.js';
+import { markTrackSourceRemoved } from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 /*
  * Syncing a Synced playlist with its Source.
@@ -232,74 +230,85 @@ async function reconcile(
     // a video that later returns is treated as new rather than staying removed.
     liftAbsentSuppressions(database, playlist.id, presentVideoIds);
 
-    let nextPosition = nextPositionFor(database, playlist.id);
-    let added = 0;
+    /*
+     * The reconcile is one queueing operation: it queues every new track across the
+     * whole source, so the worker is woken once at the end rather than once per
+     * track. The run is settled and the playlist published inside the operation, so
+     * the wake still follows them, as it did when the route owned it.
+     */
+    withDownloadQueue(context, queue => {
+      let nextPosition = nextPositionFor(database, playlist.id);
+      let added = 0;
 
-    for (const item of source.entries) {
-      if (isSuppressed(database, playlist.id, item.videoId)) {
-        continue;
+      for (const item of source.entries) {
+        if (isSuppressed(database, playlist.id, item.videoId)) {
+          continue;
+        }
+
+        const trackId = ensureTrack(
+          database,
+          queue,
+          item.videoId,
+          item.title,
+          item.durationSeconds,
+          item.thumbnailUrl,
+          playlist.skipNonMusic
+        );
+
+        if (hasAssociation(database, playlist.id, trackId)) {
+          continue;
+        }
+
+        addAssociation(database, {
+          playlistId: playlist.id,
+          trackId,
+          origin: AssociationOrigin.Remote,
+          position: nextPosition
+        });
+        nextPosition += 1;
+        added += 1;
       }
 
-      const trackId = ensureTrack(
+      const retained = retainAbsentTracks(
         database,
-        item.videoId,
-        item.title,
-        item.durationSeconds,
-        item.thumbnailUrl,
-        playlist.skipNonMusic
+        playlist.id,
+        presentVideoIds
       );
 
-      if (hasAssociation(database, playlist.id, trackId)) {
-        continue;
-      }
+      const name =
+        source.title.trim().length > 0
+          ? source.title
+          : playlist.sourcePlaylistId;
+      const finishedAt = new Date().toISOString();
 
-      addAssociation(database, {
-        playlistId: playlist.id,
-        trackId,
-        origin: AssociationOrigin.Remote,
-        position: nextPosition
-      });
-      nextPosition += 1;
-      added += 1;
-    }
+      // In one transaction, so a client never reads a finished run beside a
+      // playlist that still says it is syncing.
+      database.sqlite.transaction(() => {
+        database.db
+          .update(syncRuns)
+          .set({
+            status: SyncRunStatus.Completed,
+            addedCount: added,
+            retainedCount: retained,
+            finishedAt
+          })
+          .where(eq(syncRuns.id, runId))
+          .run();
 
-    const retained = retainAbsentTracks(database, playlist.id, presentVideoIds);
+        database.db
+          .update(playlists)
+          .set({
+            name,
+            lastSyncedAt: finishedAt,
+            syncStatus: PlaylistSyncStatus.Idle,
+            updatedAt: finishedAt
+          })
+          .where(eq(playlists.id, playlist.id))
+          .run();
+      })();
 
-    const name =
-      source.title.trim().length > 0 ? source.title : playlist.sourcePlaylistId;
-    const finishedAt = new Date().toISOString();
-
-    // In one transaction, so a client never reads a finished run beside a
-    // playlist that still says it is syncing.
-    database.sqlite.transaction(() => {
-      database.db
-        .update(syncRuns)
-        .set({
-          status: SyncRunStatus.Completed,
-          addedCount: added,
-          retainedCount: retained,
-          finishedAt
-        })
-        .where(eq(syncRuns.id, runId))
-        .run();
-
-      database.db
-        .update(playlists)
-        .set({
-          name,
-          lastSyncedAt: finishedAt,
-          syncStatus: PlaylistSyncStatus.Idle,
-          updatedAt: finishedAt
-        })
-        .where(eq(playlists.id, playlist.id))
-        .run();
-    })();
-
-    publishPlaylistChanged(context, playlist.id);
-
-    if (added > 0) {
-      context.kickDownloads();
-    }
+      publishPlaylistChanged(context, playlist.id);
+    });
   } catch (error) {
     // Ticket 05 owns the guarantees of a failed run; what is here is enough to
     // leave no run hanging and no unhandled rejection.
@@ -444,6 +453,7 @@ function isSuppressed(
 
 function ensureTrack(
   database: DatabaseHandle,
+  queue: DownloadQueue,
   videoId: string,
   title: string,
   durationSeconds: number | null,
@@ -458,13 +468,13 @@ function ensureTrack(
     // existing track is left exactly as it is, which is the one way the sync's
     // reuse differs from the batch add's, which reuses a failed track untouched.
     if (existing.fileStatus === TrackFileStatus.Failed) {
-      retryTrack(database, existing.id);
+      queue.retry(existing.id);
     }
 
     return existing.id;
   }
 
-  return createPendingTrack(database, {
+  return queue.create({
     videoId,
     title,
     durationSeconds,

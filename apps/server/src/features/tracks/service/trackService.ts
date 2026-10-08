@@ -12,11 +12,9 @@ import {
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { tracks } from '../../../platform/database/schema.js';
-import {
-  TrackTransitionOutcome,
-  fetchTrackWhole,
-  retryTrack
-} from '../trackLifecycle/trackLifecycle.js';
+import { withDownloadQueue } from '../downloadQueue/downloadQueue.js';
+import type { DownloadQueueContext } from '../downloadQueue/downloadQueue.js';
+import { TrackTransitionOutcome } from '../trackLifecycle/trackLifecycle.js';
 import type {
   FetchWholeResult,
   RetryTrackResult,
@@ -157,37 +155,38 @@ export function toTrackView(row: TrackRow): Track {
  * route confirms nothing it will not act on. No run is created and no sync starts.
  */
 export function retryTrackForAccount(
-  database: DatabaseHandle,
+  context: DownloadQueueContext,
   trackId: string,
   accountId: string
 ): RetryTrackResult {
-  const track = loadTrack(database, trackId);
+  const track = loadTrack(context.database, trackId);
 
   if (track === undefined) {
     return { outcome: RetryTrackOutcome.NotFound };
   }
 
   const entry = trackEntry<RetryTrackResult>(
-    database,
+    context.database,
     track.id,
     accountId,
     AccessNeed.Write,
-    () => {
-      const transition = retryTrack(database, track.id);
+    () =>
+      withDownloadQueue<RetryTrackResult>(context, queue => {
+        const transition = queue.retry(track.id);
 
-      if (transition.outcome === TrackTransitionOutcome.Refused) {
-        return { outcome: RetryTrackOutcome.NotRetryable };
-      }
+        if (transition.outcome === TrackTransitionOutcome.Refused) {
+          return { outcome: RetryTrackOutcome.NotRetryable };
+        }
 
-      if (transition.outcome === TrackTransitionOutcome.Missing) {
-        return { outcome: RetryTrackOutcome.NotFound };
-      }
+        if (transition.outcome === TrackTransitionOutcome.Missing) {
+          return { outcome: RetryTrackOutcome.NotFound };
+        }
 
-      return {
-        outcome: RetryTrackOutcome.Ok,
-        track: toTrackView(transition.track)
-      };
-    }
+        return {
+          outcome: RetryTrackOutcome.Ok,
+          track: toTrackView(transition.track)
+        };
+      })
   );
 
   if (entry.outcome === EntryOutcome.Denied) {
@@ -212,42 +211,43 @@ export function retryTrackForAccount(
  * not-found.
  */
 export function fetchTrackWholeForAccount(
-  database: DatabaseHandle,
+  context: DownloadQueueContext,
   trackId: string,
   accountId: string
 ): FetchWholeResult {
-  const track = loadTrack(database, trackId);
+  const track = loadTrack(context.database, trackId);
 
   if (track === undefined) {
     return { outcome: FetchWholeOutcome.NotFound };
   }
 
   const entry = trackEntry<FetchWholeResult>(
-    database,
+    context.database,
     track.id,
     accountId,
     AccessNeed.Write,
-    () => {
-      /*
-       * The eligibility rule lives in the lifecycle: a stored track has a file to
-       * protect, a downloading one is mid-fetch and moving it would race the
-       * worker, and an unavailable one is gone. The module refuses all three.
-       */
-      const transition = fetchTrackWhole(database, track.id);
+    () =>
+      withDownloadQueue<FetchWholeResult>(context, queue => {
+        /*
+         * The eligibility rule lives in the lifecycle: a stored track has a file to
+         * protect, a downloading one is mid-fetch and moving it would race the
+         * worker, and an unavailable one is gone. The module refuses all three.
+         */
+        const transition = queue.fetchWhole(track.id);
 
-      if (transition.outcome === TrackTransitionOutcome.Refused) {
-        return { outcome: FetchWholeOutcome.NotEligible };
-      }
+        if (transition.outcome === TrackTransitionOutcome.Refused) {
+          return { outcome: FetchWholeOutcome.NotEligible };
+        }
 
-      if (transition.outcome === TrackTransitionOutcome.Missing) {
-        return { outcome: FetchWholeOutcome.NotFound };
-      }
+        if (transition.outcome === TrackTransitionOutcome.Missing) {
+          return { outcome: FetchWholeOutcome.NotFound };
+        }
 
-      return {
-        outcome: FetchWholeOutcome.Ok,
-        track: toTrackView(transition.track)
-      };
-    }
+        return {
+          outcome: FetchWholeOutcome.Ok,
+          track: toTrackView(transition.track)
+        };
+      })
   );
 
   if (entry.outcome === EntryOutcome.Denied) {

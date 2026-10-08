@@ -1407,17 +1407,22 @@ function storingYoutube(
 
 describe('retrying a failed download', () => {
   it('returns a failed track to pending on the next sync and then stores it', async () => {
+    const kick = vi.fn();
     const fake = storingYoutube(
       {},
       source([entry('aaaaaaaaaaa')]),
       source([entry('aaaaaaaaaaa')])
     );
-    context = await createTestContext({}, { youtube: fake.youtube });
+    context = await createTestContext(
+      {},
+      { youtube: fake.youtube, kickDownloads: kick }
+    );
 
     const created = SyncRunSchema.parse(
       (await post(PLAYLIST_URL, 'owner-1')).json()
     );
     await runFinished(created.playlistId, 'owner-1');
+    kick.mockClear();
 
     const trackId = trackByVideoId('aaaaaaaaaaa')?.id ?? '';
     context.database.db
@@ -1428,6 +1433,10 @@ describe('retrying a failed download', () => {
 
     await postSync(created.playlistId, 'owner-1');
     await runFinished(created.playlistId, 'owner-1');
+
+    // The track already had its association, so nothing was added; re-queueing it
+    // is what the worker had to be woken for.
+    expect(kick).toHaveBeenCalledTimes(1);
 
     // The sync returns it to pending and clears the stale reason.
     const retried = trackByVideoId('aaaaaaaaaaa');

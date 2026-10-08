@@ -251,9 +251,13 @@ const invalidPayloads: [string, Record<string, unknown>, string][] = [
 
 describe('POST /tracks', () => {
   it('adds one track and one manual association to each writable playlist, in order', async () => {
+    const kick = vi.fn();
     context = await createTestContext(
       {},
-      { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
+      {
+        youtube: createFakeYoutube(testVideo(VIDEO_ID)),
+        kickDownloads: kick
+      }
     );
     const owner = seedAccount();
     const playlistIds = [
@@ -298,6 +302,9 @@ describe('POST /tracks', () => {
       expect(association?.origin).toBe(AssociationOrigin.Manual);
       expect(association?.position).toBe(0);
     }
+
+    /* The queued track is downloaded now, not at the worker's next tick. */
+    expect(kick).toHaveBeenCalledTimes(1);
   });
 
   it('records the first writable playlist value on the track it creates', async () => {

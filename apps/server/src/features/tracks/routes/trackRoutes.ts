@@ -164,7 +164,7 @@ export function registerTrackRoutes(
     '/tracks/:id/retry',
     async (request, reply) => {
       const result = retryTrackForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id
       );
@@ -187,7 +187,6 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === RetryTrackOutcome.Ok) {
-        context.kickDownloads();
         publishTrackChanged(context, result.track.id);
         return reply.send(result.track);
       }
@@ -200,7 +199,7 @@ export function registerTrackRoutes(
     '/tracks/:id/fetch-whole',
     async (request, reply) => {
       const result = fetchTrackWholeForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id
       );
@@ -224,7 +223,6 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === FetchWholeOutcome.Ok) {
-        context.kickDownloads();
         publishTrackChanged(context, result.track.id);
         return reply.send(result.track);
       }

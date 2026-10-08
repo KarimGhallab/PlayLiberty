@@ -15,8 +15,9 @@ import {
   addAssociation,
   nextPositionFor
 } from '../playlists/associationService.js';
+import { withDownloadQueue } from './downloadQueue/downloadQueue.js';
 import { findTrackByVideoId } from './service/trackService.js';
-import { createPendingTrack } from './trackLifecycle/trackLifecycle.js';
+import type { TrackSeed } from './types.js';
 
 /*
  * Adding one pasted video to several playlists at once.
@@ -45,13 +46,19 @@ export async function addTrackToPlaylists(
     canWritePlaylist(database, playlistId, accountId)
   );
 
-  let trackId: string | null = null;
+  /*
+   * The source is read before the queue opens, so what follows is one synchronous
+   * move: create the track if the instance holds none, associate it, tell the
+   * listeners, and let the seam wake the worker once for the batch.
+   */
+  let seed: TrackSeed | null = null;
+  let existingTrackId: string | null = null;
 
   if (writable.some(allowed => allowed)) {
     const existing = findTrackByVideoId(database, info.sourceId);
 
     if (existing !== undefined) {
-      trackId = existing.id;
+      existingTrackId = existing.id;
     } else {
       const source = await context.youtube.listSource(info.url);
       const entry = source.entries[0];
@@ -60,7 +67,7 @@ export async function addTrackToPlaylists(
         throw new Error('The adapter returned no video for a video URL.');
       }
 
-      trackId = createPendingTrack(database, {
+      seed = {
         videoId: info.sourceId,
         title: entry.title,
         durationSeconds: entry.durationSeconds,
@@ -69,31 +76,35 @@ export async function addTrackToPlaylists(
           database,
           playlistIds[writable.indexOf(true)]
         )
-      });
+      };
     }
   }
 
-  const results = playlistIds.map((playlistId, index) => {
-    if (writable[index] !== true || trackId === null) {
-      return { playlistId, outcome: AddTrackOutcome.Refused };
-    }
+  return withDownloadQueue(context, queue => {
+    const trackId = seed === null ? existingTrackId : queue.create(seed);
 
-    const outcome = addAssociation(database, {
-      playlistId,
-      trackId,
-      origin: AssociationOrigin.Manual,
-      position: nextPositionFor(database, playlistId)
+    const results = playlistIds.map((playlistId, index) => {
+      if (writable[index] !== true || trackId === null) {
+        return { playlistId, outcome: AddTrackOutcome.Refused };
+      }
+
+      const outcome = addAssociation(database, {
+        playlistId,
+        trackId,
+        origin: AssociationOrigin.Manual,
+        position: nextPositionFor(database, playlistId)
+      });
+
+      return { playlistId, outcome: toAddTrackOutcome(outcome) };
     });
 
-    return { playlistId, outcome: toAddTrackOutcome(outcome) };
+    const addedPlaylistIds = results
+      .filter(entry => entry.outcome === AddTrackOutcome.Added)
+      .map(entry => entry.playlistId);
+    publishTracksChangedForPlaylists(context, addedPlaylistIds);
+
+    return { results };
   });
-
-  const addedPlaylistIds = results
-    .filter(entry => entry.outcome === AddTrackOutcome.Added)
-    .map(entry => entry.playlistId);
-  publishTracksChangedForPlaylists(context, addedPlaylistIds);
-
-  return { results };
 }
 
 /*
