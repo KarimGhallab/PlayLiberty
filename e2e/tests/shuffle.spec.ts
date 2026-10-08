@@ -49,16 +49,15 @@ async function audibleTitles(page: Page): Promise<string[]> {
   return (await rowTitles(page)).filter(title => title !== FAILED.title);
 }
 
-/** The row the player marks as current, through its accessible playing state. */
-function playingRow(page: Page): Locator {
+function currentRow(page: Page): Locator {
   return page
     .getByRole('listitem')
-    .filter({ has: page.getByRole('img', { name: 'Playing' }) });
+    .filter({ has: page.getByRole('img', { name: /^(Playing|Paused)$/ }) });
 }
 
 /** The title of the row the player marks as current. */
 async function soundingTitle(page: Page): Promise<string> {
-  const text = await playingRow(page).innerText();
+  const text = await currentRow(page).innerText();
 
   return text.split('\n')[0].trim();
 }
@@ -105,6 +104,17 @@ async function seed(page: Page): Promise<void> {
       name: `Play ${STORED[STORED.length - 1].title}`
     })
   ).toBeVisible();
+
+  /*
+   * The fixture is two seconds long and the player advances when a track ends,
+   * so a walk slower than the file would be overtaken by the track finishing and
+   * the queue would move on its own. Looping the element keeps `ended` from
+   * firing, which leaves the manual step the only thing that moves the queue and
+   * makes these walks deterministic on a slow runner.
+   */
+  await page.locator('audio').evaluate(element => {
+    (element as HTMLAudioElement).loop = true;
+  });
 }
 
 test('the queue a shuffle builds leads with the first stored track and the list draws it', async ({
@@ -114,7 +124,7 @@ test('the queue a shuffle builds leads with the first stored track and the list 
   await pressShuffle(page);
 
   /* The first stored track leads the queue, and it is the one sounding. */
-  const playing = playingRow(page);
+  const playing = currentRow(page);
   await expect(playing).toHaveCount(1);
   await expect(playing).toHaveText(new RegExp(A.title));
 
@@ -142,7 +152,7 @@ test('next walks the shuffled queue and stops at its end rather than re-rolling'
       page.getByRole('button', { name: 'Track next' })
     ).toBeEnabled();
     await page.getByRole('button', { name: 'Track next' }).click();
-    await expect(playingRow(page)).toHaveText(new RegExp(order[step]));
+    await expect(currentRow(page)).toHaveText(new RegExp(order[step]));
   }
 
   /*
@@ -178,7 +188,7 @@ test('turning the shuffle off restores the playlist order under the same playhea
   const index = restored.indexOf(sounding);
   if (index < restored.length - 1) {
     await page.getByRole('button', { name: 'Track next' }).click();
-    await expect(playingRow(page)).toHaveText(new RegExp(restored[index + 1]));
+    await expect(currentRow(page)).toHaveText(new RegExp(restored[index + 1]));
   }
 });
 
@@ -197,6 +207,6 @@ test('pressing a row walks the shuffled queue rather than rebuilding it', async 
   await page.getByRole('button', { name: `Play ${target}` }).click();
 
   /* The pressed row plays, and the order it was drawn in is untouched. */
-  await expect(playingRow(page)).toHaveText(new RegExp(target));
+  await expect(currentRow(page)).toHaveText(new RegExp(target));
   expect(await rowTitles(page)).toEqual(shuffledOrder);
 });

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+
+  build:
+    uses: ./.github/workflows/build.yml
+
+  unit:
+    uses: ./.github/workflows/unit.yml
+    needs:
+      - lint
+      - build
+
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    needs:
+      - unit
+
+  success:
+    name: Pipeline successful
+    runs-on: ubuntu-24.04
+    needs:
+      - lint
+      - build
+      - unit
+      - e2e
+    if: always()
+    steps:
+      - name: Every stage passed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
