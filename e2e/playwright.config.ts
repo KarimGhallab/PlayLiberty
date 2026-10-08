@@ -47,6 +47,7 @@ export default defineConfig({
   ],
   webServer: [
     {
+      name: 'server',
       command:
         `node -e "require('node:fs').mkdirSync(require('node:path').dirname(process.env.DATABASE_PATH),{recursive:true})" && ` +
         'node apps/server/dist/main.js',
@@ -58,6 +59,7 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         NODE_ENV: 'test',
+        HOST: '127.0.0.1',
         PORT: String(SERVER_PORT),
         LOG_LEVEL: 'warn',
         MEDIA_ROOT,
@@ -68,10 +70,13 @@ export default defineConfig({
       }
     },
     {
-      command: `pnpm --filter @playliberty/web exec vite --port ${WEB_PORT} --strictPort`,
+      name: 'web',
+      command: `pnpm --filter @playliberty/web exec vite --port ${WEB_PORT} --strictPort --host 127.0.0.1`,
       cwd: ROOT_DIR,
       url: `http://127.0.0.1:${WEB_PORT}`,
       reuseExistingServer: false,
+      stdout: 'pipe',
+      stderr: 'pipe',
       timeout: 120_000,
       env: {
         VITE_API_TARGET: `http://127.0.0.1:${SERVER_PORT}`,
