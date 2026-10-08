@@ -1,0 +1,829 @@
+/*
+ * The playlist header, mirroring docs/design/specimen.css at both of its
+ * arrangements: the row at 1056, whose cover sits beside the identity block, and
+ * the card, whose cover sits above it and carries the actions on a scrim. The
+ * library draws the row; the playlist detail draws the card in its 320px left
+ * column. The classes are shared between the two arrangements, and the card's
+ * own blocks are named for that arrangement.
+ */
+.playlist-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-5);
+
+  /* The card arrangement. A different root: the cover is a block above the
+   * identity rather than a sibling, and the surface is the card's own so the
+   * scrim has a ground to fade into. */
+  &[data-arrangement='card'] {
+    /* The action row's height, spelled out because the scrim's opaque stop has
+     * to be at or above it: --space-4, .play's 48px box, --space-4. */
+    --mactions: calc(var(--space-4) + 48px + var(--space-4));
+    display: block;
+    gap: 0;
+    padding: 0;
+    background: var(--surface);
+  }
+
+  /* The card is the queue's own while playing, and the one fact worth a glance
+   * is that music is coming out of it. The accent is spent on the play control
+   * and cannot be spent twice; the emphasis amber is the system's "this is
+   * happening" and the card has never used it. It arrives as a hairline along
+   * the card's foot, the same 1px the sync line already speaks in, so the card
+   * gains a state without gaining a box. The play's glyph is the cue that
+   * survives without colour, which is why this may be colour-led. */
+  &[data-arrangement='card'][data-state='playing'] {
+    box-shadow: inset 0 -2px 0 var(--emphasis);
+  }
+
+  /* The library's item is a door, so the whole row carries the press: its
+   * surface lifts one step on hover, the same --surface-raised a playable track
+   * row lifts to, and the pointer says so. The lift is quick and eased rather
+   * than instant, so crossing a list does not flicker, and it names only
+   * background-color so nothing else on the row moves. The controls and the two
+   * links carve themselves out in the component and this is only the surface.
+   * The detail does not pass `onOpen`, because the page the row would open is
+   * the page it is already on, so its own row keeps the plain page. */
+  &[data-arrangement='row'][data-open='true'] {
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+
+    &:hover,
+    &:focus-within {
+      background: var(--surface-raised);
+    }
+  }
+
+  &__ground {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-position: center;
+    background-size: cover;
+    opacity: 0.2;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+
+  &__ground[data-ground='sleeve'] {
+    background-color: var(--sleeve, var(--surface-raised));
+  }
+
+  &__ground[data-sleeve='1'] {
+    --sleeve: var(--sleeve-1);
+  }
+
+  &__ground[data-sleeve='2'] {
+    --sleeve: var(--sleeve-2);
+  }
+
+  &__ground[data-sleeve='3'] {
+    --sleeve: var(--sleeve-3);
+  }
+
+  &__ground[data-sleeve='4'] {
+    --sleeve: var(--sleeve-4);
+  }
+
+  &__ground[data-sleeve='5'] {
+    --sleeve: var(--sleeve-5);
+  }
+
+  &__ground[data-sleeve='6'] {
+    --sleeve: var(--sleeve-6);
+  }
+
+  &[data-arrangement='row'][data-ground='true'] {
+    position: relative;
+    isolation: isolate;
+    /* No `overflow: hidden`: the row's menu opens downward past it and the share
+     * tip opens upward past it, so a clip here crops both. The ground is
+     * `inset: 0` and is contained without one. */
+  }
+
+  /* The row is its own stacking context, so a later sibling would paint over the
+   * menu and the tip that overflow it. Lifting the row above its siblings while
+   * either is open keeps them whole, on a tier below the overlay the header's own
+   * language menu uses. */
+  &[data-arrangement='row'][data-ground='true']:hover,
+  &[data-arrangement='row'][data-ground='true']:focus-within,
+  &[data-arrangement='row'][data-ground='true']:has(&__menu) {
+    z-index: var(--z-sticky);
+  }
+
+  &[data-arrangement='row'][data-ground='true'] &__ground {
+    mask-image: linear-gradient(90deg, #000 0%, transparent 75%);
+  }
+
+  &[data-arrangement='row'][data-ground='true']:hover &__ground,
+  &[data-arrangement='row'][data-ground='true']:focus-within &__ground {
+    opacity: 0.2;
+  }
+
+  &[data-arrangement='card'][data-ground='true'] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    background: transparent;
+  }
+
+  &[data-arrangement='card'][data-ground='true'] &__ground {
+    opacity: 0.2;
+  }
+
+  /* The playing mark: the same TrackBars equalizer a playing track row draws, on
+   * the cover, with the same scrim so the accent bars land on a known ground. */
+  &__bars-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.42);
+  }
+
+  &__bars {
+    position: absolute;
+    inset-inline: var(--space-3);
+    bottom: 0px;
+    height: 48%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-1);
+  }
+
+  &__bar {
+    display: block;
+    width: 3px;
+    height: 100%;
+    border-radius: 1px;
+    background: var(--accent);
+    transform-origin: bottom;
+    animation: pl-equalize 1400ms linear infinite;
+    transform: scaleY(var(--rest, 1));
+  }
+
+  &[data-pending='true'] {
+    opacity: var(--opacity-disabled);
+  }
+
+  &__cover {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    display: block;
+    flex-shrink: 0;
+    overflow: hidden;
+    background-color: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  &__art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: 96px;
+    flex: 1;
+  }
+
+  &__name {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    color: var(--ink);
+  }
+
+  /* An anchor does not inherit: the user agent's `a { color }` beats any
+   * inherited value, so without `color: inherit` the name draws in the browser's
+   * link colour and the underline comes back. A heading does not inherit either:
+   * its UA size and margin would beat the block's, so both are reset and the
+   * element reads the same as the link it replaces on the detail route. */
+  &__name-text {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__share {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  &__share-tip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + var(--space-2));
+    left: 50%;
+    translate: -50% 0;
+    z-index: var(--z-overlay);
+    padding: var(--space-1) var(--space-2);
+    color: var(--ink);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    background-color: var(--surface-raised);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-card);
+  }
+
+  &__share:hover &__share-tip,
+  &__share:focus-visible &__share-tip {
+    display: block;
+  }
+
+  &__share[data-tip-dismissed='true'] &__share-tip {
+    display: none;
+  }
+
+  &__share:focus-visible {
+    outline: var(--focus-width) solid var(--accent);
+    outline-offset: var(--focus-offset);
+    border-radius: var(--radius-control);
+  }
+
+  &__share-icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    color: var(--muted);
+    font-size: var(--text-xs);
+  }
+
+  /* The sync state is a mark and a word, and the mark is the seven pixels that
+   * survive when the colour cannot be seen. Scoped to a header through the
+   * arrangement rather than a bare `.state`, so a track row's own state word
+   * does not inherit a mark it never asked for. */
+  &__state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+
+    &::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      flex-shrink: 0;
+      border-radius: var(--radius-chip);
+      background: currentColor;
+    }
+
+    &[data-state='idle'] {
+      color: var(--muted);
+    }
+
+    /* A run in flight is the one moment a playlist is worth a glance, and the
+     * amber is the token the system reserves for exactly that. The word carries
+     * it, not the dot alone: the dot breathes, but motion is the first thing
+     * reduced-motion removes, so the colour has to stand on the word too. */
+    &[data-state='syncing'] {
+      color: var(--emphasis);
+
+      &::before {
+        animation: playlist-header-breathe 1.4s ease-in-out infinite;
+      }
+    }
+
+    &[data-state='error'] {
+      color: var(--tone-failed);
+    }
+  }
+
+  &__sep {
+    color: var(--control-disabled-fg);
+  }
+
+  /* The elapsed time on the sync line. It inherits the muted tone and the
+   * --text-xs of `.meta`; it is held to one line so a long relative phrase
+   * cannot wrap the state beside it. */
+  &__time {
+    white-space: nowrap;
+  }
+
+  /* The owner of a playlist that is not the account's, as its own line rather
+   * than a third fact on the meta line. */
+  &__owner {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
+  &__count {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__count-unit {
+    color: var(--muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-regular);
+  }
+
+  /* The action column. A column, so the play sits above the action row rather
+   * than beside it, which is the header's own arrangement at the narrower
+   * widths. */
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--space-3);
+    flex-shrink: 0;
+  }
+
+  &__play {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    transition: background-color var(--motion-slow) var(--ease-standard);
+
+    &:hover:not(:disabled) {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: var(--opacity-disabled);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__glyph {
+    overflow: hidden;
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    color: var(--bg);
+  }
+
+  &__strip {
+    transform: translateX(0);
+  }
+
+  /* The morph's resting frame. The play frame is resting and the pause frame is
+   * the last of the eight, so a playing header steps the strip a whole row
+   * across. */
+  &[data-state='playing'] &__strip {
+    transform: translateX(-168px);
+  }
+
+  /* The transition, attached only while the button carries `data-run`, so the
+   * resting rule above stays in charge of rest. The animation's end value is the
+   * same number the resting rule holds, so dropping `data-run` when it ends does
+   * not move the glyph. `reverse` plays the eight frames from pause to play
+   * rather than play to pause. */
+  &__play[data-run] &__strip {
+    animation: pl-play-pause var(--motion-base) steps(7, jump-end) both;
+  }
+
+  &__play[data-run='reverse'] &__strip {
+    animation-direction: reverse;
+  }
+
+  /* The transport: step, play, step. It is bordered by nothing, so its 44px
+   * target grows outward six pixels a side through a box that paints nothing,
+   * and the six is half the 12px gap so two targets meet in the middle. */
+  &__transport {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-shrink: 0;
+  }
+
+  &__step {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    transition: color var(--motion-fast) var(--ease-standard);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+    }
+
+    &:hover:not(:disabled) {
+      color: var(--ink);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: var(--opacity-disabled);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__step-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+  }
+
+  &__action-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+  }
+
+  &__icon-btn {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    transition: color var(--motion-fast) var(--ease-standard);
+
+    &:hover {
+      color: var(--ink);
+      background: var(--surface);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+
+    &[aria-pressed='true'] {
+      color: var(--accent);
+      background: var(--surface);
+      border-color: var(--accent);
+    }
+  }
+
+  &__icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+  }
+
+  &__menu-anchor {
+    position: relative;
+    display: inline-flex;
+  }
+
+  &__menu {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    z-index: var(--z-overlay);
+    display: flex;
+    flex-direction: column;
+    min-width: 176px;
+    padding: var(--space-2);
+    background: var(--surface-raised);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-card);
+  }
+
+  &__menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    height: 34px;
+    padding: 0 var(--space-3);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    text-align: left;
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--surface);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: var(--opacity-disabled);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: calc(-1 * var(--focus-offset));
+    }
+
+    &[data-destructive='true'] {
+      color: var(--tone-failed);
+    }
+  }
+
+  /* The rule before the one that destroys it. */
+  &__menu hr {
+    margin: var(--space-2) 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  &__menu-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+  }
+
+  /* ======================================================= the card's cover
+   *
+   * The square the card is built around, drawn here rather than in the row: it
+   * carries the scrim and the actions and so is a block of its own. */
+  &__mart {
+    position: relative;
+    margin: 0 var(--space-4);
+    aspect-ratio: 1;
+    overflow: hidden;
+    /* background-color, not the shorthand: the shorthand resets
+     * background-image, which is how the no-art texture is drawn. */
+    background-color: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  /* The sleeve. A playlist with no artwork draws its identity hue rather than
+   * the anonymous hatch: `data-sleeve` is the index `sleeveIndex` derives from
+   * the id, and each value names one token. The hue is identity and not state,
+   * and the six skip the accent's green and the amber and red the states own, so
+   * a sleeve can never be read as an action or a fault. */
+  &__cover[data-sleeve='1'],
+  &__mart[data-sleeve='1'] {
+    --sleeve: var(--sleeve-1);
+  }
+
+  &__cover[data-sleeve='2'],
+  &__mart[data-sleeve='2'] {
+    --sleeve: var(--sleeve-2);
+  }
+
+  &__cover[data-sleeve='3'],
+  &__mart[data-sleeve='3'] {
+    --sleeve: var(--sleeve-3);
+  }
+
+  &__cover[data-sleeve='4'],
+  &__mart[data-sleeve='4'] {
+    --sleeve: var(--sleeve-4);
+  }
+
+  &__cover[data-sleeve='5'],
+  &__mart[data-sleeve='5'] {
+    --sleeve: var(--sleeve-5);
+  }
+
+  &__cover[data-sleeve='6'],
+  &__mart[data-sleeve='6'] {
+    --sleeve: var(--sleeve-6);
+  }
+
+  /* The no-artwork texture, shared by the row's cover and the card's square. The
+   * hatch is the edge divided by eight, so four stripes cross either way and a
+   * larger cover carries the same number rather than a busier field. It is the
+   * sleeve's sheen now: --line over the identity hue, so a playlist with no
+   * artwork still reads as a placeholder rather than as a flat block of colour,
+   * and the fallback keeps the bare hatch for any consumer that sets no sleeve. */
+  &__cover[data-art='no-art'],
+  &__mart[data-art='no-art'] {
+    --hatch: 12px;
+    background-color: var(--sleeve, var(--surface-raised));
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0,
+      transparent var(--hatch, 5px),
+      var(--line) var(--hatch, 5px),
+      var(--line) calc(var(--hatch, 5px) * 2)
+    );
+  }
+
+  /* A playlist that is not resting carries its tone on the cover's own edge. The
+   * state word already says what happened; the ring makes the object say it too,
+   * so a gallery can be read for the one that is syncing or broken without
+   * reading every line. A resting playlist keeps the neutral hairline, because a
+   * tone is spent only on a fact that changed. The state is read from the state
+   * element rather than mirrored onto the root, so the two cannot disagree. */
+  &:has(&__state[data-state='syncing']) &__cover,
+  &:has(&__state[data-state='syncing']) &__mart {
+    border-color: var(--emphasis);
+  }
+
+  &:has(&__state[data-state='error']) &__cover,
+  &:has(&__state[data-state='error']) &__mart {
+    border-color: var(--tone-failed);
+  }
+
+  &__mart-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* The ribbon over the foot of the picture. It is drawn a little transparent so
+   * the artwork stays faintly visible under the band rather than being cut off
+   * by an opaque strip; the controls keep the surface behind them and only the
+   * band's own opacity changes. */
+  &__mscrim {
+    position: absolute;
+    inset: 0;
+    opacity: 0.9;
+    background: linear-gradient(
+      to top,
+      var(--surface-raised) 0,
+      var(--surface-raised) calc(var(--mactions, 80px) + var(--space-1)),
+      transparent calc(var(--mactions, 80px) + var(--space-1) + var(--space-6))
+    );
+  }
+
+  /* The card's action band, over the bottom of the picture. The right group is
+   * pushed to the far edge, so the shuffle and the menu hold the right end and
+   * the play holds the left. */
+  &__macts {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  /* The shuffle and the menu as one group against the right edge. */
+  &__macts-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-left: auto;
+  }
+
+  /* The card opens its menu upward, into the picture, because the control is at
+   * the foot of the artwork and a panel below it would run off the card. */
+  &[data-arrangement='card'] &__menu {
+    top: auto;
+    bottom: calc(100% + var(--space-2));
+  }
+
+  /* The card's quiet controls draw 32 and are hit at 44, the target the card
+   * arrangement carries, and the band's --space-3 gap is wide enough that two
+   * targets meet in the middle rather than contesting the gap. The row is the
+   * pointer arrangement the specimen leaves at 32, and it grows to 44 on mobile
+   * below. */
+  &[data-arrangement='card'] &__action-row {
+    gap: var(--space-3);
+  }
+
+  &[data-arrangement='card'] &__icon-btn::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  /* The identity block under the card. Same pieces as the row's body, on the
+   * card's own padding rather than beside a 96px cover. */
+  &__munder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+}
+
+@keyframes playlist-header-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes pl-play-pause {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-168px);
+  }
+}
+
+@media (max-width: 767px) {
+  .playlist-header {
+    padding: var(--space-3);
+  }
+
+  .playlist-header[data-arrangement='row'][data-heading='true'] {
+    flex-wrap: wrap;
+  }
+
+  .playlist-header[data-arrangement='row'][data-heading='true']
+    .playlist-header__actions {
+    flex-basis: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  /* On a phone the quiet controls grow to the 44px target the system owes a
+   * thumb: 6 a side around the 32px box, and the row's gap widens to --space-3 so
+   * two targets meet exactly instead of contesting the 8px. The desktop row keeps
+   * its 32px, where the pointer does not need the target and the specimen leaves
+   * the box alone. */
+  .playlist-header__icon-btn::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  .playlist-header__action-row {
+    gap: var(--space-3);
+  }
+}
+
+/* The equalizer's shape, the same keyframe the track row's bars use. It is
+ * redeclared here because a CSS module scopes a keyframe name, so the header
+ * cannot read the track row's; the phase table itself stays the TrackBars
+ * component's. */
+@keyframes pl-equalize {
+  0% {
+    transform: scaleY(0.3);
+  }
+
+  22% {
+    transform: scaleY(1);
+  }
+
+  48% {
+    transform: scaleY(0.5);
+  }
+
+  72% {
+    transform: scaleY(0.78);
+  }
+
+  100% {
+    transform: scaleY(0.3);
+  }
+}

@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayLiberty design: empty state</title>
+    <link rel="stylesheet" href="../fonts.css" />
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../specimen.css" />
+    <style>
+      /* ------------------------------------------------------ the button
+       *
+       * .btn, .btn-primary and .spinner live in components/form-controls.html's
+       * own stylesheet, not in specimen.css, so they are restated here rather
+       * than borrowed. This is the third time in this tree that a class name has
+       * been used without being declared: the player bar used class="art" and
+       * left the equalizer strip with no positioned ancestor, so it resolved
+       * against the whole bar. A specimen's stylesheets are not namespaced and a
+       * class name says nothing about the element it is written on, so the only
+       * safe assumption is that nothing is shared but specimen.css.
+       *
+       * Restated, not invented: the same 36px accent control at the same 6px
+       * radius, the same hover, and the same spinner, so the action here is
+       * byte-for-byte the control the dialog draws.
+       *
+       * The surface and the sentence ARE shared, deliberately. The surface is
+       * .panel from specimen.css rather than a near-copy of it, and the sentence
+       * is .prose, which already carries the reading width this state needs. So
+       * the empty state's own rules are the two sizes that have no shared class,
+       * and nothing else.
+       */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        height: var(--control-height);
+        padding: 0 var(--space-5);
+        border: 1px solid transparent;
+        border-radius: var(--radius-control);
+        font-family: var(--font-ui);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-medium);
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--bg);
+        border-color: var(--accent);
+      }
+      .btn-primary:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+      }
+      /* Busy, not unavailable, and it keeps the accent. A control that greys out
+         the moment you press it reads as a rejection, which is the fault this
+         restates from form-controls.html rather than inventing. */
+      .btn[data-loading='true'] {
+        cursor: progress;
+      }
+      .btn:focus-visible {
+        outline: var(--focus-width) solid var(--accent);
+        outline-offset: var(--focus-offset);
+      }
+      /* currentColor, not a token: the spinner sits on whatever fill the
+         variant has.
+         *
+         * 16px, and it was 13px until the resting button grew a mark. The two
+         * are the same box on purpose: the resting form of this button carries
+         * `rotate-clockwise` at --icon-sm, a 16px box, so a 13px spinner would
+         * make the button lose 3px on press for a reason that has nothing to do
+         * with the label. With both at 16px the only width change left on press
+         * is the label's own, which is the one form-controls.html's record
+         * explains and accepts: 11.01px, because "Syncing" is two characters
+         * shorter than "Sync now". */
+      .spinner {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        border-radius: var(--radius-chip);
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        animation: pl-spin 900ms linear infinite;
+      }
+      @keyframes pl-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      /* With the motion gone a ring with a cut top reads as a broken ring, so the
+         cap comes back and the word on the button carries the state. */
+      @media (prefers-reduced-motion: reduce) {
+        .spinner {
+          border-top-color: currentColor;
+          opacity: 0.6;
+        }
+      }
+
+      /* --------------------------------------------------- the empty state
+       *
+       * One axis, centred, in the reading width. 66ch, which is what .prose
+       * already uses, so the sentence is .prose and the number lives in one
+       * place. It is worth knowing what 66ch is in pixels here rather than
+       * leaving it as a unit: 16px of Plex Sans has a 600/1000 tabular advance,
+       * so a ch is 9.6px and 66ch is 634px. No token carries that, and inventing
+       * one would put a reading width in tokens.css that no other component
+       * needs.
+       *
+       * The stack is left-aligned in the box and the CONTENT is centred within
+       * the reading width, which is a different thing and is the reason the
+       * heading and the sentence start at the same x while the whole block is
+       * not pinned to the panel's centre. A list area starts at the top, so an
+       * empty list's content starts at the top too: this is not vertically
+       * centred in the panel, because the panel stands in for the list and a
+       * list does not float in the middle of its own space.
+       */
+      .empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-4);
+        /* --space-6 rather than the panel's --space-5, because three lines of
+           copy and a button need more air above the first one than a panel of
+           swatches needs above its first swatch, and the panel is not the
+           component: it is the list area this stands in for. */
+        padding: var(--space-6) 0;
+        text-align: center;
+      }
+      .empty__text {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      /* --text-lg, which DESIGN.md gives to this and to a mobile screen title and
+       * to nothing else. */
+      .empty__head {
+        font-size: var(--text-lg);
+        font-weight: var(--weight-semibold);
+        line-height: var(--leading-tight);
+        color: var(--ink);
+        /* margin: 0, and the same on .empty__promise below. A <p> carries a
+         * user-agent margin of 1em, so without this the gaps are --space-2 plus
+         * 20px on the heading and plus 12px on the promise, and the stack is 64px
+         * taller than the spacing says. .prose already zeroes its own margin,
+         * which is why only two of the three needed it, and it is why the first
+         * version of this file measured 310px where the spacing accounts for
+         * 246px. The number nobody would have questioned: every gap looked
+         * slightly too big and no screenshot shows a margin. */
+        margin: 0;
+      }
+      /* The promise, in the smallest size the system has and on its own line, so
+       * it cannot be skimmed past as part of the sentence above it. It is the
+       * line doing the most work for the least space in the component: it is the
+       * product's promise, and an empty state is the one surface where saying it
+       * once is not nagging, because there is nothing yet to lose. */
+      .empty__promise {
+        font-size: var(--text-xs);
+        line-height: var(--leading-normal);
+        color: var(--muted);
+        margin: 0;
+      }
+
+      /* The 390 drawing, and 390 rather than whatever the page happens to be, so
+       * the section below can make a claim about a phone and be making it about
+       * one. */
+      .narrow {
+        width: 390px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- One glyph, and it is here because this file's button grew a mark. It was
+         the only specimen in the tree that drew no sprite at all, which is a
+         thing you only find by giving a control a mark. The path is lifted out
+         of foundations/icons.html, which declares it as `rotate-clockwise` at
+         @tabler/icons 3.48.0, and it is byte-identical to the `i-rotate` the
+         playlist header draws on the same verb inside its overflow menu, so the
+         button and the menu item are the same shape. -->
+    <svg
+      class="sprite"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false">
+      <defs>
+        <symbol
+          id="i-rotate-clockwise"
+          data-icon="rotate-clockwise@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
+        </symbol>
+      </defs>
+    </svg>
+    <main class="page stack">
+      <div class="crumb">
+        <a href="../index.html">PlayLiberty design</a> / empty state
+      </div>
+
+      <header class="stack-tight">
+        <div class="eyebrow">Components</div>
+        <h1 class="page-title">Empty state</h1>
+        <p class="prose">
+          A playlist that exists, is named, and has no tracks, because
+          <span class="token-sm">lastSyncedAt</span> is still null. One action
+          and three facts, and the whole component is those four things on one
+          axis.
+        </p>
+      </header>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">The state, and the action working</h2>
+          <p class="section-note">
+            Same words in both. Everything the state says is still true while
+            the action runs.
+          </p>
+        </div>
+
+        <div class="panel">
+          <div class="empty">
+            <div class="empty__text">
+              <p class="empty__head">Nothing here yet</p>
+              <p class="prose">
+                This playlist has never been synced, so there is nothing to
+                play. Syncing goes to YouTube and downloads the audio of every
+                track in the playlist.
+              </p>
+              <p class="empty__promise">
+                A sync takes a few minutes. Once a track is downloaded it is
+                yours: if the video is later removed from YouTube, the track
+                still plays here.
+              </p>
+            </div>
+            <button class="btn btn-primary" type="button">
+              <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                <use href="#i-rotate-clockwise" />
+              </svg>
+              Sync now
+            </button>
+          </div>
+        </div>
+
+        <!--
+          The copy does not change when the button is pressed, and that is a
+          decision rather than an oversight. All three facts are still true while
+          the sync runs: it still has never been synced, a sync still goes to
+          YouTube and downloads the audio, and a sync still takes a few minutes.
+          The third is more true than it was. So the only difference between the
+          two drawings is the button, and the button's busy form is the one
+          form-controls.html already defines rather than a second one invented
+          here.
+
+          The label becomes the present participle, so the accessible name changes
+          with the state and a screen reader says "Syncing" after the press. That
+          is the shipped convention, and it costs the button its width: measured,
+          <strong>126.81px becomes 115.8px</strong>, and the 11.01px of change is
+          the label alone, because "Syncing" is two characters shorter than "Sync
+          now". The two marks are the same 16px box, so nothing else moves: the
+          resting button's <code>rotate-clockwise</code> at
+          <span class="token-sm">--icon-sm</span> and the busy form's spinner are
+          the same size, and swapping one for the other costs the layout nothing.
+          With the spinner at 13px the change is 14px, three of it for no reason a
+          user can see.
+          form-controls states that a loading button keeps its label so the
+          button does not change width mid-click, and this is that rule and its
+          exception in one control. It is drawn here rather than left to be
+          discovered, and the alternative was a label that does not change, which
+          costs the screen reader the only announcement that the state changed at
+          all. Ten pixels of movement is the cheaper of the two.
+        -->
+        <div class="panel">
+          <div class="empty">
+            <div class="empty__text">
+              <p class="empty__head">Nothing here yet</p>
+              <p class="prose">
+                This playlist has never been synced, so there is nothing to
+                play. Syncing goes to YouTube and downloads the audio of every
+                track in the playlist.
+              </p>
+              <p class="empty__promise">
+                A sync takes a few minutes. Once a track is downloaded it is
+                yours: if the video is later removed from YouTube, the track
+                still plays here.
+              </p>
+            </div>
+            <button
+              class="btn btn-primary"
+              type="button"
+              data-loading="true"
+              aria-busy="true">
+              <span class="spinner" aria-hidden="true"></span>
+              Syncing
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">At 390</h2>
+          <p class="section-note">
+            The same component, 285px tall against 204px at the wider width, and
+            the action 245px from the top, which is 365px inside the 610px of
+            content area a phone has between a 136px header and a 98px bar. The
+            sentence runs four lines rather than two and the promise three
+            rather than one, and all three facts are the same three.
+          </p>
+        </div>
+
+        <div class="narrow">
+          <div class="panel">
+            <div class="empty">
+              <div class="empty__text">
+                <p class="empty__head">Nothing here yet</p>
+                <p class="prose">
+                  This playlist has never been synced, so there is nothing to
+                  play. Syncing goes to YouTube and downloads the audio of every
+                  track in the playlist.
+                </p>
+                <p class="empty__promise">
+                  A sync takes a few minutes. Once a track is downloaded it is
+                  yours: if the video is later removed from YouTube, the track
+                  still plays here.
+                </p>
+              </div>
+              <button class="btn btn-primary" type="button">
+                <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                  <use href="#i-rotate-clockwise" />
+                </svg>
+                Sync now
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">What is not drawn</h2>
+        <p class="hint">
+          The first sync failing. That is
+          <span class="token-sm">PlaylistSyncStatus.Error</span> with a null
+          <span class="token-sm">lastSyncedAt</span>, so it is reachable from
+          here, and it is a fault rather than an absence. This surface says
+          nothing is wrong, and a failed first sync has to say something is, so
+          the words here must not survive into it. It belongs to the
+          <a href="./sync-error.html" style="color: var(--muted)">sync error</a
+          >.
+        </p>
+        <p class="hint">
+          The library with no playlists at all. A different component with a
+          different action, Add a playlist, and this is not it.
+        </p>
+        <p class="hint">
+          Whether the surface is <span class="token-sm">--surface</span> or
+          <span class="token-sm">--bg</span>. The list this replaces is
+          <span class="token-sm">--surface</span> and the page behind it is
+          <span class="token-sm">--bg</span>, and picking between them is a
+          screen decision. Every pairing here holds either way:
+          <span class="token-sm">--ink</span> on
+          <span class="token-sm">--surface</span> is 14.73:1 and
+          <span class="token-sm">--muted</span> on
+          <span class="token-sm">--surface</span> is 5.71:1.
+        </p>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">Usage</h2>
+        <p class="hint">
+          Do keep it to one control. There is no second thing to do here, and a
+          second button on an empty state is a feature the product has not
+          decided to have. Do keep the three facts on three lines, so none of
+          them can be read as part of another, and do not change the words when
+          the action runs, because they are all still true. Do not repeat the
+          playlist's name or draw its cover: the header owns the playlist's
+          identity and this owns the fact that the playlist is empty, and a name
+          repeated forty pixels below itself is duplication rather than
+          reassurance. Do not put a second line under the title unless it has
+          something to say, since
+          <span class="token-sm">TrackSchema</span> has no artist and no album
+          and the resting file state has no word.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

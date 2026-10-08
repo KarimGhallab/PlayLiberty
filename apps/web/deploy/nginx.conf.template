@@ -1,0 +1,73 @@
+# The single public origin. It serves the built SPA and proxies the API to the
+# server, so the browser sees one origin and no CORS is needed. The upstream is
+# `WEB_UPSTREAM`: `server:8080` in the dev stack, where they are separate Compose
+# services, and `127.0.0.1:8081` in the production pod, where the two containers
+# share a network namespace and only nginx is reachable from the edge. Production
+# publishes no host port; the edge attaches to this container.
+#
+# A template, not a finished config: the nginx entrypoint runs envsubst over it at
+# container start, which is how the edge assertion is read from the environment
+# rather than committed. Only variables present in the environment are substituted,
+# so nginx's own `$host` and friends are left alone.
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Forwarded unchanged to the server. The Pangolin Remote-* headers and the
+    # client's X-PlayLiberty-Client header pass through by default.
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # The secret assertion the server requires so it can tell the edge apart from a
+    # direct caller. Set EDGE_ASSERTION to the same value the server carries. The
+    # location blocks below inherit this, the live stream included.
+    proxy_set_header X-PlayLiberty-Edge "${EDGE_ASSERTION}";
+
+    # The security headers every response carries. A location that adds its own
+    # header includes this again, because nginx drops the inherited ones there.
+    include /etc/nginx/snippets/security-headers.conf;
+
+    location = /healthz {
+        proxy_pass http://${WEB_UPSTREAM};
+    }
+
+    # The live event stream never ends, so its response is not buffered and its
+    # read timeout outlasts the heartbeat. Every other API response keeps nginx's
+    # defaults, which is why this is its own location rather than a setting on
+    # `/api/`.
+    location = /api/v1/events {
+        proxy_pass http://${WEB_UPSTREAM};
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+        proxy_http_version 1.1;
+    }
+
+    location /api/ {
+        proxy_pass http://${WEB_UPSTREAM};
+    }
+
+    # Vite hashes asset filenames, so they are immutable.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/snippets/security-headers.conf;
+        try_files $uri =404;
+    }
+
+    # The shell is never cached, so a deploy is picked up on the next load.
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    # Client routes fall back to the shell. /api and /healthz never reach here,
+    # because each has its own location above.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -1,0 +1,74 @@
+.library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: calc(1056px + var(--space-4) * 2);
+  margin: 0 auto;
+  /* 97px is the docked player bar, which is an overlay and so has to be paid
+   * for here, and --space-5 is the gap the page keeps under its last row, the
+   * same step the header uses above the list. */
+  padding: 0 var(--space-4) calc(97px + var(--space-5));
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-5) 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-semibold);
+  }
+
+  /* The header's right side: the language control and the add, one row. */
+  &__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  &__add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: var(--control-height);
+    padding: var(--space-5);
+    color: var(--bg);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+  }
+
+  &__add-icon {
+    flex-shrink: 0;
+  }
+
+  /* The list's end edge. The page header names the screen and holds the add
+   * control, so the first row needs no rule above it; nothing follows the last
+   * row, so one hairline closes the list rather than the row's surface running
+   * into the page's own ground. */
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-block-end: 1px solid var(--line);
+  }
+
+  &__item + &__item {
+    border-block-start: 1px solid var(--line);
+  }
+}

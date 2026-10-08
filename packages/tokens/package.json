@@ -1,0 +1,31 @@
+{
+  "name": "@playliberty/tokens",
+  "version": "0.1.0",
+  "description": "The single source of the PlayLiberty design values, with the emitter that writes the web stylesheet.",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens.css": "./dist/tokens.css"
+  },
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json && node dist/emitTokens/emitTokens.js",
+    "watch": "tsc-watch --noClear -p tsconfig.build.json --onSuccess \"node dist/emitTokens/emitTokens.js\"",
+    "clean": "rm -rf dist",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "packageManager": "pnpm@12.4.2",
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "tsc-watch": "^7.2.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.2"
+  }
+}

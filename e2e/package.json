@@ -1,0 +1,19 @@
+{
+  "name": "@playliberty/e2e",
+  "version": "0.1.0",
+  "description": "PlayLiberty end-to-end tests: critical journeys through a real browser, server and database.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "packageManager": "pnpm@12.4.2",
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.2",
+    "typescript": "^6.0.3"
+  }
+}

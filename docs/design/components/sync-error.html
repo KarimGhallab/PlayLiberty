@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayLiberty design: sync error</title>
+    <link rel="stylesheet" href="../fonts.css" />
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../specimen.css" />
+    <style>
+      /* ------------------------------------------------------ the button
+       *
+       * .btn and .btn-primary live in components/form-controls.html's own
+       * stylesheet, not in specimen.css, so they are restated here rather than
+       * borrowed. This is the fourth time in this tree that a class has been
+       * used without being declared, and the failure is quiet: an undeclared
+       * .btn is a browser default button, so it renders at the platform's own
+       * size and colour, and every height measured underneath it is measuring
+       * the wrong control. The rule that follows: a class used in a specimen has
+       * to be declared in the same file, and the only thing shared between
+       * files is specimen.css.
+       *
+       * Restated and not invented: the same 36px accent control at the same 6px
+       * radius, the same hover, so the retry here is byte-for-byte the control
+       * the dialog draws.
+       */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        height: var(--control-height);
+        padding: 0 var(--space-5);
+        border: 1px solid transparent;
+        border-radius: var(--radius-control);
+        font-family: var(--font-ui);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-medium);
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--bg);
+        border-color: var(--accent);
+      }
+      /* Lighter green, never amber. Hovering the retry must not turn the
+       * action colour into the progress colour, which is the fault the token
+       * set's comment on --accent-hover records. */
+      .btn-primary:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+      }
+      .btn:focus-visible {
+        outline: var(--focus-width) solid var(--accent);
+        outline-offset: var(--focus-offset);
+      }
+
+      /* ===================================================================
+       * THE COMPONENT
+       *
+       * One surface, and the reason it is not three is the contract.
+       * PlaylistSyncStatus.Error is reachable with no SyncRun row at all, so
+       * this component has to render with no counts, no run time, and no
+       * error string. Everything below is written so that every part of it is
+       * optional and the smallest form is still a sentence and an action.
+       *
+       * Every <p> and <h3> below carries margin: 0. A <p> has a user-agent
+       * margin of 1em, and the empty state shipped a stack 64px taller than
+       * its own gaps accounted for because two of its three lines were <p> with
+       * no reset. No screenshot shows a margin: the gaps simply look slightly
+       * too big.
+       *
+       * Class names are prefixed and none of them is in specimen.css, which
+       * owns .row, .col, .panel, .tag, .cover, .art, .lane, .stack and .rule
+       * and is linked above this file, so a name taken from there for a
+       * different thing wins on source order and presents as a bug in the
+       * shared vocabulary rather than in this component.
+       */
+      .fault {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+      .fault p,
+      .fault h3 {
+        margin: 0;
+      }
+
+      /* THE BAND
+       *
+       * A 2px rule on the leading edge, --surface, and 12px of padding. Not a
+       * card and not a border on all four sides: the rule is enough to say
+       * "this block is a state" and a box around it would say "this block is an
+       * object", which is a different claim. The form controls already use this
+       * shape for an inline notice, so it is a pattern the tree has rather than
+       * a new one.
+       *
+       * display: flex, and that is a bug this component had. As a plain block
+       * the band swallowed the 12px gap on .fault, because that gap applies to
+       * the band as one child of .fault and to nothing inside it, so the
+       * sentence, the reassurance and the retry sat flush against each other
+       * with gaps of exactly zero. Restating the gap here makes the rhythm
+       * inside the band the same 12px as the rhythm outside it, and the
+       * component grew by 24px as a result, which is the number it should
+       * always have been.
+       */
+      .fault__band {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        border-left: var(--focus-width) solid var(--tone-failed);
+        padding: var(--space-3) var(--space-4);
+        background: var(--surface);
+      }
+
+      /* THE SENTENCE
+       *
+       * --tone-failed for the whole of it, which is what the track row's
+       * .reason already does for a failure reason, so this is the established
+       * treatment. The colour is a state marker and the sentence is the
+       * meaning, and neither is doing the other's job: remove the colour and
+       * the sentence still says what happened.
+       *
+       * This is a mapped phrase and never the server's own words. The track row
+       * settled that for TrackSchema.failureReason, and the reason is the same:
+       * a raw adapter message is not a sentence a user can act on. What the
+       * server said is still available, one control below, for the case where
+       * a user is reporting it. */
+      .fault__say {
+        font-size: var(--text-sm);
+        line-height: var(--leading-relaxed);
+        color: var(--tone-failed);
+      }
+
+      /* THE REASSURANCE
+       *
+       * --muted and --text-xs, on its own line under the sentence, and it is
+       * the reason this component exists rather than a paragraph on the header.
+       * A sync never deletes, so a failed sync on a playlist with 128 tracks is
+       * a failure the user did not suffer, and a surface that reports it
+       * without saying so has reported the wrong thing. Muted because it is
+       * the answer to the fault rather than part of the fault: the sentence
+       * above is the alarm and this is what settles it, and printing the
+       * settling in the alarm colour would make the good news as loud as the
+       * bad.
+       *
+       * Absent when there are no tracks, because there is then nothing to
+       * reassure about and "your tracks are safe" about an empty store is a
+       * promise about nothing. */
+      .fault__safe {
+        font-size: var(--text-xs);
+        line-height: var(--leading-relaxed);
+        color: var(--muted);
+      }
+
+      /* THE SERVER'S WORDS
+       *
+       * The only place in the system where the server's own words are shown,
+       * and it is behind a control because it is not the message. Two decisions
+       * inside it, both forced by the fact that SyncRun.error is a non-null
+       * string with no length bound:
+       *
+       * pre-wrap, so a multi-line diagnostic stays multi-line. Without it a
+       * nine-line traceback collapses into one paragraph and stops reading as a
+       * traceback, which is the only reason it is worth showing at all.
+       *
+       * A 120px cap with its own scroll, so an unbounded string cannot become
+       * the tallest thing on the screen. Measured on the nine-line case at
+       * 390: the box is 120px and the content wants 283px, and uncapped the
+       * component is 483px against 303px capped, so the cap is worth three rows
+       * of a 65px track list: 4 rows of list instead of 1. That is the whole
+       * reason this arrangement is viable and it is a number rather than a
+       * preference.
+       *
+       * The 483 is this file's own measurement and not the prototype's 459. The
+       * two differ because the shipped copy carries a longer reassurance
+       * sentence, and the first draft of this file quoted the prototype figure
+       * anyway and also carried the prototype row count, so two numbers in it
+       * were describing a component that no longer existed. Both were caught by
+       * measuring this file rather than by reading it. */
+      .fault__raw {
+        margin: 0;
+        padding: var(--space-3);
+        background: var(--surface-raised);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-control);
+        font-family: var(--font-ui);
+        font-size: var(--text-xs);
+        line-height: var(--leading-normal);
+        color: var(--muted);
+        white-space: pre-wrap;
+        overflow: auto;
+        max-height: 120px;
+      }
+      /* The control that opens it. A word and a rule rather than a button,
+       * because it opens something rather than doing something, and because the
+       * retry above it is the only action on this surface. */
+      .fault__reveal {
+        align-self: flex-start;
+        padding: 0;
+        border: 0;
+        background: none;
+        font-family: var(--font-ui);
+        font-size: var(--text-xs);
+        color: var(--muted);
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .fault__reveal:hover {
+        color: var(--ink);
+      }
+      .fault__reveal:focus-visible {
+        outline: var(--focus-width) solid var(--accent);
+        outline-offset: var(--focus-offset);
+      }
+
+      /* The 390 drawing, and 390 rather than whatever the page happens to be,
+       * so the section below can make a claim about a phone and be making it
+       * about one. */
+      .narrow {
+        width: 390px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- One glyph, and it is here because this file's retry grew a mark. The
+         path is lifted out of foundations/icons.html, which declares it as
+         `rotate-clockwise` at @tabler/icons 3.48.0, and it is byte-identical to
+         the `i-rotate` the playlist header draws on the same verb inside its
+         overflow menu: the same control twice, in a panel and in a menu, saying
+         the same thing with the same shape.
+
+         --icon-sm, for the reason icons.md gives for a mark beside a
+         --text-sm label, and measured rather than read off the scale. The
+         glyph's ink is 18 by 18.06 units of the 24 unit grid, which is 75% of
+         the box against the plus's 67%, and centred to 0.00 units on both axes
+         so it takes no optical correction. At --icon-sm its ink is 12.04px
+         against a 10.0px cap height, 1.20 times; at --icon-md it would be
+         15.05px, 1.51 times, where the plus at --icon-md is 1.36. So the step
+         is the same one the plus is on and this glyph is the worse case of the
+         two, which is the argument. -->
+    <svg
+      class="sprite"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false">
+      <defs>
+        <symbol
+          id="i-rotate-clockwise"
+          data-icon="rotate-clockwise@3.48.0"
+          viewBox="0 0 24 24">
+          <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
+        </symbol>
+      </defs>
+    </svg>
+    <main class="page stack">
+      <div class="crumb">
+        <a href="../index.html">PlayLiberty design</a> / sync error
+      </div>
+
+      <header class="stack-tight">
+        <div class="eyebrow">Components</div>
+        <h1 class="page-title">Sync error</h1>
+        <p class="prose">
+          What went wrong, what was not lost, and the one action that can help.
+          The decision behind it is in
+          <a
+            href="../../design-system/components/sync-error.md#the-sync-error"
+            style="color: var(--muted)"
+            >DESIGN.md</a
+          >.
+        </p>
+      </header>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">The four cases</h2>
+          <p class="section-note">
+            Four, and the contract reaches all of them. The first has no
+            <span class="token-sm">SyncRun</span> row at all, the third cannot
+            be fixed by retrying, and the fourth is not a state but a hazard.
+          </p>
+        </div>
+
+        <!-- The first sync failed, so there is nothing to play. Reachable with
+             no SyncRun row: PlaylistSyncStatus.Error is set on the playlist on
+             its own. No reassurance line, because there are no tracks to
+             reassure about. The retry is the accent button because here it is
+             the only way forward. -->
+        <div class="panel">
+          <div class="fault">
+            <div class="fault__band">
+              <p class="fault__say">
+                Could not reach YouTube for this playlist, so it has never
+                synced and there is nothing here to play.
+              </p>
+              <div>
+                <button class="btn btn-primary" type="button">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-rotate-clockwise" />
+                  </svg>
+                  Sync now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- A re-sync failed on a playlist that already holds 128 tracks. The
+             case the product exists for, and the reason the reassurance is its
+             own line rather than a clause: it is a different statement from the
+             fault, it is the opposite in meaning, and folding it into the
+             sentence would put the good news in the fault colour. -->
+        <div class="panel">
+          <div class="fault">
+            <div class="fault__band">
+              <p class="fault__say">
+                Could not reach YouTube, so this playlist is not up to date with
+                its source.
+              </p>
+              <p class="fault__safe">
+                All 128 tracks are still here and still playable, and a sync
+                never deletes: a video removed from YouTube later will not empty
+                this playlist.
+              </p>
+              <div>
+                <button class="btn btn-primary" type="button">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-rotate-clockwise" />
+                  </svg>
+                  Sync now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- The source playlist is gone. No retry, and that is the rule rather
+             than an omission: the source is deleted now and will be deleted in
+             two minutes, so a button here is a mis-hit the user cannot explain.
+             The track row settled the principle and this follows it. -->
+        <div class="panel">
+          <div class="fault">
+            <div class="fault__band">
+              <p class="fault__say">
+                This playlist no longer exists on YouTube. It may have been
+                deleted, or the account that made it may have closed.
+              </p>
+              <p class="fault__safe">
+                All 128 tracks are still here and still playable. Nothing will
+                remove them.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- The server's own words, behind a control. Drawn open, because a
+             capped box that has never been seen holding a traceback is a claim
+             rather than a demonstration. The nine lines are what a real
+             yt-dlp failure arrives as, and SyncRun.error is a non-null string
+             with no length bound, so this is the shape the box has to survive
+             and not an extreme case invented to break it. -->
+        <div class="panel">
+          <div class="fault">
+            <div class="fault__band">
+              <p class="fault__say">
+                Could not reach YouTube, so this playlist is not up to date.
+              </p>
+              <p class="fault__safe">
+                All 128 tracks are still here and still playable.
+              </p>
+              <div>
+                <button class="btn btn-primary" type="button">
+                  <svg
+                    class="icon icon--sm"
+                    aria-hidden="true"
+                    focusable="false">
+                    <use href="#i-rotate-clockwise" />
+                  </svg>
+                  Sync now
+                </button>
+              </div>
+              <button class="fault__reveal" type="button">
+                Show what the server said
+              </button>
+              <pre class="fault__raw">
+ERROR: [youtube] PLZxxxxxxxxxxxxxxxxxxxx: Playlist is unavailable
+Traceback (most recent call last):
+  File "/srv/playliberty/node_modules/yt_dlp/YoutubeDL.py", line 2345, in process_ie_result
+    raise DownloadError("The playlist is not available or has been made private")
+yt_dlp.utils.DownloadError: The playlist is not available or has been made private
+Caused by:
+  yt_dlp.utils.DownloadError: Private playlist
+WARNING: Retrying extraction with impersonation: web_safari
+ERROR: [youtube] PLZxxxxxxxxxxxxxxxxxxxx: Sign in to confirm your age</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">At 390</h2>
+          <p class="section-note">
+            The same four. 114px, 180px, 135px and 303px, against the 610px of
+            content area a 844px phone has between a 136px header and a 98px
+            player bar, so 7, 6, 7 and 4 rows of a 65px track list. The last
+            figure is the one that matters, and it is the capped one: the same
+            case uncapped is 483px, which leaves 1 row rather than 4.
+          </p>
+        </div>
+
+        <div class="stack">
+          <div class="narrow">
+            <div class="panel">
+              <div class="fault">
+                <div class="fault__band">
+                  <p class="fault__say">
+                    Could not reach YouTube for this playlist, so it has never
+                    synced and there is nothing here to play.
+                  </p>
+                  <div>
+                    <button class="btn btn-primary" type="button">
+                      <svg
+                        class="icon icon--sm"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-rotate-clockwise" />
+                      </svg>
+                      Sync now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="narrow">
+            <div class="panel">
+              <div class="fault">
+                <div class="fault__band">
+                  <p class="fault__say">
+                    Could not reach YouTube, so this playlist is not up to date
+                    with its source.
+                  </p>
+                  <p class="fault__safe">
+                    All 128 tracks are still here and still playable, and a sync
+                    never deletes: a video removed from YouTube later will not
+                    empty this playlist.
+                  </p>
+                  <div>
+                    <button class="btn btn-primary" type="button">
+                      <svg
+                        class="icon icon--sm"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-rotate-clockwise" />
+                      </svg>
+                      Sync now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="narrow">
+            <div class="panel">
+              <div class="fault">
+                <div class="fault__band">
+                  <p class="fault__say">
+                    This playlist no longer exists on YouTube. It may have been
+                    deleted, or the account that made it may have closed.
+                  </p>
+                  <p class="fault__safe">
+                    All 128 tracks are still here and still playable. Nothing
+                    will remove them.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="narrow">
+            <div class="panel">
+              <div class="fault">
+                <div class="fault__band">
+                  <p class="fault__say">
+                    Could not reach YouTube, so this playlist is not up to date.
+                  </p>
+                  <p class="fault__safe">
+                    All 128 tracks are still here and still playable.
+                  </p>
+                  <div>
+                    <button class="btn btn-primary" type="button">
+                      <svg
+                        class="icon icon--sm"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-rotate-clockwise" />
+                      </svg>
+                      Sync now
+                    </button>
+                  </div>
+                  <button class="fault__reveal" type="button">
+                    Show what the server said
+                  </button>
+                  <pre class="fault__raw">
+ERROR: [youtube] PLZxxxxxxxxxxxxxxxxxxxx: Playlist is unavailable
+Traceback (most recent call last):
+  File "/srv/playliberty/node_modules/yt_dlp/YoutubeDL.py", line 2345, in process_ie_result
+    raise DownloadError("The playlist is not available or has been made private")
+yt_dlp.utils.DownloadError: The playlist is not available or has been made private
+Caused by:
+  yt_dlp.utils.DownloadError: Private playlist
+WARNING: Retrying extraction with impersonation: web_safari
+ERROR: [youtube] PLZxxxxxxxxxxxxxxxxxxxx: Sign in to confirm your age</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">Colour</h2>
+          <p class="section-note">
+            Every pairing on this surface. What the band is, what it costs, and
+            why the retry is an accent fill are in
+            <a
+              href="../../design-system/components/sync-error.md#the-sync-error"
+              style="color: var(--muted)"
+              >DESIGN.md</a
+            >.
+          </p>
+        </div>
+
+        <div class="panel stack-tight">
+          <div class="row">
+            <span class="token-sm" style="color: var(--tone-failed)"
+              >The fault sentence</span
+            >
+            <span class="ratio" data-pair="--tone-failed on --surface"
+              >5.20:1</span
+            >
+          </div>
+          <div class="row">
+            <span class="token-sm" style="color: var(--muted)"
+              >The reassurance, and the control that opens the raw words</span
+            >
+            <span class="ratio" data-pair="--muted on --surface">5.71:1</span>
+          </div>
+          <div class="row">
+            <span
+              class="token-sm"
+              style="
+                color: var(--bg);
+                background: var(--accent);
+                padding: 0 var(--space-2);
+              "
+              >Sync now</span
+            >
+            <span class="ratio" data-pair="--bg on --accent">5.85:1</span>
+          </div>
+        </div>
+
+        <p class="hint">
+          <strong>The band costs 24px and nothing else.</strong> On the
+          nine-line diagnostic at 390 the band alone is 144px, the diagnostic
+          alone 279px and both together 303px, so the framing costs exactly its
+          own vertical padding. The cap on the raw block is what makes the
+          fourth case drawable: its content wants 283px, and uncapped the
+          component is 483px, which leaves 1 row of list instead of 4.
+        </p>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">What is not drawn</h2>
+        <p class="hint">
+          <strong>A timestamp.</strong> The header shows
+          <span class="token-sm">PlaylistSchema.lastSyncedAt</span> and the
+          <a href="./sync-summary.html" style="color: var(--muted)"
+            >sync summary</a
+          >
+          shows <span class="token-sm">SyncRun.finishedAt</span>, and those are
+          different times.
+        </p>
+        <p class="hint">
+          <strong
+            >Whether a retry is available, and that is a server
+            question.</strong
+          >
+          The third case drops the retry because retrying cannot work on a
+          deleted source, and the rule is the track row's: offer retry only
+          where retrying can work. But nothing in the contract says which
+          failures are worth retrying, so a client cannot derive it from
+          <span class="token-sm">SyncRun.status</span> alone.
+        </p>
+        <p class="hint">
+          <strong>The error sentence in the header.</strong> The header carries
+          the state and the time and nothing else, so the news is on screen
+          once. The three-way split is in
+          <a
+            href="../../design-system/components/sync-error.md#the-sync-error"
+            style="color: var(--muted)"
+            >DESIGN.md</a
+          >.
+        </p>
+        <p class="hint">
+          <strong>A fault that is not a sync failure.</strong> A share or a
+          rename can fail, and nothing in the contract gives those a record like
+          <span class="token-sm">SyncRun</span> gives this one.
+        </p>
+      </section>
+
+      <section class="stack">
+        <h2 class="section-title">Usage</h2>
+        <p class="hint">
+          Do say what was not lost whenever there is something to lose, because
+          a sync never deletes and a user who has been told their music can
+          vanish is reading this surface with more fear than the fault deserves.
+          Do keep the reassurance on its own line and in
+          <span class="token-sm">--muted</span>, so the thing that settles the
+          alarm is not printed in the alarm colour. Do omit the reassurance when
+          there are no tracks, and do not offer a retry on a failure that
+          retrying cannot fix. Do keep the mapped sentence and put the server's
+          words behind the control, never in the sentence. Do keep the cap and
+          the <code>pre-wrap</code> on the raw block; without the cap an
+          unbounded string is a 483px component. Do not repeat this sentence in
+          the header, and do not let the state carry the fault by colour alone:
+          the word "Sync failed" is what a reader without the colour reads.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

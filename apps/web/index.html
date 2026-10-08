@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <!--
+      The icon set. Every plate is the accent on 78% emblem fit, so the tile
+      reads as one object rather than as artwork sitting on a colour. The three
+      shapes exist because three different maskers own the corners: browsers
+      apply no radius to a favicon, iOS masks and does not flatten the touch
+      icon, and Android crops a maskable icon to the launcher's own shape. The
+      colours below are literals, not tokens, because JSON and HTML cannot read
+      a custom property. `docs/design/tokens.css` owns them: a change to --bg
+      there has to be mirrored here or the installed app and the app disagree.
+    -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#0b0d10" />
+    <meta name="apple-mobile-web-app-title" content="PlayLiberty" />
+    <title>PlayLiberty</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -24,6 +24,49 @@ module.exports = {
       }
     },
     {
+      /*
+       * The server's four top-level folders are a direction, not a naming
+       * convention, and these are the rules that make it one. Without them the
+       * layout is a suggestion that the next feature quietly ignores, and the
+       * reason the access rule ended up written out three times is that nothing
+       * said where a rule like that was supposed to live.
+       *
+       *   app/       the composition root and the request pipeline. The only
+       *              module allowed to import every feature.
+       *   features/  one folder per domain module. Imports shared and platform.
+       *   shared/    cross-cutting code no feature owns: the context, the problem
+       *              document, the access rules.
+       *   platform/  the resources features sit on, with no domain knowledge.
+       */
+      name: 'server-platform-and-shared-must-not-import-features',
+      severity: 'error',
+      comment:
+        'platform/ and shared/ are below features/ in the dependency order. ' +
+        'A resource or a shared policy that reaches into a feature makes the ' +
+        'dependency graph a cycle waiting to happen, and it is the shape that put ' +
+        'the account row behind the auth pipeline in the first place.',
+      from: {
+        path: '^apps/server/src/(platform|shared)/'
+      },
+      to: {
+        path: '^apps/server/src/features/'
+      }
+    },
+    {
+      name: 'server-only-app-registers-routes',
+      severity: 'error',
+      comment:
+        'Only the composition root wires routes. A route registrar imported by ' +
+        'anything else is a second place that knows which features exist, which is ' +
+        'the thing buildApp is for.',
+      from: {
+        pathNot: '^apps/server/src/app/(buildApp|health/healthRoutes)\\.ts$'
+      },
+      to: {
+        path: 'Routes\\.ts$'
+      }
+    },
+    {
       name: 'no-orphans',
       comment:
         "This is an orphan module - it's likely not used (anymore?). Either use it or " +
@@ -37,6 +80,10 @@ module.exports = {
         pathNot: [
           '(^|/)[.][^/]+[.](?:js|cjs|mjs|ts|cts|mts|json)$', // dot files
           '[.]d[.]ts$', // TypeScript declaration files
+          '[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$', // test files
+          '(^|/)testing/', // test helpers
+          '(^|/)scripts/', // build helpers nothing imports
+          '[.]config[.](?:js|cjs|mjs|ts|cts|mts|json)$', // tool configs (vitest, drizzle)
           '(^|/)tsconfig[.]json$', // TypeScript config
           '(^|/)(?:babel|webpack)[.]config[.](?:js|cjs|mjs|ts|cts|mts|json)$' // other configs
         ]

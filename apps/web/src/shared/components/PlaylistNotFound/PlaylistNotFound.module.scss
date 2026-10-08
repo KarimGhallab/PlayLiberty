@@ -1,0 +1,73 @@
+/*
+ * The not-found state, the sibling of the empty state: one axis, centred, in the
+ * reading width, left-aligned in its own box so the list area's content starts
+ * at the top rather than floating. It stands in for the list, so it is on --bg
+ * and not on a --surface panel.
+ *
+ * The action is a link, not a button, because it navigates rather than acts, and
+ * it is the secondary treatment (a bordered control on the surface) rather than
+ * the accent: this is a way out, not the thing to do.
+ */
+.playlist-not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-6) 0;
+  text-align: center;
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    max-width: 66ch;
+  }
+
+  &__head {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+  }
+
+  &__prose {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: var(--control-height);
+    padding: 0 var(--space-5);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--control-border);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__action-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+  }
+}

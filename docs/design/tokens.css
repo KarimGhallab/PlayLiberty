@@ -1,0 +1,220 @@
+/*
+ * PlayLiberty design tokens.
+ *
+ * This file is a contract, not a stylesheet. Every declaration in it is a custom
+ * property: no rules, no at-rules, no resets, nothing a transcription would have to
+ * interpret. Comments are allowed and carry the reasoning behind the values, since
+ * that reasoning is the part most likely to be lost. Task 10 transcribes the
+ * declarations into packages/tokens, where they become the source of truth, and the
+ * emitter writes the stylesheet the web client actually loads.
+ *
+ * Two conventions differ from the hosted tool these values were first drafted in,
+ * on purpose. Hex is lowercase, and the hairline is written rgba() rather than
+ * the modern space-separated form. A hand-authored file should read the way a
+ * person writes, and that difference is exactly the kind of thing an automated
+ * export silently normalises away.
+ *
+ * A font token is the family name alone. The fallback stack belongs to the
+ * consuming client, not to the value, because React Native takes one family name
+ * and cannot parse a CSS font stack.
+ *
+ * scripts/validate-design-tokens.cjs enforces that this file stays pure.
+ */
+
+:root {
+  /* Surfaces */
+  --bg: #0b0d10;
+  --surface: #14171b;
+  --surface-raised: #1c2025;
+
+  /* Text */
+  --ink: #e6e9ea;
+  --muted: #8b9299;
+  --line: rgba(255, 255, 255, 0.09);
+
+  /* The interactive accent. Kept out of the fault vocabulary; see --tone-failed. */
+  --accent: #2f9e7e;
+
+  /* One tone per display state. A removed track takes the removed tone whatever
+     its file status is.
+
+     --tone-downloading and --emphasis hold the same literal on purpose, and the
+     validator fails if they ever stop agreeing. They cannot be one token
+     pointing at the other, because the design record rejects aliased tokens: React
+     Native cannot resolve var(). So this is two names for one decision, kept
+     honest by a check rather than by a var() the phone would not resolve. */
+  --tone-pending: #84948a;
+  --tone-downloading: #e39a3c;
+  --tone-stored: #e6e9ea;
+  --tone-failed: #e0625e;
+  --tone-unavailable: #b87570;
+  --tone-removed: #8b9299;
+
+  /* Family. One family for the whole product.
+     Plex Sans has tabular figures by default, measured in the browser at a
+     1000px em: every digit has an advance of 600, the same as a monospace
+     face. A duration column therefore aligns without a second family and
+     without depending on a font feature being honoured, so a second family
+     buys nothing. Measured, not assumed. */
+  --font-ui: 'IBM Plex Sans';
+
+  /* Type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+
+  /* Weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Leading, as a unitless ratio so the web can use it directly and mobile can
+     multiply it by its own size. */
+  --leading-tight: 1.2;
+  --leading-normal: 1.35;
+  --leading-relaxed: 1.5;
+
+  /* Opacity */
+  --opacity-disabled: 0.45;
+
+  /* The scrim is one colour, not an alpha waiting for a companion. Splitting it
+     into a black plus a 0.6 would let a consumer compose any scrim they liked,
+     and every one of those would be a decision nobody made. A bare 0.6 also
+     cannot be read on its own in this file, and background: var(--opacity-scrim)
+     is not valid CSS at all, which is how the mistake was found. */
+  --scrim: rgb(0 0 0 / 0.6);
+
+  /* The six sleeve hues. A playlist with no artwork draws one of these as its
+     cover, so a wall of placeholders stops being a wall of the same grey square.
+     All six sit at OKLCH L 0.34, C 0.055: one family of dark tinted sleeves, not
+     six accents and not six states. The arc runs teal to plum and skips the
+     accent's green and the amber and red the states own, so a sleeve is never
+     read as an action or a fault. The hue is identity and the playlist id picks
+     it, through sleeveIndex in @playliberty/ui-foundation. */
+  --sleeve-1: #08413e;
+  --sleeve-2: #0d3e4c;
+  --sleeve-3: #213a53;
+  --sleeve-4: #353453;
+  --sleeve-5: #432f4c;
+  --sleeve-6: #4c2c3e;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+
+  /* Shape */
+  --radius-artwork: 4px;
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-chip: 999px;
+
+  /* The boundary of something the user can act on, or is currently acting
+     through: a control, or the edge of a dialog. Not --line, which measures
+     1.28:1 on --surface and is a hairline between rows rather than something you
+     see and hit, and not --muted, which measures 5.71:1 and turns a column of
+     controls into the loudest thing on screen. This sits between them at 3.4:1
+     on --surface and 3.4:1 on --surface-raised, which is the 3:1 WCAG asks of a
+     control boundary, with a little headroom for the raised surface where it is
+     tightest. */
+  --control-border: #6e7379;
+
+  /* The accent lifted, for a pressable accent fill under the pointer. Same hue,
+     1.24x the luminance, and the near-black legend gets BETTER rather than
+     worse: 7.05:1 against the accent's 5.85:1, because dark ink on a lighter
+     fill is more contrast, not less.
+
+     This was --tone-downloading before, which was wrong in a way worth
+     recording. Hovering a button turned the system's action colour into its
+     progress colour, so the same control changed meaning under the pointer
+     depending on where the pointer was. Amber is a legitimate emphasis in this
+     system, which makes it a worse hover: emphasis is a statement, and a
+     statement that fires every time a pointer passes over a button is noise. */
+  --accent-hover: #4cac90;
+
+  /* The second colour, and the only one that is not a surface, a tone or the
+     action colour. Its job is to point at one thing: at most one emphasis per
+     view, always alongside a word, never on a hover. It is deliberately not a
+     new hue and not a second amber. --tone-downloading holds this same literal
+     and the suite checks the two agree, because "in progress" is a mild form of
+     "needs attention" and the emphasis is the broader of the two ideas. They
+     cannot be one token aliasing the other: the design record rejects that, since React
+     Native cannot resolve var().
+
+     It measures 8.30:1 on --bg and 6.98:1 on --surface-raised, and --bg sits on
+     it at the same 8.30:1 for a filled badge. */
+  --emphasis: #e39a3c;
+
+  /* Control geometry. A height for a control on a row of text, a larger minimum
+     for a touch target on mobile, and the box a checkbox or radio draws in. */
+  --control-height: 36px;
+  --control-touch: 44px;
+  --control-size-check: 18px;
+  --control-size-inline: 28px;
+
+  /* Icon size. Three steps, named for the job rather than for the number, and
+     measured in the controls they sit in rather than read off the icon set's
+     grid. Tabler draws on 24 units and a glyph does not fill its box, so the
+     grid is not the answer: what a glyph occupies of its own box runs from 0.50
+     of the height on a check to 0.93 of the width on a cloud, and a size scale
+     built from the grid would have put all of them at one optical size when they
+     are at four.
+
+     The rule that decided the two larger steps is a ratio to the control, not a
+     number. --icon-md is 0.62 of the 32px icon button and --icon-lg is 0.58 of
+     the 48px primary, so both sit at one ratio of about 0.6 and the pair reads
+     as a pair. --icon-sm is the exception and is 0.89 of the 18px checkbox,
+     because a mark inside a control is filling the control it belongs to rather
+     than sitting in one. */
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 28px;
+
+  /* A disabled control gets its own pair rather than --opacity-disabled, because
+     a blanket opacity drags the label down with the control: ink at 45% lands at
+     3.93:1 and a muted label at 45% collapses to 2.15:1, both under AA. These
+     are measured rather than faded: --control-disabled-fg is ink at 55%, which
+     is 5.24:1 on --surface, legible while reading as inactive because it is a
+     long way below ink's 14.73:1. The fill is the lightest value that still
+     reads as a filled object, 1.13:1 against --surface; anything darker drops
+     the label under AA on its own background, so this is the only value of the
+     three that works. */
+  --control-disabled-fg: #888b8d;
+  --control-disabled-bg: #1e2229;
+
+  /* Focus. The ring colour is --accent, deliberately not a second token, so the
+     accent cannot be changed in one place and not the other. */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* Motion. Transitions only; a reduced-motion rule drops the durations to zero
+     and kills the animations outright, so no curve is ever reached under it. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 240ms;
+
+  /* The one curve. It is named for the decision and not the shape, and it sits
+     outside the --motion-* family above on purpose: that family is all
+     durations, and a reader who finds a curve in it will read it as a time.
+     Decelerates into place, never overshoots, and is soft enough for a border
+     colour changing at 120ms while still carrying a 48px control at 240ms. The
+     two decorative loops keep the ease-in-out keyword rather than this, because
+     a loop is not a transition and a transition curve on a pulse changes the
+     pulse from a breath into a lurch. */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Stacking */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-overlay: 20;
+  --z-player: 30;
+}

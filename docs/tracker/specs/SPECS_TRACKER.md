@@ -1,0 +1,40 @@
+# Specs
+
+Feature specs, written by `/to-spec`. One file per spec, named `NN-slug.md` and numbered in creation order.
+
+This corpus is the web and server MVP. Every client clause is the web client. Mobile, the provisioning flow
+and [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) are out of scope, and no spec in this set is written to leave room for them.
+
+## Specs
+
+| Spec                                                            | Status   | Blocked by                                                                                                                    | Blocks                                                                                                                                                                                                                               |
+| --------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`01-sync-a-playlist`](01-sync-a-playlist.md)                   | resolved | none                                                                                                                          | [`02`](02-store-a-track.md), [`04`](04-curate-a-playlist.md), [`05`](05-share-a-playlist.md), [`06`](06-prune-orphans.md), [`08`](08-see-the-library.md), [`09`](09-keep-the-screens-current.md), [`10`](10-skip-non-music-parts.md) |
+| [`02-store-a-track`](02-store-a-track.md)                       | resolved | [`01`](01-sync-a-playlist.md)                                                                                                 | [`06`](06-prune-orphans.md), [`07`](07-play-stored-audio.md), [`10`](10-skip-non-music-parts.md)                                                                                                                                     |
+| [`03-read-a-playlist`](03-read-a-playlist.md)                   | resolved | none                                                                                                                          | [`07`](07-play-stored-audio.md), [`08`](08-see-the-library.md), [`09`](09-keep-the-screens-current.md)                                                                                                                               |
+| [`04-curate-a-playlist`](04-curate-a-playlist.md)               | resolved | [`01`](01-sync-a-playlist.md)                                                                                                 | [`09`](09-keep-the-screens-current.md), [`10`](10-skip-non-music-parts.md)                                                                                                                                                           |
+| [`05-share-a-playlist`](05-share-a-playlist.md)                 | resolved | [`01`](01-sync-a-playlist.md)                                                                                                 | [`07`](07-play-stored-audio.md), [`08`](08-see-the-library.md), [`09`](09-keep-the-screens-current.md)                                                                                                                               |
+| [`06-prune-orphans`](06-prune-orphans.md)                       | resolved | [`01`](01-sync-a-playlist.md), [`02`](02-store-a-track.md)                                                                    | none                                                                                                                                                                                                                                 |
+| [`07-play-stored-audio`](07-play-stored-audio.md)               | resolved | [`02`](02-store-a-track.md), [`03`](03-read-a-playlist.md), [`05`](05-share-a-playlist.md)                                    | none                                                                                                                                                                                                                                 |
+| [`08-see-the-library`](08-see-the-library.md)                   | resolved | [`01`](01-sync-a-playlist.md), [`03`](03-read-a-playlist.md), [`05`](05-share-a-playlist.md)                                  | none                                                                                                                                                                                                                                 |
+| [`09-keep-the-screens-current`](09-keep-the-screens-current.md) | resolved | [`01`](01-sync-a-playlist.md), [`03`](03-read-a-playlist.md), [`04`](04-curate-a-playlist.md), [`05`](05-share-a-playlist.md) | none                                                                                                                                                                                                                                 |
+| [`10-skip-non-music-parts`](10-skip-non-music-parts.md)         | resolved | [`01`](01-sync-a-playlist.md), [`02`](02-store-a-track.md), [`04`](04-curate-a-playlist.md)                                   | none                                                                                                                                                                                                                                 |
+| [`11-choose-a-language`](11-choose-a-language.md)               | ready    | none                                                                                                                          | none                                                                                                                                                                                                                                 |
+
+## Conventions
+
+- One file per spec, named `NN-slug.md`, numbered in creation order.
+- The table above links every spec reference to its file, so a reader lands on the spec from any row.
+- One spec is one user-visible verb. A spec that had to be split by layer would be a plan, and a plan belongs in a ticket set.
+- A spec is **ready** when its decisions are settled and tickets can be cut from it. A spec replaced by a later one is marked **superseded** rather than deleted, so the decision it recorded stays readable.
+- Each spec declares its blocking edges: the specs whose decisions its implementation depends on. A spec with no edges can be cut immediately.
+- Blocking edges order the cut, not the code. A spec blocked by another is one whose tickets would otherwise invent a decision the other spec owns.
+- A decision the repository has not already made is marked `Decided here` in the spec's implementation
+  decisions, so a reader can tell at a glance which decisions are the spec's own and overturn any o them before its tickets are cut.
+- Because this corpus is web only, a client clause names the web client rather than the two runtimes. The token layer and the shared UI decisions are still client-neutral; the behavior is not.
+
+## Out of scope in this corpus
+
+- The permanent non-goals: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, favorites, ratings, play counts, and search.
+- Offline playback and a service worker.
+- Reordering a playlist.

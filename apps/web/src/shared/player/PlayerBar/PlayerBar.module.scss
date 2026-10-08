@@ -1,0 +1,346 @@
+/*
+ * The player bar, mirroring docs/design/components/player-bar.html with one
+ * departure: the artwork is a left rail spanning the bar's full inner height
+ * rather than a 40px square in the top row, so the thumbnail covers the title,
+ * the playlist name and the seeker row as one block.
+ *
+ * The base is the centred arrangement: a `1fr auto 1fr` grid whose middle column
+ * is the transport, so the transport posts 0px of offset and the title has equal
+ * room either side. The bar is not the flush phone variant, which is the other
+ * arrangement and belongs to the mobile shell this corpus does not build.
+ *
+ * The boundary is --line and not a shadow. Depth allows the bar one subtle lift,
+ * but a shadow is dark and the page is dark, so a dark blur over a dark page is
+ * invisible rather than subtle.
+ */
+.player-bar {
+  position: fixed;
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: var(--z-player);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  align-content: center;
+  height: 98px;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border-block-start: 1px solid var(--line);
+
+  /*
+   * The third column: the volume control, held against the right edge and seated
+   * on the bar's foot, level with the seeker row. The column stretches the bar's
+   * full height so the control can sit at the bottom of it, but the control's own
+   * box is the button alone, which is what lets its rail open just above the
+   * button rather than above the bar.
+   */
+  &__volume {
+    grid-column: 3;
+    grid-row: 1 / -1;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  &__top {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    column-gap: var(--space-4);
+    min-width: 0;
+  }
+
+  &__id {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  /* The left rail: a square spanning the bar's two content rows, so the
+   * thumbnail covers the title, the playlist name and the seeker row as one
+   * block. The bar's height is fixed at 98px, which is what lets the rail be a
+   * square whose side is the bar's inner height: a stretched height with a
+   * derived width and a content-measured bar is a circular dependency (height
+   * drives width drives height), and it inflated the bar instead. Fixing the
+   * height breaks that loop, and the rail's aspect-ratio then yields the width
+   * with nothing to feed back into.
+   *
+   * 98px is the design record's own number, the measured sum of the two rows it
+   * draws. The content is centred in the fixed box, so the number is the bar's
+   * height rather than a floor on its content. */
+  &__art {
+    grid-row: 1 / -1;
+    position: relative;
+    display: block;
+    height: 100%;
+    aspect-ratio: 1;
+    align-self: stretch;
+    flex-shrink: 0;
+    overflow: hidden;
+    background-color: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-artwork);
+
+    &[data-art='no-art'] {
+      background-image: repeating-linear-gradient(
+        135deg,
+        var(--line) 0 5px,
+        transparent 5px 12px
+      );
+    }
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &__name {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__title {
+    color: var(--ink);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The playlist the queue came from. TrackSchema has no artist and no album, so
+   * the second line every player bar spends on the artist has nothing else to
+   * carry, and naming the source is what it is for here. */
+  &__source {
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__transport {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-shrink: 0;
+  }
+
+  /* The header's grammar carried over: a quiet unbordered 32px step either side
+   * of a filled 48px play, which is the only door. */
+  &__step {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    transition: color var(--motion-fast) var(--ease-standard);
+
+    &:hover:not(:disabled) {
+      color: var(--ink);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: var(--opacity-disabled);
+    }
+
+    /* A borderless control has no box to wrap, so the 44px target grows outward
+     * six pixels a side by a box that paints nothing. Six is the half of the
+     * 12px gap, so two targets meet in the middle and neither eats the other. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__step-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+  }
+
+  &__play {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    padding: 0;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    transition: background-color var(--motion-slow) var(--ease-standard);
+
+    &:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__glyph {
+    overflow: hidden;
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    color: var(--bg);
+  }
+
+  &__strip {
+    transform: translateX(0);
+  }
+
+  &[data-state='playing'] &__strip {
+    transform: translateX(-168px);
+  }
+
+  /* The transition, attached only while the play button carries `data-run`. The
+   * animation's end value is the resting rule's own number, so clearing it when
+   * the morph ends does not move the glyph, and `reverse` plays pause to play. */
+  &__play[data-run] &__strip {
+    animation: pl-play-pause var(--motion-base) steps(7, jump-end) both;
+  }
+
+  &__play[data-run='reverse'] &__strip {
+    animation-direction: reverse;
+  }
+
+  &__position {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  &__time {
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 4px, not a hairline, and the difference is whether this is a control: a 2px
+   * line is a report and a 4px track is a target. The fill is the accent and the
+   * knob is ink inside a surface ring, because ink straight onto accent is the
+   * pairing the system forbids; the ring puts the surface between the two. */
+  &__scrub {
+    position: relative;
+    width: 480px;
+    height: 4px;
+    flex-shrink: 0;
+    border-radius: var(--radius-chip);
+    background: var(--control-border);
+    cursor: pointer;
+
+    /* 4px is a report, not a target: the visible track stays 4px and the target
+     * grows to the 44px the system owes a thumb through a box that paints
+     * nothing, the same pattern the transport's steps carry. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -20px 0;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__fill {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--accent);
+    transform-origin: left center;
+    transition: transform var(--motion-slow) var(--ease-standard);
+  }
+
+  &__knob {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    translate: -50% -50%;
+    border-radius: var(--radius-chip);
+    background: var(--ink);
+    border: 2px solid var(--surface-raised);
+  }
+}
+
+@keyframes pl-play-pause {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-168px);
+  }
+}
+
+/*
+ * The flush arrangement, at 390 and under, and the design's own rule at the two
+ * widths rather than a preference: the centre and the 480px cap are both web
+ * decisions and neither survives a phone. The centre has to go because a
+ * symmetric bar needs room for two halves and a 390px bar has 314px of content,
+ * which gave the title 21px; the cap has to go because 480px does not fit, so
+ * the seeker flexes rather than being capped to a smaller literal. The volume
+ * column stays: the design's own bar carries no volume, but this one does, and a
+ * core control the phone can reach is not something to drop on the way down.
+ *
+ * The breakpoint is this implementation's own line, matching the detail's, and
+ * not a token: the design draws 390 and 1056 and names nothing between them.
+ */
+@media (max-width: 767px) {
+  .player-bar {
+    /* A tighter box than the desk's, so the rail and the two rows keep more of
+     * their width for the title. */
+    padding: var(--space-3);
+
+    /* Two columns rather than three: the identity flexes and the transport lands
+     * on the right edge. The volume is the third and is unchanged. */
+    &__top {
+      grid-template-columns: 1fr auto;
+    }
+
+    /* The two time stamps and their 4px gap are what the seeker gives up on a
+     * phone; the times stay, because an elapsed time is a datum and not a
+     * label, and the design's own flush bar keeps them against the track's
+     * ends. */
+    &__position {
+      justify-content: stretch;
+    }
+
+    &__scrub {
+      width: auto;
+      flex: 1;
+    }
+  }
+}

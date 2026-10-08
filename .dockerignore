@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/build
+**/.vite
+**/.git
+**/.gitignore
+**/.eslintcache
+**/.vscode
+**/.husky
+**/*.log
+**/coverage
+**/.env
+**/.env.*
+!.env.example
+docs
+dependency-graph.svg

@@ -1,0 +1,75 @@
+# syntax=docker/dockerfile:1
+
+# The build context is the repository root, so paths below are workspace-relative.
+FROM docker.io/library/node:26-bookworm-slim AS base
+ENV CI=true
+RUN npm install --global pnpm@12.4.2
+WORKDIR /app
+
+# Native modules (better-sqlite3) need a toolchain to build; the runtime stage
+# below does not, so the tools live only in the intermediate stages.
+FROM base AS tools
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
+
+FROM tools AS deps
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/server/package.json apps/server/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/youtube/package.json packages/youtube/package.json
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+COPY . .
+RUN pnpm --filter @playliberty/contracts run build \
+ && pnpm --filter @playliberty/youtube run build \
+ && pnpm --filter @playliberty/server run build
+
+FROM tools AS prod-deps
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/server/package.json apps/server/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/youtube/package.json packages/youtube/package.json
+RUN pnpm install --frozen-lockfile --prod
+
+FROM base AS runtime
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV MEDIA_ROOT=/media
+ENV DATABASE_PATH=/data/playliberty.db
+
+ARG YTDLP_VERSION=2026.08.19
+# The expected digest of `yt-dlp_linux` for that version, committed here so the
+# check does not trust the same release that served the binary. Bump the version
+# and this digest together, taking the value from the release's SHA2-256SUMS.
+ARG YTDLP_SHA256=58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a
+
+# ffmpeg ships ffprobe and is pinned to the exact Debian build, so the audio
+# toolchain does not drift under a rebuild. The pin is updated deliberately.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ffmpeg=7:5.1.9-0+deb12u1 \
+      ca-certificates \
+      curl \
+ && rm -rf /var/lib/apt/lists/* \
+ && curl -fsSL -o /tmp/yt-dlp_linux "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_linux" \
+ && echo "${YTDLP_SHA256}  /tmp/yt-dlp_linux" | sha256sum -c - \
+ && install -m 0755 /tmp/yt-dlp_linux /usr/local/bin/yt-dlp \
+ && rm -f /tmp/yt-dlp_linux
+
+WORKDIR /app
+COPY --from=prod-deps /app ./
+COPY --from=build /app/apps/server/dist ./apps/server/dist
+COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build /app/packages/youtube/dist ./packages/youtube/dist
+COPY apps/server/drizzle ./apps/server/drizzle
+
+RUN mkdir -p /media /data && chown -R node:node /app /media /data
+USER node
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/server/dist/main.js"]

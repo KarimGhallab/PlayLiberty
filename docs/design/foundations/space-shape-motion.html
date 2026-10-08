@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayLiberty design: space, shape, motion</title>
+    <link rel="stylesheet" href="../fonts.css" />
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../specimen.css" />
+    <style>
+      .band {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+      .band-head {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-3);
+        padding-bottom: var(--space-3);
+      }
+      /* The bar is drawn at the value it represents, so the gap between a 4 and a
+         48 here is the gap that will appear in the product. */
+      .bar {
+        height: 14px;
+        flex-shrink: 0;
+        background: var(--accent);
+        border-radius: 2px;
+      }
+      .demo-block {
+        width: 120px;
+        height: 34px;
+        background: var(--surface-raised);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-control);
+      }
+      .shape-cell {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-5);
+        padding: var(--space-3) 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .shape-slot {
+        width: 216px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page stack">
+      <div class="crumb">
+        <a href="../index.html">PlayLiberty design</a> / space, shape, motion
+      </div>
+
+      <header class="stack-tight">
+        <div class="eyebrow">Foundations</div>
+        <h1 class="page-title">Space, shape, motion</h1>
+        <p class="prose">
+          Nine steps, four radii, three durations, four stacking levels. The
+          bars are drawn at true size, so the distance between a 4 and a 48 here
+          is the distance you will see in the product.
+        </p>
+      </header>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">Spacing</h2>
+          <p class="section-note">
+            Grouped by what a step is for, not listed as a bare ramp.
+          </p>
+        </div>
+
+        <div class="band">
+          <div class="band-head">
+            <h3 class="section-title">Tight</h3>
+            <p class="section-note">
+              Inside a control, between an icon and its label.
+            </p>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-1</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">4</span></div>
+            <div class="lane"><div class="bar" style="width: 4px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">hairline offsets, icon to label</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-2</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">8</span></div>
+            <div class="lane"><div class="bar" style="width: 8px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">inside buttons and inputs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="band">
+          <div class="band-head">
+            <h3 class="section-title">Working</h3>
+            <p class="section-note">
+              The middle. This is where a list lives, so most of the app is set
+              here.
+            </p>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-3</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">12</span></div>
+            <div class="lane"><div class="bar" style="width: 12px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">row internal gaps, mobile list padding</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-4</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">16</span></div>
+            <div class="lane"><div class="bar" style="width: 16px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">the default gutter and row padding</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-5</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">20</span></div>
+            <div class="lane"><div class="bar" style="width: 20px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">between grouped blocks</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="band">
+          <div class="band-head">
+            <h3 class="section-title">Breathing</h3>
+            <p class="section-note">
+              Let a block stand on its own. Rare, and that is the point.
+            </p>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-6</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">24</span></div>
+            <div class="lane"><div class="bar" style="width: 24px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">screen padding on web, card padding</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-7</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">32</span></div>
+            <div class="lane"><div class="bar" style="width: 32px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">above a section heading</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-8</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">40</span></div>
+            <div class="lane"><div class="bar" style="width: 40px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">above a major block</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--space-9</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">48</span></div>
+            <div class="lane"><div class="bar" style="width: 48px"></div></div>
+            <div class="lane lane-use">
+              <span class="role">empty-state breathing room</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">What the steps are for</h2>
+          <p class="section-note">
+            A spacing scale exists to create grouping, not to fill space.
+            Distance is the only hierarchy cue that costs nothing.
+          </p>
+        </div>
+        <div class="cols">
+          <div class="col stack-tight">
+            <div class="section-title">Inside a group: 4px</div>
+            <div style="display: flex; gap: 4px">
+              <div class="demo-block"></div>
+              <div class="demo-block"></div>
+              <div class="demo-block"></div>
+            </div>
+            <div style="display: flex; gap: 4px; padding-top: 8px">
+              <div class="demo-block"></div>
+              <div class="demo-block"></div>
+            </div>
+            <p class="role">Two playlists, close enough to read as one list.</p>
+          </div>
+          <div class="col stack-tight">
+            <div class="section-title">Between groups: 32px</div>
+            <div style="display: flex; gap: 4px">
+              <div class="demo-block"></div>
+              <div class="demo-block"></div>
+            </div>
+            <div style="display: flex; gap: 4px; padding-top: 32px">
+              <div class="demo-block"></div>
+              <div class="demo-block"></div>
+            </div>
+            <p class="role">
+              The same two playlists, far enough apart to be two things. Nothing
+              changed but the gap.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">Shape</h2>
+          <p class="section-note">Four radii, each drawn at true size.</p>
+        </div>
+        <div>
+          <div class="shape-cell">
+            <div class="lane lane-name stack-tight">
+              <span class="token-sm">--radius-artwork</span
+              ><span class="value-sm">4px</span>
+            </div>
+            <div class="shape-slot">
+              <div
+                class="swatch"
+                style="
+                  width: 56px;
+                  height: 56px;
+                  background: var(--surface-raised);
+                  border-radius: var(--radius-artwork);
+                "></div>
+            </div>
+            <div class="grow">
+              <span class="role"
+                >Album art. Square, barely softened, so a grid of covers reads
+                as one surface.</span
+              >
+            </div>
+          </div>
+          <div class="shape-cell">
+            <div class="lane lane-name stack-tight">
+              <span class="token-sm">--radius-control</span
+              ><span class="value-sm">6px</span>
+            </div>
+            <div class="shape-slot">
+              <div
+                class="swatch"
+                style="
+                  width: 132px;
+                  height: 36px;
+                  background: var(--surface-raised);
+                  border-radius: var(--radius-control);
+                "></div>
+            </div>
+            <div class="grow">
+              <span class="role">Buttons and inputs.</span>
+            </div>
+          </div>
+          <div class="shape-cell">
+            <div class="lane lane-name stack-tight">
+              <span class="token-sm">--radius-card</span
+              ><span class="value-sm">10px</span>
+            </div>
+            <div class="shape-slot">
+              <div
+                class="swatch"
+                style="
+                  width: 200px;
+                  height: 104px;
+                  background: var(--surface-raised);
+                  border-radius: var(--radius-card);
+                "></div>
+            </div>
+            <div class="grow">
+              <span class="role">Cards, the player bar, the empty state.</span>
+            </div>
+          </div>
+          <div class="shape-cell">
+            <div class="lane lane-name stack-tight">
+              <span class="token-sm">--radius-chip</span
+              ><span class="value-sm">999px</span>
+            </div>
+            <div class="shape-slot">
+              <div
+                class="swatch"
+                style="
+                  width: 104px;
+                  height: 30px;
+                  background: var(--surface-raised);
+                  border-radius: var(--radius-chip);
+                "></div>
+            </div>
+            <div class="grow">
+              <span class="role"
+                >The only pill in the system, and only for a genuine filter
+                chip.</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">Motion</h2>
+          <p class="section-note">
+            Transitions only. No keyframes, no decorative loops.
+          </p>
+        </div>
+        <div class="panel">
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--motion-fast</span>
+            </div>
+            <div class="lane lane-value">
+              <span class="value-sm">120ms</span>
+            </div>
+            <div class="grow">
+              <span class="role">hover, focus, the lamp coming on</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--motion-base</span>
+            </div>
+            <div class="lane lane-value">
+              <span class="value-sm">180ms</span>
+            </div>
+            <div class="grow">
+              <span class="role">state changes a row can show</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--motion-slow</span>
+            </div>
+            <div class="lane lane-value">
+              <span class="value-sm">240ms</span>
+            </div>
+            <div class="grow">
+              <span class="role">the player bar and nothing else</span>
+            </div>
+          </div>
+        </div>
+        <p class="hint">
+          A reduced-motion preference drops all three to zero. The player bar
+          additionally drops artwork transitions, seek smoothing and hover
+          scale, while keeping the position indicator and the focus ring, which
+          carry information rather than decoration.
+        </p>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">Stacking</h2>
+          <p class="section-note">
+            Four levels and no more, so a z-index argument never happens.
+          </p>
+        </div>
+        <div class="panel">
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--z-base</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">0</span></div>
+            <div class="grow"><span class="role">everything</span></div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--z-sticky</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">10</span></div>
+            <div class="grow">
+              <span class="role">the sidebar, a sticky section heading</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--z-overlay</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">20</span></div>
+            <div class="grow">
+              <span class="role">a dialog or menu above the page</span>
+            </div>
+          </div>
+          <div class="def-row">
+            <div class="lane lane-name">
+              <span class="token-sm">--z-player</span>
+            </div>
+            <div class="lane lane-value"><span class="value-sm">30</span></div>
+            <div class="grow">
+              <span class="role"
+                >the player bar, which never sits under anything</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

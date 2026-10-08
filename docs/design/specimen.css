@@ -1,0 +1,1387 @@
+/*
+ * Chrome for the design specimens: the page frame, the label vocabulary, the
+ * fixed-width lanes, and the swatch primitives the specimens reuse.
+ *
+ * This file is presentation and is free to change. tokens.css is not.
+ *
+ * The lanes are the important part. A repeated row is only readable if the state
+ * indicator, the trailing action and the duration all sit in the same lane on every
+ * row, so those widths are defined once here rather than guessed per specimen. A gap
+ * alone does not align anything.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    var(--font-ui),
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  padding: 0 0 var(--space-9);
+}
+
+/* ------------------------------------------------------------------ layout
+ *
+ * These names are taken. Every specimen links this file and then carries its own
+ * <style>, and the two are not namespaced, so a specimen that picks one of these
+ * for something else wins on source order and says nothing. It is a silent
+ * failure that presents as a layout bug somewhere else: a prototype defined
+ * .stack as the 28px box holding its morph frames, which is this file's vertical
+ * rhythm utility, so every element using .stack in that page became 28px wide
+ * and the document rendered inside a 64px column.
+ *
+ * Specialising one of them for a component on its own page is fine, and the tree
+ * does it: track-row.html gives .lane a size and a grid because a lane there is
+ * a control, not a label column. What is not fine is taking the name for a
+ * different thing. If a specimen needs a box of its own, name it for the thing in
+ * it. A check cannot separate the two cases, because the declarations are
+ * identical, so this comment is the guard.
+ */
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-7) 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.row-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.cols {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.col {
+  flex: 1;
+  min-width: 0;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ----------------------------------------------------------------- headings */
+
+.eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+  margin: var(--space-1) 0 0;
+}
+
+.section-title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.section-note {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.prose {
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  color: var(--muted);
+  max-width: 66ch;
+  margin: 0;
+}
+
+/* Text that is announced and not drawn.
+ *
+ * A figure in a lane carries its unit nowhere on screen: the library row's count
+ * is a bare number because "N tracks" does not fit beside a cover and a name,
+ * and a screen reader reading "148" alone has been told a number and not what it
+ * counts. An aria-label on a bare span would not fix it, because a generic
+ * element with no role is not reliably given its label.
+ *
+ * The clip is the one mechanism that works without a role, and the 1px is there
+ * so the element still has a box: a zero-sized clip is a last resort that some
+ * screen readers treat as display none. */
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hint {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: var(--leading-relaxed);
+  max-width: 78ch;
+}
+
+/* ------------------------------------------------------- the label vocabulary
+ *
+ * Every specimen labels its values the same way, so a number means the same thing
+ * on every page: mono for anything that is a value, muted for the role it plays.
+ */
+
+.token {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.token-sm {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: var(--text-xs);
+  color: var(--ink);
+}
+
+.value {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.value-sm {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.role {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.ratio {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: var(--text-xs);
+  color: var(--ink);
+  opacity: 0.55;
+}
+
+/* ------------------------------------------------------------------- panels */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+
+.panel-raised {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+
+.rule {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ swatches */
+
+.swatch {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+
+.swatch-chip {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-artwork);
+}
+
+/* -------------------------------------------------------------------- lanes
+ *
+ * Fixed-width slots so repeated rows line up. They are named for what holds them,
+ * not for a pixel count, so a specimen reads as a layout decision.
+ */
+
+.lane {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.lane-name {
+  width: 132px;
+  flex-shrink: 0;
+}
+
+.lane-value {
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.lane-use {
+  flex: 1;
+  min-width: 0;
+}
+
+.lane-ratio {
+  width: 108px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* A definition row: one line of a token table, vertically centred. */
+.def-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.def-row:last-child {
+  border-bottom: 0;
+}
+
+/* --------------------------------------------------------------------- nav */
+
+.crumb {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  padding-bottom: var(--space-5);
+}
+
+.crumb a {
+  color: var(--muted);
+}
+
+.index-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  align-items: center;
+}
+
+.index-grid a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  background: var(--surface);
+}
+
+.index-grid a:hover {
+  background: var(--surface-raised);
+}
+
+/* ------------------------------------------------------------------- states */
+
+.tag {
+  display: inline-block;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tag-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-4);
+}
+
+.focus-ring {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+/* The two shapes --emphasis is allowed to take in the colour specimen. A rule
+   with a mark beside it, and a filled badge. Both are drawn here so the page is
+   arguing the point rather than describing it. */
+/* No artwork, in any component.
+ *
+ * One treatment for one null case. thumbnailPath and coverUrl are both nullable,
+ * so a track and a playlist can each arrive with nothing to show, and a user
+ * should not have to learn two different things from two different holes. The
+ * period is a local custom property rather than a fixed length so a 40px
+ * thumbnail and a 96px cover carry the same number of stripes instead of the
+ * larger one looking like a different, busier texture. */
+.no-art {
+  --hatch: 5px;
+  /* background-image, not the background shorthand. A component sets its own
+     background colour for the filled case, and a shorthand here would either
+     lose to that or win and erase it, depending on which stylesheet came last.
+     The gradient is an image and the fill is a colour; they compose. */
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface),
+    var(--surface) var(--hatch, 5px),
+    var(--surface-raised) var(--hatch, 5px),
+    var(--surface-raised) calc(var(--hatch, 5px) * 2)
+  );
+}
+
+/* The sleeve, and the reason a placeholder now carries a colour.
+ *
+ * coverUrl is nullable, and the null case used to be one anonymous hatch: a
+ * library without artwork was a wall of the same grey square. A playlist does
+ * carry an identity, so the placeholder carries one too, drawn from the six
+ * --sleeve-* tokens. The hue is derived from the playlist id by `sleeveIndex` in
+ * @playliberty/ui-foundation, and each value here names one token, so the
+ * specimen draws the same six values the client can. Only which sleeve is
+ * derived; every sleeve is a decided value at OKLCH L 0.34, C 0.055, dark enough
+ * that real artwork still leads and low-chroma enough to sit in the
+ * instrument-black world rather than reading as a second accent.
+ *
+ * The hatch is kept, now as the sleeve's sheen: --line over the identity hue, so
+ * an empty cover is still visibly a placeholder rather than a flat block of
+ * colour. It is scoped to a playlist's cover and its card square; a track's 40px
+ * thumbnail keeps the neutral .no-art treatment, because a track is not a
+ * playlist and has no identity of its own. The arc skips green (the accent's)
+ * and the amber and red the states own, so a sleeve can never be read as an
+ * action or a fault. */
+.cover[data-sleeve='1'],
+.mart[data-sleeve='1'] {
+  --sleeve: var(--sleeve-1);
+}
+.cover[data-sleeve='2'],
+.mart[data-sleeve='2'] {
+  --sleeve: var(--sleeve-2);
+}
+.cover[data-sleeve='3'],
+.mart[data-sleeve='3'] {
+  --sleeve: var(--sleeve-3);
+}
+.cover[data-sleeve='4'],
+.mart[data-sleeve='4'] {
+  --sleeve: var(--sleeve-4);
+}
+.cover[data-sleeve='5'],
+.mart[data-sleeve='5'] {
+  --sleeve: var(--sleeve-5);
+}
+.cover[data-sleeve='6'],
+.mart[data-sleeve='6'] {
+  --sleeve: var(--sleeve-6);
+}
+.cover.no-art[data-sleeve],
+.mart.no-art[data-sleeve] {
+  background-color: var(--sleeve, var(--surface-raised));
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent var(--hatch, 5px),
+    var(--line) var(--hatch, 5px),
+    var(--line) calc(var(--hatch, 5px) * 2)
+  );
+}
+
+/* Playing, on artwork.
+ *
+ * One strip, two sizes. It lives here rather than in either specimen because
+ * both the 96px cover and the 40px thumbnail use it and the phase table below is
+ * twenty rules long: duplicated into the two specimens it would be two tables
+ * that could disagree, and a phase table that disagrees with itself produces
+ * two bars moving as one, which is invisible in a screenshot.
+ *
+ * A bar is 3px wide with a 4px gap, a 7px pitch, and the count solves
+ * 7n - 4 against the content box. At 96px that is 14 bars and at 40px it is 6,
+ * each filling its box exactly. The gap is a minimum rather than the whole
+ * story: the bars also carry space-between, because browsers snap a 1px border
+ * to whole device pixels, so on a 1.25x display the cover's content box is 94.4
+ * and a fixed-gap row stops 0.4px short of the artwork's edge. The leftover is
+ * shared across the gaps at 0.03px each and the strip reaches both edges at any
+ * pixel ratio. The fill is a property of the layout, not of the arithmetic.
+ *
+ * There is no scrim, and that is a decision with a measured price rather than an
+ * omission. coverUrl and thumbnailPath are arbitrary images, so this is the one
+ * place in the system where ink lands on a surface whose contrast cannot be
+ * computed, and a scrim to an opaque --surface was the answer: it put every bar
+ * on a known surface at 5.40:1 and cost a quarter of the cover under a gradient.
+ * It was dropped, and the reason it was worth dropping is that a half-height
+ * strip and a bottom band are not the same object. A band has to be short enough
+ * not to eat the artwork, which is what forced the bars down to 16px; half the
+ * artwork is tall enough to read as an equalizer rather than as a comb, and
+ * reading as one is the entire job.
+ *
+ * So the price is stated here rather than left to be discovered. --accent on an
+ * arbitrary cover measures 5.23:1 on a dark photograph, which is fine, 3.33:1
+ * on white, which is marginal, and 1.60:1 on a mid grey, which is not. Mid-tone
+ * covers are common. A user with a mid-tone cover gets bars they can barely see.
+ * That is accepted, and it is accepted with the figure written down, because the
+ * alternative is a 16px band that reads as a texture.
+ *
+ * Nothing in the tree can catch this, and that is worth being honest about. All
+ * nine specimens draw their artwork as a flat --surface-raised box, on which the
+ * bars measure 5.40:1 and look correct. A scrim check was written for this and
+ * then withdrawn: with no gradient in the tree it could never fire, and a check
+ * that cannot fire is a claim of safety that is not there. The reserved rule is
+ * this paragraph. If a scrim ever comes back, its last colour stop has to be
+ * fully opaque and at or above the top of the strip, so no bar is ever drawn on a
+ * partly transparent pixel.
+ *
+ * The period is a literal and not a --motion-* token, which is a decision rather
+ * than an oversight. A transition duration is a value someone might retune
+ * across the system; a loop's period is part of that loop's identity the way its
+ * keyframe stops are, and no other loop shares it.
+ */
+.bars {
+  /* One proportional rule for both sizes. The strip reaches half way up the
+     artwork and the bar count solves the pitch, so a 96px cover carries 14 bars
+     47.2px tall and a 40px thumbnail carries 6 bars 19.2px tall from the same two
+     declarations. Two named pixel bands were tried and were worse: they made the
+     thumbnail a special case of the cover, and they cost 50 percent of a 40px
+     tile to a 16px band that was already a third of a 96px one. */
+  --bar-reach: 50%;
+  --period: 1400ms;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: var(--bar-reach, 50%);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  justify-content: space-between;
+}
+.bars > span {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--accent);
+  /* bottom, or a bar grows from its own middle and the strip's baseline drifts
+     as the phases move. */
+  transform-origin: bottom;
+  /* The resting scale, and the reason the reduced-motion form costs nothing to
+     state. The keyframes override this while the animation runs; the moment the
+     animation is switched off, by the media query or by anything else, this
+     declaration is what shows through. So there is one table and there is no
+     second table under prefers-reduced-motion to keep in step with this one. */
+  transform: scaleY(var(--rest, 1));
+  /* transform, never height, so a moving bar relayouts nothing and the radius
+     artifact stays confined to one property. */
+  animation: pl-equalize var(--period, 1400ms) linear infinite;
+}
+/* No alternate, deliberately. It would double the visible cycle to 2800ms, and a
+   palindromic shape shared by every bar reads as a metronome. Ending on the
+   value it started on makes the seam invisible with no extra keyframe. */
+@keyframes pl-equalize {
+  0% {
+    transform: scaleY(0.3);
+  }
+  22% {
+    transform: scaleY(1);
+  }
+  48% {
+    transform: scaleY(0.5);
+  }
+  72% {
+    transform: scaleY(0.78);
+  }
+  /* 0.3 and not 0 anywhere, because a bar at zero is a gap: the strip would
+     momentarily read as carrying fewer bars, and at 14 bars a reader counts
+     them. The floor is a third of the band, which on a 12px band is 3.6px. */
+  100% {
+    transform: scaleY(0.3);
+  }
+}
+
+/* The two phase tables.
+ *
+ * Phase i is (i * stride) mod M where M = 2n - 1, and the delay is
+ * -(phase / M) * period, rounded to 10ms. Two properties of that rule are
+ * load-bearing and both are asserted by the validator rather than trusted.
+ *
+ * gcd(stride, M) = 1 is what guarantees no two bars share a phase. The article
+ * this was built from ships its own counter-example: a -2.2s delay on a 2.2s
+ * animation, which is phase-identical to zero, so two of its three bars move as
+ * one. A hand-written table of negative delays cannot catch that, because
+ * -2200ms and 0ms look like two different numbers and are one phase.
+ *
+ * M = 2n - 1 rather than n is what stops the phases being an evenly spaced
+ * staircase. At 6 bars every coprime stride produces one, and a staircase reads
+ * as a wave sweeping across the strip rather than as six independent bars.
+ * Walking 2n - 1 slots to place n bars leaves gaps of unequal size in the time
+ * domain while every phase is still distinct.
+ *
+ * --rest is the same walk read through a five-value scale cycle, so the
+ * still form is a second view of one table rather than a second table.
+ */
+/* ------------------------------------------------- the playlist identity cover
+ *
+ * One of two consumers of this block, so it lives here rather than in either
+ * specimen, for the reason the equalizer's table below lives here: two copies
+ * that are allowed to disagree will. They were allowed to disagree, and did.
+ * The playlist header drew it 96px at --radius-card with the position and the
+ * clipping the strip's geometry needs; the library's playlist row drew it 64px
+ * at --radius-artwork with neither, under the same class name, so the difference
+ * was invisible to anything that read the file names. The row had also lost the
+ * clipping, which nothing in the tree would have reported, because the strip is
+ * not drawn on a library row.
+ *
+ * --cover and --cover-radius are parameters rather than values, and their
+ * defaults live in the var() fallbacks rather than in a declaration above, which
+ * is the mechanism check 5 sanctions for a local custom property: "that is the
+ * only exemption, and it is what lets a component declare a local custom
+ * property for a value the token set has no business carrying." A cover's size
+ * and corner treatment are exactly that. It also means a consumer that forgets
+ * to set one gets a working cover rather than a 0x0 one, and there is one place
+ * per value rather than a default that a consumer can silently disagree with.
+ *
+ * --cover-radius is a parameter because the two consumers disagree about it and
+ * the disagreement is not one to settle here. space-and-shape gives
+ * --radius-artwork to album art, "square and barely softened so a grid of covers
+ * reads as one surface", and a playlist cover is album art, which is the track
+ * row's 40px thumbnail's case and the one it already follows. The header draws
+ * its 96px cover at --radius-card, which the same record gives to cards, the
+ * player bar and the empty state. Both are defensible readings of a box that is
+ * neither a thumbnail nor a card, so both are declared and the conflict is
+ * written down in the header's record instead of being settled by a specimen.
+ */
+.cover {
+  position: relative;
+  /* Width and height from one number, because a cover that is 64 wide and 96
+     tall is a fault no screenshot would show. */
+  width: var(--cover, 96px);
+  height: var(--cover, 96px);
+  flex-shrink: 0;
+  /* For the strip, not for the artwork. .bars is absolutely positioned against
+     this box, and without clipping it the outermost bars square off the two
+     bottom corners the radius exists to round. */
+  overflow: hidden;
+  /* background-color, not the shorthand: the shorthand resets
+     background-image, which is how .no-art draws its texture. */
+  background-color: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--cover-radius, var(--radius-card));
+}
+
+/* ================================================== the playlist header, at both
+ * of its arrangements
+ *
+ * Lifted out of playlist-header.html and shared with the library, whose
+ * playlist items are this component rather than a smaller thing that resembles
+ * it. Two consumers is the reason it is here, and the same reason the cover is:
+ * two copies that are allowed to disagree will, and they did. The library's first
+ * version of an item drew its own cover, its own name line, its own count and
+ * its own share indicator under five class names of its own, and it reproduced
+ * flex: 1 on the name, which the comment on .name__text below calls the mistake
+ * that line made first. Nothing caught it, because a decision that exists only
+ * as a comment in one stylesheet cannot be inherited by a second consumer.
+ *
+ * What stays in the specimen, and why:
+ *
+ *   - .cover's two numbers, which are this arrangement's size and corner, and
+ *     the hatch on .no-art. A consumer sets those; everything else is here.
+ *   - The morph's block, which scripts/splice-morph-block.mjs writes into every
+ *     file declaring data-morph=, so it cannot live in a stylesheet only one of
+ *     them links. It is emitted text, and the splicer is what keeps the copies
+ *     identical. Its host rule below already listed four hosts including .mhdr
+ *     and .row, which is the same argument made before anybody needed it twice.
+ *   - The phone frame, the fold, the case labels and the track list, which are
+ *     that file's specimen rather than this component.
+ *
+ * The two arrangements are the row at 1056 and the card at 390, and the card's
+ * own rules are at the end of this block rather than in a second one, because a
+ * card is this component at a width and not a different component.
+ */
+.hdr {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-5) 0;
+}
+.hdr + .hdr {
+  border-top: 1px solid var(--line);
+}
+
+/* Scoped to .hdr, and that is a fix rather than a style.
+ *
+ * This was a bare `.body`, and two other things in the tree are called body:
+ * the track row's own `.body`, inside its own `.row`, in track-row.html and
+ * again in add-playlist-dialog.html. specimen.css is linked above both, neither
+ * of them sets `display`, and so the header's rule won on the two declarations
+ * they never mentioned. The row drew its title and its sub line inside a
+ * 96px min-height flex column instead of a 40px one, so **every track row in
+ * the tree measured 120.8px rather than 65px**, and the 65px that the sync
+ * summary, the empty state and the playlist detail all quote was a number no
+ * specimen produced. It is exactly the failure the layout comment at the top of
+ * this file names, and it survived because "body" is a plausible name for a
+ * row's text column and a plausible name for a header's, so nothing reading
+ * either file could see the other.
+ *
+ * Every legitimate consumer of this rule is a direct child of .hdr: the header
+ * specimen and [the library](design-system/screens/library.md), whose items are
+ * this component. Every illegitimate one is a child of .row. So the child
+ * combinator separates them on a fact about the markup rather than on a guess
+ * about which file came first, and the row keeps the 40px its own record
+ * describes. */
+.hdr > .body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Centres the text against the cover rather than hanging it from the
+           top, so a two-line block and a three-line block both read as centred
+           on the artwork. */
+  justify-content: center;
+  min-height: 96px;
+  flex: 1;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--ink);
+}
+.name__text {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+}
+
+.share__tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  translate: -50% 0;
+  z-index: var(--z-overlay);
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-2);
+  /* background-color, not the shorthand, for the reason .cover gives. */
+  background-color: var(--surface-raised);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-card);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--ink);
+}
+.share:hover .share__tip {
+  display: block;
+}
+.share[data-hover] .share__tip {
+  display: block;
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  min-width: 0;
+}
+.sep {
+  color: var(--control-disabled-fg);
+}
+.count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-weight: var(--weight-medium);
+  /* Tabular figures so the line does not shift as the count climbs during
+           a sync. The type decision already established that this family has
+           them by default, so nothing has to be asked of the font. */
+  font-variant-numeric: tabular-nums;
+}
+.count .unit {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  color: var(--muted);
+}
+
+/* The owner of a playlist that is not the account's. Its own row under .meta,
+ * rather than a third fact on the meta line, which at 390 already drops the
+ * time; the body's own gap spaces it. Scoped to a header for the reason .state
+ * below is: `.owner` is a generic word and the track row must not inherit it. */
+.hdr > .body .owner,
+.mhdr > .body .owner {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--muted);
+}
+
+/* The header's sync state, and scoped for the same reason and by the same
+ * argument as .hdr > .body above.
+ *
+ * The dot in ::before is this block's own: a header's sync state is a mark and a
+ * word, and the mark is the seven pixels that survive when the colour cannot be
+ * seen. The track row has a `.state` too and means something else by it: a
+ * single coloured word, no mark, and where it wants a separator between the
+ * source and the state it draws its own three-pixel `.dot` span, which is muted
+ * and at --opacity-disabled rather than the state's own colour. So this rule was
+ * landing on it, and every state word in every track row was carrying a
+ * seven-pixel dot in its own tone in front of a word that asked for none.
+ *
+ * Measured on the track row's own specimen, all eight of its state words: each
+ * one was 7px wider than the word plus the 8px gap that mark implied, so
+ * "Downloading" was 86.85px and is 71.85px, "Failed" was 48.31px and is 33.31px.
+ * The row's own `.dot` is 3px and is unaffected, because it is a span and not a
+ * state.
+ *
+ * Every legitimate consumer of this rule is inside a header: nineteen in the
+ * header's own specimen, all nineteen inside .hdr or .mhdr, and every one of the
+ * nineteen in the library's too. Every one of the track row's eight is inside
+ * neither. The descendant combinator separates them on the markup rather than on
+ * which file was loaded first, and all nineteen keep the dot to the digit. */
+.hdr .state,
+.mhdr .state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+.hdr .state::before,
+.mhdr .state::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: var(--radius-chip);
+  background: currentColor;
+}
+.hdr .state.idle,
+.mhdr .state.idle {
+  color: var(--muted);
+}
+.hdr .state.syncing,
+.mhdr .state.syncing {
+  color: var(--tone-downloading);
+}
+.hdr .state.syncing::before,
+.mhdr .state.syncing::before {
+  animation: pl-breathe 1.4s ease-in-out infinite;
+}
+.hdr .state.error,
+.mhdr .state.error {
+  color: var(--tone-failed);
+}
+
+/* A playlist whose sync is not resting carries its tone on the cover's own edge,
+ * so a gallery can be read for the one that is syncing or broken without reading
+ * every line. The tone is read from the state element the header already draws,
+ * through :has(), rather than mirrored onto the root, so the word and the ring
+ * cannot disagree. A resting playlist keeps the neutral --line, because a tone is
+ * spent only on a fact that changed. */
+.hdr:has(.state.syncing) .cover,
+.mhdr:has(.state.syncing) .mart {
+  border-color: var(--emphasis);
+}
+.hdr:has(.state.error) .cover,
+.mhdr:has(.state.error) .mart {
+  border-color: var(--tone-failed);
+}
+@keyframes pl-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.play {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-chip);
+  background: var(--accent);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  /* The same user-agent padding the track row's lane had. It happens not to
+           show here, because a 28px glyph still fits the 34.4px content box a
+           48px control leaves, so the glyph lands in the same place either way.
+           That is luck rather than correctness, and it is why it is declared: put
+           this control on a smaller box, or the primary on a larger glyph, and the
+           same fault appears with nothing to say why. */
+  padding: 0;
+}
+.transport {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.hdr:not([data-state='playing']) .transport {
+  display: none;
+}
+.step {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  /* padding: 0 for the reason .lane and .play both carry it: the
+           user-agent default of 6px a side leaves a 20px content box inside a
+           32px control and a 16px icon then overflows it, which centres the icon
+           off the control's centre. */
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.step::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+.step:hover {
+  color: var(--ink);
+}
+.step:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.play:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.play:disabled {
+  background: var(--control-disabled-bg);
+  border-color: var(--control-border);
+  cursor: not-allowed;
+}
+.play:disabled .icon {
+  opacity: 0.4;
+}
+.action-row {
+  display: flex;
+  gap: var(--space-2);
+}
+.icon-btn {
+  /* 32px, a clear step down from the 48px play. Comfortable on a desktop
+           and too small for a thumb, so on mobile the touch target is
+           --control-touch and this box is drawn inside it, the same arrangement
+           the checkbox row already uses. */
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+.icon-btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface);
+}
+.icon-btn:disabled {
+  border-color: var(--control-border);
+  color: var(--control-disabled-fg);
+  background: var(--control-disabled-bg);
+  cursor: not-allowed;
+}
+
+.menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  /* Anchored to the RIGHT of the dots, so it opens leftward into the page.
+           Anchored left it extended 176px to the right of a button that already
+           sits at the right edge, which added 108px of horizontal overflow and
+           made the whole document scroll sideways at every width under about
+           1300px. An absolutely positioned overflow widens the scrollable area,
+           so this was not a menu that ran off the screen, it was a page that
+           grew. */
+  right: 0;
+  z-index: var(--z-overlay);
+  min-width: 176px;
+  padding: var(--space-2);
+  background: var(--surface-raised);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-card);
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  /* One gap covers the icon and the label. The label is a bare text node,
+           so it becomes an anonymous flex item and the gap reaches it the same
+           way it reaches the icon, which is checked rather than assumed. */
+  gap: var(--space-3);
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.menu button:hover {
+  background: var(--surface);
+}
+.menu .destructive {
+  color: var(--tone-failed);
+}
+.menu hr {
+  margin: var(--space-2) 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.play:focus-visible,
+.icon-btn:focus-visible,
+.menu button:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.mhdr {
+  background: var(--surface);
+  /* The action row's height, spelled out because CSS cannot read one
+           element's box to size another and the scrim's opaque stop has to be at
+           or above it. --space-4 top, .play's 48px box, --space-4 bottom. It is
+           a calc over the two paddings so a change to --space-4 moves the row
+           and the stop together; the 48 is a literal because it is .play's box,
+           and if that ever stops being 48 this is wrong. Nothing in the tree
+           checks it, which is the same position specimen.css takes with the
+           equalizer's missing scrim: the rule is written down and the figure
+           beside it is the evidence. */
+  --mactions: calc(var(--space-4) + 48px + var(--space-4));
+}
+
+.mhdr .mart {
+  position: relative;
+  /* background-color, not the shorthand, for the reason .cover gives: the
+           shorthand resets background-image, which is how .no-art draws. */
+  background-color: var(--surface-raised);
+  margin: 0 var(--space-4);
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.mhdr .mart.no-art {
+  --hatch: 12px;
+}
+
+.mhdr .mscrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    var(--surface-raised) 0,
+    var(--surface-raised) calc(var(--mactions, 80px) + var(--space-1)),
+    transparent calc(var(--mactions, 80px) + var(--space-1) + var(--space-6))
+  );
+}
+
+.mhdr .munder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.mhdr .icon-btn {
+  position: relative;
+}
+.mhdr .icon-btn::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.mhdr .menu {
+  top: auto;
+  bottom: calc(100% + var(--space-2));
+}
+
+.mhdr .macts {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.mhdr .macts .action-row {
+  margin-left: auto;
+  /* --space-3, not the --space-2 the row arrangement uses, and this is the
+           one place the two arrangements differ on a value rather than a layout.
+           Each quiet control draws 32 and is hit at 44, so its target grows 6 a
+           side; at an 8px gap two targets meet in 8px of space and contest 4 of
+           it, which is the fault the .transport comment above already names.
+           On a pointer the 8px is fine and the 4px is unreachable. On a thumb it
+           is the whole question. */
+  gap: var(--space-3);
+}
+.mhdr:not([data-state='playing']) .transport {
+  display: none;
+}
+
+.cover > .bars {
+  /* The rule's two parameters, declared here so the twenty rules below are
+     derived rather than typed. Check 2l re-derives every delay and every
+     resting scale from these, from the period, and from the bar count in the
+     markup, and fails if any of the twenty disagrees. */
+  --phase-slots: 27;
+  --phase-stride: 4;
+}
+.cover > .bars > :nth-child(1) {
+  --rest: 0.35;
+  animation-delay: 0ms;
+}
+.cover > .bars > :nth-child(2) {
+  --rest: 0.42;
+  animation-delay: -210ms;
+}
+.cover > .bars > :nth-child(3) {
+  --rest: 0.8;
+  animation-delay: -410ms;
+}
+.cover > .bars > :nth-child(4) {
+  --rest: 0.55;
+  animation-delay: -620ms;
+}
+.cover > .bars > :nth-child(5) {
+  --rest: 1;
+  animation-delay: -830ms;
+}
+.cover > .bars > :nth-child(6) {
+  --rest: 0.35;
+  animation-delay: -1040ms;
+}
+.cover > .bars > :nth-child(7) {
+  --rest: 0.42;
+  animation-delay: -1240ms;
+}
+.cover > .bars > :nth-child(8) {
+  --rest: 1;
+  animation-delay: -50ms;
+}
+.cover > .bars > :nth-child(9) {
+  --rest: 0.35;
+  animation-delay: -260ms;
+}
+.cover > .bars > :nth-child(10) {
+  --rest: 0.42;
+  animation-delay: -470ms;
+}
+.cover > .bars > :nth-child(11) {
+  --rest: 0.8;
+  animation-delay: -670ms;
+}
+.cover > .bars > :nth-child(12) {
+  --rest: 0.55;
+  animation-delay: -880ms;
+}
+.cover > .bars > :nth-child(13) {
+  --rest: 1;
+  animation-delay: -1090ms;
+}
+.cover > .bars > :nth-child(14) {
+  --rest: 0.35;
+  animation-delay: -1300ms;
+}
+
+.art > .bars {
+  --phase-slots: 11;
+  --phase-stride: 3;
+}
+.art > .bars > :nth-child(1) {
+  --rest: 0.35;
+  animation-delay: 0ms;
+}
+.art > .bars > :nth-child(2) {
+  --rest: 0.8;
+  animation-delay: -380ms;
+}
+.art > .bars > :nth-child(3) {
+  --rest: 1;
+  animation-delay: -760ms;
+}
+.art > .bars > :nth-child(4) {
+  --rest: 0.42;
+  animation-delay: -1150ms;
+}
+.art > .bars > :nth-child(5) {
+  --rest: 1;
+  animation-delay: -130ms;
+}
+.art > .bars > :nth-child(6) {
+  --rest: 0.42;
+  animation-delay: -510ms;
+}
+
+.emphasis-rule {
+  display: block;
+  width: 100%;
+  height: var(--focus-width);
+  background: var(--emphasis);
+}
+
+.emphasis-badge {
+  display: inline-grid;
+  place-items: center;
+  /* A badge hugs its number. Stretched to the width of its column it reads as a
+     progress bar, which is the opposite of what it is. */
+  align-self: flex-start;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-chip);
+  background: var(--emphasis);
+  color: var(--bg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------- icons
+ *
+ * The geometry in a specimen is transcribed from @tabler/icons, pinned to one
+ * release, because the specimens are static files with no build step and cannot
+ * import a package. The clients do not use these transcriptions: they import
+ * @tabler/icons-react and @tabler/icons-react-native, which carry the same
+ * artwork from the same pinned release. See docs/DESIGN.md (Icons come from Tabler, pinned to one version).
+ *
+ * Everything an icon is not is set here once, so a specimen writes a class and
+ * a path and nothing else. In particular the colour is currentColor, which is
+ * what makes an icon take the colour of the text or control it sits inside and
+ * never carry one of its own, and it is why an icon inside a disabled control
+ * or on an accent button needs no rule of its own.
+ */
+.icon {
+  display: block;
+  flex-shrink: 0;
+  color: inherit;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The one filled glyph in the system. A filled play triangle carries meaning an
+   outlined one does not: at this size a stroked triangle reads as a chevron,
+   which is the next-track affordance. Nothing else is filled, and an outline
+   keeps a row of secondary actions from reading as a row of badges. */
+.icon--filled {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* Size comes from the scale and nowhere else. A width and a height rather than
+   one, because a square set on a square grid scaled on one axis only is how a
+   22 by 17 shuffle happened in the first place. */
+.icon--sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+.icon--md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+.icon--lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+/* Optical centring. Most glyphs are centred on their own 24 unit box, and four
+   are not. Tabler centres the filled play triangle on its optical bounds rather
+   than on its box, which is right for a glyph standing alone and wrong for one
+   in a round button: it sits 1.5 of 24 units right of centre, which is 1.75px at
+   --icon-lg and reads as a triangle pushed to the right of the circle. The
+   hand-drawn triangle it replaced carried a margin for exactly this.
+
+   The class goes on the <use> and never on the <svg> around it. The two are not
+   interchangeable: the glyph is chosen by the href, so play and pause carry the
+   same wrapper markup and differ only in the reference, and a correction on the
+   wrapper lands on both. That happened, and the pause bars ended up 1.82px left
+   of the middle of their button while the triangle was correctly centred.
+
+   A percentage resolves against the element's own box, so one value holds at
+   every step of the size scale. This is a position and not a size, so it does
+   not contradict the design record: the glyph is drawn at the token size like every other
+   and both clients still agree on one number per step. */
+.icon--optical {
+  translate: var(--icon-optical-x, 0) var(--icon-optical-y, 0);
+}
+
+/* The correction each glyph that needs one gets, in units of the 24 unit grid,
+   so the numbers are the ones the specimen measures and prints. The glyph that
+   is off by half a unit and is deliberately not corrected is the checkbox tick,
+   which is 0.33px out inside an 18px box. */
+use[href='#i-play-filled'],
+use[href='#i-player-play-filled'] {
+  --icon-optical-x: -6.25%;
+}
+use[href='#i-player-track-next'] {
+  --icon-optical-x: -2.08%;
+}
+use[href='#i-alert-triangle'] {
+  --icon-optical-y: 2.88%;
+}
+use[href='#i-cloud-download'] {
+  --icon-optical-x: -1.29%;
+  --icon-optical-y: -6%;
+}
+/* The share family, and this table earns a second reason to exist. The three
+   states are one indicator showing three facts, so an indicator that moves when
+   the fact changes is reporting the wrong thing. Measured on the pinned outlines
+   their ink centres sit 0, 1 and 1.5 units right of the middle of their own
+   boxes, which at --icon-md is 0, 0.83 and 1.25px: a header whose playlist is
+   shared would put the glyph a pixel to the right of where the same header put
+   it when the playlist was private. In a column that reads as a ragged edge
+   rather than as a changed fact. The two that sit off are pulled back onto the
+   middle, and lock has no rule here because it is already on it.
+ *
+ * A value in this table is not optional and the gate cannot tell that it is
+ * missing. It holds the table in validate-design-tokens.cjs and it checks that
+ * every <use> for a glyph with an entry carries icon--optical, so a missing rule
+ * here is invisible to it: the class is present, the fallback in .icon--optical
+   resolves to 0, and the correction does nothing while every check passes. That
+   is exactly how these two shipped doing nothing at first, and the only thing
+   that caught it was reading the computed translate instead of trusting the
+   class. */
+use[href='#i-lock-share'] {
+  --icon-optical-x: -4.17%;
+  --icon-optical-y: -2.08%;
+}
+use[href='#i-user-share'] {
+  --icon-optical-x: -6.25%;
+  --icon-optical-y: -2.08%;
+}
+
+/* ------------------------------------------------------- reduced motion
+ *
+ * The specimens honour this the same way the product will, so a transition shown
+ * here is a transition that can be turned off.
+ */
+
+/* An index entry for something that is planned but not drawn. It was a class
+   with a "not drawn yet" suffix, and it is now a class with no rule.
+
+   The two entries it served were the two screen specimens. Which screens the
+   product needs is settled in ticket 13 before any of them is built, and the
+   index now says so in a sentence rather than listing two names it cannot
+   justify. A vocabulary that only had one user is not a vocabulary, so the
+   class is gone rather than left in the shared stylesheet waiting for a
+   second entry that may never come.
+
+   The reason it existed is still worth keeping, for the next thing that needs
+   to be listed as absent: it was not a link, because a link to nothing is a
+   404, and a reader should learn the state of the work by reading rather than
+   by clicking and failing. A future index-todo is a paragraph in the index,
+   not a class here. */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

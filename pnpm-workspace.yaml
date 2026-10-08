@@ -1,6 +1,15 @@
 packages:
   - apps/*
   - packages/*
+  - e2e
+verifyDepsBeforeRun: false
+allowBuilds:
+  '@parcel/watcher': false
+  better-sqlite3: true
+  esbuild: true
+  msw: false
 minimumReleaseAgeExclude:
   - '@types/node@26.6.2'
   - eslint@10.11.0
+  - '@tanstack/react-router@1.170.41'
+  - '@tanstack/router-core@1.171.34'

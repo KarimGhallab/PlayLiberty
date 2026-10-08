@@ -1,0 +1,10 @@
+{
+  "workspaces": {
+    "apps/server": {
+      "ignoreDependencies": ["pino-pretty"]
+    },
+    "packages/tokens": {
+      "entry": ["src/emitTokens.ts"]
+    }
+  }
+}

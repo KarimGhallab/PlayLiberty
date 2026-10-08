@@ -1,0 +1,6 @@
+[Unit]
+Description=PlayLiberty web/server
+
+[Kube]
+Yaml=playliberty-web.yaml
+Network=pangolin_frontend.network
