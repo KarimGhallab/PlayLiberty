@@ -15,12 +15,14 @@ const optionalUrl = z.preprocess(
 const EnvSchema = z.object({
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
+  HOST: z.string().min(1).default('0.0.0.0'),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   MEDIA_ROOT: z.string().min(1),
   DATABASE_PATH: z.string().min(1),
   PUBLIC_ORIGIN: optionalUrl,
+  EDGE_ASSERTION: optionalString,
   ADMIN_PANGOLIN_USER_IDS: z.string().default(''),
   PRUNE_CRON: z.string().default('0 4 * * 0'),
   DOWNLOAD_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
@@ -57,14 +59,28 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   const value = parsed.data;
+  const edgeAssertion = value.EDGE_ASSERTION ?? null;
+
+  /*
+   * A production origin is reachable by the edge and may be reachable directly,
+   * so without the assertion it would believe whatever `Remote-*` a direct caller
+   * sent. Running open is a boot failure rather than a silent choice.
+   */
+  if (value.NODE_ENV === 'production' && edgeAssertion === null) {
+    throw new Error(
+      'Invalid environment configuration: EDGE_ASSERTION is required in production so the origin can tell the edge apart from a direct caller.'
+    );
+  }
 
   return {
     nodeEnv: value.NODE_ENV,
     port: value.PORT,
+    host: value.HOST,
     logLevel: value.LOG_LEVEL,
     mediaRoot: value.MEDIA_ROOT,
     databasePath: value.DATABASE_PATH,
     publicOrigin: value.PUBLIC_ORIGIN ?? null,
+    edgeAssertion,
     adminPangolinUserIds: value.ADMIN_PANGOLIN_USER_IDS.split(',')
       .map(entry => entry.trim())
       .filter(entry => entry.length > 0),

@@ -11,6 +11,7 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/i18n/package.json packages/i18n/package.json
 COPY packages/tokens/package.json packages/tokens/package.json
 COPY packages/ui-foundation/package.json packages/ui-foundation/package.json
 COPY packages/utils/package.json packages/utils/package.json
@@ -19,16 +20,24 @@ COPY packages/youtube/package.json packages/youtube/package.json
 # modules (and their toolchain) never enter this image.
 RUN pnpm install --frozen-lockfile --filter "@playliberty/web..."
 
-# The web build needs the token stylesheet, the shared UI decisions and the
-# contracts, and each in its dependency order.
+# The web build needs the contracts, the localization, the token stylesheet and
+# the shared UI decisions, and each in its dependency order.
 COPY . .
 RUN pnpm --filter @playliberty/contracts run build \
+ && pnpm --filter @playliberty/i18n run build \
  && pnpm --filter @playliberty/tokens run build \
  && pnpm --filter @playliberty/ui-foundation run build \
  && pnpm --filter @playliberty/web run build
 
 FROM docker.io/nginxinc/nginx-unprivileged:1.31-alpine AS runtime
-COPY apps/web/deploy/nginx.conf /etc/nginx/conf.d/default.conf
+# The origin config is a template; the entrypoint substitutes EDGE_ASSERTION into
+# it at container start. An empty default keeps the image runnable on its own; a
+# real deployment supplies the same secret the server carries.
+ENV EDGE_ASSERTION=
+# Where nginx proxies the API. The dev stack's separate Compose service by
+# default; the production pod overrides it to the pod-local server.
+ENV WEB_UPSTREAM=server:8080
+COPY apps/web/deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 
 # The unprivileged image already runs as a non-root user on 8080.

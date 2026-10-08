@@ -1,15 +1,23 @@
-# Production pod for the PlayLiberty server. It never publishes a host port; it
-# attaches to the shared pangolin_frontend network through the .kube unit. The
-# API is served through the edge, and nginx (task 05) fronts the web client on
-# the same network.
+# The production origin for PlayLiberty. One pod, two containers in a shared
+# network namespace. nginx is the front: it is the only listener the edge can
+# reach, and it injects the edge assertion the server requires. The server is the
+# backend: it binds the pod-local loopback on a port of its own, so it is
+# reachable only from inside the pod, and only through nginx. The pod joins the
+# shared pangolin_frontend network through the .kube unit and never publishes a
+# host port.
+#
+# The nginx config is a template the entrypoint renders at container start into
+# /etc/nginx/conf.d, which is why that path is an emptyDir under the read-only
+# root filesystem.
 apiVersion: v1
 kind: Pod
 metadata:
-  name: playliberty-server
+  name: playliberty-web
 spec:
   containers:
-    - name: server
-      image: localhost/playliberty-server:latest
+    # The front.
+    - name: web
+      image: localhost/playliberty-web:latest
       imagePullPolicy: Never
       securityContext:
         runAsNonRoot: true
@@ -21,10 +29,57 @@ spec:
       ports:
         - containerPort: 8080
       env:
+        - name: EDGE_ASSERTION
+          valueFrom:
+            secretKeyRef:
+              name: playliberty_edge_assertion
+              key: EDGE_ASSERTION
+        # The pod-local server, whose port is distinct from nginx's 8080.
+        - name: WEB_UPSTREAM
+          value: 127.0.0.1:8081
+      volumeMounts:
+        - name: nginx-conf
+          mountPath: /etc/nginx/conf.d
+        - name: nginx-cache
+          mountPath: /var/cache/nginx
+        - name: tmp
+          mountPath: /tmp
+      livenessProbe:
+        exec:
+          command:
+            - wget
+            - -q
+            - -O
+            - /dev/null
+            - http://127.0.0.1:8080/
+        initialDelaySeconds: 5
+        periodSeconds: 30
+      resources:
+        requests:
+          memory: 32Mi
+          cpu: 10m
+        limits:
+          memory: 128Mi
+          cpu: '0.5'
+    # The backend.
+    - name: server
+      image: localhost/playliberty-server:latest
+      imagePullPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      env:
         - name: NODE_ENV
           value: production
+        # Bind the pod-local loopback, so the edge network reaches nginx only.
+        - name: HOST
+          value: 127.0.0.1
         - name: PORT
-          value: '8080'
+          value: '8081'
         - name: LOG_LEVEL
           value: info
         - name: MEDIA_ROOT
@@ -42,6 +97,11 @@ spec:
             secretKeyRef:
               name: playliberty-secrets
               key: pangolin-integration-api-key
+        - name: EDGE_ASSERTION
+          valueFrom:
+            secretKeyRef:
+              name: playliberty_edge_assertion
+              key: EDGE_ASSERTION
       volumeMounts:
         - name: media
           mountPath: /media
@@ -50,13 +110,12 @@ spec:
         - name: tmp
           mountPath: /tmp
       livenessProbe:
+        # No wget in the server image; node is the one probe runner it always has.
         exec:
           command:
-            - wget
-            - -q
-            - -O
-            - /dev/null
-            - http://127.0.0.1:8080/healthz
+            - node
+            - -e
+            - "fetch('http://127.0.0.1:8081/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
         initialDelaySeconds: 15
         periodSeconds: 30
       resources:
@@ -78,3 +137,9 @@ spec:
     - name: tmp
       emptyDir:
         sizeLimit: 64Mi
+    - name: nginx-conf
+      emptyDir:
+        sizeLimit: 8Mi
+    - name: nginx-cache
+      emptyDir:
+        sizeLimit: 32Mi

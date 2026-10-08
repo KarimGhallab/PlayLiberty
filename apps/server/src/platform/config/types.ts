@@ -19,10 +19,18 @@ export interface PangolinConfig {
 export interface Config {
   nodeEnv: string;
   port: number;
+  host: string;
   logLevel: string;
   mediaRoot: string;
   databasePath: string;
   publicOrigin: string | null;
+  /*
+   * The secret the edge injects on every request it proxies. The origin requires
+   * it so a request that reaches the port directly cannot pretend to be the edge
+   * and forge the identity headers. Required in production; null in a local or
+   * test run, where the origin is reached without an edge and the check is off.
+   */
+  edgeAssertion: string | null;
   adminPangolinUserIds: string[];
   pruneCron: string;
   ytdlpBinary: string;

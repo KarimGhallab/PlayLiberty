@@ -79,4 +79,60 @@ describe('the identity hook', () => {
 
     expect(response.statusCode).toBe(200);
   });
+
+  it('refuses a forged identity header that carries no edge assertion', async () => {
+    context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+    const response = await context.app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { 'remote-user': 'attacker-pangolin-user' }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ code: 'unauthenticated' });
+  });
+
+  it('refuses a wrong edge assertion', async () => {
+    context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+    const response = await context.app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: {
+        'remote-user': 'pangolin-user-1',
+        'x-playliberty-edge': 'not-the-secret'
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('accepts a request that carries the edge assertion', async () => {
+    context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+    const response = await context.app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: {
+        'remote-user': 'pangolin-user-1',
+        'remote-name': 'Ada',
+        'x-playliberty-edge': 'the-edge-secret'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ displayName: 'Ada' });
+  });
+
+  it('still exempts the health endpoints when an assertion is configured', async () => {
+    context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+    const response = await context.app.inject({
+      method: 'GET',
+      url: '/healthz'
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
 });

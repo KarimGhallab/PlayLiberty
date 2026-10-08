@@ -7,6 +7,9 @@ services:
     environment:
       LOG_LEVEL: debug
       ADMIN_PANGOLIN_USER_IDS: ${ADMIN_PANGOLIN_USER_IDS:-}
+      # The server image runs NODE_ENV=production, so the assertion is required.
+      # The web service below sends the same value. Development only.
+      EDGE_ASSERTION: dev-edge
     # Development only: a published loopback port. Production publishes none.
     ports:
       - '127.0.0.1:8080:8080'
@@ -41,6 +44,10 @@ services:
     image: localhost/playliberty-web:dev
     depends_on:
       - server
+    environment:
+      # The same value the server carries, injected by nginx as the edge
+      # assertion. Development only.
+      EDGE_ASSERTION: dev-edge
     # Development only: a published loopback port. Production publishes none.
     ports:
       - '127.0.0.1:3000:8080'
@@ -59,6 +66,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=32m
+      # The nginx entrypoint renders the templated config here at container start,
+      # so it has to be writable under the read-only root filesystem.
+      - /etc/nginx/conf.d:size=8m
       - /var/cache/nginx:size=32m
     cap_drop:
       - ALL

@@ -1,6 +1,6 @@
 [Unit]
-Description=PlayLiberty server origin
+Description=PlayLiberty web/server
 
 [Kube]
-Yaml=playliberty-server.yaml
+Yaml=playliberty-web.yaml
 Network=pangolin_frontend.network

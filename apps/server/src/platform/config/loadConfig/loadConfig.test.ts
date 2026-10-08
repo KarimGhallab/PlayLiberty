@@ -10,12 +10,14 @@ describe('loadConfig', () => {
     });
 
     expect(config.port).toBe(8080);
+    expect(config.host).toBe('0.0.0.0');
     expect(config.logLevel).toBe('info');
     expect(config.download.concurrency).toBe(2);
     expect(config.download.limitRate).toBe('5M');
     expect(config.adminPangolinUserIds).toEqual([]);
     expect(config.publicOrigin).toBeNull();
     expect(config.pangolin.integrationApiKey).toBeNull();
+    expect(config.edgeAssertion).toBeNull();
   });
 
   it('parses overrides and the admin list', () => {
@@ -46,5 +48,33 @@ describe('loadConfig', () => {
 
   it('fails when a required variable is missing', () => {
     expect(() => loadConfig({})).toThrow(/Invalid environment configuration/);
+  });
+
+  it('requires the edge assertion in production', () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        MEDIA_ROOT: '/media',
+        DATABASE_PATH: '/db.sqlite'
+      })
+    ).toThrow(/EDGE_ASSERTION/);
+
+    const config = loadConfig({
+      NODE_ENV: 'production',
+      EDGE_ASSERTION: 'the-edge-secret',
+      MEDIA_ROOT: '/media',
+      DATABASE_PATH: '/db.sqlite'
+    });
+
+    expect(config.edgeAssertion).toBe('the-edge-secret');
+  });
+
+  it('leaves the edge assertion unset outside production', () => {
+    const config = loadConfig({
+      MEDIA_ROOT: '/media',
+      DATABASE_PATH: '/db.sqlite'
+    });
+
+    expect(config.edgeAssertion).toBeNull();
   });
 });

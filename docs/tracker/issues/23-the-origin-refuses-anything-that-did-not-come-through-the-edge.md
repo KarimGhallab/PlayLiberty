@@ -1,6 +1,6 @@
 # 23: The origin refuses anything that did not come through the edge
 
-**State:** `ready-for-agent`
+**State:** `resolved`
 **Category:** `bug`
 **Blocked by:** None. Can start immediately.
 
@@ -25,18 +25,31 @@ The origin believes the edge and nothing else. nginx injects a secret assertion 
 
 **Acceptance criteria:**
 
-- [ ] A request that forges `Remote-User` but carries no edge assertion is refused with 401.
-- [ ] A request from the edge, assertion present, behaves exactly as before.
-- [ ] The built server in production fails fast when the assertion secret is unset.
-- [ ] nginx injects the assertion on `/api/`, `/healthz`, and the live stream location.
-- [ ] Both the forged and the valid case have a test.
-- [ ] ADR 0003 (or a new ADR) records the edge assertion.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
+- [x] A request that forges `Remote-User` but carries no edge assertion is refused with 401.
+- [x] A request from the edge, assertion present, behaves exactly as before.
+- [x] The built server in production fails fast when the assertion secret is unset.
+- [x] nginx injects the assertion on `/api/`, `/healthz`, and the live stream location.
+- [x] Both the forged and the valid case have a test.
+- [x] ADR 0003 (or a new ADR) records the edge assertion.
+- [x] `pnpm run build`, `pnpm run lint` and the unit suites pass.
 
 **Out of scope:**
 
 - Moving the server onto a private network and attaching only the front to `pangolin_frontend`. That is the deployment guideline's second layer and needs the web production pod, which does not exist yet; record it as the follow-up.
 - Pangolin's own stripping of client `Remote-*` copies, which is unchanged.
+
+## Outcome
+
+Done. The origin now requires the edge's assertion before it believes `Remote-User`.
+
+- A new `EDGE_ASSERTION` config value. `loadConfig` throws in production when it is unset, so an open origin is a boot failure.
+- The identity hook compares the `X-PlayLiberty-Edge` header against the secret in constant time and refuses a request without it (401), after the health-path exemption.
+- The nginx config became a template the entrypoint renders at container start, injecting the assertion from the environment; the unprivileged image's `envsubst` is the seam. This also required a writable `/etc/nginx/conf.d`, addressed by issue 31's pod and the dev compose tmpfs.
+- The secret is a podman secret in production (`playliberty_edge_assertion`, key `EDGE_ASSERTION`) and a plain value in the dev `compose.yaml`.
+- ADR 0003 gained an update recording the assertion.
+- Tests cover the forged request, a wrong assertion, the accepted request, and the health exemption.
+
+Verification: server suite 281 pass; `pnpm run build` and `pnpm run lint` clean. The topology half (only the front reachable on the edge network) is issue 31.
 
 ## Evidence
 

@@ -61,7 +61,7 @@ async function main(): Promise<void> {
     void shutdown('SIGINT');
   });
 
-  await app.listen({ port: config.port, host: '0.0.0.0' });
+  await app.listen({ port: config.port, host: config.host });
   app.log.info({ port: config.port }, 'server listening');
 }
 
