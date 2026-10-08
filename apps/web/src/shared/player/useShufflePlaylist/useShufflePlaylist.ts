@@ -8,8 +8,8 @@ import {
   fetchPlaylistTracks,
   playlistTracksKey
 } from '../../api/queries/queries';
+import { startPlaylistQueue } from '../playerQueue/playerQueue';
 import { usePlayerStore } from '../playerStore/playerStore';
-import { toPlayerTracks } from '../playerTracks/playerTracks';
 
 /*
  * The shuffle control's action, in one place because two surfaces draw the same
@@ -75,17 +75,11 @@ export function useShufflePlaylist(): ShuffleControl {
           return;
         }
 
-        const playerTracks = toPlayerTracks(tracks, playlist.id, playlist.name);
-        const first = playerTracks[0];
+        const started = startPlaylistQueue(playlist, tracks, null, true);
 
-        if (first === undefined) {
+        if (!started) {
           setRefusal({ name: playlist.name, reason: 'empty' });
-          return;
         }
-
-        usePlayerStore
-          .getState()
-          .startQueue(playlist.id, playerTracks, first.id, true);
       })();
     },
     [queryClient]

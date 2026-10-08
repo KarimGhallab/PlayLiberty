@@ -39,8 +39,9 @@ import {
   UNDO_WINDOW_MS,
   useDeferredAction
 } from '../../../shared/components/useDeferredAction/useDeferredAction';
+import { startPlaylistQueue } from '../../../shared/player/playerQueue/playerQueue';
+import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
-import { toPlayerTracks } from '../../../shared/player/playerTracks/playerTracks';
 import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
 import { nextIndex } from '../../../shared/player/types';
 import {
@@ -79,7 +80,7 @@ import styles from './PlaylistDetailPage.module.scss';
  * The list is drawn in the playlist's own order and every association appears,
  * playable or not, because a track that silently vanished from the list would
  * make "why is this track missing" unanswerable. The play control's presence is
- * the server's own file status, which is the same fact `toPlayerTracks` filters
+ * the server's own file status, which is the same fact `buildQueue` filters
  * on, so the list and the queue agree by construction.
  */
 export default function PlaylistDetailPage() {
@@ -118,7 +119,6 @@ export default function PlaylistDetailPage() {
    * rather than branching in CSS.
    */
   const isMobile = useMediaQuery(MOBILE_QUERY);
-  const startQueue = usePlayerStore(state => state.startQueue);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
@@ -130,6 +130,7 @@ export default function PlaylistDetailPage() {
   const queuePlaylistId = usePlayerStore(
     state => state.queue[0]?.playlistId ?? null
   );
+  useQueueRefetch(playlist.data, tracks.data);
   /*
    * Whether the queue holds a track after the current one, which is what decides
    * if the header's forward step has anywhere to go. Derived from the queue
@@ -176,11 +177,7 @@ export default function PlaylistDetailPage() {
         return;
       }
 
-      player.startQueue(
-        playlistId,
-        toPlayerTracks(tracks.data, playlistId, playlist.data.name),
-        trackId
-      );
+      startPlaylistQueue(playlist.data, tracks.data, trackId);
     },
     [playlistId, tracks.data, playlist.data]
   );
@@ -201,18 +198,7 @@ export default function PlaylistDetailPage() {
       return;
     }
 
-    const playerTracks = toPlayerTracks(
-      tracks.data,
-      playlistId,
-      playlist.data.name
-    );
-    const first = playerTracks[0];
-
-    if (first === undefined) {
-      return;
-    }
-
-    startQueue(playlistId, playerTracks, first.id, shuffled);
+    startPlaylistQueue(playlist.data, tracks.data, null, shuffled);
   };
 
   /*
