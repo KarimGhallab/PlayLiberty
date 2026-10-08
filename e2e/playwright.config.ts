@@ -21,6 +21,11 @@ import {
  *
  * The scenario file is written by the tests and read by the server's fake adapter
  * on every call, so the stack can boot before any test has chosen a scenario.
+ *
+ * The stack is built before it runs: `pnpm run build` produces the workspace
+ * packages the Vite dev server resolves and the server `dist` this config boots.
+ * It is a prerequisite the same way it is for the unit tests, and the e2e job
+ * runs it before Playwright.
  */
 export default defineConfig({
   testDir: './tests',
@@ -42,15 +47,9 @@ export default defineConfig({
   ],
   webServer: [
     {
-      /*
-       * The data directory must exist before `better-sqlite3` opens the file, and
-       * Playwright starts `webServer` before `globalSetup`, so the directory is
-       * made here rather than there. `globalSetup` still clears the scenario and
-       * the media between runs.
-       */
       command:
         `node -e "require('node:fs').mkdirSync(require('node:path').dirname(process.env.DATABASE_PATH),{recursive:true})" && ` +
-        'pnpm --filter @playliberty/server build && node apps/server/dist/main.js',
+        'node apps/server/dist/main.js',
       cwd: ROOT_DIR,
       url: `http://127.0.0.1:${SERVER_PORT}/healthz`,
       reuseExistingServer: false,
