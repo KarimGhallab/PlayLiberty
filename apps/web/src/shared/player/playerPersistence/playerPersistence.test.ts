@@ -21,43 +21,43 @@ const track: PlayerTrack = {
 function attach(): () => void {
   return attachPlayerPersistence({
     store: usePlayerStore,
-    storage: window.localStorage,
+    storage: window.sessionStorage,
     target: window,
     document: window.document
   });
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  window.sessionStorage.clear();
   usePlayerStore.getState().clear();
 });
 
 afterEach(() => {
-  window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 describe('player persistence', () => {
   it('round-trips the persisted slice and rejects junk', () => {
-    writePlayerState(window.localStorage, {
+    writePlayerState(window.sessionStorage, {
       sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
       volume: 0.4
     });
 
-    expect(readPlayerState(window.localStorage)).toEqual({
+    expect(readPlayerState(window.sessionStorage)).toEqual({
       sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
       volume: 0.4
     });
 
-    window.localStorage.setItem(PLAYER_STORAGE_KEY, '{"sourceQueue":"nope"}');
-    expect(readPlayerState(window.localStorage)).toBeNull();
+    window.sessionStorage.setItem(PLAYER_STORAGE_KEY, '{"sourceQueue":"nope"}');
+    expect(readPlayerState(window.sessionStorage)).toBeNull();
   });
 
   it('reads a payload written before the source order existed as its own order', () => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       PLAYER_STORAGE_KEY,
       JSON.stringify({
         queue: [track],
@@ -67,7 +67,7 @@ describe('player persistence', () => {
       })
     );
 
-    expect(readPlayerState(window.localStorage)).toEqual({
+    expect(readPlayerState(window.sessionStorage)).toEqual({
       sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
@@ -76,7 +76,7 @@ describe('player persistence', () => {
   });
 
   it('keeps a payload written before the volume existed and defaults it', () => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       PLAYER_STORAGE_KEY,
       JSON.stringify({
         sourceQueue: [track],
@@ -85,7 +85,7 @@ describe('player persistence', () => {
       })
     );
 
-    expect(readPlayerState(window.localStorage)).toEqual({
+    expect(readPlayerState(window.sessionStorage)).toEqual({
       sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
@@ -94,7 +94,7 @@ describe('player persistence', () => {
   });
 
   it('hydrates once and never autoplays', () => {
-    writePlayerState(window.localStorage, {
+    writePlayerState(window.sessionStorage, {
       sourceQueue: [track],
       currentId: track.id,
       positionSeconds: 12,
@@ -119,7 +119,9 @@ describe('player persistence', () => {
       .startQueue(track.playlistId, [track], track.id, true);
     window.dispatchEvent(new Event('pagehide'));
 
-    expect(readPlayerState(window.localStorage)?.sourceQueue).toEqual([track]);
+    expect(readPlayerState(window.sessionStorage)?.sourceQueue).toEqual([
+      track
+    ]);
 
     detach();
   });
@@ -128,10 +130,12 @@ describe('player persistence', () => {
     const detach = attach();
 
     usePlayerStore.getState().startQueue(track.playlistId, [track], track.id);
-    expect(readPlayerState(window.localStorage)).toBeNull();
+    expect(readPlayerState(window.sessionStorage)).toBeNull();
 
     window.dispatchEvent(new Event('pagehide'));
-    expect(readPlayerState(window.localStorage)?.sourceQueue).toEqual([track]);
+    expect(readPlayerState(window.sessionStorage)?.sourceQueue).toEqual([
+      track
+    ]);
 
     detach();
   });

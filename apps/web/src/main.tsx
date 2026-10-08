@@ -15,7 +15,7 @@ import { router } from './router';
 
 attachPlayerPersistence({
   store: usePlayerStore,
-  storage: window.localStorage,
+  storage: window.sessionStorage,
   target: window,
   document: window.document
 });

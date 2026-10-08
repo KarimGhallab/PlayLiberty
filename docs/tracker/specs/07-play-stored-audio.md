@@ -12,16 +12,17 @@ glossary and as client state, with no state transitions and no surface.
 
 The decisions that matter here are not the transport, which is built, but the ones a player forces that the
 rest of the product has not had to answer. Playback state is per client, so somebody has to decide what
-persists and what is thrown away on a relaunch. A refetch of a playlist arrives on a timer and on focus, and it
-must not rearrange what somebody is listening to. A track can lose its file, or its share can be revoked,
-between the moment it is queued and the moment it is reached. And a player is the one feature whose failures
-are heard rather than seen, which means the behaviours nobody will test by hand are the ones that matter.
+persists across a reload and what is thrown away when the tab closes. A refetch of a playlist arrives on a
+timer and on focus, and it must not rearrange what somebody is listening to. A track can lose its file, or its
+share can be revoked, between the moment it is queued and the moment it is reached. And a player is the one
+feature whose failures are heard rather than seen, which means the behaviours nobody will test by hand are the
+ones that matter.
 
 ## Solution
 
 The web client runs one player over one queue, both held on the client and never sent to the server. The queue
 is built from one playlist at the time a track is played, holds track ids rather than stream addresses, and
-survives a relaunch. The order the queue was built with is re-applied over every refetch, so the list the
+survives a reload. The order the queue was built with is re-applied over every refetch, so the list the
 listener is playing along does not move under them. A track with no stored file cannot be played, is not
 offered where a control would be, and is skipped rather than allowed to stall the queue. What is playing is
 reflected in the browser's own media controls, from the same state.
@@ -44,8 +45,8 @@ reflected in the browser's own media controls, from the same state.
     not stop when I look at something else.
 12. As a listener, I want the browser's media controls to show the track, so that the tab behaves like a
     player.
-13. As a listener, I want the queue to survive closing and reopening the tab, so that a session is not
-    forgotten.
+13. As a listener, I want the queue to survive a reload in the tab I am listening in, so that a refresh does
+    not forget the session.
 14. As a listener, I want to come back to the same spot in a track, so that resuming is resuming.
 15. As a listener, I want a list refreshing while I listen not to change the order, so that the queue is mine.
 16. As a listener, I want a track with no audio yet to show no play control rather than a dead one, so that
@@ -72,7 +73,7 @@ reflected in the browser's own media controls, from the same state.
 ## Implementation Decisions
 
 - **The client is the web client.** This corpus is web and server only, so every clause below is the browser's
-  arrangement: one HTML audio element, `localStorage`, and the Media Session API. Mobile playback is not part
+  arrangement: one HTML audio element, `sessionStorage`, and the Media Session API. Mobile playback is not part
   of this set and nothing here is written to leave room for it beyond the shape the state already has.
 - **Playback state lives on the client and is never sent to the server.** The glossary settles this: the queue
   is per-client state, and the product settles the rest by promising that playback state is per client. No
@@ -86,11 +87,12 @@ reflected in the browser's own media controls, from the same state.
   refetch no longer returns is dropped. The playlist's own order is what the queue is built from, because no
   control reorders a queue in v1.
 - **The persisted state is the queue, its order, the index of the current track and the offset within it,** and
-  a relaunch resumes at that offset. _Decided here:_ the alternative, persisting only the queue and starting at
+  a reload resumes at that offset. _Decided here:_ the alternative, persisting only the queue and starting at
   the beginning of the current track, resumes the list and loses the place, which is the part people notice.
-- **Web persists in local storage, with throttled writes and a flush before the tab goes away.** Writes are
-  throttled and flushed on `pagehide` and on a hidden tab, so a relaunch does not lose the last few seconds.
-  The scaffold already has this store; this spec is what it is for.
+- **Web persists in session storage, with throttled writes and a flush before the tab goes away.** The queue is
+  per tab: a reload resumes it, and closing the tab discards it, so one tab's player never leaks into another.
+  Writes are throttled and flushed on `pagehide` and on a hidden tab, so a reload does not lose the last few
+  seconds. The scaffold already has this store; this spec is what it is for.
 - **The queue is one playlist at a time.** Playing any track builds the queue from that track's playlist,
   starting at that track, and replaces whatever was queued. Playing something in another playlist replaces it
   again. _Decided here:_ a queue that accumulated across playlists would have to be explained in the interface,
@@ -145,7 +147,7 @@ reflected in the browser's own media controls, from the same state.
   - pressing play on a track builds the queue from its playlist, starting at that track;
   - playing in another playlist replaces the queue rather than extending it;
   - a refetch arriving mid-playback does not change the order, the index, or the offset;
-  - the queue order survives a refetch and survives a relaunch;
+  - the queue order survives a refetch and a reload;
   - the offset within the current track is persisted and restored;
   - a track whose file status is not stored has no play control, and is not in a queue built from that
     playlist;
