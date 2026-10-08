@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 
+import { PlaylistNotFoundReason, ProblemCode } from '@playliberty/contracts';
 import { exhaust } from '@playliberty/utils';
 
 import type { AppContext } from '../../../shared/context.js';
-import { sendProblem } from '../../../shared/problem.js';
+import { sendPlaylistNotFound, sendProblem } from '../../../shared/problem.js';
 
 import { resolveLatestSyncRun } from '../syncRunService.js';
 import { SyncRunOutcome } from '../types.js';
@@ -22,13 +23,7 @@ export function registerSyncRunRoutes(
       );
 
       if (result.outcome === SyncRunOutcome.PlaylistNotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail: 'The playlist does not exist, or this account cannot see it.',
-          params: { reason: 'read' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
       }
 
       // A playlist that has never synced is not an error and this status is
@@ -39,7 +34,7 @@ export function registerSyncRunRoutes(
       if (result.outcome === SyncRunOutcome.RunAbsent) {
         return sendProblem(reply, {
           status: 404,
-          code: 'sync_run_absent',
+          code: ProblemCode.SyncRunAbsent,
           title: 'No Sync Run',
           detail: 'This playlist has never been synced.'
         });

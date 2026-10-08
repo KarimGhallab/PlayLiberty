@@ -1,5 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 
+import { ProblemCode } from '@playliberty/contracts';
+
 import { audit } from '../../../shared/audit.js';
 import { sendProblem } from '../../../shared/problem.js';
 
@@ -50,7 +52,7 @@ export function registerCsrfHook(
       auditCsrfRefusal(request, 'csrf_header_missing');
       sendProblem(reply, {
         status: 403,
-        code: 'csrf_header_missing',
+        code: ProblemCode.CsrfHeaderMissing,
         title: 'Forbidden',
         detail: 'Mutating requests must carry the X-PlayLiberty-Client header.'
       });
@@ -61,7 +63,7 @@ export function registerCsrfHook(
       auditCsrfRefusal(request, 'csrf_cross_site');
       sendProblem(reply, {
         status: 403,
-        code: 'csrf_cross_site',
+        code: ProblemCode.CsrfCrossSite,
         title: 'Forbidden',
         detail: 'Cross-site mutating requests are rejected.'
       });
@@ -75,7 +77,7 @@ export function registerCsrfHook(
         auditCsrfRefusal(request, 'csrf_origin_mismatch');
         sendProblem(reply, {
           status: 403,
-          code: 'csrf_origin_mismatch',
+          code: ProblemCode.CsrfOriginMismatch,
           title: 'Forbidden',
           detail: 'The request origin is not allowed.'
         });

@@ -1,6 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 
-import { SharePlaylistInputSchema } from '@playliberty/contracts';
+import {
+  PlaylistNotFoundReason,
+  ProblemCode,
+  SharePlaylistInputSchema
+} from '@playliberty/contracts';
 import { exhaust } from '@playliberty/utils';
 
 import { audit } from '../../../shared/audit.js';
@@ -11,6 +15,7 @@ import {
 } from '../../../shared/events/liveEvents.js';
 import {
   parseBody,
+  sendPlaylistNotFound,
   sendProblem,
   sendValidationFailed
 } from '../../../shared/problem.js';
@@ -37,14 +42,7 @@ export function registerShareRoutes(
       );
 
       if (shares === null) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, or this account cannot manage it.',
-          params: { reason: 'manage' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
       }
 
       return reply.send(shares);
@@ -69,20 +67,13 @@ export function registerShareRoutes(
       );
 
       if (result.outcome === GrantShareOutcome.PlaylistNotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, or this account cannot manage it.',
-          params: { reason: 'manage' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
       }
 
       if (result.outcome === GrantShareOutcome.TargetNotFound) {
         return sendProblem(reply, {
           status: 404,
-          code: 'account_not_found',
+          code: ProblemCode.AccountNotFound,
           title: 'Account Not Found',
           detail: 'The account this share names does not exist.'
         });
@@ -91,7 +82,7 @@ export function registerShareRoutes(
       if (result.outcome === GrantShareOutcome.SelfShare) {
         return sendProblem(reply, {
           status: 422,
-          code: 'self_share',
+          code: ProblemCode.SelfShare,
           title: 'Cannot Share With Yourself',
           detail: 'The playlist already belongs to this account.'
         });
@@ -125,14 +116,7 @@ export function registerShareRoutes(
       );
 
       if (outcome === ShareRevokeOutcome.PlaylistNotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, or this account cannot manage it.',
-          params: { reason: 'manage' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
       }
 
       /*

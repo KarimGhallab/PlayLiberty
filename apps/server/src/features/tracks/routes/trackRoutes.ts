@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
-import { AddTrackInputSchema } from '@playliberty/contracts';
+import { AddTrackInputSchema, ProblemCode } from '@playliberty/contracts';
 import { exhaust } from '@playliberty/utils';
 import { YoutubeSourceKind } from '@playliberty/youtube';
 
@@ -60,7 +60,7 @@ export function registerTrackRoutes(
     // A playlist URL is what the create-a-playlist dialog takes, and this dialog
     // takes a video; the whole request is refused so no playlist is touched.
     if (info === null || info.kind !== YoutubeSourceKind.Video) {
-      return sendUnprocessable(reply, 'The URL is not a YouTube video URL.');
+      return sendUnprocessable(reply);
     }
 
     const result = await addTrackToPlaylists(
@@ -85,7 +85,7 @@ export function registerTrackRoutes(
       if (result.outcome === TrackStreamOutcome.NotFound) {
         return sendProblem(reply, {
           status: 404,
-          code: 'track_not_found',
+          code: ProblemCode.TrackNotFound,
           title: 'Track Not Found'
         });
       }
@@ -93,7 +93,7 @@ export function registerTrackRoutes(
       if (result.outcome === TrackStreamOutcome.Forbidden) {
         return sendProblem(reply, {
           status: 403,
-          code: 'forbidden',
+          code: ProblemCode.Forbidden,
           title: 'Forbidden'
         });
       }
@@ -101,7 +101,7 @@ export function registerTrackRoutes(
       if (result.outcome === TrackStreamOutcome.NotStored) {
         return sendProblem(reply, {
           status: 409,
-          code: 'track_not_stored',
+          code: ProblemCode.TrackNotStored,
           title: 'Track Not Stored',
           detail: 'The track has no stored media to stream.'
         });
@@ -133,7 +133,7 @@ export function registerTrackRoutes(
       if (result.outcome === TrackThumbnailOutcome.NotFound) {
         return sendProblem(reply, {
           status: 404,
-          code: 'thumbnail_not_found',
+          code: ProblemCode.ThumbnailNotFound,
           title: 'Thumbnail Not Found'
         });
       }
@@ -141,7 +141,7 @@ export function registerTrackRoutes(
       if (result.outcome === TrackThumbnailOutcome.Forbidden) {
         return sendProblem(reply, {
           status: 403,
-          code: 'forbidden',
+          code: ProblemCode.Forbidden,
           title: 'Forbidden'
         });
       }
@@ -172,7 +172,7 @@ export function registerTrackRoutes(
       if (result.outcome === RetryTrackOutcome.NotFound) {
         return sendProblem(reply, {
           status: 404,
-          code: 'track_not_found',
+          code: ProblemCode.TrackNotFound,
           title: 'Track Not Found'
         });
       }
@@ -180,7 +180,7 @@ export function registerTrackRoutes(
       if (result.outcome === RetryTrackOutcome.NotRetryable) {
         return sendProblem(reply, {
           status: 409,
-          code: 'track_not_retryable',
+          code: ProblemCode.TrackNotRetryable,
           title: 'Track Not Retryable',
           detail: 'Only a failed track can be retried.'
         });
@@ -208,7 +208,7 @@ export function registerTrackRoutes(
       if (result.outcome === FetchWholeOutcome.NotFound) {
         return sendProblem(reply, {
           status: 404,
-          code: 'track_not_found',
+          code: ProblemCode.TrackNotFound,
           title: 'Track Not Found'
         });
       }
@@ -216,7 +216,7 @@ export function registerTrackRoutes(
       if (result.outcome === FetchWholeOutcome.NotEligible) {
         return sendProblem(reply, {
           status: 409,
-          code: 'track_not_fetchable',
+          code: ProblemCode.TrackNotFetchable,
           title: 'Track Not Fetchable',
           detail:
             'Only a track that is waiting to be fetched can be fetched whole.'

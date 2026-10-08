@@ -8,6 +8,7 @@ import type {
 } from 'fastify';
 import Fastify from 'fastify';
 
+import { ProblemCode } from '@playliberty/contracts';
 import type { LiveEvent } from '@playliberty/contracts';
 import { YtdlpClient } from '@playliberty/youtube';
 
@@ -160,7 +161,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
     return sendProblem(reply, {
       status,
-      code: status >= 500 ? 'internal_error' : 'request_error',
+      code:
+        status >= 500 ? ProblemCode.InternalError : ProblemCode.RequestError,
       title: status >= 500 ? 'Internal Server Error' : 'Request Error',
       detail: status >= 500 ? undefined : error.message
     });
@@ -169,7 +171,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.setNotFoundHandler((_request, reply) => {
     return sendProblem(reply, {
       status: 404,
-      code: 'not_found',
+      code: ProblemCode.NotFound,
       title: 'Not Found'
     });
   });

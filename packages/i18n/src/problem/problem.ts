@@ -1,3 +1,4 @@
+import { PlaylistNotFoundReason, ProblemCode } from '@playliberty/contracts';
 import type { Problem } from '@playliberty/contracts';
 
 import type { Translator } from '../createTranslator/createTranslator.js';
@@ -8,6 +9,10 @@ import type { Messages } from '../en.js';
  * parameters that vary its copy; the client owns the words, so a known code maps
  * to a catalog sentence and anything else falls back to the server's own English.
  * The `detail` stays every server's fallback for a code this client does not know.
+ *
+ * The code and the reason are the shared contract's members, so a rename on
+ * either end is a compile error here rather than a sentence that silently stops
+ * matching.
  */
 export function problemDetail(
   t: Translator<Messages>,
@@ -21,19 +26,19 @@ export function problemDetail(
    * One code, four scopes, and the scope is the only difference: the server names
    * the reason and the sentence comes from here.
    */
-  if (problem.code === 'playlist_not_found') {
+  if (problem.code === ProblemCode.PlaylistNotFound) {
     const reason = problem.params?.reason;
 
-    if (reason === 'read') {
+    if (reason === PlaylistNotFoundReason.Read) {
       return t('problem.playlistNotFound.read');
     }
-    if (reason === 'write') {
+    if (reason === PlaylistNotFoundReason.Write) {
       return t('problem.playlistNotFound.write');
     }
-    if (reason === 'manage') {
+    if (reason === PlaylistNotFoundReason.Manage) {
       return t('problem.playlistNotFound.manage');
     }
-    if (reason === 'track') {
+    if (reason === PlaylistNotFoundReason.Track) {
       return t('problem.playlistNotFound.track');
     }
 
@@ -44,13 +49,13 @@ export function problemDetail(
    * Each of these carries one sentence, so the code is the whole difference and
    * the server's own English is only the fallback.
    */
-  if (problem.code === 'invalid_request') {
+  if (problem.code === ProblemCode.InvalidRequest) {
     return t('problem.invalidRequest');
   }
-  if (problem.code === 'unprocessable_request') {
+  if (problem.code === ProblemCode.UnprocessableRequest) {
     return t('problem.unprocessableRequest');
   }
-  if (problem.code === 'validation_failed') {
+  if (problem.code === ProblemCode.ValidationFailed) {
     return t('problem.validationFailed');
   }
 

@@ -2,9 +2,9 @@ import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 import type { Messages, Translator } from '@playliberty/i18n';
-import { problemDetail, useI18n } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
 
-import { ApiError } from '../../../shared/api/client/client';
+import { problemSentence } from '../../../shared/api/problem/problem';
 import {
   ownerNameFrom,
   useAccountDirectory,
@@ -88,10 +88,7 @@ export default function LibraryPage() {
   const directoryItems = directory.data ?? [];
 
   /* The sentence for the refusal, from the catalog when the code is known. */
-  const refused =
-    createPlaylist.error instanceof ApiError
-      ? problemDetail(t, createPlaylist.error.problem)
-      : null;
+  const refused = problemSentence(t, createPlaylist.error);
 
   const isEmpty = playlists.isSuccess && playlists.data.items.length === 0;
 

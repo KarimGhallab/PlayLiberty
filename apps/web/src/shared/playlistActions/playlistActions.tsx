@@ -9,9 +9,9 @@ import { useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
-import { problemDetail, useI18n } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
 
-import { ApiError } from '../api/client/client';
+import { problemSentence } from '../api/problem/problem';
 import {
   useDeletePlaylist,
   useRenamePlaylist,
@@ -161,11 +161,7 @@ export function usePlaylistActions(
             open
             currentName={playlist.name}
             isWorking={rename.isPending}
-            problem={
-              rename.isError && rename.error instanceof ApiError
-                ? problemDetail(t, rename.error.problem)
-                : null
-            }
+            problem={rename.isError ? problemSentence(t, rename.error) : null}
             onSubmit={name =>
               rename.mutate(name, { onSuccess: () => setRenameOpen(false) })
             }

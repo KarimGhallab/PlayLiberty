@@ -1,14 +1,15 @@
 import type { FastifyReply } from 'fastify';
 import type { z } from 'zod';
 
-import type { Problem } from '@playliberty/contracts';
+import { ProblemCode } from '@playliberty/contracts';
+import type { PlaylistNotFoundReason, Problem } from '@playliberty/contracts';
 
 /* The values a problem carries for the copy that varies under one code. */
 export type ProblemParams = Readonly<Record<string, string | number>>;
 
 export interface ProblemInput {
   status: number;
-  code: string;
+  code: ProblemCode;
   title: string;
   detail?: string;
   params?: ProblemParams;
@@ -50,9 +51,27 @@ export function sendNotImplemented(
 ): FastifyReply {
   return sendProblem(reply, {
     status: 501,
-    code: 'not_implemented',
+    code: ProblemCode.NotImplemented,
     title: 'Not Implemented',
     detail
+  });
+}
+
+/*
+ * A playlist the account cannot reach, as the one code and the scope it was
+ * refused in. The library, the detail, the shares and the latest run all answer
+ * this, and the client maps the reason to its own sentence, so the server keeps
+ * no second copy of that English.
+ */
+export function sendPlaylistNotFound(
+  reply: FastifyReply,
+  reason: PlaylistNotFoundReason
+): FastifyReply {
+  return sendProblem(reply, {
+    status: 404,
+    code: ProblemCode.PlaylistNotFound,
+    title: 'Playlist Not Found',
+    params: { reason }
   });
 }
 
@@ -100,17 +119,11 @@ export function parseBody<T>(
  * route that produced a malformed-input problem by hand would be the one route
  * whose 400 looked different.
  */
-export function sendInvalidRequest(
-  reply: FastifyReply,
-  message: string,
-  params?: ProblemParams
-): FastifyReply {
+export function sendInvalidRequest(reply: FastifyReply): FastifyReply {
   return sendProblem(reply, {
     status: 400,
-    code: 'invalid_request',
-    title: 'Invalid Request',
-    detail: message,
-    params
+    code: ProblemCode.InvalidRequest,
+    title: 'Invalid Request'
   });
 }
 
@@ -128,9 +141,8 @@ export function sendValidationFailed(
 
   return sendProblem(reply, {
     status,
-    code: 'validation_failed',
+    code: ProblemCode.ValidationFailed,
     title: 'Invalid Request',
-    detail: 'The request contained an invalid value.',
     params:
       first === undefined ? undefined : { path: first.path, issue: first.code }
   });
@@ -143,16 +155,10 @@ export function sendValidationFailed(
  * the two apart: a 400 is a body the server could not read, a 422 is a body it read
  * and would not act on.
  */
-export function sendUnprocessable(
-  reply: FastifyReply,
-  message: string,
-  params?: ProblemParams
-): FastifyReply {
+export function sendUnprocessable(reply: FastifyReply): FastifyReply {
   return sendProblem(reply, {
     status: 422,
-    code: 'unprocessable_request',
-    title: 'Unprocessable Request',
-    detail: message,
-    params
+    code: ProblemCode.UnprocessableRequest,
+    title: 'Unprocessable Request'
   });
 }

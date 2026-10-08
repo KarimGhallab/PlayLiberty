@@ -3,6 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import {
   CreatePlaylistInputSchema,
   PageQuerySchema,
+  PlaylistNotFoundReason,
+  ProblemCode,
   RenamePlaylistInputSchema,
   SkipNonMusicInputSchema
 } from '@playliberty/contracts';
@@ -19,6 +21,7 @@ import {
 import {
   parseBody,
   sendInvalidRequest,
+  sendPlaylistNotFound,
   sendProblem,
   sendValidationFailed
 } from '../../../shared/problem.js';
@@ -69,10 +72,7 @@ export function registerPlaylistRoutes(
     const info = resolveSourceUrl(parsed.data.url);
 
     if (info === null) {
-      return sendInvalidRequest(
-        reply,
-        'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
-      );
+      return sendInvalidRequest(reply);
     }
 
     // The playlist and its run exist before this answers, so the client has an id
@@ -87,7 +87,7 @@ export function registerPlaylistRoutes(
     if (started.outcome === StartSyncOutcome.AlreadyRunning) {
       return sendProblem(reply, {
         status: 409,
-        code: 'sync_already_running',
+        code: ProblemCode.SyncAlreadyRunning,
         title: 'Sync Already Running',
         detail: 'A sync is already running for this playlist.'
       });
@@ -106,13 +106,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail: 'The playlist does not exist, or this account cannot see it.',
-          params: { reason: 'read' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -140,13 +134,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail: 'The playlist does not exist, or this account cannot see it.',
-          params: { reason: 'read' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -174,14 +162,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, or this account cannot manage it.',
-          params: { reason: 'manage' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -217,14 +198,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, or this account cannot write it.',
-          params: { reason: 'write' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -247,14 +221,7 @@ export function registerPlaylistRoutes(
       );
 
       if (outcome === PlaylistOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, or this account cannot manage it.',
-          params: { reason: 'manage' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
       }
 
       if (outcome === PlaylistOutcome.Ok) {
@@ -282,20 +249,13 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === StartSyncOutcome.PlaylistNotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, or this account cannot write it.',
-          params: { reason: 'write' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
       }
 
       if (result.outcome === StartSyncOutcome.AlreadyRunning) {
         return sendProblem(reply, {
           status: 409,
-          code: 'sync_already_running',
+          code: ProblemCode.SyncAlreadyRunning,
           title: 'Sync Already Running',
           detail: 'A sync is already running for this playlist.'
         });
@@ -316,14 +276,7 @@ export function registerPlaylistRoutes(
       );
 
       if (outcome === PlaylistOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: 'playlist_not_found',
-          title: 'Playlist Not Found',
-          detail:
-            'The playlist does not exist, this account cannot write it, or the track is not in it.',
-          params: { reason: 'track' }
-        });
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Track);
       }
 
       if (outcome === PlaylistOutcome.Ok) {

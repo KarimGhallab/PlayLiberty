@@ -7,9 +7,9 @@ import {
   Provider,
   TrackFileStatus
 } from '@playliberty/contracts';
-import { problemDetail, useI18n } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
 
-import { ApiError } from '../../../shared/api/client/client';
+import { problemSentence } from '../../../shared/api/problem/problem';
 import {
   ownerNameFrom,
   useAccountDirectory,
@@ -405,10 +405,7 @@ export default function PlaylistDetailPage() {
                 updateSkip.mutate(value, {
                   onError: error =>
                     setSettingRefused(
-                      error instanceof ApiError
-                        ? (problemDetail(t, error.problem) ??
-                            t('detail.settingFailed'))
-                        : t('detail.settingFailed')
+                      problemSentence(t, error) ?? t('detail.settingFailed')
                     )
                 })
               }
@@ -510,11 +507,7 @@ export default function PlaylistDetailPage() {
         playlists={writablePlaylists}
         isWorking={addTrack.isPending}
         result={addTrack.data ?? null}
-        problem={
-          addTrack.isError && addTrack.error instanceof ApiError
-            ? problemDetail(t, addTrack.error.problem)
-            : null
-        }
+        problem={addTrack.isError ? problemSentence(t, addTrack.error) : null}
         onSubmit={(url, playlistIds) => addTrack.mutate({ url, playlistIds })}
         onClose={() => {
           setAddOpen(false);

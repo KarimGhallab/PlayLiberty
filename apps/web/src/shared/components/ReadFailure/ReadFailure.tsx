@@ -1,7 +1,6 @@
-import type { Problem } from '@playliberty/contracts';
-import { problemDetail, useI18n } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
 
-import { ApiError } from '../../api/client/client';
+import { problemSentence } from '../../api/problem/problem';
 import styles from './ReadFailure.module.scss';
 
 /*
@@ -26,11 +25,6 @@ interface ReadFailureProps {
   readonly retrying?: boolean;
 }
 
-/** The problem the error carries, or null when it is not an `ApiError`. */
-function problemFrom(error: unknown): Problem | null {
-  return error instanceof ApiError ? error.problem : null;
-}
-
 export default function ReadFailure({
   message,
   error,
@@ -42,7 +36,7 @@ export default function ReadFailure({
   return (
     <div className={styles.readFailure} role="alert">
       <p className={styles.readFailure__say}>
-        {problemDetail(t, problemFrom(error)) ?? message}
+        {problemSentence(t, error) ?? message}
       </p>
       <button
         type="button"

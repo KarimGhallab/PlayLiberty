@@ -2,6 +2,8 @@ import { timingSafeEqual } from 'node:crypto';
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 
+import { ProblemCode } from '@playliberty/contracts';
+
 import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
 import { sendProblem } from '../../../shared/problem.js';
@@ -112,7 +114,7 @@ export function registerIdentityHook(
         auditIdentityRefusal(request, 'edge_assertion_missing');
         sendProblem(reply, {
           status: 401,
-          code: 'unauthenticated',
+          code: ProblemCode.Unauthenticated,
           title: 'Unauthenticated',
           detail:
             'The request is missing the edge assertion the origin requires.'
@@ -127,7 +129,7 @@ export function registerIdentityHook(
       auditIdentityRefusal(request, 'identity_missing');
       sendProblem(reply, {
         status: 401,
-        code: 'unauthenticated',
+        code: ProblemCode.Unauthenticated,
         title: 'Unauthenticated',
         detail:
           'The request is missing the identity headers injected by the edge.'

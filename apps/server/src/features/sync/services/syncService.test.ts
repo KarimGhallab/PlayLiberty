@@ -415,11 +415,7 @@ describe('POST /playlists', () => {
     const response = await post('https://example.com/not-youtube', 'owner-1');
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({
-      code: 'invalid_request',
-      detail:
-        'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
-    });
+    expect(response.json()).toMatchObject({ code: 'invalid_request' });
   });
 
   it('refuses a mutation without the client header', async () => {
