@@ -1,5 +1,7 @@
 import { mkdir } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
+
+import { isSubPath } from '@playliberty/utils';
 
 export const MEDIA_DIRECTORY = 'media';
 export const THUMBNAILS_DIRECTORY = 'thumbnails';
@@ -31,11 +33,41 @@ export function createMediaPaths(root: string): MediaPaths {
 }
 
 export function mediaRelativePath(videoId: string, extension: string): string {
-  return join(MEDIA_DIRECTORY, videoId.slice(0, 2), `${videoId}${extension}`);
+  return shardedRelativePath(
+    MEDIA_DIRECTORY,
+    videoId,
+    `${videoId}${extension}`
+  );
 }
 
 export function thumbnailRelativePath(videoId: string): string {
-  return join(THUMBNAILS_DIRECTORY, videoId.slice(0, 2), `${videoId}.jpg`);
+  return shardedRelativePath(THUMBNAILS_DIRECTORY, videoId, `${videoId}.jpg`);
+}
+
+/*
+ * A sharded relative path for a video id, refused when the id would resolve
+ * outside the directory it belongs to. The adapter rejects a non-video id before
+ * it is stored, so this is the second layer: a corrupted row or a future caller
+ * that passes `..` or a separator cannot make the path escape the media store.
+ * The comparison is against the directory with a trailing separator, so a
+ * sibling whose name merely starts with it is not mistaken for a child.
+ */
+function shardedRelativePath(
+  directory: string,
+  videoId: string,
+  leaf: string
+): string {
+  const relative = join(directory, videoId.slice(0, 2), leaf);
+  const root = `${resolve('/', directory)}${sep}`;
+  const resolved = resolve('/', relative);
+
+  if (!isSubPath(root, resolved)) {
+    throw new Error(
+      `The video id "${videoId}" resolves outside the media store.`
+    );
+  }
+
+  return relative;
 }
 
 export async function ensureMediaDirectories(paths: MediaPaths): Promise<void> {

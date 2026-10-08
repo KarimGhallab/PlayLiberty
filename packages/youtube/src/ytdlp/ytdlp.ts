@@ -20,7 +20,10 @@ import type {
   YtdlpOptions
 } from '../types.js';
 import { YoutubeSourceKind } from '../types.js';
-import { validateYoutubeUrl } from '../validateYoutubeUrl/validateYoutubeUrl.js';
+import {
+  isValidVideoId,
+  validateYoutubeUrl
+} from '../validateYoutubeUrl/validateYoutubeUrl.js';
 
 /*
  * The extractors this instance is willing to run. yt-dlp's `--use-extractors`
@@ -186,13 +189,13 @@ function firstThumbnailUrl(value: unknown): string | null {
   return null;
 }
 
-function toEntry(value: unknown): YoutubeSourceEntry {
+export function toEntry(value: unknown): YoutubeSourceEntry {
   if (
     !isRecord(value) ||
     typeof value.id !== 'string' ||
-    value.id.length === 0
+    !isValidVideoId(value.id)
   ) {
-    throw new Error('yt-dlp returned an entry without a video id.');
+    throw new Error('yt-dlp returned an entry without a valid video id.');
   }
   return {
     videoId: value.id,
