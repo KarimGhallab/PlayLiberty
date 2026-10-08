@@ -23,6 +23,9 @@ export const fr: Messages = {
     add: 'Ajouter une playlist',
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
+    deleteDeferred: 'Suppression de la playlist',
+    replaced: "L'action précédente a été remplacée.",
+    willNotDelete: '« {name} » ne sera pas supprimée.',
     empty: {
       heading: 'Aucune playlist',
       promise:
@@ -50,7 +53,7 @@ export const fr: Messages = {
     pause: 'Mettre en pause {title}',
     actions: 'Actions pour {title}',
     retry: 'Réessayer',
-    fetchWhole: 'Récupérer sans coupe',
+    fetchWhole: 'Récupérer en entier',
     remove: 'Retirer de la playlist',
     fullLength: 'Version intégrale'
   },
@@ -59,9 +62,9 @@ export const fr: Messages = {
   },
   renameDialog: {
     title: 'Renommer la playlist',
-    description: 'Cela ne change pas la playlist sur YouTube.',
+    description: 'Il ne change pas la playlist sur YouTube.',
     nameLabel: 'Nom de la playlist',
-    invalid: "Champ obligatoire, jusqu'à 200 caractères.",
+    invalid: "Un nom est requis, jusqu'à 200 caractères.",
     save: 'Enregistrer',
     saving: 'Enregistrement'
   },
@@ -87,5 +90,82 @@ export const fr: Messages = {
     adding: 'Ajout en cours',
     refusedSome: 'Ajoutée aux autres. Non ajoutée à :',
     refusedAll: "Rien n'a été ajouté. Non ajoutée à :"
+  },
+  addPlaylistDialog: {
+    title: 'Ajouter une playlist',
+    description:
+      "Collez le lien d'une playlist YouTube. Rien n'est téléchargé avant la synchronisation.",
+    linkLabel: 'Lien de la playlist',
+    invalid:
+      "Collez le lien d'une playlist YouTube, par exemple https://youtube.com/playlist?list=...",
+    add: 'Ajouter',
+    adding: 'Ajout en cours',
+    skip: 'Ignorer les parties non musicales',
+    skipHint:
+      "Coupe les intros, les lectures de sponsors et les outros de l'audio."
+  },
+  playerBar: {
+    label: 'Lecteur',
+    previous: 'Piste précédente',
+    next: 'Piste suivante',
+    play: 'Lire',
+    pause: 'Mettre en pause',
+    position: 'Position dans la piste',
+    positionValue: '{elapsed} sur {duration}'
+  },
+  volume: {
+    label: 'Volume',
+    mute: 'Couper le son',
+    unmute: 'Rétablir le son',
+    notice: 'Volume {percent}%',
+    noticeMuted: 'Volume coupé, {percent}%'
+  },
+  emptyState: {
+    heading: 'Rien pour le moment',
+    prose:
+      "Cette playlist n'a jamais été synchronisée. La synchronisation va sur YouTube et télécharge l'audio de chaque piste qu'elle contient.",
+    promise:
+      'Une synchronisation prend quelques minutes, mais une fois une piste téléchargée, une vidéo retirée de YouTube ne la supprimera pas cette playlist.',
+    sync: 'Synchroniser',
+    syncing: 'Synchronisation'
+  },
+  toast: {
+    dismiss: 'Fermer'
+  },
+  readFailure: {
+    retry: 'Réessayer',
+    retrying: 'Nouvel essai'
+  },
+  notFound: {
+    heading: "Cette playlist n'est pas ici",
+    prose:
+      "Elle a peut-être été supprimée, ou bien elle appartient à quelqu'un d'autre et ne vous est plus partagée.",
+    back: "Retour à l'accueil"
+  },
+  header: {
+    collab: 'Vous êtes collaborateur',
+    shared: 'Playlist partagée',
+    private: 'Playlist privée',
+    share: 'Partager',
+    rename: 'Renommer',
+    syncNow: 'Synchroniser',
+    delete: 'Supprimer la playlist',
+    play: 'Lire cette playlist',
+    pause: 'Mettre en pause cette playlist',
+    skipBack: 'Piste précédente',
+    trackNext: 'Piste suivante',
+    shuffle: 'Lecture aléatoire de {name}',
+    actions: 'Actions pour {name}',
+    sharedBy: 'Partagée par {name}'
+  },
+  trackBars: {
+    playing: 'En lecture',
+    paused: 'En pause'
+  },
+  shuffle: {
+    empty: 'Rien à lire dans « {name} ».',
+    emptyDetail: "Aucune piste n'a fini de se télécharger.",
+    unreachable: "« {name} » n'a pas pu être lue.",
+    unreachableDetail: "Ses pistes n'ont pas pu être chargées."
   }
 };

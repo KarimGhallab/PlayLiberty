@@ -1,3 +1,5 @@
+import { useI18n } from '@playliberty/i18n';
+
 /*
  * The equalizer strip on a row's artwork while it plays. Six bars, each a fixed
  * 3px wide at a 7px pitch, growing from the bottom on `transform: scaleY` so a
@@ -43,11 +45,13 @@ export default function TrackBars({
   barClassName,
   playing
 }: TrackBarsProps) {
+  const { t } = useI18n();
+
   return (
     <span
       className={className}
       role="img"
-      aria-label={playing ? 'Playing' : 'Paused'}>
+      aria-label={playing ? t('trackBars.playing') : t('trackBars.paused')}>
       {RESTS.map((rest, index) => (
         <span
           key={rest + ':' + DELAYS[index]}

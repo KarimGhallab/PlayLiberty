@@ -19,6 +19,8 @@ import type {
 import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
+import type { MessageKey, Messages } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
 import {
   formatLastSynced,
   sleeveIndex,
@@ -123,13 +125,13 @@ interface PlaylistHeaderProps {
 
 interface ShareMark {
   readonly state: 'own-private' | 'own-shared' | 'collab';
-  readonly label: string;
+  readonly label: MessageKey<Messages>;
   readonly Icon: typeof IconLock;
 }
 
 interface MenuItem {
   readonly key: string;
-  readonly label: string;
+  readonly label: MessageKey<Messages>;
   readonly Icon: typeof IconLock;
   readonly onSelect: () => void;
   readonly destructive?: true;
@@ -145,7 +147,7 @@ function shareMark(playlist: Playlist): ShareMark {
   if (playlist.access !== 'owner') {
     return {
       state: 'collab',
-      label: 'You are a collaborator',
+      label: 'header.collab',
       Icon: IconUserShare
     };
   }
@@ -153,12 +155,12 @@ function shareMark(playlist: Playlist): ShareMark {
   if (playlist.hasShares) {
     return {
       state: 'own-shared',
-      label: 'Shared playlist',
+      label: 'header.shared',
       Icon: IconLockShare
     };
   }
 
-  return { state: 'own-private', label: 'Private playlist', Icon: IconLock };
+  return { state: 'own-private', label: 'header.private', Icon: IconLock };
 }
 
 export default function PlaylistHeader({
@@ -185,6 +187,7 @@ export default function PlaylistHeader({
   showSyncTime = false,
   now = new Date()
 }: PlaylistHeaderProps) {
+  const { t } = useI18n();
   const mark = shareMark(playlist);
   const sharedBy =
     playlist.access !== 'owner' && ownerName !== null ? ownerName : null;
@@ -367,7 +370,7 @@ export default function PlaylistHeader({
           ? null
           : {
               key: 'share',
-              label: 'Share',
+              label: 'header.share',
               Icon: IconShare,
               onSelect: onShare
             },
@@ -375,7 +378,7 @@ export default function PlaylistHeader({
           ? null
           : {
               key: 'rename',
-              label: 'Rename',
+              label: 'header.rename',
               Icon: IconPencil,
               onSelect: onRename
             },
@@ -383,7 +386,7 @@ export default function PlaylistHeader({
           ? null
           : {
               key: 'sync',
-              label: 'Sync now',
+              label: 'header.syncNow',
               Icon: IconRotate,
               onSelect: onSync
             },
@@ -391,7 +394,7 @@ export default function PlaylistHeader({
           ? null
           : {
               key: 'delete',
-              label: 'Delete playlist',
+              label: 'header.delete',
               Icon: IconTrash,
               onSelect: onDelete,
               destructive: true
@@ -407,7 +410,7 @@ export default function PlaylistHeader({
           ? null
           : {
               key: 'sync',
-              label: 'Sync now',
+              label: 'header.syncNow',
               Icon: IconRotate,
               onSelect: onSync
             }
@@ -432,7 +435,7 @@ export default function PlaylistHeader({
       <button
         type="button"
         className={styles.playlistHeader__play}
-        aria-label={playing ? 'Pause this playlist' : 'Play this playlist'}
+        aria-label={playing ? t('header.pause') : t('header.play')}
         disabled={!playable || pending}
         data-run={run}
         onAnimationEnd={endRun}
@@ -459,7 +462,7 @@ export default function PlaylistHeader({
       <button
         type="button"
         className={styles.playlistHeader__step}
-        aria-label="Skip back"
+        aria-label={t('header.skipBack')}
         onClick={onSkipBack}>
         <IconPlayerSkipBack
           className={styles.playlistHeader__stepIcon}
@@ -471,7 +474,7 @@ export default function PlaylistHeader({
       <button
         type="button"
         className={styles.playlistHeader__step}
-        aria-label="Track next"
+        aria-label={t('header.trackNext')}
         disabled={!hasNext}
         onClick={onSkipNext}>
         <IconPlayerTrackNext
@@ -491,7 +494,7 @@ export default function PlaylistHeader({
         type="button"
         className={styles.playlistHeader__iconBtn}
         aria-pressed={shuffled && current}
-        aria-label={`Shuffle ${playlist.name}`}
+        aria-label={t('header.shuffle', { name: playlist.name })}
         disabled={pending}
         onClick={onShuffle}>
         <IconArrowsShuffle
@@ -509,7 +512,7 @@ export default function PlaylistHeader({
           ref={menuButtonRef}
           type="button"
           className={styles.playlistHeader__iconBtn}
-          aria-label={`More actions for ${playlist.name}`}
+          aria-label={t('header.actions', { name: playlist.name })}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           disabled={pending}
@@ -557,7 +560,7 @@ export default function PlaylistHeader({
                     aria-hidden="true"
                     focusable="false"
                   />
-                  {item.label}
+                  {t(item.label)}
                 </button>
               </Fragment>
             ))}
@@ -593,7 +596,7 @@ export default function PlaylistHeader({
           data-share={mark.state}
           data-tip-dismissed={shareTipDismissed ? 'true' : undefined}
           role="img"
-          aria-label={mark.label}
+          aria-label={t(mark.label)}
           tabIndex={0}
           onFocus={() => setShareTipDismissed(false)}
           onBlur={() => setShareTipDismissed(false)}
@@ -609,7 +612,7 @@ export default function PlaylistHeader({
             focusable="false"
           />
           <span className={styles.playlistHeader__shareTip} role="presentation">
-            {mark.label}
+            {t(mark.label)}
           </span>
         </span>
       </div>
@@ -637,7 +640,9 @@ export default function PlaylistHeader({
         </span>
       </div>
       {sharedBy === null ? null : (
-        <p className={styles.playlistHeader__owner}>Shared by {sharedBy}</p>
+        <p className={styles.playlistHeader__owner}>
+          {t('header.sharedBy', { name: sharedBy })}
+        </p>
       )}
     </>
   );

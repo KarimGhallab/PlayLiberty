@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
+import { useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../shared/api/client/client';
 import {
@@ -56,6 +57,7 @@ export default function PlaylistListItem({
   defer,
   onShuffle
 }: PlaylistListItemProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const sync = useSyncPlaylist(playlist.id);
   const rename = useRenamePlaylist(playlist.id);
@@ -99,7 +101,7 @@ export default function PlaylistListItem({
             ? () =>
                 defer({
                   id: playlist.id,
-                  message: 'Deleting playlist',
+                  message: t('library.deleteDeferred'),
                   detail: playlist.name,
                   commit: () => remove.mutate()
                 })

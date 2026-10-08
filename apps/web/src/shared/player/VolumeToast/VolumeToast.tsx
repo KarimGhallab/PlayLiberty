@@ -1,3 +1,5 @@
+import { useI18n } from '@playliberty/i18n';
+
 import { volumeIcon } from '../volumeIcon';
 import styles from './VolumeToast.module.scss';
 
@@ -31,6 +33,7 @@ export default function VolumeToast({
   muted,
   durationMs
 }: VolumeToastProps) {
+  const { t } = useI18n();
   const percent = Math.round(volume * 100);
   const Icon = volumeIcon(volume, muted);
 
@@ -58,8 +61,8 @@ export default function VolumeToast({
       </span>
       <span className={styles.toast__spoken}>
         {muted
-          ? `Volume muted, ${percent} percent`
-          : `Volume ${percent} percent`}
+          ? t('volume.noticeMuted', { percent })
+          : t('volume.notice', { percent })}
       </span>
     </div>
   );

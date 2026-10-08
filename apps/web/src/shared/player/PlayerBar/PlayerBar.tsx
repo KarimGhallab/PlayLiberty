@@ -1,6 +1,7 @@
 import { IconPlayerSkipBack, IconPlayerSkipForward } from '@tabler/icons-react';
 import { useEffect, useRef } from 'react';
 
+import { useI18n } from '@playliberty/i18n';
 import { formatDuration } from '@playliberty/ui-foundation';
 
 import { API_PREFIX } from '../../api/client/client';
@@ -49,6 +50,7 @@ function releasePointer(element: HTMLElement, pointerId: number): void {
 }
 
 export default function PlayerBar() {
+  const { t } = useI18n();
   const current = usePlayerStore(
     state => state.queue.find(track => track.id === state.currentId) ?? null
   );
@@ -160,7 +162,7 @@ export default function PlayerBar() {
   return (
     <footer
       className={styles.playerBar}
-      aria-label="Player"
+      aria-label={t('playerBar.label')}
       data-state={isPlaying ? 'playing' : 'paused'}>
       <span
         className={styles.playerBar__art}
@@ -187,7 +189,7 @@ export default function PlayerBar() {
           <button
             type="button"
             className={styles.playerBar__step}
-            aria-label="Previous track"
+            aria-label={t('playerBar.previous')}
             onClick={() => skipPrevious()}>
             <IconPlayerSkipBack
               className={styles.playerBar__stepIcon}
@@ -198,7 +200,7 @@ export default function PlayerBar() {
           <button
             type="button"
             className={styles.playerBar__play}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? t('playerBar.pause') : t('playerBar.play')}
             data-run={run}
             onAnimationEnd={endRun}
             onClick={() => setPlaying(!isPlaying)}>
@@ -210,7 +212,7 @@ export default function PlayerBar() {
           <button
             type="button"
             className={styles.playerBar__step}
-            aria-label="Next track"
+            aria-label={t('playerBar.next')}
             disabled={!hasNext}
             onClick={() => skipNext()}>
             <IconPlayerSkipForward
@@ -230,11 +232,14 @@ export default function PlayerBar() {
           className={styles.playerBar__scrub}
           role="slider"
           tabIndex={0}
-          aria-label="Position in track"
+          aria-label={t('playerBar.position')}
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={elapsed}
-          aria-valuetext={`${formatDuration(elapsed)} of ${formatDuration(duration)}`}
+          aria-valuetext={t('playerBar.positionValue', {
+            elapsed: formatDuration(elapsed),
+            duration: formatDuration(duration)
+          })}
           onPointerDown={event => {
             draggingRef.current = true;
             capturePointer(event.currentTarget, event.pointerId);

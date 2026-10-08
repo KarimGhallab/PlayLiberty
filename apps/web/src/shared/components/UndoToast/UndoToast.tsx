@@ -1,3 +1,5 @@
+import { useI18n } from '@playliberty/i18n';
+
 import styles from './UndoToast.module.scss';
 
 /*
@@ -47,6 +49,8 @@ export default function UndoToast({
   onAction,
   onDismiss
 }: UndoToastProps) {
+  const { t } = useI18n();
+
   return (
     <div className={styles.toast} role="status">
       <span
@@ -70,7 +74,7 @@ export default function UndoToast({
       <button
         type="button"
         className={styles.toast__dismiss}
-        aria-label="Dismiss"
+        aria-label={t('toast.dismiss')}
         onClick={onDismiss}>
         ×
       </button>

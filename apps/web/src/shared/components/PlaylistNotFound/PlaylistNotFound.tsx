@@ -1,6 +1,8 @@
 import { IconArrowLeft } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
+import { useI18n } from '@playliberty/i18n';
+
 import styles from './PlaylistNotFound.module.scss';
 
 /*
@@ -22,16 +24,15 @@ import styles from './PlaylistNotFound.module.scss';
  * heading and hear what the screen is about.
  */
 export default function PlaylistNotFound() {
+  const { t } = useI18n();
+
   return (
     <div className={styles.playlistNotFound}>
       <div className={styles.playlistNotFound__text}>
         <h1 className={styles.playlistNotFound__head}>
-          This playlist is not here
+          {t('notFound.heading')}
         </h1>
-        <p className={styles.playlistNotFound__prose}>
-          It may have been deleted, or it may belong to someone else and no
-          longer be shared with you.
-        </p>
+        <p className={styles.playlistNotFound__prose}>{t('notFound.prose')}</p>
       </div>
       <Link to="/" className={styles.playlistNotFound__action}>
         <IconArrowLeft
@@ -39,7 +40,7 @@ export default function PlaylistNotFound() {
           aria-hidden="true"
           focusable="false"
         />
-        Back to home
+        {t('notFound.back')}
       </Link>
     </div>
   );

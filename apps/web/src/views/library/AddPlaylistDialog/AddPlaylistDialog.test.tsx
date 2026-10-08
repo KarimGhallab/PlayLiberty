@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { I18nProvider } from '@playliberty/i18n';
+
 import AddPlaylistDialog from './AddPlaylistDialog';
 
 /*
@@ -15,13 +17,23 @@ function runExit(): void {
   });
 }
 
+function renderDialog(
+  props: Partial<Parameters<typeof AddPlaylistDialog>[0]> = {}
+) {
+  return render(
+    <I18nProvider preferred={['en']}>
+      <AddPlaylistDialog open onSubmit={vi.fn()} onClose={vi.fn()} {...props} />
+    </I18nProvider>
+  );
+}
+
 describe('AddPlaylistDialog', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
   it('mounts open on the playlist link field', () => {
-    render(<AddPlaylistDialog open onSubmit={vi.fn()} onClose={vi.fn()} />);
+    renderDialog();
 
     expect(
       screen.getByRole('dialog', { name: 'Add a playlist' })
@@ -30,21 +42,19 @@ describe('AddPlaylistDialog', () => {
   });
 
   it('draws nothing while it has never been opened', () => {
-    render(
-      <AddPlaylistDialog open={false} onSubmit={vi.fn()} onClose={vi.fn()} />
-    );
+    renderDialog({ open: false });
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('keeps the node mounted through the exit and unmounts when it elapses', () => {
     vi.useFakeTimers();
-    const { rerender } = render(
-      <AddPlaylistDialog open onSubmit={vi.fn()} onClose={vi.fn()} />
-    );
+    const { rerender } = renderDialog();
 
     rerender(
-      <AddPlaylistDialog open={false} onSubmit={vi.fn()} onClose={vi.fn()} />
+      <I18nProvider preferred={['en']}>
+        <AddPlaylistDialog open={false} onSubmit={vi.fn()} onClose={vi.fn()} />
+      </I18nProvider>
     );
 
     /* The exit is running, so the dialog is still on screen. */
@@ -57,7 +67,7 @@ describe('AddPlaylistDialog', () => {
 
   it('refuses an empty URL with the schema and makes no request', () => {
     const onSubmit = vi.fn();
-    render(<AddPlaylistDialog open onSubmit={onSubmit} onClose={vi.fn()} />);
+    renderDialog({ onSubmit });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -69,7 +79,7 @@ describe('AddPlaylistDialog', () => {
 
   it('refuses a malformed URL with the schema and makes no request', () => {
     const onSubmit = vi.fn();
-    render(<AddPlaylistDialog open onSubmit={onSubmit} onClose={vi.fn()} />);
+    renderDialog({ onSubmit });
 
     fireEvent.change(screen.getByLabelText('Playlist link'), {
       target: { value: 'not a url' }
@@ -82,7 +92,7 @@ describe('AddPlaylistDialog', () => {
 
   it('submits a valid URL and the trimmed value, with the setting on', () => {
     const onSubmit = vi.fn();
-    render(<AddPlaylistDialog open onSubmit={onSubmit} onClose={vi.fn()} />);
+    renderDialog({ onSubmit });
 
     fireEvent.change(screen.getByLabelText('Playlist link'), {
       target: { value: '  https://www.youtube.com/playlist?list=PL-demo  ' }
@@ -96,7 +106,7 @@ describe('AddPlaylistDialog', () => {
   });
 
   it('starts with the skip control on', () => {
-    render(<AddPlaylistDialog open onSubmit={vi.fn()} onClose={vi.fn()} />);
+    renderDialog();
 
     expect(
       screen.getByRole('checkbox', { name: 'Skip non-music parts' })
@@ -105,7 +115,7 @@ describe('AddPlaylistDialog', () => {
 
   it('sends the setting off when the control is turned off', () => {
     const onSubmit = vi.fn();
-    render(<AddPlaylistDialog open onSubmit={onSubmit} onClose={vi.fn()} />);
+    renderDialog({ onSubmit });
 
     fireEvent.change(screen.getByLabelText('Playlist link'), {
       target: { value: 'https://www.youtube.com/playlist?list=PL-demo' }
@@ -122,14 +132,10 @@ describe('AddPlaylistDialog', () => {
   });
 
   it('shows the server problem beside the field', () => {
-    render(
-      <AddPlaylistDialog
-        open
-        onSubmit={vi.fn()}
-        onClose={vi.fn()}
-        problem="Paste a YouTube playlist link, such as https://youtube.com/playlist?list=..."
-      />
-    );
+    renderDialog({
+      problem:
+        'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
+    });
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
@@ -142,9 +148,7 @@ describe('AddPlaylistDialog', () => {
 
   it('marks the field busy and refuses a second submit while working', () => {
     const onSubmit = vi.fn();
-    render(
-      <AddPlaylistDialog open onSubmit={onSubmit} onClose={vi.fn()} isWorking />
-    );
+    renderDialog({ onSubmit, isWorking: true });
 
     fireEvent.change(screen.getByLabelText('Playlist link'), {
       target: { value: 'https://www.youtube.com/playlist?list=PL-demo' }
@@ -158,9 +162,7 @@ describe('AddPlaylistDialog', () => {
   it('closes on cancel after the exit animation', () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
-    const { rerender } = render(
-      <AddPlaylistDialog open onSubmit={vi.fn()} onClose={onClose} />
-    );
+    const { rerender } = renderDialog({ onClose });
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -172,7 +174,9 @@ describe('AddPlaylistDialog', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     rerender(
-      <AddPlaylistDialog open={false} onSubmit={vi.fn()} onClose={onClose} />
+      <I18nProvider preferred={['en']}>
+        <AddPlaylistDialog open={false} onSubmit={vi.fn()} onClose={onClose} />
+      </I18nProvider>
     );
     runExit();
 
@@ -182,7 +186,7 @@ describe('AddPlaylistDialog', () => {
   it('asks to close on Escape', () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
-    render(<AddPlaylistDialog open onSubmit={vi.fn()} onClose={onClose} />);
+    renderDialog({ onClose });
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -190,9 +194,7 @@ describe('AddPlaylistDialog', () => {
   });
 
   it('has no axe violations', async () => {
-    const { container } = render(
-      <AddPlaylistDialog open onSubmit={vi.fn()} onClose={vi.fn()} />
-    );
+    const { container } = renderDialog();
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }

@@ -4,6 +4,8 @@ import { HttpResponse, http } from 'msw';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { Language, catalogs, createTranslator } from '@playliberty/i18n';
+
 import { server } from '../../../testing/mocks/server';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { refusalNotice, useShufflePlaylist } from './useShufflePlaylist';
@@ -217,8 +219,10 @@ describe('useShufflePlaylist', () => {
 });
 
 describe('refusalNotice', () => {
+  const t = createTranslator(catalogs[Language.English], Language.English);
+
   it('words an empty refusal as one sentence and one line', () => {
-    expect(refusalNotice({ name: 'Shared Mix', reason: 'empty' })).toEqual({
+    expect(refusalNotice({ name: 'Shared Mix', reason: 'empty' }, t)).toEqual({
       message: 'Nothing to play in “Shared Mix”.',
       detail: 'No track in it has finished downloading.'
     });
@@ -226,7 +230,7 @@ describe('refusalNotice', () => {
 
   it('words an unreachable refusal as one sentence and one line', () => {
     expect(
-      refusalNotice({ name: 'Shared Mix', reason: 'unreachable' })
+      refusalNotice({ name: 'Shared Mix', reason: 'unreachable' }, t)
     ).toEqual({
       message: '“Shared Mix” could not be read.',
       detail: 'Its tracks could not be loaded.'

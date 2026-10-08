@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { I18nProvider } from '@playliberty/i18n';
+
 import { ApiError } from '../../api/client/client';
 import ReadFailure from './ReadFailure';
 
@@ -22,39 +24,34 @@ function apiError(detail: string | null): ApiError {
   });
 }
 
-describe('ReadFailure', () => {
-  it('shows the fallback sentence for an error that is not an ApiError', () => {
-    render(
+function renderFailure(props: Partial<Parameters<typeof ReadFailure>[0]> = {}) {
+  return render(
+    <I18nProvider preferred={['en']}>
       <ReadFailure
         message={FALLBACK}
         error={new Error('boom')}
         onRetry={() => undefined}
+        {...props}
       />
-    );
+    </I18nProvider>
+  );
+}
+
+describe('ReadFailure', () => {
+  it('shows the fallback sentence for an error that is not an ApiError', () => {
+    renderFailure();
 
     expect(screen.getByText(FALLBACK)).toBeInTheDocument();
   });
 
   it('shows the fallback sentence for an ApiError with no detail', () => {
-    render(
-      <ReadFailure
-        message={FALLBACK}
-        error={apiError(null)}
-        onRetry={() => undefined}
-      />
-    );
+    renderFailure({ error: apiError(null) });
 
     expect(screen.getByText(FALLBACK)).toBeInTheDocument();
   });
 
   it("shows the server's own detail when the ApiError carries one", () => {
-    render(
-      <ReadFailure
-        message={FALLBACK}
-        error={apiError('The library is unavailable.')}
-        onRetry={() => undefined}
-      />
-    );
+    renderFailure({ error: apiError('The library is unavailable.') });
 
     expect(screen.getByText('The library is unavailable.')).toBeInTheDocument();
     expect(screen.queryByText(FALLBACK)).not.toBeInTheDocument();
@@ -62,13 +59,7 @@ describe('ReadFailure', () => {
 
   it('retries through a labelled button', () => {
     const onRetry = vi.fn();
-    render(
-      <ReadFailure
-        message={FALLBACK}
-        error={apiError(null)}
-        onRetry={onRetry}
-      />
-    );
+    renderFailure({ error: apiError(null), onRetry });
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
@@ -76,14 +67,7 @@ describe('ReadFailure', () => {
   });
 
   it('locks the retry while it works', () => {
-    render(
-      <ReadFailure
-        message={FALLBACK}
-        error={apiError(null)}
-        onRetry={() => undefined}
-        retrying
-      />
-    );
+    renderFailure({ error: apiError(null), retrying: true });
 
     expect(screen.getByRole('button', { name: 'Trying again' })).toBeDisabled();
   });

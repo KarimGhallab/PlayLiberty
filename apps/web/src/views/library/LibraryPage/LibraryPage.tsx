@@ -1,6 +1,7 @@
 import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
+import type { Messages, Translator } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
@@ -35,14 +36,17 @@ import styles from './LibraryPage.module.scss';
  * name is the whole of it: the first delete never reaches the server, so saying
  * which playlist is no longer going is the honest correction, not a count.
  */
-function replacedSentence(replaced: { detail: string | null } | null) {
+function replacedSentence(
+  replaced: { detail: string | null } | null,
+  t: Translator<Messages>
+) {
   if (replaced === null) {
     return null;
   }
   if (replaced.detail === null) {
-    return 'The earlier action was replaced.';
+    return t('library.replaced');
   }
-  return `“${replaced.detail}” will not be deleted.`;
+  return t('library.willNotDelete', { name: replaced.detail });
 }
 
 /*
@@ -172,17 +176,17 @@ export default function LibraryPage() {
         <UndoToast
           message={deferred.pending.message}
           detail={deferred.pending.detail}
-          replacedLabel={replacedSentence(deferred.replaced)}
+          replacedLabel={replacedSentence(deferred.replaced, t)}
           windowKey={deferred.windowId}
           durationMs={UNDO_WINDOW_MS}
-          actionLabel="Cancel"
+          actionLabel={t('common.cancel')}
           onAction={deferred.cancel}
           onDismiss={deferred.cancel}
         />
       ) : null}
       {refusal === null ? null : (
         <NoticeToast
-          {...refusalNotice(refusal)}
+          {...refusalNotice(refusal, t)}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

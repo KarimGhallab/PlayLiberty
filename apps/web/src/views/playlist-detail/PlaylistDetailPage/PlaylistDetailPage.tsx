@@ -590,7 +590,7 @@ export default function PlaylistDetailPage() {
       ) : null}
       {refusal === null ? null : (
         <NoticeToast
-          {...refusalNotice(refusal)}
+          {...refusalNotice(refusal, t)}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

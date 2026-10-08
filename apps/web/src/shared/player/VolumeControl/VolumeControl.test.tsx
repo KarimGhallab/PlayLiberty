@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { I18nProvider } from '@playliberty/i18n';
+
 import { usePlayerStore } from '../playerStore/playerStore';
 import VolumeControl from './VolumeControl';
 
@@ -9,6 +11,14 @@ import VolumeControl from './VolumeControl';
  * mounted once and the presses are dispatched on the document. The store is the
  * real one, because the mute-versus-level rule is the thing under test.
  */
+
+function renderControl() {
+  return render(
+    <I18nProvider preferred={['en']}>
+      <VolumeControl />
+    </I18nProvider>
+  );
+}
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
@@ -20,7 +30,7 @@ afterEach(() => {
 
 describe('VolumeControl', () => {
   it('shows the rail only while the pointer is on it', () => {
-    render(<VolumeControl />);
+    renderControl();
 
     expect(
       screen.queryByRole('slider', { name: 'Volume' })
@@ -36,7 +46,7 @@ describe('VolumeControl', () => {
    * rail too and holds it while focus stays inside the control.
    */
   it('opens the rail on focus and keeps it while focus is inside', () => {
-    render(<VolumeControl />);
+    renderControl();
 
     expect(
       screen.queryByRole('slider', { name: 'Volume' })
@@ -54,7 +64,7 @@ describe('VolumeControl', () => {
   });
 
   it('closes the rail once focus leaves the control', () => {
-    render(<VolumeControl />);
+    renderControl();
 
     const button = screen.getByRole('button', { name: 'Mute' });
     fireEvent.focus(button);
@@ -71,7 +81,7 @@ describe('VolumeControl', () => {
    * pointerdown itself opens the rail.
    */
   it('opens the rail on a tap', () => {
-    render(<VolumeControl />);
+    renderControl();
 
     expect(
       screen.queryByRole('slider', { name: 'Volume' })
@@ -86,7 +96,7 @@ describe('VolumeControl', () => {
 
   it('mutes on press and keeps the level', () => {
     usePlayerStore.getState().setVolume(0.7);
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.click(screen.getByRole('button', { name: 'Mute' }));
 
@@ -100,7 +110,7 @@ describe('VolumeControl', () => {
 
   it('raises and lowers the level with the window arrows', () => {
     usePlayerStore.getState().setVolume(0.5);
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.55);
@@ -112,7 +122,7 @@ describe('VolumeControl', () => {
 
   it('shows the new level when the arrows change it', () => {
     usePlayerStore.getState().setVolume(0.5);
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
 
@@ -122,7 +132,7 @@ describe('VolumeControl', () => {
   it('keeps one notice and restarts its life on the next press', () => {
     vi.useFakeTimers();
     usePlayerStore.getState().setVolume(0.5);
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     expect(screen.getAllByRole('status')).toHaveLength(1);
@@ -143,7 +153,7 @@ describe('VolumeControl', () => {
 
   it('disposes the notice when its life ends', () => {
     vi.useFakeTimers();
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     expect(screen.getByRole('status')).toBeInTheDocument();
@@ -156,7 +166,7 @@ describe('VolumeControl', () => {
   it('changes the level without clearing the mute', () => {
     usePlayerStore.getState().setVolume(0.5);
     usePlayerStore.getState().setMuted(true);
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
 
@@ -165,7 +175,7 @@ describe('VolumeControl', () => {
   });
 
   it('toggles the mute with M and leaves text fields alone', () => {
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.keyDown(window, { key: 'm' });
     expect(usePlayerStore.getState().muted).toBe(true);
@@ -182,7 +192,7 @@ describe('VolumeControl', () => {
 
   it('clamps the arrows at the ends', () => {
     usePlayerStore.getState().setVolume(1);
-    render(<VolumeControl />);
+    renderControl();
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     expect(usePlayerStore.getState().volume).toBe(1);
@@ -193,7 +203,7 @@ describe('VolumeControl', () => {
   });
 
   it('sets the level from where the pointer lands on the rail', () => {
-    render(<VolumeControl />);
+    renderControl();
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
 
     const rail = screen.getByRole('slider', { name: 'Volume' });
@@ -216,7 +226,7 @@ describe('VolumeControl', () => {
   });
 
   it('keeps the level moving while the pointer drags and stops on release', () => {
-    render(<VolumeControl />);
+    renderControl();
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
 
     const rail = screen.getByRole('slider', { name: 'Volume' });
@@ -245,7 +255,7 @@ describe('VolumeControl', () => {
   });
 
   it('clamps a pointer beyond the rail to the ends', () => {
-    render(<VolumeControl />);
+    renderControl();
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
 
     const rail = screen.getByRole('slider', { name: 'Volume' });

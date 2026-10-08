@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { useI18n } from '@playliberty/i18n';
+
 import VolumeToast from '../VolumeToast/VolumeToast';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { volumeIcon } from '../volumeIcon';
@@ -63,6 +65,7 @@ function releasePointer(element: HTMLElement, pointerId: number): void {
 }
 
 export default function VolumeControl() {
+  const { t } = useI18n();
   const volume = usePlayerStore(state => state.volume);
   const muted = usePlayerStore(state => state.muted);
   const setVolume = usePlayerStore(state => state.setVolume);
@@ -180,7 +183,7 @@ export default function VolumeControl() {
             ref={rail}
             role="slider"
             tabIndex={0}
-            aria-label="Volume"
+            aria-label={t('volume.label')}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(volume * 100)}
@@ -231,7 +234,7 @@ export default function VolumeControl() {
         type="button"
         className={styles.volume__button}
         data-muted={muted ? 'true' : undefined}
-        aria-label={muted ? 'Unmute' : 'Mute'}
+        aria-label={muted ? t('volume.unmute') : t('volume.mute')}
         aria-pressed={muted}
         onClick={() => setMuted(!muted)}>
         <Icon

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { CreatePlaylistInputSchema } from '@playliberty/contracts';
+import { useI18n } from '@playliberty/i18n';
 
 import Dialog from '../../../shared/components/Dialog/Dialog';
 import dialogStyles from '../../../shared/components/Dialog/Dialog.module.scss';
@@ -44,6 +45,7 @@ export default function AddPlaylistDialog({
   isWorking = false,
   problem = null
 }: AddPlaylistDialogProps) {
+  const { t } = useI18n();
   const fieldId = useId();
   const messageId = useId();
   const checkId = useId();
@@ -88,9 +90,7 @@ export default function AddPlaylistDialog({
     const parsed = CreatePlaylistInputSchema.safeParse({ url: trimmed });
 
     if (!parsed.success) {
-      setInvalid(
-        'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
-      );
+      setInvalid(t('addPlaylistDialog.invalid'));
       return;
     }
 
@@ -101,8 +101,8 @@ export default function AddPlaylistDialog({
   return (
     <Dialog
       open={open}
-      title="Add a playlist"
-      description="Paste a YouTube playlist link. Nothing is downloaded until you sync it, and from then on the audio is yours."
+      title={t('addPlaylistDialog.title')}
+      description={t('addPlaylistDialog.description')}
       initialFocus={field}
       onRequestClose={onClose}
       actions={
@@ -112,7 +112,7 @@ export default function AddPlaylistDialog({
             type="button"
             disabled={isWorking}
             onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             className={dialogStyles.dialog__primary}
@@ -126,10 +126,10 @@ export default function AddPlaylistDialog({
                   className={dialogStyles.dialog__spinner}
                   aria-hidden="true"
                 />
-                Adding
+                {t('addPlaylistDialog.adding')}
               </>
             ) : (
-              'Add'
+              t('addPlaylistDialog.add')
             )}
           </button>
         </>
@@ -139,7 +139,7 @@ export default function AddPlaylistDialog({
         data-invalid={message === null ? undefined : 'true'}
         data-disabled={isWorking ? 'true' : undefined}>
         <label className={dialogStyles.field__label} htmlFor={fieldId}>
-          Playlist link
+          {t('addPlaylistDialog.linkLabel')}
         </label>
         <input
           ref={field}
@@ -186,10 +186,12 @@ export default function AddPlaylistDialog({
             aria-describedby={hintId}
             onChange={event => setSkipNonMusic(event.target.checked)}
           />
-          <span className={styles.check__name}>Skip non-music parts</span>
+          <span className={styles.check__name}>
+            {t('addPlaylistDialog.skip')}
+          </span>
         </label>
         <span className={styles.check__hint} id={hintId}>
-          Cut the intros, sponsor reads and outros out of the audio.
+          {t('addPlaylistDialog.skipHint')}
         </span>
       </div>
     </Dialog>

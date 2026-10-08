@@ -17,6 +17,7 @@ import {
   ShareLevel
 } from '@playliberty/contracts';
 import type { Playlist } from '@playliberty/contracts';
+import { I18nProvider } from '@playliberty/i18n';
 
 import PlaylistHeader from './PlaylistHeader';
 
@@ -45,7 +46,9 @@ function renderInRouter(element: ReactNode) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <I18nProvider preferred={['en']}>
+        <RouterProvider router={router} />
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

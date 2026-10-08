@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { Playlist, PlaylistTrack } from '@playliberty/contracts';
+import type { Messages, Translator } from '@playliberty/i18n';
 
 import {
   fetchPlaylistTracks,
@@ -113,19 +114,22 @@ export function useShufflePlaylist(): ShuffleControl {
  * and saying why the press did nothing. Both screens draw the same notice, so the
  * wording lives with the action rather than in either of them.
  */
-export function refusalNotice(refusal: ShuffleRefusal): {
+export function refusalNotice(
+  refusal: ShuffleRefusal,
+  t: Translator<Messages>
+): {
   message: string;
   detail: string;
 } {
   if (refusal.reason === 'unreachable') {
     return {
-      message: `“${refusal.name}” could not be read.`,
-      detail: 'Its tracks could not be loaded.'
+      message: t('shuffle.unreachable', { name: refusal.name }),
+      detail: t('shuffle.unreachableDetail')
     };
   }
 
   return {
-    message: `Nothing to play in “${refusal.name}”.`,
-    detail: 'No track in it has finished downloading.'
+    message: t('shuffle.empty', { name: refusal.name }),
+    detail: t('shuffle.emptyDetail')
   };
 }

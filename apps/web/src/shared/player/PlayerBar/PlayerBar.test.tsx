@@ -1,11 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { I18nProvider } from '@playliberty/i18n';
+
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 import PlayerBar from './PlayerBar';
 
 const PLAYLIST = 'playlist-1';
+
+function renderBar() {
+  return render(
+    <I18nProvider preferred={['en']}>
+      <PlayerBar />
+    </I18nProvider>
+  );
+}
 
 function track(id: string): PlayerTrack {
   return {
@@ -35,7 +45,7 @@ afterEach(() => {
 
 describe('PlayerBar', () => {
   it('is absent at rest', () => {
-    render(<PlayerBar />);
+    renderBar();
 
     expect(screen.queryByLabelText('Player')).not.toBeInTheDocument();
   });
@@ -43,7 +53,7 @@ describe('PlayerBar', () => {
   it('shows the current track, its playlist and the times', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
     usePlayerStore.getState().setPosition(72);
-    render(<PlayerBar />);
+    renderBar();
 
     expect(screen.getByLabelText('Player')).toBeInTheDocument();
     expect(screen.getByText('track-1')).toBeInTheDocument();
@@ -62,7 +72,7 @@ describe('PlayerBar', () => {
       thumbnailPath: '/api/v1/tracks/track-1/thumbnail'
     };
     usePlayerStore.getState().startQueue(PLAYLIST, [withArt], withArt.id);
-    const { container } = render(<PlayerBar />);
+    const { container } = renderBar();
 
     const image = container.querySelector('img');
 
@@ -72,7 +82,7 @@ describe('PlayerBar', () => {
 
   it('toggles playback and skips within the queue', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     expect(usePlayerStore.getState().isPlaying).toBe(false);
@@ -86,7 +96,7 @@ describe('PlayerBar', () => {
 
   it('disables next on the last track', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     const next = screen.getByRole('button', { name: 'Next track' });
     expect(next).toBeEnabled();
@@ -99,14 +109,14 @@ describe('PlayerBar', () => {
 
   it('disables next when the queue holds a single track', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     expect(screen.getByRole('button', { name: 'Next track' })).toBeDisabled();
   });
 
   it('moves the playhead with the arrow keys and clamps at the ends', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     const slider = screen.getByRole('slider', { name: 'Position in track' });
 
@@ -122,7 +132,7 @@ describe('PlayerBar', () => {
 
   it('toggles playback from the space bar wherever focus sits', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     fireEvent.keyDown(document.body, { key: ' ' });
     expect(usePlayerStore.getState().isPlaying).toBe(false);
@@ -133,7 +143,7 @@ describe('PlayerBar', () => {
 
   it('moves the playhead by five seconds with the arrows off the seeker', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     fireEvent.keyDown(document.body, { key: 'ArrowRight' });
     expect(usePlayerStore.getState().positionSeconds).toBe(5);
@@ -148,7 +158,7 @@ describe('PlayerBar', () => {
 
   it('leaves the transport keys to a text field', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     const input = document.createElement('input');
     document.body.append(input);
@@ -165,7 +175,7 @@ describe('PlayerBar', () => {
   it('reports the position to assistive technology', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     usePlayerStore.getState().setPosition(72);
-    render(<PlayerBar />);
+    renderBar();
 
     const slider = screen.getByRole('slider', { name: 'Position in track' });
 
@@ -184,7 +194,7 @@ describe('PlayerBar', () => {
   it('moves the fill with a composited transform, not a layout width', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     usePlayerStore.getState().setPosition(90);
-    render(<PlayerBar />);
+    renderBar();
 
     const slider = screen.getByRole('slider', { name: 'Position in track' });
     const fill = slider.firstElementChild as HTMLElement;
@@ -195,7 +205,7 @@ describe('PlayerBar', () => {
 
   it('seeks to the pointer against the track box', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    render(<PlayerBar />);
+    renderBar();
 
     const slider = screen.getByRole('slider', { name: 'Position in track' });
     vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue({

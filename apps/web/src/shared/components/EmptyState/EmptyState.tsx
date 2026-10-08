@@ -1,5 +1,7 @@
 import { IconRotateClockwise } from '@tabler/icons-react';
 
+import { useI18n } from '@playliberty/i18n';
+
 import styles from './EmptyState.module.scss';
 
 /*
@@ -30,19 +32,14 @@ export default function EmptyState({
   onSync,
   syncing = false
 }: EmptyStateProps) {
+  const { t } = useI18n();
+
   return (
     <div className={styles.emptyState}>
       <div className={styles.emptyState__text}>
-        <h2 className={styles.emptyState__head}>Nothing here yet</h2>
-        <p className={styles.emptyState__prose}>
-          This playlist has never been synced. Syncing goes to YouTube and
-          downloads the audio of every track in it.
-        </p>
-        <p className={styles.emptyState__promise}>
-          A sync takes a few minutes, but once a track is downloaded it is
-          yours. A video removed from YouTube later will not empty this playlist
-          again.
-        </p>
+        <h2 className={styles.emptyState__head}>{t('emptyState.heading')}</h2>
+        <p className={styles.emptyState__prose}>{t('emptyState.prose')}</p>
+        <p className={styles.emptyState__promise}>{t('emptyState.promise')}</p>
       </div>
       {onSync === undefined ? null : (
         <button
@@ -61,7 +58,7 @@ export default function EmptyState({
               focusable="false"
             />
           )}
-          {syncing ? 'Syncing' : 'Sync now'}
+          {syncing ? t('emptyState.syncing') : t('emptyState.sync')}
         </button>
       )}
     </div>

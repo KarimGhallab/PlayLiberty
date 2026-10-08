@@ -22,6 +22,9 @@ export const en = {
     add: 'Add a playlist',
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
+    deleteDeferred: 'Deleting playlist',
+    replaced: 'The earlier action was replaced.',
+    willNotDelete: '“{name}” will not be deleted.',
     empty: {
       heading: 'No playlists yet',
       promise:
@@ -86,6 +89,82 @@ export const en = {
     adding: 'Adding',
     refusedSome: 'Added to the rest. Not added to:',
     refusedAll: 'Nothing was added. Not added to:'
+  },
+  addPlaylistDialog: {
+    title: 'Add a playlist',
+    description:
+      'Paste a YouTube playlist link. Nothing is downloaded until you sync it.',
+    linkLabel: 'Playlist link',
+    invalid:
+      'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...',
+    add: 'Add',
+    adding: 'Adding',
+    skip: 'Skip non-music parts',
+    skipHint: 'Cut the intros, sponsor reads and outros out of the audio.'
+  },
+  playerBar: {
+    label: 'Player',
+    previous: 'Previous track',
+    next: 'Next track',
+    play: 'Play',
+    pause: 'Pause',
+    position: 'Position in track',
+    positionValue: '{elapsed} of {duration}'
+  },
+  volume: {
+    label: 'Volume',
+    mute: 'Mute',
+    unmute: 'Unmute',
+    notice: 'Volume {percent}%',
+    noticeMuted: 'Volume muted, {percent}%'
+  },
+  emptyState: {
+    heading: 'Nothing here yet',
+    prose:
+      'This playlist has never been synced. Syncing goes to YouTube and downloads the audio of every track in it.',
+    promise:
+      'A sync takes a few minutes, but once a track is downloaded, a video removed from YouTube will not dropped it from this playlist.',
+    sync: 'Sync now',
+    syncing: 'Syncing'
+  },
+  toast: {
+    dismiss: 'Dismiss'
+  },
+  readFailure: {
+    retry: 'Try again',
+    retrying: 'Trying again'
+  },
+  notFound: {
+    heading: 'This playlist is not here',
+    prose:
+      'It may have been deleted, or it may belong to someone else and no longer be shared with you.',
+    back: 'Back to home'
+  },
+  header: {
+    collab: 'You are a collaborator',
+    shared: 'Shared playlist',
+    private: 'Private playlist',
+    share: 'Share',
+    rename: 'Rename',
+    syncNow: 'Sync now',
+    delete: 'Delete playlist',
+    play: 'Play this playlist',
+    pause: 'Pause this playlist',
+    skipBack: 'Skip back',
+    trackNext: 'Track next',
+    shuffle: 'Shuffle {name}',
+    actions: 'More actions for {name}',
+    sharedBy: 'Shared by {name}'
+  },
+  trackBars: {
+    playing: 'Playing',
+    paused: 'Paused'
+  },
+  shuffle: {
+    empty: 'Nothing to play in “{name}”.',
+    emptyDetail: 'No track in it has finished downloading.',
+    unreachable: '“{name}” could not be read.',
+    unreachableDetail: 'Its tracks could not be loaded.'
   }
 };
 

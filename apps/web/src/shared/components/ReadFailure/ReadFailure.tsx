@@ -1,3 +1,5 @@
+import { useI18n } from '@playliberty/i18n';
+
 import { ApiError } from '../../api/client/client';
 import styles from './ReadFailure.module.scss';
 
@@ -33,6 +35,8 @@ export default function ReadFailure({
   onRetry,
   retrying = false
 }: ReadFailureProps) {
+  const { t } = useI18n();
+
   return (
     <div className={styles.readFailure} role="alert">
       <p className={styles.readFailure__say}>{detailFrom(error) ?? message}</p>
@@ -42,7 +46,7 @@ export default function ReadFailure({
         onClick={onRetry}
         disabled={retrying}
         aria-busy={retrying ? true : undefined}>
-        {retrying ? 'Trying again' : 'Try again'}
+        {retrying ? t('readFailure.retrying') : t('readFailure.retry')}
       </button>
     </div>
   );
