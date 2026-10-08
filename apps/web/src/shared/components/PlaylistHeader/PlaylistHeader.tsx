@@ -3,12 +3,8 @@ import {
   IconDots,
   IconLock,
   IconLockShare,
-  IconPencil,
   IconPlayerSkipBack,
   IconPlayerTrackNext,
-  IconRotate,
-  IconShare,
-  IconTrash,
   IconUserShare
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -29,6 +25,7 @@ import {
 import { sleeveIndex } from '@playliberty/ui-foundation';
 
 import { API_PREFIX } from '../../api/client/client';
+import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import PlayGlyph from '../PlayGlyph';
 import TrackBars from '../TrackBars';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
@@ -43,11 +40,12 @@ import styles from './PlaylistHeader.module.scss';
  * the row on web; the playlist detail draws the card in its 320px left column.
  *
  * The actions column is a column: the play, then the shuffle and the overflow
- * beside each other under it. Every action is optional and its control is absent
- * when the callback is absent, so the header is gated by what the caller can do
- * rather than by a level string it would have to learn. The overflow is absent
- * for a read collaborator entirely, and the menu's items follow: an owner gets
- * the four it can act on, a writer the one it can.
+ * beside each other under it. The play and the shuffle are optional and their
+ * control is absent when the callback is absent, so the header is gated by what
+ * the caller can do rather than by a level string it would have to learn. The
+ * overflow's items are not the header's to decide: the actions module builds
+ * them by access and hands them in as `menu`, so an owner gets the four it can
+ * act on, a writer the one it can, and a reader an empty menu and no overflow.
  *
  * The card draws the shuffle and the menu as siblings in its own action band, so
  * the shuffle sits immediately left of the menu icon, and the row keeps them
@@ -111,11 +109,7 @@ interface PlaylistHeaderProps {
   hasNext?: boolean;
   onShuffle?: () => void;
   shuffled?: boolean;
-  onSync?: () => void;
-  onRename?: () => void;
-  onShare?: () => void;
-  onDelete?: () => void;
-  syncing?: boolean;
+  menu?: readonly PlaylistAction[];
   heading?: boolean;
   ground?: boolean;
   onOpen?: () => void;
@@ -127,14 +121,6 @@ interface ShareMark {
   readonly state: 'own-private' | 'own-shared' | 'collab';
   readonly label: MessageKey<Messages>;
   readonly Icon: typeof IconLock;
-}
-
-interface MenuItem {
-  readonly key: string;
-  readonly label: MessageKey<Messages>;
-  readonly Icon: typeof IconLock;
-  readonly onSelect: () => void;
-  readonly destructive?: true;
 }
 
 /*
@@ -176,11 +162,7 @@ export default function PlaylistHeader({
   hasNext = true,
   onShuffle,
   shuffled = false,
-  onSync,
-  onRename,
-  onShare,
-  onDelete,
-  syncing = false,
+  menu = [],
   heading = false,
   ground = false,
   onOpen,
@@ -357,71 +339,6 @@ export default function PlaylistHeader({
     }
   };
 
-  /*
-   * The overflow's items, by access. A read collaborator gets no overflow at
-   * all, not an empty one: a menu with nothing in it is a control that opens
-   * onto a blank. A writer gets the one item it may use; the owner gets all
-   * four, and the rule before Delete is the header's own.
-   */
-  const menuItems = (() => {
-    if (playlist.access === 'owner') {
-      const items: (MenuItem | null)[] = [
-        onShare === undefined
-          ? null
-          : {
-              key: 'share',
-              label: 'header.share',
-              Icon: IconShare,
-              onSelect: onShare
-            },
-        onRename === undefined
-          ? null
-          : {
-              key: 'rename',
-              label: 'header.rename',
-              Icon: IconPencil,
-              onSelect: onRename
-            },
-        onSync === undefined
-          ? null
-          : {
-              key: 'sync',
-              label: 'header.syncNow',
-              Icon: IconRotate,
-              onSelect: onSync
-            },
-        onDelete === undefined
-          ? null
-          : {
-              key: 'delete',
-              label: 'header.delete',
-              Icon: IconTrash,
-              onSelect: onDelete,
-              destructive: true
-            }
-      ];
-
-      return items.filter((item): item is MenuItem => item !== null);
-    }
-
-    if (playlist.access === 'write') {
-      const items: (MenuItem | null)[] = [
-        onSync === undefined
-          ? null
-          : {
-              key: 'sync',
-              label: 'header.syncNow',
-              Icon: IconRotate,
-              onSelect: onSync
-            }
-      ];
-
-      return items.filter((item): item is MenuItem => item !== null);
-    }
-
-    return [];
-  })();
-
   const playable = playlist.trackCount > 0;
   const lastSyncedAt =
     playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
@@ -506,7 +423,7 @@ export default function PlaylistHeader({
     );
 
   const menuControl =
-    menuItems.length === 0 ? null : (
+    menu.length === 0 ? null : (
       <span className={styles.playlistHeader__menuAnchor} ref={menuAnchorRef}>
         <button
           ref={menuButtonRef}
@@ -539,7 +456,7 @@ export default function PlaylistHeader({
             role="menu"
             ref={menuRef}
             onKeyDown={onMenuKeyDown}>
-            {menuItems.map((item, index) => (
+            {menu.map((item, index) => (
               <Fragment key={item.key}>
                 {item.destructive === true && index > 0 ? <hr /> : null}
                 <button
@@ -550,7 +467,7 @@ export default function PlaylistHeader({
                   data-destructive={
                     item.destructive === true ? 'true' : undefined
                   }
-                  disabled={item.key === 'sync' && syncing}
+                  disabled={item.disabled === true}
                   onClick={() => {
                     closeMenu();
                     item.onSelect();

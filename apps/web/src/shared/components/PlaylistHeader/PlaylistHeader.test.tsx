@@ -1,3 +1,4 @@
+import { IconRotate } from '@tabler/icons-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   RouterProvider,
@@ -19,6 +20,7 @@ import {
 import type { Playlist } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
+import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import PlaylistHeader from './PlaylistHeader';
 
 /*
@@ -81,6 +83,22 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     updatedAt: '2026-09-29T12:00:00.000Z',
     ...overrides
   };
+}
+
+/*
+ * The header draws the menu it is given; the access rule and the wiring live in
+ * the actions module, which has its own test. One Sync now item is enough to draw
+ * the overflow, so a rendering test hands the header a model directly.
+ */
+function menu(): PlaylistAction[] {
+  return [
+    {
+      key: 'sync',
+      label: 'header.syncNow',
+      Icon: IconRotate,
+      onSelect: () => undefined
+    }
+  ];
 }
 
 describe('PlaylistHeader', () => {
@@ -146,7 +164,7 @@ describe('PlaylistHeader', () => {
       onSkipBack: () => undefined,
       onSkipNext: () => undefined,
       onShuffle: () => undefined,
-      onSync: () => undefined
+      menu: menu()
     });
 
     await screen.findByRole('heading', { name: 'Rain On The Window' });
@@ -429,7 +447,7 @@ describe('PlaylistHeader', () => {
     renderHeader(playlist(), null, {
       onOpen,
       onShuffle: () => undefined,
-      onSync: () => undefined
+      menu: menu()
     });
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
@@ -454,12 +472,12 @@ describe('PlaylistHeader', () => {
         <PlaylistHeader
           playlist={playlist({ id: 'playlist-a', name: 'Rain On The Window' })}
           onShuffle={() => undefined}
-          onSync={() => undefined}
+          menu={menu()}
         />
         <PlaylistHeader
           playlist={playlist({ id: 'playlist-b', name: 'A Second Playlist' })}
           onShuffle={() => undefined}
-          onSync={() => undefined}
+          menu={menu()}
         />
       </>
     );
@@ -527,7 +545,7 @@ describe('PlaylistHeader', () => {
       arrangement: 'card',
       onPlay: () => undefined,
       onShuffle: () => undefined,
-      onSync: () => undefined
+      menu: menu()
     });
 
     const shuffle = await screen.findByRole('button', {
@@ -584,7 +602,7 @@ describe('PlaylistHeader', () => {
       onOpen: () => undefined,
       onPlay: () => undefined,
       onShuffle: () => undefined,
-      onSync: () => undefined,
+      menu: menu(),
       pending: true
     });
 

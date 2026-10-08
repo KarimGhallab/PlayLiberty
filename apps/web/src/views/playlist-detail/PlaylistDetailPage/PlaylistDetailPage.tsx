@@ -14,16 +14,13 @@ import {
   ownerNameFrom,
   useAccountDirectory,
   useAddTrack,
-  useDeletePlaylist,
   useFetchTrackWhole,
   useLatestSyncRun,
   usePlaylist,
   usePlaylistTracks,
   usePlaylists,
   useRemoveTrack,
-  useRenamePlaylist,
   useRetryTrack,
-  useSyncPlaylist,
   useUpdateSkipNonMusic
 } from '../../../shared/api/queries/queries';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
@@ -33,8 +30,6 @@ import PlaylistHeader from '../../../shared/components/PlaylistHeader/PlaylistHe
 import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/PlaylistNotFound';
 import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/PlaylistSkipSetting';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
-import RenamePlaylistDialog from '../../../shared/components/RenamePlaylistDialog';
-import SharePlaylistDialog from '../../../shared/components/SharePlaylistDialog/SharePlaylistDialog';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
@@ -52,6 +47,7 @@ import {
   refusalNotice,
   useShufflePlaylist
 } from '../../../shared/player/useShufflePlaylist/useShufflePlaylist';
+import { usePlaylistActions } from '../../../shared/playlistActions/playlistActions';
 import {
   MOBILE_QUERY,
   useMediaQuery
@@ -97,19 +93,22 @@ export default function PlaylistDetailPage() {
    * come from: the dialog adds to several, and this is the list the account can
    * already see. */
   const playlists = usePlaylists();
-  const sync = useSyncPlaylist(playlistId);
-  const remove = useDeletePlaylist(playlistId);
   const retry = useRetryTrack(playlistId);
   const fetchWhole = useFetchTrackWhole(playlistId);
   const removeTrack = useRemoveTrack(playlistId);
-  const rename = useRenamePlaylist(playlistId);
   const updateSkip = useUpdateSkipNonMusic(playlistId);
   const addTrack = useAddTrack();
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
   const deferred = useDeferredAction();
+
+  const actions = usePlaylistActions(playlistId, playlist.data, {
+    defer: deferred.defer,
+    deleteMessage: 'detail.deleteDeferred',
+    onDeleted: () => {
+      void navigate({ to: '/' });
+    }
+  });
   /*
    * The header's arrangement at this width. The design's mobile arrangement is
    * the component's row, not its card: at 390 the card is 470.4px tall and the
@@ -215,20 +214,6 @@ export default function PlaylistDetailPage() {
     startQueue(playlistId, playerTracks, first.id, shuffled);
   };
 
-  const deletePlaylist = (): void => {
-    deferred.defer({
-      id: playlistId,
-      message: t('detail.deleteDeferred'),
-      detail: playlist.data?.name ?? null,
-      commit: () =>
-        remove.mutate(undefined, {
-          onSuccess: () => {
-            void navigate({ to: '/' });
-          }
-        })
-    });
-  };
-
   /*
    * Removing a track is deferred the same way as deleting the playlist: the call
    * waits out the window, and the toast's Cancel stops it. The track is named
@@ -264,9 +249,7 @@ export default function PlaylistDetailPage() {
     [fetchWhole.mutate]
   );
 
-  const access = playlist.data?.access;
-  const canSync = access === 'owner' || access === 'write';
-  const canWrite = canSync;
+  const canWrite = actions.canWrite;
   /* The one track whose row action is in flight, so its menu is not opened onto
    * a second press while the first is still running. */
   const busyTrackId = retry.isPending
@@ -411,15 +394,7 @@ export default function PlaylistDetailPage() {
                 })
               }
               shuffled={shuffled}
-              onSync={canSync ? () => sync.mutate() : undefined}
-              syncing={sync.isPending}
-              onShare={
-                access === 'owner' ? () => setShareOpen(true) : undefined
-              }
-              onRename={
-                access === 'owner' ? () => setRenameOpen(true) : undefined
-              }
-              onDelete={access === 'owner' ? deletePlaylist : undefined}
+              menu={actions.menu}
             />
           ) : null}
 
@@ -454,14 +429,8 @@ export default function PlaylistDetailPage() {
                 trackCount={playlist.data?.trackCount ?? null}
                 provider={playlist.data?.provider ?? Provider.Youtube}
                 rawError={latestRun.data?.error ?? null}
-                onRetry={
-                  canSync
-                    ? () => {
-                        sync.mutate();
-                      }
-                    : undefined
-                }
-                retrying={sync.isPending}
+                onRetry={canWrite ? actions.syncNow : undefined}
+                retrying={actions.syncing}
               />
             </div>
           ) : null}
@@ -495,8 +464,8 @@ export default function PlaylistDetailPage() {
           ) : null}
           {neverSynced && tracks.isSuccess && tracks.data.length === 0 ? (
             <EmptyState
-              onSync={canSync ? () => sync.mutate() : undefined}
-              syncing={sync.isPending}
+              onSync={canWrite ? actions.syncNow : undefined}
+              syncing={actions.syncing}
             />
           ) : null}
           {!neverSynced && tracks.isSuccess && tracks.data.length === 0 ? (
@@ -541,30 +510,7 @@ export default function PlaylistDetailPage() {
         </div>
       </div>
 
-      {renameOpen && playlist.data !== undefined ? (
-        <RenamePlaylistDialog
-          open={renameOpen}
-          currentName={playlist.data.name}
-          isWorking={rename.isPending}
-          problem={
-            rename.isError && rename.error instanceof ApiError
-              ? problemDetail(t, rename.error.problem)
-              : null
-          }
-          onSubmit={name =>
-            rename.mutate(name, {
-              onSuccess: () => setRenameOpen(false)
-            })
-          }
-          onClose={() => setRenameOpen(false)}
-        />
-      ) : null}
-
-      <SharePlaylistDialog
-        open={shareOpen}
-        playlistId={playlistId}
-        onClose={() => setShareOpen(false)}
-      />
+      {actions.dialogs}
 
       <AddTrackDialog
         open={addOpen}
