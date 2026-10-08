@@ -1,6 +1,6 @@
 # 24: A share never carries the collaborator's email or role
 
-**State:** `ready-for-agent`
+**State:** `resolved`
 **Category:** `bug`
 **Blocked by:** None. Can start immediately.
 
@@ -24,16 +24,27 @@ A share names the other account with the summary shape only: id, displayName, av
 
 **Acceptance criteria:**
 
-- [ ] The share read returns no `email` and no `role` for any collaborator.
-- [ ] The grant response does the same.
-- [ ] A test asserts the fields are absent, the counterpart of the account directory's test.
-- [ ] The web client compiles and its share dialog tests pass.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
+- [x] The share read returns no `email` and no `role` for any collaborator.
+- [x] The grant response does the same.
+- [x] A test asserts the fields are absent, the counterpart of the account directory's test.
+- [x] The web client compiles and its share dialog tests pass.
+- [x] `pnpm run build`, `pnpm run lint` and the unit suites pass.
 
 **Out of scope:**
 
 - Removing `AccountSchema`, which `/me` still uses.
 - The account directory's own shape, already narrow.
+
+## Outcome
+
+Done. A share names the collaborator with the summary shape only.
+
+- `ShareSchema.account` is now `AccountSummarySchema` (id, displayName, avatarUrl); it was the wide `AccountSchema`.
+- `toAccountSummary` was added beside `toAccountView`, and `toShareView` uses it. `/me` keeps the wide `Account`.
+- The web share dialog reads only `accountId` and `level`, so the narrowing is transparent; its mock was trimmed to match the server.
+- A test seeds a collaborator with an email and the admin role and asserts the raw grant and list bodies carry neither field, the counterpart of the directory's test.
+
+Verification: full unit suite exit 0 (tokens 3, youtube 22, i18n 39, ui-foundation 6, server 282, web 372); `pnpm run build` and `pnpm run lint` clean.
 
 ## Evidence
 

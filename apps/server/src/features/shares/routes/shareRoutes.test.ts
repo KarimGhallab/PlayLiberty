@@ -53,7 +53,10 @@ function database(): DatabaseHandle {
   return context.database;
 }
 
-function seedAccount(displayName: string): SeededAccount {
+function seedAccount(
+  displayName: string,
+  options: { email?: string | null; role?: UserRole } = {}
+): SeededAccount {
   const accountId = randomUUID();
   const pangolinUserId = `pangolin-${accountId}`;
 
@@ -63,9 +66,9 @@ function seedAccount(displayName: string): SeededAccount {
       id: accountId,
       pangolinUserId,
       displayName,
-      email: null,
+      email: options.email ?? null,
       avatarUrl: null,
-      role: UserRole.User
+      role: options.role ?? UserRole.User
     })
     .run();
 
@@ -242,6 +245,38 @@ describe('GET and POST /playlists/:id/shares', () => {
     expect(listed[0]?.account.displayName).toBe('Bea');
     expect(listed[0]?.level).toBe('read');
     expect(typeof listed[0]?.createdAt).toBe('string');
+  });
+
+  it('names the collaborator with no email address and no role', async () => {
+    context = await createTestContext();
+    const owner = seedAccount('Owner');
+    const target = seedAccount('Bea', {
+      email: 'bea@example.com',
+      role: UserRole.Admin
+    });
+    const playlistId = seedPlaylist(owner.accountId);
+
+    const granted = await grant(playlistId, owner, target.accountId, 'read');
+    expect(granted.statusCode).toBe(200);
+
+    const listed = await get(`/api/v1/playlists/${playlistId}/shares`, owner);
+    expect(listed.statusCode).toBe(200);
+
+    // The raw bodies, before any schema strips a field, must not carry the
+    // collaborator's email or role, the counterpart of the directory's test.
+    for (const body of [granted.json(), listed.json()]) {
+      const serialized = JSON.stringify(body);
+      expect(serialized).not.toContain('@example.com');
+      expect(serialized).not.toContain('"email"');
+      expect(serialized).not.toContain('"role"');
+    }
+
+    const share = ShareListSchema.parse(listed.json())[0];
+    expect(Object.keys(share?.account ?? {}).sort()).toEqual([
+      'avatarUrl',
+      'displayName',
+      'id'
+    ]);
   });
 
   it('refuses a read collaborator, a write collaborator and a stranger on both routes', async () => {

@@ -78,9 +78,7 @@ export const handlers = [
       account: {
         id: 'account-2',
         displayName: 'Ada',
-        email: null,
-        avatarUrl: null,
-        role: 'user'
+        avatarUrl: null
       },
       level: 'read',
       createdAt: '2026-09-29T12:00:00.000Z'

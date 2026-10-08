@@ -97,7 +97,7 @@ export const PlaylistTrackSchema = z.object({
 
 export const ShareSchema = z.object({
   accountId: identifier,
-  account: AccountSchema,
+  account: AccountSummarySchema,
   level: z.enum(ShareLevel),
   createdAt: isoDateTime
 });

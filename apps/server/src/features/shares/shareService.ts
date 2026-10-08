@@ -7,7 +7,7 @@ import { isPlaylistOwner } from '../../shared/access/playlistAccess.js';
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type { AccountRow, ShareRow } from '../../platform/database/schema.js';
 import { accounts, shares } from '../../platform/database/schema.js';
-import { toAccountView } from '../accounts/accountService.js';
+import { toAccountSummary } from '../accounts/accountService.js';
 
 /*
  * Sharing a playlist. A share is a grant of access, so every route here is
@@ -22,7 +22,7 @@ import { toAccountView } from '../accounts/accountService.js';
 function toShareView(share: ShareRow, account: AccountRow): Share {
   return {
     accountId: share.accountId,
-    account: toAccountView(account),
+    account: toAccountSummary(account),
     level: share.level,
     createdAt: share.createdAt
   };

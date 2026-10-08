@@ -100,6 +100,29 @@ export function toAccountView(account: AuthAccount): Account {
   };
 }
 
+/*
+ * The narrow counterpart of `toAccountView`, for a view that names another
+ * account rather than the caller: a share. It carries who the account is and
+ * nothing about how to reach it or what it may do, the same rule the directory
+ * follows. Its input is the minimal shape both an `AuthAccount` and an
+ * `AccountRow` satisfy, so a share passes a row without widening it.
+ */
+export interface AccountSummarySource {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+export function toAccountSummary(
+  account: AccountSummarySource
+): AccountSummary {
+  return {
+    id: account.id,
+    displayName: account.displayName,
+    avatarUrl: account.avatarUrl
+  };
+}
+
 export interface ListAccountsQuery {
   limit: number;
   offset: number;
