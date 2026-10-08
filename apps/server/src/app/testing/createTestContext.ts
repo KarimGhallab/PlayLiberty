@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyServerOptions } from 'fastify';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import type { IYoutubeClient } from '@playliberty/youtube';
@@ -54,6 +54,11 @@ export interface TestContextOptions {
    * that watches the heartbeat shortens it rather than waiting out the default.
    */
   sseHeartbeatMs?: number;
+  /*
+   * A logger a test supplies to read the audit lines the app writes. Absent, the
+   * app builds its own from config, which the test context silences.
+   */
+  loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
 
 export async function createTestContext(
@@ -84,6 +89,7 @@ export async function createTestContext(
     kickDownloads: options.kickDownloads,
     startBackgroundJobs: options.startBackgroundJobs ?? false,
     sseHeartbeatMs: options.sseHeartbeatMs,
+    loggerInstance: options.loggerInstance,
     events
   });
   await app.ready();

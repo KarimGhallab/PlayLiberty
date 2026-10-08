@@ -71,6 +71,11 @@ export interface AppOptions {
    * can subscribe and observe what a feature published.
    */
   events?: AppContext['events'];
+  /*
+   * A test's logger, so a test can read the audit lines the app writes. A real
+   * process builds its own from config and passes nothing here.
+   */
+  loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
 
 function createYoutubeClient(
@@ -123,8 +128,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     events: options.events ?? new EventBus<LiveEvent>()
   };
 
+  const loggerOptions =
+    options.loggerInstance === undefined
+      ? { logger: createLoggerOptions(context.config) }
+      : { loggerInstance: options.loggerInstance };
+
   const app = Fastify({
-    logger: createLoggerOptions(context.config),
+    ...loggerOptions,
     genReqId: request => {
       const header = request.headers['x-request-id'];
 

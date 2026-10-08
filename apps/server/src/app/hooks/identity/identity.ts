@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 
+import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
 import { sendProblem } from '../../../shared/problem.js';
 
@@ -77,6 +78,21 @@ function requestPath(request: FastifyRequest): string {
   return path ?? request.url;
 }
 
+/*
+ * A refused request is an operator's only clue that someone tried, so it gets a
+ * line before the problem is written. The identity may be present and forged or
+ * absent; either way it is recorded as it arrived.
+ */
+function auditIdentityRefusal(request: FastifyRequest, reason: string): void {
+  audit(request.log, {
+    action: 'identity_refused',
+    outcome: 'refused',
+    reason,
+    path: requestPath(request),
+    actor: readStringHeader(request, 'remote-user')
+  });
+}
+
 export function registerIdentityHook(
   app: FastifyInstance,
   context: AppContext
@@ -93,6 +109,7 @@ export function registerIdentityHook(
         assertion === null ||
         !matchesEdgeAssertion(assertion, context.config.edgeAssertion)
       ) {
+        auditIdentityRefusal(request, 'edge_assertion_missing');
         sendProblem(reply, {
           status: 401,
           code: 'unauthenticated',
@@ -107,6 +124,7 @@ export function registerIdentityHook(
     const pangolinUserId = readStringHeader(request, 'remote-user');
 
     if (pangolinUserId === null) {
+      auditIdentityRefusal(request, 'identity_missing');
       sendProblem(reply, {
         status: 401,
         code: 'unauthenticated',
@@ -117,7 +135,7 @@ export function registerIdentityHook(
       return reply;
     }
 
-    request.account = resolveAccount(
+    const resolved = resolveAccount(
       {
         database: context.database,
         adminPangolinUserIds: context.config.adminPangolinUserIds
@@ -128,6 +146,17 @@ export function registerIdentityHook(
         email: readStringHeader(request, 'remote-email')
       }
     );
+    request.account = resolved.account;
+
+    if (resolved.roleChanged) {
+      audit(request.log, {
+        action: 'role_assigned',
+        outcome: 'allowed',
+        account: resolved.account.id,
+        role: resolved.account.role
+      });
+    }
+
     return undefined;
   });
 }

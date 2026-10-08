@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { SharePlaylistInputSchema } from '@playliberty/contracts';
 import { exhaust } from '@playliberty/utils';
 
+import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
 import {
   publishPlaylistChanged,
@@ -97,6 +98,14 @@ export function registerShareRoutes(
       }
 
       if (result.outcome === GrantShareOutcome.Ok) {
+        audit(request.log, {
+          action: 'share_granted',
+          outcome: 'allowed',
+          actor: request.account.id,
+          playlist: request.params.id,
+          account: parsed.data.accountId,
+          level: parsed.data.level
+        });
         publishPlaylistChanged(context, request.params.id);
         return reply.send(result.share);
       }
@@ -131,6 +140,13 @@ export function registerShareRoutes(
        * reads as not-found rather than as a fault; the owner and the accounts
        * that remain hear the change, which is the audience read after the delete.
        */
+      audit(request.log, {
+        action: 'share_revoked',
+        outcome: 'allowed',
+        actor: request.account.id,
+        playlist: request.params.id,
+        account: request.params.accountId
+      });
       publishPlaylistRemoved(context, request.params.id, [
         request.params.accountId
       ]);

@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 
 import { TrackFileStatus } from '@playliberty/contracts';
 
+import { audit } from '../../shared/audit.js';
 import type { AppContext } from '../../shared/context.js';
 
 import {
@@ -47,7 +48,9 @@ export function registerE2eRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.post('/__e2e__/reset', async (_request, reply) => {
+  app.post('/__e2e__/reset', async (request, reply) => {
+    audit(request.log, { action: 'instance_reset', outcome: 'allowed' });
+
     context.database.sqlite.transaction(() => {
       // Children first, because the foreign keys are enforced.
       context.database.db.delete(associations).run();

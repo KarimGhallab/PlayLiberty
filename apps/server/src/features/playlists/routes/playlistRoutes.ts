@@ -9,6 +9,7 @@ import {
 import { exhaust } from '@playliberty/utils';
 
 import { playlistAudience } from '../../../shared/access/playlistAccess.js';
+import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
 import {
   publishPlaylistChanged,
@@ -257,6 +258,12 @@ export function registerPlaylistRoutes(
       }
 
       if (outcome === PlaylistOutcome.Ok) {
+        audit(request.log, {
+          action: 'playlist_deleted',
+          outcome: 'allowed',
+          actor: request.account.id,
+          playlist: request.params.id
+        });
         publishPlaylistRemoved(context, request.params.id, audience);
         return reply.code(204).send();
       }

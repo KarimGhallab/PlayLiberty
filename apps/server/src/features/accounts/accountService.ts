@@ -15,6 +15,15 @@ export interface ResolveAccountOptions {
 }
 
 /*
+ * The account a request resolved to, and whether the request changed an existing
+ * account's role. The caller owns the line, so the service stays logger-free.
+ */
+export interface ResolvedAccount {
+  account: AuthAccount;
+  roleChanged: boolean;
+}
+
+/*
  * Turning a forwarded identity into the account row the rest of the app uses.
  * This is the accounts feature's work, not the request pipeline's, and it is why
  * this file exists in features/accounts: the hook reads three headers and calls
@@ -28,7 +37,7 @@ export interface ResolveAccountOptions {
 export function resolveAccount(
   options: ResolveAccountOptions,
   identity: ForwardedIdentity
-): AuthAccount {
+): ResolvedAccount {
   const role = options.adminPangolinUserIds.includes(identity.pangolinUserId)
     ? UserRole.Admin
     : UserRole.User;
@@ -43,6 +52,13 @@ export function resolveAccount(
     .get();
 
   if (existing !== undefined) {
+    /*
+     * A role that moved because the configured admin list changed is an
+     * access-control event worth its own line; the caller logs it. A refresh
+     * that leaves the role alone is not.
+     */
+    const roleChanged = existing.role !== role;
+
     options.database.db
       .update(accounts)
       .set({ displayName, email: identity.email, role, updatedAt: now })
@@ -50,12 +66,15 @@ export function resolveAccount(
       .run();
 
     return {
-      id: existing.id,
-      pangolinUserId: identity.pangolinUserId,
-      displayName,
-      email: identity.email,
-      avatarUrl: existing.avatarUrl,
-      role
+      roleChanged,
+      account: {
+        id: existing.id,
+        pangolinUserId: identity.pangolinUserId,
+        displayName,
+        email: identity.email,
+        avatarUrl: existing.avatarUrl,
+        role
+      }
     };
   }
 
@@ -75,12 +94,15 @@ export function resolveAccount(
     .run();
 
   return {
-    id,
-    pangolinUserId: identity.pangolinUserId,
-    displayName,
-    email: identity.email,
-    avatarUrl: null,
-    role
+    roleChanged: false,
+    account: {
+      id,
+      pangolinUserId: identity.pangolinUserId,
+      displayName,
+      email: identity.email,
+      avatarUrl: null,
+      role
+    }
   };
 }
 

@@ -1,5 +1,6 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 
+import { audit } from '../../../shared/audit.js';
 import { sendProblem } from '../../../shared/problem.js';
 
 /*
@@ -13,6 +14,22 @@ import { sendProblem } from '../../../shared/problem.js';
  * a GET would break the thumbnail and stream requests a player makes without it.
  */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/*
+ * A refused mutation is the other half of the refusal trail: the request passed
+ * the identity check but did not prove intent, so it is recorded with the path
+ * and the reason before the problem is written.
+ */
+function auditCsrfRefusal(request: FastifyRequest, reason: string): void {
+  const [path] = request.url.split('?');
+
+  audit(request.log, {
+    action: 'csrf_refused',
+    outcome: 'refused',
+    reason,
+    path: path ?? request.url
+  });
+}
 
 export interface CsrfHookOptions {
   publicOrigin: string | null;
@@ -30,6 +47,7 @@ export function registerCsrfHook(
     const clientHeader = request.headers['x-playliberty-client'];
 
     if (typeof clientHeader !== 'string' || clientHeader.length === 0) {
+      auditCsrfRefusal(request, 'csrf_header_missing');
       sendProblem(reply, {
         status: 403,
         code: 'csrf_header_missing',
@@ -40,6 +58,7 @@ export function registerCsrfHook(
     }
 
     if (request.headers['sec-fetch-site'] === 'cross-site') {
+      auditCsrfRefusal(request, 'csrf_cross_site');
       sendProblem(reply, {
         status: 403,
         code: 'csrf_cross_site',
@@ -53,6 +72,7 @@ export function registerCsrfHook(
       const origin = request.headers.origin;
 
       if (typeof origin === 'string' && origin !== options.publicOrigin) {
+        auditCsrfRefusal(request, 'csrf_origin_mismatch');
         sendProblem(reply, {
           status: 403,
           code: 'csrf_origin_mismatch',
