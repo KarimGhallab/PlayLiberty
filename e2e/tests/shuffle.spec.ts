@@ -105,6 +105,17 @@ async function seed(page: Page): Promise<void> {
       name: `Play ${STORED[STORED.length - 1].title}`
     })
   ).toBeVisible();
+
+  /*
+   * The fixture is two seconds long and the player advances when a track ends,
+   * so a walk slower than the file would be overtaken by the track finishing and
+   * the queue would move on its own. Looping the element keeps `ended` from
+   * firing, which leaves the manual step the only thing that moves the queue and
+   * makes these walks deterministic on a slow runner.
+   */
+  await page.locator('audio').evaluate(element => {
+    (element as HTMLAudioElement).loop = true;
+  });
 }
 
 test('the queue a shuffle builds leads with the first stored track and the list draws it', async ({
