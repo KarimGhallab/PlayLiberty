@@ -8,10 +8,13 @@ import type {
 } from '@playliberty/contracts';
 
 import {
-  canWritePlaylist,
-  isPlaylistOwner,
+  AccessNeed,
+  EntryOutcome,
+  playlistEntry
+} from '../../shared/access/entry.js';
+import type { Entry } from '../../shared/access/entry.js';
+import {
   playlistVisibleTo,
-  resolvePlaylistAccess,
   resolvePlaylistAccessMany,
   sharedPlaylistIds
 } from '../../shared/access/playlistAccess.js';
@@ -132,6 +135,54 @@ function toPlaylistView(
   };
 }
 
+/*
+ * One playlist's view for an account already known to reach it. The level is the
+ * one the entry seam resolved, so the view and the check cannot disagree, and a
+ * row that vanished between the check and this read is null.
+ */
+function readPlaylist(
+  database: DatabaseHandle,
+  playlistId: string,
+  access: PlaylistAccess
+): Playlist | null {
+  const row = database.db
+    .select()
+    .from(playlists)
+    .where(eq(playlists.id, playlistId))
+    .get();
+
+  if (row === undefined) {
+    return null;
+  }
+
+  return toPlaylistView(
+    row,
+    access,
+    sharedPlaylistIds(database, [playlistId]).has(playlistId),
+    coverTrackId(database, playlistId)
+  );
+}
+
+/*
+ * A playlist read's outcome from the entry. A denial and a row that vanished are
+ * the same not-found, which is what the route confirms: it answers "gone" for a
+ * playlist this account cannot reach and for one that is not there, and never
+ * distinguishes them.
+ */
+function toReadPlaylistResult(
+  entry: Entry<Playlist | null>
+): ReadPlaylistResult {
+  if (entry.outcome === EntryOutcome.Denied) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  if (entry.value === null) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  return { outcome: PlaylistOutcome.Ok, playlist: entry.value };
+}
+
 export function listPlaylistsForAccount(
   database: DatabaseHandle,
   accountId: string,
@@ -199,34 +250,16 @@ export function readPlaylistForAccount(
   playlistId: string,
   accountId: string
 ): ReadPlaylistResult {
-  // Access first, so a playlist this account cannot reach never becomes a row that
-  // has to be thrown away again, and the 404 is answered from the same decision
-  // the list query makes.
-  const access = resolvePlaylistAccess(database, playlistId, accountId);
-
-  if (access === null) {
-    return { outcome: PlaylistOutcome.NotFound };
-  }
-
-  const row = database.db
-    .select()
-    .from(playlists)
-    .where(eq(playlists.id, playlistId))
-    .get();
-
-  if (row === undefined) {
-    return { outcome: PlaylistOutcome.NotFound };
-  }
-
-  return {
-    outcome: PlaylistOutcome.Ok,
-    playlist: toPlaylistView(
-      row,
-      access,
-      sharedPlaylistIds(database, [playlistId]).has(playlistId),
-      coverTrackId(database, playlistId)
+  /*
+   * The read need, through the entry seam: access first, so a playlist this
+   * account cannot reach never becomes a row that has to be thrown away again,
+   * and the 404 is answered from the same decision the list query makes.
+   */
+  return toReadPlaylistResult(
+    playlistEntry(database, playlistId, accountId, AccessNeed.Read, access =>
+      readPlaylist(database, playlistId, access)
     )
-  };
+  );
 }
 
 /*
@@ -243,17 +276,17 @@ export function renamePlaylistForAccount(
   accountId: string,
   name: string
 ): ReadPlaylistResult {
-  if (!isPlaylistOwner(database, playlistId, accountId)) {
-    return { outcome: PlaylistOutcome.NotFound };
-  }
+  return toReadPlaylistResult(
+    playlistEntry(database, playlistId, accountId, AccessNeed.Owner, access => {
+      database.db
+        .update(playlists)
+        .set({ name, updatedAt: new Date().toISOString() })
+        .where(eq(playlists.id, playlistId))
+        .run();
 
-  database.db
-    .update(playlists)
-    .set({ name, updatedAt: new Date().toISOString() })
-    .where(eq(playlists.id, playlistId))
-    .run();
-
-  return readPlaylistForAccount(database, playlistId, accountId);
+      return readPlaylist(database, playlistId, access);
+    })
+  );
 }
 
 /*
@@ -270,17 +303,17 @@ export function updateSkipNonMusicForAccount(
   accountId: string,
   skipNonMusic: boolean
 ): ReadPlaylistResult {
-  if (!canWritePlaylist(database, playlistId, accountId)) {
-    return { outcome: PlaylistOutcome.NotFound };
-  }
+  return toReadPlaylistResult(
+    playlistEntry(database, playlistId, accountId, AccessNeed.Write, access => {
+      database.db
+        .update(playlists)
+        .set({ skipNonMusic, updatedAt: new Date().toISOString() })
+        .where(eq(playlists.id, playlistId))
+        .run();
 
-  database.db
-    .update(playlists)
-    .set({ skipNonMusic, updatedAt: new Date().toISOString() })
-    .where(eq(playlists.id, playlistId))
-    .run();
-
-  return readPlaylistForAccount(database, playlistId, accountId);
+      return readPlaylist(database, playlistId, access);
+    })
+  );
 }
 
 /*
@@ -297,13 +330,20 @@ export function deletePlaylistForAccount(
   playlistId: string,
   accountId: string
 ): PlaylistOutcome {
-  if (!isPlaylistOwner(database, playlistId, accountId)) {
-    return PlaylistOutcome.NotFound;
-  }
+  const entry = playlistEntry(
+    database,
+    playlistId,
+    accountId,
+    AccessNeed.Owner,
+    () => {
+      database.db.delete(playlists).where(eq(playlists.id, playlistId)).run();
+      return PlaylistOutcome.Ok;
+    }
+  );
 
-  database.db.delete(playlists).where(eq(playlists.id, playlistId)).run();
-
-  return PlaylistOutcome.Ok;
+  return entry.outcome === EntryOutcome.Denied
+    ? PlaylistOutcome.NotFound
+    : entry.value;
 }
 
 /*
@@ -320,17 +360,25 @@ export function removeTrackForAccount(
   trackId: string,
   accountId: string
 ): PlaylistOutcome {
-  if (!canWritePlaylist(database, playlistId, accountId)) {
-    return PlaylistOutcome.NotFound;
-  }
+  const entry = playlistEntry(
+    database,
+    playlistId,
+    accountId,
+    AccessNeed.Write,
+    () => {
+      const outcome = removeAssociation(database, { playlistId, trackId });
 
-  const outcome = removeAssociation(database, { playlistId, trackId });
+      // A removal answers removed or absent; the add outcomes cannot come from
+      // it, and only absent is not a successful removal.
+      return outcome === AssociationOutcome.Absent
+        ? PlaylistOutcome.NotFound
+        : PlaylistOutcome.Ok;
+    }
+  );
 
-  // A removal answers removed or absent; the add outcomes cannot come from it, and
-  // only absent is not a successful removal.
-  return outcome === AssociationOutcome.Absent
+  return entry.outcome === EntryOutcome.Denied
     ? PlaylistOutcome.NotFound
-    : PlaylistOutcome.Ok;
+    : entry.value;
 }
 
 export interface ListPlaylistTracksQuery {
@@ -365,47 +413,54 @@ export function listPlaylistTracksForAccount(
   accountId: string,
   query: ListPlaylistTracksQuery
 ): ReadPlaylistTracksResult {
-  // The same access decision the two playlist reads make, so a playlist this
-  // account cannot reach answers the same 404 rather than a forbidden.
-  const access = resolvePlaylistAccess(database, playlistId, accountId);
+  const entry = playlistEntry(
+    database,
+    playlistId,
+    accountId,
+    AccessNeed.Read,
+    () => {
+      const playlist = database.db
+        .select({ trackCount: playlists.trackCount })
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get();
 
-  if (access === null) {
-    return { outcome: PlaylistOutcome.NotFound };
-  }
+      if (playlist === undefined) {
+        return null;
+      }
 
-  const playlist = database.db
-    .select({ trackCount: playlists.trackCount })
-    .from(playlists)
-    .where(eq(playlists.id, playlistId))
-    .get();
+      // The association is membership, and this is the only join: a track held by
+      // another playlist has no row here, and a track held by this playlist and
+      // another has exactly one, so neither leaks and neither doubles.
+      const rows = database.db
+        .select({ association: associations, track: tracks })
+        .from(associations)
+        .innerJoin(tracks, eq(associations.trackId, tracks.id))
+        .where(eq(associations.playlistId, playlistId))
+        .orderBy(asc(associations.position), asc(sql`${associations}.rowid`))
+        .limit(query.limit)
+        .offset(query.offset)
+        .all();
 
-  if (playlist === undefined) {
-    return { outcome: PlaylistOutcome.NotFound };
-  }
-
-  // The association is membership, and this is the only join: a track held by
-  // another playlist has no row here, and a track held by this playlist and
-  // another has exactly one, so neither leaks and neither doubles.
-  const rows = database.db
-    .select({ association: associations, track: tracks })
-    .from(associations)
-    .innerJoin(tracks, eq(associations.trackId, tracks.id))
-    .where(eq(associations.playlistId, playlistId))
-    .orderBy(asc(associations.position), asc(sql`${associations}.rowid`))
-    .limit(query.limit)
-    .offset(query.offset)
-    .all();
-
-  return {
-    outcome: PlaylistOutcome.Ok,
-    page: {
-      items: rows.map(toPlaylistTrackView),
-      // The stored count, which the association service moves in the same
-      // transaction as the association, rather than a second count query over the
-      // rows this page already had to read.
-      total: playlist.trackCount,
-      limit: query.limit,
-      offset: query.offset
+      return {
+        items: rows.map(toPlaylistTrackView),
+        // The stored count, which the association service moves in the same
+        // transaction as the association, rather than a second count query over
+        // the rows this page already had to read.
+        total: playlist.trackCount,
+        limit: query.limit,
+        offset: query.offset
+      };
     }
-  };
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  if (entry.value === null) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  return { outcome: PlaylistOutcome.Ok, page: entry.value };
 }

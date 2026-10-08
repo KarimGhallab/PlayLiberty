@@ -4,9 +4,10 @@ import type { Track } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 
 import {
-  canAccountAccessTrack,
-  canAccountWriteTrack
-} from '../../../shared/access/trackAccess.js';
+  AccessNeed,
+  EntryOutcome,
+  trackEntry
+} from '../../../shared/access/entry.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
@@ -47,15 +48,28 @@ export function resolveTrackForStream(
     return { outcome: TrackStreamOutcome.NotFound };
   }
 
-  if (!canAccountAccessTrack(database, track.id, accountId)) {
+  const entry = trackEntry<TrackStreamResult>(
+    database,
+    track.id,
+    accountId,
+    AccessNeed.Read,
+    () => {
+      if (
+        track.fileStatus !== TrackFileStatus.Stored ||
+        track.filePath === null
+      ) {
+        return { outcome: TrackStreamOutcome.NotStored };
+      }
+
+      return { outcome: TrackStreamOutcome.Ok, filePath: track.filePath };
+    }
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
     return { outcome: TrackStreamOutcome.Forbidden };
   }
 
-  if (track.fileStatus !== TrackFileStatus.Stored || track.filePath === null) {
-    return { outcome: TrackStreamOutcome.NotStored };
-  }
-
-  return { outcome: TrackStreamOutcome.Ok, filePath: track.filePath };
+  return entry.value;
 }
 
 export function resolveTrackForThumbnail(
@@ -65,18 +79,32 @@ export function resolveTrackForThumbnail(
 ): TrackThumbnailResult {
   const track = loadTrack(database, trackId);
 
-  if (track === undefined || track.thumbnailPath === null) {
+  if (track === undefined) {
     return { outcome: TrackThumbnailOutcome.NotFound };
   }
 
-  if (!canAccountAccessTrack(database, track.id, accountId)) {
+  const thumbnailPath = track.thumbnailPath;
+
+  if (thumbnailPath === null) {
+    return { outcome: TrackThumbnailOutcome.NotFound };
+  }
+
+  const entry = trackEntry<TrackThumbnailResult>(
+    database,
+    track.id,
+    accountId,
+    AccessNeed.Read,
+    () => ({
+      outcome: TrackThumbnailOutcome.Ok,
+      thumbnailPath
+    })
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
     return { outcome: TrackThumbnailOutcome.Forbidden };
   }
 
-  return {
-    outcome: TrackThumbnailOutcome.Ok,
-    thumbnailPath: track.thumbnailPath
-  };
+  return entry.value;
 }
 
 /*
@@ -135,27 +163,38 @@ export function retryTrackForAccount(
 ): RetryTrackResult {
   const track = loadTrack(database, trackId);
 
-  if (
-    track === undefined ||
-    !canAccountWriteTrack(database, track.id, accountId)
-  ) {
+  if (track === undefined) {
     return { outcome: RetryTrackOutcome.NotFound };
   }
 
-  const transition = retryTrack(database, track.id);
+  const entry = trackEntry<RetryTrackResult>(
+    database,
+    track.id,
+    accountId,
+    AccessNeed.Write,
+    () => {
+      const transition = retryTrack(database, track.id);
 
-  if (transition.outcome === TrackTransitionOutcome.Refused) {
-    return { outcome: RetryTrackOutcome.NotRetryable };
-  }
+      if (transition.outcome === TrackTransitionOutcome.Refused) {
+        return { outcome: RetryTrackOutcome.NotRetryable };
+      }
 
-  if (transition.outcome === TrackTransitionOutcome.Missing) {
+      if (transition.outcome === TrackTransitionOutcome.Missing) {
+        return { outcome: RetryTrackOutcome.NotFound };
+      }
+
+      return {
+        outcome: RetryTrackOutcome.Ok,
+        track: toTrackView(transition.track)
+      };
+    }
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
     return { outcome: RetryTrackOutcome.NotFound };
   }
 
-  return {
-    outcome: RetryTrackOutcome.Ok,
-    track: toTrackView(transition.track)
-  };
+  return entry.value;
 }
 
 /*
@@ -179,30 +218,41 @@ export function fetchTrackWholeForAccount(
 ): FetchWholeResult {
   const track = loadTrack(database, trackId);
 
-  if (
-    track === undefined ||
-    !canAccountWriteTrack(database, track.id, accountId)
-  ) {
+  if (track === undefined) {
     return { outcome: FetchWholeOutcome.NotFound };
   }
 
-  /*
-   * The eligibility rule lives in the lifecycle: a stored track has a file to
-   * protect, a downloading one is mid-fetch and moving it would race the worker,
-   * and an unavailable one is gone. The module refuses all three.
-   */
-  const transition = fetchTrackWhole(database, track.id);
+  const entry = trackEntry<FetchWholeResult>(
+    database,
+    track.id,
+    accountId,
+    AccessNeed.Write,
+    () => {
+      /*
+       * The eligibility rule lives in the lifecycle: a stored track has a file to
+       * protect, a downloading one is mid-fetch and moving it would race the
+       * worker, and an unavailable one is gone. The module refuses all three.
+       */
+      const transition = fetchTrackWhole(database, track.id);
 
-  if (transition.outcome === TrackTransitionOutcome.Refused) {
-    return { outcome: FetchWholeOutcome.NotEligible };
-  }
+      if (transition.outcome === TrackTransitionOutcome.Refused) {
+        return { outcome: FetchWholeOutcome.NotEligible };
+      }
 
-  if (transition.outcome === TrackTransitionOutcome.Missing) {
+      if (transition.outcome === TrackTransitionOutcome.Missing) {
+        return { outcome: FetchWholeOutcome.NotFound };
+      }
+
+      return {
+        outcome: FetchWholeOutcome.Ok,
+        track: toTrackView(transition.track)
+      };
+    }
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
     return { outcome: FetchWholeOutcome.NotFound };
   }
 
-  return {
-    outcome: FetchWholeOutcome.Ok,
-    track: toTrackView(transition.track)
-  };
+  return entry.value;
 }
