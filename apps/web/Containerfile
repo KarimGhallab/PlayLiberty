@@ -38,6 +38,7 @@ ENV EDGE_ASSERTION=
 # default; the production pod overrides it to the pod-local server.
 ENV WEB_UPSTREAM=server:8080
 COPY apps/web/deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY apps/web/deploy/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 
 # The unprivileged image already runs as a non-root user on 8080.

@@ -49,7 +49,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`26-a-source-entry-id-that-is-not-a-video-id-never-reaches-the-filesystem`](26-a-source-entry-id-that-is-not-a-video-id-never-reaches-the-filesystem.md) | `resolved` | `bug` | An unvalidated yt-dlp entry id can escape the media root; reject it and assert containment. |
 | [`27-refused-requests-and-access-control-changes-are-recorded`](27-refused-requests-and-access-control-changes-are-recorded.md) | `resolved` | `enhancement` | Refused requests and access-control changes leave no audit line. |
 | [`28-a-track-change-tells-a-listener-only-about-playlists-it-can-see`](28-a-track-change-tells-a-listener-only-about-playlists-it-can-see.md) | `triaged` | `bug` | A track change leaks the ids of playlists a listener cannot see. |
-| [`29-the-public-origin-sends-its-security-headers`](29-the-public-origin-sends-its-security-headers.md) | `triaged` | `enhancement` | The public origin sends no security headers. |
+| [`29-the-public-origin-sends-its-security-headers`](29-the-public-origin-sends-its-security-headers.md) | `resolved` | `enhancement` | The public origin sends no security headers. |
 | [`30-the-image-trusts-a-committed-digest-not-the-download-channel`](30-the-image-trusts-a-committed-digest-not-the-download-channel.md) | `triaged` | `bug` | The image verifies yt-dlp against a checksum from the same channel; trust a committed digest. |
 | [`31-the-web-origin-has-no-production-deployment`](31-the-web-origin-has-no-production-deployment.md) | `resolved` | `bug` | `deploy/` ships only the server; add the nginx front and keep the backend off the edge network. |
 

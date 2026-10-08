@@ -28,6 +28,10 @@ server {
     # location blocks below inherit this, the live stream included.
     proxy_set_header X-PlayLiberty-Edge "${EDGE_ASSERTION}";
 
+    # The security headers every response carries. A location that adds its own
+    # header includes this again, because nginx drops the inherited ones there.
+    include /etc/nginx/snippets/security-headers.conf;
+
     location = /healthz {
         proxy_pass http://${WEB_UPSTREAM};
     }
@@ -51,12 +55,14 @@ server {
     # Vite hashes asset filenames, so they are immutable.
     location /assets/ {
         add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/snippets/security-headers.conf;
         try_files $uri =404;
     }
 
     # The shell is never cached, so a deploy is picked up on the next load.
     location = /index.html {
         add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/security-headers.conf;
     }
 
     # Client routes fall back to the shell. /api and /healthz never reach here,
