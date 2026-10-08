@@ -15,10 +15,8 @@ import {
   addAssociation,
   nextPositionFor
 } from '../playlists/associationService.js';
-import {
-  createPendingTrack,
-  findTrackByVideoId
-} from './service/trackService.js';
+import { findTrackByVideoId } from './service/trackService.js';
+import { createPendingTrack } from './trackLifecycle/trackLifecycle.js';
 
 /*
  * Adding one pasted video to several playlists at once.

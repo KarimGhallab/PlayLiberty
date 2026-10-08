@@ -1,23 +1,26 @@
 import { mkdir, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
-import { TrackFileStatus } from '@playliberty/contracts';
 import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
 import { publishTrackChanged } from '../../../shared/events/liveEvents.js';
 
 import type { TrackRow } from '../../../platform/database/schema.js';
-import { tracks } from '../../../platform/database/schema.js';
 import { startIntervalJob } from '../../../platform/jobs/intervalJob.js';
 import {
   mediaRelativePath,
   thumbnailRelativePath
 } from '../../../platform/media/mediaPaths.js';
-import { markTrackSourceRemoved } from '../../tracks/trackLifecycle/trackLifecycle.js';
+import {
+  claimPendingTracks,
+  failTrack,
+  markTrackSourceRemoved,
+  storeThumbnail,
+  storeTrack
+} from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 /*
  * The slot that processes pending tracks. The queue is the `track` rows themselves,
@@ -105,68 +108,27 @@ export function startDownloadWorker(
 
 /*
  * One pass, exposed so a test can drive it without waiting on the interval. It
- * claims at most `concurrency` pending tracks in one conditional update and
- * downloads exactly the ones it moved, so a track another pass already claimed is
- * not fetched twice and a backlog is worked through across passes.
+ * claims at most `concurrency` pending tracks in one guarded move and downloads
+ * exactly the ones it moved, so a track another pass already claimed is not
+ * fetched twice and a backlog is worked through across passes.
  */
 export async function processPendingTracks(
   context: WorkerContext,
   logger: FastifyBaseLogger,
   concurrency: number
 ): Promise<void> {
-  const claimed = claimPendingTracks(context, concurrency);
+  const claimed = claimPendingTracks(context.database, concurrency);
 
   for (const track of claimed) {
     publishTrackChanged(context, track.id);
   }
 
-  await Promise.all(claimed.map(track => storeTrack(context, logger, track)));
+  await Promise.all(
+    claimed.map(track => processClaimedTrack(context, logger, track))
+  );
 }
 
-/*
- * The claim is two statements and one batch. The first picks the oldest `pending`
- * rows up to the cap; the update then moves those rows to `downloading` only if
- * they are still `pending`, and returns exactly the ones it moved. A row another
- * pass already took is not in the result, so no download is started twice.
- */
-function claimPendingTracks(
-  context: WorkerContext,
-  concurrency: number
-): TrackRow[] {
-  const batch = Math.max(1, Math.floor(concurrency));
-
-  const candidates = context.database.db
-    .select({ id: tracks.id })
-    .from(tracks)
-    .where(eq(tracks.fileStatus, TrackFileStatus.Pending))
-    .orderBy(sql`${tracks}.rowid`)
-    .limit(batch)
-    .all();
-
-  if (candidates.length === 0) {
-    return [];
-  }
-
-  return context.database.db
-    .update(tracks)
-    .set({
-      fileStatus: TrackFileStatus.Downloading,
-      updatedAt: new Date().toISOString()
-    })
-    .where(
-      and(
-        eq(tracks.fileStatus, TrackFileStatus.Pending),
-        inArray(
-          tracks.id,
-          candidates.map(candidate => candidate.id)
-        )
-      )
-    )
-    .returning()
-    .all();
-}
-
-async function storeTrack(
+async function processClaimedTrack(
   context: WorkerContext,
   logger: FastifyBaseLogger,
   track: TrackRow
@@ -194,17 +156,10 @@ async function storeTrack(
 
     await rename(result.filePath, storedPath);
 
-    context.database.db
-      .update(tracks)
-      .set({
-        fileStatus: TrackFileStatus.Stored,
-        filePath: relativePath,
-        durationSeconds: result.durationSeconds,
-        failureReason: null,
-        updatedAt: new Date().toISOString()
-      })
-      .where(eq(tracks.id, track.id))
-      .run();
+    storeTrack(context.database, track.id, {
+      filePath: relativePath,
+      durationSeconds: result.durationSeconds
+    });
 
     logger.info({ trackId: track.id, videoId: track.videoId }, 'track stored');
   } catch (error) {
@@ -212,7 +167,7 @@ async function storeTrack(
     // marked removed from the source and is never retried, reaching the same pair of
     // values the sync's retention pass produces.
     if (error instanceof YoutubeVideoUnavailableError) {
-      markTrackSourceRemoved(context.database, track.id, track.fileStatus);
+      markTrackSourceRemoved(context.database, track.id);
       publishTrackChanged(context, track.id);
       logger.info(
         { trackId: track.id, videoId: track.videoId },
@@ -227,15 +182,7 @@ async function storeTrack(
     // failure is one of these, and its reason is the typed error's fixed sentence
     // rather than the tool's stderr, so it reads the same on every track. The next
     // sync returns the track to `pending` so it is tried again.
-    context.database.db
-      .update(tracks)
-      .set({
-        fileStatus: TrackFileStatus.Failed,
-        failureReason: summarizeFailure(error),
-        updatedAt: new Date().toISOString()
-      })
-      .where(eq(tracks.id, track.id))
-      .run();
+    failTrack(context.database, track.id, summarizeFailure(error));
 
     publishTrackChanged(context, track.id);
 
@@ -271,11 +218,7 @@ async function fetchThumbnail(
   try {
     await context.youtube.fetchThumbnail(track.thumbnailUrl, absolutePath);
 
-    context.database.db
-      .update(tracks)
-      .set({ thumbnailPath: relativePath, updatedAt: new Date().toISOString() })
-      .where(eq(tracks.id, track.id))
-      .run();
+    storeThumbnail(context.database, track.id, relativePath);
 
     logger.info(
       { trackId: track.id, videoId: track.videoId },

@@ -1,13 +1,7 @@
-import { randomUUID } from 'node:crypto';
-
 import { eq } from 'drizzle-orm';
 
 import type { Track } from '@playliberty/contracts';
-import {
-  Provider,
-  TrackFileStatus,
-  TrackSourceStatus
-} from '@playliberty/contracts';
+import { TrackFileStatus } from '@playliberty/contracts';
 
 import {
   canAccountAccessTrack,
@@ -17,10 +11,14 @@ import {
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { tracks } from '../../../platform/database/schema.js';
+import {
+  TrackTransitionOutcome,
+  fetchTrackWhole,
+  retryTrack
+} from '../trackLifecycle/trackLifecycle.js';
 import type {
   FetchWholeResult,
   RetryTrackResult,
-  TrackSeed,
   TrackStreamResult,
   TrackThumbnailResult
 } from '../types.js';
@@ -99,38 +97,6 @@ export function findTrackByVideoId(
 }
 
 /*
- * One track for a video id the instance does not hold yet, queued for download.
- * The provider is fixed today because YouTube is the only source; the video id is
- * the key every later read uses.
- */
-export function createPendingTrack(
-  database: DatabaseHandle,
-  seed: TrackSeed
-): string {
-  const trackId = randomUUID();
-
-  database.db
-    .insert(tracks)
-    .values({
-      id: trackId,
-      provider: Provider.Youtube,
-      videoId: seed.videoId,
-      title: seed.title,
-      durationSeconds: seed.durationSeconds,
-      skipNonMusic: seed.skipNonMusic,
-      thumbnailPath: null,
-      thumbnailUrl: seed.thumbnailUrl,
-      fileStatus: TrackFileStatus.Pending,
-      sourceStatus: TrackSourceStatus.Available,
-      filePath: null,
-      failureReason: null
-    })
-    .run();
-
-  return trackId;
-}
-
-/*
  * The stored row carries two fields the contract does not: the media path the
  * stream route resolves, and the thumbnail URL the download wrote. Neither is
  * metadata, so neither crosses the wire; the artwork is reached through the
@@ -176,37 +142,19 @@ export function retryTrackForAccount(
     return { outcome: RetryTrackOutcome.NotFound };
   }
 
-  if (track.fileStatus !== TrackFileStatus.Failed) {
+  const transition = retryTrack(database, track.id);
+
+  if (transition.outcome === TrackTransitionOutcome.Refused) {
     return { outcome: RetryTrackOutcome.NotRetryable };
   }
 
-  const updatedAt = new Date().toISOString();
-  const trackUpdatedFields: Partial<Track> = {
-    fileStatus: TrackFileStatus.Pending,
-    failureReason: null,
-    updatedAt
-  };
-
-  const updated = database.db
-    .update(tracks)
-    .set(trackUpdatedFields)
-    .where(eq(tracks.id, track.id))
-    .run();
-
-  // Success is claimed from the write itself: if it changed no row, the track is
-  // not there, which is the same answer as one that was never there.
-  if (updated.changes === 0) {
+  if (transition.outcome === TrackTransitionOutcome.Missing) {
     return { outcome: RetryTrackOutcome.NotFound };
   }
 
-  // The row already in hand is the answer with the three fields this write
-  // changed applied; a second read would only fetch back what was just written.
   return {
     outcome: RetryTrackOutcome.Ok,
-    track: toTrackView({
-      ...track,
-      ...trackUpdatedFields
-    })
+    track: toTrackView(transition.track)
   };
 }
 
@@ -238,39 +186,23 @@ export function fetchTrackWholeForAccount(
     return { outcome: FetchWholeOutcome.NotFound };
   }
 
-  // Only a track waiting to be fetched is eligible. A stored one has a file to
-  // protect, a downloading one is mid-fetch and moving it would race the worker,
-  // and an unavailable one is gone.
-  if (
-    track.fileStatus !== TrackFileStatus.Pending &&
-    track.fileStatus !== TrackFileStatus.Failed
-  ) {
+  /*
+   * The eligibility rule lives in the lifecycle: a stored track has a file to
+   * protect, a downloading one is mid-fetch and moving it would race the worker,
+   * and an unavailable one is gone. The module refuses all three.
+   */
+  const transition = fetchTrackWhole(database, track.id);
+
+  if (transition.outcome === TrackTransitionOutcome.Refused) {
     return { outcome: FetchWholeOutcome.NotEligible };
   }
 
-  const updatedAt = new Date().toISOString();
-  const trackUpdatedFields: Partial<Track> = {
-    skipNonMusic: false,
-    fileStatus: TrackFileStatus.Pending,
-    failureReason: null,
-    updatedAt
-  };
-
-  const updated = database.db
-    .update(tracks)
-    .set(trackUpdatedFields)
-    .where(eq(tracks.id, track.id))
-    .run();
-
-  if (updated.changes === 0) {
+  if (transition.outcome === TrackTransitionOutcome.Missing) {
     return { outcome: FetchWholeOutcome.NotFound };
   }
 
   return {
     outcome: FetchWholeOutcome.Ok,
-    track: toTrackView({
-      ...track,
-      ...trackUpdatedFields
-    })
+    track: toTrackView(transition.track)
   };
 }

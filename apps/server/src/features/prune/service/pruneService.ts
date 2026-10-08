@@ -1,7 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
 import { TrackFileStatus } from '@playliberty/contracts';
@@ -10,6 +10,7 @@ import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { associations, tracks } from '../../../platform/database/schema.js';
 import type { MediaPaths } from '../../../platform/media/mediaPaths.js';
+import { removeTrack } from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 export interface PruneOptions {
   database: DatabaseHandle;
@@ -72,7 +73,7 @@ export async function pruneOrphanTracks(
       continue;
     }
 
-    options.database.db.delete(tracks).where(eq(tracks.id, track.id)).run();
+    removeTrack(options.database, track.id);
     removed += 1;
   }
 

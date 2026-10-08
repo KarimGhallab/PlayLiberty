@@ -30,11 +30,12 @@ import {
   addAssociation,
   nextPositionFor
 } from '../../playlists/associationService.js';
+import { findTrackByVideoId } from '../../tracks/service/trackService.js';
 import {
   createPendingTrack,
-  findTrackByVideoId
-} from '../../tracks/service/trackService.js';
-import { markTrackSourceRemoved } from '../../tracks/trackLifecycle/trackLifecycle.js';
+  markTrackSourceRemoved,
+  retryTrack
+} from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 /*
  * Syncing a Synced playlist with its Source.
@@ -365,7 +366,7 @@ function retainAbsentTracks(
 
     // The rule lives in one place now, shared with the download worker, so a
     // video that leaves the source and a download that finds it gone agree.
-    markTrackSourceRemoved(database, row.trackId, row.fileStatus);
+    markTrackSourceRemoved(database, row.trackId);
 
     if (row.fileStatus === TrackFileStatus.Stored) {
       retained += 1;
@@ -457,15 +458,7 @@ function ensureTrack(
     // existing track is left exactly as it is, which is the one way the sync's
     // reuse differs from the batch add's, which reuses a failed track untouched.
     if (existing.fileStatus === TrackFileStatus.Failed) {
-      database.db
-        .update(tracks)
-        .set({
-          fileStatus: TrackFileStatus.Pending,
-          failureReason: null,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(tracks.id, existing.id))
-        .run();
+      retryTrack(database, existing.id);
     }
 
     return existing.id;
