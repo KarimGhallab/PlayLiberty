@@ -193,7 +193,12 @@ export default function PlayerAudio() {
     }
 
     if (isPlaying) {
-      audio.play().catch(() => setPlaying(false));
+      const startedId = currentId;
+      audio.play().catch(() => {
+        if (usePlayerStore.getState().currentId === startedId) {
+          setPlaying(false);
+        }
+      });
       return;
     }
 
