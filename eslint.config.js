@@ -3,6 +3,14 @@ import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+import noHardcodedString from './eslint-rules/no-hardcoded-string.js';
+
+const localPlugin = {
+  rules: {
+    'no-hardcoded-string': noHardcodedString
+  }
+};
+
 export default defineConfig([
   {
     ignores: ['**/dist/**', '**/node_modules/**', '**/*.js', '**/*.cjs']
@@ -68,5 +76,22 @@ export default defineConfig([
     // somewhere less obvious.
     files: ['apps/server/src/**/*.test.ts'],
     rules: { 'no-restricted-syntax': 'off' }
+  },
+  {
+    /*
+     * The web client owns every sentence a person reads through
+     * `@playliberty/i18n`, so a hardcoded user-facing string in JSX or in a
+     * label prop is copy a second language would leave in English. The rule's
+     * allowlist covers the symbols, entities and example URLs that are not copy.
+     */
+    files: ['apps/web/src/**/*.tsx'],
+    plugins: { local: localPlugin },
+    rules: { 'local/no-hardcoded-string': 'error' }
+  },
+  {
+    // A test renders fixtures and asserts the copy the app would render, so its
+    // strings are the assertion rather than copy the catalog should own.
+    files: ['apps/web/src/**/*.test.tsx'],
+    rules: { 'local/no-hardcoded-string': 'off' }
   }
 ]);
