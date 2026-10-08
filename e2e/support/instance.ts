@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 
 import { FAKE_SCRIPT } from './paths';
 
@@ -9,9 +9,10 @@ import { FAKE_SCRIPT } from './paths';
  * adapter will answer, and empty the instance.
  *
  * The scenario is written to the file the server's fake reads on every call, so a
- * test does not have to restart anything. The reset goes through the browser so it
- * carries the same edge identity and client header every other request does; it is
- * the test-only route the server mounts under `NODE_ENV=test`.
+ * test does not have to restart anything. The reset is a request through the Vite
+ * dev server, which is the only thing that injects the edge identity the server
+ * fails closed without; it is the test-only route the server mounts under
+ * `NODE_ENV=test`.
  */
 
 export interface ScenarioEntry {
@@ -36,18 +37,20 @@ export function writeScenario(scenario: Scenario): void {
   writeFileSync(FAKE_SCRIPT, JSON.stringify(scenario, null, 2), 'utf8');
 }
 
-export async function resetInstance(page: Page): Promise<void> {
-  const status = await page.evaluate(async () => {
-    const response = await fetch('/api/v1/__e2e__/reset', {
-      method: 'POST',
-      headers: { 'X-PlayLiberty-Client': 'web' }
-    });
-
-    return response.status;
+/*
+ * A direct request rather than a page fetch, so a test no longer pays for an app
+ * load before it starts. It still reaches the server through the Vite dev server,
+ * which is what carries the edge identity.
+ */
+export async function resetInstance(request: APIRequestContext): Promise<void> {
+  const response = await request.post('/api/v1/__e2e__/reset', {
+    headers: { 'X-PlayLiberty-Client': 'web' }
   });
 
-  if (status !== 204) {
-    throw new Error(`The instance reset answered ${status}, not 204.`);
+  if (response.status() !== 204) {
+    throw new Error(
+      `The instance reset answered ${response.status()}, not 204.`
+    );
   }
 }
 
