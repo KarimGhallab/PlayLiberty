@@ -225,22 +225,23 @@ export function playlistAudience(
 }
 
 /*
- * Who hears a change to a track: the playlists that hold it, and the accounts
- * that can see any of them. A track is shared across playlists and one file is
- * fetched once, so a change to it is a change to every playlist that associates
- * it; the answer names both, because the event carries the playlist ids and the
- * bus needs the accounts. A track no playlist holds has no audience, and a
- * publisher of nothing is a no-op.
+ * Who hears a change to a track, and which playlists each of them may be told
+ * about. A track is shared across playlists and one file is fetched once, so a
+ * change to it is a change to every playlist that associates it; but the event
+ * carries the playlist ids, so the answer is per account: an account hears only
+ * about the holding playlists it can reach, and one that can reach none is left
+ * out entirely. A track no playlist holds has no audience, so a publisher of
+ * nothing is a no-op.
  */
 export interface TrackAudience {
+  accountId: string;
   playlistIds: string[];
-  accountIds: string[];
 }
 
 export function trackAudience(
   database: DatabaseHandle,
   trackId: string
-): TrackAudience {
+): TrackAudience[] {
   const rows = database.db
     .select({
       playlistId: associations.playlistId,
@@ -253,17 +254,24 @@ export function trackAudience(
     .where(eq(associations.trackId, trackId))
     .all();
 
-  const playlistIds = new Set<string>();
-  const accountIds = new Set<string>();
+  const byAccount = new Map<string, Set<string>>();
+
+  const add = (accountId: string, playlistId: string): void => {
+    const playlistIds = byAccount.get(accountId) ?? new Set<string>();
+    playlistIds.add(playlistId);
+    byAccount.set(accountId, playlistIds);
+  };
 
   for (const row of rows) {
-    playlistIds.add(row.playlistId);
-    accountIds.add(row.ownerAccountId);
+    add(row.ownerAccountId, row.playlistId);
 
     if (row.sharedAccountId !== null) {
-      accountIds.add(row.sharedAccountId);
+      add(row.sharedAccountId, row.playlistId);
     }
   }
 
-  return { playlistIds: [...playlistIds], accountIds: [...accountIds] };
+  return [...byAccount].map(([accountId, playlistIds]) => ({
+    accountId,
+    playlistIds: [...playlistIds]
+  }));
 }

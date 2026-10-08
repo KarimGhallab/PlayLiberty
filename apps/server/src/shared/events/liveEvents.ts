@@ -41,21 +41,17 @@ export function publishPlaylistRemoved(
   );
 }
 
-/** A track's file changed, so every playlist that holds it hears. */
+/** A track's file changed, so every account that can see a holding playlist hears. */
 export function publishTrackChanged(
   context: LiveEventContext,
   trackId: string
 ): void {
-  const audience = trackAudience(context.database, trackId);
-
-  if (audience.playlistIds.length === 0) {
-    return;
+  const trackAudiences = trackAudience(context.database, trackId);
+  for (const { accountId, playlistIds } of trackAudiences) {
+    context.events.publish({ type: LiveEventType.TrackChanged, playlistIds }, [
+      accountId
+    ]);
   }
-
-  context.events.publish(
-    { type: LiveEventType.TrackChanged, playlistIds: audience.playlistIds },
-    audience.accountIds
-  );
 }
 
 /*
@@ -63,24 +59,28 @@ export function publishTrackChanged(
  * track is still in them. This is the removal's shape: the track outlives the
  * association, and the playlist it left is exactly the one whose list and count
  * moved.
+ *
+ * The event is built per recipient, so an account hears only the named playlists
+ * it can reach and a playlist another account owns is never named to it.
  */
 export function publishTracksChangedForPlaylists(
   context: LiveEventContext,
   playlistIds: string[]
 ): void {
-  if (playlistIds.length === 0) {
-    return;
-  }
-
-  const accountIds = new Set<string>();
+  const byAccount = new Map<string, string[]>();
 
   for (const playlistId of playlistIds) {
     for (const accountId of playlistAudience(context.database, playlistId)) {
-      accountIds.add(accountId);
+      const ids = byAccount.get(accountId) ?? [];
+      ids.push(playlistId);
+      byAccount.set(accountId, ids);
     }
   }
 
-  context.events.publish({ type: LiveEventType.TrackChanged, playlistIds }, [
-    ...accountIds
-  ]);
+  for (const [accountId, ids] of byAccount) {
+    context.events.publish(
+      { type: LiveEventType.TrackChanged, playlistIds: ids },
+      [accountId]
+    );
+  }
 }

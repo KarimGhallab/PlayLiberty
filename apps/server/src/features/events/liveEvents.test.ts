@@ -342,4 +342,85 @@ describe('the playlist and track events', () => {
       { type: LiveEventType.TrackChanged, playlistIds: [playlistId] }
     ]);
   });
+
+  it('tells each account only about the holding playlists it can see', async () => {
+    context = await createTestContext();
+    const ownerA = seedAccount(context.database, 'owner-a');
+    const ownerB = seedAccount(context.database, 'owner-b');
+    const collaborator = seedAccount(context.database, 'collaborator-1');
+    const stranger = seedAccount(context.database, 'stranger-1');
+    const playlistA = seedPlaylist(context.database, ownerA);
+    const playlistB = seedPlaylist(context.database, ownerB);
+    grantShare(context.database, playlistA, collaborator);
+
+    // One track held by both playlists, so a change to it is a change to both.
+    const trackId = seedTrack(
+      context.database,
+      playlistA,
+      TrackFileStatus.Failed
+    );
+    context.database.db
+      .insert(associations)
+      .values({
+        id: randomUUID(),
+        playlistId: playlistB,
+        trackId,
+        origin: AssociationOrigin.Remote,
+        position: 0
+      })
+      .run();
+
+    const ownerAEvents = collect(ownerA);
+    const ownerBEvents = collect(ownerB);
+    const collaboratorEvents = collect(collaborator);
+    const strangerEvents = collect(stranger);
+
+    const response = await request(
+      'POST',
+      `/api/v1/tracks/${trackId}/retry`,
+      'owner-a'
+    );
+
+    expect(response.statusCode).toBe(200);
+    // Each account hears only the playlist it can reach; the collaborator sees
+    // playlist A and never playlist B, and the stranger hears nothing at all.
+    expect(ownerAEvents).toEqual([
+      { type: LiveEventType.TrackChanged, playlistIds: [playlistA] }
+    ]);
+    expect(ownerBEvents).toEqual([
+      { type: LiveEventType.TrackChanged, playlistIds: [playlistB] }
+    ]);
+    expect(collaboratorEvents).toEqual([
+      { type: LiveEventType.TrackChanged, playlistIds: [playlistA] }
+    ]);
+    expect(strangerEvents).toEqual([]);
+  });
+
+  it('tells a batch-add collaborator only about the playlists it can see', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: createFakeYoutube(testVideo('bbbbbbbbbbb')) }
+    );
+    const owner = seedAccount(context.database, 'owner-a');
+    const collaborator = seedAccount(context.database, 'collaborator-1');
+    const playlistA = seedPlaylist(context.database, owner);
+    const playlistB = seedPlaylist(context.database, owner);
+    grantShare(context.database, playlistA, collaborator);
+
+    const ownerEvents = collect(owner);
+    const collaboratorEvents = collect(collaborator);
+
+    const response = await request('POST', '/api/v1/tracks', 'owner-a', {
+      url: VIDEO_URL,
+      playlistIds: [playlistA, playlistB]
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(ownerEvents).toEqual([
+      { type: LiveEventType.TrackChanged, playlistIds: [playlistA, playlistB] }
+    ]);
+    expect(collaboratorEvents).toEqual([
+      { type: LiveEventType.TrackChanged, playlistIds: [playlistA] }
+    ]);
+  });
 });

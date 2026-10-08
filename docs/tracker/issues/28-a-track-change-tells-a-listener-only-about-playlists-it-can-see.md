@@ -1,6 +1,6 @@
 # 28: A track change tells a listener only about playlists it can see
 
-**State:** `ready-for-agent`
+**State:** `resolved`
 **Category:** `bug`
 **Blocked by:** None. Can start immediately.
 
@@ -24,16 +24,27 @@ The event is computed per recipient. Each account receives only the playlist ids
 
 **Acceptance criteria:**
 
-- [ ] An account that can access one holding playlist but not another receives only the accessible id.
-- [ ] An account that can access none of them receives no event.
-- [ ] The batch-add path filters the same way.
-- [ ] Tests cover a track held by both an accessible and an inaccessible playlist.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
+- [x] An account that can access one holding playlist but not another receives only the accessible id.
+- [x] An account that can access none of them receives no event.
+- [x] The batch-add path filters the same way.
+- [x] Tests cover a track held by both an accessible and an inaccessible playlist.
+- [x] `pnpm run build`, `pnpm run lint` and the unit suites pass.
 
 **Out of scope:**
 
 - The event's other kinds, which already carry a single playlist the recipient can see.
 - Changing what the client does with the payload.
+
+## Outcome
+
+Done. A track-change event is computed per recipient.
+
+- `trackAudience` now returns a per-account answer, `{ accountId, playlistIds }[]`, listing only the holding playlists each account can reach. It previously returned the flat union of every holding playlist and every account that could see any of them.
+- `publishTrackChanged` publishes one event per recipient, each carrying only that account's playlist ids.
+- `publishTracksChangedForPlaylists` (the association-change path) builds the same per-recipient payload, so an account hears only the named playlists it can reach.
+- `LiveEventSchema`'s `TrackChanged` shape is unchanged (an array of playlist ids), and every published array is non-empty by construction.
+
+Verification: two new tests. One retries a track held by two playlists owned by different accounts, with a collaborator on one: the collaborator hears only its playlist, each owner hears its own, and a stranger hears nothing. The other adds a video to two owned playlists with a collaborator on one: the collaborator hears only its playlist, the owner hears both. Full unit suite exits 0 (server 318); `pnpm run build` and `pnpm run lint` clean.
 
 ## Evidence
 
