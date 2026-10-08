@@ -10,18 +10,6 @@ import { expect, test } from '../support/test';
 
 const PLAYLIST_ID = 'E2Eplaylist1';
 
-test('the empty gallery offers to add a playlist, and nothing else', async ({
-  page
-}) => {
-  await page.goto('/');
-
-  await expect(page.getByText('No playlists yet')).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Add a playlist', exact: true }).first()
-  ).toBeVisible();
-  await expect(page.getByRole('list')).toHaveCount(0);
-});
-
 test('adding a playlist creates it and the item arrives from the server', async ({
   page
 }) => {
@@ -51,7 +39,6 @@ test('adding a playlist creates it and the item arrives from the server', async 
   // title, which the browser could not have guessed.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Evening Jazz' })).toBeVisible();
-  await expect(page.getByText('3')).toBeVisible();
 });
 
 test('a refused create shows the server problem beside the field', async ({

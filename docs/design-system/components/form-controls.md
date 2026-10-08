@@ -31,7 +31,7 @@ the pointer crosses it stops being a state you can read at rest.
 
 **Amber is `--emphasis`, and the downloading tone holds the same value.** Both are `#e39a3c`, two names
 for one decision, and the suite fails if they ever stop agreeing. They cannot be one token pointing at the
-other, because ADR 0009 rejects aliased tokens: React Native cannot resolve `var()`. "In progress" is a
+other, because the design record rejects aliased tokens: React Native cannot resolve `var()`. "In progress" is a
 mild form of "needs attention" and emphasis is the broader of the two ideas, so a state sharing a colour's
 name is ordinary; a colour borrowing a state name is the thing this system exists to avoid. The two can
 share a value because they never compete: download concurrency is capped at 2, so at most two rows are

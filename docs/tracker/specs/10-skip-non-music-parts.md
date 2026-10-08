@@ -99,7 +99,7 @@ fetched whole when the trimmed result is wrong.
   re-encode the whole file first and must never appear on this path. Verified against a Format 140 download:
   the remaining AAC packets are byte-identical to the source, aligned to a 1024-sample frame, at the same bit
   rate, still AAC in M4A. This is what keeps
-  [ADR 0002](../../adr/0002-no-transcoding-store-aac-m4a.md) true and the server encoder-free.
+  [Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded) true and the server encoder-free.
 - **A SponsorBlock lookup that fails is a failure, not a gone video.** The adapter classifies yt-dlp's own
   phrases into a new typed error, mirroring the unavailable-video classification. The worker records
   `fileStatus: failed` with a stable, readable reason and never `unavailable`. _Decided here:_ the reason is a
@@ -134,16 +134,16 @@ fetched whole when the trimmed result is wrong.
   runs for every download, trimmed or not.
 - **The prefer-AAC selector already exists and this spec ratifies it.** The download arguments already ask for
   `bestaudio[ext=m4a]/bestaudio`, so a video with no AAC stream falls back to Opus today.
-  [ADR 0002](../../adr/0002-no-transcoding-store-aac-m4a.md) is amended to say AAC preferred, Opus tolerated
+  [Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded) is amended to say AAC preferred, Opus tolerated
   when no AAC exists, never transcode, and it names the Safari caveat that the Opus fallback carries.
 - **An outage costs a full download per retry, and that is accepted.** yt-dlp fetches the whole file before it
   exits non-zero on a SponsorBlock error, so a failed attempt is not free. The alternative, pre-flighting the
   API in our own code, would reimplement the tool's hash lookup and filters and would be a second thing to keep
   in step. _Decided here._
-- **Inherited constraints are owned by the ADRs and not restated here:** no transcoding, ever, and the AAC/M4A
-  store with the Opus tolerance ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)), identity from the
-  forwarded edge headers ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client
-  header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** no transcoding, ever, and the AAC/M4A
+  store with the Opus tolerance ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)), identity from the
+  forwarded edge headers ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client
+  header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
 
 ## Testing Decisions
 

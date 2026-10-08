@@ -1,32 +1,7 @@
 # 24: Start playback from shuffle, and mirror the queue in the detail list
 
-**What to build:** The shuffle control does what it says on both surfaces, and the detail's track list
-draws the queue's order rather than the server's while a shuffle is on.
-
-1. **Shuffle starts the music.** The library gives every item a shuffle that only set a flag on the player
-   store, so pressing it on a playlist while something else plays toggles the playback mode of another
-   queue, and pressing it with nothing playing changes a queue nobody can hear.
-2. **Unshuffle restores the playlist's order.** Turning shuffle off keeps the order the shuffle left, so the
-   list does not change back. The order the queue was built in has to be kept for the restore.
-3. **The detail's list is the queue.** Rows are drawn in the server's order whatever the queue is, so a
-   shuffled queue and its list disagree.
-4. **A press with nothing to play.** The library knows only a `trackCount` of every association, so the
-   control is drawn for a playlist whose tracks are all pending or failed. It must not go silent.
-
 **Blocked by:** None. Can start immediately.
-
 **Status:** resolved
-
-**Labels:** `enhancement`, `ready-for-agent`
-
-- [x] Shuffle starts the pressed playlist, shuffled, whether the queue is empty or another playlist's.
-- [x] Turning shuffle off restores the playlist's order.
-- [x] The detail's list is drawn in the queue's order while the queue is that playlist and shuffled.
-- [x] A press with nothing stored refuses visibly.
-- [x] The web unit suite, the build and the lint pass.
-
-**Verification:** `pnpm run build`, `pnpm run lint`, the web unit suite and
-`node docs/design/scripts/validate-design-tokens.cjs`.
 
 ## Outcome
 

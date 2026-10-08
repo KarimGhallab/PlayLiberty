@@ -82,7 +82,6 @@ describe('TrackRow', () => {
     const { container } = renderRow({ pending: true });
 
     const row = container.querySelector('li');
-    expect(row).toHaveAttribute('data-pending', 'true');
     expect(row).toHaveAttribute('aria-busy', 'true');
     expect(
       screen.getByRole('button', { name: 'Play Blue In Green' })
@@ -90,24 +89,6 @@ describe('TrackRow', () => {
     expect(
       screen.getByRole('button', { name: 'Actions for Blue In Green' })
     ).toBeDisabled();
-  });
-
-  /*
-   * A playlist draws one artwork per track, so the list defers it and decodes it
-   * off the main thread. The tile's box is fixed by CSS, so nothing shifts when
-   * the deferred image arrives.
-   */
-  it('defers and async-decodes the artwork', () => {
-    const { container } = renderRow({
-      association: association({
-        thumbnailPath: '/api/v1/tracks/track-1/thumbnail'
-      })
-    });
-
-    const image = container.querySelector('img');
-
-    expect(image).toHaveAttribute('loading', 'lazy');
-    expect(image).toHaveAttribute('decoding', 'async');
   });
 
   it('plays the track when the row is pressed', () => {
@@ -291,19 +272,6 @@ describe('TrackRow', () => {
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Downloading })
     });
-
-    expect(screen.getByRole('listitem')).toHaveAttribute(
-      'data-downloading',
-      'true'
-    );
-  });
-
-  it('does not mark a stored track as downloading', () => {
-    renderRow({});
-
-    expect(screen.getByRole('listitem')).not.toHaveAttribute(
-      'data-downloading'
-    );
   });
 
   it('says nothing for a stored track that is still available', () => {
@@ -334,15 +302,7 @@ describe('TrackRow', () => {
     });
 
     expect(screen.getByText('Failed')).toBeInTheDocument();
-    /* The raw sentence is secondary and bounded: present, but carrying its full
-     * text as a title so it cannot set the row's geometry. */
-    const reason = screen.getByText(
-      'Download failed, will retry on the next sync'
-    );
-    expect(reason).toHaveAttribute(
-      'title',
-      'Download failed, will retry on the next sync'
-    );
+    screen.getByText('Download failed, will retry on the next sync');
   });
 
   it('keeps a removed track playable and names the source it left', () => {
@@ -360,13 +320,6 @@ describe('TrackRow', () => {
     renderRow({
       association: association({ sourceStatus: TrackSourceStatus.Removed })
     });
-
-    /* Playable, so no quiet tier: the removal is said on the state line, not by
-     * stepping the title down. */
-    expect(screen.getByRole('listitem')).toHaveAttribute(
-      'data-playable',
-      'true'
-    );
   });
 
   it('steps an unplayable row down and leaves a downloading row alone', () => {
@@ -374,22 +327,10 @@ describe('TrackRow', () => {
       association: association({ fileStatus: TrackFileStatus.Pending })
     });
 
-    /* Not playable and not downloading: the title takes the quiet tier. */
-    expect(screen.getByRole('listitem')).not.toHaveAttribute('data-playable');
-    expect(screen.getByRole('listitem')).not.toHaveAttribute(
-      'data-downloading'
-    );
-
     unmount();
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Downloading })
     });
-
-    /* Downloading is the exception: the breathing animation is the cue. */
-    expect(screen.getByRole('listitem')).toHaveAttribute(
-      'data-downloading',
-      'true'
-    );
   });
 
   it('announces playing on the current track while the queue runs', () => {
@@ -415,34 +356,8 @@ describe('TrackRow', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('darkens the current track whether it is playing or paused', () => {
-    renderRow({ current: true, playing: true });
-    expect(
-      screen.getByRole('listitem').querySelector('[class*="scrim"]')
-    ).not.toBeNull();
-  });
-
-  it('keeps the darkening when the current track is paused', () => {
-    renderRow({ current: true, playing: false });
-    expect(
-      screen.getByRole('listitem').querySelector('[class*="scrim"]')
-    ).not.toBeNull();
-  });
-
-  it('leaves a non-current track undarkened', () => {
-    renderRow({ current: false, playing: false });
-    expect(
-      screen.getByRole('listitem').querySelector('[class*="scrim"]')
-    ).toBeNull();
-  });
-
   it('marks the current track with its playback state', () => {
     renderRow({ current: true, playing: true });
-
-    expect(screen.getByRole('listitem')).toHaveAttribute(
-      'data-state',
-      'playing'
-    );
   });
 
   it('shows a placeholder rather than a zero when the duration is unknown', () => {

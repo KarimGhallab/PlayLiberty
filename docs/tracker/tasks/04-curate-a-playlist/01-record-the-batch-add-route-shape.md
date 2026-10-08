@@ -1,26 +1,11 @@
 # 01: Record the batch-add route shape
 
-**What to build:** A decision record for the one route shape this spec changes the contract for. Adding a
-video is one top-level request that names the video by URL and the playlists by id, and answers one outcome per
-chosen playlist, rather than a request nested under a single playlist. The record has to say why the nested
-route is replaced rather than kept, why the request is a video URL and a non-empty list of ids, and why a
-refused playlist carries no reason. It is the decision ticket 02 implements, and it exists because the shape
-changes a contract more than one consumer reads.
-
 **Blocked by:** None. Can start immediately.
-
 **Status:** resolved
-
-**Labels:** `enhancement`, `ready-for-agent`
-
-- [x] An architecture decision record under `docs/adr/` records the route shape: one top-level request carrying a video URL and a list of playlist ids, answering one outcome per playlist in the order the ids were sent.
-- [x] It records why a refused playlist carries no reason, in the same terms the playlist and sync routes answer `404` rather than `403`.
-- [x] It states the shape it replaces, one request per playlist, and why a path that names one playlist could not express the choice of several.
-- [x] It notes that the request body is the same shape the create-a-playlist dialog uses for a different purpose, so the two are told apart by the field rather than the URL alone.
 
 ## Outcome
 
-Written. `docs/adr/0012-add-a-video-in-one-batch-request.md` records the decision: one top-level `POST /tracks`
+Written. [`Adding a video is one batch request`](../../../ARCHITECTURE.md#adding-a-video-is-one-batch-request) records the decision: one top-level `POST /tracks`
 carrying a video URL and a non-empty list of at most a hundred playlist ids, answering one outcome per chosen
 playlist in the order the ids were sent, with `already_present` a success and `refused` carrying no reason.
 

@@ -131,7 +131,7 @@
        * --muted, and the same for all three states, which is a decision and not
        * an omission. A tone is how a thing is: idle, failed, unavailable, and
        * this system already spends tones on those. None of the three share
-       * states is better or worse than another, and ADR 0010's rule is that an
+       * states is better or worse than another, and the design record's rule is that an
        * icon can never be the most saturated thing on screen, so tinting the
        * collaborator state to make it read differently would be the one place
        * on this header where a picture outranks a name. The shape carries the
@@ -269,7 +269,7 @@
          drawings. The frames come from scripts/morph-frames.mjs and the design
          check re-derives them, so none of this geometry is hand-placed.
 
-         See docs/adr/0010 for why the frames in between are not in the pinned
+         See docs/DESIGN.md for why the frames in between are not in the pinned
          set, and what is required of them in exchange. */
       /* The strip. All 8 frames sit side by side inside a box the size of
    one, and a single transform steps across the row. steps(7, jump-end) is what puts the element on the first frame, then on each of the
@@ -643,7 +643,7 @@
       apps/mobile imports @tabler/icons-react-native, both pinned to 3.48.0,
       and each depends on @tabler/icons at that same exact version, so both
       runtimes draw the artwork transcribed below. See
-      docs/adr/0010-tabler-icons.md.
+      docs/DESIGN.md (Icons come from Tabler, pinned to one version).
 
       One sprite per file, referenced by <use>, so the pinned geometry is
       written once rather than twenty times. The validator holds every file's
@@ -3069,11 +3069,11 @@
             </p>
             <p class="hint">
               That cannot be fixed here, and the reason is worth having in the
-              record. ADR 0010 allows one weight across the set, which for this
-              set means the choice between outline and filled rather than a
-              scale, so evening these three out would mean a per-glyph stroke
-              width and two clients agreeing on it. That is the exact
-              per-component value ADR 0009 and 0010 exist to prevent, so a
+              record. the design record allows one weight across the set, which
+              for this set means the choice between outline and filled rather
+              than a scale, so evening these three out would mean a per-glyph
+              stroke width and two clients agreeing on it. That is the exact
+              per-component value the design record exists to prevent, so a
               heavier collaborator mark is not available at any price. The
               two-person glyph, which would bring the family from 6.54 points
               down to 2.05, was available and was not taken, because which keys

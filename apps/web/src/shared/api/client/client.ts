@@ -4,7 +4,7 @@ import { ProblemSchema } from '@playliberty/contracts';
 /*
  * The one place the API is spoken to. Every request is same-origin (`/api/v1`),
  * so nginx or the Vite dev proxy forwards it and no CORS is in play. A mutation
- * carries the client header ADR 0006 requires; a `GET` never does, because a
+ * carries the client header the architecture requires; a `GET` never does, because a
  * `GET` never mutates.
  *
  * The edge can answer `401` or redirect to its SSO login. Both mean the browser
@@ -141,7 +141,7 @@ export async function probeStreamStatus(path: string): Promise<number> {
 /*
  * The mutation half. A `POST` sends a JSON body and parses the reply with the
  * same schema discipline a `GET` uses, and `send` is what attaches the client
- * header ADR 0006 requires. A refusal throws the `ApiError` carrying the problem
+ * header the architecture requires. A refusal throws the `ApiError` carrying the problem
  * document, so the caller shows the server's own `detail` rather than a message
  * the client made up.
  */

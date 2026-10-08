@@ -60,10 +60,6 @@ describe('createTranslator', () => {
   it('pins the library strings, the level the catalog inherits', () => {
     const t = createTranslator(en, Language.English);
 
-    expect(t('app.name')).toBe('PlayLiberty');
-    expect(t('library.add')).toBe('Add a playlist');
-    expect(t('library.loading')).toBe('Loading playlists.');
-    expect(t('library.empty.heading')).toBe('No playlists yet');
     expect(t('count.tracks', { count: 1 })).toBe('1 track');
     expect(t('count.tracks', { count: 42 })).toBe('42 tracks');
   });

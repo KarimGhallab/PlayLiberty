@@ -85,17 +85,11 @@ bar's and nothing else. The curve is the system's one, `--ease-standard`, on bot
 decision and not a given: a dialog that disappears in one frame reads as a dialog that crashed.
 
 **The two halves are four keyframes and not one keyframe reversed, and that was learned in the
-browser.** The first version named one `pl-dialog-fade` and one `pl-dialog-arrive` and set
-`animation-direction: reverse` on `data-closing`, on the reasoning that one definition cannot disagree
-with itself. It renders as no exit at all: the entrance animation has already finished by the time the
-exit starts, and a **finished** animation whose direction changes is re-resolved at its end value
-rather than restarted, so the opacity sits at 1 for the whole exit and the node is torn down still
-fully opaque. Changing `animation-name` is what starts a fresh animation, so the exit owns
+browser.** Changing `animation-name` is what starts a fresh animation, so the exit owns
 `pl-dialog-fade-out` and `pl-dialog-arrive-out`, and the mirrored pair sits beside the `-in` pair so a
 reader sees the reversal. It is the one place in this dialog where the CSS cannot do the obvious thing.
 
-**The unmount waits on the duration, not on `animationend`.** React has no animation library (ADR
-0005), so the node has to outlive the open state for the exit to be visible, and the component owns
+**The unmount waits on the duration, not on `animationend`.** React has no animation library, so the node has to outlive the open state for the exit to be visible, and the component owns
 that lived span. It ends the exit on a timer at the same `--motion-base` and hands that duration to
 the stylesheet as `--dialog-motion`, so the animation and the unmount share one number rather than
 naming it twice. A component that unmounted only on `animationend` would strand itself over the page

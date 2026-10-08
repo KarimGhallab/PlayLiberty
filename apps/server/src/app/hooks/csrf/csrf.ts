@@ -6,7 +6,7 @@ import { audit } from '../../../shared/audit.js';
 import { sendProblem } from '../../../shared/problem.js';
 
 /*
- * The three checks ADR 0006 requires on a mutating request: the client header is
+ * The three checks the architecture requires on a mutating request: the client header is
  * present, the request is not cross-site, and the origin is ours. They are one hook
  * beside the identity hook because they are the same kind of thing, a request that
  * is refused before a route sees it, and because a fourth check added to one of

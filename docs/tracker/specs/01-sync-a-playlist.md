@@ -168,7 +168,7 @@ built to protect, and it is a refusal rather than a recovery.
 - **Everything about YouTube stays behind the adapter.** The sync never parses yt-dlp output and never spawns
   a process, because the adapter is the only seam to the source and that boundary is what makes the sync
   testable at all.
-- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), no transcoding and the AAC/M4A store ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)), private deployment behind the edge ([`0001`](../../adr/0001-private-deployment-behind-pangolin-edge.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)). The retention promise is owned by [`PRODUCT.md`](../../PRODUCT.md).
+- **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), no transcoding and the AAC/M4A store ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)), private deployment behind the edge ([Deployment behind the Pangolin edge](../../ARCHITECTURE.md#deployment-behind-the-pangolin-edge)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)). The retention promise is owned by [`PRODUCT.md`](../../PRODUCT.md).
 
 ## Testing Decisions
 

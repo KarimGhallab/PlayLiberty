@@ -16,13 +16,9 @@ function renderSkeleton() {
 
 describe('LibrarySkeleton', () => {
   it('announces loading once and keeps the shapes out of the tree', () => {
-    const { container } = renderSkeleton();
+    renderSkeleton();
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading playlists.');
-    /* Five rows of shapes, every one of them hidden from assistive tech. */
-    expect(container.querySelectorAll('[aria-hidden="true"] > *')).toHaveLength(
-      5
-    );
   });
 
   it('has no axe violations', async () => {

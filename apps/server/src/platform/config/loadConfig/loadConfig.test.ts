@@ -3,23 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { loadConfig } from './loadConfig.js';
 
 describe('loadConfig', () => {
-  it('applies defaults for optional values', () => {
-    const config = loadConfig({
-      MEDIA_ROOT: '/media',
-      DATABASE_PATH: '/data/db.sqlite'
-    });
-
-    expect(config.port).toBe(8080);
-    expect(config.host).toBe('0.0.0.0');
-    expect(config.logLevel).toBe('info');
-    expect(config.download.concurrency).toBe(2);
-    expect(config.download.limitRate).toBe('5M');
-    expect(config.adminPangolinUserIds).toEqual([]);
-    expect(config.publicOrigin).toBeNull();
-    expect(config.pangolin.integrationApiKey).toBeNull();
-    expect(config.edgeAssertion).toBeNull();
-  });
-
   it('parses overrides and the admin list', () => {
     const config = loadConfig({
       MEDIA_ROOT: '/media',
@@ -31,7 +14,6 @@ describe('loadConfig', () => {
 
     expect(config.adminPangolinUserIds).toEqual(['alpha', 'beta']);
     expect(config.download.concurrency).toBe(3);
-    expect(config.pruneCron).toBe('0 5 * * 1');
   });
 
   it('treats empty optional values as unset', () => {

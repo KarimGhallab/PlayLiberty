@@ -5,8 +5,8 @@
 The [library](../screens/library.md) header's language control, and the only place the interface's language is
 chosen. A globe button opens a two-row menu, `English` and `Français`, with the active row checked; choosing a
 row switches the interface at once and remembers it. It is on the library only, because there is no account
-surface and no settings, and the decision that the client owns the copy is
-[`0014`](../../adr/0014-client-owns-user-facing-copy.md).
+surface and no settings, and the decision that the client owns the copy is in
+[the design record](../../DESIGN.md#the-client-owns-user-facing-copy).
 
 ## The trigger
 
@@ -63,7 +63,7 @@ or an account item: there is no account surface. Do not put the choice in the UR
 
 ## Not this
 
-A settings surface or an account menu, which the prototype tried and dropped because there is no account, no
+A settings surface or an account menu: there is no account, no
 settings and no sign out. A row per locale (`English (US)`, `Français (Canada)`): the app supports two
 languages and matches a regional tag to its base, so a row is a language and not a locale. A visible word on
 the trigger, which would spend the header's width on a control a reader presses rarely.

@@ -4,9 +4,7 @@
 
 The dialog the [playlist detail](../screens/playlist-detail.md) hosts, on both clients, and its only door for
 one pasted video. It takes a video URL and a set of writable playlists, and it is **one request for the whole
-batch**: `POST /tracks` resolves the video once and answers one outcome per chosen playlist. The earlier
-per-playlist route is gone ([`04-curate-a-playlist`](../../tracker/specs/04-curate-a-playlist.md)), and the
-design followed it.
+batch**: `POST /tracks` resolves the video once and answers one outcome per chosen playlist.
 
 **It is named for the track and its field takes a video URL, and that is the glossary's own distinction, not a
 contradiction.** A _track_ is what the server stores; a _video_ is its source on YouTube

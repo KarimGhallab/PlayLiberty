@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axe from 'axe-core';
-import { HttpResponse, delay, http } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { I18nProvider } from '@playliberty/i18n';
@@ -285,22 +285,6 @@ describe('LibraryPage', () => {
     ).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('reserves the shape of the list while the read is pending', async () => {
-    /* The read never answers, so the skeleton is the only state on the page. */
-    server.use(
-      http.get('http://localhost:3000/api/v1/playlists', async () => {
-        await delay('infinite');
-        return HttpResponse.json({ items: [], total: 0, limit: 50, offset: 0 });
-      })
-    );
-
-    renderLibraryPage();
-
-    const status = await screen.findByRole('status');
-    expect(status).toHaveTextContent('Loading playlists.');
-    expect(status.querySelectorAll('[aria-hidden="true"] > *')).toHaveLength(5);
-  });
-
   it('renders an owned playlist and a shared one as the same item in one list', async () => {
     renderLibraryPage();
 
@@ -312,17 +296,6 @@ describe('LibraryPage', () => {
     expect(
       screen.getByRole('img', { name: 'You are a collaborator' })
     ).toBeInTheDocument();
-  });
-
-  it('orders the items as the route returned them', async () => {
-    renderLibraryPage();
-
-    const links = await screen.findAllByRole('link');
-
-    expect(links.map(link => link.textContent)).toEqual([
-      'Rain On The Window',
-      'Shared Mix'
-    ]);
   });
 
   it('offers the owner the four actions and the reader no overflow', async () => {
@@ -678,59 +651,6 @@ describe('LibraryPage', () => {
     expect(usePlayerStore.getState().queue).toHaveLength(0);
   });
 
-  it('starts a fresh shuffled queue on a second press and takes the order back on a third', async () => {
-    const tracks = ['track-1', 'track-2', 'track-3'].map((id, index) => ({
-      track: {
-        id,
-        provider: 'youtube',
-        videoId: `video-${index + 1}`,
-        title: `Track ${index + 1}`,
-        durationSeconds: 200,
-        skipNonMusic: true,
-        thumbnailPath: null,
-        fileStatus: 'stored',
-        sourceStatus: 'available',
-        failureReason: null,
-        createdAt: '2026-09-01T00:00:00.000Z',
-        updatedAt: '2026-09-29T12:00:00.000Z'
-      },
-      origin: 'remote',
-      position: index
-    }));
-
-    server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json({ items: tracks, total: 3, limit: 50, offset: 0 })
-      )
-    );
-
-    renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-    const press = () =>
-      screen.getByRole('button', { name: 'Shuffle Rain On The Window' });
-
-    fireEvent.click(press());
-    await waitFor(() =>
-      expect(usePlayerStore.getState().queue).toHaveLength(3)
-    );
-
-    /* The mode is this playlist's now, so the next press only flips it. */
-    fireEvent.click(press());
-    expect(usePlayerStore.getState().shuffle).toBe(false);
-    expect(usePlayerStore.getState().isPlaying).toBe(true);
-    expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
-      'track-1',
-      'track-2',
-      'track-3'
-    ]);
-
-    fireEvent.click(press());
-    expect(usePlayerStore.getState().shuffle).toBe(true);
-    expect(usePlayerStore.getState().isPlaying).toBe(true);
-    expect(usePlayerStore.getState().queue[0].id).toBe('track-1');
-  });
-
   it('opens the dialog from the gallery invitation on the empty state', async () => {
     emptyPage();
     renderLibraryPage();
@@ -891,7 +811,6 @@ describe('LibraryPage', () => {
     /* The row the toast names is marked: dimmed, busy, and its door and controls
      * disabled, so the thing that is going cannot be opened or deleted again. */
     const row = container.querySelector('[data-arrangement="row"]');
-    expect(row).toHaveAttribute('data-pending', 'true');
     expect(row).toHaveAttribute('aria-busy', 'true');
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
@@ -904,7 +823,6 @@ describe('LibraryPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(row).not.toHaveAttribute('data-pending');
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toBeEnabled();

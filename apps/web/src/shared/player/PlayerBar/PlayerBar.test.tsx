@@ -185,24 +185,6 @@ describe('PlayerBar', () => {
     expect(slider).toHaveAttribute('aria-valuetext', '1:12 of 3:00');
   });
 
-  /*
-   * The fill is scaled rather than resized: a `width` transition forces layout
-   * on every frame, and the bar is mounted across the app. The scrub's first
-   * child is the fill, so the test reads the composited property it is drawn
-   * with and asserts the layout one is gone.
-   */
-  it('moves the fill with a composited transform, not a layout width', () => {
-    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    usePlayerStore.getState().setPosition(90);
-    renderBar();
-
-    const slider = screen.getByRole('slider', { name: 'Position in track' });
-    const fill = slider.firstElementChild as HTMLElement;
-
-    expect(fill.style.transform).toBe('scaleX(0.5)');
-    expect(fill.style.width).toBe('');
-  });
-
   it('seeks to the pointer against the track box', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     renderBar();

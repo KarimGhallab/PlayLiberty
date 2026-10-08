@@ -1,14 +1,14 @@
 # Architecture
 
-PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server and web client skeletons exist today, alongside the shared contracts, the design tokens, the shared UI decisions, the localization package, the YouTube adapter, and the utilities; the mobile client is planned. The stacks are decided in `docs/adr/0004-server-stack.md`, `docs/adr/0005-web-stack.md`, and `docs/adr/0007-mobile-stack.md`, and the mobile access model in `docs/adr/0008-mobile-provisioning.md`.
+PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server and web client skeletons exist today, alongside the shared contracts, the design tokens, the shared UI decisions, the localization package, the YouTube adapter, and the utilities; the mobile client is planned. The non-obvious choices are stated in [Decisions](#decisions).
 
 ## Components
 
 ### The applications
 
-- `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. Scaffolded; the feature behavior is still being built. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See `docs/adr/0004-server-stack.md` and `docs/adr/0011-server-folder-organisation.md`.
-- `apps/web` - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Scaffolded; the feature behavior is still being built. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See `docs/adr/0005-web-stack.md`.
-- `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See `docs/adr/0007-mobile-stack.md` and `docs/adr/0008-mobile-provisioning.md`.
+- `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. Scaffolded; the feature behavior is still being built. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See [The server stack](#the-server-stack) and [The server's folder boundaries](#the-servers-folder-boundaries).
+- `apps/web` - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Scaffolded; the feature behavior is still being built. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
+- `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
 
 ### The packages
 
@@ -35,7 +35,7 @@ The only external service, reached through yt-dlp behind the `packages/youtube` 
 
 nginx serves the web client and proxies `/api` and `/healthz` to the server. It is the single public origin on `pangolin_frontend`; the server is never reached by the browser or the phone directly. nginx forwards the Pangolin `Remote-*` headers and the client's `X-PlayLiberty-Client` header upstream, and the server enforces both.
 
-Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except `POST /auth/exchange`, which is the mobile app's credential-less first contact and is protected by a one-time PKCE-bound code (ADR 0008).
+Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except `POST /auth/exchange`, which is the mobile app's credential-less first contact and is protected by a one-time PKCE-bound code (see [Mobile provisioning](#mobile-provisioning)).
 
 ## Mobile access, end to end
 
@@ -46,7 +46,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 
 ## Sync, end to end
 
-1. A client sends a playlist URL or a single video URL to the server, authenticated by identity forwarded through Pangolin, with the CSRF header required by ADR 0006.
+1. A client sends a playlist URL or a single video URL to the server, authenticated by identity forwarded through Pangolin, with the client header every mutation must carry.
 2. The server creates a Synced playlist recording its provider and source playlist id, and a sync run starts. Re-pasting a known source returns the existing playlist instead of creating a duplicate.
 3. The adapter reads the source membership in one `--flat-playlist` pass, falling back to a single video's details only when a field is missing.
 4. The sync reconciles it: a new video id becomes a track with `fileStatus: pending`; a known id is left alone; a video missing from the source marks its track `sourceStatus: removed` (retention); suppressed videos are skipped.
@@ -67,7 +67,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - The server's four top-level folders are a dependency order, not a naming convention. `app/` is the composition root and the request pipeline, `features/` holds one folder per domain module, `shared/` holds cross-cutting code no feature owns, and `platform/` holds the resources features sit on. `platform/` and `shared/` must not import `features/`, and only `app/buildApp.ts` may import a route registrar. Both are enforced by rules in `.dependency-cruiser.cjs`, because a folder layout nothing checks is a suggestion.
 - Raw SQL lives in `platform/database/` and in `shared/access/`, and nowhere else. Everywhere else goes through Drizzle, so the schema stays the one description of the storage. Enforced by the `no-restricted-syntax` override in `eslint.config.js`, which exists because a `.prepare()` call is a member expression and not an import, so dependency-cruiser cannot see it.
 - Only the server touches the database and the media root, and only `packages/youtube` invokes yt-dlp. Clients reach all of it through the API.
-- Every mutating API request carries `X-PlayLiberty-Client` and passes the origin checks in `docs/adr/0006-csrf-defense.md`. Never mutate on `GET`.
+- Every mutating API request carries `X-PlayLiberty-Client` and passes the `Origin` and `Sec-Fetch-Site` checks. Never mutate on `GET`.
 - `POST /auth/exchange` is the only path exempt from Pangolin SSO; the server owns its code, PKCE, lifetime, and rate-limit checks.
 - Workspace dependencies use `workspace:*` and mirror their source paths in `tsconfig.depcruise.json`. The workspace pins one React and one React Native version.
 - The application and package scope is `@playliberty/*`.
@@ -93,9 +93,53 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 ## Deployment shapes
 
 - Local development: `pnpm install`, then `pnpm run build` or `pnpm run watch`. The Vite dev server proxies `/api` to the running server; the mobile app runs as a development build against the public origin.
-- Production: private, behind the Pangolin authenticating edge. The nginx container is the origin: it joins the `pangolin_frontend` network (declared `external`), never publishes a host port, and serves the SPA while proxying the API to the server over the pod-local loopback. The server trusts Pangolin's forwarded `Remote-*` headers and fails closed without them. The mobile app is distributed as a sideloaded Android APK. See `docs/adr/0001-private-deployment-behind-pangolin-edge.md`, `docs/adr/0003-identity-via-pangolin-forwarded-headers.md`, `docs/adr/0005-web-stack.md`, `docs/adr/0008-mobile-provisioning.md`, and `docs/adr/0011-server-folder-organisation.md`. The server and web `Containerfile`s, the dev `compose.yaml`, and the production unit `deploy/playliberty-web.kube` exist; the unit runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
+- Production: private, behind the Pangolin authenticating edge. The nginx container is the origin: it joins the `pangolin_frontend` network (declared `external`), never publishes a host port, and serves the SPA while proxying the API to the server over the pod-local loopback. The server trusts Pangolin's forwarded `Remote-*` headers and fails closed without them. The mobile app is distributed as a sideloaded Android APK. See [Decisions](#decisions). The server and web `Containerfile`s, the dev `compose.yaml`, and the production unit `deploy/playliberty-web.kube` exist; the unit runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
 - Clients: the web client is served through the edge; the mobile client carries its own per-user token and streams through the same edge.
 
 ## Decisions
 
-Non-obvious choices are recorded as ADRs in `docs/adr/`. Read the one that touches what you are changing before you change it.
+The non-obvious choices, stated once and normative. Read the entry that touches what you are changing before you change it.
+
+### Deployment behind the Pangolin edge
+
+Production is private, behind the Pangolin authenticating edge. The origin never publishes a host port and attaches to the shared `pangolin_frontend` network declared `external`, running as a `systemd --user` Quadlet unit. Pangolin supplies the authentication the service would otherwise build, and an unauthenticated port would put a personal media service and its YouTube dependency on the network. The concrete container rules live in the deployment guideline.
+
+### Audio is stored as-is, never transcoded
+
+Downloads prefer the AAC stream, stored in an M4A container at about 128 kbps and seekable from the first byte, and it is served verbatim as `Content-Type: audio/mp4`. A video with no AAC stream is stored as the Opus stream YouTube does offer rather than refused, because the alternative to a playable file in the wrong container is no file at all; the caveat is that Safari and some mobile players cannot be relied on to play Opus. The server runs no encoder and keeps no transcode cache, so the stored stream is effectively the playback contract.
+
+### Identity comes from Pangolin's forwarded headers
+
+The server takes the account from the `Remote-User`, `Remote-Email`, `Remote-Name`, and `Remote-Role` headers the edge injects, auto-provisions an account on first sight, and fails closed when the headers are absent. The app runs no login and stores no password; the first admin is a config value matching a Pangolin user. Because reachability alone proved too implicit a guarantee, the origin also requires the edge to inject a secret `X-PlayLiberty-Edge` assertion on every request it proxies and refuses one without it, even a request carrying `Remote-*`; a production process refuses to start when the assertion is not configured. The network rule stays as the second layer.
+
+### The server stack
+
+One Node 26 process built with Fastify 5 and compiled by `tsc`, owning a local SQLite database through `better-sqlite3` and Drizzle ORM, with `drizzle-kit` migrations committed and applied at startup. It depends on `packages/contracts`, the Zod schemas that define the `/api/v1` REST surface, and `packages/youtube`, the only module allowed to invoke yt-dlp. Streaming authorizes the request and delegates byte ranges to `@fastify/static`. Downloads and the weekly prune run in the same process, using the `track` rows as the queue; one process means SQLite is sufficient and no job claiming between workers is needed.
+
+### The web stack
+
+`apps/web` is a client-only single-page application: React 19.2 with the React Compiler enabled, built by Vite 8 (Rolldown) with TypeScript 6, routed by TanStack Router, server state in TanStack Query v5, the player and queue in a Zustand 5 store, styling SCSS with CSS Modules and BEM over CSS custom-property design tokens, dark only. Playback is a single global HTML5 audio element with the Media Session API, and the queue and position persist in `sessionStorage`. A dedicated nginx container is the single public origin: it serves the built assets and reverse-proxies `/api` and `/healthz`, so the browser sees one origin and no CORS is needed.
+
+### The mobile stack
+
+`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.2, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over a typed token module mirroring `docs/design-system/`, dark only. The access token lives in `expo-secure-store`. Distribution in v1 is a development build and a sideloaded Android APK; the code stays cross-platform but iOS is not built or tested.
+
+### Mobile provisioning
+
+The mobile client authenticates with a per-user Pangolin resource access token, obtained through the browser flow in [Mobile access, end to end](#mobile-access-end-to-end): PKCE, a single-use 60-second code, `POST /auth/exchange` exempt from Pangolin SSO, and a 180-day token stored in `expo-secure-store`. The long-lived token never travels in a URL; the redirect carries a single-use code bound by PKCE to the app instance. On iOS `ASWebAuthenticationSession` guarantees the callback reaches only the calling app; on Android in Expo SDK 57 there is no equivalent guarantee, so the safety rests on the code plus PKCE, trying a verified HTTPS App Link first and falling back to a reverse-DNS custom scheme.
+
+### Mutating requests carry a client header and pass origin checks
+
+Every `POST`, `PUT`, `PATCH`, and `DELETE` must carry the `X-PlayLiberty-Client` header, and the server rejects any request without it. State is never mutated by `GET`. On top of the required header, the server checks `Origin` and `Sec-Fetch-Site` and denies cross-site non-safe requests. A non-safelisted custom header cannot be set by a cross-site form, and a cross-origin script that tries to set it triggers a CORS preflight the origin never approves; `SameSite` on the edge cookie is defense in depth rather than the main control, and XSS defeats any CSRF defense, which is why the controls are layered.
+
+### The server's folder boundaries
+
+`apps/server/src/` is four folders and a `main.ts`: `app/` the composition root and the request pipeline, `features/` one folder per domain module, `shared/` cross-cutting code no feature owns, and `platform/` the resources features sit on. Each feature holds its own routes, its own service, and its own contracts. Two dependency rules and one lint rule enforce the arrangement rather than a convention: `platform/` and `shared/` must not import `features/`, only `app/buildApp.ts` may import a route registrar, and raw SQL is confined to `platform/database/` and `shared/access/`. The rules exist because the rule for who may reach a playlist had been written three times in three feature folders before the split. See [Layer boundaries](#layer-boundaries-normative).
+
+### Adding a video is one batch request
+
+Adding a manually chosen video is one top-level request, `POST /tracks`, whose body carries the video URL and a non-empty list of at most one hundred playlist ids, and whose response carries one outcome per chosen playlist, in the order the ids were sent: `added`, `already_present`, or `refused`, where `refused` carries no reason. The result is a list rather than one status code because a single code cannot say "four added, one already had it, one refused". `already_present` is a success, because it is the end state the user asked for. `refused` carries no reason because a playlist the account cannot see and a playlist it cannot write must be indistinguishable, so the batch cannot be used to learn which playlist ids exist. The stubbed `POST /playlists/:id/tracks` is removed rather than kept beside it.
+
+### Live updates use Server-Sent Events
+
+The web client keeps its screens current with one long-lived `GET /api/v1/events` that answers `text/event-stream`. The server pushes an event when server state changes: a sync run starts or settles, a track moves through the download states, a playlist is renamed or deleted, a track is added, removed or retried, a share is granted or revoked. An event is an invalidation hint and never data: it names what changed, and the client refetches the reads it already owns through TanStack Query. A heartbeat keeps the connection open, the client re-reads every query when the stream opens or reopens, and there is no polling interval anywhere. The transport is Server-Sent Events rather than a WebSocket because the need is one-way: `EventSource` reconnects on its own, the request is a `GET` so the client header does not apply, and no second protocol has to be built, secured and tested. The client owns the reconnect from a backoff timer rather than leaving it to `EventSource`, so a session the edge keeps refusing stops retrying instead of being retried on the browser's fixed schedule.

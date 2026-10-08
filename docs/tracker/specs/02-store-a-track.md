@@ -128,7 +128,7 @@ again, whoever asks for it.
 - **The web client learns about a store the same way it learns about a sync.** Nothing pushes a track's state
   to the browser; the playlist read carries the file and source status, and the client refetches while work is
   in flight. [`09-keep-the-screens-current`](09-keep-the-screens-current.md) owns that loop.
-- **Inherited constraints are owned by the ADRs and not restated here:** no transcoding, ever, and the AAC/M4A store ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)), identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** no transcoding, ever, and the AAC/M4A store ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)), identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
 
 ## Testing Decisions
 

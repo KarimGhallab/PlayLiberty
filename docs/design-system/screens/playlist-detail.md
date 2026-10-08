@@ -272,13 +272,13 @@ time in the product.
 
 ## What composing these cost
 
-**Every track row in the tree was 120.8px rather than 65px, and it was the playlist header's fault.**
-`specimen.css` declares `.body` for the header's identity block, and `track-row.html` declares its own `.body`
-inside its own `.row` without setting `display`, so the header's rule won on the two declarations the row
-never mentioned and every row measured 120.8px. The fix is one token of selector: every legitimate consumer
+**One of the header's rules lands on a component it does not belong to.** `specimen.css` declares `.body`
+for the header's identity block, and `track-row.html` declares its own `.body`
+inside its own `.row` without setting `display`, so the header's rule wins on the two declarations the row
+never mentions and every row measures 120.8px rather than 65px. The rule is one token of selector: every legitimate consumer
 is a direct child of `.hdr` and every illegitimate one is a child of `.row`, so the rule is `.hdr > .body`.
-Proved behaviour-preserving: all fourteen headers in the header's own specimen and all nine items on the
-library measure the same before and after, and the rows are **64.8px** after (64 plus the 0.8px this
+All fourteen headers in the header's own specimen and all nine items on the
+library then measure the same, and the rows are **64.8px** (64 plus the 0.8px this
 environment renders a 1px border at).
 
 **Every state word in every track row carried a dot it never asked for.** The same collision from a second
@@ -298,8 +298,8 @@ with distinct names, which is a change to the track row and belongs to a ticket 
 The sync summary needed no such scoping, because its class names are local: its four cells are 71px each
 against 60.01px for a five-figure figure and 47.4px for "removed".
 
-**The name is an anchor, and an anchor does not inherit:** the user agent's `a { color }` beat any inherited
-value, so the name drew in the browser's link colour and underlined. The fix is the library's own rule,
+**The name is an anchor, and an anchor does not inherit:** the user agent's `a { color }` beats any inherited
+value, so the name would draw in the browser's link colour and underlined. The rule is the library's own,
 `color: inherit` and `text-decoration: none`. The way home takes the same `text-decoration: none`, because a
 page whose playlist name and whose way home are both underlined is a page where every word with a destination
 is underlined and the two stop reading as different things; it carries `--ink` by default and the accent only
@@ -382,9 +382,8 @@ the main detail does not otherwise carry: the name is a heading there too, and t
 **The share dialog and the add-a-track dialog.** Both are hosted here and nowhere else. The second carries
 this playlist preselected and any other writable playlist selectable, and issues **one `POST /tracks` for the
 whole batch**, not one request per playlist: `04-curate-a-playlist` replaced the nested per-playlist route
-with a single batch route precisely because a path under one playlist cannot express a choice of several. The
-earlier claim here, that the dialog fires one request per chosen playlist because no multi-playlist route
-exists, described a route that has since been deleted and is retired. Both dialogs need their own records, and
+with a single batch route precisely because a path under one playlist cannot express a choice of several.
+Both dialogs need their own records, and
 a dialog is narrower on one arrangement than the other, so neither can be drawn once.
 
 **A queue panel. There is none, and three records claimed there was.** The answer is that **the track list is

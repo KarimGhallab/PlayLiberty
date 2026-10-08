@@ -1,22 +1,7 @@
 # 09: The skip setting end-to-end journey
 
-**What to build:** Prove the skip-non-music setting through a real browser, server and database: the switch
-flips both ways on the playlist detail and survives a reload, and a track already created keeps the value it
-was born with when a playlist that holds it changes, because the write is not retroactive. The track's own
-value is read over the API, since no screen draws it.
-
 **Blocked by:** [`07`](07-show-the-skip-setting-read-only.md).
-
 **Status:** resolved
-
-**Labels:** `enhancement`, `ready-for-agent`
-
-- [x] The switch flips on and off on the detail and the value survives a reload.
-- [x] A track already created keeps its `skipNonMusic` when a playlist that holds it changes.
-- [x] A track born after the change takes the new default.
-- [x] The journey passes in the E2E suite.
-
-**Verification:** `pnpm --filter @playliberty/e2e run test` and `pnpm --filter @playliberty/e2e run typecheck`.
 
 ## Outcome
 

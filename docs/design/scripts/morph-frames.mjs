@@ -1,7 +1,7 @@
 /**
  * The play to pause morph.
  *
- * ADR 0010 takes glyph geometry from a pinned icon set so the two clients draw
+ * The design record takes glyph geometry from a pinned icon set so the two clients draw
  * the same shape. This file is the amendment to that, and it is narrow on
  * purpose: the two ENDPOINTS are still the pinned glyphs, verbatim, and only
  * the shapes in between are computed. A control that rests is a pinned glyph; a

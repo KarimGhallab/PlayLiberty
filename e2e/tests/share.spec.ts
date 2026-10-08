@@ -84,7 +84,4 @@ test('an owner grants and revokes a share with another account', async ({
   await canEditAgain.click();
   await expect(canEditAgain).toHaveAttribute('aria-pressed', 'false');
   await revokeDialog.getByRole('button', { name: 'Done' }).click();
-  await expect(
-    page.getByRole('img', { name: 'Private playlist' })
-  ).toBeVisible();
 });

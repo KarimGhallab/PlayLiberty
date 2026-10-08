@@ -18,13 +18,16 @@ import { createFakeEventStream } from './testing/fakeEventStream';
 
 /*
  * The shell is where playback survives navigation, so the claim under test is
- * structural rather than musical: the bar and the audio element are siblings of
- * the outlet, and a route change must therefore leave both mounted. A memory
- * router drives a real navigation between the two routes and the bar and the
- * element are read after the second route has rendered.
+ * that a route change does not restart the track: the element is not remounted,
+ * so its source is loaded and played once. A memory router drives a real
+ * navigation between the two routes and the play call is read after the second
+ * route has rendered.
  */
 
 const PLAYLIST = 'playlist-1';
+
+/* The element's `play` is the observable of "the source was not restarted". */
+const playMock = vi.fn(() => Promise.resolve());
 
 const TRACK: PlayerTrack = {
   id: 'track-1',
@@ -60,27 +63,27 @@ function renderShell(initialEntry: string) {
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
+  playMock.mockClear();
   /*
    * jsdom's `play` returns undefined, so the element's `.catch` on the playback
    * promise would throw. The shell mounts the real audio element, so the browser
    * half it lacks is supplied here.
    */
-  HTMLMediaElement.prototype.play = vi.fn(() =>
-    Promise.resolve()
-  ) as unknown as () => Promise<void>;
+  HTMLMediaElement.prototype.play = playMock as unknown as () => Promise<void>;
   HTMLMediaElement.prototype.pause = vi.fn() as unknown as () => void;
 });
 
 describe('AppShell', () => {
-  it('keeps the bar and the audio element mounted across a route change', async () => {
+  it('keeps the track playing across a route change', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [TRACK], TRACK.id);
     const { router } = renderShell(`/playlists/${PLAYLIST}`);
 
-    /* The bar and the element are both there on the detail route. */
+    /* The bar is there and the track is playing on the detail route. */
     expect(await screen.findByLabelText('Player')).toBeInTheDocument();
-    expect(document.querySelector('audio')).not.toBeNull();
+    expect(playMock).toHaveBeenCalledTimes(1);
 
-    /* Navigate to the library. The outlet re-renders; the siblings do not. */
+    /* Navigate to the library. The outlet re-renders; the player does not, so
+     * the source is not restarted. */
     await router.navigate({ to: '/' });
     await waitFor(() => {
       expect(
@@ -90,6 +93,6 @@ describe('AppShell', () => {
 
     expect(screen.getByLabelText('Player')).toBeInTheDocument();
     expect(screen.getByText('Blue In Green')).toBeInTheDocument();
-    expect(document.querySelector('audio')).not.toBeNull();
+    expect(playMock).toHaveBeenCalledTimes(1);
   });
 });

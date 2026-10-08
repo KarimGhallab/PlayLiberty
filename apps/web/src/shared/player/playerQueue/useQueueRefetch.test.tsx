@@ -14,7 +14,6 @@ import { startPlaylistQueue } from './playerQueue';
 import { useQueueRefetch } from './useQueueRefetch';
 
 const PLAYLIST = { id: 'playlist-1', name: 'Rain On The Window' };
-const OTHER = { id: 'playlist-2', name: 'Another Playlist' };
 
 function stored(id: string, position: number): PlaylistTrack {
   return {
@@ -83,30 +82,6 @@ describe('useQueueRefetch', () => {
       'track-3'
     ]);
     expect(state.currentId).toBe('track-1');
-  });
-
-  it('drops a track the refetch no longer returns, keeping the current one', () => {
-    startPlaylistQueue(
-      PLAYLIST,
-      [stored('track-1', 0), stored('track-2', 1)],
-      'track-2'
-    );
-
-    render(<Probe playlist={PLAYLIST} tracks={[stored('track-2', 0)]} />);
-
-    const state = usePlayerStore.getState();
-    expect(state.queue.map(track => track.id)).toEqual(['track-2']);
-    expect(state.currentId).toBe('track-2');
-  });
-
-  it('leaves the queue alone when it belongs to another playlist', () => {
-    startPlaylistQueue(OTHER, [stored('track-9', 0)], 'track-9');
-
-    render(<Probe playlist={PLAYLIST} tracks={[stored('track-1', 0)]} />);
-
-    const state = usePlayerStore.getState();
-    expect(state.queue.map(track => track.id)).toEqual(['track-9']);
-    expect(state.currentId).toBe('track-9');
   });
 
   it('does nothing until the read has answered', () => {

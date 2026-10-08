@@ -95,7 +95,7 @@ suppresses it, so the next sync does not put it back.
   the several playlists. _Decided here:_ this contradicts the add-a-video dialog's design record, which says
   the dialog fires one request per chosen playlist because no multi-playlist route exists. The capability in
   the product document is the objective and the route is built to serve it. The route shape is the one
-  decision here that wants an ADR when the ticket is cut, because it changes the contract three consumers
+  decision here that wants a written record when the ticket is cut, because it changes the contract three consumers
   read.
 - **The input is a URL and a non-empty list of playlist ids, and the URL must be a single video.** A playlist
   URL is refused for the whole request with `422`, because "add a video" takes a video, and the same field in
@@ -160,7 +160,7 @@ suppresses it, so the next sync does not put it back.
 - **The web client renders the result of the rule, not the rule.** The detail screen draws the overflow items
   and the row controls the `access` field permits, and every refusal it never draws is still enforced when it
   is asked for directly.
-- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)), and no transcoding ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)), and no transcoding ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)).
 
 ## Testing Decisions
 

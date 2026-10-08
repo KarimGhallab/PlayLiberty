@@ -3,7 +3,7 @@
 > Part of the design system. Index and cross-cutting rules: [`DESIGN.md`](../DESIGN.md).
 
 Glyphs come from Tabler, MIT, and the decision is recorded in
-[`docs/adr/0010-tabler-icons.md`](../adr/0010-tabler-icons.md). The web client draws them with
+[the design record](../DESIGN.md#icons-come-from-tabler-pinned-to-one-version). The web client draws them with
 `@tabler/icons-react` and the mobile client with `@tabler-icons-react-native`, pinned to the same
 version, so both draw the same artwork from the same package rather than each carrying its own geometry.
 Tabler is a 24 unit grid with a 2 unit stroke.
@@ -42,7 +42,7 @@ second screen has ever drawn.** `chevron-left`, one path, `M15 6l-6 6l6 6`, verb
 `@tabler/icons` 3.48.0 `icons/outline/chevron-left.svg`. It is the way home off
 [the playlist detail](screens/playlist-detail.md), which is a web fact: on mobile the platform
 gesture returns from a pushed route, so a control that returns would be a second way to do what the
-platform already does. A word alone was the alternative and it reads as a section heading rather than as
+platform already does. A word alone reads as a section heading rather than as
 a control, and a chevron alone is a shape with a name attached to it, so the way home carries both.
 
 **It takes no optical correction, and that is a measurement rather than an omission.** Its ink spans

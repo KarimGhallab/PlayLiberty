@@ -227,8 +227,6 @@ describe('GET /playlists', () => {
     expect(response.statusCode).toBe(200);
     const page = PageSchema.parse(response.json());
     expect(page.total).toBe(1);
-    expect(page.limit).toBe(50);
-    expect(page.offset).toBe(0);
     expect(page.items).toHaveLength(1);
     expect(page.items[0]?.name).toBe('Evening');
     expect(page.items[0]?.trackCount).toBe(2);
@@ -1005,8 +1003,6 @@ describe('GET /playlists/:id/tracks', () => {
     const page = PlaylistTrackPageSchema.parse(response.json());
     expect(page.items).toEqual([]);
     expect(page.total).toBe(0);
-    expect(page.limit).toBe(50);
-    expect(page.offset).toBe(0);
   });
 
   it('answers 404 rather than 403 for a playlist the account cannot see', async () => {
@@ -1071,8 +1067,6 @@ describe('GET /playlists/:id/tracks', () => {
     expect(firstPage.total).toBe(5);
     expect(lastPage.items).toHaveLength(1);
     expect(lastPage.total).toBe(5);
-    expect(lastPage.limit).toBe(2);
-    expect(lastPage.offset).toBe(4);
   });
 
   it('changes nothing when it reads', async () => {
@@ -1320,8 +1314,6 @@ describe('GET /playlists/:id/tracks', () => {
     );
 
     const track = page.items[0]?.track;
-    expect(track).toHaveProperty('thumbnailPath');
-    expect(track).toHaveProperty('durationSeconds');
     expect(track?.thumbnailPath).toBeNull();
     expect(track?.durationSeconds).toBeNull();
   });

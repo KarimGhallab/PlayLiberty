@@ -129,17 +129,17 @@ the same sentences and figures from one place. `ui-foundation` keeps only the pr
 - **A lint rule flags a hardcoded user-facing string.** JSX text and the known label props are checked, with
   an allowlist for non-copy strings, so new copy cannot bypass the catalog. _Decided here:_ the rule is
   required, not optional, and its selector follows the runtime chosen above.
-- **The change owes documentation, and the documentation is part of the work.** [ADR `0014`](../../adr/0014-client-owns-user-facing-copy.md) records the
+- **The change owes documentation, and the documentation is part of the work.** [The client owns user-facing copy](../../DESIGN.md#the-client-owns-user-facing-copy) records the
   client-owns-copy decision, the shared package and the hand-rolled runtime; the glossary gains `Language`
   and `Locale`; the design system gains a record for the language button and its menu; the specs tracker
   gains this spec's row. _Decided here._
 - **The mobile client consumes the package, and no mobile behavior is specified here.** The package is
   client-neutral by construction; wiring the future mobile client is a later spec. See Further Notes for the
   corpus-convention tension this raises.
-- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge
-  headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the
+- **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge
+  headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the
   client header with the origin check on every mutation
-  ([`0006`](../../adr/0006-csrf-defense.md)).
+  ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
 
 ## Testing Decisions
 

@@ -1,7 +1,7 @@
 # 09: Keep the screens current
 
 Tickets for [`09-keep-the-screens-current`](../../specs/09-keep-the-screens-current.md), on the
-[Server-Sent Events transport](../../../adr/0013-live-updates-over-server-sent-events.md) that replaces the
+[Server-Sent Events transport](../../../ARCHITECTURE.md#live-updates-use-server-sent-events) that replaces the
 spec's original polling. One file per ticket, numbered in dependency order, each declaring its blocking edges.
 Ticket 01 lands the whole transport as a tracer bullet (bus, stream, edge configuration, client subscription,
 and the first producer and consumer); 02 to 04 add producers to the same bus and stream; 05 is the client's

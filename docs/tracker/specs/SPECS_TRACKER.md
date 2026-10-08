@@ -3,7 +3,7 @@
 Feature specs, written by `/to-spec`. One file per spec, named `NN-slug.md` and numbered in creation order.
 
 This corpus is the web and server MVP. Every client clause is the web client. Mobile, the provisioning flow
-and ADR 0008 are out of scope, and no spec in this set is written to leave room for them.
+and [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) are out of scope, and no spec in this set is written to leave room for them.
 
 ## Specs
 

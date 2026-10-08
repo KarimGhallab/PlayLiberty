@@ -10,7 +10,7 @@ Four stacking levels and no more, so a z-index argument never happens: `--z-base
 `--z-overlay` 20, `--z-player` 30.
 
 Single column on mobile, no fixed chrome on web, a comfortable reading width, and a persistent player
-bar anchored to the bottom. The web sidebar that used to be promised here is withdrawn: the library is
+bar anchored to the bottom. There is no web sidebar: the library is
 the only entry point to content, and a permanent column holding a household's handful of playlists
 costs every screen its width to save a navigation step. Mobile has no bottom bar for the same kind of
 reason, and for a measured one, since a 56px bar would take the detail's 8 rows down to 7. So the

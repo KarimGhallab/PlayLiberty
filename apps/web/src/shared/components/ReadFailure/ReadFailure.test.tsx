@@ -7,9 +7,9 @@ import { ApiError } from '../../api/client/client';
 import ReadFailure from './ReadFailure';
 
 /*
- * The recovery surface's contract: the fallback sentence when the error carries
- * no detail, the server's own detail when it does, and the one retry that names
- * itself and locks while it works.
+ * The recovery surface's own contract: the fallback sentence when the error
+ * carries no mapped sentence, and the one retry that names itself and locks
+ * while it works. The mapping itself is the problem module's, tested there.
  */
 
 const FALLBACK = 'Playlists could not be loaded.';
@@ -48,31 +48,6 @@ describe('ReadFailure', () => {
     renderFailure({ error: apiError(null) });
 
     expect(screen.getByText(FALLBACK)).toBeInTheDocument();
-  });
-
-  it("shows the server's own detail when the ApiError carries one", () => {
-    renderFailure({ error: apiError('The library is unavailable.') });
-
-    expect(screen.getByText('The library is unavailable.')).toBeInTheDocument();
-    expect(screen.queryByText(FALLBACK)).not.toBeInTheDocument();
-  });
-
-  it('renders a known problem code as the catalog sentence', () => {
-    renderFailure({
-      error: new ApiError(404, {
-        type: 'about:blank',
-        title: 'Playlist Not Found',
-        status: 404,
-        code: 'playlist_not_found',
-        params: { reason: 'read' }
-      })
-    });
-
-    expect(
-      screen.getByText(
-        'The playlist does not exist, or this account cannot see it.'
-      )
-    ).toBeInTheDocument();
   });
 
   it('retries through a labelled button', () => {

@@ -109,7 +109,7 @@ rather than being forced through.
 - **Nothing about the prune is visible to the web client.** It writes no state a screen reads, and it is the one
   feature in the set with no client clause at all. A track that the prune removes is gone from a playlist only
   because something already removed its last association.
-- **Inherited constraints are owned by the ADRs and not restated here:** no transcoding and the AAC/M4A store ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)). The retention promise that a stored track survives its source is owned by [`PRODUCT.md`](../../PRODUCT.md).
+- **Inherited constraints are owned by the architecture and not restated here:** no transcoding and the AAC/M4A store ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)). The retention promise that a stored track survives its source is owned by [`PRODUCT.md`](../../PRODUCT.md).
 
 ## Testing Decisions
 

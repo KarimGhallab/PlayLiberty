@@ -24,12 +24,13 @@ and consumed with `workspace:*`.
 
 - Do not commit or push unless explicitly asked; the human owns git history.
 - ESM everywhere (`"type": "module"`). The runtime is pinned in `mise.toml` (Node 26.5.0) and the package manager in `package.json` (`pnpm@12.4.2`); do not drift them.
-- Deployment is private, behind the Pangolin authenticating edge. A production origin must never publish a host port and must join the `pangolin_frontend` network declared `external`. See `docs/adr/0001-private-deployment-behind-pangolin-edge.md` and the deployment guideline.
-- No transcoding, ever. The stored AAC/M4A is served verbatim. See `docs/adr/0002-no-transcoding-store-aac-m4a.md`.
-- Identity comes from Pangolin's forwarded `Remote-*` headers and fails closed when they are absent. See `docs/adr/0003-identity-via-pangolin-forwarded-headers.md`.
+- Deployment is private, behind the Pangolin authenticating edge. A production origin must never publish a host port and must join the `pangolin_frontend` network declared `external`. See `docs/ARCHITECTURE.md` and the deployment guideline.
+- No transcoding, ever. The stored AAC/M4A is served verbatim. See `docs/ARCHITECTURE.md`.
+- Identity comes from Pangolin's forwarded `Remote-*` headers and fails closed when they are absent. See `docs/ARCHITECTURE.md`.
 - Never use em dashes in generated text.
 - After a change, run `pnpm run build` and `pnpm run lint`. The pre-commit hook already runs lint-staged, syncpack, and dependency-cruiser; do not run those by hand.
 - Apps are leaves: never import an app from a package (enforced by the `no-apps-import` dependency-cruiser rule).
+- A test earns its place only if it fails when behavior a user relies on changes, with one owner test per behavior plus at most one assembly test. See the testing guideline (`~/.config/opencode/refs/guidelines/testing.md`).
 
 ## Agent skills
 
@@ -43,4 +44,4 @@ The five canonical state roles plus `bug` and `enhancement`. See `docs/TRIAGE_LA
 
 ### Domain docs
 
-Single-context layout: product intent, glossary, architecture, and ADRs. See `docs/DOMAIN.md`.
+Single-context layout: product intent, glossary, architecture, and decisions. See `docs/DOMAIN.md`.

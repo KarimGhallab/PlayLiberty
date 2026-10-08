@@ -140,7 +140,7 @@ answers exactly as a playlist that never existed.
   client resolves `ownerAccountId` through it for the items that are not its own. _Decided here:_ the
   alternative, showing only the share indicator, is the state the design record was written in, and this spec
   is what makes the line affordable. [`08-see-the-library`](08-see-the-library.md) owns how the line is drawn.
-- **Inherited constraints are owned by the ADRs and not restated here:** the private deployment with no access from outside the instance ([`0001`](../../adr/0001-private-deployment-behind-pangolin-edge.md)), identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** the private deployment with no access from outside the instance ([Deployment behind the Pangolin edge](../../ARCHITECTURE.md#deployment-behind-the-pangolin-edge)), identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
 
 ## Testing Decisions
 

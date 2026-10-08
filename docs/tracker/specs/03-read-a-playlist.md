@@ -113,7 +113,7 @@ playlist beside it.
 - **The web client reads this route the way it reads the library.** The page it fetches is the list it renders,
   and it refetches while a sync or a download is making the list change. The loop belongs to
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md).
-- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the stored media as the source of truth ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the stored media as the source of truth ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)).
 
 ## Testing Decisions
 

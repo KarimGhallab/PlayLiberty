@@ -2,7 +2,7 @@
 
 **What to build:** Two accessibility gaps on the library.
 
-1. **Repeated controls carry context-free names.** [`PlaylistHeader.tsx`](../../../apps/web/src/shared/components/PlaylistHeader/PlaylistHeader.tsx)
+1. **Repeated controls carry context-free names.** [`PlaylistRowHeader.tsx`](../../../apps/web/src/shared/components/PlaylistHeader/PlaylistRowHeader.tsx)
    gives every row the same `aria-label="Shuffle"` and `aria-label="More actions"`, so a screen reader hears
    the same two controls N times with no tie to the row each belongs to. Append the playlist name to each
    control's accessible name, or scope the controls with `aria-labelledby` pointing at the name, so every

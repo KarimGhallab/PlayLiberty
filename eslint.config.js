@@ -64,8 +64,8 @@ export default defineConfig([
   {
     // shared/access holds the only two hand-written statements in the app. Both
     // answer a correlated question about shares that the query builder cannot
-    // express without a join returning a nullable level, and both are the rule
-    // that used to be copied into three features.
+    // express without a join returning a nullable level, and both are the one
+    // access rule.
     files: ['apps/server/src/shared/access/**/*.ts'],
     rules: { 'no-restricted-syntax': 'off' }
   },

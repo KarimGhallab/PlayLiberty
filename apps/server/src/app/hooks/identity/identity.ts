@@ -16,11 +16,11 @@ import type { AuthAccount } from '../../../features/accounts/types.js';
  * pipeline's whole job: prove the request came from the edge, read three headers,
  * refuse the request if they are absent, and hand what arrived to the accounts
  * feature. It fails closed, so a request that reaches the server without the edge's
- * headers is a 401 rather than an anonymous caller, which is the ADR 0003 decision
+ * headers is a 401 rather than an anonymous caller, which is the architecture's identity decision
  * in one place.
  *
  * The proof is a secret assertion header the edge injects. It closes the hole
- * ADR 0003's trust precondition left open: trusting `Remote-*` assumed the origin
+ * the forwarded-identity trust precondition left open: trusting `Remote-*` assumed the origin
  * was reachable only through the edge, and an assertion makes that true in the
  * origin rather than in the network. The assertion is required whenever it is
  * configured, and `loadConfig` refuses to start a production process without it; a

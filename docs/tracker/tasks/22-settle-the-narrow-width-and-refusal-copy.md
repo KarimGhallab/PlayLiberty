@@ -1,33 +1,7 @@
 # 22: Settle the web client's narrow width and the refusal copy
 
-**What to build:** Two drifts between the records and the web client.
-
-1. **The narrow width has no owner.** The library record draws the app at two widths: the web client at 1056
-   and the mobile client at 390, where the list is a two-column card grid with a floating add button and a
-   full-width add sheet ([`library.md`](../../design-system/screens/library.md), "The mobile list is two
-   columns"). The web client is responsive and renders the row list at 390, which is neither the 1056 web
-   design nor the mobile client's grid. Decide whether the web client owns 390. If it does, the row
-   arrangement must be specified at that width; if it does not, the records must state the client boundary
-   and what the web client does below it.
-2. **The refusal copy is specified but not shipped.** [`add-playlist-dialog.md`](../../design-system/components/add-playlist-dialog.md)
-   says the invalid message names the host: "Paste a YouTube playlist link, such as https://youtube.com/playlist?list=..." The
-   dialog surfaces the server's `detail`, which reads "The URL is not a YouTube playlist or video URL."
-   ([`AddPlaylistDialog.tsx`](../../../apps/web/src/views/library/AddPlaylistDialog/AddPlaylistDialog.tsx) passes the problem
-   through; [`playlistRoutes.ts`](../../../apps/server/src/features/playlists/routes/playlistRoutes.ts) writes the
-   text). Align them: change the server message, map it to the specified sentence in the dialog, or amend the
-   record to the shipped wording.
-
 **Blocked by:** None. Can start immediately.
-
 **Status:** resolved
-
-**Labels:** `enhancement`, `ready-for-agent`
-
-- [x] The library records state which client owns the narrow width, or specify the web row at 390.
-- [x] The refused-create copy is one decision shared by the record, the dialog and the server.
-
-**Verification:** `node docs/design/scripts/validate-design-tokens.cjs` passes; a test asserts the refused
-copy; `pnpm run build`, `pnpm run lint` and the web unit suite pass.
 
 ## Outcome
 

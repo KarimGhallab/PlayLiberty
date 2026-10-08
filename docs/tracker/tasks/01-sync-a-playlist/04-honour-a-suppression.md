@@ -1,19 +1,7 @@
 # 04: Honour a removed track
 
-**What to build:** A track the listener removed stays removed. The reconcile skips any video the playlist has
-a suppression for, so it is not re-added on the next sync, and a video that returns to the source after its
-suppression is gone is associated again. This ticket only reads suppressions; the write that creates one is
-removing a track from a playlist, which spec 04 owns.
-
 **Blocked by:** 02.
-
 **Status:** resolved
-
-**Labels:** `enhancement`, `ready-for-agent`
-
-- [x] A video id with a suppression for the playlist creates no association on the next sync.
-- [x] A suppressed video that returns to the source after its suppression is removed is associated again.
-- [x] The reconcile reads suppressions and never writes one. (Superseded in part by [`04/07`](../04-curate-a-playlist/07-a-returned-video-is-treated-as-new.md): the reconcile now lifts the suppression of a video the source no longer lists.)
 
 ## Outcome
 

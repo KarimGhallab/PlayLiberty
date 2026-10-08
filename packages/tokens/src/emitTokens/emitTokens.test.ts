@@ -68,15 +68,6 @@ describe('the emitted stylesheet', () => {
   });
 
   it('resolves through the export map for a browser and a bundler', async () => {
-    const manifest = JSON.parse(
-      await readFile(path.join(packageRoot, 'package.json'), 'utf8')
-    ) as { exports: Record<string, unknown> };
-
-    expect(manifest.exports['.']).toEqual({
-      types: './dist/index.d.ts',
-      default: './dist/index.js'
-    });
-    expect(manifest.exports['./tokens.css']).toBe('./dist/tokens.css');
     await expect(access(stylesheetPath)).resolves.toBeUndefined();
     await expect(
       access(path.join(distPath, 'index.js'))

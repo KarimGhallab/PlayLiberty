@@ -40,7 +40,7 @@
 
      --tone-downloading and --emphasis hold the same literal on purpose, and the
      validator fails if they ever stop agreeing. They cannot be one token
-     pointing at the other, because ADR 0009 rejects aliased tokens: React
+     pointing at the other, because the design record rejects aliased tokens: React
      Native cannot resolve var(). So this is two names for one decision, kept
      honest by a check rather than by a var() the phone would not resolve. */
   --tone-pending: #84948a;
@@ -147,7 +147,7 @@
      new hue and not a second amber. --tone-downloading holds this same literal
      and the suite checks the two agree, because "in progress" is a mild form of
      "needs attention" and the emphasis is the broader of the two ideas. They
-     cannot be one token aliasing the other: ADR 0009 rejects that, since React
+     cannot be one token aliasing the other: the design record rejects that, since React
      Native cannot resolve var().
 
      It measures 8.30:1 on --bg and 6.98:1 on --surface-raised, and --bg sits on

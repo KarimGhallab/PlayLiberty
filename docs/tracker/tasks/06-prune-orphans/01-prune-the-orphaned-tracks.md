@@ -1,31 +1,7 @@
 # 01: Prune the orphaned tracks
 
-**What to build:** The disk is reclaimed after a listener drops the last reference to a track. The prune finds
-tracks that no playlist associates any more, removes their audio and their thumbnail, and only then removes the
-track, one transaction per track so a crash between the two is impossible. An orphan is a track with zero
-associations and nothing else: a track with one association survives entirely, with its file intact, whatever
-its file status and whatever its source status, including a remote-removed stored track that is still in a
-playlist and a track held only through another account's playlist. A track that is currently downloading is
-skipped, because the worker holds a file it is writing. A track whose media cannot be removed keeps its row and
-its reason is logged, and a later run reclaims it once the file is gone. The return is the number of tracks
-actually removed, and a run that finds nothing removes nothing and returns zero.
-
 **Blocked by:** None. Can start immediately.
-
 **Status:** resolved
-
-**Labels:** `enhancement`, `ready-for-agent`
-
-- [x] A track with no associations has its row, its audio file and its thumbnail removed.
-- [x] A track with one association survives entirely, with its file intact, whatever its file status and whatever its source status.
-- [x] A remote-removed stored track that is still in a playlist survives, and so does a track held only through another account's playlist.
-- [x] A failed track with no associations is removed.
-- [x] A downloading track is skipped and survives.
-- [x] A track whose media cannot be removed keeps its row, logs the reason, and is removed on a later run once the file is gone.
-- [x] Removing the last association to a track does not remove anything immediately, and the next run does.
-- [x] A run that finds nothing removes nothing and returns zero.
-- [x] The returned count equals the number of tracks actually gone.
-- [x] A track that only a suppressed video would re-add is still an orphan, since suppression is not a reference.
 
 ## Outcome
 

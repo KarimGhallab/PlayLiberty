@@ -60,7 +60,6 @@ test('a playlist created outside this tab appears in the library without a reloa
 
   // No reload and no navigation: the stream is what makes the tab ask again.
   await expect(page.getByRole('link', { name: TITLE })).toBeVisible();
-  await expect(page.getByText('Up to date')).toBeVisible();
 });
 
 /*

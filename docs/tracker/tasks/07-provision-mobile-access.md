@@ -5,11 +5,11 @@ Labels: `enhancement`, `ready-for-agent`
 
 ## Objective
 
-Implement the mobile provisioning flow from `docs/adr/0008-mobile-provisioning.md` across the server, the edge configuration, and the mobile app.
+Implement the mobile provisioning flow from [`Mobile provisioning`](../../ARCHITECTURE.md#mobile-provisioning) across the server, the edge configuration, and the mobile app.
 
 ## Context
 
-Read `docs/adr/0008-mobile-provisioning.md`, `docs/adr/0003-identity-via-pangolin-forwarded-headers.md`, `docs/adr/0006-csrf-defense.md`, and `docs/ARCHITECTURE.md` first.
+Read `docs/ARCHITECTURE.md` first.
 
 ## Scope
 
@@ -28,7 +28,7 @@ Read `docs/adr/0008-mobile-provisioning.md`, `docs/adr/0003-identity-via-pangoli
 
 - The provisioning screen: `expo-crypto` for `state` and the PKCE verifier, `WebBrowser.openAuthSessionAsync` to `GET /provision`, a constant-time `state` check, the `POST /auth/exchange` call, and storage in `expo-secure-store`.
 - Deep links: attempt the verified HTTPS App Link redirect, fall back to the reverse-DNS custom scheme, and configure both App Links and Universal Links.
-- On launch, treat a missing or expired token as "run provisioning", which is the flow from ADR 0008.
+- On launch, treat a missing or expired token as "run provisioning", which is the [`Mobile provisioning`](../../ARCHITECTURE.md#mobile-provisioning) flow.
 
 ## Out of scope
 

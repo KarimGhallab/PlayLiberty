@@ -60,7 +60,7 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
 
 ## Implementation Decisions
 
-- **TanStack Query is the single owner of server state.** ADR 0005 chooses it, the scaffold wires it, and this
+- **TanStack Query is the single owner of server state.** [The web stack](../../ARCHITECTURE.md#the-web-stack) chooses it, the scaffold wires it, and this
   spec is what it is for. No component fetches on its own, and no server value is copied into the Zustand store
   except playback state, which is the client's own. A second copy of a server fact is a second thing to keep in
   step, which is the mistake the whole contracts package exists to prevent.
@@ -75,12 +75,12 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
   `failed` or `unavailable`, and when a playlist, its associations or its shares change. The client maps each
   event to the reads the mutation map below already names and invalidates them, so the freshness a screen needs
   arrives on the change rather than on a timer. There is no interval and no attempt count; a settled instance
-  sends nothing. [ADR 0013](../../adr/0013-live-updates-over-server-sent-events.md) owns the decision and the
+  sends nothing. [Live updates use Server-Sent Events](../../ARCHITECTURE.md#live-updates-use-server-sent-events) owns the decision and the
   transport.
 - **The connection is long-lived, and the client re-reads when it opens.** The server sends a heartbeat so an
   idle connection stays open and a dead one is noticed, and the client re-reads every query it holds the first
   time the stream opens and again on every reconnect, so a gap between the last event and the connection is
-  closed without a timer. [ADR 0013](../../adr/0013-live-updates-over-server-sent-events.md) owns the liveness
+  closed without a timer. [Live updates use Server-Sent Events](../../ARCHITECTURE.md#live-updates-use-server-sent-events) owns the liveness
   and reconnect rules.
 - **A read also refreshes when the window regains focus and when the connection returns.** TanStack Query's
   defaults do both, and they are kept: a person who leaves the tab and comes back, or whose laptop slept, gets
@@ -109,7 +109,7 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
   a screen shows the problem's title, and a mutation shows the message beside the control that caused it. The
   client does not invent a message for a status code it was given a document for, and it does not show a
   status number to a person.
-- **Every mutation carries the client header, and no read does.** ADR 0006 requires `X-PlayLiberty-Client` on
+- **Every mutation carries the client header, and no read does.** The architecture requires `X-PlayLiberty-Client` on
   every mutating request and forbids mutating on a `GET`. The scaffold's client already does this; this spec is
   the behavior that depends on it and the reason it must not regress.
 - **An expired session is handled once per tab.** The client treats a `401` or an opaque redirect as "the edge
@@ -124,13 +124,13 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
   injects the identity headers the server reads; in production the edge does. The client never sends an
   identity header of its own.
 - **The transport is Server-Sent Events, and not a WebSocket.** One `EventSource` per tab, one-way, with the
-  platform's own reconnection and no second protocol to secure. [ADR
-  0013](../../adr/0013-live-updates-over-server-sent-events.md) owns the choice and the alternatives.
+  platform's own reconnection and no second protocol to secure.
+  [Live updates use Server-Sent Events](../../ARCHITECTURE.md#live-updates-use-server-sent-events) owns the choice and the alternatives.
 - **The detail screen composes three reads rather than one aggregate**, which
   [`03-read-a-playlist`](03-read-a-playlist.md) records. The playlist gives the header and the state, the tracks
   give the list, and the latest run gives the summary or the error. They are three resources with three
   lifetimes, and invalidating one does not invalidate the others.
-- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
 
 ## Testing Decisions
 

@@ -76,11 +76,10 @@ The card drops or moves five things, all of them this screen's decisions declare
    question.
 2. **The sync line joins the count and the time is left off**, so `128 tracks` at the left and `Up to date`
    at the right, and `Sync failed` alone on the one card with no count. The card is **223.6px** tall against
-   the 247.3px the two facts came to on two lines. This withdraws the earlier cost that a failed playlist
-   was invisible on a phone until somebody opened it.
+   the 247.3px the two facts came to on two lines.
 3. **The count keeps its unit word and its line may be two lines tall**, which is what putting the two facts
    at opposite ends costs: a card is 223.6px or 247.3px depending on whether its count and its state
-   together exceed the line. That is a reversal of the earlier constant-height claim, stated as a cost.
+   together exceed the line.
 4. **The name drops a step**, from `--text-xl` 24px to `--text-lg` 20px, buying about two characters. It is
    the one place this arrangement re-decides a type size the header fixed; the header may not, because
    dropping a size means re-deciding how much of a long name survives.
@@ -222,9 +221,7 @@ against a 137px item, so two would overlap by 33px.
 
 Forty items means forty shuffle toggles, and only the row whose playlist the queue belongs to reports
 pressed: shuffle is a property of the queue rather than of a playlist, so a row the queue does not belong
-to is unpressed even while the player is shuffled. Dropping it from the item and keeping it on the player
-bar and the detail screen's header was the alternative, and it lost because the item is otherwise identical
-to the header and one exception is easier to notice than forty controls. The cost is named rather than paid
+to is unpressed even while the player is shuffled. The cost is named rather than paid
 quietly. Each toggle is named for its playlist, `Shuffle <name>`, so the forty are distinguishable; the
 component record owns the naming rule and the touch target that goes with it.
 
@@ -260,7 +257,7 @@ press, so the notice has no dismiss.
 ## What the item deliberately does not carry
 
 A shared item names its owner, and an owned item carries no such line. The line is `Shared by <name>`,
-resolved from the playlist's `ownerAccountId` through the account directory that [`05-share-a-playlist`](../../tracker/specs/05-share-a-playlist.md) built; the earlier state this record was written in, where nothing could supply the name, is retired by that directory existing. On the account's own playlist `access` is `owner`, which already says the item is theirs, so the line is omitted there and never a "shared by yourself". When the directory does not carry the owner, the item keeps the indicator alone rather than a placeholder name, because a placeholder in a specimen is read as a decision. The line is its own row under the sync line rather than a third fact on the meta line, which at 390 already drops the time.
+resolved from the playlist's `ownerAccountId` through the account directory that [`05-share-a-playlist`](../../tracker/specs/05-share-a-playlist.md) built. On the account's own playlist `access` is `owner`, which already says the item is theirs, so the line is omitted there and never a "shared by yourself". When the directory does not carry the owner, the item keeps the indicator alone rather than a placeholder name, because a placeholder in a specimen is read as a decision. The line is its own row under the sync line rather than a third fact on the meta line, which at 390 already drops the time.
 
 The play. An item is a door and not a play: a playlist is started from its own screen, and the item's whole
 surface is the press that opens it, so the actions column is the shuffle and the overflow and no play.
@@ -269,9 +266,7 @@ the equalizer strip belong to the card arrangement, where the band holds the pla
 need a 96px cover a card's square cannot give it.
 
 The item carries the sync state, because the sync line is the header's and this screen draws headers. The
-earlier decision to withhold it, so a failed playlist stayed invisible until somebody opened it, was a
-decision about a component this screen does not own, and the cost is now paid for in `--tone-failed` on
-every row.
+cost is paid for in `--tone-failed` on every row.
 
 There is no search, no sort, no filter and no pagination. Search is a permanent non-goal in the glossary and
 the page size is `PageQuerySchema`'s default of 50, which is the API's business, so a gallery of more than 50
@@ -341,8 +336,8 @@ where a bar with nothing in it costs the most.
 
 **The page pays for the bar at its own end.** The list is an overlay under a docked bar, so the page carries
 the bar's **97px** in its bottom padding plus the **20px** it keeps under its last row, the same step the
-header uses above the list. The earlier **88px**, which was `--space-9` plus `--space-8`, was a breathing
-room and not a clearance: it left the last row **9px** behind the bar at full scroll. The playlist detail
+header uses above the list. An **88px** allowance is a breathing room and not a clearance: it leaves the last
+row **9px** behind the bar at full scroll. The playlist detail
 docks the same bar and carries the same clearance.
 
 What the arrival costs is named rather than argued. On mobile the content area is **788px** at rest and
@@ -358,8 +353,8 @@ The state replaces the content area rather than sitting over it, because signed 
 app is reachable and there is nothing behind it to dim. Web has no signed-out state at all, and that is not
 an omission: the edge authenticates the browser before the SPA is ever loaded. It is a sentence and no
 control: the server fails closed with `401 unauthenticated` when the edge headers are missing and
-[ADR 0003](../../adr/0003-identity-via-pangolin-forwarded-headers.md) records that the app runs no login, so
-a button could only open a flow no ticket, contract or ADR has decided.
+[the architecture section](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers) records that the app runs no login, so
+a button could only open a flow no ticket or contract has decided.
 
 ## Figures, and the width each came from
 
@@ -427,9 +422,7 @@ instead of one is being paid for. The full name is not lost to the cut: it rides
 ## What is not drawn
 
 Search, sort, filter and pagination. The
-equalizer strip on a card, which its own size cannot carry. **The queue panel this record used to list here
-does not exist and is not going to**: the [playlist detail's record](./playlist-detail.md) resolved it, the
-answer being that the track list is the queue, so there is no panel and no trigger to open one, and the
-three records that pointed at a panel on the [player bar record](../components/player-bar.md) were pointing
-at nothing. The playlist detail itself is
+equalizer strip on a card, which its own size cannot carry. **There is no queue panel**: the
+answer is that the track list is the queue, so there is no panel and no trigger to open one. The playlist
+detail itself is
 [`17-design-the-playlist-detail`](../../tracker/tasks/17-design-the-playlist-detail.md).

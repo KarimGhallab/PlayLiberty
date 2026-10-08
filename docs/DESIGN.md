@@ -108,31 +108,31 @@ no web sidebar, no mobile tab bar, and no account surface on either client.
 
 A screen record lives in `docs/design-system/screens/` and its specimen in `docs/design/screens/`. A
 record carries both arrangements and attributes every measurement to a width, so neither reads as a
-variant of the other, and the first thing it does is name the two.
+variant of the other, and the first thing it does is name the two. There are two, because a screen is a
+surface a user reaches by route: the [library](design-system/screens/library.md), at `/` on web and the
+app root on mobile, and the [playlist detail](design-system/screens/playlist-detail.md), at
+`/playlists/:id` on web and pushed over the library root on mobile.
 
-- **Library**, at `/` on web and the app root on mobile. The only entry point to content, so it is
-  the route a user lands on. Specified in [the library](design-system/screens/library.md). Drawing it
-  forced three things into being that were not designed: the empty gallery, the add-a-playlist dialog,
-  and an answer to what the player bar does before anything is playing. That last one withdrew a
-  claim the [player bar record](design-system/components/player-bar.md) had made, and the correction
-  is written into that record rather than left here as an exception.
-- **Playlist detail**, at `/playlists/:id` on web and pushed over the library root on mobile. The only
-  place stored tracks become audible. Specified in
-  [the playlist detail](design-system/screens/playlist-detail.md), both arrangements drawn: eight desk
-  frames at 1056 by 900 and seven phone frames at 390 by 844. Composing it found three faults in
-  components it did not draw, and two of them are the same mistake seen from two angles: **every track
-  row in the tree was 120.8px rather than 65px**, and **every state word in every track row carried a
-  7px mark it never asked for**, both because two of the playlist header's rules in the shared
-  stylesheet were landing on the track row's elements of the same name. The third is that **five of the
-  row's class names are also `specimen.css`'s**, so the row's rules have to be scoped to be drawn beside
-  the header at all. All three are written up there, and the third is still open: the durable fix is a
-  change to the track row and belongs to a ticket about it.
-- **A lifted component fragment is not a component.** The detail lifted the player bar out of its record
-  and got a 390 flush bar in a 1056 frame: transport 443.2px off centre, no shuffle at all, and a seeker
-  running 956px where that record's argument is a 480px cap. A lift now takes the component's primary
-  arrangement and a consumer adds the variant class if it wants the other, asserted in the generator, so
-  the mistake fails the build instead of rendering. The same inversion let the phone take the flush bar
-  it actually wants.
+A fragment lifted out of a component record takes that component's primary arrangement, and a consumer
+adds the variant class for the other; the generator asserts it, so the mistake fails the build rather
+than rendering. The track row's rules are scoped because five of its class names are also
+`specimen.css`'s, and the durable fix belongs to a ticket about the row.
+
+## What the clients share
+
+The two clients share values and the decisions that do not render, never components. These are the choices that hold across both.
+
+### Sharing values and decisions, not components
+
+`packages/tokens` is the single source of the design values and holds values and nothing else: TypeScript data with lengths and durations as unitless numbers. Its build runs an emitter that appends `px` and `ms`, passes colours through verbatim, and writes a flat CSS custom-property stylesheet into `dist` for the web client. The tokens are flat and carry no `var()` alias, because React Native cannot resolve an alias and there is a single dark theme, so an alias would buy nothing. `packages/ui-foundation` holds the platform-independent UI decisions and renders nothing: it maps a track's file and source status to a tone, hashes a playlist id to a sleeve hue, and exposes the easing curve. Values reach the package by reviewing a transcription of the design stylesheet as a diff, never by reading a screenshot, and parity between the stylesheet and the package source is a test rather than a documented manual step.
+
+### Icons come from Tabler, pinned to one version
+
+`apps/web` takes `@tabler/icons-react` and `apps/mobile` takes `@tabler/icons-react-native`, both pinned to the same exact version. A glyph is the outline variant unless a filled glyph carries meaning an outline would not, which today is the play button and the pause end of its morph. Colour is `currentColor` in every case, so an icon takes the colour of the control it sits inside and is never the most saturated thing on screen, which the do's and don'ts reserve for album art. Size comes from a token scale, not from whatever a component happened to pass. Both packages are imported one icon at a time rather than from the barrel, so no build outcome depends on tree-shaking working.
+
+### The client owns user-facing copy
+
+The interface is available in English and French, and the client owns every sentence a person reads. `@playliberty/i18n` holds the two catalogs, the runtime, the locale resolution, the formatters and the React binding; the web client renders through it and the future mobile client consumes the same package. The server stays language-agnostic: it keeps its English `title` and `detail` as a fallback and returns a stable `code` with structured `params`, and the client maps the code to a message. The catalogs are typed, so `en` defines the shape and `fr` is typed as it, which makes a missing French key a compile error with no parity test and no runtime English fallback. The choice is resolved once per browser, from an explicit `localStorage` choice, then the browser's preference matched by prefix, then English.
 
 ## Do's and Don'ts
 

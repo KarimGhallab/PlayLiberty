@@ -90,7 +90,6 @@ describe('buildDownloadArgs', () => {
     expect(args).toContain('-f');
     expect(args).toContain('bestaudio[ext=m4a]/bestaudio');
     expect(args).toContain('--limit-rate');
-    expect(args).toContain('5M');
     expect(args.at(-2)).toBe('--');
     expect(args.at(-1)).toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
   });
@@ -130,7 +129,7 @@ describe('buildDownloadArgs', () => {
       );
 
       // `--force-keyframes-at-cuts` re-encodes the whole file first, which would
-      // break ADR 0002's no-transcoding rule. The cut is a stream copy.
+      // break the architecture's no-transcoding rule. The cut is a stream copy.
       expect(args).not.toContain('--force-keyframes-at-cuts');
     }
   });

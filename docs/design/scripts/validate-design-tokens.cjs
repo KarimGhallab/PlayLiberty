@@ -12,7 +12,7 @@
  *   2. No specimen hard-codes a colour that a token already carries.
  *   2e. Every enum value the design shows a state for has exactly one word, and
  *       the word is actually drawn, so no state is invented and none is missing.
- *   2c. No token is declared as another token, which ADR 0009 rejects because
+ *   2c. No token is declared as another token, which the design record rejects because
  *       React Native cannot resolve var(). Two tokens may hold the same literal
  *       when they are two names for one decision, and 2d holds them to it.
  *   2b. No :hover rule paints with a tone token. A tone is how a thing is, and
@@ -40,10 +40,10 @@
  *       dialog under a scrim is correct and the drawing looks deliberate, so a
  *       screenshot cannot catch it.
  *   2g. No specimen types a mark as a character. A typed glyph is drawn by whatever
- *       font is installed, which is the failure ADR 0009 and ADR 0010 both exist to
+ *       font is installed, which is the failure the design record's token and icon rules both exist to
  *       prevent, and it is invisible in a screenshot because the specimen renders in
  *       the family it was measured in.
- *   2f. Every glyph is the pinned set's geometry, verbatim. ADR 0010 rules out a
+ *   2f. Every glyph is the pinned set's geometry, verbatim. The design record rules out a
  *       hand-drawn icon, and the path data for the pin lives in this file, so
  *       drawing an arrowhead by hand fails the run rather than being noticed
  *       later, on a phone, as two clients drawing different artwork.
@@ -315,7 +315,7 @@ const specimens = allHtml.filter(f => !optedOut(f));
  * generated geometry sitting in the tree can never be invisible.
  *
  * The stronger form of this rule, where a generated shape is a declared token
- * category rather than a file-level marker, belongs to the ADR amendments and
+ * category rather than a file-level marker, belongs to the design record's amendments and
  * lands with the morph, not with the prototype that is asking for it.
  */
 const GENERATED = 'generated-geometry: computed from the pinned endpoints';
@@ -718,7 +718,7 @@ failures.push(...deadLinks);
 
 /* ------------------------------- 2c. no token is declared as a token
  *
- * ADR 0009 rejects aliased tokens outright: React Native cannot resolve var(),
+ * The design record rejects aliased tokens outright: React Native cannot resolve var(),
  * and with one dark theme there is nothing to re-theme. So a token declared as
  * another token is not a style preference here, it is a value that will reach
  * the phone as an unresolved string.
@@ -733,7 +733,7 @@ const aliased = [];
 for (const [name, value] of tokens) {
   if (value.startsWith('var(')) {
     aliased.push(
-      `${name} is declared as ${value}, which ADR 0009 rejects: React Native cannot resolve var()`
+      `${name} is declared as ${value}, which the design record rejects: React Native cannot resolve var()`
     );
   }
 }
@@ -891,7 +891,7 @@ failures.push(...stateProblems);
 
 /* ------------------------- 2f. glyph geometry is the pinned set's, not ours
  *
- * ADR 0010 takes icons from Tabler and rules out a hand-drawn glyph. A rule in a
+ * The design record takes icons from Tabler and rules out a hand-drawn glyph. A rule in a
  * document is easy to state and easy to break by drawing one arrowhead by hand,
  * so the geometry is held here instead: this is the pinned release's path data,
  * and a specimen's copy has to match it exactly. Editing a glyph in a specimen
@@ -1010,7 +1010,7 @@ const PINNED_ICONS = {
    * three differs on exactly one of them.
    *
    * Verbatim from @tabler/icons@3.48.0, the outline variants, which is the pin's
-   * default: ADR 0010 allows a filled glyph only where filled means something an
+   * default: the design record allows a filled glyph only where filled means something an
    * outlined one would not, and the set has a filled lock that this does not
    * want. The package's first path is the bounding-box filler every glyph in the
    * set carries and none of the pins above keep, so the paths below start at the
@@ -1145,7 +1145,7 @@ for (const file of shipped) {
     }
     const line = html.slice(0, m.index).split('\n').length;
     iconProblems.push(
-      `${rel}:${line} a <${tag}> outside a <symbol>: ADR 0010 takes glyph geometry from the pinned set, so a drawn shape here is one that the two clients would not share`
+      `${rel}:${line} a <${tag}> outside a <symbol>: the design record takes glyph geometry from the pinned set, so a drawn shape here is one that the two clients would not share`
     );
   }
 
@@ -1284,7 +1284,7 @@ failures.push(
 
 /* ------------------ 2j. the morph's frames come from its generator
  *
- * ADR 0010 takes glyph geometry from the pin, and the play to pause morph is the
+ * The design record takes glyph geometry from the pin, and the play to pause morph is the
  * one place a shape is computed rather than pinned. Its two endpoints are still
  * the pinned glyphs verbatim and the frames between are derived from them, which
  * is what keeps the promise, but only if the derived data in the specimen is the
@@ -2149,7 +2149,7 @@ failures.push(...unwired);
  * The track row shipped eleven vertical ellipses and three clockwise arrows as
  * numeric character references, U+22EE and U+21BB, as its only two marks. Nothing
  * caught it, because every rule about glyphs in this project was a sentence in a
- * document: ADR 0009 rules out a second typeface, ADR 0010 rules out an icon
+ * document: the design record rules out a second typeface, the icon rule rejects an icon
  * font, and both of those exist to stop a mark being drawn by whatever font
  * happens to be installed. A typed glyph is that failure directly, and it is
  * invisible in a screenshot because the specimen renders in the family it was
@@ -2201,7 +2201,7 @@ for (const file of allHtml) {
     typedGlyphs.push(
       `${rel}:${line}  U+${cp.toString(16).toUpperCase().padStart(4, '0')} ` +
         `(${range[2]}): a mark typed as a character is drawn by whatever font is installed. ` +
-        `Use the pinned set; see docs/adr/0010-tabler-icons.md`
+        `Use the pinned set; see docs/DESIGN.md (Icons come from Tabler, pinned to one version)`
     );
   }
 }

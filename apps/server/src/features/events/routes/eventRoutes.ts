@@ -14,7 +14,7 @@ import type { AppContext } from '../../../shared/context.js';
  * frame on a heartbeat so an idle connection is not closed by a proxy that would
  * otherwise time it out.
  *
- * It is a `GET`, so ADR 0006's client header does not apply and the identity hook
+ * It is a `GET`, so the client header the architecture requires does not apply and the identity hook
  * has already refused the request if the edge did not vouch for the caller. The
  * audience is decided by the publisher, not here: a connection subscribes on the
  * account the edge identified and receives only that account's events.

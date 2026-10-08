@@ -252,7 +252,7 @@
          native with appearance: none rather than wrapping each one in a span,
          so the geometry arrives as a mask on the pseudo-element instead. The
          path is transcribed from @tabler/icons 3.48.0, MIT; see
-         docs/adr/0010-tabler-icons.md and the sprite in playlist-header.html for
+         docs/DESIGN.md (Icons come from Tabler, pinned to one version) and the sprite in playlist-header.html for
          the same kind of glyph written as real markup.
 
          A mask rather than a background-image for one reason that matters: a
@@ -1086,8 +1086,8 @@
         <p class="hint">
           Amber is <span class="token-sm">--emphasis</span>, and
           <span class="token-sm">--tone-downloading</span> holds the same
-          literal rather than pointing at it, because ADR 0009 rejects aliased
-          tokens and React Native cannot resolve
+          literal rather than pointing at it, because the design record rejects
+          aliased tokens and React Native cannot resolve
           <span class="token-sm">var()</span>. It measures 8.30:1 on
           <span class="token-sm">--bg</span> and 6.98:1 on
           <span class="token-sm">--surface-raised</span>, and a filled badge

@@ -5,11 +5,11 @@ Labels: `enhancement`, `ready-for-agent`
 
 ## Objective
 
-Create the minimal compiling skeleton for `apps/mobile` as decided in `docs/adr/0007-mobile-stack.md`. The goal is an app that builds, lints, tests, and installs on Android, not the product features. The provisioning flow is task `07`.
+Create the minimal compiling skeleton for `apps/mobile` as decided in [`The mobile stack`](../../ARCHITECTURE.md#the-mobile-stack). The goal is an app that builds, lints, tests, and installs on Android, not the product features. The provisioning flow is task `07`.
 
 ## Context
 
-Read `docs/adr/0007-mobile-stack.md`, `docs/adr/0008-mobile-provisioning.md`, `docs/adr/0009-design-system-token-layer.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCT.md`, `docs/GLOSSARY.md`, and `docs/DESIGN.md` first.
+Read `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/PRODUCT.md`, and `docs/GLOSSARY.md` first.
 
 ## Scope
 

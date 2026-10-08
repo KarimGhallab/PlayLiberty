@@ -51,9 +51,9 @@ width and no figure is written into the token set for it.
 
 **The centred arrangement is the base and the phone's is the class, because getting that backwards put a
 phone's bar on a desktop.** The two are the same markup; the phone's is the centred one plus `bar--flush`,
-and that is how this file parameterises them. It used to be lifted the other way round: the lift took the
-390 drawing because that was the one the library screen wanted, carried on the assumption that a lift is a
-lift, and the playlist detail then reused the copy in a 1056px web frame and got a bar with the transport
+and that is how this file parameterises them. Lifting it the other way round takes the
+390 drawing because that is the one the library screen wants, on the assumption that a lift is a
+lift, and the playlist detail reuses the copy in a 1056px web frame and gets a bar with the transport
 443.2px off centre on the right edge, the shuffle at `display: none` and so no shuffle at all, and the
 seeker uncapped at 956.17px where the argument above says 480px or the playhead runs at 3.7px a second. Each
 of those is a claim this file makes failing on one screen while holding on its own, which is the shape a
@@ -100,10 +100,7 @@ bar: `.bars` is absolutely positioned with `inset-inline: 0`, so with no positio
 resolved against the bar instead of the artwork, and every number being checked was about the strip's
 own geometry rather than about where the strip was.
 
-**The bar is absent at rest, and this paragraph withdraws what this file used to say.** It used to
-read: the bar is persistent, so it cannot be absent the way the header's transport is, and the answer
-is a bar with an empty identity and a play that cannot act. That was reasoned from persistence, which
-is true of the bar once something is playing and was not true of the screen a person lands on. The
+**The bar is absent at rest.** The
 [library](../screens/library.md) is the route a person arrives at before they have chosen anything,
 and it is the one place where a bar holding nothing costs the most: 98px of a phone's landing screen
 spent on a play that cannot act. So the bar appears on the first track and is absent before it.
@@ -127,8 +124,8 @@ screen where a person is about to tap a play, which is the price of not drawing 
 border draws nothing. The 98 in this file is the bar as a block in a specimen page, which has an edge
 all the way round.
 
-**A bar that is present but has nothing to play does not exist any more**, so the `disabled` play that
-this file used to specify for that state is not drawn. Check `2p`'s reason for preferring `disabled` to
+**A bar that is present but has nothing to play does not exist any more**, so no `disabled` play is drawn
+for that state. Check `2p`'s reason for preferring `disabled` to
 merely inert still stands for the controls that are genuinely unavailable rather than absent: a bar
 whose track has no file on disk, or a queue that is empty while playback is stopped. The distinction is
 between a control that cannot act and a bar that has not arrived, and only the first wants a disabled

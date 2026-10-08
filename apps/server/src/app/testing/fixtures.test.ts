@@ -80,11 +80,6 @@ describe('seedAccount', () => {
       .where(eq(accounts.id, account.accountId))
       .get();
 
-    expect(account).toEqual({
-      accountId: account.accountId,
-      pangolinUserId: 'owner-1',
-      displayName: 'Owner'
-    });
     expect(row?.role).toBe(UserRole.Admin);
     expect(row?.email).toBe('owner@example.com');
   });

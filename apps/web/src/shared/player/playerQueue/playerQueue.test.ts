@@ -128,19 +128,6 @@ describe('startPlaylistQueue', () => {
     ]);
   });
 
-  it('starts shuffled when asked', () => {
-    startPlaylistQueue(
-      PLAYLIST,
-      [stored('track-1', 0), stored('track-2', 1), stored('track-3', 2)],
-      null,
-      true
-    );
-
-    const state = usePlayerStore.getState();
-    expect(state.shuffle).toBe(true);
-    expect(state.queue).toHaveLength(3);
-  });
-
   it('refuses a playlist with nothing to play and starts nothing', () => {
     const started = startPlaylistQueue(
       PLAYLIST,

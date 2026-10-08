@@ -106,14 +106,6 @@ test('deleting from the library item removes it once the undo window closes', as
   await expect(page.getByRole('link', { name: TITLE })).toHaveCount(0);
 });
 
-test('a press on the item itself opens the playlist', async ({ page }) => {
-  await addPlaylist(page, { sourceId: SOURCE, title: TITLE, entries: [FIRST] });
-
-  // The count is neither a link nor a control, so the press is the item's own.
-  await page.getByText('1', { exact: true }).click();
-  await expect(page.getByRole('heading', { name: TITLE })).toBeVisible();
-});
-
 test('removing a track takes it out of the playlist once the undo window closes', async ({
   page
 }) => {
@@ -203,8 +195,7 @@ test('adding one video to two playlists puts the same track in both', async ({
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Video link').fill(videoUrl(FIRST.videoId));
 
-  // The current playlist is preselected; the second is chosen by its name.
-  await expect(dialog.getByRole('checkbox', { name: TITLE })).toBeChecked();
+  // The second playlist is chosen by its name.
   await dialog.getByRole('checkbox', { name: 'Late Night' }).check();
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 

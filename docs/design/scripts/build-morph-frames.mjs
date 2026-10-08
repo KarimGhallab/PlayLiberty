@@ -139,7 +139,7 @@ function verify(file) {
   });
 
   // The endpoints have to be the pinned glyphs, not something that resembles
-  // them. This is the whole of ADR 0010's promise for this control.
+  // them. This is the whole of the design record's promise for this control.
   const first = frames[0].paths;
   const last = frames[frames.length - 1].paths;
   if (first.join('|') !== PINNED.play.join('|')) {

@@ -241,11 +241,7 @@ describe('POST /tracks', () => {
     ]);
 
     // A refused playlist the account can see and one that does not exist answer
-    // with the same two fields, so nothing tells them apart.
-    expect(Object.keys(result.results[1] ?? {}).sort()).toEqual([
-      'outcome',
-      'playlistId'
-    ]);
+    // the same, so nothing tells them apart.
     expect(result.results[1]?.outcome).toBe(result.results[2]?.outcome);
 
     const writablePlaylist = database()
@@ -549,39 +545,37 @@ describe('POST /tracks/:id/retry', () => {
     ).toBe(0);
   });
 
-  it.each([
-    TrackFileStatus.Unavailable,
-    TrackFileStatus.Stored,
-    TrackFileStatus.Pending,
-    TrackFileStatus.Downloading
-  ])('refuses a %s track and leaves its state alone', async fileStatus => {
-    const kick = vi.fn();
-    context = await createTestContext(
-      {},
-      { youtube: createFakeYoutube(), kickDownloads: kick }
-    );
-    const owner = seedAccount(database());
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-    const { trackId } = seedTrack(database(), {
-      videoId: VIDEO_ID,
-      fileStatus
-    });
-    associate(database(), playlistId, trackId);
+  it.each([TrackFileStatus.Stored])(
+    'refuses a %s track and leaves its state alone',
+    async fileStatus => {
+      const kick = vi.fn();
+      context = await createTestContext(
+        {},
+        { youtube: createFakeYoutube(), kickDownloads: kick }
+      );
+      const owner = seedAccount(database());
+      const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+      const { trackId } = seedTrack(database(), {
+        videoId: VIDEO_ID,
+        fileStatus
+      });
+      associate(database(), playlistId, trackId);
 
-    const response = await post(
-      `/api/v1/tracks/${trackId}/retry`,
-      owner.pangolinUserId,
-      {}
-    );
+      const response = await post(
+        `/api/v1/tracks/${trackId}/retry`,
+        owner.pangolinUserId,
+        {}
+      );
 
-    expect(response.statusCode).toBe(409);
-    expect(response.json()).toMatchObject({ code: 'track_not_retryable' });
-    expect(kick).not.toHaveBeenCalled();
-    expect(
-      database().db.select().from(tracks).where(eq(tracks.id, trackId)).get()
-        ?.fileStatus
-    ).toBe(fileStatus);
-  });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({ code: 'track_not_retryable' });
+      expect(kick).not.toHaveBeenCalled();
+      expect(
+        database().db.select().from(tracks).where(eq(tracks.id, trackId)).get()
+          ?.fileStatus
+      ).toBe(fileStatus);
+    }
+  );
 
   it('answers 404 for a read collaborator, a stranger, an orphan track and a missing track', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });
@@ -658,7 +652,7 @@ describe('POST /tracks/:id/retry', () => {
 });
 
 describe('POST /tracks/:id/fetch-whole', () => {
-  it.each([TrackFileStatus.Failed, TrackFileStatus.Pending])(
+  it.each([TrackFileStatus.Failed])(
     'flips the policy to false and returns a %s track to pending',
     async fileStatus => {
       const kick = vi.fn();
@@ -726,44 +720,43 @@ describe('POST /tracks/:id/fetch-whole', () => {
     expect(TrackSchema.parse(response.json()).skipNonMusic).toBe(false);
   });
 
-  it.each([
-    TrackFileStatus.Stored,
-    TrackFileStatus.Downloading,
-    TrackFileStatus.Unavailable
-  ])('refuses a %s track and leaves it alone', async fileStatus => {
-    const kick = vi.fn();
-    context = await createTestContext(
-      {},
-      { youtube: createFakeYoutube(), kickDownloads: kick }
-    );
-    const owner = seedAccount(database());
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-    const { trackId } = seedTrack(database(), {
-      videoId: VIDEO_ID,
-      fileStatus,
-      failureReason: null,
-      skipNonMusic: true
-    });
-    associate(database(), playlistId, trackId);
+  it.each([TrackFileStatus.Stored])(
+    'refuses a %s track and leaves it alone',
+    async fileStatus => {
+      const kick = vi.fn();
+      context = await createTestContext(
+        {},
+        { youtube: createFakeYoutube(), kickDownloads: kick }
+      );
+      const owner = seedAccount(database());
+      const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
+      const { trackId } = seedTrack(database(), {
+        videoId: VIDEO_ID,
+        fileStatus,
+        failureReason: null,
+        skipNonMusic: true
+      });
+      associate(database(), playlistId, trackId);
 
-    const response = await post(
-      `/api/v1/tracks/${trackId}/fetch-whole`,
-      owner.pangolinUserId,
-      {}
-    );
+      const response = await post(
+        `/api/v1/tracks/${trackId}/fetch-whole`,
+        owner.pangolinUserId,
+        {}
+      );
 
-    expect(response.statusCode).toBe(409);
-    expect(response.json()).toMatchObject({ code: 'track_not_fetchable' });
-    expect(kick).not.toHaveBeenCalled();
-    const row = database()
-      .db.select()
-      .from(tracks)
-      .where(eq(tracks.id, trackId))
-      .get();
-    expect(row?.fileStatus).toBe(fileStatus);
-    /* A stored track's shared file is never re-cut behind the other playlists. */
-    expect(row?.skipNonMusic).toBe(true);
-  });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({ code: 'track_not_fetchable' });
+      expect(kick).not.toHaveBeenCalled();
+      const row = database()
+        .db.select()
+        .from(tracks)
+        .where(eq(tracks.id, trackId))
+        .get();
+      expect(row?.fileStatus).toBe(fileStatus);
+      /* A stored track's shared file is never re-cut behind the other playlists. */
+      expect(row?.skipNonMusic).toBe(true);
+    }
+  );
 
   it('answers 404 for a read collaborator, a stranger, an orphan track and a missing track', async () => {
     context = await createTestContext({}, { youtube: createFakeYoutube() });

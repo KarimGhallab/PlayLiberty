@@ -113,7 +113,7 @@ server rather than from the client's optimism.
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md)'s.
 - **The library is a read and writes nothing on arrival.** Opening it, focusing it, and refreshing it create no
   playlist, no run, and no share.
-- **Inherited constraints are owned by the ADRs and not restated here:** identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the private deployment ([`0001`](../../adr/0001-private-deployment-behind-pangolin-edge.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the private deployment ([Deployment behind the Pangolin edge](../../ARCHITECTURE.md#deployment-behind-the-pangolin-edge)).
 
 ## Testing Decisions
 

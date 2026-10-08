@@ -1,22 +1,7 @@
 # 02: An empty gallery, not an empty playlist
 
-**What to build:** A listener with no playlists at all is told so and offered the one action that helps: an
-empty gallery whose action is "Add a playlist". It is a different state from a playlist that exists but has never
-synced, whose own empty state says "Sync now" because the playlist is there and has not been synced. The two
-never coexist: the library shows the gallery only when the account has no playlists, and never draws the
-playlist's empty state.
-
 **Blocked by:** [`01`](01-the-list-and-the-item.md).
-
 **Status:** resolved
-
-**Labels:** `enhancement`, `ready-for-agent`
-
-- [x] An account with no playlists renders the empty gallery and its "Add a playlist" action.
-- [x] The empty gallery is not the playlist's empty state, and its action is not "Sync now".
-- [x] The library never draws the playlist's empty state.
-- [x] A playlist that exists but has never synced is a different state from having no playlists.
-- [x] A failed list read renders the library's own error state, not the empty gallery.
 
 ## Outcome
 

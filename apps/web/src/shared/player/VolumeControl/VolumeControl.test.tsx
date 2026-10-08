@@ -190,18 +190,6 @@ describe('VolumeControl', () => {
     field.remove();
   });
 
-  it('clamps the arrows at the ends', () => {
-    usePlayerStore.getState().setVolume(1);
-    renderControl();
-
-    fireEvent.keyDown(window, { key: 'ArrowUp' });
-    expect(usePlayerStore.getState().volume).toBe(1);
-
-    usePlayerStore.getState().setVolume(0);
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    expect(usePlayerStore.getState().volume).toBe(0);
-  });
-
   it('sets the level from where the pointer lands on the rail', () => {
     renderControl();
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));

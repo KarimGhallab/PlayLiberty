@@ -4,7 +4,7 @@ PlayLiberty is a self-hosted, multi-user audio player for web and mobile that mi
 
 ## Platform
 
-Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see `docs/adr/0004-server-stack.md`). The web client is a React 19.2 and Vite SPA served by nginx as the single public origin (see `docs/adr/0005-web-stack.md`). The mobile client is an Expo React Native app carrying a per-user Pangolin access token obtained through a self-service browser flow (see `docs/adr/0007-mobile-stack.md` and `docs/adr/0008-mobile-provisioning.md`). The server and web client skeletons exist (`apps/server`, `apps/web`, `packages/contracts`, `packages/tokens`, `packages/ui-foundation`, `packages/i18n`, `packages/youtube`); the mobile client is not built yet.
+Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see [the server stack](ARCHITECTURE.md#the-server-stack)). The web client is a React 19.2 and Vite SPA served by nginx as the single public origin (see [the web stack](ARCHITECTURE.md#the-web-stack)). The mobile client is an Expo React Native app carrying a per-user Pangolin access token obtained through a self-service browser flow (see [the mobile stack](ARCHITECTURE.md#the-mobile-stack) and [mobile provisioning](ARCHITECTURE.md#mobile-provisioning)). The server and web client skeletons exist (`apps/server`, `apps/web`, `packages/contracts`, `packages/tokens`, `packages/ui-foundation`, `packages/i18n`, `packages/youtube`); the mobile client is not built yet.
 
 ## Users
 
@@ -36,11 +36,11 @@ Capabilities in v1:
 Hard constraints:
 
 - Audio only. No video storage or playback.
-- No transcoding, ever. The stored format must play natively everywhere, which fixes it to AAC/M4A. See `docs/adr/0002-no-transcoding-store-aac-m4a.md`.
+- No transcoding, ever. The stored format must play natively everywhere, which fixes it to AAC/M4A. See [audio is stored as-is, never transcoded](ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded).
 - The stored media, not YouTube, is the source of truth for playback.
 - A sync must never delete a track because a source video disappeared.
 - No global library view: playlists are the only entry point to content.
-- The instance is private; authentication is Pangolin's, not the app's. See `docs/adr/0003-identity-via-pangolin-forwarded-headers.md`.
+- The instance is private; authentication is Pangolin's, not the app's. See [identity comes from Pangolin's forwarded headers](ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers).
 
 ## Non-Goals
 
@@ -52,7 +52,7 @@ Calm, content-first, and quiet. The interface is a playlist library, not a video
 
 ## Evidence on Hand
 
-The product definition and the server, web, and mobile stacks all came out of structured grilling sessions. The decisions are recorded in `docs/GLOSSARY.md`, `docs/ARCHITECTURE.md`, and `docs/adr/`, with `docs/adr/0004-server-stack.md`, `docs/adr/0005-web-stack.md`, and `docs/adr/0007-mobile-stack.md` covering the stacks and `docs/adr/0008-mobile-provisioning.md` the mobile access model. The server skeleton, the web client skeleton, the shared contracts, the design tokens, the shared UI decisions, and the YouTube adapter exist with their tests; the mobile client does not, and there is no dataset.
+The product definition and the server, web, and mobile stacks all came out of structured grilling sessions. The decisions are recorded in `docs/GLOSSARY.md` and `docs/ARCHITECTURE.md`, with [the server stack](ARCHITECTURE.md#the-server-stack), [the web stack](ARCHITECTURE.md#the-web-stack), and [the mobile stack](ARCHITECTURE.md#the-mobile-stack) covering the stacks and [mobile provisioning](ARCHITECTURE.md#mobile-provisioning) the mobile access model. The server skeleton, the web client skeleton, the shared contracts, the design tokens, the shared UI decisions, and the YouTube adapter exist with their tests; the mobile client does not, and there is no dataset.
 
 ## Product Principles
 

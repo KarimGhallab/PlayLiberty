@@ -129,8 +129,7 @@ and inherits the geometry, clipping and position; the defaults live in the `var(
 that forgets one gets a working cover rather than a 0 by 0 one. Check `2r` exists because of this: a name
 that does not match leaves every consumer on the fallback with the run green.
 
-The two consumers are the same size now, so the earlier radius conflict is retired by the reuse rather than
-settled. The library's item was 64px at `--radius-artwork` while the header drew 96px at `--radius-card`, and
+The two consumers are the same size now. The library's item was 64px at `--radius-artwork` while the header drew 96px at `--radius-card`, and
 [space and shape](../space-and-shape.md) gives `--radius-artwork` to album art. At one size there is one box,
 and it is the header's; whether a 96px playlist cover takes the artwork radius or the card radius is still
 open, and is now one decision about one box rather than two about two.
@@ -140,8 +139,7 @@ which is the edge divided by eight, so four stripes cross either way. It sits on
 `.cover`, because the hatch is the texture's period and a cover that has a cover has no texture.
 
 **A playlist with no artwork draws a sleeve, and the sleeve is what the hatch is a texture on.** `coverUrl`
-is nullable, and the null case used to be the anonymous grey hatch alone: a gallery without artwork was a
-wall of the same square. A playlist does carry an identity, so the placeholder carries one too, in one of six
+is nullable, and a playlist does carry an identity, so the placeholder carries one too, in one of six
 `--sleeve-*` tokens. The hue is not stored and not drawn at run time: `sleeveIndex` in
 `@playliberty/ui-foundation` hashes the playlist id to one of the six, so a playlist keeps its sleeve across
 reloads and on every client, and nothing has to persist, migrate or backfill a colour. A sleeve is identity
@@ -219,11 +217,11 @@ naming the playlist there would say it twice on every row, the same reason the c
 
 The three glyphs do not have equal ink: measured as a share of the 24 unit grid they are 24.39%, 25.83% and
 19.29%, and against the pin's own 5.43% to 28.43% spread the argument collapses, since `user-share` at 19.29%
-sits just under the pin's 20.24% mean while `lock-share` is the third heaviest glyph in the system. ADR 0010
+sits just under the pin's 20.24% mean while `lock-share` is the third heaviest glyph in the system. The design record
 allows one weight across the set, so evening them out would mean a per-glyph stroke width and two clients
 agreeing on it. A client drawing this where collaborators are common is choosing the lighter mark on
 purpose. All three states are `--muted`, because a tone is how a thing is and none of the three share states
-is better or worse than another, and ADR 0010's rule is that an icon can never be the most saturated thing
+is better or worse than another, and the design record's rule is that an icon can never be the most saturated thing
 on screen.
 
 ## The sync line, and one contradiction inside the header

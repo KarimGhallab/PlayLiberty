@@ -39,7 +39,7 @@ the package and re-emitted. `tokens.css` and the specimens are the dated snapsho
 
 The design record is `docs/DESIGN.md` for the index and the cross-cutting rules, and
 `docs/design-system/` for one file per subject, and it is the narrative record throughout. The
-authority question is settled in `docs/adr/0009-design-system-token-layer.md`.
+authority question is settled in [`docs/DESIGN.md`](../DESIGN.md#sharing-values-and-decisions-not-components).
 
 ## The specimens are not the implementation
 
@@ -55,7 +55,7 @@ specimen has no build step and cannot import a package, so the path data is tran
 sprite at the top of each file that needs one and referenced with `<use>`. The clients do not
 use those transcriptions: `apps/web` imports `@tabler/icons-react` and `apps/mobile` imports
 `@tabler/icons-react-native`, both at `3.48.0`, and each depends on `@tabler/icons` at that
-same exact version. `docs/adr/0010-tabler-icons.md` records the decision.
+same exact version. [`docs/DESIGN.md`](../DESIGN.md#icons-come-from-tabler-pinned-to-one-version) records the decision.
 
 The transcription is checked, not trusted. The validator holds the pinned release's path data
 and fails if a specimen's copy of a glyph differs from it by so much as half a unit, so drawing
@@ -63,7 +63,7 @@ an arrowhead by hand is a build failure rather than a divergence nobody notices 
 clients ship different artwork. A `<path>` outside a `<symbol>` is the same failure with less
 ceremony, and that is the check that makes "no hand-drawn icon" a rule rather than a sentence.
 
-No mark is typed as a character, and that is check `2g`: the track row shipped eleven vertical ellipses and three clockwise arrows as numeric character references, and every rule about glyphs in this project had been a sentence in a document rather than something the build enforced.
+No mark is typed as a character, and that is check `2g`: a typed glyph is drawn by whatever font is installed rather than by the pinned set, so it is a build failure.
 
 Two of the nineteen cannot be markup. The checkbox tick and its partial bar have to live inside a
 native `<input>`, which holds no children, so they are a mask carrying the same pinned path in a
@@ -103,18 +103,15 @@ all of them. It finds its targets by the `data-morph` the block drives rather th
 because a list goes stale the moment a component adopts the control and then fails silently: the
 new file is simply absent from it, the run is clean, and the block in it is a hand copy.
 
-**The splicer writes the frame groups as well as the CSS, and until the library needed thirteen
-buttons in one file it did not.** The CSS was generated and the thirty-three strips already in the
-tree were hand-pasted, so the geometry a control actually draws was the one thing in it that could
+**The splicer writes the frame groups as well as the CSS.** A strip is literal markup in a file with no
+build step, so the geometry a control actually draws is the one thing in it that could
 drift: a designer could add a play button, paste the strip out of another specimen and be a frame
 off with nothing to notice. The failure is worse there than in the CSS because the wrapper makes it
 silent, which the generator's own comment says: a strip without its `<g class="play__strip">` is
 addressed by no rule, sits at `translateX(0)` whatever the state says, and draws frame 0 forever,
 which on a playing button is the play triangle where the pause bars belong, and because
-`.play__glyph` clips, that looks exactly like a correct resting glyph. The extension replaced all
-thirty-three existing strips with text identical to what they already were, which is how it was
-checked to be a no-op, and a file declaring a morph with no frame groups now fails the run rather
-than passing on a button that will never move.
+`.play__glyph` clips, that looks exactly like a correct resting glyph. A file declaring a morph with
+no frame groups fails the run rather than passing on a button that will never move.
 
 A bounding box is not a check on any of this. One build had every corner of both bars bowed the
 wrong way and a box within 0.05 units of correct, because the straight edges set the box and the
@@ -127,7 +124,7 @@ node docs/design/scripts/validate-design-tokens.cjs
 ```
 
 1. `tokens.css` contains only custom property declarations, and no token is declared as another
-   token, which ADR 0009 rejects because React Native cannot resolve `var()`.
+   token, which the design record rejects because React Native cannot resolve `var()`.
 2. No specimen hard-codes a colour that a token carries, and no `:hover` rule paints with a tone
    token, because a tone is how a thing is and hover is not a thing.
 3. Every declared text pairing clears WCAG AA and every declared control boundary clears the 3:1
@@ -169,8 +166,7 @@ into `specimen.css` and its size became a custom property each consumer sets. Th
 duplicated rule for a wiring between two files, and a wiring fails in a way a duplicate cannot: a
 name that does not match leaves every consumer sitting on the fallback, both specimens look
 plausible, every measurement is taken against a box that is not on the page, and the run is green.
-It was checked by doing it, and check `2l` passed, because `2l` resolves the same fallback and a
-fallback is a legal size. The rule is narrow on purpose: it is not "every custom property is read
+The rule is narrow on purpose: it is not "every custom property is read
 somewhere", because inheritance makes that false for good reasons. It asks whether the two halves of
 one shared component name the same thing.
 
@@ -181,10 +177,8 @@ record's numbers are right: that is a reader's job and check 4's. What it catche
 costs most and is easiest to make, which is a second screen record added for one client because the
 first one happened to be written that way.
 
-`2q` is the narrowest. The library's add-a-playlist dialog was drawn at `--z-base`,
-which is 0, over a scrim at `--z-overlay`, which is 20, so the scrim painted on top of the dialog it
-was dimming. Every measurement of that dialog was correct: size, position, contrast, all of it. Only
-the stacking was wrong, and a screenshot does not catch it, because a dialog under a scrim looks like
+`2q` is the narrowest. A dialog painted under the scrim it dims passes every measurement, size, position and contrast alike, and a
+screenshot cannot catch it, because a dialog under a scrim looks like
 a dialog that has been deliberately dimmed, which is a thing a designer might well have meant. The
 check reads the dialog off `role="dialog"` in the markup, because a role is the one thing about a
 dialog that is not a class name, and the scrim off a class whose name contains the word, which is the
@@ -199,16 +193,15 @@ holds that a row whose state says the file is not on disk has a disabled play co
 the lane is present anyway, since a control that takes a click and does nothing is a mis-hit the
 user cannot explain.
 
-The count itself is checked. It has been wrong twice, once when check `2n` was withdrawn and
-once when `2o` and `2p` were added, so the script counts its own check headers and fails if the
+The count itself is checked: the script counts its own check headers and fails if the
 README disagrees.
 
-A twentieth check was written for the equalizer and then withdrawn. The bars draw `--accent`
-straight onto `coverUrl`, which is an arbitrary photograph, so a scrim was going to be required
-to make their contrast computable; the scrim was dropped, and with no gradient in the tree the
-check could never fire. A check that cannot fire reports a safety that is not there, so the rule
-lives in prose beside the strip in `specimen.css` instead, along with the measured price of
-dropping it: 1.60:1 on a #6b6b6b cover, which nothing in the tree can see, because all eight
+The equalizer's contrast is a rule in prose beside the strip in `specimen.css` rather than a
+check, because the bars draw `--accent`
+straight onto `coverUrl`, which is an arbitrary photograph, so a scrim would be required
+to make their contrast computable; with no gradient in the tree such a
+check could never fire, and a check that cannot fire reports a safety that is not there. The measured price of
+dropping the scrim is recorded beside the strip: 1.60:1 on a #6b6b6b cover, which nothing in the tree can see, because all eight
 specimens draw their artwork as a flat box the bars happen to look right on.
 
 The pairing list and the pinned icon table both live in the script rather than in `tokens.css`,
@@ -221,9 +214,8 @@ One family. IBM Plex Sans is a variable font covering 400 to 600 in a single fil
 weight axis is `font-weight` alone and no weight costs an extra request. It is the SIL Open
 Font License.
 
-A second family was drafted in and removed. It had been justified as the thing that made a
-duration column align, and measurement in the browser showed Plex Sans already has tabular
-figures by default, so it bought nothing. `foundations/type.html` carries the measurement so
+A duration column needs no second family: measurement in the browser showed Plex Sans already has tabular
+figures by default, so a second one buys nothing. `foundations/type.html` carries the measurement so
 the decision is not re-argued on a hunch.
 
 `fonts.css` sets `font-display: block` deliberately. A specimen that measures whether 12px is

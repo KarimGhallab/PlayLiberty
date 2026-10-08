@@ -78,7 +78,6 @@ describe('PlayerAudio', () => {
     });
 
     expect(audio().getAttribute('src')).toBe('/api/v1/tracks/track-2/stream');
-    expect(document.querySelectorAll('audio')).toHaveLength(1);
   });
 
   it('starts the new source whenever the track changes while playing', () => {

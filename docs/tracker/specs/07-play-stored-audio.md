@@ -132,7 +132,7 @@ reflected in the browser's own media controls, from the same state.
 - **A track held by two playlists is one file and one stream address,** and the queue plays the same audio
   either way. The deduplication that makes this true is a property of the media store, and the player simply
   never knows there was a second playlist.
-- **Inherited constraints are owned by the ADRs and not restated here:** no transcoding and the stored media as what plays ([`0002`](../../adr/0002-no-transcoding-store-aac-m4a.md)), identity from the forwarded edge headers and fail-closed ([`0003`](../../adr/0003-identity-via-pangolin-forwarded-headers.md)), and the client header with the origin check ([`0006`](../../adr/0006-csrf-defense.md)).
+- **Inherited constraints are owned by the architecture and not restated here:** no transcoding and the stored media as what plays ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)), identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
 
 ## Testing Decisions
 
