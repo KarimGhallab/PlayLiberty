@@ -1,5 +1,5 @@
 import { mkdir } from 'node:fs/promises';
-import { join, resolve, sep } from 'node:path';
+import { join, posix, resolve } from 'node:path';
 
 /*
  * Whether `dst` sits under `src`. Both are absolute paths and `src` ends in a
@@ -58,15 +58,22 @@ export function thumbnailRelativePath(videoId: string): string {
  * that passes `..` or a separator cannot make the path escape the media store.
  * The comparison is against the directory with a trailing separator, so a
  * sibling whose name merely starts with it is not mistaken for a child.
+ *
+ * The path is built and guarded with the POSIX rules and carries `/` on every
+ * host, because it is stored as data rather than used as a host path: a Windows
+ * `\` would make the value non-portable and, worse, `@fastify/static` rejects a
+ * relative path containing one outright, so the stream and thumbnail routes
+ * would answer 403 on Windows. Every consumer joins it onto an absolute root,
+ * and `join` accepts `/` on every platform.
  */
 function shardedRelativePath(
   directory: string,
   videoId: string,
   leaf: string
 ): string {
-  const relative = join(directory, videoId.slice(0, 2), leaf);
-  const root = `${resolve('/', directory)}${sep}`;
-  const resolved = resolve('/', relative);
+  const relative = posix.join(directory, videoId.slice(0, 2), leaf);
+  const root = `${posix.resolve('/', directory)}/`;
+  const resolved = posix.resolve('/', relative);
 
   if (!isSubPath(root, resolved)) {
     throw new Error(
