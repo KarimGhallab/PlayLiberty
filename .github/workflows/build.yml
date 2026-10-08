@@ -1,0 +1,18 @@
+name: Typecheck and build
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Typecheck and build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+
+      - name: Typecheck the e2e suite
+        run: pnpm run test:e2e:typecheck
+
+      - name: Build every app and package
+        run: pnpm run build
