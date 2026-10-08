@@ -46,6 +46,19 @@ const YOUTUBE_EXTRACTORS = 'youtube,youtube:tab';
  */
 const SPONSORBLOCK_CATEGORIES = 'music_offtopic,sponsor,selfpromo';
 
+const THUMBNAIL_HOSTS = new Set(['ytimg.com', 'img.youtube.com']);
+const THUMBNAIL_HOST_SUFFIX = '.ytimg.com';
+
+/*
+ * The fetch's own bounds. A thumbnail is small and fast, so a slow or oversized
+ * response is a fault rather than something to wait out. A redirect is followed
+ * only while it stays on an allowed host, and only a bounded number of times.
+ */
+const DEFAULT_THUMBNAIL_TIMEOUT_MS = 15_000;
+const DEFAULT_THUMBNAIL_MAX_BYTES = 5 * 1024 * 1024;
+const THUMBNAIL_MAX_REDIRECTS = 3;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
 export function buildListArgs(info: YoutubeUrlInfo): string[] {
   return [
     '--ignore-config',
@@ -295,6 +308,118 @@ function runProcess(
   });
 }
 
+function isAllowedThumbnailHost(host: string): boolean {
+  return THUMBNAIL_HOSTS.has(host) || host.endsWith(THUMBNAIL_HOST_SUFFIX);
+}
+
+/*
+ * A thumbnail URL pinned to https and to the image hosts. A redirect is resolved
+ * against the current URL so a relative location is honoured, then re-checked, so
+ * one that leaves the allowlist is refused rather than followed.
+ */
+function resolveThumbnailUrl(raw: string, base?: string): string {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(raw, base);
+  } catch {
+    throw new Error('The thumbnail URL is not a valid absolute URL.');
+  }
+
+  if (parsed.protocol !== 'https:') {
+    throw new Error('The thumbnail URL must use https.');
+  }
+
+  const host = parsed.hostname.toLowerCase();
+
+  if (!isAllowedThumbnailHost(host)) {
+    throw new Error(
+      `The thumbnail host ${host} is not an allowed YouTube image host.`
+    );
+  }
+
+  return parsed.toString();
+}
+
+/*
+ * The body read through the cap rather than buffered whole, so an oversized
+ * response is refused without being held in memory. A declared length over the
+ * cap is refused before the body is read at all.
+ */
+async function readBoundedThumbnail(
+  response: Response,
+  maxBytes: number
+): Promise<Buffer> {
+  const declared = response.headers.get('content-length');
+
+  if (declared !== null && Number(declared) > maxBytes) {
+    throw new Error(`The thumbnail is larger than ${maxBytes} bytes.`);
+  }
+
+  const body = response.body;
+
+  if (body === null) {
+    return Buffer.alloc(0);
+  }
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    total += value.byteLength;
+
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error(`The thumbnail is larger than ${maxBytes} bytes.`);
+    }
+
+    chunks.push(value);
+  }
+
+  return Buffer.concat(chunks);
+}
+
+async function fetchThumbnailImage(
+  raw: string,
+  timeoutMs: number,
+  maxBytes: number
+): Promise<Buffer> {
+  let current = resolveThumbnailUrl(raw);
+
+  for (let hop = 0; hop <= THUMBNAIL_MAX_REDIRECTS; hop += 1) {
+    const response = await fetch(current, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+
+    if (REDIRECT_STATUSES.has(response.status)) {
+      const location = response.headers.get('location');
+
+      if (location === null) {
+        throw new Error('The thumbnail redirect had no location.');
+      }
+
+      current = resolveThumbnailUrl(location, current);
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new Error(`The thumbnail request failed with ${response.status}.`);
+    }
+
+    return readBoundedThumbnail(response, maxBytes);
+  }
+
+  throw new Error('The thumbnail request redirected too many times.');
+}
+
 export class YtdlpClient implements IYoutubeClient {
   constructor(private readonly _options: YtdlpOptions) {}
 
@@ -371,15 +496,18 @@ export class YtdlpClient implements IYoutubeClient {
   }
 
   public async fetchThumbnail(url: string, outputPath: string): Promise<void> {
-    // A plain image fetch: the URL is the source's own, not yt-dlp's business, but
-    // it is still source access, so it lives behind this seam with the rest.
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`The thumbnail request failed with ${response.status}.`);
-    }
+    /*
+     * The URL is the source's own, not yt-dlp's business, but it is still source
+     * access, so it lives behind this seam with the rest, pinned to the image
+     * hosts and bounded.
+     */
+    const image = await fetchThumbnailImage(
+      url,
+      this._options.thumbnailTimeoutMs ?? DEFAULT_THUMBNAIL_TIMEOUT_MS,
+      this._options.thumbnailMaxBytes ?? DEFAULT_THUMBNAIL_MAX_BYTES
+    );
 
     await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, Buffer.from(await response.arrayBuffer()));
+    await writeFile(outputPath, image);
   }
 }

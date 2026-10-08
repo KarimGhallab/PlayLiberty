@@ -54,6 +54,8 @@ export interface YtdlpOptions {
   ffprobeBinary: string;
   timeoutMs: number;
   download: DownloadOptions;
+  thumbnailTimeoutMs?: number;
+  thumbnailMaxBytes?: number;
 }
 
 export interface IYoutubeClient {
