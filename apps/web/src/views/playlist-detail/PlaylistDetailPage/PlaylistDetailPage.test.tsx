@@ -17,8 +17,7 @@ import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { I18nProvider } from '@playliberty/i18n';
-import { formatDuration } from '@playliberty/ui-foundation';
+import { I18nProvider, formatDuration } from '@playliberty/i18n';
 
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import type { PlayerTrack } from '../../../shared/player/types';
@@ -35,9 +34,8 @@ import PlaylistDetailPage from './PlaylistDetailPage';
  * re-renders every row, because the page passes a fresh `onPlay` and fresh inline
  * lane callbacks on each render and the row is not memoized.
  */
-vi.mock('@playliberty/ui-foundation', async importOriginal => {
-  const actual =
-    await importOriginal<typeof import('@playliberty/ui-foundation')>();
+vi.mock('@playliberty/i18n', async importOriginal => {
+  const actual = await importOriginal<typeof import('@playliberty/i18n')>();
   return { ...actual, formatDuration: vi.fn(actual.formatDuration) };
 });
 
@@ -928,11 +926,11 @@ describe('PlaylistDetailPage', () => {
 
     expect(
       await screen.findByText(
-        'Could not reach YouTube, so this playlist is not up to date with its source.'
+        'Could not reach YouTube, the playlist may not be up to date.'
       )
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/All 3 tracks are still here and still playable/)
+      screen.getByText(/All 3 tracks are still here and will never be deleted/)
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Sync now' })

@@ -20,13 +20,13 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
-import { useI18n } from '@playliberty/i18n';
 import {
   formatLastSynced,
-  sleeveIndex,
   syncStateLabel,
-  trackCountUnit
-} from '@playliberty/ui-foundation';
+  trackCountUnit,
+  useI18n
+} from '@playliberty/i18n';
+import { sleeveIndex } from '@playliberty/ui-foundation';
 
 import { API_PREFIX } from '../../api/client/client';
 import PlayGlyph from '../PlayGlyph';
@@ -620,7 +620,7 @@ export default function PlaylistHeader({
         <span
           className={styles.playlistHeader__state}
           data-state={playlist.syncStatus}>
-          {syncStateLabel(playlist.syncStatus)}
+          {syncStateLabel(t, playlist.syncStatus)}
         </span>
         {showSyncTime ? (
           <>
@@ -628,7 +628,7 @@ export default function PlaylistHeader({
               &middot;
             </span>
             <span className={styles.playlistHeader__time}>
-              {formatLastSynced(lastSyncedAt, now)}
+              {formatLastSynced(t, lastSyncedAt, now)}
             </span>
           </>
         ) : null}
@@ -636,7 +636,7 @@ export default function PlaylistHeader({
       <div className={styles.playlistHeader__count}>
         <span>{playlist.trackCount}</span>
         <span className={styles.playlistHeader__countUnit}>
-          {trackCountUnit(playlist.trackCount)}
+          {trackCountUnit(t, playlist.trackCount)}
         </span>
       </div>
       {sharedBy === null ? null : (

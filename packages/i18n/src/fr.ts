@@ -30,10 +30,6 @@ export const fr: Messages = {
       heading: 'Aucune playlist',
       promise:
         "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste téléchargée vous appartient ensuite, même si la vidéo est retirée plus tard."
-    },
-    trackCount: {
-      one: '{count} piste',
-      other: '{count} pistes'
     }
   },
   detail: {
@@ -125,7 +121,7 @@ export const fr: Messages = {
     prose:
       "Cette playlist n'a jamais été synchronisée. La synchronisation va sur YouTube et télécharge l'audio de chaque piste qu'elle contient.",
     promise:
-      'Une synchronisation prend quelques minutes, mais une fois une piste téléchargée, une vidéo retirée de YouTube ne la supprimera pas cette playlist.',
+      'Une synchronisation prend quelques minutes, mais une fois une piste téléchargée, une vidéo retirée de YouTube ne la supprimera pas de cette playlist.',
     sync: 'Synchroniser',
     syncing: 'Synchronisation'
   },
@@ -167,5 +163,96 @@ export const fr: Messages = {
     emptyDetail: "Aucune piste n'a fini de se télécharger.",
     unreachable: "« {name} » n'a pas pu être lue.",
     unreachableDetail: "Ses pistes n'ont pas pu être chargées."
+  },
+  relative: {
+    justNow: "à l'instant",
+    yesterday: 'hier',
+    minute: {
+      one: 'il y a {count} minute',
+      other: 'il y a {count} minutes'
+    },
+    hour: {
+      one: 'il y a {count} heure',
+      other: 'il y a {count} heures'
+    },
+    day: {
+      one: 'il y a {count} jour',
+      other: 'il y a {count} jours'
+    },
+    week: {
+      one: 'il y a {count} semaine',
+      other: 'il y a {count} semaines'
+    },
+    month: {
+      one: 'il y a {count} mois',
+      other: 'il y a {count} mois'
+    },
+    year: {
+      one: 'il y a {count} an',
+      other: 'il y a {count} ans'
+    }
+  },
+  lastSynced: {
+    never: 'Jamais synchronisée',
+    synced: 'Synchronisée {time}'
+  },
+  syncState: {
+    upToDate: 'À jour',
+    syncing: 'Synchronisation',
+    failed: 'Échec de la synchronisation'
+  },
+  trackState: {
+    removedFrom: 'Retirée de {provider}',
+    pending: 'En attente',
+    downloading: 'Téléchargement',
+    failed: 'Échec',
+    unavailable: 'Indisponible'
+  },
+  provider: {
+    youtube: 'YouTube'
+  },
+  count: {
+    unit: {
+      one: 'piste',
+      other: 'pistes'
+    },
+    tracks: {
+      one: '{count} piste',
+      other: '{count} pistes'
+    }
+  },
+  syncSummary: {
+    kept: {
+      one: 'conservée',
+      other: 'conservées'
+    },
+    added: {
+      one: 'ajoutée',
+      other: 'ajoutées'
+    },
+    removed: {
+      one: 'retirée',
+      other: 'retirées'
+    },
+    failed: {
+      one: 'échouée',
+      other: 'échouées'
+    },
+    downloading: '{count} en téléchargement.',
+    syncing: 'Synchronisation',
+    syncedJustNow: "Synchronisée à l'instant"
+  },
+  syncError: {
+    reach:
+      "Impossible d'atteindre {provider}, la playlist n'est peut-être plus à jour.",
+    safe: {
+      one: 'La piste conservée est toujours là et ne sera pas supprimée même en cas de retrait de la vidéo par {provider}.',
+      other:
+        'Les {count} pistes conservées sont toujours là et ne seront pas supprimées même en cas de retrait des vidéos par {provider}.'
+    },
+    sync: 'Synchroniser',
+    syncing: 'Synchronisation',
+    show: 'Afficher les détails',
+    hide: 'Masquer les détails'
   }
 };

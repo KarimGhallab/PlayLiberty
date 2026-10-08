@@ -64,7 +64,7 @@ describe('createTranslator', () => {
     expect(t('library.add')).toBe('Add a playlist');
     expect(t('library.loading')).toBe('Loading playlists.');
     expect(t('library.empty.heading')).toBe('No playlists yet');
-    expect(t('library.trackCount', { count: 1 })).toBe('1 track');
-    expect(t('library.trackCount', { count: 42 })).toBe('42 tracks');
+    expect(t('count.tracks', { count: 1 })).toBe('1 track');
+    expect(t('count.tracks', { count: 42 })).toBe('42 tracks');
   });
 });

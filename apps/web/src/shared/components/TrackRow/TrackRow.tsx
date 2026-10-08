@@ -9,12 +9,8 @@ import { memo, useEffect, useRef, useState } from 'react';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
-import {
-  formatDuration,
-  trackStateLabel,
-  trackTone
-} from '@playliberty/ui-foundation';
+import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
+import { trackTone } from '@playliberty/ui-foundation';
 
 import { API_PREFIX } from '../../api/client/client';
 import TrackBars from '../TrackBars';
@@ -94,6 +90,7 @@ function TrackRow({
   const { t } = useI18n();
   const { track } = association;
   const stateLabel = trackStateLabel(
+    t,
     track.fileStatus,
     track.sourceStatus,
     track.provider

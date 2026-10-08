@@ -2,7 +2,11 @@ import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 
-import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
+import {
+  PlaylistSyncStatus,
+  Provider,
+  TrackFileStatus
+} from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
@@ -447,6 +451,7 @@ export default function PlaylistDetailPage() {
             <div className={styles.playlistDetail__state}>
               <SyncError
                 trackCount={playlist.data?.trackCount ?? null}
+                provider={playlist.data?.provider ?? Provider.Youtube}
                 rawError={latestRun.data?.error ?? null}
                 onRetry={
                   canSync

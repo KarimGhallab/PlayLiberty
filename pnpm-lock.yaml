@@ -414,6 +414,9 @@ importers:
 
   packages/i18n:
     dependencies:
+      '@playliberty/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       react:
         specifier: 19.2.8
         version: 19.2.8

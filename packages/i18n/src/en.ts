@@ -29,10 +29,6 @@ export const en = {
       heading: 'No playlists yet',
       promise:
         'Paste a YouTube playlist link, then sync it. Every track you download is yours from then on, even if the video is taken down later.'
-    },
-    trackCount: {
-      one: '{count} track',
-      other: '{count} tracks'
     }
   },
   detail: {
@@ -123,7 +119,7 @@ export const en = {
     prose:
       'This playlist has never been synced. Syncing goes to YouTube and downloads the audio of every track in it.',
     promise:
-      'A sync takes a few minutes, but once a track is downloaded, a video removed from YouTube will not dropped it from this playlist.',
+      'A sync takes a few minutes, but once a track is downloaded, a video removed from YouTube will not drop it from this playlist.',
     sync: 'Sync now',
     syncing: 'Syncing'
   },
@@ -165,6 +161,96 @@ export const en = {
     emptyDetail: 'No track in it has finished downloading.',
     unreachable: '“{name}” could not be read.',
     unreachableDetail: 'Its tracks could not be loaded.'
+  },
+  relative: {
+    justNow: 'just now',
+    yesterday: 'yesterday',
+    minute: {
+      one: '{count} minute ago',
+      other: '{count} minutes ago'
+    },
+    hour: {
+      one: '{count} hour ago',
+      other: '{count} hours ago'
+    },
+    day: {
+      one: '{count} day ago',
+      other: '{count} days ago'
+    },
+    week: {
+      one: '{count} week ago',
+      other: '{count} weeks ago'
+    },
+    month: {
+      one: '{count} month ago',
+      other: '{count} months ago'
+    },
+    year: {
+      one: '{count} year ago',
+      other: '{count} years ago'
+    }
+  },
+  lastSynced: {
+    never: 'Never synced',
+    synced: 'Synced {time}'
+  },
+  syncState: {
+    upToDate: 'Up to date',
+    syncing: 'Syncing',
+    failed: 'Sync failed'
+  },
+  trackState: {
+    removedFrom: 'Removed from {provider}',
+    pending: 'Pending',
+    downloading: 'Downloading',
+    failed: 'Failed',
+    unavailable: 'Unavailable'
+  },
+  provider: {
+    youtube: 'YouTube'
+  },
+  count: {
+    unit: {
+      one: 'track',
+      other: 'tracks'
+    },
+    tracks: {
+      one: '{count} track',
+      other: '{count} tracks'
+    }
+  },
+  syncSummary: {
+    kept: {
+      one: 'kept',
+      other: 'kept'
+    },
+    added: {
+      one: 'added',
+      other: 'added'
+    },
+    removed: {
+      one: 'removed',
+      other: 'removed'
+    },
+    failed: {
+      one: 'failed',
+      other: 'failed'
+    },
+    downloading: '{count} downloading',
+    syncing: 'Syncing',
+    syncedJustNow: 'Synced just now'
+  },
+  syncError: {
+    reach: 'Could not reach {provider}, the playlist may not be up to date.',
+    safe: {
+      one: 'All {count} track is still here and will never be deleted even if the video is removed from {provider}.',
+      other:
+        'All {count} tracks are still here and will never be deleted even if the videos are removed from {provider}.'
+    },
+    sync: 'Sync now',
+    syncing: 'Syncing',
+    show: 'Show details',
+    hide: 'Hide details'
   }
 };
 

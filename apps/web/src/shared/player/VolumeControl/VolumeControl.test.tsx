@@ -126,7 +126,7 @@ describe('VolumeControl', () => {
 
     fireEvent.keyDown(window, { key: 'ArrowUp' });
 
-    expect(screen.getByRole('status')).toHaveTextContent('Volume 55 percent');
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 55%');
   });
 
   it('keeps one notice and restarts its life on the next press', () => {
@@ -139,12 +139,12 @@ describe('VolumeControl', () => {
 
     /* Not yet at the notice's own end. */
     act(() => vi.advanceTimersByTime(1500));
-    expect(screen.getByRole('status')).toHaveTextContent('Volume 55 percent');
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 55%');
 
     /* A second press disposes the notice and mounts the newer level. */
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     expect(screen.getAllByRole('status')).toHaveLength(1);
-    expect(screen.getByRole('status')).toHaveTextContent('Volume 60 percent');
+    expect(screen.getByRole('status')).toHaveTextContent('Volume 60%');
 
     /* Past the first press's expiry, so this holds only if the timer restarted. */
     act(() => vi.advanceTimersByTime(1500));

@@ -5,6 +5,16 @@ export type {
   Translator
 } from './createTranslator/createTranslator.js';
 export type { Messages } from './en.js';
+export {
+  formatDuration,
+  formatLastSynced,
+  formatRelativeTime,
+  formatTrackCount,
+  providerLabel,
+  syncStateLabel,
+  trackCountUnit,
+  trackStateLabel
+} from './formatters/formatters.js';
 export { default as I18nProvider, useI18n } from './I18nProvider.js';
 export type { I18nValue } from './I18nProvider.js';
 export {

@@ -1,6 +1,9 @@
 import { IconRotateClockwise } from '@tabler/icons-react';
 import { useState } from 'react';
 
+import type { Provider } from '@playliberty/contracts';
+import { providerLabel, useI18n } from '@playliberty/i18n';
+
 import styles from './SyncError.module.scss';
 
 /*
@@ -26,6 +29,8 @@ interface SyncErrorProps {
    * not known, in which case the reassurance is absent: "your tracks are safe"
    * about nothing is a promise about nothing. */
   trackCount: number | null;
+  /* The playlist's provider, which the sentence and the reassurance name. */
+  provider: Provider;
   /* The server's own diagnostic, behind the reveal control. Null when there is
    * nothing to reveal, which is the no-run case. */
   rawError: string | null;
@@ -37,24 +42,24 @@ interface SyncErrorProps {
 
 export default function SyncError({
   trackCount,
+  provider,
   rawError,
   onRetry,
   retrying = false
 }: SyncErrorProps) {
+  const { t } = useI18n();
+  const providerName = providerLabel(t, provider);
   const [revealed, setRevealed] = useState(false);
 
   return (
     <div className={styles.syncError}>
       <div className={styles.syncError__band}>
         <p className={styles.syncError__say}>
-          Could not reach YouTube, so this playlist is not up to date with its
-          source.
+          {t('syncError.reach', { provider: providerName })}
         </p>
         {trackCount === null || trackCount === 0 ? null : (
           <p className={styles.syncError__safe}>
-            All {trackCount} {trackCount === 1 ? 'track is' : 'tracks are'}{' '}
-            still here and still playable, and a sync never deletes: a video
-            removed from YouTube later will not empty this playlist.
+            {t('syncError.safe', { count: trackCount, provider: providerName })}
           </p>
         )}
         {onRetry === undefined ? null : (
@@ -78,7 +83,7 @@ export default function SyncError({
                   focusable="false"
                 />
               )}
-              {retrying ? 'Syncing' : 'Sync now'}
+              {retrying ? t('syncError.syncing') : t('syncError.sync')}
             </button>
           </div>
         )}
@@ -89,7 +94,7 @@ export default function SyncError({
               className={styles.syncError__reveal}
               aria-expanded={revealed}
               onClick={() => setRevealed(current => !current)}>
-              {revealed ? 'Hide details' : 'Show details'}
+              {revealed ? t('syncError.hide') : t('syncError.show')}
             </button>
             {revealed ? (
               <pre className={styles.syncError__raw}>{rawError}</pre>

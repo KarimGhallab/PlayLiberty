@@ -1,7 +1,7 @@
 {
   "name": "@playliberty/ui-foundation",
   "version": "0.1.0",
-  "description": "Shared, non-rendering UI decisions for the PlayLiberty clients: string formatting and track tones.",
+  "description": "Shared, non-rendering UI decisions for the PlayLiberty clients: track tones, sleeves and easing.",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

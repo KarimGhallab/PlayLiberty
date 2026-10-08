@@ -1,8 +1,7 @@
 import { IconPlayerSkipBack, IconPlayerSkipForward } from '@tabler/icons-react';
 import { useEffect, useRef } from 'react';
 
-import { useI18n } from '@playliberty/i18n';
-import { formatDuration } from '@playliberty/ui-foundation';
+import { formatDuration, useI18n } from '@playliberty/i18n';
 
 import { API_PREFIX } from '../../api/client/client';
 import PlayGlyph from '../../components/PlayGlyph';
