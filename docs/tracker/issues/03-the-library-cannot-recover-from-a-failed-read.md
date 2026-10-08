@@ -27,8 +27,9 @@ reachable and operable by keyboard, and named so a screen reader announces it.
 **Key interfaces:**
 
 - The read hooks already expose `refetch` and `error`; use them and add no query.
-- `ApiError` carries a nullable `problem.detail` and a `problem.code`; the recovery surface reads the
-  detail through it and falls back when the error is not an `ApiError` or the detail is null.
+- `ApiError` carries a nullable `problem.detail` and a `problem.code`; the recovery surface maps the code to a
+  catalog sentence and falls back to the server's `detail`, then to its own sentence, when the error is not an
+  `ApiError` or nothing maps.
 - The share dialog's failure can come from either of two reads; its retry refetches both.
 
 **Acceptance criteria:**

@@ -1,6 +1,6 @@
 # Architecture
 
-PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server and web client skeletons exist today, alongside the shared contracts, the design tokens, the shared UI decisions, the YouTube adapter, and the utilities; the mobile client is planned. The stacks are decided in `docs/adr/0004-server-stack.md`, `docs/adr/0005-web-stack.md`, and `docs/adr/0007-mobile-stack.md`, and the mobile access model in `docs/adr/0008-mobile-provisioning.md`.
+PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server and web client skeletons exist today, alongside the shared contracts, the design tokens, the shared UI decisions, the localization package, the YouTube adapter, and the utilities; the mobile client is planned. The stacks are decided in `docs/adr/0004-server-stack.md`, `docs/adr/0005-web-stack.md`, and `docs/adr/0007-mobile-stack.md`, and the mobile access model in `docs/adr/0008-mobile-provisioning.md`.
 
 ## Components
 
@@ -15,7 +15,8 @@ PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspa
 - `packages/utils` - shared TypeScript utilities: path handling, collections, function helpers, and small types.
 - `packages/contracts` - the Zod schemas that define the `/api/v1` REST surface and the types inferred from them, shared by both clients and the server, so a change to the API breaks the build rather than the user.
 - `packages/tokens` - the design values as the single source of truth, with the emitter that writes the flat custom-property stylesheet the web client loads and the module the mobile client reads.
-- `packages/ui-foundation` - the shared, non-rendering UI decisions: duration, relative time and count formatting, the curve to `Easing.bezier` argument mapping, and the track state tone.
+- `packages/ui-foundation` - the shared, non-rendering UI decisions language cannot touch: the curve to `Easing.bezier` argument mapping, the sleeve hue, and the track state tone.
+- `packages/i18n` - the shared localization: the `en` and `fr` catalogs, the hand-rolled runtime, the locale resolution, the formatters and the React binding, consumed by the web client and the future mobile client.
 - `packages/youtube` - the single seam around yt-dlp and source metadata. No other module shells out to yt-dlp or parses YouTube.
 
 ### The stores

@@ -164,6 +164,19 @@ export const fr: Messages = {
     unreachable: "« {name} » n'a pas pu être lue.",
     unreachableDetail: "Ses pistes n'ont pas pu être chargées."
   },
+  problem: {
+    playlistNotFound: {
+      read: "La playlist n'existe pas, ou ce compte ne peut pas la voir.",
+      write: "La playlist n'existe pas, ou ce compte ne peut pas y écrire.",
+      manage: "La playlist n'existe pas, ou ce compte ne peut pas la gérer.",
+      track:
+        "La playlist n'existe pas, ce compte ne peut pas y écrire, ou la piste n'y figure pas."
+    },
+    invalidRequest:
+      "Collez le lien d'une playlist YouTube, par exemple https://youtube.com/playlist?list=...",
+    unprocessableRequest: "L'URL n'est pas une URL de vidéo YouTube.",
+    validationFailed: 'La requête contient une valeur invalide.'
+  },
   relative: {
     justNow: "à l'instant",
     yesterday: 'hier',

@@ -162,6 +162,19 @@ export const en = {
     unreachable: '“{name}” could not be read.',
     unreachableDetail: 'Its tracks could not be loaded.'
   },
+  problem: {
+    playlistNotFound: {
+      read: 'The playlist does not exist, or this account cannot see it.',
+      write: 'The playlist does not exist, or this account cannot write it.',
+      manage: 'The playlist does not exist, or this account cannot manage it.',
+      track:
+        'The playlist does not exist, this account cannot write it, or the track is not in it.'
+    },
+    invalidRequest:
+      'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...',
+    unprocessableRequest: 'The URL is not a YouTube video URL.',
+    validationFailed: 'The request contained an invalid value.'
+  },
   relative: {
     justNow: 'just now',
     yesterday: 'yesterday',

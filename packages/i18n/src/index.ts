@@ -22,6 +22,7 @@ export {
   readLanguage,
   writeLanguage
 } from './languageStorage/languageStorage.js';
+export { problemDetail } from './problem/problem.js';
 export {
   resolveLanguage,
   toLanguage

@@ -24,9 +24,8 @@ phrase in it. A language button in the library header opens a two-row menu, `Eng
 
 The server stays language-agnostic. It keeps its English prose as a fallback and returns a stable `code` and
 structured `params`; the client owns every user-facing sentence and maps the code to a message. The words and
-the locale-aware formatting live in a new `@playliberty/i18n` package, so the web client and the future mobile
-client render the same sentences from one catalog. `ui-foundation` keeps only the formatting that language
-cannot touch.
+the formatting live in a new `@playliberty/i18n` package, so the web client and the future mobile client render
+the same sentences and figures from one place. `ui-foundation` keeps only the primitives language cannot touch.
 
 ## User Stories
 
@@ -79,8 +78,9 @@ cannot touch.
 ## Implementation Decisions
 
 - **The words live in `@playliberty/i18n`, a new workspace package, and the clients are its only consumers.**
-  The package holds the catalogs, the runtime, the locale resolution and the React binding. It depends on
-  `react` for the binding and on nothing else. _Decided here:_ a dedicated package rather than catalogs inside
+  The package holds the catalogs, the runtime, the locale resolution, the formatters and the React binding. It
+  depends on `react` for the binding and on `@playliberty/contracts` for the status and provider enums.
+  _Decided here:_ a dedicated package rather than catalogs inside
   `ui-foundation`, so the localization concern has its own seam and the presentation primitives stay free of
   language.
 - **The runtime is minimal and hand-rolled, and there is no third-party i18n dependency.** `t(key, params)`
@@ -110,11 +110,12 @@ cannot touch.
 - **The page's `lang` attribute follows the resolved language.** The document declares the language the
   reader is in, so a screen reader and the browser's own typography agree. The app's own name stays
   `PlayLiberty` in both languages.
-- **Locale-aware formatting moves into the package; `ui-foundation` keeps what language cannot touch.**
+- **The formatters move into the package; `ui-foundation` keeps only what language cannot touch.**
   `formatRelativeTime`, `formatLastSynced`, `syncStateLabel`, `trackStateLabel`, `providerLabel`,
-  `trackCountUnit` and `formatTrackCount` become catalog entries or locale-parameterized functions in
-  `@playliberty/i18n`. `formatDuration` (`M:SS`), `trackTone`, `sleeveIndex` and `standardEasingBezier` stay in
-  `ui-foundation`. The rule: if it depends on language, it lives in `@playliberty/i18n`. _Decided here._
+  `trackCountUnit`, `formatTrackCount` and `formatDuration` live in `@playliberty/i18n` as catalog entries or
+  functions; `trackTone`, `sleeveIndex` and `standardEasingBezier` stay in `ui-foundation`. The locale-aware
+  ones take the translator; `formatDuration` reads the same in every language and lives beside them so every
+  formatter the clients call is in one place. _Decided here._
 - **The server returns stable codes and structured parameters, and the client owns the sentence.**
   `ProblemSchema` gains an optional `params` record of string and number values. `code` stays the stable
   identifier, and where the copy varies under one code (the four `playlist_not_found` details) the difference
@@ -165,7 +166,7 @@ cannot touch.
   - the lint rule rejects a hardcoded string and accepts a translated one;
   - a problem code renders as the localized sentence, and an unmapped code falls back to the server's
     English.
-- **Prior art:** the `ui-foundation` formatter tests, which pin exact English strings and are the level the
+- **Prior art:** the `@playliberty/i18n` formatter tests, which pin exact English strings and are the level the
   catalog inherits; the web client's component tests, which render through the provider against a mocked
   network; and the end-to-end journeys, which assert accessible names.
 

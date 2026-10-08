@@ -18,7 +18,8 @@ import {
 import {
   parseBody,
   sendInvalidRequest,
-  sendProblem
+  sendProblem,
+  sendValidationFailed
 } from '../../../shared/problem.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
@@ -46,7 +47,7 @@ export function registerPlaylistRoutes(
     const parsed = parseBody(PageQuerySchema, request.query);
 
     if (!parsed.success) {
-      return sendInvalidRequest(reply, parsed.message);
+      return sendValidationFailed(reply, parsed.issues);
     }
 
     return reply.send(
@@ -61,7 +62,7 @@ export function registerPlaylistRoutes(
     const parsed = parseBody(CreatePlaylistInputSchema, request.body);
 
     if (!parsed.success) {
-      return sendInvalidRequest(reply, parsed.message);
+      return sendValidationFailed(reply, parsed.issues);
     }
 
     const info = resolveSourceUrl(parsed.data.url);
@@ -108,7 +109,8 @@ export function registerPlaylistRoutes(
           status: 404,
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
-          detail: 'The playlist does not exist, or this account cannot see it.'
+          detail: 'The playlist does not exist, or this account cannot see it.',
+          params: { reason: 'read' }
         });
       }
 
@@ -126,7 +128,7 @@ export function registerPlaylistRoutes(
       const parsed = parseBody(PageQuerySchema, request.query);
 
       if (!parsed.success) {
-        return sendInvalidRequest(reply, parsed.message);
+        return sendValidationFailed(reply, parsed.issues);
       }
 
       const result = listPlaylistTracksForAccount(
@@ -141,7 +143,8 @@ export function registerPlaylistRoutes(
           status: 404,
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
-          detail: 'The playlist does not exist, or this account cannot see it.'
+          detail: 'The playlist does not exist, or this account cannot see it.',
+          params: { reason: 'read' }
         });
       }
 
@@ -159,7 +162,7 @@ export function registerPlaylistRoutes(
       const parsed = parseBody(RenamePlaylistInputSchema, request.body);
 
       if (!parsed.success) {
-        return sendInvalidRequest(reply, parsed.message);
+        return sendValidationFailed(reply, parsed.issues);
       }
 
       const result = renamePlaylistForAccount(
@@ -175,7 +178,8 @@ export function registerPlaylistRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, or this account cannot manage it.'
+            'The playlist does not exist, or this account cannot manage it.',
+          params: { reason: 'manage' }
         });
       }
 
@@ -201,7 +205,7 @@ export function registerPlaylistRoutes(
       const parsed = parseBody(SkipNonMusicInputSchema, request.body);
 
       if (!parsed.success) {
-        return sendInvalidRequest(reply, parsed.message);
+        return sendValidationFailed(reply, parsed.issues);
       }
 
       const result = updateSkipNonMusicForAccount(
@@ -217,7 +221,8 @@ export function registerPlaylistRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, or this account cannot write it.'
+            'The playlist does not exist, or this account cannot write it.',
+          params: { reason: 'write' }
         });
       }
 
@@ -246,7 +251,8 @@ export function registerPlaylistRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, or this account cannot manage it.'
+            'The playlist does not exist, or this account cannot manage it.',
+          params: { reason: 'manage' }
         });
       }
 
@@ -274,7 +280,8 @@ export function registerPlaylistRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, or this account cannot write it.'
+            'The playlist does not exist, or this account cannot write it.',
+          params: { reason: 'write' }
         });
       }
 
@@ -307,7 +314,8 @@ export function registerPlaylistRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, this account cannot write it, or the track is not in it.'
+            'The playlist does not exist, this account cannot write it, or the track is not in it.',
+          params: { reason: 'track' }
         });
       }
 

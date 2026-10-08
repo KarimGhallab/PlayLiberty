@@ -2,8 +2,8 @@
 
 **What to build:** the sync line, the state words and the counts read in the chosen language. The locale-aware
 formatters move out of `ui-foundation` into `@playliberty/i18n`: relative time, last synced, the sync and track
-state words, the provider name, and the track count with its unit. `ui-foundation` keeps only the language-free
-primitives (duration, tone, sleeve, easing). A playlist line and a track count read French.
+state words, the provider name, the track count with its unit, and duration. `ui-foundation` keeps only the
+language-free primitives (tone, sleeve, easing). A playlist line and a track count read French.
 
 **Blocked by:** [`01`](01-the-package-the-provider-and-the-language-switch.md).
 

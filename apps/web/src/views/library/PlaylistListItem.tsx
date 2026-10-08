@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
+import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../shared/api/client/client';
 import {
@@ -116,7 +116,7 @@ export default function PlaylistListItem({
           isWorking={rename.isPending}
           problem={
             rename.isError && rename.error instanceof ApiError
-              ? (rename.error.problem?.detail ?? null)
+              ? problemDetail(t, rename.error.problem)
               : null
           }
           onSubmit={name =>

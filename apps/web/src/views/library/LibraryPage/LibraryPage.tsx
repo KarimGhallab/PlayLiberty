@@ -2,7 +2,7 @@ import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 import type { Messages, Translator } from '@playliberty/i18n';
-import { useI18n } from '@playliberty/i18n';
+import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
 import {
@@ -87,10 +87,10 @@ export default function LibraryPage() {
    */
   const directoryItems = directory.data ?? [];
 
-  /* The server's own `detail`, which is the message the field shows. */
+  /* The sentence for the refusal, from the catalog when the code is known. */
   const refused =
     createPlaylist.error instanceof ApiError
-      ? (createPlaylist.error.problem?.detail ?? null)
+      ? problemDetail(t, createPlaylist.error.problem)
       : null;
 
   const isEmpty = playlists.isSuccess && playlists.data.items.length === 0;

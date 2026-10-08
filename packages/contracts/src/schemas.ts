@@ -123,6 +123,10 @@ export const ProblemSchema = z.object({
   status: z.number().int(),
   code: z.string(),
   detail: z.string().optional(),
+  /* The values the client interpolates into the sentence for a code whose copy
+   * varies, e.g. the `playlist_not_found` reason. The client owns the words, so
+   * the server sends the parameters rather than a second English sentence. */
+  params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   instance: z.string().optional()
 });
 

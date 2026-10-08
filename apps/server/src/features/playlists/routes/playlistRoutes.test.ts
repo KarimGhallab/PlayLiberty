@@ -515,7 +515,10 @@ describe('GET /playlists', () => {
     );
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+    expect(response.json()).toMatchObject({
+      code: 'validation_failed',
+      params: { path: 'limit' }
+    });
   });
 
   it('requires an identity', async () => {
@@ -1171,7 +1174,7 @@ describe('GET /playlists/:id/tracks', () => {
     );
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
   });
 
   it('returns the playlist to its owner', async () => {
@@ -1424,7 +1427,7 @@ describe('PATCH /playlists/:id', () => {
     );
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
     expect(
       context.database.db
         .select()
@@ -1446,7 +1449,7 @@ describe('PATCH /playlists/:id', () => {
     );
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
   });
 
   it('answers 404 for a write collaborator, a read collaborator, a stranger and a missing playlist', async () => {
@@ -1659,7 +1662,7 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
     );
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ code: 'invalid_request' });
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
   });
 
   it('does not change a track that was already created', async () => {

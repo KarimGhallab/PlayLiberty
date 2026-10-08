@@ -10,8 +10,8 @@ import {
 } from '../../../shared/events/liveEvents.js';
 import {
   parseBody,
-  sendInvalidRequest,
-  sendProblem
+  sendProblem,
+  sendValidationFailed
 } from '../../../shared/problem.js';
 
 import {
@@ -41,7 +41,8 @@ export function registerShareRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, or this account cannot manage it.'
+            'The playlist does not exist, or this account cannot manage it.',
+          params: { reason: 'manage' }
         });
       }
 
@@ -55,7 +56,7 @@ export function registerShareRoutes(
       const parsed = parseBody(SharePlaylistInputSchema, request.body);
 
       if (!parsed.success) {
-        return sendInvalidRequest(reply, parsed.message);
+        return sendValidationFailed(reply, parsed.issues);
       }
 
       const result = grantShareForAccount(
@@ -72,7 +73,8 @@ export function registerShareRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, or this account cannot manage it.'
+            'The playlist does not exist, or this account cannot manage it.',
+          params: { reason: 'manage' }
         });
       }
 
@@ -119,7 +121,8 @@ export function registerShareRoutes(
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
           detail:
-            'The playlist does not exist, or this account cannot manage it.'
+            'The playlist does not exist, or this account cannot manage it.',
+          params: { reason: 'manage' }
         });
       }
 

@@ -3,11 +3,15 @@ import type { z } from 'zod';
 
 import type { Problem } from '@playliberty/contracts';
 
+/* The values a problem carries for the copy that varies under one code. */
+export type ProblemParams = Readonly<Record<string, string | number>>;
+
 export interface ProblemInput {
   status: number;
   code: string;
   title: string;
   detail?: string;
+  params?: ProblemParams;
   type?: string;
 }
 
@@ -17,7 +21,8 @@ export function createProblem(input: ProblemInput): Problem {
     title: input.title,
     status: input.status,
     code: input.code,
-    detail: input.detail
+    detail: input.detail,
+    params: input.params
   };
 }
 
@@ -51,14 +56,24 @@ export function sendNotImplemented(
   });
 }
 
+/* One Zod issue as the wire carries it: the field and the shape of the fault. */
+export interface ProblemIssue {
+  readonly path: string;
+  readonly code: string;
+}
+
 export type ParseResult<T> =
-  { success: true; data: T } | { success: false; message: string };
+  | { success: true; data: T }
+  | { success: false; issues: readonly ProblemIssue[] };
 
 /*
  * Parses any untrusted input against a schema and reports the failure as a
  * problem document, so every route turns a bad body or a bad query string the
  * same way. The name says body because the first caller was a body; the query
  * string on a paginated list goes through here as well.
+ *
+ * The failure is the structured issues and never Zod's English prose: the code
+ * and the parameters travel, and the client owns the sentence it renders.
  */
 export function parseBody<T>(
   schema: z.ZodType<T>,
@@ -70,11 +85,13 @@ export function parseBody<T>(
     return { success: true, data: result.data };
   }
 
-  const message = result.error.issues
-    .map(issue => `${issue.path.join('.') || 'body'}: ${issue.message}`)
-    .join('; ');
-
-  return { success: false, message };
+  return {
+    success: false,
+    issues: result.error.issues.map(issue => ({
+      path: issue.path.join('.') || 'body',
+      code: issue.code
+    }))
+  };
 }
 
 /*
@@ -85,13 +102,37 @@ export function parseBody<T>(
  */
 export function sendInvalidRequest(
   reply: FastifyReply,
-  message: string
+  message: string,
+  params?: ProblemParams
 ): FastifyReply {
   return sendProblem(reply, {
     status: 400,
     code: 'invalid_request',
     title: 'Invalid Request',
-    detail: message
+    detail: message,
+    params
+  });
+}
+
+/*
+ * A Zod failure, as one code and its parameters rather than Zod's own English.
+ * The status is the caller's, because the add-track route refuses a body it read
+ * and would not act on with a 422 while every other route uses the plain 400.
+ */
+export function sendValidationFailed(
+  reply: FastifyReply,
+  issues: readonly ProblemIssue[],
+  status = 400
+): FastifyReply {
+  const [first] = issues;
+
+  return sendProblem(reply, {
+    status,
+    code: 'validation_failed',
+    title: 'Invalid Request',
+    detail: 'The request contained an invalid value.',
+    params:
+      first === undefined ? undefined : { path: first.path, issue: first.code }
   });
 }
 
@@ -104,12 +145,14 @@ export function sendInvalidRequest(
  */
 export function sendUnprocessable(
   reply: FastifyReply,
-  message: string
+  message: string,
+  params?: ProblemParams
 ): FastifyReply {
   return sendProblem(reply, {
     status: 422,
     code: 'unprocessable_request',
     title: 'Unprocessable Request',
-    detail: message
+    detail: message,
+    params
   });
 }

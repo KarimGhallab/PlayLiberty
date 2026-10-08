@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { PageQuerySchema } from '@playliberty/contracts';
 
 import type { AppContext } from '../../../shared/context.js';
-import { parseBody, sendInvalidRequest } from '../../../shared/problem.js';
+import { parseBody, sendValidationFailed } from '../../../shared/problem.js';
 
 import { listAccountSummaries, toAccountView } from '../accountService.js';
 
@@ -17,7 +17,7 @@ export function registerAccountRoutes(
     const parsed = parseBody(PageQuerySchema, request.query);
 
     if (!parsed.success) {
-      return sendInvalidRequest(reply, parsed.message);
+      return sendValidationFailed(reply, parsed.issues);
     }
 
     return reply.send(

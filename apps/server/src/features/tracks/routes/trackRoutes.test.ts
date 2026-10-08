@@ -230,13 +230,22 @@ function countAssociations(): number {
   );
 }
 
-const invalidPayloads: [string, Record<string, unknown>][] = [
-  ['a playlist URL', { url: PLAYLIST_URL, playlistIds: ['p'] }],
-  ['an empty list', { url: VIDEO_URL, playlistIds: [] }],
-  ['a malformed URL', { url: 'not a url', playlistIds: ['p'] }],
+const invalidPayloads: [string, Record<string, unknown>, string][] = [
+  [
+    'a playlist URL',
+    { url: PLAYLIST_URL, playlistIds: ['p'] },
+    'unprocessable_request'
+  ],
+  ['an empty list', { url: VIDEO_URL, playlistIds: [] }, 'validation_failed'],
+  [
+    'a malformed URL',
+    { url: 'not a url', playlistIds: ['p'] },
+    'validation_failed'
+  ],
   [
     'more than a hundred ids',
-    { url: VIDEO_URL, playlistIds: Array.from({ length: 101 }, () => 'p') }
+    { url: VIDEO_URL, playlistIds: Array.from({ length: 101 }, () => 'p') },
+    'validation_failed'
   ]
 ];
 
@@ -419,7 +428,7 @@ describe('POST /tracks', () => {
 
   it.each(invalidPayloads)(
     'refuses %s with 422 and creates nothing',
-    async (_name, payload) => {
+    async (_name, payload, code) => {
       context = await createTestContext(
         {},
         { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
@@ -433,7 +442,7 @@ describe('POST /tracks', () => {
       );
 
       expect(response.statusCode).toBe(422);
-      expect(response.json()).toMatchObject({ code: 'unprocessable_request' });
+      expect(response.json()).toMatchObject({ code });
       expect(countTracks()).toBe(0);
       expect(countAssociations()).toBe(0);
     }

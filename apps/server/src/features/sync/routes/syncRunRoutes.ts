@@ -26,7 +26,8 @@ export function registerSyncRunRoutes(
           status: 404,
           code: 'playlist_not_found',
           title: 'Playlist Not Found',
-          detail: 'The playlist does not exist, or this account cannot see it.'
+          detail: 'The playlist does not exist, or this account cannot see it.',
+          params: { reason: 'read' }
         });
       }
 

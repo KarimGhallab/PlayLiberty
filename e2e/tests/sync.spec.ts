@@ -99,10 +99,12 @@ test('a failed sync leaves the playlist marked as failed rather than silent', as
   await page.getByRole('link', { name: 'Evening Jazz' }).click();
   await expect(
     page.getByText(
-      'Could not reach YouTube, so this playlist is not up to date with its source.'
+      'Could not reach YouTube, the playlist may not be up to date.'
     )
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/still here and still playable/)).toBeVisible();
+  await expect(
+    page.getByText(/still here and will never be deleted/)
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sync now' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Show details' }).click();

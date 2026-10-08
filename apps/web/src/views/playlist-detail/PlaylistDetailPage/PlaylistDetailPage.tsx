@@ -7,7 +7,7 @@ import {
   Provider,
   TrackFileStatus
 } from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
+import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
 import {
@@ -439,7 +439,8 @@ export default function PlaylistDetailPage() {
                   onError: error =>
                     setSettingRefused(
                       error instanceof ApiError
-                        ? (error.problem?.detail ?? t('detail.settingFailed'))
+                        ? (problemDetail(t, error.problem) ??
+                            t('detail.settingFailed'))
                         : t('detail.settingFailed')
                     )
                 })
@@ -547,7 +548,7 @@ export default function PlaylistDetailPage() {
           isWorking={rename.isPending}
           problem={
             rename.isError && rename.error instanceof ApiError
-              ? (rename.error.problem?.detail ?? null)
+              ? problemDetail(t, rename.error.problem)
               : null
           }
           onSubmit={name =>
@@ -573,7 +574,7 @@ export default function PlaylistDetailPage() {
         result={addTrack.data ?? null}
         problem={
           addTrack.isError && addTrack.error instanceof ApiError
-            ? (addTrack.error.problem?.detail ?? null)
+            ? problemDetail(t, addTrack.error.problem)
             : null
         }
         onSubmit={(url, playlistIds) => addTrack.mutate({ url, playlistIds })}

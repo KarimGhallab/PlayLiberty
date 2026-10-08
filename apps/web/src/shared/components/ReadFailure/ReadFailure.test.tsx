@@ -57,6 +57,24 @@ describe('ReadFailure', () => {
     expect(screen.queryByText(FALLBACK)).not.toBeInTheDocument();
   });
 
+  it('renders a known problem code as the catalog sentence', () => {
+    renderFailure({
+      error: new ApiError(404, {
+        type: 'about:blank',
+        title: 'Playlist Not Found',
+        status: 404,
+        code: 'playlist_not_found',
+        params: { reason: 'read' }
+      })
+    });
+
+    expect(
+      screen.getByText(
+        'The playlist does not exist, or this account cannot see it.'
+      )
+    ).toBeInTheDocument();
+  });
+
   it('retries through a labelled button', () => {
     const onRetry = vi.fn();
     renderFailure({ error: apiError(null), onRetry });

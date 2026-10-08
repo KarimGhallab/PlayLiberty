@@ -9,7 +9,8 @@ import { publishTrackChanged } from '../../../shared/events/liveEvents.js';
 import {
   parseBody,
   sendProblem,
-  sendUnprocessable
+  sendUnprocessable,
+  sendValidationFailed
 } from '../../../shared/problem.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
@@ -51,7 +52,7 @@ export function registerTrackRoutes(
     const parsed = parseBody(AddTrackInputSchema, request.body);
 
     if (!parsed.success) {
-      return sendUnprocessable(reply, parsed.message);
+      return sendValidationFailed(reply, parsed.issues, 422);
     }
 
     const info = resolveSourceUrl(parsed.data.url);
