@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 
 import { AddTrackInputSchema, ProblemCode } from '@playliberty/contracts';
-import { exhaust } from '@playliberty/utils';
 import { YoutubeSourceKind } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
 import { publishTrackChanged } from '../../../shared/events/liveEvents.js';
+import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
   sendProblem,

@@ -17,14 +17,12 @@ FROM tools AS deps
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
-COPY packages/utils/package.json packages/utils/package.json
 COPY packages/youtube/package.json packages/youtube/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @playliberty/utils run build \
- && pnpm --filter @playliberty/contracts run build \
+RUN pnpm --filter @playliberty/contracts run build \
  && pnpm --filter @playliberty/youtube run build \
  && pnpm --filter @playliberty/server run build
 
@@ -32,7 +30,6 @@ FROM tools AS prod-deps
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
-COPY packages/utils/package.json packages/utils/package.json
 COPY packages/youtube/package.json packages/youtube/package.json
 RUN pnpm install --frozen-lockfile --prod
 
@@ -66,7 +63,6 @@ COPY --from=prod-deps /app ./
 COPY --from=build /app/apps/server/dist ./apps/server/dist
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build /app/packages/youtube/dist ./packages/youtube/dist
-COPY --from=build /app/packages/utils/dist ./packages/utils/dist
 COPY apps/server/drizzle ./apps/server/drizzle
 
 RUN mkdir -p /media /data && chown -R node:node /app /media /data

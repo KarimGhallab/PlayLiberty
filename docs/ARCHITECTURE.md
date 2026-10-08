@@ -12,7 +12,6 @@ PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspa
 
 ### The packages
 
-- `packages/utils` - shared TypeScript utilities: path handling, collections, function helpers, and small types.
 - `packages/contracts` - the Zod schemas that define the `/api/v1` REST surface and the types inferred from them, shared by both clients and the server, so a change to the API breaks the build rather than the user.
 - `packages/tokens` - the design values as the single source of truth, with the emitter that writes the flat custom-property stylesheet the web client loads and the module the mobile client reads.
 - `packages/ui-foundation` - the shared, non-rendering UI decisions language cannot touch: the curve to `Easing.bezier` argument mapping, the sleeve hue, and the track state tone.
@@ -84,7 +83,6 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `apps/web/src/` - the web SPA, views under `src/views/` and shared pieces under `src/shared/`. A module split across two or more files is one folder named after it, holding the module, its test and its stylesheet; a single-file module stays flat.
 - `apps/web/deploy/nginx.conf.template` - the static serving and `/api` proxy configuration, rendered by the nginx entrypoint at container start.
 - `apps/mobile/src/` and `apps/mobile/app/` (planned) - the Expo app, routes and feature modules.
-- `packages/utils/src/` - utility sources, grouped by area (`utils/`, `types/`).
 - `packages/contracts/src/` - the API Zod schemas and inferred types.
 - `packages/youtube/src/` - the yt-dlp adapter.
 - `scripts/validate-tsconfig-paths.cjs` - keeps `tsconfig.depcruise.json` paths aligned with the workspace.

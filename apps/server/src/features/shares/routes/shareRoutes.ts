@@ -5,7 +5,6 @@ import {
   ProblemCode,
   SharePlaylistInputSchema
 } from '@playliberty/contracts';
-import { exhaust } from '@playliberty/utils';
 
 import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
@@ -13,6 +12,7 @@ import {
   publishPlaylistChanged,
   publishPlaylistRemoved
 } from '../../../shared/events/liveEvents.js';
+import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
   sendPlaylistNotFound,

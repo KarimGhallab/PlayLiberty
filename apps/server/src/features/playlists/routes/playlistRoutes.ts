@@ -8,7 +8,6 @@ import {
   RenamePlaylistInputSchema,
   SkipNonMusicInputSchema
 } from '@playliberty/contracts';
-import { exhaust } from '@playliberty/utils';
 
 import { playlistAudience } from '../../../shared/access/playlistAccess.js';
 import { audit } from '../../../shared/audit.js';
@@ -18,6 +17,7 @@ import {
   publishPlaylistRemoved,
   publishTracksChangedForPlaylists
 } from '../../../shared/events/liveEvents.js';
+import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
   sendInvalidRequest,

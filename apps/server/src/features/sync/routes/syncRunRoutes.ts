@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 
 import { PlaylistNotFoundReason, ProblemCode } from '@playliberty/contracts';
-import { exhaust } from '@playliberty/utils';
 
 import type { AppContext } from '../../../shared/context.js';
+import { exhaust } from '../../../shared/exhaust.js';
 import { sendPlaylistNotFound, sendProblem } from '../../../shared/problem.js';
 
 import { resolveLatestSyncRun } from '../syncRunService.js';

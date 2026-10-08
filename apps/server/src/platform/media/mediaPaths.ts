@@ -1,7 +1,14 @@
 import { mkdir } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 
-import { isSubPath } from '@playliberty/utils';
+/*
+ * Whether `dst` sits under `src`. Both are absolute paths and `src` ends in a
+ * separator, so a sibling whose name merely starts with it is not mistaken for a
+ * child.
+ */
+function isSubPath(src: string, dst: string): boolean {
+  return dst.startsWith(src) && dst.length > src.length;
+}
 
 export const MEDIA_DIRECTORY = 'media';
 export const THUMBNAILS_DIRECTORY = 'thumbnails';
