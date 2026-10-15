@@ -4,6 +4,7 @@ import {
   AddTrackOutcome,
   AssociationOrigin,
   LiveEventType,
+  PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   ShareLevel,
@@ -83,6 +84,7 @@ export const PlaylistSchema = z.object({
   lastSyncedAt: isoDateTime.nullable(),
   trackCount: z.number().int().nonnegative(),
   skipNonMusic: z.boolean(),
+  sort: z.enum(PlaylistSort),
   access: PlaylistAccessSchema,
   hasShares: z.boolean(),
   createdAt: isoDateTime,
@@ -182,6 +184,10 @@ export const RenamePlaylistInputSchema = z.object({
 
 export const SkipNonMusicInputSchema = z.object({
   skipNonMusic: z.boolean()
+});
+
+export const SortPlaylistInputSchema = z.object({
+  sort: z.enum(PlaylistSort)
 });
 
 export const SharePlaylistInputSchema = z.object({

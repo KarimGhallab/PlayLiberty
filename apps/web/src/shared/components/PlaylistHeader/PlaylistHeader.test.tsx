@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   ShareLevel
@@ -88,6 +89,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     lastSyncedAt: '2026-09-29T12:00:00.000Z',
     trackCount: 128,
     skipNonMusic: true,
+    sort: PlaylistSort.Playlist,
     access: 'owner',
     hasShares: false,
     createdAt: '2026-09-01T00:00:00.000Z',

@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   AssociationOrigin,
   PlaylistSchema,
+  PlaylistSort,
   PlaylistSyncStatus,
   PlaylistTrackListSchema,
   PlaylistTrackSchema,
@@ -20,6 +21,7 @@ import {
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
 import {
+  associate,
   seedAccount,
   seedPlaylist,
   seedShare,
@@ -1431,6 +1433,155 @@ describe('GET /playlists/:id/queue', () => {
   );
 });
 
+/*
+ * The order a playlist's tracks are read in. The dates are explicit, because two
+ * associations added in one instant share a timestamp and the tiebreak is the
+ * playlist's own position; a fixture that let the column stamp them would make
+ * the date sort a race.
+ */
+describe("the order a playlist's tracks are read in", () => {
+  const EARLY = '2026-01-01T00:00:00.000Z';
+  const MIDDLE = '2026-06-01T00:00:00.000Z';
+  const LATE = '2026-12-01T00:00:00.000Z';
+
+  function seedOutOfPositionOrder(
+    database: DatabaseHandle,
+    playlistId: string
+  ): { first: string; second: string; third: string } {
+    const { trackId: first } = seedTrack(database);
+    const { trackId: second } = seedTrack(database);
+    const { trackId: third } = seedTrack(database);
+
+    // Inserted out of position order, so insertion order would fail a date sort.
+    associate(database, playlistId, third, { position: 3, addedAt: MIDDLE });
+    associate(database, playlistId, first, { position: 0, addedAt: LATE });
+    associate(database, playlistId, second, { position: 1, addedAt: EARLY });
+
+    return { first, second, third };
+  }
+
+  it("reads the playlist's own order when no sort is saved", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const order = seedOutOfPositionOrder(context.database, playlistId);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([order.first, order.second, order.third]);
+  });
+
+  it('reads newest first once that sort is saved', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const order = seedOutOfPositionOrder(context.database, playlistId);
+
+    await patch(`/api/v1/playlists/${playlistId}/sort`, owner.pangolinUserId, {
+      sort: PlaylistSort.NewestFirst
+    });
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([order.first, order.third, order.second]);
+  });
+
+  it('reads oldest first once that sort is saved', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const order = seedOutOfPositionOrder(context.database, playlistId);
+
+    await patch(`/api/v1/playlists/${playlistId}/sort`, owner.pangolinUserId, {
+      sort: PlaylistSort.OldestFirst
+    });
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([order.second, order.third, order.first]);
+  });
+
+  it("breaks a tie by the playlist's own position", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      sort: PlaylistSort.NewestFirst
+    });
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database);
+
+    // One instant, so only the position can order them.
+    associate(context.database, playlistId, second, {
+      position: 1,
+      addedAt: EARLY
+    });
+    associate(context.database, playlistId, first, {
+      position: 0,
+      addedAt: EARLY
+    });
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([first, second]);
+  });
+
+  it('answers the queue in the same order as the list', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      sort: PlaylistSort.OldestFirst
+    });
+    seedOutOfPositionOrder(context.database, playlistId);
+
+    const list = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+    const queue = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      owner.pangolinUserId
+    );
+
+    const listIds = PlaylistTrackPageSchema.parse(list.json()).items.map(
+      item => item.track.id
+    );
+    const queueIds = PlaylistTrackListSchema.parse(queue.json()).items.map(
+      item => item.track.id
+    );
+
+    expect(queueIds).toEqual(listIds);
+  });
+});
+
 describe('PATCH /playlists/:id', () => {
   it('renames as the owner and stores the trimmed name', async () => {
     context = await createTestContext();
@@ -1751,6 +1902,127 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
       url: `/api/v1/playlists/${playlistId}/skip-non-music`,
       headers: { 'remote-user': owner.pangolinUserId },
       payload: { skipNonMusic: false }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+describe('PATCH /playlists/:id/sort', () => {
+  it('saves the sort for the owner and returns the playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      owner.pangolinUserId,
+      { sort: PlaylistSort.NewestFirst }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).sort).toBe(
+      PlaylistSort.NewestFirst
+    );
+    expect(selectPlaylist(playlistId)?.sort).toBe(PlaylistSort.NewestFirst);
+  });
+
+  it("stores the playlist's own order as the absence", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      sort: PlaylistSort.NewestFirst
+    });
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      owner.pangolinUserId,
+      { sort: PlaylistSort.Playlist }
+    );
+
+    expect(PlaylistSchema.parse(response.json()).sort).toBe(
+      PlaylistSort.Playlist
+    );
+    expect(selectPlaylist(playlistId)?.sort).toBeNull();
+  });
+
+  it('lets a write collaborator change it and refuses a read collaborator', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const writer = seedAccount(context.database);
+    seedShare(context.database, playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const writerResponse = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      writer.pangolinUserId,
+      { sort: PlaylistSort.OldestFirst }
+    );
+    expect(writerResponse.statusCode).toBe(200);
+
+    const readerResponse = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      reader.pangolinUserId,
+      { sort: PlaylistSort.NewestFirst }
+    );
+    expect(readerResponse.statusCode).toBe(404);
+    expect(readerResponse.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it('answers 404 for a stranger and a missing playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const attempts: [string, string][] = [
+      [playlistId, stranger.pangolinUserId],
+      [randomUUID(), owner.pangolinUserId]
+    ];
+
+    for (const [targetId, pangolinUserId] of attempts) {
+      const response = await patch(
+        `/api/v1/playlists/${targetId}/sort`,
+        pangolinUserId,
+        { sort: PlaylistSort.NewestFirst }
+      );
+
+      expect(response.statusCode).toBe(404);
+    }
+  });
+
+  it('refuses a value that is not a known sort', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      owner.pangolinUserId,
+      { sort: 'alphabetical' }
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await context.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/playlists/${playlistId}/sort`,
+      headers: { 'remote-user': owner.pangolinUserId },
+      payload: { sort: PlaylistSort.NewestFirst }
     });
 
     expect(response.statusCode).toBe(403);

@@ -6,7 +6,8 @@ import {
   PlaylistNotFoundReason,
   ProblemCode,
   RenamePlaylistInputSchema,
-  SkipNonMusicInputSchema
+  SkipNonMusicInputSchema,
+  SortPlaylistInputSchema
 } from '@playliberty/contracts';
 
 import { playlistAudience } from '../../../shared/access/playlistAccess.js';
@@ -41,7 +42,8 @@ import {
   readPlaylistForAccount,
   removeTrackForAccount,
   renamePlaylistForAccount,
-  updateSkipNonMusicForAccount
+  updateSkipNonMusicForAccount,
+  updateSortForAccount
 } from '../playlistService.js';
 
 export function registerPlaylistRoutes(
@@ -217,6 +219,43 @@ export function registerPlaylistRoutes(
         request.params.id,
         request.account.id,
         parsed.data.skipNonMusic
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        publishPlaylistChanged(context, request.params.id);
+        return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  /*
+   * The order the playlist's tracks are read in, which the owner and a write
+   * collaborator may change. The playlist's own order is the absence, so the press
+   * that clears the sort writes no value rather than a stored member. A read
+   * collaborator, a stranger and a missing playlist are one not-found. The
+   * playlist-changed event asks another client of this playlist for its playlist
+   * and its tracks again, because the order is part of both.
+   */
+  app.patch<{ Params: { id: string } }>(
+    '/playlists/:id/sort',
+    async (request, reply) => {
+      const parsed = parseBody(SortPlaylistInputSchema, request.body);
+
+      if (!parsed.success) {
+        return sendValidationFailed(reply, parsed.issues);
+      }
+
+      const result = updateSortForAccount(
+        context.database,
+        request.params.id,
+        request.account.id,
+        parsed.data.sort
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {

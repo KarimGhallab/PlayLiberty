@@ -6,6 +6,7 @@ import type {
   PlaylistAccess,
   PlaylistTrack
 } from '@playliberty/contracts';
+import { PlaylistSort } from '@playliberty/contracts';
 
 import type { Entry } from '../../shared/access/entry.js';
 import {
@@ -128,6 +129,7 @@ function toPlaylistView(
     lastSyncedAt: row.lastSyncedAt,
     trackCount: row.trackCount,
     skipNonMusic: row.skipNonMusic,
+    sort: row.sort ?? PlaylistSort.Playlist,
     access,
     hasShares,
     createdAt: row.createdAt,
@@ -317,6 +319,35 @@ export function updateSkipNonMusicForAccount(
 }
 
 /*
+ * Changing the order a playlist's tracks are read in, which the owner and a write
+ * collaborator may do and a read collaborator may not. The value is the
+ * playlist's own order, newest first or oldest first, and the playlist's own
+ * order is stored as the absence, so a playlist that was never sorted carries no
+ * value. The write touches the sort and the row's timestamp and nothing else.
+ */
+export function updateSortForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string,
+  sort: PlaylistSort
+): ReadPlaylistResult {
+  return toReadPlaylistResult(
+    playlistEntry(database, playlistId, accountId, AccessNeed.Write, access => {
+      database.db
+        .update(playlists)
+        .set({
+          sort: sort === PlaylistSort.Playlist ? null : sort,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(playlists.id, playlistId))
+        .run();
+
+      return readPlaylist(database, playlistId, access);
+    })
+  );
+}
+
+/*
  * Deleting belongs to the owner alone, so the not-found is the same one a stranger
  * gets. The associations and the shares go with the row through the foreign key
  * cascade, which is the one place the association service's rule, that an
@@ -391,6 +422,31 @@ export type ReadPlaylistTracksResult =
   | { outcome: PlaylistOutcome.NotFound };
 
 /*
+ * The order a playlist's tracks are read in, from the playlist's saved sort. The
+ * playlist's own order is position first, and a date sort falls back to it for a
+ * tie: a sync that adds many rows in one instant gives them equal dates, and a
+ * client that fetched the same page twice must not see the rows swap. The
+ * association's rowid is the last tiebreak, because two associations in one run
+ * can share a position and the playlist route already breaks that tie this way.
+ */
+function playlistTrackOrder(sort: PlaylistSort | null) {
+  const ownOrder = [
+    asc(associations.position),
+    asc(sql`${associations}.rowid`)
+  ];
+
+  if (sort === PlaylistSort.NewestFirst) {
+    return [desc(associations.addedAt), ...ownOrder];
+  }
+
+  if (sort === PlaylistSort.OldestFirst) {
+    return [asc(associations.addedAt), ...ownOrder];
+  }
+
+  return ownOrder;
+}
+
+/*
  * The stored track carries two fields the contract does not: the media path the
  * stream route resolves, and the thumbnail URL the download wrote. Neither is
  * metadata, so neither crosses the wire here; the artwork is reached through the
@@ -420,7 +476,7 @@ export function listPlaylistTracksForAccount(
     AccessNeed.Read,
     () => {
       const playlist = database.db
-        .select({ trackCount: playlists.trackCount })
+        .select({ trackCount: playlists.trackCount, sort: playlists.sort })
         .from(playlists)
         .where(eq(playlists.id, playlistId))
         .get();
@@ -437,7 +493,7 @@ export function listPlaylistTracksForAccount(
         .from(associations)
         .innerJoin(tracks, eq(associations.trackId, tracks.id))
         .where(eq(associations.playlistId, playlistId))
-        .orderBy(asc(associations.position), asc(sql`${associations}.rowid`))
+        .orderBy(...playlistTrackOrder(playlist.sort))
         .limit(query.limit)
         .offset(query.offset)
         .all();
@@ -480,12 +536,18 @@ export function listPlaylistQueueForAccount(
     accountId,
     AccessNeed.Read,
     () => {
+      const playlist = database.db
+        .select({ sort: playlists.sort })
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get();
+
       const rows = database.db
         .select({ association: associations, track: tracks })
         .from(associations)
         .innerJoin(tracks, eq(associations.trackId, tracks.id))
         .where(eq(associations.playlistId, playlistId))
-        .orderBy(asc(associations.position), asc(sql`${associations}.rowid`))
+        .orderBy(...playlistTrackOrder(playlist?.sort ?? null))
         .all();
 
       return rows.map(toPlaylistTrackView);

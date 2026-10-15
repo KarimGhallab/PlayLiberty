@@ -13,6 +13,12 @@ export enum PlaylistSyncStatus {
   Error = 'error'
 }
 
+export enum PlaylistSort {
+  Playlist = 'playlist',
+  NewestFirst = 'newest_first',
+  OldestFirst = 'oldest_first'
+}
+
 export enum TrackFileStatus {
   Pending = 'pending',
   Downloading = 'downloading',

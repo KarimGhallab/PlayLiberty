@@ -17,6 +17,7 @@ export type {
   Share,
   SharePlaylistInput,
   SkipNonMusicInput,
+  SortPlaylistInput,
   SyncRun,
   Track
 } from './types.js';
