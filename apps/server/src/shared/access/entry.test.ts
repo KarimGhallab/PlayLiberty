@@ -24,9 +24,8 @@ import {
 /*
  * The entry seam is what makes the check structural: a new entry point is a
  * handler handed to `playlistEntry` or `trackEntry`, and the handler cannot run
- * unless the access module grants the need. These tests write entry points that
- * did not exist before and show the guard is on them, which is the property the
- * old hand-written guards could not promise.
+ * unless the access module grants the need. These tests write entry points and
+ * show the guard is on them.
  */
 
 let context: TestContext | undefined;

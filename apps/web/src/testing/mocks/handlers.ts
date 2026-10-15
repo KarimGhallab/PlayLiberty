@@ -157,7 +157,6 @@ export const handlers = [
   http.get('http://localhost:3000/api/v1/me', () =>
     HttpResponse.json({ id: 'account-1', displayName: 'You', avatarUrl: null })
   ),
-  /* The shares of the first playlist, which starts empty. */
   http.get('http://localhost:3000/api/v1/playlists/playlist-1/shares', () =>
     HttpResponse.json([])
   ),
@@ -222,9 +221,7 @@ export const handlers = [
       })
   ),
   /*
-   * The tracks of the first playlist, in the playlist's own order. Two stored and
-   * one still pending, so a test has a playable track and a not-yet-playable one
-   * to tell apart. The state parameter narrows the page and its total, while the
+   * The tracks route's state parameter narrows the page and its total, while the
    * counts stay the whole playlist's; the queue route answers the same list, every
    * status, because a queue is built from the whole association list and filtered
    * on the client.
@@ -413,7 +410,6 @@ export const handlers = [
       { status: 202 }
     )
   ),
-  /* Deleting a playlist answers `204` with no body. */
   http.delete(
     'http://localhost:3000/api/v1/playlists/playlist-1',
     () => new HttpResponse(null, { status: 204 })

@@ -155,8 +155,7 @@ test('retrying a failed track re-queues it and it recovers', async ({
     .getByText('Failed', { exact: true });
   await expect(failedState).toBeVisible();
 
-  // The video is downloadable now, and the retry queues it for the worker. The
-  // retry lives in the row's actions menu, so the press is two: open, then pick.
+  // The video is downloadable now, and the retry queues it for the worker.
   scriptPlaylist({ sourceId: SOURCE, title: TITLE, entries: [FIRST] });
   await rowActions.click();
   await page.getByRole('menuitem', { name: 'Retry' }).click();
@@ -166,7 +165,6 @@ test('retrying a failed track re-queues it and it recovers', async ({
     timeout: 15_000
   });
 
-  // The worker stores it on its next pass, and the row offers its play control.
   await reloadUntil(
     page,
     page.getByRole('button', { name: `Play ${FIRST.title}` })
@@ -201,8 +199,6 @@ test('adding one video to two playlists puts the same track in both', async ({
   const dialog = page.getByRole('dialog', { name: 'Add a track' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Video link').fill(videoUrl(FIRST.videoId));
-
-  // The second playlist is chosen by its name.
   await dialog.getByRole('checkbox', { name: 'Late Night' }).check();
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -213,7 +209,6 @@ test('adding one video to two playlists puts the same track in both', async ({
    */
   await expect(dialog).toBeHidden();
 
-  // Both playlists carry the track, and it is the same one.
   await expect(page.getByText(FIRST.title)).toBeVisible();
   await page.getByRole('link', { name: 'Back to home' }).click();
   await openPlaylist(page, 'Late Night');
@@ -294,7 +289,6 @@ test('syncing a playlist picks up new source tracks and a second sync changes no
   await reloadUntil(page, page.getByText(SECOND.title));
   await expect(page.getByText(SECOND.title)).toBeVisible();
 
-  // A second sync of the same source changes nothing: two tracks, no duplicates.
   await openHeaderMenu(page);
   const secondSync = page.waitForResponse(
     response =>

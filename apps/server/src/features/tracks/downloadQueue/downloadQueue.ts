@@ -30,11 +30,10 @@ export type DownloadQueueContext = Pick<
 >;
 
 export interface DownloadQueue {
-  /** A new track, created `pending`. The queue always gains one. */
+  /** The queue always gains one. */
   create(seed: TrackSeed): string;
-  /** A failed track moved back to `pending`; only an applied move queues work. */
+  /** Only an applied move queues work. */
   retry(trackId: string): TrackTransitionResult;
-  /** A pending or failed track moved back to `pending`, whole. */
   fetchWhole(trackId: string): TrackTransitionResult;
 }
 

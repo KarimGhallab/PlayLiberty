@@ -347,8 +347,7 @@ describe('DELETE /playlists/:id/shares/:accountId', () => {
     expect(listedTracks.statusCode).toBe(404);
 
     // The stream and the thumbnail are track routes and keep their own rule: a
-    // track the account can no longer reach is forbidden, not missing, which is
-    // the distinction spec 03 decided and this ticket does not override.
+    // track the account can no longer reach is forbidden, not missing.
     expect(
       (await get(`/api/v1/tracks/${trackId}/stream`, target)).statusCode
     ).toBe(403);

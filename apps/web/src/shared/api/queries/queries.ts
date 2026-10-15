@@ -55,7 +55,6 @@ export interface PlaylistPage {
   offset: number;
 }
 
-/** The library's data. */
 export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
   return useQuery({
     queryKey: ['playlists'],
@@ -64,10 +63,10 @@ export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
 }
 
 /*
- * The account directory, which is the only source of another account's display
- * name. A shared item carries an `ownerAccountId` and nothing readable, so the
- * name is resolved here and nowhere else. One read at the default page size: the
- * directory is a household, and an owner past the first page is a miss the item
+ * The account directory, the only source of another account's display name: a
+ * shared item carries an `ownerAccountId` and nothing readable, so the name is
+ * resolved here and nowhere else. One read at the default page size, because the
+ * directory is a household and an owner past the first page is a miss the item
  * treats as a miss rather than a placeholder.
  */
 export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
@@ -79,9 +78,9 @@ export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
 }
 
 /*
- * The account behind the current identity. `GET /me` is the only read that names
- * the reader, and the share picker needs it to leave the reader's own row out:
- * sharing with oneself is a refusal the route owns.
+ * `GET /me` is the only read that names the reader, and the share picker needs it
+ * to leave the reader's own row out: sharing with oneself is a refusal the route
+ * owns.
  */
 export function useCurrentAccount(): UseQueryResult<AccountSummary, Error> {
   return useQuery({
@@ -107,11 +106,11 @@ export function ownerNameFrom(
 }
 
 /*
- * Creating a Synced playlist. The route answers `202` with the sync run it
- * started, so the response is a `SyncRun` and not the playlist: the playlist
- * arrives on the next list read, already marked `syncing`. Nothing here writes an
- * optimistic row, because the row the server is about to make is the row the
- * person should see, and a client guess at its id would be a second row.
+ * The route answers `202` with the sync run it started, so the response is a
+ * `SyncRun` and not the playlist: the playlist arrives on the next list read,
+ * already marked `syncing`. Nothing here writes an optimistic row, because the
+ * row the server is about to make is the row the person should see, and a client
+ * guess at its id would be a second row.
  *
  * The list is invalidated on success, so the read that follows carries the new
  * playlist in whatever state the sync has reached. A refusal is left to the
@@ -135,12 +134,11 @@ export function useCreatePlaylist(): UseMutationResult<
 }
 
 /*
- * Adding one video to several playlists, in one request. The route is
- * `POST /tracks`, its body a video URL and the chosen playlist ids, and it
- * answers one outcome per playlist rather than an overall status: a batch can be
- * part added, part already there and part refused, and the dialog reports each
- * one. Nothing is written optimistically, and the response is returned rather
- * than dropped because the dialog's refusal state is built from it.
+ * Adding one video to several playlists, in one request: the route answers one
+ * outcome per playlist rather than an overall status, since a batch can be part
+ * added, part already there and part refused, and the dialog reports each one.
+ * Nothing is written optimistically, and the response is returned rather than
+ * dropped because the dialog's refusal state is built from it.
  *
  * Both reads are invalidated on success: the chosen playlists gain an
  * association, so each one's tracks and the library's counts have both moved.
@@ -162,11 +160,11 @@ export function useAddTrack(): UseMutationResult<
 }
 
 /*
- * The key the tracks of one playlist are cached under. It carries the id for the
- * same reason the detail's other reads do: invalidating one playlist's tracks
- * must not touch another's. It carries the filter too, so each state's rows are
- * cached under their own read and the list re-reads when the filter moves; a
- * playlist-scoped invalidation still catches every state's read by prefix.
+ * The id is in the key for the same reason the detail's other reads carry it:
+ * invalidating one playlist's tracks must not touch another's. The filter is
+ * there too, so each state's rows are cached under their own read and the list
+ * re-reads when the filter moves; a playlist-scoped invalidation still catches
+ * every state's read by prefix.
  */
 export function playlistTracksKey(playlistId: string, state?: TrackFileStatus) {
   return ['playlist', playlistId, 'tracks', state ?? 'all'] as const;
@@ -174,9 +172,9 @@ export function playlistTracksKey(playlistId: string, state?: TrackFileStatus) {
 
 /*
  * The key the playlist's whole association list is cached under, which is what a
- * queue is built from. It is separate from the tracks key because the two reads
- * answer differently: the tracks key holds pages and this holds every
- * association in one response.
+ * queue is built from. Separate from the tracks key because the two reads answer
+ * differently: the tracks key holds pages and this holds every association in one
+ * response.
  */
 export function playlistQueueKey(playlistId: string) {
   return ['playlist', playlistId, 'queue'] as const;
@@ -303,9 +301,9 @@ export function usePlaylistQueue(
 }
 
 /*
- * One playlist, which is where its name comes from. The queue carries that name so
- * the player can label its source, and the read is separate from the tracks read
- * because the name belongs to the playlist and not to any track in it.
+ * Where the playlist's name comes from. The queue carries that name so the player
+ * can label its source, and the read is separate from the tracks read because the
+ * name belongs to the playlist and not to any track in it.
  */
 export function usePlaylist(
   playlistId: string
@@ -370,7 +368,7 @@ export function useSyncPlaylist(
   });
 }
 
-/** Renaming one playlist. Owner-only at the route; the menu gates it here. */
+/** Owner-only at the route; the menu gates it here. */
 export function useRenamePlaylist(
   playlistId: string
 ): UseMutationResult<Playlist, Error, string> {
@@ -579,7 +577,7 @@ export function useGrantShare(
   });
 }
 
-/** Revoking a share. The route answers `204`, so there is nothing to return. */
+/** The route answers `204`, so there is nothing to return. */
 export function useRevokeShare(
   playlistId: string
 ): UseMutationResult<void, Error, string> {

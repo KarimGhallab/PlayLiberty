@@ -18,8 +18,8 @@ afterEach(async () => {
  * The close hook has to end the instance whether or not a prune is running, and
  * the scheduled job has to be the service rather than a stub. A cron that fires
  * every second puts a real tick inside the test's lifetime, so both can be
- * asserted without waiting a week. What the prune removes is ticket 01's and the
- * service tests'; this is about the wiring and the close.
+ * asserted without waiting a week. What the prune removes belongs to the service
+ * tests; this is about the wiring and the close.
  */
 describe('the prune scheduler', () => {
   it('runs the service on its tick and closes cleanly', async () => {

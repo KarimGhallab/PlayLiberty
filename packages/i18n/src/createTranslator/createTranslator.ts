@@ -6,11 +6,8 @@ import type {
 import { Language } from '../types.js';
 
 /*
- * The runtime: `t(key, params)` looks the key up in the active catalog and
- * renders it. There is no third-party i18n dependency, because the web client
- * and Hermes must say the same sentence and ICU and `Intl` differ by platform.
- * Interpolation is `{name}` placeholders, and a plural is selected by a small
- * category function rather than ICU.
+ * There is no third-party i18n dependency, because the web client and Hermes
+ * must say the same sentence and ICU and `Intl` differ by platform.
  */
 
 /**
@@ -65,9 +62,8 @@ function interpolate(template: string, params: MessageParams): string {
 }
 
 /*
- * The plural category for a count. English singles out one; French singles out
- * zero and one, so `0 piste` reads right. This is the whole category function,
- * because a catalog carries two forms and no ICU.
+ * English singles out one; French singles out zero and one, so `0 piste` reads
+ * right. A catalog carries two forms and no ICU.
  */
 function pluralCategory(
   language: Language,
@@ -80,7 +76,6 @@ function pluralCategory(
   return count === 1 ? 'one' : 'other';
 }
 
-/** A catalog and a language yield the translator the provider hands out. */
 export function createTranslator<M>(
   catalog: M,
   language: Language

@@ -3,17 +3,14 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './UndoToast.module.scss';
 
 /*
- * The undo toast, the one transient notice the app draws. It is the deferred
- * action's surface: an action that the server has not been asked to perform yet
- * sits here for a few seconds with the one control that stops it. It is anchored
- * bottom-left, opposite the player bar's own controls, and it never blocks: it
- * carries no scrim and no focus trap, because it is a notice with one press and
- * not a dialog.
+ * The deferred action's surface: an action the server has not been asked to
+ * perform yet sits here for a few seconds with the one control that stops it. It
+ * never blocks, carrying no scrim and no focus trap, because it is a notice with
+ * one press and not a dialog.
  *
- * The countdown ring is the window made visible. It is decorative and
- * `aria-hidden`, because a screen reader reading seconds would be a number that
- * changes with no action behind it; the sentence and the control are the whole
- * of what it announces.
+ * The countdown ring is the window made visible, and `aria-hidden`: a screen
+ * reader reading seconds would be a number that changes with no action behind
+ * it. The sentence and the control are the whole of what it announces.
  *
  * A second deferred action replaces the first, so this notice also carries the
  * displaced intent when there was one: `replacedLabel` names what was dropped,
@@ -25,11 +22,9 @@ import styles from './UndoToast.module.scss';
 interface UndoToastProps {
   /** The sentence, in the present tense, e.g. `Deleting “Evening Jazz”`. */
   readonly message: string;
-  /** The line under it, e.g. the playlist or track name. */
   readonly detail?: string | null;
   /** The intent this window displaced, already worded, when there was one. */
   readonly replacedLabel?: string | null;
-  /** The window's ordinal, so the ring restarts when a new window opens. */
   readonly windowKey?: number;
   /** How long the window lasts, in milliseconds. Drives the ring. */
   readonly durationMs: number;

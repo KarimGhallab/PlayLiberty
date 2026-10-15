@@ -1,9 +1,7 @@
 /*
  * The playlist detail, mirroring docs/design/screens/playlist-detail.html. The
  * content column is 1056, the design's own reading width, so the two screens are
- * comparable. Two columns: the playlist on the left at 320, drawn as the
- * header's card arrangement with its one state component beneath it, and the
- * tracks on the right with whatever is left.
+ * comparable.
  *
  * The 16px inline padding is the viewport gutter, which the design's drawn frame
  * does not have, so the max-width carries it as well: `box-sizing: border-box`
@@ -27,11 +25,10 @@
    * because both screens dock the same bar. */
   padding: 0 var(--space-4) calc(97px + var(--space-5));
 
-  /* The way home. A web fact: on mobile the platform gesture returns from a
-   * pushed route, so there is no counterpart there. The 20px is the design's own
-   * --space-5 at this row, and the header's own `padding: 20px 0` below it, so
-   * the two pieces of the screen speak the same vertical rhythm and the first
-   * rule sits the design's stated distance from the top. */
+  /* The way home: the back link and, for a writer, the add control. The 20px is
+   * the design's own --space-5 at this row, and the header's own `padding: 20px 0`
+   * below it, so the two pieces of the screen speak the same vertical rhythm and
+   * the first rule sits the design's stated distance from the top. */
   &__wayhome {
     display: flex;
     align-items: center;
@@ -40,10 +37,9 @@
     padding: var(--space-5) 0;
   }
 
-  /* Type and an arrow, not a button. The link was easy to miss as a small muted
-   * label, and the fix is weight and ink rather than chrome: no border and no
-   * fill, so it stays quieter than the card below it while its label says what
-   * it does. The ink turns to the accent only under the pointer. */
+  /* Type and an arrow, not a button: no border and no fill, so it stays quieter
+   * than the card below it while its label says what it does. The ink turns to
+   * the accent only under the pointer. */
   &__back {
     display: inline-flex;
     align-items: center;
@@ -72,10 +68,8 @@
     flex-shrink: 0;
   }
 
-  /* The add control, mirroring the library's own: the same accent pill, the same
-   * plus, in the top-right of the screen. The icon is --icon-sm and aria-hidden,
-   * paired with the --text-sm label, so the glyph is the affordance and the label
-   * is the name. */
+  /* The add control, mirroring the library's own: the glyph is the affordance
+   * and the label is the name. */
   &__add {
     display: inline-flex;
     align-items: center;
@@ -167,8 +161,8 @@
     color: var(--muted);
   }
 
-  /* The list is a plain table of rows. The top border closes the list and each
-   * row draws its own bottom border, which is the design's own list treatment. */
+  /* The top border closes the list; each row draws its own bottom border, the
+   * design's own list treatment. */
   &__list {
     margin: 0;
     padding: 0;
@@ -254,9 +248,9 @@
 
     /* One column. The left column stops being a box of its own, so its two parts
      * join the page's flow: the header is pinned against the whole scroll rather
-     * than against the short column, which is what let it come unstuck as the
-     * list went by, and the state blocks scroll away under it. The header carries
-     * the page's own ground so the rows pass beneath rather than through. */
+     * than the short column, and the state blocks scroll away under it. The
+     * header carries the page's own ground so the rows pass beneath rather than
+     * through. */
     &__columns {
       display: block;
     }

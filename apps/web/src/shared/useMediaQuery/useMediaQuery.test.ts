@@ -3,13 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 import { useMediaQuery } from './useMediaQuery';
 
-/*
- * The stub hands back a live `MediaQueryList` the test can drive, so the hook's
- * subscription is exercised rather than only its first read. It records the
- * listener so a change can be dispatched the way the browser would, and its
- * `restore` puts the environment's own stub back so a test never leaks into the
- * next one.
- */
 function stubMatchMedia(matches: boolean): {
   readonly fire: (value: boolean) => void;
   readonly restore: () => void;
@@ -76,9 +69,6 @@ describe('useMediaQuery', () => {
   });
 
   it('reports false when the host has no matchMedia', () => {
-    // The global setup installs one, so it is saved, removed for this test, and
-    // put back: jsdom is the host whose absence this covers, and the hook must
-    // not assume the browser is there.
     const original = window.matchMedia;
     delete (window as { matchMedia?: unknown }).matchMedia;
 

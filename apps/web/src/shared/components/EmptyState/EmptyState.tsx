@@ -7,8 +7,7 @@ import styles from './EmptyState.module.scss';
 /*
  * The empty state: the list area's own state for a playlist that has never
  * synced. It stands in for the list rather than sitting above it, so it is on
- * --bg and not on a --surface panel, and its content is centred within the
- * reading width while the stack itself starts at the top of the area.
+ * --bg and not on a --surface panel.
  *
  * The promise is its own line in the smallest size, because it is the line doing
  * the most work for the least space: it is the product's whole promise, and an
@@ -16,11 +15,9 @@ import styles from './EmptyState.module.scss';
  * there is nothing yet to lose.
  *
  * The action is `Sync now` and it is drawn only when the caller can sync, so a
- * reader who cannot act here is not handed a control that cannot be pressed.
- * The button carries `rotate-clockwise` at --icon-sm at rest and swaps it for
- * the spinner while a sync runs, which is the two-mark form the form controls
- * already draw: the same 16px box either way, so the only width change on press
- * is the label's own.
+ * reader who cannot act here is not handed a control that cannot be pressed. The
+ * icon and the spinner share one 16px box, so the only width change on press is
+ * the label's own.
  */
 
 interface EmptyStateProps {

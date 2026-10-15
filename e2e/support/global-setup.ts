@@ -4,9 +4,6 @@ import { dirname } from 'node:path';
 import { DATABASE_PATH, FAKE_SCRIPT, MEDIA_ROOT } from './paths';
 
 /*
- * Before the stack starts: make the directories the server writes into and clear
- * what a previous run left.
- *
  * `better-sqlite3` opens a file and does not create its directory, so
  * `e2e/.data` has to exist before the server boots or the run fails on the first
  * connection. The media root the server creates itself, but clearing it here means

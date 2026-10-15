@@ -1,10 +1,6 @@
 /*
- * The play/pause morph, as one SVG. It is the same eight-frame strip the header,
- * the track row and the player bar all draw: the frames sit side by side inside
- * a box the size of one, and a single transform steps across the row. The
- * geometry is generated from the pinned icon set and never drawn by hand, so the
- * one source of truth is the generator's frames, transcribed here once and read
- * by every host.
+ * The geometry is generated from the pinned icon set and never drawn by hand, so
+ * the one source of truth is the generator's frames.
  *
  * The component owns the strip and nothing else: whether the resting frame is
  * play or pause is `data-state` on an ancestor, which the design system puts on
@@ -13,10 +9,10 @@
  * drops on `animationend`; this component does not run it either.
  */
 
-/* The distance in user units between one frame and the next on the strip. */
+/* The distance between frames, in SVG user units. */
 const FRAME_STRIDE = 24;
 
-/* The eight frames, in the generator's own order, each drawn once. */
+/* The eight frames, in the generator's own order. */
 const FRAMES: readonly (readonly string[])[] = [
   [
     'M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z'

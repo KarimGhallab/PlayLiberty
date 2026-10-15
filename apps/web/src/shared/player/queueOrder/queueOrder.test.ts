@@ -57,8 +57,6 @@ describe('orderTracksByQueue', () => {
 
   it('carries a row the queue does not hold with the group before it', () => {
     const tracks = ['a', 'b', 'c', 'd'].map(association);
-    /* The queue plays a, c, b, d; the playlist holds a, b, c, d, so d's row is
-     * the only one the queue's own order already puts right. */
     const shuffledQueue = [queued('a'), queued('c'), queued('b'), queued('d')];
 
     expect(

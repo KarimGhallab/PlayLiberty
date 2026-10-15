@@ -50,20 +50,17 @@ function replacedSentence(
 }
 
 /*
- * The library, at `/`. The list of playlists is the only entry point to content,
- * so this is the route a user lands on. Four states and no fifth: loading, a
- * failed read, the empty gallery, and the populated list. Each item is the shared
- * playlist header with its own actions wired, one `PlaylistListItem` per row; the
- * page itself draws the list and nothing that resembles a header.
+ * The list of playlists is the only entry point to content, so this is the route
+ * a user lands on. Four states and no fifth: loading, a failed read, the empty
+ * gallery, and the populated list.
  *
  * The add control lives in the header, and on the empty state it is the gallery's
  * framed action alone: the header's is suppressed there so the one screen where a
  * person has seen neither control offers one invitation, not two. Both open one
- * dialog, and the dialog is the screen's only. On success the dialog closes and
- * the list is invalidated, so the new playlist
- * arrives from the server carrying the state the route wrote rather than from a
- * row this screen invented; the person stays here and watches it appear, rather
- * than being taken into a playlist they have not seen yet.
+ * dialog. On success the dialog closes and the list is invalidated, so the new
+ * playlist arrives from the server rather than from a row this screen invented;
+ * the person stays here and watches it appear rather than being taken into a
+ * playlist they have not seen yet.
  *
  * The page owns the one undo window, because a delete is the one destructive
  * action an item offers and two of them in the same window must replace rather
@@ -87,7 +84,6 @@ export default function LibraryPage() {
    */
   const directoryItems = directory.data ?? [];
 
-  /* The sentence for the refusal, from the catalog when the code is known. */
   const refused = problemSentence(t, createPlaylist.error);
 
   const isEmpty = playlists.isSuccess && playlists.data.items.length === 0;

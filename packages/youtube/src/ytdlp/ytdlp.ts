@@ -29,14 +29,12 @@ import {
  * The extractors this instance is willing to run. yt-dlp's `--use-extractors`
  * matches an extractor name exactly, and a YouTube URL does not always land on the
  * extractor called `youtube`: a watch URL is `youtube`, a playlist or channel tab
- * is `youtube:tab`. Pinning it to `youtube` alone made every playlist URL fail with
- * `No suitable extractor found`, which the app then stored as a failed run and drew
- * as a bare `Sync failed`. The wildcard `youtube*` is not the answer either: it
- * matches nothing, because the option compares the leading name and not a glob.
+ * is `youtube:tab`. The wildcard `youtube*` is not the answer either: it matches
+ * nothing, because the option compares the leading name and not a glob.
  *
  * Both names are listed, and both are YouTube, which is the point of the flag:
  * a URL can never route extraction to some other site. A third YouTube extractor
- * added by a future yt-dlp would have to be named here, and the argument test below
+ * added by a future yt-dlp would have to be named here, and `ytdlpArgs.test.ts`
  * is what makes that a decision rather than an omission.
  */
 const YOUTUBE_EXTRACTORS = 'youtube,youtube:tab';

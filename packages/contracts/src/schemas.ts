@@ -54,20 +54,13 @@ export const TrackSchema = z.object({
 });
 
 /*
- * The requesting account's relationship to a playlist.
- *
- * Three kinds of answer and not a fourth. A playlist the account cannot see is a
- * 404, which tickets 14 and 15 settled for the sync run and for both playlist
- * routes, so there is no "none" to carry here: the absence of a fourth value is
- * that disclosure decision restated on the wire, and adding one later would
- * reopen a question two tickets have already answered.
+ * Three kinds of answer and not a fourth: a playlist the account cannot see is a
+ * 404, so there is no "none" to carry here.
  *
  * `read` and `write` are ShareLevel's own members rather than a fresh pair of
- * strings, so a new level of sharing is automatically a new level of access and
- * nobody has to remember to add it in two places. What that cannot do is decide
- * what a new level means, and that decision is forced in the server instead:
- * playlistService's switch over ShareLevel is exhaustive, so adding a member
- * fails the build there rather than passing silently through here.
+ * strings, so a new level of sharing is automatically a new level of access. The
+ * server decides what a level means: `canWritePlaylist` admits the owner and a
+ * write level, so a new level is read-only until it is named there too.
  */
 export const PlaylistAccessSchema = z.union([
   z.literal('owner'),

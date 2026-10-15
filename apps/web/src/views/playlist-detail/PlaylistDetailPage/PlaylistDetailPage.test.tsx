@@ -32,9 +32,7 @@ import PlaylistDetailPage from './PlaylistDetailPage';
  * The row-render measurement at the end of this file counts `formatDuration`
  * calls per row, so the formatter is spied while still delegating to the real
  * one: the output the rows draw is unchanged and the call count is the per-row
- * render count. Before the memoization those tests assert against, a queue change
- * re-renders every row, because the page passes a fresh `onPlay` and fresh inline
- * lane callbacks on each render and the row is not memoized.
+ * render count.
  */
 vi.mock('@playliberty/i18n', async importOriginal => {
   const actual = await importOriginal<typeof import('@playliberty/i18n')>();
@@ -149,7 +147,6 @@ function stubViewport(matchingQuery: string): () => void {
 
 const DURATIONS = { 'track-1': 337, 'track-2': 273, 'track-3': 565 } as const;
 
-/** How many rows rendered, by the duration each row was drawn with. */
 function renderedRows(): Map<number, number> {
   const counts = new Map<number, number>();
 
@@ -187,7 +184,6 @@ function openQueue(): void {
   });
 }
 
-/* The titles the list draws, in order, read from the rows' own play controls. */
 function listTitles(): string[] {
   return screen
     .getAllByRole('button', { name: /^(Play|Pause) / })
@@ -920,7 +916,6 @@ describe('PlaylistDetailPage', () => {
     });
     fireEvent.click(control);
 
-    /* The switch moves before the answer, and is locked while it waits. */
     await waitFor(() => {
       expect(control).toHaveAttribute('aria-checked', 'false');
     });
@@ -1300,7 +1295,6 @@ describe('PlaylistDetailPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
-    /* The dialog is still open and names the playlist that said no. */
     expect(
       await screen.findByText(/Added to the rest\. Not added to:/)
     ).toBeInTheDocument();

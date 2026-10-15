@@ -10,12 +10,11 @@ import type { PlayerTrack } from '../types';
  * cross this seam, so the three cannot disagree about which tracks enter, which
  * playlist they are stamped with or which one a fresh queue starts on.
  *
- * The server's track page becomes the queue's entries: the playlist id and name
- * are stamped on every entry once, so the store and the bar never have to know
- * which playlist a bare `Track` came from. The name is carried rather than looked
- * up later because the queue is persisted: a relaunch has no library in memory
- * and the media session can fetch nothing, so a source named at play time is a
- * source unnamed after a reload.
+ * The playlist id and name are stamped on every entry once, so the store and the
+ * bar never have to know which playlist a bare `Track` came from. The name is
+ * carried rather than looked up later because the queue is persisted: a relaunch
+ * has no library in memory and the media session can fetch nothing, so a source
+ * named at play time is a source unnamed after a reload.
  *
  * A track enters the queue exactly when its file is stored, which is the same
  * fact the track list draws its play control from. Filtering here rather than in
@@ -44,10 +43,9 @@ export function buildQueue(
  * Build one playlist's queue and start it. `startTrackId` is the track to begin
  * on, or null for the first playable one; `shuffle` is the mode the new queue is
  * drawn in, and a shuffled queue with no named track begins on a random playable
- * one, because the press asked for a shuffle and not for the top of the list.
- * Returns false when there is nothing to play, which is the refusal the shuffle
- * control reports and the detail's controls never reach, because they already
- * hold a list.
+ * one. Returns false when there is nothing to play, which is the refusal the
+ * shuffle control reports and the detail's controls never reach, because they
+ * already hold a list.
  */
 export function startPlaylistQueue(
   playlist: Pick<Playlist, 'id' | 'name'>,

@@ -15,7 +15,6 @@ import type { AppContext } from '../context.js';
 
 type LiveEventContext = Pick<AppContext, 'database' | 'events'>;
 
-/** A playlist was created, renamed, or had a setting changed. */
 export function publishPlaylistChanged(
   context: LiveEventContext,
   playlistId: string
@@ -41,7 +40,6 @@ export function publishPlaylistRemoved(
   );
 }
 
-/** A track's file changed, so every account that can see a holding playlist hears. */
 export function publishTrackChanged(
   context: LiveEventContext,
   trackId: string

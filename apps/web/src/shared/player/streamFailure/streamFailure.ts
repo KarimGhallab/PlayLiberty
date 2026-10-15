@@ -4,10 +4,9 @@ import { ApiError, probeStreamStatus } from '../../api/client/client';
  * What the player does about a stream that failed to load.
  *
  * The audio element cannot say why it failed, so the player asks the route for
- * its status and turns that into one of three answers. The distinction is the
- * ticket's: an expired session is not a broken track, a track that is gone is
- * dropped and the queue moves on, and anything else is left alone because a
- * network blip must not skip music.
+ * its status and turns that into one of three answers: an expired session is not
+ * a broken track, a track that is gone is dropped and the queue moves on, and
+ * anything else is left alone because a network blip must not skip music.
  */
 
 /** What the player should do with the current track. */

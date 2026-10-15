@@ -25,7 +25,6 @@ import { canAccountAccessTrack, canAccountWriteTrack } from './trackAccess.js';
  * nothing more.
  */
 
-/** What an operation needs of the access it resolves. */
 export enum AccessNeed {
   Read = 'read',
   Write = 'write',

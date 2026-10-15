@@ -7,7 +7,7 @@ import { resetInstance } from './instance';
  * test that forgets to ask for it still gets it, which matters because the whole
  * suite shares one server and one account.
  *
- * It uses the `request` fixture rather than a `page`, so a test no longer pays for
+ * It uses the `request` fixture rather than a `page`, so a test does not pay for
  * an app load before it starts: the reset is one request through the Vite dev
  * server, which carries the edge identity the server fails closed without.
  */

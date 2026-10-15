@@ -1,9 +1,3 @@
-/*
- * The i18n contracts. The runtime, the catalogs and the React binding all speak
- * these, so the shapes live here rather than in any one of them.
- */
-
-/** The languages the interface is available in. */
 export enum Language {
   English = 'en',
   French = 'fr'
@@ -14,7 +8,6 @@ export interface MessageParams {
   readonly [name: string]: string | number;
 }
 
-/** A message that varies with a count, one form per plural category. */
 export interface PluralMessage {
   readonly one: string;
   readonly other: string;
@@ -27,5 +20,4 @@ export interface PluralMessage {
  */
 export type MessageFunction = (params: MessageParams) => string;
 
-/** A catalog entry: a template, a plural, or a function. */
 export type Message = string | PluralMessage | MessageFunction;

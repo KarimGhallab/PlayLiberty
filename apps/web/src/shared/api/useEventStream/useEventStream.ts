@@ -11,16 +11,15 @@ import { invalidateForLiveEvent } from '../liveEvents/liveEvents';
 /*
  * The tab's one live connection, mounted by the shell rather than a route, so it
  * survives navigation and there is exactly one per tab. The server pushes an
- * invalidation hint when server state changes; the hook hands it to the mapping
- * in `liveEvents`, which refetches the reads it names.
+ * invalidation hint when server state changes, and the hook hands each one to the
+ * mapping in `liveEvents`.
  *
  * A connection that drops is reopened on a backoff, and the reopen re-reads
  * everything the tab holds, so the gap between the last event and the new
- * connection is closed without a timer. A connection the edge refuses is the
- * other case: the hook runs the same re-authentication guard every other request
- * uses, through an ordinary authenticated read, so an expired session is
- * re-established by one navigation and a second refusal is left to the screens
- * rather than retried in a loop.
+ * connection is closed without a timer. A connection the edge refuses runs the
+ * same re-authentication guard every other request uses, through an ordinary
+ * authenticated read, so an expired session is re-established by one navigation
+ * and a second refusal is left to the screens rather than retried in a loop.
  *
  * The factory is a seam, not indirection for its own sake: jsdom has no
  * `EventSource` and MSW cannot fake one, so a component test injects a factory
@@ -57,9 +56,7 @@ export function browserEventStream(
 export const EventStreamContext =
   createContext<EventStreamFactory>(browserEventStream);
 
-/** The first delay before a dropped connection is reopened, doubling each time. */
 export const RECONNECT_BASE_MS = 1_000;
-/** The longest delay between reopen attempts. */
 const RECONNECT_MAX_MS = 30_000;
 
 export function useEventStream(): void {
@@ -97,10 +94,10 @@ export function useEventStream(): void {
     }
 
     /*
-     * The backoff. The browser would retry an `EventSource` on its own, but a
-     * refusal would then be retried on the same schedule forever; owning the
-     * retry lets a refused session stop it and a transient drop wait longer each
-     * time rather than hammering a dead edge.
+     * The browser would retry an `EventSource` on its own, but a refusal would
+     * then be retried on the same schedule forever; owning the retry lets a
+     * refused session stop it and a transient drop wait longer each time rather
+     * than hammering a dead edge.
      */
     function reconnect(): void {
       if (stopped) {

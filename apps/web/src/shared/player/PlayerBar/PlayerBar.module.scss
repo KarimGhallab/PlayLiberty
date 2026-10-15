@@ -1,13 +1,10 @@
 /*
- * The player bar, mirroring docs/design/components/player-bar.html with one
- * departure: the artwork is a left rail spanning the bar's full inner height
+ * The player bar. The artwork is a left rail spanning the bar's full inner height
  * rather than a 40px square in the top row, so the thumbnail covers the title,
  * the playlist name and the seeker row as one block.
  *
- * The base is the centred arrangement: a `1fr auto 1fr` grid whose middle column
- * is the transport, so the transport posts 0px of offset and the title has equal
- * room either side. The bar is not the flush phone variant, which is the other
- * arrangement and belongs to the mobile shell this corpus does not build.
+ * The flush phone arrangement is the media query at the foot of the file, at
+ * 767px and under.
  *
  * The boundary is --line and not a shadow. Depth allows the bar one subtle lift,
  * but a shadow is dark and the page is dark, so a dark blur over a dark page is
@@ -60,18 +57,15 @@
     min-width: 0;
   }
 
-  /* The left rail: a square spanning the bar's two content rows, so the
-   * thumbnail covers the title, the playlist name and the seeker row as one
-   * block. The bar's height is fixed at 98px, which is what lets the rail be a
-   * square whose side is the bar's inner height: a stretched height with a
-   * derived width and a content-measured bar is a circular dependency (height
-   * drives width drives height), and it inflated the bar instead. Fixing the
-   * height breaks that loop, and the rail's aspect-ratio then yields the width
-   * with nothing to feed back into.
+  /* The left rail is a square whose side is the bar's fixed inner height. A
+   * stretched height with a derived width and a content-measured bar is a
+   * circular dependency (height drives width drives height), and it inflated the
+   * bar instead; fixing the height breaks that loop, and the aspect-ratio then
+   * yields the width with nothing to feed back into.
    *
-   * 98px is the design record's own number, the measured sum of the two rows it
-   * draws. The content is centred in the fixed box, so the number is the bar's
-   * height rather than a floor on its content. */
+   * 98px is the measured sum of the two rows it draws. The content is centred in
+   * the fixed box, so the number is the bar's height rather than a floor on its
+   * content. */
   &__art {
     grid-row: 1 / -1;
     position: relative;
@@ -134,8 +128,6 @@
     flex-shrink: 0;
   }
 
-  /* The header's grammar carried over: a quiet unbordered 32px step either side
-   * of a filled 48px play, which is the only door. */
   &__step {
     position: relative;
     display: grid;
@@ -306,7 +298,7 @@
 }
 
 /*
- * The flush arrangement, at 390 and under, and the design's own rule at the two
+ * The flush arrangement, at 767px and under, and the design's own rule at the two
  * widths rather than a preference: the centre and the 480px cap are both web
  * decisions and neither survives a phone. The centre has to go because a
  * symmetric bar needs room for two halves and a 390px bar has 314px of content,

@@ -70,33 +70,25 @@ import {
 import styles from './PlaylistDetailPage.module.scss';
 
 /*
- * The playlist detail, at `/playlists/:id`, and the screen the product exists
- * for: the only place stored tracks become audible. It composes the way home,
- * the playlist header, the sync summary or the sync error, the track list or the
- * empty state, in two columns on the web: the playlist on the left and the
- * tracks on the right, with the player bar docked below by the shell.
+ * The screen the product exists for: the only place stored tracks become
+ * audible.
  *
- * The left column is the header's card arrangement at 320px, not the row the
- * library draws: the width is this screen's one decision and the component's own
- * card is what fits inside it. Beneath the card sits one state component and
- * never two, the summary when there is a run to summarise and the error when the
- * sync failed. A never-synced playlist has no run, so it has neither, and the
- * empty state in the list area says so on its own.
+ * The left column is the header's card arrangement, not the row the library
+ * draws: the card is what fits inside its 320px width. Beneath the card sits one
+ * state component and never two, the summary when there is a run and the error
+ * when the sync failed.
  *
- * Under 768px it is one column instead of two, and the header is the component's
- * row rather than its card: the design's mobile arrangement, where the card
- * would be 470.4px tall against the row's 136px. The way home is absent there,
- * because the platform gesture returns from the pushed route and a control that
- * returns would do what the platform already does.
+ * Under 768px the header is the component's row rather than its card, the
+ * design's mobile arrangement, where the card would be 470.4px tall against the
+ * row's 136px. The way home is drawn at every width; the mobile block only
+ * tightens its top padding.
  *
  * The list is drawn in the playlist's own order and every association appears,
  * playable or not, because a track that silently vanished from the list would
  * make "why is this track missing" unanswerable. The play control's presence is
- * the server's own file status, which is the same fact `buildQueue` filters
- * on, so the list and the queue agree by construction.
+ * the server's file status, the same fact `buildQueue` filters on, so the list
+ * and the queue agree by construction.
  */
-/*
- * Which press asked to start playback. */
 enum PlaybackStart {
   Play = 'play',
   Shuffle = 'shuffle'
@@ -133,13 +125,8 @@ export default function PlaylistDetailPage() {
       void navigate({ to: '/' });
     }
   });
-  /*
-   * The header's arrangement at this width. The design's mobile arrangement is
-   * the row header, not the card header: at 390 the card is 470.4px tall and the
-   * row is 136px, so the row is the one that fits, and the two are different
-   * modules rather than two stylesheets, which is why this asks the viewport
-   * rather than branching in CSS.
-   */
+  /* The card and the row are different modules rather than two stylesheets, so
+   * the viewport decides which is drawn rather than CSS. */
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const skipNext = usePlayerStore(state => state.skipNext);
@@ -172,12 +159,8 @@ export default function PlaylistDetailPage() {
   const tracks = usePlaylistTracks(playlistId, activeState ?? undefined);
   const queueRead = usePlaylistQueue(playlistId, isQueue);
   useQueueRefetch(playlist.data, queueRead.data);
-  /*
-   * Whether the queue holds a track after the current one, which is what decides
-   * if the header's forward step has anywhere to go. It is the queue's own
-   * derivation, so a shuffled queue goes dead at its last entry exactly as an
-   * unshuffled one does.
-   */
+  /* The queue's own derivation, so a shuffled queue goes dead at its last entry
+   * exactly as an unshuffled one does. */
   const canSkipNext = usePlayerStore(hasNext);
 
   const ownerName =

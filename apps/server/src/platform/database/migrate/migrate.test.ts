@@ -62,7 +62,6 @@ describe('runMigrations', () => {
       'track'
     ]);
 
-    // The columns the squashed history had added one migration at a time.
     expect(
       names(database, `select name from pragma_table_info('playlist')`)
     ).toEqual(

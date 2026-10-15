@@ -20,13 +20,10 @@ import { resolveLanguage } from './resolveLanguage/resolveLanguage.js';
 import type { Language } from './types.js';
 
 /*
- * The React binding. It resolves the language once on boot, remembers an
- * explicit choice, and exposes `t` bound to the active catalog. The page's
- * `lang` attribute follows the language, so a screen reader and the browser's
- * own typography agree.
+ * The React binding. The page's `lang` attribute follows the language, so a
+ * screen reader and the browser's own typography agree.
  */
 
-/** What a consumer reads from the provider. */
 export interface I18nValue {
   readonly language: Language;
   readonly setLanguage: (language: Language) => void;
@@ -45,7 +42,6 @@ interface I18nProviderProps {
   readonly initialLanguage?: Language;
 }
 
-/** The browser's preferred locales, `navigator.language` alone when the list is empty. */
 function browserLanguages(): readonly string[] {
   return navigator.languages.length > 0
     ? navigator.languages
@@ -89,7 +85,6 @@ export default function I18nProvider({
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
-/** The active language, its setter, and `t`. */
 export function useI18n(): I18nValue {
   const value = useContext(I18nContext);
 

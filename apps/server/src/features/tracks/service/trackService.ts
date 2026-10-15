@@ -124,7 +124,7 @@ export function findTrackByVideoId(
 
 /*
  * The stored row carries two fields the contract does not: the media path the
- * stream route resolves, and the thumbnail URL the download wrote. Neither is
+ * stream route resolves, and the thumbnail URL the source reported. Neither is
  * metadata, so neither crosses the wire; the artwork is reached through the
  * track's own route.
  */

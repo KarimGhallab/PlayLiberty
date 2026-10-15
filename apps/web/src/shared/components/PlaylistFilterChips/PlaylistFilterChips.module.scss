@@ -2,21 +2,14 @@
  * The filter chips at the lead of the control row. The row itself is the
  * screen's (see `playlist-detail__controls`); this module is the chip set alone.
  *
- * A chip is a border and a word, never a fill. Out of force it wears the quiet
- * control border, which is the 3:1 a control boundary owes and a hairline is
- * not, with the word and the dot at --muted; in force its border takes the
- * chip's own state tone and the word, the count and the dot take it too, except
- * Stored and Pending, whose tone is ink and near-neutral grey: their word and
- * dot come up to --ink and the border keeps the state's tone. "All"'s border
- * takes the accent, the one hue the palette spends on a choice. The word is
- * what carries the state and the tone is reinforcement.
+ * A chip is a border and a word, never a fill: the 3:1 a control boundary owes is
+ * not a hairline's. The word is what carries the state and the tone is
+ * reinforcement; in force the border takes the chip's state tone, except "All",
+ * which takes the accent, the one hue the palette spends on a choice.
  *
- * The dot is drawn only on the chip in force; its box is reserved on every
- * chip, scaled to nothing, so the rail never shifts as the choice moves, and it
- * grows in at the moment the chip takes force. The rail scrolls sideways on a
- * phone rather than wrapping, so the row stays one line and the list keeps its
- * distance from the top; its bar is suppressed because the row is one control
- * tall and a bar would make it two.
+ * The rail scrolls sideways on a phone rather than wrapping, so the row stays one
+ * line and the list keeps its distance from the top; its bar is suppressed
+ * because the row is one control tall and a bar would make it two.
  */
 .chips {
   display: flex;
@@ -63,8 +56,7 @@
       transform: scale(0);
     }
 
-    /* The six tones, one per chip, read from the design's own state tokens.
-     * "All" is the accent: the palette reserves it for the current choice. */
+    /* The six tones, one per chip, read from the design's own state tokens. */
     &[data-tone='all'] {
       --chip-tone: var(--accent);
     }
@@ -89,8 +81,6 @@
       --chip-tone: var(--tone-unavailable);
     }
 
-    /* Only the word lifts on hover, and only on a chip that is not in force:
-     * the chip in force keeps its tone, hover included. */
     &:not([aria-pressed='true']):hover:not(:disabled) {
       color: var(--ink);
     }
@@ -99,8 +89,6 @@
       color: var(--chip-tone);
       border-color: var(--chip-tone);
 
-      /* The mark grows in at the moment of selection, and the rule's own
-       * scale holds it after the animation ends. */
       &::before {
         transform: scale(1);
         animation: chip-dot-grow var(--motion-slow) var(--ease-standard);

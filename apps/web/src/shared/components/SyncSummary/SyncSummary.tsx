@@ -5,21 +5,18 @@ import { formatLastSynced, useI18n } from '@playliberty/i18n';
 import styles from './SyncSummary.module.scss';
 
 /*
- * The sync summary: the four figures a run produced, and the time it finished.
- * It sits under the playlist header in the detail's left column and is never
- * drawn beside the sync error, which replaces it: the summary says what the run
- * did and the error says what to do about it, and the two would put the same
- * news in the same column twice.
+ * The sync summary is never drawn beside the sync error, which replaces it: the
+ * summary says what the run did and the error says what to do about it, and the
+ * two would put the same news in the same column twice.
  *
- * The band is four equal cells, one figure and one word each, both centred. The
- * four counts are the run's own, so a playlist with no run has no summary and
- * renders nothing at all rather than four zeroes: a summary of a run that never
- * happened is a claim about the last run that there was not one.
+ * A playlist with no run has no summary and renders nothing at all rather than
+ * four zeroes: a summary of a run that never happened is a claim about the last
+ * run that there was not one.
  *
- * The figure is quiet by default and colour is spent only on a count that is
- * not zero, so a run that changed nothing needs no reading at all. The stamp is
- * the run's `finishedAt`, which a running run does not have yet, so a run still
- * in flight draws its own word in place of the stamp.
+ * The figure is quiet by default and colour is spent only on a count that is not
+ * zero, so a run that changed nothing needs no reading at all. The stamp is the
+ * run's `finishedAt`, which a running run does not have yet, so a run still in
+ * flight draws its own word in place of the stamp.
  *
  * The in-flight line is derived, and says so. There is no stored pending count
  * anywhere in the contract, so while a run is active the downloading figure

@@ -7,7 +7,6 @@
  * the controls and nothing else. Nothing in it may throw past the player.
  */
 
-/** The metadata the session shows, or null when nothing is playing. */
 export interface SessionMetadata {
   readonly title: string;
   readonly artist: string;
@@ -15,7 +14,7 @@ export interface SessionMetadata {
   readonly artwork: readonly { readonly src: string }[];
 }
 
-/** The actions the player can answer, which are wired to the same store. */
+/** The actions the player answers, wired to the same store as the rest of it. */
 export interface SessionHandlers {
   readonly onPlay: () => void;
   readonly onPause: () => void;

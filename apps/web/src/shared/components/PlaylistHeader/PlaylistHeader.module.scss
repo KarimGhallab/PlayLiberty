@@ -1,10 +1,7 @@
 /*
  * The playlist header, mirroring docs/design/specimen.css at both of its
- * arrangements: the row at 1056, whose cover sits beside the identity block, and
- * the card, whose cover sits above it and carries the actions on a scrim. The
- * library draws the row; the playlist detail draws the card in its 320px left
- * column. The classes are shared between the two arrangements, and the card's
- * own blocks are named for that arrangement.
+ * arrangements: the row, whose cover sits beside the identity block, and the
+ * card, whose cover sits above it and carries the actions on a scrim.
  */
 .playlist-header {
   display: flex;
@@ -644,7 +641,7 @@
     height: var(--icon-sm);
   }
 
-  /* ======================================================= the card's cover
+  /* The card's cover
    *
    * The square the card is built around, drawn here rather than in the row: it
    * carries the scrim and the actions and so is a block of its own. */
@@ -767,7 +764,6 @@
     padding: var(--space-4);
   }
 
-  /* The shuffle and the menu as one group against the right edge. */
   &__macts-right {
     display: flex;
     align-items: center;
@@ -797,8 +793,6 @@
     inset: -6px;
   }
 
-  /* The identity block under the card. Same pieces as the row's body, on the
-   * card's own padding rather than beside a 96px cover. */
   &__munder {
     display: flex;
     flex-direction: column;

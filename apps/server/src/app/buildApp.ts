@@ -56,9 +56,7 @@ export interface AppOptions {
   /*
    * Whether the background loops start. True in every real process; a unit test
    * that drives `processPendingTracks` by hand turns it off so the background
-   * worker does not race the assertions, which is the same seam the tests always
-   * needed and only noticed now that the worker's first pass is immediate rather
-   * than thirty seconds away.
+   * worker does not race the assertions.
    */
   startBackgroundJobs?: boolean;
   /*

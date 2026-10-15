@@ -6,11 +6,8 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './PlaylistFilterChips.module.scss';
 
 /*
- * The track-state filter at the lead of the control row above the list. One
- * chip per file state, each carrying how many tracks the whole playlist holds in
- * that state, plus an "All" that clears the filter and carries the playlist's
- * total. Every chip is always drawn, a zero included, because the count is the
- * reason the chip exists: the choice is made knowing what the list will hold.
+ * Every chip is always drawn, a zero included, because the count is the reason
+ * the chip exists: the choice is made knowing what the list will hold.
  *
  * The counts are the whole-playlist aggregate folded into the list read, so they
  * never follow the filter. The chips are disabled while the list draws the

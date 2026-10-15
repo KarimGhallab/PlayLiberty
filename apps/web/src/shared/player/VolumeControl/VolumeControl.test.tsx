@@ -58,7 +58,6 @@ describe('VolumeControl', () => {
     const rail = screen.getByRole('slider', { name: 'Volume' });
     expect(rail).toBeInTheDocument();
 
-    /* Moving focus from the button to the rail keeps the panel. */
     fireEvent.blur(button, { relatedTarget: rail });
     expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
   });
@@ -141,7 +140,6 @@ describe('VolumeControl', () => {
     act(() => vi.advanceTimersByTime(1500));
     expect(screen.getByRole('status')).toHaveTextContent('Volume 55%');
 
-    /* A second press disposes the notice and mounts the newer level. */
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     expect(screen.getAllByRole('status')).toHaveLength(1);
     expect(screen.getByRole('status')).toHaveTextContent('Volume 60%');

@@ -1,8 +1,8 @@
 import type { Messages } from './en.js';
 
 /*
- * The French catalog. It is typed as `Messages`, so every English key is
- * required here and a missing one fails the build.
+ * Typed as `Messages`, so every English key is required here and a missing one
+ * fails the build.
  *
  * The language names are endonyms: `English` and `Français` read the same in
  * both catalogs, because a language is named in itself.

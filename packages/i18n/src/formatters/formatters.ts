@@ -9,11 +9,6 @@ import type { Translator } from '../createTranslator/createTranslator.js';
 import type { Messages } from '../en.js';
 
 /*
- * The formatters the clients share. All but `formatDuration` depend on the
- * language and take the translator, so the sentence and its plural come from the
- * active catalog; `formatDuration` is the one that reads the same in every
- * language and takes none.
- *
  * Relative time and number formatting are hand-rolled rather than taken from
  * `Intl`, for the reason the whole package exists: Hermes, the engine an Android
  * React Native app runs on, implements `Intl.NumberFormat` by proxying the
@@ -32,11 +27,11 @@ function toMilliseconds(value: number | Date): number {
 }
 
 /**
- * How long ago a timestamp was, in the design's words: `just now`, a count of
- * minutes, hours, days, weeks, months or years, and `yesterday` for the one day
- * that has its own word. A future timestamp reads as `just now`, so clock skew
- * never shows a negative age. The ladder is fixed here rather than in the
- * design record, which shows the words but not their boundaries.
+ * The design's words for an age: `just now`, a count of minutes, hours, days,
+ * weeks, months or years, and `yesterday` for the one day that has its own
+ * word. A future timestamp reads as `just now`, so clock skew never shows a
+ * negative age. The ladder is fixed here rather than in the design record,
+ * which shows the words but not their boundaries.
  */
 export function formatRelativeTime(
   t: Translator<Messages>,
@@ -81,9 +76,9 @@ export function formatRelativeTime(
 }
 
 /**
- * The header's sync line: `Synced 2 days ago`, `Synced yesterday`, or
- * `Never synced` while `lastSyncedAt` is still null. The word is part of the
- * string, so both clients render it identically.
+ * The header's sync line: `Synced 2 days ago` or `Never synced` while
+ * `lastSyncedAt` is null. The word is part of the string, so both clients
+ * render it identically.
  */
 export function formatLastSynced(
   t: Translator<Messages>,
@@ -163,9 +158,9 @@ export function trackStateLabel(
 }
 
 /*
- * The provider as a person writes it. Only YouTube exists today, but the label is
- * a function rather than a literal so the removed-track sentence names the source
- * without the row knowing which providers there are.
+ * Only YouTube exists today, but this is a function rather than a literal so the
+ * removed-track sentence names the source without the row knowing which
+ * providers there are.
  */
 export function providerLabel(
   t: Translator<Messages>,
@@ -178,15 +173,13 @@ export function providerLabel(
   return provider;
 }
 
-/** The unit word for a track count, singular only at one. */
 export function trackCountUnit(t: Translator<Messages>, count: number): string {
   return t('count.unit', { count });
 }
 
 /**
- * A playlist's track count. It counts associations, is drawn even before the
- * tracks load, and takes no thousands separator on purpose: the specimens draw
- * `1284 tracks`.
+ * It counts associations, is drawn even before the tracks load, and takes no
+ * thousands separator on purpose: the specimens draw `1284 tracks`.
  */
 export function formatTrackCount(
   t: Translator<Messages>,
@@ -200,10 +193,10 @@ function pad(value: number): string {
 }
 
 /**
- * A track duration as `M:SS`, or `H:MM:SS` once it passes an hour. The minute
- * is unpadded below an hour because the specimens draw `4:18`, and padded above
- * it so the hour column lines up. It reads the same in every language, which is
- * why it takes no translator.
+ * `M:SS`, or `H:MM:SS` once it passes an hour. The minute is unpadded below an
+ * hour because the specimens draw `4:18`, and padded above it so the hour column
+ * lines up. It reads the same in every language, which is why it takes no
+ * translator.
  */
 export function formatDuration(seconds: number): string {
   const total = Math.floor(seconds);

@@ -382,9 +382,9 @@ describe('PlayerAudio', () => {
 
     /*
      * The re-auth flag is the client's own record that it took the edge path,
-     * and it is the only part of that path jsdom can show. What matters for the
-     * ticket is the queue: an expired session is not a broken track, so nothing
-     * is dropped and the listener is not moved.
+     * and it is the only part of that path jsdom can show. What matters here is
+     * the queue: an expired session is not a broken track, so nothing is dropped
+     * and the listener is not moved.
      */
     expect(window.sessionStorage.getItem('playliberty.re-auth-attempt')).toBe(
       '1'

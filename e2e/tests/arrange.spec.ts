@@ -40,7 +40,6 @@ async function rowTitles(page: Page): Promise<string[]> {
     .filter(title => title.length > 0);
 }
 
-/** The row the player marks as current. */
 function currentRow(page: Page): Locator {
   return page
     .getByRole('listitem')
@@ -52,7 +51,6 @@ function headerCount(page: Page): Locator {
   return page.locator('[data-arrangement="card"]').getByText(/^\d+$/);
 }
 
-/** Add one video to the playlist on screen, preselected in the dialog. */
 async function addTrack(
   page: Page,
   video: { videoId: string; title: string }
@@ -68,7 +66,6 @@ async function addTrack(
   await expect(dialog).toBeHidden();
 }
 
-/** Pick an order from the sort control and wait for the button to read it. */
 async function chooseSort(page: Page, label: string): Promise<void> {
   await page.getByRole('button', { name: /^Sort by: / }).click();
   await page.getByRole('option', { name: label }).click();
@@ -135,7 +132,6 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
 }) => {
   await seed(page);
 
-  // Untouched, the list is the playlist's own order.
   await expect(
     page.getByRole('button', { name: 'Sort by: Playlist order' })
   ).toBeVisible();
@@ -143,7 +139,6 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
     .poll(() => rowTitles(page))
     .toEqual([A.title, B.title, C.title, FAILED.title]);
 
-  // Newest first reverses it, and the failed row is the newest of all.
   await chooseSort(page, 'Newest first');
   await expect
     .poll(() => rowTitles(page))
@@ -170,8 +165,6 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
   await page.getByRole('button', { name: 'Track next' }).click();
   await expect(currentRow(page)).toHaveText(new RegExp(A.title));
 
-  // Oldest first reverses the newest, and the playlist's own order is reachable
-  // again.
   await chooseSort(page, 'Oldest first');
   await expect
     .poll(() => rowTitles(page))
@@ -191,7 +184,6 @@ test('the chips carry the whole-playlist counts and narrow the list and the coun
 }) => {
   await seed(page);
 
-  // Every state's count is the whole playlist's, drawn before any press.
   await expect(page.getByRole('button', { name: 'All 4' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Stored 3' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Pending 0' })).toBeVisible();
@@ -203,28 +195,21 @@ test('the chips carry the whole-playlist counts and narrow the list and the coun
     page.getByRole('button', { name: 'Unavailable 0' })
   ).toBeVisible();
 
-  /*
-   * A chip narrows the list and the header's count line to the filtered total,
-   * while the counts themselves stay the whole playlist's.
-   */
   await page.getByRole('button', { name: 'Stored 3' }).click();
   await expect(headerCount(page)).toHaveText('3');
   await expect.poll(() => rowTitles(page)).toEqual([A.title, B.title, C.title]);
   await expect(page.getByRole('button', { name: 'Failed 1' })).toBeVisible();
 
-  // All restores both.
   await page.getByRole('button', { name: 'All 4' }).click();
   await expect(headerCount(page)).toHaveText('4');
   await expect
     .poll(() => rowTitles(page))
     .toEqual([A.title, B.title, C.title, FAILED.title]);
 
-  // A state with one row narrows to that row alone.
   await page.getByRole('button', { name: 'Failed 1' }).click();
   await expect(headerCount(page)).toHaveText('1');
   await expect.poll(() => rowTitles(page)).toEqual([FAILED.title]);
 
-  // A state with no rows draws the named empty state, whose action clears it.
   await page.getByRole('button', { name: 'Unavailable 0' }).click();
   await expect(headerCount(page)).toHaveText('0');
   await expect(page.getByText('No unavailable tracks')).toBeVisible();

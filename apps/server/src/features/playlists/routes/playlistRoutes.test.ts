@@ -115,8 +115,8 @@ function addTrack(
   addTrackAt(database, playlistId, trackId, 0);
 }
 
-/* What the associations table actually holds, counted the way this ticket
- * originally computed the field, so a stored count can be held against it. */
+/* What the associations table actually holds, so a stored count can be held
+ * against it. */
 function countAssociations(
   database: DatabaseHandle,
   playlistId: string
@@ -540,8 +540,8 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // The pair that is false and false, which is the answer for every playlist
-    // on the instance today because no route writes a share.
+    // The pair that is false and false: this playlist has no shares, so it is
+    // the owner's alone.
     expect(playlist.access).toBe('owner');
     expect(playlist.hasShares).toBe(false);
   });

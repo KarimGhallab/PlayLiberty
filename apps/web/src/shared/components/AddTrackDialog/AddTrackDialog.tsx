@@ -29,14 +29,11 @@ import styles from './AddTrackDialog.module.scss';
  * refusal carries no cause: the route withholds it on purpose so the batch cannot
  * enumerate other accounts' playlists, and the copy is about the outcome and not
  * the reason.
- *
- * The shell, the motion and the two-phase presence belong to `Dialog`; this
- * component is the field, the list, the two verbs and the refusal block.
  */
 
 interface AddTrackDialogProps {
   open: boolean;
-  /* The playlist being looked at, preselected, and the widest set to offer. */
+  /* The playlist the dialog was opened from, preselected in the list. */
   currentPlaylistId: string;
   /* Every writable playlist, the current one included. Never a read-only one. */
   playlists: Playlist[];

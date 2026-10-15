@@ -74,9 +74,9 @@ export default function PlayerAudio() {
   };
 
   /*
-   * `advance` and `publishMetadata` are stable store setters and module
-   * functions, but reading them through the store keeps the element's handlers
-   * off a stale closure when the queue changes under it.
+   * `skipNext`, `skipPrevious` and `seek` are stable store actions, but reading
+   * them through the store keeps the element's handlers off a stale closure when
+   * the queue changes under it.
    */
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);

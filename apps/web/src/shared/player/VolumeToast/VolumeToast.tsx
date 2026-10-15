@@ -4,10 +4,10 @@ import { volumeIcon } from '../volumeIcon';
 import styles from './VolumeToast.module.scss';
 
 /*
- * The volume notice. A short-lived readout of the level the keyboard just set,
+ * The volume notice, a short-lived readout of the level the keyboard just set,
  * because the rail is the only other place the level is shown and the rail is
- * open only while the pointer is on it. Centred above the player bar, clear of
- * the rail at the right corner and of the undo toast at the left.
+ * open only while the pointer is on it. It is centred above the player bar so it
+ * clears the rail at the right corner and the undo toast at the left.
  *
  * It is a HUD and not a dialog: no scrim, no focus, nothing to press, and
  * `pointer-events: none` so it never stands between the pointer and the bar. It

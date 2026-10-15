@@ -1,13 +1,10 @@
 /*
- * The computed play to pause morph.
- *
  * The two endpoints are the pinned Tabler glyphs drawn verbatim; the six frames
- * between them are computed from those endpoints by
- * `docs/design/scripts/morph-frames.mjs` and transcribed here from
- * `docs/design/generated/play-pause-morph.json`. Both clients draw one frame at
- * a time from this table and step an index, so the table and the frame count are
- * what is shared; the strip, the keyframes and the `steps()` timing are each
- * client's own.
+ * between them are computed by `docs/design/scripts/morph-frames.mjs` and
+ * transcribed from `docs/design/generated/play-pause-morph.json`. Both clients
+ * draw one frame at a time from this table and step an index, so the table and
+ * the frame count are what is shared; the strip, the keyframes and the `steps()`
+ * timing are each client's own.
  */
 import type { Morph } from '../types.js';
 import { durations } from '../values.js';

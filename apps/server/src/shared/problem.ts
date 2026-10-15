@@ -28,11 +28,9 @@ export function createProblem(input: ProblemInput): Problem {
 }
 
 /*
- * Every refusal carries `no-store`. A problem is a state, not a resource: a 404
- * for a thumbnail that has not landed yet must not be remembered, or the browser
- * keeps drawing the sleeve after the artwork arrives, and a 404 is exactly the
- * status a cache is allowed to store by heuristic. `private` alone would not fix
- * it, so the whole document is barred from every cache.
+ * Every refusal carries `no-store`. A problem is a state, not a resource, and a 404
+ * is exactly the status a cache is allowed to store by heuristic, so the whole
+ * document is barred from every cache.
  */
 export function sendProblem(
   reply: FastifyReply,
@@ -59,8 +57,7 @@ export function sendNotImplemented(
 
 /*
  * A playlist the account cannot reach, as the one code and the scope it was
- * refused in. The library, the detail, the shares and the latest run all answer
- * this, and the client maps the reason to its own sentence, so the server keeps
+ * refused in. The client maps the reason to its own sentence, so the server keeps
  * no second copy of that English.
  */
 export function sendPlaylistNotFound(
@@ -75,7 +72,6 @@ export function sendPlaylistNotFound(
   });
 }
 
-/* One Zod issue as the wire carries it: the field and the shape of the fault. */
 export interface ProblemIssue {
   readonly path: string;
   readonly code: string;
@@ -86,13 +82,11 @@ export type ParseResult<T> =
   | { success: false; issues: readonly ProblemIssue[] };
 
 /*
- * Parses any untrusted input against a schema and reports the failure as a
- * problem document, so every route turns a bad body or a bad query string the
- * same way. The name says body because the first caller was a body; the query
- * string on a paginated list goes through here as well.
+ * Parses any untrusted input against a schema and reports the failure as a problem
+ * document, so every route turns a bad body or a bad query string the same way.
  *
- * The failure is the structured issues and never Zod's English prose: the code
- * and the parameters travel, and the client owns the sentence it renders.
+ * The failure is the structured issues and never Zod's English prose: the code and
+ * the parameters travel, and the client owns the sentence it renders.
  */
 export function parseBody<T>(
   schema: z.ZodType<T>,
@@ -114,10 +108,9 @@ export function parseBody<T>(
 }
 
 /*
- * The other way a request produces a problem document, and the reason the two sit
- * in one module: both write the same shape to the same content type, and a
- * route that produced a malformed-input problem by hand would be the one route
- * whose 400 looked different.
+ * Both ways a request produces a problem document sit in one module: they write the
+ * same shape to the same content type, and a route that produced a malformed-input
+ * problem by hand would be the one route whose 400 looked different.
  */
 export function sendInvalidRequest(reply: FastifyReply): FastifyReply {
   return sendProblem(reply, {

@@ -1,12 +1,11 @@
 /*
  * The sort control at the end of the control row above the list, which the
- * screen owns. The lead of that row is the filter chips.
+ * screen owns; the row's lead is the filter chips.
  *
  * The control is quiet on purpose: no box at rest, so the button is the order
  * and its two marks rather than a chrome object. Hover steps the marks up a
  * little and nothing else; the accent is spent only while the menu is open,
- * which is the one thing the press earns. `margin-left: auto` keeps the sort at
- * the row's end, after the chips.
+ * which is the one thing the press earns.
  */
 .sort {
   position: relative;

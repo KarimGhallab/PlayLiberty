@@ -80,8 +80,7 @@ function shuffledWithLeader(
 
   /*
    * No leader to hoist: the caller named a track that is not in the queue, which
-   * a built queue and a hydrated one both rule out. The scatter is the honest
-   * answer, and nothing here claims a first entry is being kept.
+   * a built queue and a hydrated one both rule out. The scatter is all there is.
    */
   return leader === undefined ? rest : [leader, ...rest];
 }
@@ -172,9 +171,9 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       /*
        * The current track and the offset do not move. The one case that does move
        * something is the current track itself leaving the source: there is then no
-       * track to be on, so the offset resets and the queue stops. Ticket 03 decides
-       * whether playback then advances; this store only refuses to keep a cursor
-       * pointing at nothing.
+       * track to be on, so the offset resets and the queue stops. Whether playback
+       * then advances is decided elsewhere; this store only refuses to keep a
+       * cursor pointing at nothing.
        */
       if (!currentStillThere) {
         return {

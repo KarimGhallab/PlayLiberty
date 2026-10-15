@@ -17,10 +17,8 @@ import { canWritePlaylist, usePlaylistActions } from './playlistActions';
 
 /*
  * The rule under test is which of the four playlist actions an account may
- * perform, by its access. The module is a hook, so
- * the test drives it through `renderHook` and reads the menu it builds; the
- * dialogs and the mutations are its implementation, not the seam this test
- * crosses.
+ * perform, by its access. The dialogs and the mutations are the hook's
+ * implementation, not the seam this test crosses.
  */
 
 function playlist(overrides: Partial<Playlist> = {}): Playlist {

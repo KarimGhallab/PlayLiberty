@@ -1,6 +1,4 @@
 /*
- * The mapping from a track's two status axes to one display tone.
- *
  * A removed track takes the removed tone whatever its file status is, because
  * the source is gone and the file should not compete with that news. The
  * precedence is the whole reason this mapping is shared rather than written
@@ -18,7 +16,6 @@ const FILE_STATUS_TONES: Readonly<Record<TrackFileStatus, TrackTone>> = {
   [TrackFileStatus.Unavailable]: TrackTone.Unavailable
 };
 
-/** The tone for a track's file and source status. Removed wins over the file. */
 export function trackTone(
   fileStatus: TrackFileStatus,
   sourceStatus: TrackSourceStatus

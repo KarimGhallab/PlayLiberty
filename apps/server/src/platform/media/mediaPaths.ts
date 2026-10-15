@@ -56,8 +56,6 @@ export function thumbnailRelativePath(videoId: string): string {
  * outside the directory it belongs to. The adapter rejects a non-video id before
  * it is stored, so this is the second layer: a corrupted row or a future caller
  * that passes `..` or a separator cannot make the path escape the media store.
- * The comparison is against the directory with a trailing separator, so a
- * sibling whose name merely starts with it is not mistaken for a child.
  *
  * The path is built and guarded with the POSIX rules and carries `/` on every
  * host, because it is stored as data rather than used as a host path: a Windows

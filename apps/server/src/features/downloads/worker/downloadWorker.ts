@@ -193,7 +193,6 @@ async function processClaimedTrack(
     return;
   }
 
-  // The audio is stored; the artwork is best effort and never changes that.
   await fetchThumbnail(context, logger, track);
   publishTrackChanged(context, track.id);
 }

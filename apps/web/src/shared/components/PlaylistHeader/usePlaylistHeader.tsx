@@ -35,16 +35,13 @@ import styles from './PlaylistHeader.module.scss';
  * each arrangement composes them into its own markup, so the two cannot drift
  * on the name, the share mark, the count, the sync line or the overflow.
  *
- * The identity is the cover's fallback to a derived sleeve, the name as a link
- * or a heading, the share indicator, the sync state and its optional elapsed
- * time, the track count and the owner line of a shared playlist. The actions
- * column is the play, the transport that replaces it while the queue is this
- * playlist, the shuffle and the overflow, each absent when the caller offers no
- * callback: the header is gated by what the caller can do rather than by a level
- * string it would have to learn. The overflow's items are not the header's to
- * decide: the actions module builds them by access and hands them in as `menu`,
- * so an owner gets the four it can act on, a writer the one it can, and a reader
- * an empty menu and no overflow.
+ * The actions column is the play, the transport that replaces it while the queue
+ * is this playlist, the shuffle and the overflow, each absent when the caller
+ * offers no callback: the header is gated by what the caller can do rather than
+ * by a level string it would have to learn. The overflow's items are not the
+ * header's to decide: the actions module builds them by access and hands them in
+ * as `menu`, so an owner gets the four it can act on, a writer the one it can, and
+ * a reader an empty menu and no overflow.
  *
  * `ownerName` is the resolved display name of a playlist that is not the
  * account's, and null when the directory does not carry the owner. It is drawn
@@ -256,8 +253,6 @@ export function usePlaylistHeader({
     menuButtonRef.current?.focus();
   };
 
-  /* The menu's own dismissal: an outside press closes it, Escape closes it and
-   * returns the keyboard to the button. */
   useDismissibleMenu({
     open: menuOpen,
     containerRef: menuAnchorRef,

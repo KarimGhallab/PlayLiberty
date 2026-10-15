@@ -17,11 +17,8 @@ import { routeTree } from './router';
 import { createFakeEventStream } from './testing/fakeEventStream';
 
 /*
- * The shell is where playback survives navigation, so the claim under test is
- * that a route change does not restart the track: the element is not remounted,
- * so its source is loaded and played once. A memory router drives a real
- * navigation between the two routes and the play call is read after the second
- * route has rendered.
+ * The claim under test is that a route change does not restart the track: the
+ * audio element is not remounted, so its source is loaded and played once.
  */
 
 const PLAYLIST = 'playlist-1';
@@ -78,12 +75,9 @@ describe('AppShell', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [TRACK], TRACK.id);
     const { router } = renderShell(`/playlists/${PLAYLIST}`);
 
-    /* The bar is there and the track is playing on the detail route. */
     expect(await screen.findByLabelText('Player')).toBeInTheDocument();
     expect(playMock).toHaveBeenCalledTimes(1);
 
-    /* Navigate to the library. The outlet re-renders; the player does not, so
-     * the source is not restarted. */
     await router.navigate({ to: '/' });
     await waitFor(() => {
       expect(

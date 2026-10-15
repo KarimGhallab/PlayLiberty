@@ -8,10 +8,8 @@ import { I18nProvider } from '@playliberty/i18n';
 import SyncSummary from './SyncSummary';
 
 /*
- * The summary's own content: the four figures a run produced, the downloading
- * line only while a run is active, and the stamp that says whether it has
- * finished. The detail page's test covers that the page draws the summary; this
- * covers what the summary draws.
+ * The detail page's test covers that the page draws the summary; this covers
+ * what the summary draws.
  */
 
 const NOW = new Date('2026-10-08T12:00:00.000Z');

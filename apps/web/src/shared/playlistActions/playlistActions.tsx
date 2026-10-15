@@ -22,12 +22,11 @@ import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylist
 import type { PendingAction } from '../components/useDeferredAction/useDeferredAction';
 
 /*
- * One module owns a playlist's actions. The owner/writer rule that decides which
- * of share, rename, sync and delete an account may perform lives here, the menu
- * the header draws is built from it, and the effects behind each item (the
- * dialogs, the mutations) live here too. The header renders the model; the
- * library item and the detail page hand a playlist in and take the menu and the
- * dialogs back, so neither re-derives the rule nor re-wires the effects.
+ * One module owns a playlist's actions: the owner/writer rule that decides which
+ * of share, rename, sync and delete an account may perform, the menu the header
+ * draws, and the effects behind each item. The library item and the detail page
+ * hand a playlist in and take the menu and the dialogs back, so neither
+ * re-derives the rule nor re-wires the effects.
  *
  * Two things stay with the consumer because they genuinely differ. The undo
  * window is the surface's, because the library keeps one for the whole gallery
@@ -162,8 +161,7 @@ export function usePlaylistActions(
   /*
    * The dialogs are mounted only while open, which is the library's rule: a
    * gallery of fifty closed items must not ask the account directory or the
-   * reader's own account any questions. The rename dialog holds a field and the
-   * share dialog reads the shares, so both are built on the press that opens them.
+   * reader's own account any questions.
    */
   const dialogs =
     playlist === undefined ? null : (

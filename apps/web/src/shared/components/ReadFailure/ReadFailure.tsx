@@ -4,12 +4,10 @@ import { problemSentence } from '../../api/problem/problem';
 import styles from './ReadFailure.module.scss';
 
 /*
- * A blocking read that failed, and the one way back. A surface that would
- * otherwise replace its content with a sentence draws this instead: the sentence
- * the problem maps to (the server's own `detail` for a code this client does not
- * know), and a retry that refetches the read that failed. It is one manual press
- * and never a page reload, so a transient fault is a press away from the content
- * it hid.
+ * A blocking read that failed, and the one way back: the sentence the problem
+ * maps to (the server's own `detail` for a code this client does not know), and a
+ * retry that refetches the read that failed. It is one manual press and never a
+ * page reload, so a transient fault is a press away from the content it hid.
  */
 
 interface ReadFailureProps {

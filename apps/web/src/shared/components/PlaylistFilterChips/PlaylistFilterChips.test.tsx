@@ -9,9 +9,7 @@ import { I18nProvider } from '@playliberty/i18n';
 import PlaylistFilterChips from './PlaylistFilterChips';
 
 /*
- * The chip set: every state's count, the "All" total, the one in force, and the
- * press that asks for a state. The colours and the sideways scroll are the
- * stylesheet's business.
+ * The colours and the sideways scroll are the stylesheet's business.
  */
 
 const COUNTS: TrackFileStatusCounts = {

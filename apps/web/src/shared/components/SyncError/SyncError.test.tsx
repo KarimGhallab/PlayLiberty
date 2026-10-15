@@ -9,8 +9,7 @@ import SyncError from './SyncError';
 /*
  * The band's contract, asserted at its public interface: the sentence that names
  * the fault, the reassurance that says what was not lost, the one action, and the
- * server's own words one control away. The point is that removing any of them
- * fails the suite, so the reason cannot quietly become unreachable again.
+ * server's own words one control away.
  */
 
 const SENTENCE = 'Could not reach YouTube, the playlist may not be up to date.';

@@ -1,9 +1,7 @@
 /*
- * The shared dialog shell: a scrim over the page, a 400px card on
- * --surface-raised with a --control-border edge, one body and one action row.
- * Mirrors the dialog specimen. The invalid field keeps its ink and moves the red
- * to the border and the message, so a person can still read what they typed
- * while correcting it.
+ * The shared dialog shell. Mirrors the dialog specimen. The invalid field keeps
+ * its ink and moves the red to the border and the message, so a person can still
+ * read what they typed while correcting it.
  *
  * Appearance motion is one transition at --motion-base on --ease-standard, and it
  * carries a state rather than decorating: the dialog arriving and leaving. The

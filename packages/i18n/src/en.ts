@@ -1,7 +1,5 @@
 /*
- * The English catalog and the source of truth for the `Messages` shape. `fr` is
- * typed as `Messages`, so a key missing from French is a compile error rather
- * than a runtime fallback, and the catalog needs no parity test.
+ * The source of truth for the `Messages` shape.
  *
  * Keys are symbolic and hierarchical: a key names the surface and the fact, not
  * the English sentence, so a copy edit does not churn a key.

@@ -25,7 +25,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * never run at all.
  */
 
-/** How long a deferred destructive action waits before it fires. */
 export const UNDO_WINDOW_MS = 6000;
 
 export interface PendingAction {
@@ -37,9 +36,7 @@ export interface PendingAction {
   readonly id: string;
   /** The sentence the toast shows, in the present tense, e.g. `Deleting “Evening Jazz”`. */
   readonly message: string;
-  /** The line under it, e.g. the playlist or track name. */
   readonly detail: string | null;
-  /** The work to run when the window closes without a cancel. */
   readonly commit: () => void;
 }
 
@@ -50,11 +47,8 @@ export interface DeferredAction {
    * first window and when the same action is deferred twice.
    */
   readonly replaced: PendingAction | null;
-  /** The ordinal of the current window, so a surface can restart with it. */
   readonly windowId: number;
-  /** Open a window for `action`, replacing any window already open. */
   readonly defer: (action: PendingAction) => void;
-  /** Close the window without running its commit. */
   readonly cancel: () => void;
 }
 
@@ -66,7 +60,6 @@ interface Windows {
 
 const NO_WINDOW: Windows = { pending: null, replaced: null, windowId: 0 };
 
-/** Two windows for the same subject and sentence are one intent, not a replacement. */
 function sameIntent(a: PendingAction, b: PendingAction): boolean {
   return a.id === b.id && a.message === b.message && a.detail === b.detail;
 }

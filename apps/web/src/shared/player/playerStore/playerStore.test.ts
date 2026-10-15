@@ -506,7 +506,6 @@ describe('shuffle', () => {
       new Set(['a', 'b', 'c', 'd', 'e'])
     );
 
-    /* Every other track is after the leader, and the playlist order is intact. */
     expect(state.queue.slice(1).map(item => item.id)).not.toContain('e');
     expect(state.sourceQueue.map(item => item.id)).toEqual([
       'a',
@@ -573,7 +572,6 @@ describe('shuffle', () => {
       'track-2',
       'track-3'
     ]);
-    /* The queue is the drawn order, led by the drawn track. */
     expect(usePlayerStore.getState().queue[0].id).toBe(
       usePlayerStore.getState().currentId
     );

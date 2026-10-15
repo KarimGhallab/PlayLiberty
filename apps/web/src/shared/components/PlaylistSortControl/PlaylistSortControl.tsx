@@ -22,11 +22,6 @@ import styles from './PlaylistSortControl.module.scss';
  * `sort` is what the server last answered (or the optimistic guess while a request
  * is in flight), `saving` locks the control until the answer lands, and `onChange`
  * fires the request.
- *
- * The button is quiet on purpose: no box at rest, the order and its two marks
- * coming up together on hover, and the accent rule drawn under it only while the
- * menu is open. The menu arrives in one quiet rise and its entries settle in
- * behind it.
  */
 
 interface PlaylistSortControlProps {

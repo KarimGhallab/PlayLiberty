@@ -8,9 +8,7 @@ import { I18nProvider } from '@playliberty/i18n';
 import PlaylistSortControl from './PlaylistSortControl';
 
 /*
- * The control is the menu button: the order it draws, the order it asks for on a
- * press, and the three reasons it is disabled. The colour, the rule and the
- * menu's motion are the stylesheet's business.
+ * The colour, the rule and the menu's motion are the stylesheet's business.
  */
 
 function renderControl(

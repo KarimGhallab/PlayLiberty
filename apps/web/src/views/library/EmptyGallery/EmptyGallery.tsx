@@ -9,9 +9,6 @@ import styles from './EmptyGallery.module.scss';
  * empty state, and the difference is one word: that one's action is `Sync now`,
  * because a playlist that exists and has no tracks has never been synced; this
  * one's action is `Add a playlist`, because there is nothing to sync.
- *
- * The stack is centred and top-aligned in the list it replaces, not vertically
- * centred in the page, because a list starts at the top.
  */
 
 interface EmptyGalleryProps {

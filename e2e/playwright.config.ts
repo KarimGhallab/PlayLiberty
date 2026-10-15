@@ -22,10 +22,8 @@ import {
  * The scenario file is written by the tests and read by the server's fake adapter
  * on every call, so the stack can boot before any test has chosen a scenario.
  *
- * The stack is built before it runs: `pnpm run build` produces the workspace
- * packages the Vite dev server resolves and the server `dist` this config boots.
- * It is a prerequisite the same way it is for the unit tests, and the e2e job
- * runs it before Playwright.
+ * The stack must be built first: `pnpm run build` produces the workspace packages
+ * the Vite dev server resolves and the server `dist` this config boots.
  */
 export default defineConfig({
   testDir: './tests',

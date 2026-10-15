@@ -7,12 +7,6 @@ import { problemSentence } from './problem';
 
 const t = createTranslator(catalogs[Language.English], Language.English);
 
-/*
- * The one unwrap and the mapping behind it. A surface shows a refusal through
- * this, so an `ApiError` reaches the catalog sentence, an unmapped code reaches
- * the server's own `detail`, and an error that is not an `ApiError` reaches
- * nothing.
- */
 describe('problemSentence', () => {
   it('maps a known code and its reason to the catalog sentence', () => {
     const error = new ApiError(404, {

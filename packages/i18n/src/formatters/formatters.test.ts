@@ -213,8 +213,7 @@ describe('trackStateLabel', () => {
 
 /*
  * The switch, at the package seam: the formatters read the translator, so the
- * same inputs read in the chosen language. One sync line and one count are
- * pinned, because the ticket names exactly those two.
+ * same inputs read in the chosen language.
  */
 describe('the chosen language', () => {
   const fr = createTranslator(catalogs[Language.French], Language.French);

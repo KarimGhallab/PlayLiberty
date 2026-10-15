@@ -1,8 +1,7 @@
 /*
- * The switch row: the name on the left and a switch at the end. It is a control
- * now, so it carries the switch's own geometry; the value is read from the
- * switch's position and its accessible state, not from a word. No border and no
- * fill, so it stays quieter than the header card above it.
+ * The switch row: the name on the left and a switch at the end. The value is read
+ * from the switch's position and its accessible state, not from a word. No border
+ * and no fill, so it stays quieter than the header card above it.
  */
 .setting {
   display: flex;

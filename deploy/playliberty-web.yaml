@@ -15,7 +15,6 @@ metadata:
   name: playliberty-web
 spec:
   containers:
-    # The front.
     - name: web
       image: localhost/playliberty-web:latest
       imagePullPolicy: Never
@@ -61,7 +60,6 @@ spec:
         limits:
           memory: 128Mi
           cpu: '0.5'
-    # The backend.
     - name: server
       image: localhost/playliberty-server:latest
       imagePullPolicy: Never
