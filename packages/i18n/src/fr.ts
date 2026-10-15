@@ -51,7 +51,17 @@ export const fr: Messages = {
     sortBy: 'Trier par',
     sortPlaylist: 'Ordre de la playlist',
     sortNewest: "Plus récentes d'abord",
-    sortOldest: "Plus anciennes d'abord"
+    sortOldest: "Plus anciennes d'abord",
+    filterBy: 'Filtrer par',
+    filterAll: 'Toutes',
+    filterShowAll: 'Tout afficher',
+    filterEmpty: {
+      stored: 'Aucune piste stockée',
+      pending: 'Aucune piste en attente',
+      downloading: 'Aucune piste en téléchargement',
+      failed: 'Aucune piste en échec',
+      unavailable: 'Aucune piste indisponible'
+    }
   },
   trackRow: {
     play: 'Lire {title}',
@@ -231,6 +241,7 @@ export const fr: Messages = {
   },
   trackState: {
     removedFrom: 'Retirée de {provider}',
+    stored: 'Stockée',
     pending: 'En attente',
     downloading: 'Téléchargement',
     failed: 'Échec',

@@ -11,7 +11,8 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor
+  waitFor,
+  within
 } from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
@@ -23,6 +24,7 @@ import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import type { PlayerTrack } from '../../../shared/player/types';
 import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
+import { EMPTY_COUNTS, countsOf } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import PlaylistDetailPage from './PlaylistDetailPage';
 
@@ -434,7 +436,8 @@ describe('PlaylistDetailPage', () => {
             items: all.slice(offset, offset + 2),
             total: all.length,
             limit: 2,
-            offset
+            offset,
+            counts: countsOf(all)
           });
         }
       )
@@ -475,7 +478,8 @@ describe('PlaylistDetailPage', () => {
           items: all.slice(0, 1),
           total: all.length,
           limit: 1,
-          offset: 0
+          offset: 0,
+          counts: countsOf(all)
         })
       ),
       http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
@@ -636,7 +640,8 @@ describe('PlaylistDetailPage', () => {
           ],
           total: 1,
           limit: 50,
-          offset: 0
+          offset: 0,
+          counts: { ...EMPTY_COUNTS, failed: 1 }
         })
       ),
       http.post(
@@ -1030,7 +1035,8 @@ describe('PlaylistDetailPage', () => {
             ],
             total: 1,
             limit: 50,
-            offset: 0
+            offset: 0,
+            counts: { ...EMPTY_COUNTS, stored: 1 }
           });
         }
       )
@@ -1381,7 +1387,8 @@ describe('PlaylistDetailPage sort control', () => {
             items,
             total: items.length,
             limit: 50,
-            offset: 0
+            offset: 0,
+            counts: countsOf(items)
           });
         }
       )
@@ -1429,6 +1436,121 @@ describe('PlaylistDetailPage sort control', () => {
 
     await screen.findByRole('button', { name: 'Play Blue In Green' });
     expect(screen.getByRole('button', { name: /^Sort by: / })).toBeDisabled();
+  });
+});
+
+/*
+ * The filter chips above the list. The counts come from the tracks read's own
+ * whole-playlist aggregate, a chip narrows the list and the header's count line,
+ * a filter that matches nothing names its empty state, and the chips step aside
+ * while the shuffled queue is the list on screen.
+ */
+describe('PlaylistDetailPage filter chips', () => {
+  function headerCard(container: HTMLElement): HTMLElement {
+    const card = container.querySelector('[data-arrangement="card"]');
+
+    if (!(card instanceof HTMLElement)) {
+      throw new Error('the card header should be drawn');
+    }
+
+    return card;
+  }
+
+  it('draws the chips carrying the whole-playlist counts', async () => {
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Stored 2' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Pending 1' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Failed 0' })
+    ).toBeInTheDocument();
+  });
+
+  it('narrows the list and the header count line, and All restores both', async () => {
+    const { container } = renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stored 2' }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Flamenco Sketches')).not.toBeInTheDocument()
+    );
+    expect(listTitles()).toEqual(['Blue In Green', 'Naima']);
+    expect(within(headerCard(container)).getByText('2')).toBeInTheDocument();
+    /* The counts stay the whole playlist's and do not follow the filter. */
+    expect(
+      screen.getByRole('button', { name: 'Pending 1' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'All 3' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Flamenco Sketches')).toBeInTheDocument()
+    );
+    expect(within(headerCard(container)).getByText('3')).toBeInTheDocument();
+  });
+
+  it('draws the named empty state when a filter matches nothing, and Show all restores', async () => {
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 0' }));
+
+    expect(await screen.findByText('No failed tracks')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Flamenco Sketches')).toBeInTheDocument()
+    );
+    expect(screen.queryByText('No failed tracks')).not.toBeInTheDocument();
+  });
+
+  it('disables the chips while the shuffled list is on screen', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
+
+    expect(screen.getByRole('button', { name: 'Stored 2' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeDisabled();
+  });
+
+  /*
+   * A filter changes what is seen and not what plays: the queue is built from the
+   * whole-playlist read, so a filter that matched nothing still queues every
+   * playable track.
+   */
+  it('plays every playable track under a filter that matched nothing', async () => {
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 0' }));
+
+    await screen.findByText('No failed tracks');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Play this playlist' }));
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+    expect(usePlayerStore.getState().queue.map(track => track.title)).toEqual([
+      'Blue In Green',
+      'Naima'
+    ]);
   });
 });
 

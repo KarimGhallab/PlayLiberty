@@ -68,6 +68,31 @@ const PLAYLIST_ONE_TRACKS = [
   }
 ];
 
+/*
+ * The whole-playlist counts the tracks read folds in. Every state is a key
+ * including a zero, so the filter chips have one to draw.
+ */
+export const EMPTY_COUNTS = {
+  stored: 0,
+  pending: 0,
+  downloading: 0,
+  failed: 0,
+  unavailable: 0
+};
+
+export function countsOf(
+  tracks: readonly { readonly track: { readonly fileStatus: string } }[]
+): Record<string, number> {
+  const counts: Record<string, number> = { ...EMPTY_COUNTS };
+
+  for (const association of tracks) {
+    counts[association.track.fileStatus] =
+      (counts[association.track.fileStatus] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 export const handlers = [
   http.get('http://localhost:3000/api/v1/playlists', () =>
     HttpResponse.json({
@@ -199,16 +224,30 @@ export const handlers = [
   /*
    * The tracks of the first playlist, in the playlist's own order. Two stored and
    * one still pending, so a test has a playable track and a not-yet-playable one
-   * to tell apart. The queue route answers the same list, every status, because a
-   * queue is built from the whole association list and filtered on the client.
+   * to tell apart. The state parameter narrows the page and its total, while the
+   * counts stay the whole playlist's; the queue route answers the same list, every
+   * status, because a queue is built from the whole association list and filtered
+   * on the client.
    */
-  http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-    HttpResponse.json({
-      items: PLAYLIST_ONE_TRACKS,
-      total: PLAYLIST_ONE_TRACKS.length,
-      limit: 50,
-      offset: 0
-    })
+  http.get(
+    'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+    ({ request }) => {
+      const state = new URL(request.url).searchParams.get('state');
+      const items =
+        state === null
+          ? PLAYLIST_ONE_TRACKS
+          : PLAYLIST_ONE_TRACKS.filter(
+              association => association.track.fileStatus === state
+            );
+
+      return HttpResponse.json({
+        items,
+        total: items.length,
+        limit: 50,
+        offset: 0,
+        counts: countsOf(PLAYLIST_ONE_TRACKS)
+      });
+    }
   ),
   http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
     HttpResponse.json({ items: PLAYLIST_ONE_TRACKS })

@@ -175,6 +175,65 @@
     list-style: none;
     border-top: 1px solid var(--line);
   }
+
+  /*
+   * The control row above the list: the filter chips in the lead and the sort at
+   * the end. The chips take the room and scroll sideways within it, so the row
+   * stays one line on a phone and the list stays close to the top; the sort keeps
+   * its place at the end. The list's own top border closes the row, so it carries
+   * no rule of its own.
+   */
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding-bottom: var(--space-3);
+  }
+
+  /*
+   * A filter that matched nothing. It stands where the list would be, under the
+   * chip row that caused it, and owns one way back to the whole list.
+   */
+  &__filter-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-6) 0;
+    text-align: center;
+  }
+
+  &__filter-empty-text {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  &__filter-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--control-height);
+    padding: 0 var(--space-4);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
 }
 
 /*

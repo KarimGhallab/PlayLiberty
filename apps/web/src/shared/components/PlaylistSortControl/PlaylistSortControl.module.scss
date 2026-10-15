@@ -1,27 +1,17 @@
 /*
- * The control row above the track list, and the sort control at its end. The row
- * carries no rule of its own: the list's own top border closes it, which is the
- * treatment the list already has. The lead space is left for the filter chips
- * that join the row later, so the sort stays at the end and the chips grow into
- * the space before it.
- */
-.controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  /* The gap between the row and the list's own top border, which closes it. */
-  padding-bottom: var(--space-3);
-}
-
-/*
- * The sort control. It is quiet on purpose: no box at rest, so the button is the
- * order and its two marks rather than a chrome object. Hover steps the marks up a
- * little and nothing else; the accent is spent only while the menu is open, which
- * is the one thing the press earns.
+ * The sort control at the end of the control row above the list, which the
+ * screen owns. The lead of that row is the filter chips.
+ *
+ * The control is quiet on purpose: no box at rest, so the button is the order
+ * and its two marks rather than a chrome object. Hover steps the marks up a
+ * little and nothing else; the accent is spent only while the menu is open,
+ * which is the one thing the press earns. `margin-left: auto` keeps the sort at
+ * the row's end, after the chips.
  */
 .sort {
   position: relative;
   margin-left: auto;
+  flex-shrink: 0;
 
   &__button {
     position: relative;

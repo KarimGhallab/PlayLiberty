@@ -49,7 +49,17 @@ export const en = {
     sortBy: 'Sort by',
     sortPlaylist: 'Playlist order',
     sortNewest: 'Newest first',
-    sortOldest: 'Oldest first'
+    sortOldest: 'Oldest first',
+    filterBy: 'Filter by',
+    filterAll: 'All',
+    filterShowAll: 'Show all',
+    filterEmpty: {
+      stored: 'No stored tracks',
+      pending: 'No pending tracks',
+      downloading: 'No downloading tracks',
+      failed: 'No failed tracks',
+      unavailable: 'No unavailable tracks'
+    }
   },
   trackRow: {
     play: 'Play {title}',
@@ -228,6 +238,7 @@ export const en = {
   },
   trackState: {
     removedFrom: 'Removed from {provider}',
+    stored: 'Stored',
     pending: 'Pending',
     downloading: 'Downloading',
     failed: 'Failed',

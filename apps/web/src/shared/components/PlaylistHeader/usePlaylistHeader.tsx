@@ -102,6 +102,12 @@ export interface PlaylistHeaderSeam {
   showSyncTime?: boolean;
   now?: Date;
   displayedCount?: number;
+  /*
+   * The total the count line describes. It is the playlist's own count when no
+   * filter is on, and the filtered total when the detail has narrowed the list:
+   * the line must not claim rows the filter removed.
+   */
+  countTotal?: number;
   playbackFailed?: boolean;
   playbackStarting?: boolean;
   onRetryPlayback?: () => void;
@@ -171,6 +177,7 @@ export function usePlaylistHeader({
   showSyncTime = false,
   now = new Date(),
   displayedCount,
+  countTotal,
   playbackFailed = false,
   playbackStarting = false,
   onRetryPlayback
@@ -311,8 +318,9 @@ export function usePlaylistHeader({
   };
 
   const playable = playlist.trackCount > 0;
-  const shownCount = displayedCount ?? playlist.trackCount;
-  const partial = shownCount < playlist.trackCount;
+  const total = countTotal ?? playlist.trackCount;
+  const shownCount = displayedCount ?? total;
+  const partial = shownCount < total;
   const lastSyncedAt =
     playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
 
@@ -549,16 +557,16 @@ export function usePlaylistHeader({
         {partial ? (
           <span>
             {t('header.countOf', {
-              count: playlist.trackCount,
+              count: total,
               shown: shownCount,
-              total: playlist.trackCount
+              total
             })}
           </span>
         ) : (
           <>
-            <span>{playlist.trackCount}</span>
+            <span>{total}</span>
             <span className={styles.playlistHeader__countUnit}>
-              {trackCountUnit(t, playlist.trackCount)}
+              {trackCountUnit(t, total)}
             </span>
           </>
         )}

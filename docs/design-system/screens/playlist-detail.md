@@ -227,6 +227,36 @@ The tallest left column sets the shortest viewport: the side ends at 528.3px wit
 syncing, 441.9px with the empty state and **621.9px** with the fault, so the error state sets the floor at
 **718.9px** (621.9 plus the 97px bar).
 
+## The control row above the list
+
+One row sits above the list and is its only control. The lead is a row of filter chips and the end is the
+sort, and the row scrolls with the list rather than staying, so the header remains the screen's only sticky
+band. On a narrow screen the chips scroll sideways within the row rather than wrapping, so the row stays one
+line and the list keeps its distance from the top.
+
+The sort is a menu over the playlist's own order, newest first and oldest first. It is a property of the
+playlist: the choice is saved, it is the order the list opens in, and while the queue is unshuffled it is the
+order the transport walks. The filter is one chip per file state ("Stored", "Pending", "Downloading", "Failed"
+and "Unavailable") plus an **All** that carries the playlist's total, and one chip is in force at a time. Each
+chip carries how many tracks the whole playlist holds in that state, so the choice is made knowing what the
+list will hold, and the counts never follow the filter: they are what is available to filter to.
+
+A chip is a border and a word rather than a fill. Out of force it wears the quiet `--control-border`, the 3:1 a
+control boundary owes and a hairline is not; in force its border takes the chip's own state tone and the word,
+the count and the dot take it too, except Stored and Pending, whose tone is ink and near-neutral grey: their
+word and dot come up to `--ink` and the border keeps the state's tone. **All**'s border takes the accent, the
+one hue the palette spends on a choice. The dot is drawn only on the chip in force; its box is reserved on
+every chip, scaled to nothing, so the rail never shifts as the choice moves, and it grows in at the moment the
+chip takes force; the chip in force keeps its colours under the pointer. The word carries the state, and the
+tone is reinforcement.
+
+The filter is a view for the visit. It clears when the screen is left, it narrows the list and the header's
+count line to the filtered total, and it never changes what plays: play and shuffle still cover every
+playable track. A chip that matches nothing draws a named empty state, **"No failed tracks"**, with a
+**Show all** action. Both controls belong to the unshuffled list, so both are disabled while the shuffled
+queue's order is the list on screen, and the list then draws the whole shuffled queue rather than a narrowed
+one.
+
 ## The list pages in
 
 A playlist can hold more than a screenful, and the detail draws it as one list that arrives a page at a
@@ -238,7 +268,9 @@ control asked for. The walk uses the server's own total, so a short last page en
 padded.
 
 The header's count is the window while the list is partial, **`N of M tracks`**, and the standing total alone
-once every row is drawn. The two ends of the line are the same fact at two moments, so they cannot drift.
+once every row is drawn. The two ends of the line are the same fact at two moments, so they cannot drift. The
+total is the filtered total while a chip is in force, so the line describes the list the filter left rather
+than the whole playlist.
 
 ## The queue is the whole playlist
 

@@ -1,5 +1,6 @@
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -12,10 +13,12 @@ import type {
   AddTrackResult,
   Playlist,
   PlaylistTrack,
+  PlaylistTracksPage,
   Share,
   ShareLevel,
   SyncRun,
-  Track
+  Track,
+  TrackFileStatusCounts
 } from '@playliberty/contracts';
 import {
   AccountSummarySchema,
@@ -23,10 +26,11 @@ import {
   PlaylistSchema,
   PlaylistSort,
   PlaylistTrackListSchema,
-  PlaylistTrackSchema,
+  PlaylistTracksPageSchema,
   ShareListSchema,
   ShareSchema,
   SyncRunSchema,
+  TrackFileStatus,
   TrackSchema,
   createPageSchema
 } from '@playliberty/contracts';
@@ -43,7 +47,6 @@ import {
 
 const PlaylistPageSchema = createPageSchema(PlaylistSchema);
 const AccountSummaryPageSchema = createPageSchema(AccountSummarySchema);
-const PlaylistTrackPageSchema = createPageSchema(PlaylistTrackSchema);
 
 export interface PlaylistPage {
   items: Playlist[];
@@ -161,12 +164,12 @@ export function useAddTrack(): UseMutationResult<
 /*
  * The key the tracks of one playlist are cached under. It carries the id for the
  * same reason the detail's other reads do: invalidating one playlist's tracks
- * must not touch another's. It is exported because the shuffle control builds a
- * queue from a playlist the listener is not standing on, and reading it under the
- * same key leaves the detail's own read already warm.
+ * must not touch another's. It carries the filter too, so each state's rows are
+ * cached under their own read and the list re-reads when the filter moves; a
+ * playlist-scoped invalidation still catches every state's read by prefix.
  */
-export function playlistTracksKey(playlistId: string) {
-  return ['playlist', playlistId, 'tracks'] as const;
+export function playlistTracksKey(playlistId: string, state?: TrackFileStatus) {
+  return ['playlist', playlistId, 'tracks', state ?? 'all'] as const;
 }
 
 /*
@@ -181,24 +184,27 @@ export function playlistQueueKey(playlistId: string) {
 
 const PLAYLIST_TRACKS_PAGE_SIZE = 100;
 
-interface PlaylistTrackPage {
-  items: PlaylistTrack[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
 async function fetchPlaylistTrackPage(
   playlistId: string,
-  offset: number
-): Promise<PlaylistTrackPage> {
+  offset: number,
+  state?: TrackFileStatus
+): Promise<PlaylistTracksPage> {
+  const query = new URLSearchParams({
+    limit: String(PLAYLIST_TRACKS_PAGE_SIZE),
+    offset: String(offset)
+  });
+
+  if (state !== undefined) {
+    query.set('state', state);
+  }
+
   return apiGet(
-    `/playlists/${playlistId}/tracks?limit=${PLAYLIST_TRACKS_PAGE_SIZE}&offset=${offset}`,
-    PlaylistTrackPageSchema
+    `/playlists/${playlistId}/tracks?${query.toString()}`,
+    PlaylistTracksPageSchema
   );
 }
 
-function nextTracksPageParam(lastPage: PlaylistTrackPage): number | undefined {
+function nextTracksPageParam(lastPage: PlaylistTracksPage): number | undefined {
   const loaded = lastPage.offset + lastPage.items.length;
 
   return loaded < lastPage.total ? loaded : undefined;
@@ -206,6 +212,9 @@ function nextTracksPageParam(lastPage: PlaylistTrackPage): number | undefined {
 
 export interface PlaylistTracksRead {
   readonly tracks: readonly PlaylistTrack[];
+  readonly counts: TrackFileStatusCounts | undefined;
+  readonly total: number | undefined;
+  readonly isPlaceholderData: boolean;
   readonly isPending: boolean;
   readonly isError: boolean;
   readonly isSuccess: boolean;
@@ -218,12 +227,17 @@ export interface PlaylistTracksRead {
   readonly loadMore: () => void;
 }
 
-export function usePlaylistTracks(playlistId: string): PlaylistTracksRead {
+export function usePlaylistTracks(
+  playlistId: string,
+  state?: TrackFileStatus
+): PlaylistTracksRead {
   const query = useInfiniteQuery({
-    queryKey: playlistTracksKey(playlistId),
-    queryFn: ({ pageParam }) => fetchPlaylistTrackPage(playlistId, pageParam),
+    queryKey: playlistTracksKey(playlistId, state),
+    queryFn: ({ pageParam }) =>
+      fetchPlaylistTrackPage(playlistId, pageParam, state),
     initialPageParam: 0,
-    getNextPageParam: nextTracksPageParam
+    getNextPageParam: nextTracksPageParam,
+    placeholderData: keepPreviousData
   });
   /* Stable, because a sentinel observes it: a fresh callback on every render
    * would tear the observer down and build it again on every render of the list. */
@@ -239,15 +253,17 @@ export function usePlaylistTracks(playlistId: string): PlaylistTracksRead {
     () => pages?.flatMap(page => page.items) ?? [],
     [pages]
   );
+  const firstPage = pages?.[0];
 
   return {
     tracks,
+    counts: firstPage?.counts,
+    total: firstPage?.total,
+    isPlaceholderData: query.isPlaceholderData,
     isPending: query.isPending,
     isError: query.isError,
     isSuccess: query.isSuccess,
     error: query.error,
-    /* A refetch of the first page, not of the next one: the next page has its
-     * own retry through `loadMore`. */
     retrying: query.isFetching && !query.isFetchingNextPage,
     retry: () => void query.refetch(),
     hasMore: query.hasNextPage,

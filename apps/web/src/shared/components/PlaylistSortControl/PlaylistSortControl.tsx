@@ -57,58 +57,56 @@ export default function PlaylistSortControl({
   const label = t(current.key);
 
   return (
-    <div className={styles.controls}>
-      <div className={styles.sort}>
-        <button
-          type="button"
-          className={styles.sort__button}
-          aria-haspopup="listbox"
-          aria-expanded={open && !disabled}
-          aria-label={`${t('detail.sortBy')}: ${label}`}
-          data-open={(open && !disabled) || undefined}
-          disabled={disabled}
-          onClick={() => setOpen(wasOpen => !wasOpen)}>
-          <IconArrowsSort
-            className={styles.sort__glyph}
-            aria-hidden="true"
-            focusable="false"
-          />
-          <span className={styles.sort__value}>{label}</span>
-          <IconChevronDown
-            className={styles.sort__chevron}
-            aria-hidden="true"
-            focusable="false"
-          />
-        </button>
-        {open && !disabled ? (
-          <ul
-            className={styles.sort__menu}
-            role="listbox"
-            aria-label={t('detail.sortBy')}>
-            {OPTIONS.map(option => (
-              <li key={option.sort} className={styles.sort__entry}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={sort === option.sort}
-                  className={styles.sort__item}
-                  onClick={() => {
-                    setOpen(false);
+    <div className={styles.sort}>
+      <button
+        type="button"
+        className={styles.sort__button}
+        aria-haspopup="listbox"
+        aria-expanded={open && !disabled}
+        aria-label={`${t('detail.sortBy')}: ${label}`}
+        data-open={(open && !disabled) || undefined}
+        disabled={disabled}
+        onClick={() => setOpen(wasOpen => !wasOpen)}>
+        <IconArrowsSort
+          className={styles.sort__glyph}
+          aria-hidden="true"
+          focusable="false"
+        />
+        <span className={styles.sort__value}>{label}</span>
+        <IconChevronDown
+          className={styles.sort__chevron}
+          aria-hidden="true"
+          focusable="false"
+        />
+      </button>
+      {open && !disabled ? (
+        <ul
+          className={styles.sort__menu}
+          role="listbox"
+          aria-label={t('detail.sortBy')}>
+          {OPTIONS.map(option => (
+            <li key={option.sort} className={styles.sort__entry}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={sort === option.sort}
+                className={styles.sort__item}
+                onClick={() => {
+                  setOpen(false);
 
-                    if (option.sort !== sort) {
-                      onChange(option.sort);
-                    }
-                  }}>
-                  <span className={styles.sort__check}>
-                    <IconCheck aria-hidden="true" focusable="false" />
-                  </span>
-                  {t(option.key)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+                  if (option.sort !== sort) {
+                    onChange(option.sort);
+                  }
+                }}>
+                <span className={styles.sort__check}>
+                  <IconCheck aria-hidden="true" focusable="false" />
+                </span>
+                {t(option.key)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

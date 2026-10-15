@@ -33,6 +33,7 @@ import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDi
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';
 import LoadMoreControl from '../../../shared/components/LoadMoreControl/LoadMoreControl';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
+import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
 import PlaylistCardHeader from '../../../shared/components/PlaylistHeader/PlaylistCardHeader';
 import PlaylistRowHeader from '../../../shared/components/PlaylistHeader/PlaylistRowHeader';
 import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/PlaylistNotFound';
@@ -106,7 +107,6 @@ export default function PlaylistDetailPage() {
   const { playlistId } = useParams({ from: '/playlists/$playlistId' });
   const navigate = useNavigate();
   const playlist = usePlaylist(playlistId);
-  const tracks = usePlaylistTracks(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
   /* The library read, which is where the writable playlists for the add dialog
@@ -151,6 +151,25 @@ export default function PlaylistDetailPage() {
   const { shufflePlaylist, refusal } = useShufflePlaylist();
   const playingPlaylistId = usePlayerStore(queuePlaylistId);
   const isQueue = playingPlaylistId === playlistId;
+  /* The list draws the shuffled queue's own order while this playlist is the
+   * queue, which is also when the filter and the sort step aside. */
+  const listShuffled = shuffled && isQueue;
+  /*
+   * The filter is a view for the visit: it lives here and is never stored, and
+   * leaving the screen clears it with the component. It is not applied while the
+   * shuffled queue is on screen, so a shuffle shows the whole queue; the choice
+   * is kept for when the shuffle is turned off.
+   */
+  const [trackState, setTrackState] = useState<TrackFileStatus | null>(null);
+  /*
+   * The route reuses this component as the id changes, so the filter is cleared
+   * when the playlist does rather than carried onto the next screen.
+   */
+  useEffect(() => {
+    setTrackState(null);
+  }, [playlistId]);
+  const activeState = listShuffled ? null : trackState;
+  const tracks = usePlaylistTracks(playlistId, activeState ?? undefined);
   const queueRead = usePlaylistQueue(playlistId, isQueue);
   useQueueRefetch(playlist.data, queueRead.data);
   /*
@@ -335,14 +354,32 @@ export default function PlaylistDetailPage() {
   const playingThis = isPlaying && isQueue;
 
   /*
-   * The in-flight figure the summary draws is derived from the tracks this
-   * client holds, because the contract stores no pending count. It is only
-   * meaningful while a run is active, which is the only time the summary reads
-   * it.
+   * The control row above the list, and what it describes. The chips are the
+   * whole-playlist counts the tracks read folds in, so they are drawn only once
+   * that read has answered; the row stays while the playlist holds any track,
+   * which keeps it on screen under a filter that matched nothing so "Show all"
+   * is reachable. The header's count line follows the read's own total, which is
+   * the filtered total once a state is asked.
    */
-  const downloadingCount = tracks.tracks.filter(
-    association => association.track.fileStatus === TrackFileStatus.Downloading
-  ).length;
+  const counts = tracks.counts;
+  const hasTracks = (playlist.data?.trackCount ?? 0) > 0;
+  /*
+   * A filter that matched nothing. The empty state waits for the filter's own
+   * answer rather than reading the previous state's total, which
+   * `keepPreviousData` keeps on hand while the next state loads.
+   */
+  const filterEmpty =
+    activeState !== null && !tracks.isPlaceholderData && tracks.total === 0;
+  const filterEmptyMessage =
+    activeState === null ? null : t(`detail.filterEmpty.${activeState}`);
+
+  /*
+   * The in-flight figure the summary draws is the whole playlist's downloading
+   * count, which the read folds in as an aggregate, so it does not follow the
+   * filter. It is only meaningful while a run is active, which is the only time
+   * the summary reads it.
+   */
+  const downloadingCount = counts?.[TrackFileStatus.Downloading] ?? 0;
 
   /*
    * A playlist query that answers 404, whether because the playlist does not
@@ -390,8 +427,10 @@ export default function PlaylistDetailPage() {
     shuffled,
     menu: actions.menu,
     /* The count is the rows on screen only once the read has answered; while it
-     * is pending the header keeps the playlist's standing total. */
+     * is pending the header keeps the playlist's standing total. `countTotal` is
+     * that total, narrowed to the filtered total when a chip is in force. */
     displayedCount: tracks.isSuccess ? tracks.tracks.length : undefined,
+    countTotal: tracks.total ?? playlist.data?.trackCount,
     playbackFailed: failedStart !== null,
     playbackStarting: starting,
     onRetryPlayback: retryPlayback
@@ -508,36 +547,60 @@ export default function PlaylistDetailPage() {
               retrying={tracks.retrying}
             />
           ) : null}
-          {neverSynced && tracks.isSuccess && tracks.tracks.length === 0 ? (
+          {tracks.isSuccess && counts !== undefined && hasTracks ? (
+            <div className={styles.playlistDetail__controls}>
+              <PlaylistFilterChips
+                counts={counts}
+                active={activeState}
+                disabled={listShuffled}
+                onChange={setTrackState}
+              />
+              <PlaylistSortControl
+                sort={playlist.data?.sort ?? PlaylistSort.Playlist}
+                canEdit={canWrite}
+                shuffled={listShuffled}
+                saving={updateSort.isPending}
+                onChange={value =>
+                  updateSort.mutate(value, {
+                    onError: error =>
+                      setSettingRefused(
+                        problemSentence(t, error) ?? t('detail.settingFailed')
+                      )
+                  })
+                }
+              />
+            </div>
+          ) : null}
+          {neverSynced && tracks.isSuccess && !hasTracks ? (
             <EmptyState
               onSync={canWrite ? actions.syncNow : undefined}
               syncing={actions.syncing}
             />
           ) : null}
-          {!neverSynced && tracks.isSuccess && tracks.tracks.length === 0 ? (
+          {!neverSynced && tracks.isSuccess && !hasTracks ? (
             <p className={styles.playlistDetail__note}>
               {t('detail.noTracks')}
             </p>
           ) : null}
-          {tracks.isSuccess && tracks.tracks.length > 0 ? (
-            <PlaylistSortControl
-              sort={playlist.data?.sort ?? PlaylistSort.Playlist}
-              canEdit={canWrite}
-              shuffled={shuffled && isQueue}
-              saving={updateSort.isPending}
-              onChange={value =>
-                updateSort.mutate(value, {
-                  onError: error =>
-                    setSettingRefused(
-                      problemSentence(t, error) ?? t('detail.settingFailed')
-                    )
-                })
-              }
-            />
+          {tracks.isSuccess &&
+          hasTracks &&
+          filterEmpty &&
+          filterEmptyMessage !== null ? (
+            <div className={styles.playlistDetail__filterEmpty} role="status">
+              <p className={styles.playlistDetail__filterEmptyText}>
+                {filterEmptyMessage}
+              </p>
+              <button
+                type="button"
+                className={styles.playlistDetail__filterReset}
+                onClick={() => setTrackState(null)}>
+                {t('detail.filterShowAll')}
+              </button>
+            </div>
           ) : null}
           {tracks.isSuccess && tracks.tracks.length > 0 ? (
             <ul className={styles.playlistDetail__list}>
-              {(shuffled && isQueue
+              {(listShuffled
                 ? orderTracksByQueue(tracks.tracks, queue)
                 : tracks.tracks
               ).map(association => {
