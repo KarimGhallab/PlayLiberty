@@ -18,23 +18,16 @@ import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
 
 /*
- * One track in the playlist detail's list, which is the queue's surface. The row
- * is the design system's core unit: the artwork, the title, the source and state
- * line, the duration, and the action lane.
- *
  * The row's body is a hit layer that plays the track, and toggles back to pause
  * when it is already the row playing. The lane at the end is the row's own
  * control and sits above that layer, so a press on it opens the menu rather than
  * starting the track. A track with no stored file has no play layer, but its lane
  * is still there: a failed download has something to be done about.
  *
- * The lane is one overflow menu, and the row's rule is what it holds. A track the
- * caller can curate gets the menu; a track it cannot gets an inert lane, because a
- * control that cannot be pressed is worse than no control. The menu is the row's
- * actions in one door rather than several: for a failed fileless track it offers
- * Retry, Fetch whole and Remove, and for every other track it offers Remove
- * alone. Fetch whole is the bypass from
- * `10-skip-non-music-parts/05-fetch-one-fileless-track-whole`: it re-fetches the
+ * The lane is one overflow menu. A track the caller can curate gets the menu; a
+ * track it cannot gets an inert lane, because a control that cannot be pressed is
+ * worse than no control. For a failed fileless track it offers Retry, Fetch whole
+ * and Remove, and for every other track Remove alone. Fetch whole re-fetches the
  * one fileless track without trimming, so it is offered only where the route
  * accepts it, which is a failed track.
  *
@@ -112,8 +105,6 @@ function TrackRow({
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  /* The menu's own dismissal: an outside press closes it, Escape closes it and
-   * returns the keyboard to the lane button. */
   useDismissibleMenu({
     open: menuOpen,
     containerRef: menuAnchorRef,

@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 
-import { currentIndex, nextIndex, queuePlaylistId } from '../types';
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
+import { currentIndex, nextIndex, queuePlaylistId } from '../types';
 
 /*
- * A refetch returns the server's order, which is not the order the queue was built
- * with. Known ids keep their sequence and new ids append in the server's order, so
- * a track arriving from a sync lands at the end rather than reshuffling the queue,
- * and a track the refetch no longer returns is gone. The current id survives
- * either way, which is the whole point: the music does not move under the listener.
+ * A refetch returns the entries the server holds, in the playlist's saved order.
+ * A shuffled queue keeps its own arrangement, so known ids keep their sequence and
+ * new ids append in the read's order, and a track the refetch no longer returns is
+ * gone. The current id survives either way, which is the whole point: the music
+ * does not move under the listener.
  */
 export function mergeQueue(
   current: readonly PlayerTrack[],
@@ -41,6 +41,22 @@ function clampVolume(volume: number): number {
 }
 
 /*
+ * A random entry of a queue, or undefined when it is empty. It is the draw the
+ * shuffle spends on which track leads: pressing shuffle is asking for a new
+ * arrangement and a new start, so the leader is drawn rather than taken from
+ * wherever the playhead already stands.
+ */
+export function randomTrack(
+  queue: readonly PlayerTrack[]
+): PlayerTrack | undefined {
+  if (queue.length === 0) {
+    return undefined;
+  }
+
+  return queue[Math.floor(Math.random() * queue.length)];
+}
+
+/*
  * Fisher-Yates over every track but the one that leads the result. The leading
  * track is the one being played, or the first stored one when a fresh queue is
  * opened, and it is hoisted to the front rather than left where the shuffle
@@ -64,8 +80,7 @@ function shuffledWithLeader(
 
   /*
    * No leader to hoist: the caller named a track that is not in the queue, which
-   * a built queue and a hydrated one both rule out. The scatter is the honest
-   * answer, and nothing here claims a first entry is being kept.
+   * a built queue and a hydrated one both rule out. The scatter is all there is.
    */
   return leader === undefined ? rest : [leader, ...rest];
 }
@@ -145,8 +160,10 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         return state;
       }
 
-      const queue = mergeQueue(state.queue, tracks);
-      const sourceQueue = mergeQueue(state.sourceQueue, tracks);
+      const queue = state.shuffle
+        ? mergeQueue(state.queue, tracks)
+        : [...tracks];
+      const sourceQueue = [...tracks];
       const currentStillThere =
         state.currentId !== null &&
         queue.some(track => track.id === state.currentId);
@@ -154,9 +171,9 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       /*
        * The current track and the offset do not move. The one case that does move
        * something is the current track itself leaving the source: there is then no
-       * track to be on, so the offset resets and the queue stops. Ticket 03 decides
-       * whether playback then advances; this store only refuses to keep a cursor
-       * pointing at nothing.
+       * track to be on, so the offset resets and the queue stops. Whether playback
+       * then advances is decided elsewhere; this store only refuses to keep a
+       * cursor pointing at nothing.
        */
       if (!currentStillThere) {
         return {
@@ -322,18 +339,30 @@ export const usePlayerStore = create<PlayerState>()(set => ({
 
       /*
        * Shuffle reorders the queue in place and its answer is the queue itself.
-       * Turning it on hoists the track being played to the front, so the press
-       * keeps the music where it stands and the transport is on the first entry;
-       * turning it off puts the queue back in the playlist's own order, which is
-       * why that order is kept beside it.
+       * Turning it on draws a new arrangement and a new start: a random entry
+       * leads, the rest scatter behind it, and the playhead moves to that entry,
+       * because the press asked for a fresh shuffle rather than a re-arrangement
+       * around the track already playing. Turning it off puts the queue back in
+       * the playlist's own order and leaves the playhead where it stands, which
+       * is why that order is kept beside the queue.
        */
       if (!shuffle) {
         return { shuffle, queue: [...state.sourceQueue] };
       }
 
+      const leader = randomTrack(state.queue);
+
+      if (leader === undefined) {
+        return { shuffle };
+      }
+
       return {
         shuffle,
-        queue: shuffledWithLeader(state.queue, state.currentId)
+        queue: shuffledWithLeader(state.queue, leader.id),
+        currentId: leader.id,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: true
       };
     }),
   clearSeek: () => set({ seekTo: null }),

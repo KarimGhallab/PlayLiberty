@@ -1,12 +1,12 @@
 /*
  * The sync summary, mirroring docs/design/components/sync-summary.html. The band
- * sits on --bg rather than on a --surface panel, which is the component record's
- * own hand-off to the screen: every pairing holds either way, and a panel here
- * would buy nothing over a left column that already has the header's surface.
+ * sits on --bg rather than on a --surface panel: every pairing holds either way,
+ * and a panel here would buy nothing over a left column that already has the
+ * header's surface.
  *
- * Four equal columns, one figure and one word each, both centred. 1fr rather
- * than a fixed width, because the four words differ in length and no fixed width
- * fits the longest without wasting the gap on the other three.
+ * Four equal columns, one figure and one word each. 1fr rather than a fixed
+ * width, because the four words differ in length and no fixed width fits the
+ * longest without wasting the gap on the other three.
  */
 .sync-summary {
   display: flex;
@@ -65,10 +65,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* The in-flight figure. There is no stored pending count in the contract, so
-   * while a run is active this is derived client-side from the tracks the client
-   * already holds, and it says so on screen rather than presenting itself as
-   * something the server reported. */
   &__flight {
     margin: 0;
     color: var(--muted);

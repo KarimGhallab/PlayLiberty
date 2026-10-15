@@ -1,8 +1,8 @@
 import type { Messages } from './en.js';
 
 /*
- * The French catalog. It is typed as `Messages`, so every English key is
- * required here and a missing one fails the build.
+ * Typed as `Messages`, so every English key is required here and a missing one
+ * fails the build.
  *
  * The language names are endonyms: `English` and `Français` read the same in
  * both catalogs, because a language is named in itself.
@@ -38,11 +38,30 @@ export const fr: Messages = {
     loadingTracks: 'Chargement des pistes.',
     readFailed: 'Impossible de charger les pistes.',
     noTracks: 'Aucune piste.',
+    loadMore: 'Charger la suite',
+    loadMoreLoading: 'Chargement...',
+    loadMoreRetry: 'Réessayer',
+    playbackFailed:
+      "La lecture n'a pas pu démarrer : la file d'attente n'a pas été chargée.",
     deleteDeferred: 'Suppression de la playlist',
     removeDeferred: 'Retrait de la piste',
     trackFallback: 'Piste',
     settingFailed: "Le paramètre n'a pas pu être modifié.",
-    settingNotice: "Le paramètre n'a pas été modifié."
+    settingNotice: "Le paramètre n'a pas été modifié.",
+    sortBy: 'Trier par',
+    sortPlaylist: 'Ordre de la playlist',
+    sortNewest: "Plus récentes d'abord",
+    sortOldest: "Plus anciennes d'abord",
+    filterBy: 'Filtrer par',
+    filterAll: 'Toutes',
+    filterShowAll: 'Tout afficher',
+    filterEmpty: {
+      stored: 'Aucune piste stockée',
+      pending: 'Aucune piste en attente',
+      downloading: 'Aucune piste en téléchargement',
+      failed: 'Aucune piste en échec',
+      unavailable: 'Aucune piste indisponible'
+    }
   },
   trackRow: {
     play: 'Lire {title}',
@@ -152,7 +171,13 @@ export const fr: Messages = {
     trackNext: 'Piste suivante',
     shuffle: 'Lecture aléatoire de {name}',
     actions: 'Actions pour {name}',
-    sharedBy: 'Partagée par {name}'
+    sharedBy: 'Partagée par {name}',
+    countOf: {
+      one: '{shown} sur {total} piste',
+      other: '{shown} sur {total} pistes'
+    },
+    retryPlayback: 'Relancer la lecture',
+    retryingPlayback: 'Chargement...'
   },
   trackBars: {
     playing: 'En lecture',
@@ -216,6 +241,7 @@ export const fr: Messages = {
   },
   trackState: {
     removedFrom: 'Retirée de {provider}',
+    stored: 'Stockée',
     pending: 'En attente',
     downloading: 'Téléchargement',
     failed: 'Échec',

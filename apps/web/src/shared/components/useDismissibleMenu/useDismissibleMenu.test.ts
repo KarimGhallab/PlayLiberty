@@ -4,11 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { useDismissibleMenu } from './useDismissibleMenu';
 
 /*
- * The hook's contract is the two document listeners it owns: a press outside the
- * anchor closes the menu and leaves focus alone, and Escape closes it and hands
- * focus back to the trigger. The test drives real DOM nodes as the anchor, the
- * press target and the trigger, so `contains` and `focus` are the browser's and
- * not a fake.
+ * The test drives real DOM nodes as the anchor, the press target and the
+ * trigger, so `contains` and `focus` are the browser's and not a fake.
  */
 
 function setup(options: { open?: boolean; returnFocus?: boolean } = {}) {

@@ -1,0 +1,103 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import axe from 'axe-core';
+import { describe, expect, it, vi } from 'vitest';
+
+import { TrackFileStatus } from '@playliberty/contracts';
+import type { TrackFileStatusCounts } from '@playliberty/contracts';
+import { I18nProvider } from '@playliberty/i18n';
+
+import PlaylistFilterChips from './PlaylistFilterChips';
+
+/*
+ * The colours and the sideways scroll are the stylesheet's business.
+ */
+
+const COUNTS: TrackFileStatusCounts = {
+  stored: 2,
+  pending: 1,
+  downloading: 0,
+  failed: 0,
+  unavailable: 0
+};
+
+function renderChips(
+  props: Partial<Parameters<typeof PlaylistFilterChips>[0]> = {}
+) {
+  return render(
+    <I18nProvider preferred={['en']}>
+      <PlaylistFilterChips
+        counts={COUNTS}
+        active={null}
+        onChange={vi.fn()}
+        {...props}
+      />
+    </I18nProvider>
+  );
+}
+
+describe('PlaylistFilterChips', () => {
+  it('draws every state with its whole-playlist count, and All as the total', () => {
+    renderChips();
+
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Stored 2' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Pending 1' })).toBeDefined();
+    /* A zero is drawn as well: the count is what the choice is made on. */
+    expect(screen.getByRole('button', { name: 'Downloading 0' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Failed 0' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Unavailable 0' })).toBeDefined();
+  });
+
+  it('marks the chip in force and asks for a state on a press', () => {
+    const onChange = vi.fn();
+    renderChips({ active: TrackFileStatus.Pending, onChange });
+
+    expect(screen.getByRole('button', { name: 'Pending 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'All 3' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 0' }));
+
+    expect(onChange).toHaveBeenCalledWith(TrackFileStatus.Failed);
+  });
+
+  it('asks for All when All is pressed', () => {
+    const onChange = vi.fn();
+    renderChips({ active: TrackFileStatus.Stored, onChange });
+
+    fireEvent.click(screen.getByRole('button', { name: 'All 3' }));
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('asks for nothing when the chip already in force is pressed', () => {
+    const onChange = vi.fn();
+    renderChips({ active: TrackFileStatus.Stored, onChange });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stored 2' }));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('disables every chip while the shuffled list is on screen', () => {
+    renderChips({ disabled: true });
+
+    for (const chip of screen.getAllByRole('button')) {
+      expect(chip).toBeDisabled();
+    }
+  });
+
+  it('has no axe violations', async () => {
+    const { container } = renderChips();
+
+    const results = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } }
+    });
+    expect(results.violations).toEqual([]);
+  });
+});

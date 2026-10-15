@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   currentIndex,
@@ -86,14 +86,39 @@ describe('startQueue', () => {
 });
 
 describe('applyRefetch', () => {
-  it('keeps the built order for known ids and appends new ids last', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("adopts the read's order while the queue is unshuffled", () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
     usePlayerStore.getState().applyRefetch(PLAYLIST, [second, first, third]);
 
     expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
-      'track-1',
       'track-2',
+      'track-1',
       'track-3'
+    ]);
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+  });
+
+  it('keeps a shuffled queue in its own order across the same read', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], first.id, true);
+
+    const shuffled = usePlayerStore.getState().queue.map(item => item.id);
+
+    usePlayerStore.getState().applyRefetch(PLAYLIST, [third, second, first]);
+
+    expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual(
+      shuffled
+    );
+    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
+      'track-3',
+      'track-2',
+      'track-1'
     ]);
   });
 
@@ -374,21 +399,30 @@ describe('transport', () => {
 });
 
 describe('shuffle', () => {
-  it('hoists the playing track to the front and scatters the rest', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('draws a new order and starts on the random leading track', () => {
     usePlayerStore
       .getState()
       .startQueue(PLAYLIST, [first, second, third], second.id);
+    /* The draw picks the third entry, so the leader is a fresh track rather than
+     * the one already playing. */
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     usePlayerStore.getState().setShuffle(true);
 
     const state = usePlayerStore.getState();
 
     expect(state.shuffle).toBe(true);
-    expect(state.currentId).toBe('track-2');
-    expect(state.queue[0].id).toBe('track-2');
-    expect(state.queue).toHaveLength(3);
-    expect(state.queue.map(track => track.id)).toContain('track-1');
-    expect(state.queue.map(track => track.id)).toContain('track-3');
+    expect(state.currentId).toBe('track-3');
+    expect(state.queue[0].id).toBe('track-3');
+    expect(state.positionSeconds).toBe(0);
+    expect(state.isPlaying).toBe(true);
+    expect(new Set(state.queue.map(track => track.id))).toEqual(
+      new Set(['track-1', 'track-2', 'track-3'])
+    );
   });
 
   it('walks a shuffled queue in its own order and stops at its end', () => {
@@ -421,10 +455,12 @@ describe('shuffle', () => {
 
   it('stops rather than re-rolling at the end of a shuffled queue', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], second.id);
+    /* The draw picks the second entry, so the shuffled queue is the two entries
+     * in that order and its end is the first one. */
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
     usePlayerStore.getState().setShuffle(true);
 
-    /* The playing track leads, so the shuffled queue is the same two entries in
-     * the same order and its end is the second one. */
     usePlayerStore.getState().skipNext();
 
     expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
@@ -447,31 +483,30 @@ describe('shuffle', () => {
     expect(usePlayerStore.getState().shuffle).toBe(false);
   });
 
-  it('puts a playing track at the front of the scatter, at every position', () => {
+  it('scatters the whole playlist behind the drawn leader', () => {
     const a = track('a');
     const b = track('b');
     const c = track('c');
     const d = track('d');
     const e = track('e');
-    const order = [a, b, c, d, e];
 
-    /* Playing D, in the order A B C D E: D leads and the other four scatter. */
-    usePlayerStore.getState().startQueue(PLAYLIST, order, d.id);
+    /* Playing D, in the order A B C D E; the draw picks E, so the leader is a
+     * track other than the one already playing. */
+    usePlayerStore.getState().startQueue(PLAYLIST, [a, b, c, d, e], d.id);
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
     usePlayerStore.getState().setShuffle(true);
 
     const state = usePlayerStore.getState();
 
-    expect(state.currentId).toBe('d');
-    expect(state.queue[0].id).toBe('d');
+    expect(state.currentId).toBe('e');
+    expect(state.queue[0].id).toBe('e');
     expect(state.queue).toHaveLength(5);
     expect(new Set(state.queue.map(item => item.id))).toEqual(
       new Set(['a', 'b', 'c', 'd', 'e'])
     );
 
-    /* Every other track is after the leader, and the playlist order is intact. */
-    expect(state.queue.slice(1).map(item => item.id)).not.toEqual(
-      expect.arrayContaining(['d'])
-    );
+    expect(state.queue.slice(1).map(item => item.id)).not.toContain('e');
     expect(state.sourceQueue.map(item => item.id)).toEqual([
       'a',
       'b',
@@ -481,11 +516,14 @@ describe('shuffle', () => {
     ]);
   });
 
-  it('puts the queue back in the playlist order when the shuffle is turned off', () => {
+  it('puts the queue back in the playlist order and keeps the drawn playhead when the shuffle is turned off', () => {
     usePlayerStore
       .getState()
       .startQueue(PLAYLIST, [first, second, third], second.id);
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
     usePlayerStore.getState().setShuffle(true);
+
+    expect(usePlayerStore.getState().currentId).toBe('track-3');
 
     usePlayerStore.getState().setShuffle(false);
 
@@ -497,7 +535,7 @@ describe('shuffle', () => {
       'track-2',
       'track-3'
     ]);
-    expect(state.currentId).toBe('track-2');
+    expect(state.currentId).toBe('track-3');
   });
 
   it('builds a shuffled queue led by the pressed track', () => {
@@ -526,6 +564,7 @@ describe('shuffle', () => {
       'track-3'
     ]);
 
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
     usePlayerStore.getState().setShuffle(true);
 
     expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
@@ -533,8 +572,9 @@ describe('shuffle', () => {
       'track-2',
       'track-3'
     ]);
-
-    expect(usePlayerStore.getState().queue[0].id).toBe('track-1');
+    expect(usePlayerStore.getState().queue[0].id).toBe(
+      usePlayerStore.getState().currentId
+    );
   });
 
   it('takes a track that arrived while shuffled into the source order', () => {

@@ -37,7 +37,6 @@ test('a stored track plays and the seeker moves the real playhead', async ({
   await page.getByLabel('Playlist link').fill(playlistUrl(PLAYLIST_ID));
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
-  /* The download finishes and the row offers its play control. */
   await page.getByRole('link', { name: 'Evening Jazz' }).click();
   const play = page.getByRole('button', { name: 'Play Blue In Green' });
   await expect(play).toBeVisible({ timeout: 30_000 });

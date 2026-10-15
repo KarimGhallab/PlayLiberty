@@ -1,8 +1,10 @@
 import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 
 import {
+  PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   TrackFileStatus
@@ -11,25 +13,32 @@ import { useI18n } from '@playliberty/i18n';
 
 import { problemSentence } from '../../../shared/api/problem/problem';
 import {
+  fetchPlaylistQueue,
   ownerNameFrom,
+  playlistQueueKey,
   useAccountDirectory,
   useAddTrack,
   useFetchTrackWhole,
   useLatestSyncRun,
   usePlaylist,
+  usePlaylistQueue,
   usePlaylistTracks,
   usePlaylists,
   useRemoveTrack,
   useRetryTrack,
-  useUpdateSkipNonMusic
+  useUpdateSkipNonMusic,
+  useUpdateSort
 } from '../../../shared/api/queries/queries';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';
+import LoadMoreControl from '../../../shared/components/LoadMoreControl/LoadMoreControl';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
+import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
 import PlaylistCardHeader from '../../../shared/components/PlaylistHeader/PlaylistCardHeader';
 import PlaylistRowHeader from '../../../shared/components/PlaylistHeader/PlaylistRowHeader';
 import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/PlaylistNotFound';
 import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/PlaylistSkipSetting';
+import PlaylistSortControl from '../../../shared/components/PlaylistSortControl/PlaylistSortControl';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
@@ -61,37 +70,35 @@ import {
 import styles from './PlaylistDetailPage.module.scss';
 
 /*
- * The playlist detail, at `/playlists/:id`, and the screen the product exists
- * for: the only place stored tracks become audible. It composes the way home,
- * the playlist header, the sync summary or the sync error, the track list or the
- * empty state, in two columns on the web: the playlist on the left and the
- * tracks on the right, with the player bar docked below by the shell.
+ * The screen the product exists for: the only place stored tracks become
+ * audible.
  *
- * The left column is the header's card arrangement at 320px, not the row the
- * library draws: the width is this screen's one decision and the component's own
- * card is what fits inside it. Beneath the card sits one state component and
- * never two, the summary when there is a run to summarise and the error when the
- * sync failed. A never-synced playlist has no run, so it has neither, and the
- * empty state in the list area says so on its own.
+ * The left column is the header's card arrangement, not the row the library
+ * draws: the card is what fits inside its 320px width. Beneath the card sits one
+ * state component and never two, the summary when there is a run and the error
+ * when the sync failed.
  *
- * Under 768px it is one column instead of two, and the header is the component's
- * row rather than its card: the design's mobile arrangement, where the card
- * would be 470.4px tall against the row's 136px. The way home is absent there,
- * because the platform gesture returns from the pushed route and a control that
- * returns would do what the platform already does.
+ * Under 768px the header is the component's row rather than its card, the
+ * design's mobile arrangement, where the card would be 470.4px tall against the
+ * row's 136px. The way home is drawn at every width; the mobile block only
+ * tightens its top padding.
  *
  * The list is drawn in the playlist's own order and every association appears,
  * playable or not, because a track that silently vanished from the list would
  * make "why is this track missing" unanswerable. The play control's presence is
- * the server's own file status, which is the same fact `buildQueue` filters
- * on, so the list and the queue agree by construction.
+ * the server's file status, the same fact `buildQueue` filters on, so the list
+ * and the queue agree by construction.
  */
+enum PlaybackStart {
+  Play = 'play',
+  Shuffle = 'shuffle'
+}
+
 export default function PlaylistDetailPage() {
   const { t } = useI18n();
   const { playlistId } = useParams({ from: '/playlists/$playlistId' });
   const navigate = useNavigate();
   const playlist = usePlaylist(playlistId);
-  const tracks = usePlaylistTracks(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
   /* The library read, which is where the writable playlists for the add dialog
@@ -102,10 +109,14 @@ export default function PlaylistDetailPage() {
   const fetchWhole = useFetchTrackWhole(playlistId);
   const removeTrack = useRemoveTrack(playlistId);
   const updateSkip = useUpdateSkipNonMusic(playlistId);
+  const updateSort = useUpdateSort(playlistId);
   const addTrack = useAddTrack();
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
+  const [failedStart, setFailedStart] = useState<PlaybackStart | null>(null);
+  const [starting, setStarting] = useState(false);
   const deferred = useDeferredAction();
+  const queryClient = useQueryClient();
 
   const actions = usePlaylistActions(playlistId, playlist.data, {
     defer: deferred.defer,
@@ -114,13 +125,8 @@ export default function PlaylistDetailPage() {
       void navigate({ to: '/' });
     }
   });
-  /*
-   * The header's arrangement at this width. The design's mobile arrangement is
-   * the row header, not the card header: at 390 the card is 470.4px tall and the
-   * row is 136px, so the row is the one that fits, and the two are different
-   * modules rather than two stylesheets, which is why this asks the viewport
-   * rather than branching in CSS.
-   */
+  /* The card and the row are different modules rather than two stylesheets, so
+   * the viewport decides which is drawn rather than CSS. */
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const skipNext = usePlayerStore(state => state.skipNext);
@@ -131,13 +137,30 @@ export default function PlaylistDetailPage() {
   const queue = usePlayerStore(state => state.queue);
   const { shufflePlaylist, refusal } = useShufflePlaylist();
   const playingPlaylistId = usePlayerStore(queuePlaylistId);
-  useQueueRefetch(playlist.data, tracks.data);
+  const isQueue = playingPlaylistId === playlistId;
+  /* The list draws the shuffled queue's own order while this playlist is the
+   * queue, which is also when the filter and the sort step aside. */
+  const listShuffled = shuffled && isQueue;
   /*
-   * Whether the queue holds a track after the current one, which is what decides
-   * if the header's forward step has anywhere to go. It is the queue's own
-   * derivation, so a shuffled queue goes dead at its last entry exactly as an
-   * unshuffled one does.
+   * The filter is a view for the visit: it lives here and is never stored, and
+   * leaving the screen clears it with the component. It is not applied while the
+   * shuffled queue is on screen, so a shuffle shows the whole queue; the choice
+   * is kept for when the shuffle is turned off.
    */
+  const [trackState, setTrackState] = useState<TrackFileStatus | null>(null);
+  /*
+   * The route reuses this component as the id changes, so the filter is cleared
+   * when the playlist does rather than carried onto the next screen.
+   */
+  useEffect(() => {
+    setTrackState(null);
+  }, [playlistId]);
+  const activeState = listShuffled ? null : trackState;
+  const tracks = usePlaylistTracks(playlistId, activeState ?? undefined);
+  const queueRead = usePlaylistQueue(playlistId, isQueue);
+  useQueueRefetch(playlist.data, queueRead.data);
+  /* The queue's own derivation, so a shuffled queue goes dead at its last entry
+   * exactly as an unshuffled one does. */
   const canSkipNext = usePlayerStore(hasNext);
 
   const ownerName =
@@ -145,19 +168,40 @@ export default function PlaylistDetailPage() {
       ? ownerNameFrom(directory.data, playlist.data.ownerAccountId)
       : null;
 
+  const startFrom = useCallback(
+    async (
+      startTrackId: string | null,
+      shuffle: boolean,
+      intent: PlaybackStart
+    ): Promise<void> => {
+      const view = playlist.data;
+
+      if (view === undefined) {
+        return;
+      }
+
+      setStarting(true);
+      setFailedStart(null);
+
+      try {
+        const full = await queryClient.query({
+          queryKey: playlistQueueKey(playlistId),
+          queryFn: () => fetchPlaylistQueue(playlistId)
+        });
+
+        startPlaylistQueue(view, full, startTrackId, shuffle);
+      } catch {
+        setFailedStart(intent);
+      } finally {
+        setStarting(false);
+      }
+    },
+    [playlistId, playlist.data, queryClient]
+  );
+
   /*
    * A row press moves the playhead, and moves it inside the queue the listener
-   * is looking at. When this playlist is already the queue, the queue's order is
-   * the order the list is drawn in, so rebuilding it would put the pressed track
-   * somewhere other than the row that was pressed; `play` moves the cursor and
-   * changes nothing else. A press that has to build a queue builds it in the
-   * playlist's own order and carries no shuffle, because the shuffle is the order
-   * of a queue and a fresh one is in the order the playlist gave.
-   *
-   * It reads the store at call time rather than closing over `currentId` and
-   * `isPlaying`, and is memoized, so its identity is stable across a queue
-   * change. A fresh function each render would re-render every row that receives
-   * it, which is the cost `TrackRow`'s memo exists to avoid.
+   * is looking at.
    */
   const playTrack = useCallback(
     (trackId: string): void => {
@@ -173,32 +217,30 @@ export default function PlaylistDetailPage() {
         return;
       }
 
-      if (tracks.data === undefined || playlist.data === undefined) {
-        return;
-      }
-
-      startPlaylistQueue(playlist.data, tracks.data, trackId);
+      void startFrom(trackId, false, PlaybackStart.Play);
     },
-    [playlistId, tracks.data, playlist.data]
+    [playlistId, startFrom]
   );
 
-  /*
-   * The header's play is the queue's own door: it builds the whole playlist and
-   * starts at the first playable track, which is the same queue a row builds and
-   * simply entered from the top. When this playlist is already the queue, it is
-   * pause and resume, so the one control keeps the two meanings it has on a row.
-   */
   const playPlaylist = (): void => {
     if (playingPlaylistId === playlistId) {
       setPlaying(!isPlaying);
       return;
     }
 
-    if (tracks.data === undefined || playlist.data === undefined) {
-      return;
-    }
+    void startFrom(null, shuffled, PlaybackStart.Play);
+  };
 
-    startPlaylistQueue(playlist.data, tracks.data, null, shuffled);
+  /*
+   * The failure's way out: re-run the press that failed, so a failed shuffle
+   * retries as a shuffle rather than silently becoming a plain play.
+   */
+  const retryPlayback = (): void => {
+    void startFrom(
+      null,
+      failedStart === PlaybackStart.Shuffle,
+      failedStart ?? PlaybackStart.Play
+    );
   };
 
   /*
@@ -210,7 +252,7 @@ export default function PlaylistDetailPage() {
   const removeTrackDeferred = useCallback(
     (trackId: string): void => {
       const title =
-        tracks.data?.find(association => association.track.id === trackId)
+        tracks.tracks.find(association => association.track.id === trackId)
           ?.track.title ?? t('detail.trackFallback');
 
       deferred.defer({
@@ -220,7 +262,7 @@ export default function PlaylistDetailPage() {
         commit: () => removeTrack.mutate(trackId)
       });
     },
-    [t, tracks.data, deferred.defer, removeTrack.mutate]
+    [t, tracks.tracks, deferred.defer, removeTrack.mutate]
   );
 
   /*
@@ -291,21 +333,36 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [settingRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
-  const isQueue = playingPlaylistId === playlistId;
   const playlistPending = deferred.pending?.id === playlistId;
   const playingThis = isPlaying && isQueue;
 
   /*
-   * The in-flight figure the summary draws is derived from the tracks this
-   * client holds, because the contract stores no pending count. It is only
-   * meaningful while a run is active, which is the only time the summary reads
-   * it.
+   * The control row above the list, and what it describes. The chips are the
+   * whole-playlist counts the tracks read folds in, so they are drawn only once
+   * that read has answered; the row stays while the playlist holds any track,
+   * which keeps it on screen under a filter that matched nothing so "Show all"
+   * is reachable. The header's count line follows the read's own total, which is
+   * the filtered total once a state is asked.
    */
-  const downloadingCount =
-    tracks.data?.filter(
-      association =>
-        association.track.fileStatus === TrackFileStatus.Downloading
-    ).length ?? 0;
+  const counts = tracks.counts;
+  const hasTracks = (playlist.data?.trackCount ?? 0) > 0;
+  /*
+   * A filter that matched nothing. The empty state waits for the filter's own
+   * answer rather than reading the previous state's total, which
+   * `keepPreviousData` keeps on hand while the next state loads.
+   */
+  const filterEmpty =
+    activeState !== null && !tracks.isPlaceholderData && tracks.total === 0;
+  const filterEmptyMessage =
+    activeState === null ? null : t(`detail.filterEmpty.${activeState}`);
+
+  /*
+   * The in-flight figure the summary draws is the whole playlist's downloading
+   * count, which the read folds in as an aggregate, so it does not follow the
+   * filter. It is only meaningful while a run is active, which is the only time
+   * the summary reads it.
+   */
+  const downloadingCount = counts?.[TrackFileStatus.Downloading] ?? 0;
 
   /*
    * A playlist query that answers 404, whether because the playlist does not
@@ -343,12 +400,23 @@ export default function PlaylistDetailPage() {
     onSkipNext: skipNext,
     hasNext: canSkipNext,
     onShuffle: () =>
-      shufflePlaylist({
-        id: playlistId,
-        name: playlist.data?.name ?? 'This playlist'
-      }),
+      shufflePlaylist(
+        {
+          id: playlistId,
+          name: playlist.data?.name ?? 'This playlist'
+        },
+        { onUnreachable: () => setFailedStart(PlaybackStart.Shuffle) }
+      ),
     shuffled,
-    menu: actions.menu
+    menu: actions.menu,
+    /* The count is the rows on screen only once the read has answered; while it
+     * is pending the header keeps the playlist's standing total. `countTotal` is
+     * that total, narrowed to the filtered total when a chip is in force. */
+    displayedCount: tracks.isSuccess ? tracks.tracks.length : undefined,
+    countTotal: tracks.total ?? playlist.data?.trackCount,
+    playbackFailed: failedStart !== null,
+    playbackStarting: starting,
+    onRetryPlayback: retryPlayback
   };
 
   return (
@@ -387,54 +455,65 @@ export default function PlaylistDetailPage() {
       </nav>
 
       <div className={styles.playlistDetail__columns}>
-        <div className={styles.playlistDetail__side}>
-          {playlist.isSuccess ? (
-            isMobile ? (
-              <PlaylistRowHeader {...headerProps} playlist={playlist.data} />
-            ) : (
-              <PlaylistCardHeader {...headerProps} playlist={playlist.data} />
-            )
-          ) : null}
+        <div className={styles.playlistDetail__left}>
+          <div className={styles.playlistDetail__header}>
+            {playlist.isSuccess ? (
+              isMobile ? (
+                <PlaylistRowHeader {...headerProps} playlist={playlist.data} />
+              ) : (
+                <PlaylistCardHeader {...headerProps} playlist={playlist.data} />
+              )
+            ) : null}
+            {failedStart === null ? null : (
+              <p
+                className={styles.playlistDetail__playbackFailed}
+                role="status">
+                {t('detail.playbackFailed')}
+              </p>
+            )}
+          </div>
 
-          {playlist.isSuccess ? (
-            <PlaylistSkipSetting
-              skipNonMusic={playlist.data.skipNonMusic}
-              canEdit={canWrite}
-              saving={updateSkip.isPending}
-              onChange={value =>
-                updateSkip.mutate(value, {
-                  onError: error =>
-                    setSettingRefused(
-                      problemSentence(t, error) ?? t('detail.settingFailed')
-                    )
-                })
-              }
-            />
-          ) : null}
-
-          {failed && latestRun.isSuccess ? (
-            <div className={styles.playlistDetail__state}>
-              <SyncError
-                trackCount={playlist.data?.trackCount ?? null}
-                provider={playlist.data?.provider ?? Provider.Youtube}
-                rawError={latestRun.data?.error ?? null}
-                onRetry={canWrite ? actions.syncNow : undefined}
-                retrying={actions.syncing}
+          <div className={styles.playlistDetail__side}>
+            {playlist.isSuccess ? (
+              <PlaylistSkipSetting
+                skipNonMusic={playlist.data.skipNonMusic}
+                canEdit={canWrite}
+                saving={updateSkip.isPending}
+                onChange={value =>
+                  updateSkip.mutate(value, {
+                    onError: error =>
+                      setSettingRefused(
+                        problemSentence(t, error) ?? t('detail.settingFailed')
+                      )
+                  })
+                }
               />
-            </div>
-          ) : null}
+            ) : null}
 
-          {!failed &&
-          latestRun.data !== null &&
-          latestRun.data !== undefined ? (
-            <div className={styles.playlistDetail__state}>
-              <SyncSummary
-                run={latestRun.data}
-                now={new Date()}
-                downloadingCount={downloadingCount}
-              />
-            </div>
-          ) : null}
+            {failed && latestRun.isSuccess ? (
+              <div className={styles.playlistDetail__state}>
+                <SyncError
+                  trackCount={playlist.data?.trackCount ?? null}
+                  provider={playlist.data?.provider ?? Provider.Youtube}
+                  rawError={latestRun.data?.error ?? null}
+                  onRetry={canWrite ? actions.syncNow : undefined}
+                  retrying={actions.syncing}
+                />
+              </div>
+            ) : null}
+
+            {!failed &&
+            latestRun.data !== null &&
+            latestRun.data !== undefined ? (
+              <div className={styles.playlistDetail__state}>
+                <SyncSummary
+                  run={latestRun.data}
+                  now={new Date()}
+                  downloadingCount={downloadingCount}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className={styles.playlistDetail__tracks}>
@@ -447,26 +526,66 @@ export default function PlaylistDetailPage() {
             <ReadFailure
               message={t('detail.readFailed')}
               error={tracks.error}
-              onRetry={() => void tracks.refetch()}
-              retrying={tracks.isFetching}
+              onRetry={tracks.retry}
+              retrying={tracks.retrying}
             />
           ) : null}
-          {neverSynced && tracks.isSuccess && tracks.data.length === 0 ? (
+          {tracks.isSuccess && counts !== undefined && hasTracks ? (
+            <div className={styles.playlistDetail__controls}>
+              <PlaylistFilterChips
+                counts={counts}
+                active={activeState}
+                disabled={listShuffled}
+                onChange={setTrackState}
+              />
+              <PlaylistSortControl
+                sort={playlist.data?.sort ?? PlaylistSort.Playlist}
+                canEdit={canWrite}
+                shuffled={listShuffled}
+                saving={updateSort.isPending}
+                onChange={value =>
+                  updateSort.mutate(value, {
+                    onError: error =>
+                      setSettingRefused(
+                        problemSentence(t, error) ?? t('detail.settingFailed')
+                      )
+                  })
+                }
+              />
+            </div>
+          ) : null}
+          {neverSynced && tracks.isSuccess && !hasTracks ? (
             <EmptyState
               onSync={canWrite ? actions.syncNow : undefined}
               syncing={actions.syncing}
             />
           ) : null}
-          {!neverSynced && tracks.isSuccess && tracks.data.length === 0 ? (
+          {!neverSynced && tracks.isSuccess && !hasTracks ? (
             <p className={styles.playlistDetail__note}>
               {t('detail.noTracks')}
             </p>
           ) : null}
-          {tracks.isSuccess && tracks.data.length > 0 ? (
+          {tracks.isSuccess &&
+          hasTracks &&
+          filterEmpty &&
+          filterEmptyMessage !== null ? (
+            <div className={styles.playlistDetail__filterEmpty} role="status">
+              <p className={styles.playlistDetail__filterEmptyText}>
+                {filterEmptyMessage}
+              </p>
+              <button
+                type="button"
+                className={styles.playlistDetail__filterReset}
+                onClick={() => setTrackState(null)}>
+                {t('detail.filterShowAll')}
+              </button>
+            </div>
+          ) : null}
+          {tracks.isSuccess && tracks.tracks.length > 0 ? (
             <ul className={styles.playlistDetail__list}>
-              {(shuffled && isQueue
-                ? orderTracksByQueue(tracks.data, queue)
-                : tracks.data
+              {(listShuffled
+                ? orderTracksByQueue(tracks.tracks, queue)
+                : tracks.tracks
               ).map(association => {
                 /*
                  * `playing` is only read by a current row, so a non-current row
@@ -495,6 +614,13 @@ export default function PlaylistDetailPage() {
                 );
               })}
             </ul>
+          ) : null}
+          {tracks.isSuccess && tracks.hasMore ? (
+            <LoadMoreControl
+              loading={tracks.loadingMore}
+              failed={tracks.moreFailed}
+              onLoadMore={tracks.loadMore}
+            />
           ) : null}
         </div>
       </div>

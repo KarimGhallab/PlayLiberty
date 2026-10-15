@@ -5,9 +5,6 @@ import { playlistUrl, writeScenario } from './instance';
 import type { Scenario } from './instance';
 
 /*
- * The setup every curation and sharing journey shares: pick what the fake source
- * answers with, add the playlist through the library dialog, and open its detail.
- *
  * A test names a source and the entries the fake should return; this owns the
  * three steps around it so a journey reads as the action it is about. A test that
  * changes the source mid-journey, as a sync and a retry do, writes the scenario
@@ -21,7 +18,6 @@ export interface PlaylistSeed {
   readonly downloads?: Scenario['downloads'];
 }
 
-/** Script the fake adapter's answer for one source. */
 export function scriptPlaylist(seed: PlaylistSeed): void {
   writeScenario({
     sources: {
@@ -31,7 +27,6 @@ export function scriptPlaylist(seed: PlaylistSeed): void {
   });
 }
 
-/** Add the playlist from the library and wait for the item the server returns. */
 export async function addPlaylist(
   page: Page,
   seed: PlaylistSeed
@@ -48,23 +43,20 @@ export async function addPlaylist(
   await expect(page.getByRole('link', { name: seed.title })).toBeVisible();
 }
 
-/** Open a playlist's detail from the library item. */
 export async function openPlaylist(page: Page, title: string): Promise<void> {
   await page.getByRole('link', { name: title }).click();
 }
 
-/** Open the detail header's overflow menu. */
 export async function openHeaderMenu(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'More actions' }).click();
 }
 
 /*
- * Reload until a locator is there. The detail's reads are fetched when it mounts
- * and after a mutation, and nothing polls: a state the server reaches on its own
- * (a download finishing, or a background reconcile adding a track) is only read
- * again when something asks. Reloading is that ask, and it is what a person does
- * to look again, so a journey that waits on the server waits this way rather than
- * on a fixed sleep.
+ * The detail's reads are fetched when it mounts and after a mutation, and nothing
+ * polls: a state the server reaches on its own (a download finishing, or a
+ * background reconcile adding a track) is only read again when something asks.
+ * Reloading is that ask, and it is what a person does to look again, so a journey
+ * that waits on the server waits this way rather than on a fixed sleep.
  *
  * The wait after a reload is `waitFor` rather than an immediate look, because the
  * reads land after the load event: a check made the moment `reload` resolves asks

@@ -12,19 +12,16 @@ import {
 } from '../../platform/database/schema.js';
 
 /*
- * Who may see and who may write, for a playlist. One module, because this rule was
- * three copies in three features and the next feature was going to write a fourth.
- *
- * The rule is the whole of it: an account reaches a playlist it owns, or one it
- * holds a share on. There is no global library and an admin role carries no
- * override, so there is no `isAdmin` branch here, and adding one would be a
- * decision rather than an omission.
+ * Who may see and who may write, for a playlist. An account reaches a playlist it
+ * owns, or one it holds a share on. There is no global library and an admin role
+ * carries no override, so there is no `isAdmin` branch here, and adding one would
+ * be a decision rather than an omission.
  *
  * Every function returns `null`, or omits the playlist from a map or a set, for an
- * account that cannot reach it. None of them returns a forbidden, and the
- * distinction is already paid for at the routes: a client rendering a playlist
- * screen has no state for "you may not see this", and a revoked share has to read
- * as gone. A caller sends 404 on null without having to know why.
+ * account that cannot reach it. None of them returns a forbidden: a client
+ * rendering a playlist screen has no state for "you may not see this", and a
+ * revoked share has to read as gone. A caller sends 404 on null without having to
+ * know why.
  */
 
 // Raw SQL for the two reads, and the query builder does not express these cleanly.
@@ -72,9 +69,7 @@ function toAccess(
 
 /*
  * A fragment for a list query, so "the playlists I can see" composes into Drizzle
- * instead of being fetched and filtered in memory. It sits beside the
- * single-playlist readers because it is the same rule written for a different
- * shape, and two places that each say "visible" is how the copies started.
+ * instead of being fetched and filtered in memory.
  */
 export function playlistVisibleTo(
   database: DatabaseHandle,
@@ -103,11 +98,10 @@ export function resolvePlaylistAccess(
 }
 
 /*
- * A batch read, for the one request that resolves many playlists at once. One
- * statement rather than one per playlist, so the request costs a single round trip
- * whatever the user checked. A playlist missing from the map is one this account
- * cannot reach, and the caller reports it exactly as it reports one that does not
- * exist.
+ * One statement rather than one per playlist, so the request costs a single round
+ * trip whatever the user checked. A playlist missing from the map is one this
+ * account cannot reach, and the caller reports it exactly as it reports one that
+ * does not exist.
  */
 export function resolvePlaylistAccessMany(
   database: DatabaseHandle,
@@ -139,11 +133,9 @@ export function resolvePlaylistAccessMany(
 }
 
 /*
- * Ownership, and only ownership, for the three actions no collaborator has: rename,
- * delete, and managing shares. A write collaborator curates and a read
- * collaborator looks; neither is a second owner, and a share is a grant of access,
- * so an account that could grant access would be an owner wearing a
- * collaborator's label.
+ * Ownership, and only ownership, for the three actions no collaborator has:
+ * rename, delete and managing shares. A share is a grant of access, so an account
+ * that could grant access would be an owner wearing a collaborator's label.
  */
 export function isPlaylistOwner(
   database: DatabaseHandle,
@@ -154,11 +146,9 @@ export function isPlaylistOwner(
 }
 
 /*
- * Write access, which is the owner or a write collaborator and not a read one. The
- * sync and the batch add both ask it, and spec 04's remove and retry will, so it
- * is stated once beside the rule it is a slice of rather than open-coded three
- * times. A playlist the account cannot reach resolves to no access and is not
- * writable, so its callers answer not-found exactly as they do for a missing row.
+ * Write access is the owner or a write collaborator, and not a read one. A
+ * playlist the account cannot reach resolves to no access and is not writable, so
+ * its callers answer not-found exactly as they do for a missing row.
  */
 export function canWritePlaylist(
   database: DatabaseHandle,

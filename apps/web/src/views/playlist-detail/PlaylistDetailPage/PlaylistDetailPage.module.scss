@@ -1,9 +1,7 @@
 /*
  * The playlist detail, mirroring docs/design/screens/playlist-detail.html. The
  * content column is 1056, the design's own reading width, so the two screens are
- * comparable. Two columns: the playlist on the left at 320, drawn as the
- * header's card arrangement with its one state component beneath it, and the
- * tracks on the right with whatever is left.
+ * comparable.
  *
  * The 16px inline padding is the viewport gutter, which the design's drawn frame
  * does not have, so the max-width carries it as well: `box-sizing: border-box`
@@ -27,11 +25,10 @@
    * because both screens dock the same bar. */
   padding: 0 var(--space-4) calc(97px + var(--space-5));
 
-  /* The way home. A web fact: on mobile the platform gesture returns from a
-   * pushed route, so there is no counterpart there. The 20px is the design's own
-   * --space-5 at this row, and the header's own `padding: 20px 0` below it, so
-   * the two pieces of the screen speak the same vertical rhythm and the first
-   * rule sits the design's stated distance from the top. */
+  /* The way home: the back link and, for a writer, the add control. The 20px is
+   * the design's own --space-5 at this row, and the header's own `padding: 20px 0`
+   * below it, so the two pieces of the screen speak the same vertical rhythm and
+   * the first rule sits the design's stated distance from the top. */
   &__wayhome {
     display: flex;
     align-items: center;
@@ -40,10 +37,9 @@
     padding: var(--space-5) 0;
   }
 
-  /* Type and an arrow, not a button. The link was easy to miss as a small muted
-   * label, and the fix is weight and ink rather than chrome: no border and no
-   * fill, so it stays quieter than the card below it while its label says what
-   * it does. The ink turns to the accent only under the pointer. */
+  /* Type and an arrow, not a button: no border and no fill, so it stays quieter
+   * than the card below it while its label says what it does. The ink turns to
+   * the accent only under the pointer. */
   &__back {
     display: inline-flex;
     align-items: center;
@@ -72,10 +68,8 @@
     flex-shrink: 0;
   }
 
-  /* The add control, mirroring the library's own: the same accent pill, the same
-   * plus, in the top-right of the screen. The icon is --icon-sm and aria-hidden,
-   * paired with the --text-sm label, so the glyph is the affordance and the label
-   * is the name. */
+  /* The add control, mirroring the library's own: the glyph is the affordance
+   * and the label is the name. */
   &__add {
     display: inline-flex;
     align-items: center;
@@ -109,16 +103,49 @@
     gap: var(--space-6);
   }
 
-  &__side {
+  /* The left column is pinned while the list scrolls, so the playlist stays in
+   * view as its own tracks go by. A column taller than the viewport scrolls
+   * inside itself, so nothing is pinned out of reach; the 97px is the docked
+   * player bar, which overlays the foot of the column. */
+  &__left {
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
     width: 320px;
     flex-shrink: 0;
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100dvh - 97px);
+    overflow-y: auto;
   }
 
-  /* The one state component under the header. It owns the gap above it, so the
-   * state starts the same distance from the header at either arrangement. */
+  /* The state blocks under the header: the skip setting and the one run state.
+   * They are their own group so the mobile arrangement can take the header out of
+   * the column without taking them with it. */
+  &__side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  /* The queue read behind a press failed. It sits under the header, which owns
+   * the retry, so the sentence and the control are read together. */
+  &__playback-failed {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
+  /* The one state component under the header: the sync error or the summary,
+   * never both. Its distance from the block above it is the side's own gap, so it
+   * carries no margin. */
   &__state {
     display: flex;
     flex-direction: column;
@@ -134,13 +161,72 @@
     color: var(--muted);
   }
 
-  /* The list is a plain table of rows. The top border closes the list and each
-   * row draws its own bottom border, which is the design's own list treatment. */
+  /* The top border closes the list; each row draws its own bottom border, the
+   * design's own list treatment. */
   &__list {
     margin: 0;
     padding: 0;
     list-style: none;
     border-top: 1px solid var(--line);
+  }
+
+  /*
+   * The control row above the list: the filter chips in the lead and the sort at
+   * the end. The chips take the room and scroll sideways within it, so the row
+   * stays one line on a phone and the list stays close to the top; the sort keeps
+   * its place at the end. The list's own top border closes the row, so it carries
+   * no rule of its own.
+   */
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding-bottom: var(--space-3);
+  }
+
+  /*
+   * A filter that matched nothing. It stands where the list would be, under the
+   * chip row that caused it, and owns one way back to the whole list.
+   */
+  &__filter-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-6) 0;
+    text-align: center;
+  }
+
+  &__filter-empty-text {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  &__filter-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--control-height);
+    padding: 0 var(--space-4);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
   }
 }
 
@@ -160,16 +246,27 @@
       padding: var(--space-2) 0 0 0;
     }
 
-    /* One column. The side stops being a fixed 320px and takes the whole frame,
-     * so the header's own row fills it and the state block sits under it rather
-     * than beside the tracks. The side's own --space-5 gap is the distance the
-     * design puts between the header and the state, so nothing is added here. */
+    /* One column. The left column stops being a box of its own, so its two parts
+     * join the page's flow: the header is pinned against the whole scroll rather
+     * than the short column, and the state blocks scroll away under it. The
+     * header carries the page's own ground so the rows pass beneath rather than
+     * through. */
     &__columns {
       display: block;
     }
 
-    &__side {
-      width: auto;
+    &__left {
+      display: contents;
+    }
+
+    &__header {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+      background: var(--bg);
+      /* The gap the dissolved column held between the header and the blocks under
+       * it. */
+      margin-bottom: var(--space-5);
     }
 
     /* The list is full width under the header, with the same 20px the side uses

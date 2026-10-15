@@ -8,20 +8,16 @@ import { useEffect } from 'react';
  * because the keyboard must never land on nothing, while an outside press leaves
  * focus where the user put it, because they moved it there on purpose.
  *
- * The two document listeners live only while the menu is open, and both are
- * removed when it closes or the caller unmounts. A press inside the anchor is
- * left alone so an item's own handler can run, and a press outside is guarded on
- * `Node`, so a non-node target cannot throw the containment check.
+ * A press inside the anchor is left alone so an item's own handler can run, and
+ * a press outside is guarded on `Node`, so a non-node target cannot throw the
+ * containment check.
  */
 
 export interface DismissibleMenuOptions {
-  /** Whether the menu is open; the listeners attach only while it is. */
   readonly open: boolean;
-  /** The menu's anchor. A press outside it closes the menu. */
   readonly containerRef: RefObject<HTMLElement | null>;
   /** Close the menu. The hook moves focus itself, so this must not. */
   readonly onClose: () => void;
-  /** Where Escape returns focus. Absent when the caller has no trigger. */
   readonly returnFocusTo?: RefObject<HTMLElement | null>;
 }
 

@@ -1,0 +1,149 @@
+/*
+ * The filter chips at the lead of the control row. The row itself is the
+ * screen's (see `playlist-detail__controls`); this module is the chip set alone.
+ *
+ * A chip is a border and a word, never a fill: the 3:1 a control boundary owes is
+ * not a hairline's. The word is what carries the state and the tone is
+ * reinforcement; in force the border takes the chip's state tone, except "All",
+ * which takes the accent, the one hue the palette spends on a choice.
+ *
+ * The rail scrolls sideways on a phone rather than wrapping, so the row stays one
+ * line and the list keeps its distance from the top; its bar is suppressed
+ * because the row is one control tall and a bar would make it two.
+ */
+.chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: var(--control-height);
+    padding: 0 var(--space-3);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    transition:
+      color var(--motion-base) var(--ease-standard),
+      border-color var(--motion-base) var(--ease-standard);
+
+    /* The state mark. It is drawn only on the chip in force, so its box is
+     * reserved here and scaled to nothing until then; that is what keeps the
+     * rail from shifting as the choice moves. */
+    &::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      flex-shrink: 0;
+      border-radius: var(--radius-chip);
+      background: currentColor;
+      transform: scale(0);
+    }
+
+    /* The six tones, one per chip, read from the design's own state tokens. */
+    &[data-tone='all'] {
+      --chip-tone: var(--accent);
+    }
+
+    &[data-tone='stored'] {
+      --chip-tone: var(--tone-stored);
+    }
+
+    &[data-tone='pending'] {
+      --chip-tone: var(--tone-pending);
+    }
+
+    &[data-tone='downloading'] {
+      --chip-tone: var(--tone-downloading);
+    }
+
+    &[data-tone='failed'] {
+      --chip-tone: var(--tone-failed);
+    }
+
+    &[data-tone='unavailable'] {
+      --chip-tone: var(--tone-unavailable);
+    }
+
+    &:not([aria-pressed='true']):hover:not(:disabled) {
+      color: var(--ink);
+    }
+
+    &[aria-pressed='true'] {
+      color: var(--chip-tone);
+      border-color: var(--chip-tone);
+
+      &::before {
+        transform: scale(1);
+        animation: chip-dot-grow var(--motion-slow) var(--ease-standard);
+      }
+    }
+
+    /* Stored's tone is ink and Pending's is near-neutral, so neither reads as a
+     * selection on the word; those two take ink, while the border keeps the
+     * state's own tone. */
+    &[data-tone='stored'][aria-pressed='true'],
+    &[data-tone='pending'][aria-pressed='true'] {
+      color: var(--ink);
+    }
+
+    /* The whole rail is disabled at once while the shuffled queue is on
+     * screen, so it dims as a group rather than pretending each chip is
+     * reachable; there is no fill for the disabled pair to sit on. */
+    &:disabled {
+      cursor: not-allowed;
+      opacity: var(--opacity-disabled);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__count {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes chip-dot-grow {
+  0% {
+    transform: scale(0);
+  }
+
+  60% {
+    transform: scale(1.35);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chips {
+    &__chip {
+      transition: none;
+
+      &[aria-pressed='true']::before {
+        animation: none;
+      }
+    }
+  }
+}

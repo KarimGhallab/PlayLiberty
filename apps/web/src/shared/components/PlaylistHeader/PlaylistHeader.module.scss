@@ -1,10 +1,7 @@
 /*
  * The playlist header, mirroring docs/design/specimen.css at both of its
- * arrangements: the row at 1056, whose cover sits beside the identity block, and
- * the card, whose cover sits above it and carries the actions on a scrim. The
- * library draws the row; the playlist detail draws the card in its 320px left
- * column. The classes are shared between the two arrangements, and the card's
- * own blocks are named for that arrangement.
+ * arrangements: the row, whose cover sits beside the identity block, and the
+ * card, whose cover sits above it and carries the actions on a scrim.
  */
 .playlist-header {
   display: flex;
@@ -23,17 +20,36 @@
     gap: 0;
     padding: 0;
     background: var(--surface);
+    /* The foot line below anchors to the card, not to the page. */
+    position: relative;
   }
 
   /* The card is the queue's own while playing, and the one fact worth a glance
    * is that music is coming out of it. The accent is spent on the play control
    * and cannot be spent twice; the emphasis amber is the system's "this is
    * happening" and the card has never used it. It arrives as a hairline along
-   * the card's foot, the same 1px the sync line already speaks in, so the card
-   * gains a state without gaining a box. The play's glyph is the cue that
-   * survives without colour, which is why this may be colour-led. */
-  &[data-arrangement='card'][data-state='playing'] {
-    box-shadow: inset 0 -2px 0 var(--emphasis);
+   * the card's foot, so the card gains a state without gaining a box. The play's
+   * glyph is the cue that survives without colour, which is why this may be
+   * colour-led.
+   *
+   * The line draws in from the left when a track starts and withdraws when
+   * playback stops, the sort control's own reveal, so the state change is seen
+   * rather than snapped and only the compositor moves. */
+  &[data-arrangement='card']::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--emphasis);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--motion-base) var(--ease-standard);
+  }
+
+  &[data-arrangement='card'][data-state='playing']::after {
+    transform: scaleX(1);
   }
 
   /* The library's item is a door, so the whole row carries the press: its
@@ -394,6 +410,46 @@
     }
   }
 
+  &__retry {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 48px;
+    padding: 0 var(--space-4);
+    flex-shrink: 0;
+    color: var(--bg);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: var(--tone-failed);
+    border: 1px solid var(--tone-failed);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    transition: background-color var(--motion-slow) var(--ease-standard);
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--tone-failed) 88%, black);
+      border-color: color-mix(in srgb, var(--tone-failed) 88%, black);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: var(--opacity-disabled);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__retry-icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+    flex-shrink: 0;
+  }
+
   &__glyph {
     overflow: hidden;
     width: var(--icon-lg);
@@ -585,7 +641,7 @@
     height: var(--icon-sm);
   }
 
-  /* ======================================================= the card's cover
+  /* The card's cover
    *
    * The square the card is built around, drawn here rather than in the row: it
    * carries the scrim and the actions and so is a block of its own. */
@@ -708,7 +764,6 @@
     padding: var(--space-4);
   }
 
-  /* The shuffle and the menu as one group against the right edge. */
   &__macts-right {
     display: flex;
     align-items: center;
@@ -738,8 +793,6 @@
     inset: -6px;
   }
 
-  /* The identity block under the card. Same pieces as the row's body, on the
-   * card's own padding rather than beside a 96px cover. */
   &__munder {
     display: flex;
     flex-direction: column;
@@ -825,5 +878,11 @@
 
   100% {
     transform: scaleY(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playlist-header[data-arrangement='card']::after {
+    transition: none;
   }
 }

@@ -8,20 +8,16 @@ import { volumeIcon } from '../volumeIcon';
 import styles from './VolumeControl.module.scss';
 
 /*
- * The volume control, the player bar's rightmost item. A speaker button whose
- * glyph reads the level, and a vertical rail that appears while the control has
- * the pointer, the focus or a tap. It is the bar's one disclosure: the rail is
- * 96px of vertical travel that would dwarf the 98px bar if it stood open, so it
- * is shown while the pointer is on the pair, focus is inside it or a tap has just
- * landed, and gone once none holds. The focus and pointer halves are what let a
- * keyboard and a touch user reach the level: focus opens the rail and a tap opens
- * it too, where hover alone never would.
+ * The volume control, the player bar's rightmost item. It is the bar's one
+ * disclosure: the rail is 96px of vertical travel that would dwarf the 98px bar
+ * if it stood open, so it is shown while the pointer is on the pair, focus is
+ * inside it or a tap has just landed, and gone once none holds. The focus and
+ * pointer halves are what let a keyboard and a touch user reach the level: focus
+ * opens the rail and a tap opens it too, where hover alone never would.
  *
  * The button is a mute, not an open. A press silences the output and leaves the
  * level alone, so unmuting returns to exactly where the listener had it; the rail
- * is the only thing that changes the level by pointer. The four glyphs are the
- * level read at a glance: the crossed speaker for silence, then a speaker with
- * none, one and two arcs across the thirds.
+ * is the only thing that changes the level by pointer.
  *
  * Up, Down and M are bound on the window rather than on the control, because a
  * listener reaches for the volume without first finding it, and the bar is
@@ -30,12 +26,11 @@ import styles from './VolumeControl.module.scss';
  * the output is muted, so a listener who mutes, adjusts, then unmutes lands where
  * they set it.
  *
- * Up and Down also raise [the volume notice](VolumeToast.tsx), because the rail is
- * the only other readout and it is open only while the pointer is on it: a
- * keyboard listener would otherwise move the level with nothing on screen saying
- * where it landed. The notice is the keyboard's equal of the pointer's rail, and
- * it is centred above the bar so the two can each be up without covering the
- * other.
+ * Up and Down also raise the volume notice, because the rail is the only other
+ * readout and it is open only while the pointer is on it: a keyboard listener
+ * would otherwise move the level with nothing on screen saying where it landed.
+ * The notice is the keyboard's equal of the pointer's rail, and it is centred
+ * above the bar so the two can each be up without covering the other.
  */
 
 /** How much one press of Up/Down moves the volume. */

@@ -12,8 +12,8 @@ import styles from './AddPlaylistDialog.module.scss';
  * The add-playlist dialog, and the library's only door to a new playlist. One
  * field and one choice: the URL, because `CreatePlaylistInputSchema` takes it, and
  * whether the playlist skips the non-music parts of its videos, on by default so
- * the common case gets the behaviour without hunting for a setting. The setting is
- * frozen at creation, so this dialog is the only place it is chosen.
+ * the common case gets the behaviour without hunting for a setting. The choice
+ * sets the playlist's initial value; the detail's switch changes it later.
  *
  * The schema is the client's own half of the check and the server's is the other:
  * an empty or malformed URL never leaves the browser, and a URL the server refuses
@@ -171,9 +171,8 @@ export default function AddPlaylistDialog({
         )}
       </div>
       {/*
-       * The one choice, and the only place it is made: the server freezes the
-       * setting at creation, so it cannot be changed later. The label carries the
-       * name and the hint carries what it does and why it does not move.
+       * The playlist's initial skip setting. The label carries the name and the
+       * hint carries what it does.
        */}
       <div className={styles.check}>
         <label className={styles.check__row} htmlFor={checkId}>

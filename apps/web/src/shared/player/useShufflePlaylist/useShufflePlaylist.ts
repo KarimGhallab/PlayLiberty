@@ -5,8 +5,8 @@ import type { Playlist, PlaylistTrack } from '@playliberty/contracts';
 import type { Messages, Translator } from '@playliberty/i18n';
 
 import {
-  fetchPlaylistTracks,
-  playlistTracksKey
+  fetchPlaylistQueue,
+  playlistQueueKey
 } from '../../api/queries/queries';
 import { startPlaylistQueue } from '../playerQueue/playerQueue';
 import { usePlayerStore } from '../playerStore/playerStore';
@@ -19,10 +19,14 @@ import { queuePlaylistId } from '../types';
  * a flag on a row: pressing it starts the playlist it was pressed on, shuffled,
  * whether the queue was empty, another playlist's, or this one already.
  *
- * Only the tracks read knows whether a playlist has anything to play, and the
+ * The read is the playlist's whole association list, not a page, so a shuffled
+ * queue covers the playlist rather than its first page.
+ *
+ * Only the queue read knows whether a playlist has anything to play, and the
  * queue may belong to another playlist, so a press can be refused. The refusal is
  * returned rather than drawn here, so each screen puts it in the notice slot it
- * already owns.
+ * already owns; the unreachable case is optionally handed back instead, because
+ * the detail's header owns that failure on its own play control.
  */
 
 /** How long a refusal stands before it withdraws itself. */
@@ -33,8 +37,15 @@ export interface ShuffleRefusal {
   readonly reason: 'empty' | 'unreachable';
 }
 
+export interface ShuffleOptions {
+  readonly onUnreachable?: () => void;
+}
+
 export interface ShuffleControl {
-  readonly shufflePlaylist: (playlist: Pick<Playlist, 'id' | 'name'>) => void;
+  readonly shufflePlaylist: (
+    playlist: Pick<Playlist, 'id' | 'name'>,
+    options?: ShuffleOptions
+  ) => void;
   readonly refusal: ShuffleRefusal | null;
 }
 
@@ -43,22 +54,17 @@ export function useShufflePlaylist(): ShuffleControl {
   const [refusal, setRefusal] = useState<ShuffleRefusal | null>(null);
 
   const shufflePlaylist = useCallback(
-    (playlist: Pick<Playlist, 'id' | 'name'>) => {
+    (playlist: Pick<Playlist, 'id' | 'name'>, options: ShuffleOptions = {}) => {
       const player = usePlayerStore.getState();
 
       if (queuePlaylistId(player) === playlist.id) {
         /*
-         * The queue is already this playlist's, so the press changes the mode and
-         * nothing else. Turning it on resumes as well, because reaching for
-         * shuffle is a play gesture like the transport's; turning it off restores
-         * the playlist's own order and leaves the transport where it is.
+         * The queue is already this playlist's, so the press changes the mode:
+         * turning it on draws a new shuffle and starts on its random leading
+         * track, turning it off restores the playlist's own order and leaves the
+         * transport where it is. Both are the store's own rules.
          */
-        if (player.shuffle) {
-          player.setShuffle(false);
-        } else {
-          player.setShuffle(true);
-          player.setPlaying(true);
-        }
+        player.setShuffle(!player.shuffle);
 
         return;
       }
@@ -68,10 +74,15 @@ export function useShufflePlaylist(): ShuffleControl {
 
         try {
           tracks = await queryClient.query({
-            queryKey: playlistTracksKey(playlist.id),
-            queryFn: () => fetchPlaylistTracks(playlist.id)
+            queryKey: playlistQueueKey(playlist.id),
+            queryFn: () => fetchPlaylistQueue(playlist.id)
           });
         } catch {
+          if (options.onUnreachable !== undefined) {
+            options.onUnreachable();
+            return;
+          }
+
           setRefusal({ name: playlist.name, reason: 'unreachable' });
           return;
         }

@@ -1,8 +1,8 @@
 /*
- * The sync error, mirroring docs/design/components/sync-error.html. A 2px rule
- * on the leading edge, --surface, and 12px of padding: not a card and not a
- * border on all four sides, because the rule says "this block is a state" and a
- * box around it would say "this block is an object".
+ * The sync error, mirroring docs/design/components/sync-error.html. The 2px rule
+ * on the leading edge is not a card and not a border on all four sides, because
+ * the rule says "this block is a state" and a box around it would say "this block
+ * is an object".
  *
  * The band is a flex column, not a plain block: as a block it would swallow the
  * gap on the wrapper, because that gap applies to the band as one child and to
@@ -82,8 +82,8 @@
     }
   }
 
-  /* rotate-clockwise at --icon-sm, the same glyph the overflow menu draws on the
-   * same verb, and the same 16px box the spinner takes. */
+  /* The same glyph the overflow menu draws on the same verb, in the box the
+   * spinner takes. */
   &__retry-icon {
     width: var(--icon-sm);
     height: var(--icon-sm);

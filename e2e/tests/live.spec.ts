@@ -121,7 +121,13 @@ test('an added video moves through the download states to playable without a rel
    */
   await drainDownloads(page);
 
-  await expect(page.getByText('Downloading')).toBeVisible();
+  /*
+   * Scoped to the track list, because the control row's "Downloading" filter
+   * chip carries the same word.
+   */
+  await expect(
+    page.getByRole('list').getByText('Downloading', { exact: true })
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: `Play ${ADDED.title}` })
   ).toBeVisible();

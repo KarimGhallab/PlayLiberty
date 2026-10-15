@@ -11,12 +11,16 @@ import {
   PlaylistAccessSchema,
   PlaylistSchema,
   PlaylistTrackSchema,
+  PlaylistTracksPageSchema,
+  PlaylistTracksQuerySchema,
   ProblemSchema,
   RenamePlaylistInputSchema,
   SharePlaylistInputSchema,
   ShareSchema,
   SkipNonMusicInputSchema,
+  SortPlaylistInputSchema,
   SyncRunSchema,
+  TrackFileStatusCountsSchema,
   TrackSchema
 } from './schemas.js';
 
@@ -26,6 +30,9 @@ export type Track = z.infer<typeof TrackSchema>;
 export type Playlist = z.infer<typeof PlaylistSchema>;
 export type PlaylistAccess = z.infer<typeof PlaylistAccessSchema>;
 export type PlaylistTrack = z.infer<typeof PlaylistTrackSchema>;
+export type PlaylistTracksPage = z.infer<typeof PlaylistTracksPageSchema>;
+export type PlaylistTracksQuery = z.infer<typeof PlaylistTracksQuerySchema>;
+export type TrackFileStatusCounts = z.infer<typeof TrackFileStatusCountsSchema>;
 export type Share = z.infer<typeof ShareSchema>;
 export type SyncRun = z.infer<typeof SyncRunSchema>;
 export type Problem = z.infer<typeof ProblemSchema>;
@@ -36,6 +43,7 @@ export type AddTrackResult = z.infer<typeof AddTrackResultSchema>;
 export type RenamePlaylistInput = z.infer<typeof RenamePlaylistInputSchema>;
 export type SharePlaylistInput = z.infer<typeof SharePlaylistInputSchema>;
 export type SkipNonMusicInput = z.infer<typeof SkipNonMusicInputSchema>;
+export type SortPlaylistInput = z.infer<typeof SortPlaylistInputSchema>;
 export type PageQuery = z.infer<typeof PageQuerySchema>;
 
 export interface Page<T> {

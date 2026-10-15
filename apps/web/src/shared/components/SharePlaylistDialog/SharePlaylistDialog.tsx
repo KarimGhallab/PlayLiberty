@@ -17,11 +17,10 @@ import ReadFailure from '../ReadFailure/ReadFailure';
 import shareStyles from './SharePlaylistDialog.module.scss';
 
 /*
- * Share one playlist. The body lists the accounts from the directory and the one
- * belonging to the reader is left out, because a person cannot share with
- * themselves and the route refuses it. Each name carries a level switch and an
- * action: grant turns a level on, revoke turns it off, and the two share one
- * call because sharing is one fact about a pair of accounts.
+ * Share one playlist. The body lists the accounts from the directory. Each name
+ * carries a level switch and an action: grant turns a level on, revoke turns it
+ * off, and the two share one call because sharing is one fact about a pair of
+ * accounts.
  *
  * The list is a read of the playlist's shares, so the dialog arrives knowing who
  * already has it rather than asking the person to remember. A grant and a revoke
@@ -34,7 +33,6 @@ interface SharePlaylistDialogProps {
   onClose: () => void;
 }
 
-/* The invitation nobody writes down: what a share offers. */
 const LEVELS: readonly {
   readonly level: ShareLevel;
   readonly label: MessageKey<Messages>;

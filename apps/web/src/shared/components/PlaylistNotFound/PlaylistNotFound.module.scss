@@ -1,8 +1,6 @@
 /*
- * The not-found state, the sibling of the empty state: one axis, centred, in the
- * reading width, left-aligned in its own box so the list area's content starts
- * at the top rather than floating. It stands in for the list, so it is on --bg
- * and not on a --surface panel.
+ * The not-found state, the sibling of the empty state. It stands in for the list,
+ * so it is on --bg and not on a --surface panel.
  *
  * The action is a link, not a button, because it navigates rather than acts, and
  * it is the secondary treatment (a bordered control on the surface) rather than

@@ -4,9 +4,11 @@ import {
   CreatePlaylistInputSchema,
   PageQuerySchema,
   PlaylistNotFoundReason,
+  PlaylistTracksQuerySchema,
   ProblemCode,
   RenamePlaylistInputSchema,
-  SkipNonMusicInputSchema
+  SkipNonMusicInputSchema,
+  SortPlaylistInputSchema
 } from '@playliberty/contracts';
 
 import { playlistAudience } from '../../../shared/access/playlistAccess.js';
@@ -35,12 +37,14 @@ import {
 import {
   PlaylistOutcome,
   deletePlaylistForAccount,
+  listPlaylistQueueForAccount,
   listPlaylistTracksForAccount,
   listPlaylistsForAccount,
   readPlaylistForAccount,
   removeTrackForAccount,
   renamePlaylistForAccount,
-  updateSkipNonMusicForAccount
+  updateSkipNonMusicForAccount,
+  updateSortForAccount
 } from '../playlistService.js';
 
 export function registerPlaylistRoutes(
@@ -120,7 +124,7 @@ export function registerPlaylistRoutes(
   app.get<{ Params: { id: string } }>(
     '/playlists/:id/tracks',
     async (request, reply) => {
-      const parsed = parseBody(PageQuerySchema, request.query);
+      const parsed = parseBody(PlaylistTracksQuerySchema, request.query);
 
       if (!parsed.success) {
         return sendValidationFailed(reply, parsed.issues);
@@ -130,7 +134,11 @@ export function registerPlaylistRoutes(
         context.database,
         request.params.id,
         request.account.id,
-        { limit: parsed.data.limit, offset: parsed.data.offset }
+        {
+          limit: parsed.data.limit,
+          offset: parsed.data.offset,
+          state: parsed.data.state
+        }
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
@@ -139,6 +147,27 @@ export function registerPlaylistRoutes(
 
       if (result.outcome === PlaylistOutcome.Ok) {
         return reply.send(result.page);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  app.get<{ Params: { id: string } }>(
+    '/playlists/:id/queue',
+    async (request, reply) => {
+      const result = listPlaylistQueueForAccount(
+        context.database,
+        request.params.id,
+        request.account.id
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        return reply.send({ items: result.items });
       }
 
       return exhaust(result);
@@ -195,6 +224,43 @@ export function registerPlaylistRoutes(
         request.params.id,
         request.account.id,
         parsed.data.skipNonMusic
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        publishPlaylistChanged(context, request.params.id);
+        return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  /*
+   * The order the playlist's tracks are read in, which the owner and a write
+   * collaborator may change. The playlist's own order is the absence, so the press
+   * that clears the sort writes no value rather than a stored member. A read
+   * collaborator, a stranger and a missing playlist are one not-found. The
+   * playlist-changed event asks another client of this playlist for its playlist
+   * and its tracks again, because the order is part of both.
+   */
+  app.patch<{ Params: { id: string } }>(
+    '/playlists/:id/sort',
+    async (request, reply) => {
+      const parsed = parseBody(SortPlaylistInputSchema, request.body);
+
+      if (!parsed.success) {
+        return sendValidationFailed(reply, parsed.issues);
+      }
+
+      const result = updateSortForAccount(
+        context.database,
+        request.params.id,
+        request.account.id,
+        parsed.data.sort
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {

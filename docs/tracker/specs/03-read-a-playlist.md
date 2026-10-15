@@ -149,7 +149,8 @@ playlist beside it.
 - Any route that lists every track in the instance. There is no global library view and there never will be one
   in v1.
 - Any route that lists the playlists a track belongs to.
-- Search, filtering, and sorting by anything but position.
+- Search. A filter and a sort by date are [`12-sort-and-filter-the-track-list`](12-sort-and-filter-the-track-list.md)'s
+  business.
 - Derived playability flags, next and previous track pointers, and duration totals. The client derives what it
   needs from the status fields.
 - An aggregate route that returns a playlist, its tracks and its latest run together.

@@ -6,11 +6,6 @@ import styles from './NoticeToast.module.scss';
  * volume notice already uses, centred above the player bar. It never blocks, and
  * it withdraws itself, so a refusal does not grow a control for the notice to be
  * dismissed with.
- *
- * Its whole life is one animation: a short rise in and a fade at the end, so the
- * removal the host performs is not a pop. `forwards` holds the faded frame until
- * the host unmounts it, and `prefers-reduced-motion` drops the animation so the
- * sentence simply shows and is disposed on the host's clock.
  */
 
 interface NoticeToastProps {

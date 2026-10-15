@@ -67,6 +67,7 @@ const newPlaylist = {
   lastSyncedAt: null,
   trackCount: 0,
   skipNonMusic: true,
+  sort: 'playlist',
   access: 'owner',
   hasShares: false,
   createdAt: '2026-10-03T12:00:00.000Z',
@@ -89,6 +90,7 @@ function ownedItem(id: string, name: string) {
     lastSyncedAt: '2026-09-29T12:00:00.000Z',
     trackCount: 1,
     skipNonMusic: true,
+    sort: 'playlist',
     access: 'owner',
     hasShares: false,
     createdAt: '2026-09-01T00:00:00.000Z',
@@ -112,6 +114,7 @@ const baseItems = [
     lastSyncedAt: '2026-09-29T12:00:00.000Z',
     trackCount: 1,
     skipNonMusic: true,
+    sort: 'playlist',
     access: 'owner',
     hasShares: false,
     createdAt: '2026-09-01T00:00:00.000Z',
@@ -382,6 +385,7 @@ describe('LibraryPage', () => {
                 lastSyncedAt: '2026-09-29T12:00:00.000Z',
                 trackCount: 1,
                 skipNonMusic: true,
+                sort: 'playlist',
                 access: 'owner',
                 hasShares: false,
                 createdAt: '2026-09-01T00:00:00.000Z',
@@ -398,6 +402,7 @@ describe('LibraryPage', () => {
                 lastSyncedAt: '2026-09-28T12:00:00.000Z',
                 trackCount: 4,
                 skipNonMusic: true,
+                sort: 'playlist',
                 access: 'read',
                 hasShares: false,
                 createdAt: '2026-09-01T00:00:00.000Z',
@@ -423,6 +428,7 @@ describe('LibraryPage', () => {
               lastSyncedAt: '2026-09-29T12:00:00.000Z',
               trackCount: 1,
               skipNonMusic: true,
+              sort: 'playlist',
               access: 'owner',
               hasShares: false,
               createdAt: '2026-09-01T00:00:00.000Z',
@@ -581,7 +587,13 @@ describe('LibraryPage', () => {
     expect(state.shuffle).toBe(true);
     expect(state.isPlaying).toBe(true);
     expect(state.queue[0].playlistId).toBe('playlist-1');
-    expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+    /* The shuffled queue starts on a random stored track, so the draw is asserted
+     * by membership rather than by name. */
+    expect(['track-1', 'track-2']).toContain(state.currentId);
+    expect(state.queue[0].id).toBe(state.currentId);
+    expect(new Set(state.queue.map(item => item.id))).toEqual(
+      new Set(['track-1', 'track-2'])
+    );
   });
 
   it('refuses to shuffle a playlist with nothing stored yet', async () => {
@@ -605,10 +617,10 @@ describe('LibraryPage', () => {
     }));
 
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json({ items: tracks, total: 3, limit: 50, offset: 0 })
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
+        HttpResponse.json({ items: tracks })
       ),
-      http.get('http://localhost:3000/api/v1/playlists/playlist-2/tracks', () =>
+      http.get('http://localhost:3000/api/v1/playlists/playlist-2/queue', () =>
         HttpResponse.json({
           items: [
             {
@@ -629,10 +641,7 @@ describe('LibraryPage', () => {
               origin: 'remote',
               position: 0
             }
-          ],
-          total: 1,
-          limit: 50,
-          offset: 0
+          ]
         })
       )
     );

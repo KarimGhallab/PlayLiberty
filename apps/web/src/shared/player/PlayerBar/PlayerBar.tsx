@@ -13,16 +13,14 @@ import styles from './PlayerBar.module.scss';
 
 /*
  * The player bar, the shell's only persistent chrome and the one component whose
- * height is paid for by the list it covers. The artwork is a left rail spanning
- * the bar's full inner height, so the thumbnail covers the title, the playlist
- * name and the seeker row as one block. To its right: the identity and the
- * transport on the first row, the seeker with the two times against its ends on
- * the second.
+ * height is paid for by the list it covers. The middle column of the grid is the
+ * transport, so the transport posts 0px of offset and the title has equal room
+ * either side.
  *
- * The bar is absent at rest and appears on the first track, which is the design
- * record's own correction: 98px on the landing screen would be spent on a play
- * that cannot act. Once playback exists the bar persists across both routes,
- * because music keeps playing while the listener browses elsewhere.
+ * The bar is absent at rest and appears on the first track, because 98px on the
+ * landing screen would be spent on a play that cannot act. Once playback exists
+ * the bar persists across both routes, because music keeps playing while the
+ * listener browses elsewhere.
  *
  * The transport is always drawn once the bar exists, unlike the header's, which
  * is absent unless the playlist is playing: the bar is the one place a listener

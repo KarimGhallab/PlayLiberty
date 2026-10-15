@@ -127,10 +127,10 @@ async function readPlaylist(playlistId: string, pangolinUserId: string) {
 }
 
 /*
- * The tracks read route is spec 03 and does not exist yet, so the per-track
- * effects of a sync are read from the database here. Everything the API already
- * exposes (the run's counts, the playlist's count, status and name) is asserted
- * through the API above this.
+ * The per-track effects of a sync (the association's origin and position beside
+ * the track's own file and source status) are read from the database here.
+ * Everything the API exposes (the run's counts, the playlist's count, status and
+ * name) is asserted through the API above this.
  */
 function readAssociations(playlistId: string) {
   if (context === undefined) {
@@ -823,8 +823,8 @@ describe('honouring a suppression', () => {
     );
     await runFinished(first.playlistId, 'owner-1');
 
-    // The writer is spec 04 (removing a track). Until it lands, a suppression is
-    // seeded, which is the only way to put the database in the state it describes.
+    // A suppression is seeded directly, which is the state a removed track leaves
+    // behind.
     suppress(first.playlistId, 'aaaaaaaaaaa');
 
     await postSync(first.playlistId, 'owner-1');
@@ -1220,9 +1220,8 @@ describe('authorizing a sync', () => {
     await runFinished(created.playlistId, 'owner-1');
 
     /*
-     * A share is seeded rather than created by a route: the three share routes
-     * are still stubs (spec 05), so inserting the row is the only way to put the
-     * database in the state a shared playlist is actually in.
+     * The share is seeded directly rather than granted through the route, so the
+     * fixture does not depend on the share flow to set up a collaborator.
      */
     const writerAccount = seedAccount(context.database, {
       pangolinUserId: 'writer-1'

@@ -12,11 +12,15 @@ export type {
   Playlist,
   PlaylistAccess,
   PlaylistTrack,
+  PlaylistTracksPage,
+  PlaylistTracksQuery,
   Problem,
   RenamePlaylistInput,
   Share,
   SharePlaylistInput,
   SkipNonMusicInput,
+  SortPlaylistInput,
   SyncRun,
-  Track
+  Track,
+  TrackFileStatusCounts
 } from './types.js';

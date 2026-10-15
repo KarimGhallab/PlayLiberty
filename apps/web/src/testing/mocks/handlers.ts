@@ -6,6 +6,93 @@ import { HttpResponse, http } from 'msw';
  * test exercises the schema parsing, the ordering and the two access levels as
  * well as the render.
  */
+/*
+ * The first playlist's associations, in the playlist's own order. Two stored and
+ * one still pending, so a test has a playable track and a not-yet-playable one to
+ * tell apart. The tracks route pages them and the queue route returns them whole.
+ */
+const PLAYLIST_ONE_TRACKS = [
+  {
+    track: {
+      id: 'track-1',
+      provider: 'youtube',
+      videoId: 'video-1',
+      title: 'Blue In Green',
+      durationSeconds: 337,
+      skipNonMusic: true,
+      thumbnailPath: null,
+      fileStatus: 'stored',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    },
+    origin: 'remote',
+    position: 0
+  },
+  {
+    track: {
+      id: 'track-2',
+      provider: 'youtube',
+      videoId: 'video-2',
+      title: 'Naima',
+      durationSeconds: 273,
+      skipNonMusic: true,
+      thumbnailPath: null,
+      fileStatus: 'stored',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    },
+    origin: 'remote',
+    position: 1
+  },
+  {
+    track: {
+      id: 'track-3',
+      provider: 'youtube',
+      videoId: 'video-3',
+      title: 'Flamenco Sketches',
+      durationSeconds: 565,
+      skipNonMusic: true,
+      thumbnailPath: null,
+      fileStatus: 'pending',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    },
+    origin: 'remote',
+    position: 2
+  }
+];
+
+/*
+ * The whole-playlist counts the tracks read folds in. Every state is a key
+ * including a zero, so the filter chips have one to draw.
+ */
+export const EMPTY_COUNTS = {
+  stored: 0,
+  pending: 0,
+  downloading: 0,
+  failed: 0,
+  unavailable: 0
+};
+
+export function countsOf(
+  tracks: readonly { readonly track: { readonly fileStatus: string } }[]
+): Record<string, number> {
+  const counts: Record<string, number> = { ...EMPTY_COUNTS };
+
+  for (const association of tracks) {
+    counts[association.track.fileStatus] =
+      (counts[association.track.fileStatus] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 export const handlers = [
   http.get('http://localhost:3000/api/v1/playlists', () =>
     HttpResponse.json({
@@ -21,6 +108,7 @@ export const handlers = [
           lastSyncedAt: '2026-09-29T12:00:00.000Z',
           trackCount: 1,
           skipNonMusic: true,
+          sort: 'playlist',
           access: 'owner',
           hasShares: false,
           createdAt: '2026-09-01T00:00:00.000Z',
@@ -37,6 +125,7 @@ export const handlers = [
           lastSyncedAt: '2026-09-28T12:00:00.000Z',
           trackCount: 4,
           skipNonMusic: true,
+          sort: 'playlist',
           access: 'read',
           hasShares: false,
           createdAt: '2026-09-01T00:00:00.000Z',
@@ -68,7 +157,6 @@ export const handlers = [
   http.get('http://localhost:3000/api/v1/me', () =>
     HttpResponse.json({ id: 'account-1', displayName: 'You', avatarUrl: null })
   ),
-  /* The shares of the first playlist, which starts empty. */
   http.get('http://localhost:3000/api/v1/playlists/playlist-1/shares', () =>
     HttpResponse.json([])
   ),
@@ -105,6 +193,7 @@ export const handlers = [
       lastSyncedAt: '2026-09-29T12:00:00.000Z',
       trackCount: 3,
       skipNonMusic: true,
+      sort: 'playlist',
       access: 'owner',
       hasShares: false,
       createdAt: '2026-09-01T00:00:00.000Z',
@@ -132,72 +221,33 @@ export const handlers = [
       })
   ),
   /*
-   * The tracks of the first playlist, in the playlist's own order. Two stored and
-   * one still pending, so a test has a playable track and a not-yet-playable one
-   * to tell apart.
+   * The tracks route's state parameter narrows the page and its total, while the
+   * counts stay the whole playlist's; the queue route answers the same list, every
+   * status, because a queue is built from the whole association list and filtered
+   * on the client.
    */
-  http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-    HttpResponse.json({
-      items: [
-        {
-          track: {
-            id: 'track-1',
-            provider: 'youtube',
-            videoId: 'video-1',
-            title: 'Blue In Green',
-            durationSeconds: 337,
-            skipNonMusic: true,
-            thumbnailPath: null,
-            fileStatus: 'stored',
-            sourceStatus: 'available',
-            failureReason: null,
-            createdAt: '2026-09-01T00:00:00.000Z',
-            updatedAt: '2026-09-29T12:00:00.000Z'
-          },
-          origin: 'remote',
-          position: 0
-        },
-        {
-          track: {
-            id: 'track-2',
-            provider: 'youtube',
-            videoId: 'video-2',
-            title: 'Naima',
-            durationSeconds: 273,
-            skipNonMusic: true,
-            thumbnailPath: null,
-            fileStatus: 'stored',
-            sourceStatus: 'available',
-            failureReason: null,
-            createdAt: '2026-09-01T00:00:00.000Z',
-            updatedAt: '2026-09-29T12:00:00.000Z'
-          },
-          origin: 'remote',
-          position: 1
-        },
-        {
-          track: {
-            id: 'track-3',
-            provider: 'youtube',
-            videoId: 'video-3',
-            title: 'Flamenco Sketches',
-            durationSeconds: 565,
-            skipNonMusic: true,
-            thumbnailPath: null,
-            fileStatus: 'pending',
-            sourceStatus: 'available',
-            failureReason: null,
-            createdAt: '2026-09-01T00:00:00.000Z',
-            updatedAt: '2026-09-29T12:00:00.000Z'
-          },
-          origin: 'remote',
-          position: 2
-        }
-      ],
-      total: 3,
-      limit: 50,
-      offset: 0
-    })
+  http.get(
+    'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+    ({ request }) => {
+      const state = new URL(request.url).searchParams.get('state');
+      const items =
+        state === null
+          ? PLAYLIST_ONE_TRACKS
+          : PLAYLIST_ONE_TRACKS.filter(
+              association => association.track.fileStatus === state
+            );
+
+      return HttpResponse.json({
+        items,
+        total: items.length,
+        limit: 50,
+        offset: 0,
+        counts: countsOf(PLAYLIST_ONE_TRACKS)
+      });
+    }
+  ),
+  http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
+    HttpResponse.json({ items: PLAYLIST_ONE_TRACKS })
   ),
   /*
    * Retry and remove, so the row's action lane has a route to answer. The retry
@@ -252,6 +302,7 @@ export const handlers = [
       lastSyncedAt: '2026-09-29T12:00:00.000Z',
       trackCount: 3,
       skipNonMusic: true,
+      sort: 'playlist',
       access: 'owner',
       hasShares: false,
       createdAt: '2026-09-01T00:00:00.000Z',
@@ -278,6 +329,35 @@ export const handlers = [
         lastSyncedAt: '2026-09-29T12:00:00.000Z',
         trackCount: 3,
         skipNonMusic: body.skipNonMusic,
+        sort: 'playlist',
+        access: 'owner',
+        hasShares: false,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        updatedAt: '2026-09-29T12:00:00.000Z'
+      });
+    }
+  ),
+  /*
+   * The sort write, which echoes the value it was sent so a test can read the
+   * optimistic result back from the server.
+   */
+  http.patch(
+    'http://localhost:3000/api/v1/playlists/playlist-1/sort',
+    async ({ request }) => {
+      const body = (await request.json()) as { sort: string };
+
+      return HttpResponse.json({
+        id: 'playlist-1',
+        ownerAccountId: 'account-1',
+        name: 'Rain On The Window',
+        coverTrackId: null,
+        provider: 'youtube',
+        sourcePlaylistId: 'PL-demo',
+        syncStatus: 'idle',
+        lastSyncedAt: '2026-09-29T12:00:00.000Z',
+        trackCount: 3,
+        skipNonMusic: true,
+        sort: body.sort,
         access: 'owner',
         hasShares: false,
         createdAt: '2026-09-01T00:00:00.000Z',
@@ -330,7 +410,6 @@ export const handlers = [
       { status: 202 }
     )
   ),
-  /* Deleting a playlist answers `204` with no body. */
   http.delete(
     'http://localhost:3000/api/v1/playlists/playlist-1',
     () => new HttpResponse(null, { status: 204 })

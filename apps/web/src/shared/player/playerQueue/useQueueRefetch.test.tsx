@@ -57,7 +57,7 @@ beforeEach(() => {
  * store's, tested there; this is the wiring that made them load-bearing.
  */
 describe('useQueueRefetch', () => {
-  it('appends a new track and keeps the current one', () => {
+  it("adopts the read's order and keeps the current one", () => {
     startPlaylistQueue(
       PLAYLIST,
       [stored('track-1', 0), stored('track-2', 1)],
@@ -77,8 +77,8 @@ describe('useQueueRefetch', () => {
 
     const state = usePlayerStore.getState();
     expect(state.queue.map(track => track.id)).toEqual([
-      'track-1',
       'track-2',
+      'track-1',
       'track-3'
     ]);
     expect(state.currentId).toBe('track-1');

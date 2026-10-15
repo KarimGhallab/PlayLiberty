@@ -1,14 +1,11 @@
 /*
- * The undo toast. Anchored bottom-left, clear of the player bar and of the
- * library's own content, and stacked above the bar so a deferred delete is always
- * reachable while music plays.
+ * The undo toast. Anchored bottom-left and stacked above the player bar, so a
+ * deferred delete stays reachable while music plays.
  *
  * The ring is a sweep rather than a number: the window is finite and the sweep
  * shows it without asking anyone to read a countdown. It is one animation over
- * the duration handed in as `--toast-duration`, so the ring and the timer that
- * ends the window cannot drift; under `prefers-reduced-motion` the sweep stops
- * and the toast simply rests, since the action's own deadline is the host's and
- * not the ring's.
+ * the duration handed in, so the ring and the timer that ends the window cannot
+ * drift.
  */
 .toast {
   position: fixed;
@@ -65,8 +62,6 @@
     text-overflow: ellipsis;
   }
 
-  /* The intent this window displaced, on the detail's own scale beneath the
-   * window's own sentence and name. */
   &__replaced {
     color: var(--muted);
     font-size: var(--text-xs);

@@ -22,10 +22,6 @@ export function problemDetail(
     return null;
   }
 
-  /*
-   * One code, four scopes, and the scope is the only difference: the server names
-   * the reason and the sentence comes from here.
-   */
   if (problem.code === ProblemCode.PlaylistNotFound) {
     const reason = problem.params?.reason;
 
@@ -45,10 +41,6 @@ export function problemDetail(
     return problem.detail ?? null;
   }
 
-  /*
-   * Each of these carries one sentence, so the code is the whole difference and
-   * the server's own English is only the fallback.
-   */
   if (problem.code === ProblemCode.InvalidRequest) {
     return t('problem.invalidRequest');
   }

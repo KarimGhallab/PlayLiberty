@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 
 import {
   AssociationOrigin,
+  PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   ShareLevel,
@@ -77,6 +78,7 @@ export interface SeedPlaylistOptions {
   sourceUrl?: string | null;
   syncStatus?: PlaylistSyncStatus;
   skipNonMusic?: boolean;
+  sort?: PlaylistSort | null;
   lastSyncedAt?: string | null;
   createdAt?: string;
 }
@@ -97,6 +99,7 @@ export interface SeedTrackOptions {
 export interface AssociateOptions {
   origin?: AssociationOrigin;
   position?: number;
+  addedAt?: string;
 }
 
 export interface SeedShareOptions {
@@ -164,6 +167,7 @@ export function seedPlaylist(
       sourceUrl: options.sourceUrl ?? null,
       syncStatus: options.syncStatus ?? PlaylistSyncStatus.Idle,
       skipNonMusic: options.skipNonMusic ?? true,
+      sort: options.sort ?? null,
       lastSyncedAt: options.lastSyncedAt ?? null,
       createdAt: options.createdAt ?? new Date().toISOString()
     })
@@ -214,7 +218,8 @@ export function associate(
       playlistId,
       trackId,
       origin: options.origin ?? AssociationOrigin.Remote,
-      position: options.position ?? nextPositionFor(database, playlistId)
+      position: options.position ?? nextPositionFor(database, playlistId),
+      addedAt: options.addedAt
     })
     .run();
 }

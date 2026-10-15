@@ -78,10 +78,8 @@ function applyTransition(
 }
 
 /*
- * One track for a video id the instance does not hold yet, queued for download.
- * The provider is fixed today because YouTube is the only source; the video id is
- * the key every later read uses. This is the lifecycle's birth: a track starts
- * `pending` with an available source and no file.
+ * The provider is fixed because YouTube is the only source, and the video id is
+ * the key every later read uses.
  */
 export function createPendingTrack(
   database: DatabaseHandle,
@@ -111,11 +109,11 @@ export function createPendingTrack(
 }
 
 /*
- * The claim: the oldest `pending` rows up to the cap, moved to `downloading` only
- * if they are still `pending`, returning exactly the ones it moved. A row another
- * pass already took is not in the result, so no download is started twice. The
- * two statements are the guard: the second moves only what the first selected and
- * only while it is still pending.
+ * The claim moves the oldest `pending` rows up to the cap to `downloading`,
+ * returning exactly the ones it moved. A row another pass already took is not in
+ * the result, so no download is started twice. The two statements are the guard:
+ * the second moves only what the first selected and only while it is still
+ * pending.
  */
 export function claimPendingTracks(
   database: DatabaseHandle,
@@ -154,7 +152,6 @@ export function claimPendingTracks(
     .all();
 }
 
-/* The store: a claimed download that finished, with the file the adapter wrote. */
 export function storeTrack(
   database: DatabaseHandle,
   trackId: string,
@@ -168,7 +165,6 @@ export function storeTrack(
   });
 }
 
-/* The failure: a claimed download that failed for a reason worth keeping. */
 export function failTrack(
   database: DatabaseHandle,
   trackId: string,
@@ -180,7 +176,6 @@ export function failTrack(
   });
 }
 
-/* The retry: a failed track back in the queue, with its stale reason cleared. */
 export function retryTrack(
   database: DatabaseHandle,
   trackId: string
@@ -215,9 +210,7 @@ export function fetchTrackWhole(
 
 /*
  * A video that is gone from its source is not a failure: the track is kept and
- * marked removed, and only a track with no stored file becomes unavailable. The
- * module reads the file status itself, so the caller no longer decides whether
- * the file is kept. A track already marked removed is left alone.
+ * marked removed, and only a track with no stored file becomes unavailable.
  */
 export function markTrackSourceRemoved(
   database: DatabaseHandle,
@@ -276,9 +269,7 @@ export function resetDownloadingTracks(database: DatabaseHandle): number {
 }
 
 /*
- * The artwork, written after the audio is stored. It is best effort: a track with
- * no thumbnail path is stored and playable, and the path is reached through the
- * track's own route.
+ * Best effort: a stored track with no thumbnail path is still playable.
  */
 export function storeThumbnail(
   database: DatabaseHandle,

@@ -11,6 +11,7 @@ import {
 
 import {
   AssociationOrigin,
+  PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   ShareLevel,
@@ -47,10 +48,6 @@ export const playlists = sqliteTable(
     name: text('name').notNull(),
     provider: text('provider').$type<Provider>().notNull(),
     sourcePlaylistId: text('source_playlist_id').notNull(),
-    // The normalized source URL the adapter produced when the playlist was
-    // created, kept so a later sync can read the source again. Nullable because a
-    // playlist seeded before this column existed has none; every playlist this
-    // server creates sets it.
     sourceUrl: text('source_url'),
     syncStatus: text('sync_status')
       .$type<PlaylistSyncStatus>()
@@ -59,6 +56,7 @@ export const playlists = sqliteTable(
     skipNonMusic: integer('skip_non_music', { mode: 'boolean' })
       .notNull()
       .default(true),
+    sort: text('sort').$type<PlaylistSort>(),
     lastSyncedAt: text('last_synced_at'),
     trackCount: integer('track_count').notNull().default(0),
     createdAt: text('created_at').notNull().$defaultFn(createdAt),

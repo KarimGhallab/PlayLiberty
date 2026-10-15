@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 
 /*
- * Whether a media query currently matches, kept in step with the viewport.
- *
  * The one place this app reads the viewport, and it exists because the playlist
  * header has two arrangements that are different markup rather than two
  * stylesheets: the card places the cover above the identity and the row places
@@ -10,11 +8,9 @@ import { useEffect, useState } from 'react';
  * row on a phone inlines no DOM of its own; it asks here and passes the answer
  * to the component's own `arrangement`.
  *
- * It reads once on mount and subscribes to changes, so a rotation or a resized
- * window re-renders with the new arrangement rather than holding the one it
- * opened with. On a host without `matchMedia` it reports false, which is the
- * web arrangement: that is jsdom under test, where the desktop layout is what
- * the tests expect and a phantom mobile one would flip every assertion.
+ * On a host without `matchMedia` it reports false, which is the web arrangement:
+ * that is jsdom under test, where the desktop layout is what the tests expect
+ * and a phantom mobile one would flip every assertion.
  */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => readMatch(query));

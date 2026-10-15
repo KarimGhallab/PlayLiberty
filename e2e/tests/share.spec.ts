@@ -72,7 +72,6 @@ test('an owner grants and revokes a share with another account', async ({
     page.getByRole('img', { name: 'Shared playlist' })
   ).toBeVisible();
 
-  // Revoking is the same switch turned off.
   await openHeaderMenu(page);
   await page.getByRole('menuitem', { name: 'Share' }).click();
   const revokeDialog = page.getByRole('dialog');

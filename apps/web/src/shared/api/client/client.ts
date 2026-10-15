@@ -4,16 +4,16 @@ import { ProblemSchema } from '@playliberty/contracts';
 /*
  * The one place the API is spoken to. Every request is same-origin (`/api/v1`),
  * so nginx or the Vite dev proxy forwards it and no CORS is in play. A mutation
- * carries the client header the architecture requires; a `GET` never does, because a
- * `GET` never mutates.
+ * carries the client header the architecture requires; a `GET` never does,
+ * because a `GET` never mutates.
  *
  * The edge can answer `401` or redirect to its SSO login. Both mean the browser
  * is not authenticated, and the fix is a top-level navigation so the edge can
  * re-run the flow, which a fetch cannot do itself. That navigation is attempted
- * once per tab: if the app comes back and is still unauthenticated the request
- * fails with the problem instead of navigating again, because a second
- * navigation is a reload loop with no exit. Any response that is not that
- * failure clears the flag, so a session that expires later can re-authenticate.
+ * once per tab: a second navigation is a reload loop with no exit, so if the app
+ * comes back still unauthenticated the request fails with the problem. Any
+ * response that is not that failure clears the flag, so a session that expires
+ * later can re-authenticate.
  */
 
 export const API_PREFIX = '/api/v1';
@@ -125,12 +125,11 @@ export async function apiGet<T>(
  * to tell an expired session apart from a track that is gone, so on the
  * element's failure it asks the route again for the status alone.
  *
- * This is deliberately the same `send` path every other request uses, so a
- * refusal because the session expired reaches the re-authentication guard and a
- * second refusal in the same tab surfaces as the problem rather than a reload
- * loop. It is a `HEAD`, which is a status and a set of headers with no body, so
- * the probe transfers no media; it runs only after a load has already failed, so
- * the playback that succeeds makes no request of its own.
+ * It is deliberately the same `send` path every other request uses, so a refusal
+ * because the session expired reaches the re-authentication guard and a second
+ * refusal in the same tab surfaces as the problem rather than a reload loop. It
+ * is a `HEAD`, so the probe transfers no media, and it runs only after a load has
+ * already failed, so playback that succeeds makes no request of its own.
  */
 export async function probeStreamStatus(path: string): Promise<number> {
   const response = await send(path, { method: 'HEAD' });
@@ -138,13 +137,6 @@ export async function probeStreamStatus(path: string): Promise<number> {
   return response.status;
 }
 
-/*
- * The mutation half. A `POST` sends a JSON body and parses the reply with the
- * same schema discipline a `GET` uses, and `send` is what attaches the client
- * header the architecture requires. A refusal throws the `ApiError` carrying the problem
- * document, so the caller shows the server's own `detail` rather than a message
- * the client made up.
- */
 export async function apiPost<T>(
   path: string,
   body: unknown,
@@ -164,9 +156,9 @@ export async function apiPost<T>(
 }
 
 /*
- * A `POST` with no body, which is a verb the server reads as a command rather
- * than as a document: starting a sync carries the playlist id in the path and
- * nothing in the body, so sending `{}` would be a body the route does not read.
+ * A `POST` with no body, for a verb the server reads as a command rather than as
+ * a document: starting a sync carries the playlist id in the path and nothing in
+ * the body, so sending `{}` would be a body the route does not read.
  */
 export async function apiCommand<T>(
   path: string,
@@ -181,7 +173,6 @@ export async function apiCommand<T>(
   return schema.parse(await response.json());
 }
 
-/** A `PATCH` that sends a JSON body and parses the updated document. */
 export async function apiPatch<T>(
   path: string,
   body: unknown,
@@ -201,8 +192,8 @@ export async function apiPatch<T>(
 }
 
 /*
- * A `DELETE` whose success carries no body. `204` is the route's own answer for
- * a deleted playlist, so there is nothing to parse and a schema would be a lie.
+ * A `DELETE` whose success carries no body: `204` is the route's answer for a
+ * deleted playlist, so there is nothing to parse and a schema would be a lie.
  */
 export async function apiDelete(path: string): Promise<void> {
   const response = await send(path, { method: 'DELETE' });

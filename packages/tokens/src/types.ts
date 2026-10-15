@@ -48,7 +48,6 @@ export interface CurveToken {
   readonly value: EasingCurve;
 }
 
-/** One designed value, discriminated by the kind that decides its rendering. */
 export type Token =
   | ColorToken
   | LengthToken
@@ -57,7 +56,6 @@ export type Token =
   | FamilyToken
   | CurveToken;
 
-/** A named group of tokens, as the emitter walks the set. */
 export type TokenGroup = readonly [
   name: string,
   tokens: Readonly<Record<string, Token>>

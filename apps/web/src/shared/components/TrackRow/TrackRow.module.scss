@@ -1,10 +1,7 @@
 /*
- * The track row, mirroring docs/design/components/track-row.html. The artwork is
- * 40px and the duration is a fixed 52px lane. The whole row is the control: a
- * hit layer over it carries the press while the row carries the hover, so a
- * stored row is one target and one tab stop rather than a small button at its
- * end. The row's own rules are scoped under the component name by the module, so
- * the design's unscoped names become private here.
+ * The whole row is the control: a hit layer over it carries the press while the
+ * row carries the hover, so a stored row is one target and one tab stop rather
+ * than a small button at its end.
  */
 .track-row {
   position: relative;
@@ -91,8 +88,7 @@
 
   /* The equalizer on the current row's artwork. It is absolutely positioned
    * against the art box, which clips it, so the outermost bars never square off
-   * the two bottom corners that --radius-artwork rounds. Six bars at a 7px pitch
-   * (3px wide, a 4px gap) fill the 40px tile; the strip reaches half way up. */
+   * the two bottom corners that --radius-artwork rounds. */
   &__bars {
     position: absolute;
     inset-inline: 0;

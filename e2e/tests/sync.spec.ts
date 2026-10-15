@@ -40,10 +40,8 @@ test('a created playlist syncs through the adapter and settles with its source t
   await page.getByLabel('Playlist link').fill(playlistUrl(PLAYLIST_ID));
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
-  // The source's own title, from the server.
   await expect(page.getByRole('link', { name: 'Evening Jazz' })).toBeVisible();
 
-  // The run settles: the sync state leaves `Syncing` for the rested word.
   await expect(page.getByText('Syncing').filter({ visible: true })).toHaveCount(
     0,
     { timeout: 15_000 }
@@ -76,13 +74,11 @@ test('a failed sync leaves the playlist marked as failed rather than silent', as
   await page.getByLabel('Playlist link').fill(playlistUrl(PLAYLIST_ID));
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
-  // It settles with its tracks.
   await expect(page.getByText('Up to date')).toBeVisible({ timeout: 15_000 });
 
   // The source is gone now, so the next reconcile throws.
   writeScenario({ sources: {} });
 
-  // Start that reconcile from the library's overflow.
   await page
     .getByRole('button', { name: 'More actions for Evening Jazz' })
     .click();
@@ -93,8 +89,6 @@ test('a failed sync leaves the playlist marked as failed rather than silent', as
     timeout: 15_000
   });
 
-  // Opening it explains the fault, reassures and offers the retry, and the
-  // server's own words are one control away.
   await page.getByRole('link', { name: 'Evening Jazz' }).click();
 
   // The server's own words are one control away, which only the real server

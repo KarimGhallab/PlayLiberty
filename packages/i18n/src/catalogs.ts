@@ -4,8 +4,8 @@ import { fr } from './fr.js';
 import { Language } from './types.js';
 
 /*
- * The catalogs by language. The record is exhaustive over `Language`, so adding
- * a language without a catalog is a compile error.
+ * The record is exhaustive over `Language`, so adding a language without a
+ * catalog is a compile error.
  */
 export const catalogs: Readonly<Record<Language, Messages>> = {
   [Language.English]: en,

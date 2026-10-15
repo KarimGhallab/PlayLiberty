@@ -4,17 +4,14 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Validates that all packages in the workspace are listed in tsconfig.depcruise.json
- * This ensures depcruiser can properly resolve all package paths.
+ * Ensures every package under apps/, scripts/ and packages/ is listed in
+ * tsconfig.depcruise.json, which depcruiser needs to resolve their imports.
  */
 
 const rootDir = path.resolve(__dirname, '..');
 const tsConfigFilePath = path.join(rootDir, 'tsconfig.depcruise.json');
 const packagePatterns = ['apps/*', 'scripts/*', 'packages/**'];
 
-/**
- * Recursively find all package.json files matching the patterns
- */
 function findPackages(baseDir, patterns) {
   const packages = [];
 
@@ -29,10 +26,8 @@ function findPackages(baseDir, patterns) {
     }
 
     if (isRecursive) {
-      // For packages/**, search recursively
       findPackagesRecursive(searchDir, packages);
     } else {
-      // For apps/* and scripts/*, search one level deep
       const entries = fs.readdirSync(searchDir, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isDirectory()) {
@@ -48,9 +43,6 @@ function findPackages(baseDir, patterns) {
   return packages;
 }
 
-/**
- * Recursively search for package.json files
- */
 function findPackagesRecursive(dir, packages) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -58,7 +50,7 @@ function findPackagesRecursive(dir, packages) {
     const fullPath = path.join(dir, entry.name);
 
     if (entry.name === 'node_modules') {
-      continue; // Skip node_modules
+      continue;
     }
 
     if (entry.isDirectory()) {
@@ -69,9 +61,6 @@ function findPackagesRecursive(dir, packages) {
   }
 }
 
-/**
- * Read package name from package.json
- */
 function getPackageName(pkgPath) {
   try {
     const content = fs.readFileSync(pkgPath, 'utf8');
@@ -83,13 +72,9 @@ function getPackageName(pkgPath) {
   }
 }
 
-/**
- * Read tsconfig paths
- */
 function getTsconfigPaths() {
   try {
     const content = fs.readFileSync(tsConfigFilePath, 'utf8');
-    // Remove comments before parsing
     const cleanContent = content
       .replace(/\/\/.*$/gm, '')
       .replace(/\/\*[\s\S]*?\*\//g, '');
@@ -101,25 +86,18 @@ function getTsconfigPaths() {
   }
 }
 
-/**
- * Main validation logic
- */
 function validateTsconfigPaths() {
-  // Find all packages
   const packageFiles = findPackages(rootDir, packagePatterns);
 
-  // Get package names
   const packageNames = packageFiles
     .map(pkgPath => ({
       name: getPackageName(pkgPath),
       path: path.relative(rootDir, pkgPath)
     }))
-    .filter(pkg => pkg.name); // Filter out invalid packages
+    .filter(pkg => pkg.name);
 
-  // Get tsconfig paths
   const tsconfigPaths = getTsconfigPaths();
 
-  // Validate
   const missing = [];
 
   for (const pkg of packageNames) {
@@ -141,5 +119,4 @@ function validateTsconfigPaths() {
   console.log('✔ tsconfig.depcruise.json paths are valid');
 }
 
-// Run validation
 validateTsconfigPaths();

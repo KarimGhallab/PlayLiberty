@@ -1,12 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
 /*
- * The play/pause morph's transition, as the `data-run` the strip animates on.
- *
- * The resting frame is a state rule on the host; this reports only that a
- * transition is under way and which way it plays, for exactly as long as the
- * animation. `playing` is the state the morph ends on, so a change to it is the
- * transition: forward plays play to pause, reverse plays pause to play. The
+ * The play/pause morph's transition, reported as the `data-run` the strip
+ * animates on. The resting frame is a state rule on the host; this reports only
+ * that a transition is under way and which way it plays, for exactly as long as
+ * the animation. `playing` is the state the morph ends on, so a change to it is
+ * the transition: forward plays play to pause, reverse plays pause to play. The
  * first render is not a transition, so a freshly mounted button rests rather
  * than morphing in from nowhere.
  *

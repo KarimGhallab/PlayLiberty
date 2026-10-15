@@ -1,26 +1,38 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
-
 import {
-  AccountSummarySchema,
-  AddTrackResultSchema,
-  PlaylistSchema,
-  PlaylistTrackSchema,
-  ShareListSchema,
-  ShareSchema,
-  SyncRunSchema,
-  TrackSchema,
-  createPageSchema
-} from '@playliberty/contracts';
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient
+} from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+
 import type {
   AccountSummary,
   AddTrackResult,
   Playlist,
   PlaylistTrack,
+  PlaylistTracksPage,
   Share,
   ShareLevel,
   SyncRun,
-  Track
+  Track,
+  TrackFileStatusCounts
+} from '@playliberty/contracts';
+import {
+  AccountSummarySchema,
+  AddTrackResultSchema,
+  PlaylistSchema,
+  PlaylistSort,
+  PlaylistTrackListSchema,
+  PlaylistTracksPageSchema,
+  ShareListSchema,
+  ShareSchema,
+  SyncRunSchema,
+  TrackFileStatus,
+  TrackSchema,
+  createPageSchema
 } from '@playliberty/contracts';
 
 import { cacheEffects } from '../cacheEffects/cacheEffects';
@@ -35,7 +47,6 @@ import {
 
 const PlaylistPageSchema = createPageSchema(PlaylistSchema);
 const AccountSummaryPageSchema = createPageSchema(AccountSummarySchema);
-const PlaylistTrackPageSchema = createPageSchema(PlaylistTrackSchema);
 
 export interface PlaylistPage {
   items: Playlist[];
@@ -44,7 +55,6 @@ export interface PlaylistPage {
   offset: number;
 }
 
-/** The library's data. */
 export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
   return useQuery({
     queryKey: ['playlists'],
@@ -53,10 +63,10 @@ export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
 }
 
 /*
- * The account directory, which is the only source of another account's display
- * name. A shared item carries an `ownerAccountId` and nothing readable, so the
- * name is resolved here and nowhere else. One read at the default page size: the
- * directory is a household, and an owner past the first page is a miss the item
+ * The account directory, the only source of another account's display name: a
+ * shared item carries an `ownerAccountId` and nothing readable, so the name is
+ * resolved here and nowhere else. One read at the default page size, because the
+ * directory is a household and an owner past the first page is a miss the item
  * treats as a miss rather than a placeholder.
  */
 export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
@@ -68,9 +78,9 @@ export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
 }
 
 /*
- * The account behind the current identity. `GET /me` is the only read that names
- * the reader, and the share picker needs it to leave the reader's own row out:
- * sharing with oneself is a refusal the route owns.
+ * `GET /me` is the only read that names the reader, and the share picker needs it
+ * to leave the reader's own row out: sharing with oneself is a refusal the route
+ * owns.
  */
 export function useCurrentAccount(): UseQueryResult<AccountSummary, Error> {
   return useQuery({
@@ -96,11 +106,11 @@ export function ownerNameFrom(
 }
 
 /*
- * Creating a Synced playlist. The route answers `202` with the sync run it
- * started, so the response is a `SyncRun` and not the playlist: the playlist
- * arrives on the next list read, already marked `syncing`. Nothing here writes an
- * optimistic row, because the row the server is about to make is the row the
- * person should see, and a client guess at its id would be a second row.
+ * The route answers `202` with the sync run it started, so the response is a
+ * `SyncRun` and not the playlist: the playlist arrives on the next list read,
+ * already marked `syncing`. Nothing here writes an optimistic row, because the
+ * row the server is about to make is the row the person should see, and a client
+ * guess at its id would be a second row.
  *
  * The list is invalidated on success, so the read that follows carries the new
  * playlist in whatever state the sync has reached. A refusal is left to the
@@ -124,12 +134,11 @@ export function useCreatePlaylist(): UseMutationResult<
 }
 
 /*
- * Adding one video to several playlists, in one request. The route is
- * `POST /tracks`, its body a video URL and the chosen playlist ids, and it
- * answers one outcome per playlist rather than an overall status: a batch can be
- * part added, part already there and part refused, and the dialog reports each
- * one. Nothing is written optimistically, and the response is returned rather
- * than dropped because the dialog's refusal state is built from it.
+ * Adding one video to several playlists, in one request: the route answers one
+ * outcome per playlist rather than an overall status, since a batch can be part
+ * added, part already there and part refused, and the dialog reports each one.
+ * Nothing is written optimistically, and the response is returned rather than
+ * dropped because the dialog's refusal state is built from it.
  *
  * Both reads are invalidated on success: the chosen playlists gain an
  * association, so each one's tracks and the library's counts have both moved.
@@ -151,44 +160,150 @@ export function useAddTrack(): UseMutationResult<
 }
 
 /*
- * The key the tracks of one playlist are cached under. It carries the id for the
- * same reason the detail's other reads do: invalidating one playlist's tracks
- * must not touch another's. It is exported because the shuffle control builds a
- * queue from a playlist the listener is not standing on, and reading it under the
- * same key leaves the detail's own read already warm.
+ * The id is in the key for the same reason the detail's other reads carry it:
+ * invalidating one playlist's tracks must not touch another's. The filter is
+ * there too, so each state's rows are cached under their own read and the list
+ * re-reads when the filter moves; a playlist-scoped invalidation still catches
+ * every state's read by prefix.
  */
-export function playlistTracksKey(playlistId: string) {
-  return ['playlist', playlistId, 'tracks'] as const;
+export function playlistTracksKey(playlistId: string, state?: TrackFileStatus) {
+  return ['playlist', playlistId, 'tracks', state ?? 'all'] as const;
 }
 
 /*
- * The tracks of one playlist, which is the only list a queue is built from. A
- * plain fetch beside the hook, so a caller that is not a component can build a
- * queue from it without restating the route.
+ * The key the playlist's whole association list is cached under, which is what a
+ * queue is built from. Separate from the tracks key because the two reads answer
+ * differently: the tracks key holds pages and this holds every association in one
+ * response.
  */
-export async function fetchPlaylistTracks(
-  playlistId: string
-): Promise<PlaylistTrack[]> {
-  const page = await apiGet(
-    `/playlists/${playlistId}/tracks`,
-    PlaylistTrackPageSchema
+export function playlistQueueKey(playlistId: string) {
+  return ['playlist', playlistId, 'queue'] as const;
+}
+
+const PLAYLIST_TRACKS_PAGE_SIZE = 100;
+
+async function fetchPlaylistTrackPage(
+  playlistId: string,
+  offset: number,
+  state?: TrackFileStatus
+): Promise<PlaylistTracksPage> {
+  const query = new URLSearchParams({
+    limit: String(PLAYLIST_TRACKS_PAGE_SIZE),
+    offset: String(offset)
+  });
+
+  if (state !== undefined) {
+    query.set('state', state);
+  }
+
+  return apiGet(
+    `/playlists/${playlistId}/tracks?${query.toString()}`,
+    PlaylistTracksPageSchema
   );
-  return page.items;
+}
+
+function nextTracksPageParam(lastPage: PlaylistTracksPage): number | undefined {
+  const loaded = lastPage.offset + lastPage.items.length;
+
+  return loaded < lastPage.total ? loaded : undefined;
+}
+
+export interface PlaylistTracksRead {
+  readonly tracks: readonly PlaylistTrack[];
+  readonly counts: TrackFileStatusCounts | undefined;
+  readonly total: number | undefined;
+  readonly isPlaceholderData: boolean;
+  readonly isPending: boolean;
+  readonly isError: boolean;
+  readonly isSuccess: boolean;
+  readonly error: Error | null;
+  readonly retrying: boolean;
+  readonly retry: () => void;
+  readonly hasMore: boolean;
+  readonly loadingMore: boolean;
+  readonly moreFailed: boolean;
+  readonly loadMore: () => void;
 }
 
 export function usePlaylistTracks(
+  playlistId: string,
+  state?: TrackFileStatus
+): PlaylistTracksRead {
+  const query = useInfiniteQuery({
+    queryKey: playlistTracksKey(playlistId, state),
+    queryFn: ({ pageParam }) =>
+      fetchPlaylistTrackPage(playlistId, pageParam, state),
+    initialPageParam: 0,
+    getNextPageParam: nextTracksPageParam,
+    placeholderData: keepPreviousData
+  });
+  /* Stable, because a sentinel observes it: a fresh callback on every render
+   * would tear the observer down and build it again on every render of the list. */
+  const loadMore = useCallback(
+    () => void query.fetchNextPage(),
+    [query.fetchNextPage]
+  );
+
+  const pages = query.data?.pages;
+  /* Stable while the data is, so a caller that keys an effect or a memo on the
+   * list does not see a new array on every render. */
+  const tracks = useMemo(
+    () => pages?.flatMap(page => page.items) ?? [],
+    [pages]
+  );
+  const firstPage = pages?.[0];
+
+  return {
+    tracks,
+    counts: firstPage?.counts,
+    total: firstPage?.total,
+    isPlaceholderData: query.isPlaceholderData,
+    isPending: query.isPending,
+    isError: query.isError,
+    isSuccess: query.isSuccess,
+    error: query.error,
+    retrying: query.isFetching && !query.isFetchingNextPage,
+    retry: () => void query.refetch(),
+    hasMore: query.hasNextPage,
+    loadingMore: query.isFetchingNextPage,
+    moreFailed: query.isFetchNextPageError,
+    loadMore
+  };
+}
+
+/*
+ * The playlist's whole association list, which is the queue's own read. It is one
+ * response and not a page walk, because a queue has to hold every playable track.
+ * The read is lazy: the detail enables it only while this playlist is the queue,
+ * and a play or shuffle press reads it through the query cache before it starts,
+ * so a press never waits on a read that is only for the list.
+ */
+export async function fetchPlaylistQueue(
   playlistId: string
+): Promise<PlaylistTrack[]> {
+  const list = await apiGet(
+    `/playlists/${playlistId}/queue`,
+    PlaylistTrackListSchema
+  );
+
+  return list.items;
+}
+
+export function usePlaylistQueue(
+  playlistId: string,
+  enabled: boolean
 ): UseQueryResult<PlaylistTrack[], Error> {
   return useQuery({
-    queryKey: playlistTracksKey(playlistId),
-    queryFn: () => fetchPlaylistTracks(playlistId)
+    queryKey: playlistQueueKey(playlistId),
+    queryFn: () => fetchPlaylistQueue(playlistId),
+    enabled
   });
 }
 
 /*
- * One playlist, which is where its name comes from. The queue carries that name so
- * the player can label its source, and the read is separate from the tracks read
- * because the name belongs to the playlist and not to any track in it.
+ * Where the playlist's name comes from. The queue carries that name so the player
+ * can label its source, and the read is separate from the tracks read because the
+ * name belongs to the playlist and not to any track in it.
  */
 export function usePlaylist(
   playlistId: string
@@ -253,7 +368,7 @@ export function useSyncPlaylist(
   });
 }
 
-/** Renaming one playlist. Owner-only at the route; the menu gates it here. */
+/** Owner-only at the route; the menu gates it here. */
 export function useRenamePlaylist(
   playlistId: string
 ): UseMutationResult<Playlist, Error, string> {
@@ -306,6 +421,44 @@ export function useUpdateSkipNonMusic(
     onSuccess: playlist => {
       queryClient.setQueryData(key, playlist);
       cacheEffects.libraryChanged(queryClient);
+    }
+  });
+}
+
+/*
+ * Saving the order a playlist's tracks are read in. Unlike the skip setting, this
+ * one moves the track reads: the saved order is the order the list and the queue
+ * are read in, so the playlist-scoped invalidation is the one that asks both
+ * again. The optimistic write moves the playlist's own value, and the order the
+ * list draws follows when the reads answer.
+ */
+export function useUpdateSort(
+  playlistId: string
+): UseMutationResult<Playlist, Error, PlaylistSort> {
+  const queryClient = useQueryClient();
+  const key = ['playlist', playlistId];
+
+  return useMutation({
+    mutationFn: (sort: PlaylistSort) =>
+      apiPatch(`/playlists/${playlistId}/sort`, { sort }, PlaylistSchema),
+    onMutate: async (sort: PlaylistSort) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Playlist>(key);
+
+      if (previous !== undefined) {
+        queryClient.setQueryData<Playlist>(key, { ...previous, sort });
+      }
+
+      return { previous };
+    },
+    onError: (_error, _sort, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSuccess: playlist => {
+      queryClient.setQueryData(key, playlist);
+      cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
 }
@@ -424,7 +577,7 @@ export function useGrantShare(
   });
 }
 
-/** Revoking a share. The route answers `204`, so there is nothing to return. */
+/** The route answers `204`, so there is nothing to return. */
 export function useRevokeShare(
   playlistId: string
 ): UseMutationResult<void, Error, string> {

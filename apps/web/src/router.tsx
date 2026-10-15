@@ -13,10 +13,6 @@ import LibraryPage from './views/library/LibraryPage/LibraryPage';
 import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage';
 
 /*
- * The shell is the outlet, the player bar and the audio element, and nothing
- * else: there is no sidebar and no persistent chrome. The two routes are the
- * whole web screen inventory.
- *
  * The bar and the audio element are siblings of the outlet rather than children
  * of a route, which is what makes playback survive navigation: a route change
  * re-renders the outlet and leaves both mounted. This is exported so the shell

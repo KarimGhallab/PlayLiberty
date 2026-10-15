@@ -16,11 +16,9 @@ import {
 } from './useEventStream';
 
 /*
- * The hook is the tab's connection: it opens one stream, hands each frame to the
- * invalidation mapping, reopens a dropped one on a backoff, and closes on
- * unmount. The socket is the factory's, so a test injects a fake and emits the
- * frames a server would send, which is the behavior that matters here; the real
- * wire is covered end to end.
+ * The socket is the factory's, so a test injects a fake and emits the frames a
+ * server would send, which is the behavior that matters here; the real wire is
+ * covered end to end.
  */
 
 function Probe() {

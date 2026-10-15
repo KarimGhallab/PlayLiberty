@@ -31,9 +31,8 @@ describe('buildListArgs', () => {
     const args = buildListArgs(info);
 
     /*
-     * Exact, not `toContain('youtube')`. yt-dlp matches an extractor name exactly,
-     * and a playlist URL is `youtube:tab`; asserting the whole selector is what
-     * would have failed when it read `youtube` and every playlist sync broke.
+     * Exact, not `toContain('youtube')`: yt-dlp matches an extractor name
+     * exactly, and a playlist URL is `youtube:tab`.
      */
     expect(args).toContain('--use-extractors');
     const selector = args[args.indexOf('--use-extractors') + 1];

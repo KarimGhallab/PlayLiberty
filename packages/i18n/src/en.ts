@@ -1,7 +1,5 @@
 /*
- * The English catalog and the source of truth for the `Messages` shape. `fr` is
- * typed as `Messages`, so a key missing from French is a compile error rather
- * than a runtime fallback, and the catalog needs no parity test.
+ * The source of truth for the `Messages` shape.
  *
  * Keys are symbolic and hierarchical: a key names the surface and the fact, not
  * the English sentence, so a copy edit does not churn a key.
@@ -37,11 +35,29 @@ export const en = {
     loadingTracks: 'Loading tracks.',
     readFailed: 'Tracks could not be loaded.',
     noTracks: 'No tracks yet.',
+    loadMore: 'Load more',
+    loadMoreLoading: 'Loading...',
+    loadMoreRetry: 'Try again',
+    playbackFailed: 'Playback could not start: the queue was not loaded.',
     deleteDeferred: 'Deleting playlist',
     removeDeferred: 'Removing track',
     trackFallback: 'Track',
     settingFailed: 'The setting could not be changed.',
-    settingNotice: 'The skip setting was not changed.'
+    settingNotice: 'The skip setting was not changed.',
+    sortBy: 'Sort by',
+    sortPlaylist: 'Playlist order',
+    sortNewest: 'Newest first',
+    sortOldest: 'Oldest first',
+    filterBy: 'Filter by',
+    filterAll: 'All',
+    filterShowAll: 'Show all',
+    filterEmpty: {
+      stored: 'No stored tracks',
+      pending: 'No pending tracks',
+      downloading: 'No downloading tracks',
+      failed: 'No failed tracks',
+      unavailable: 'No unavailable tracks'
+    }
   },
   trackRow: {
     play: 'Play {title}',
@@ -150,7 +166,13 @@ export const en = {
     trackNext: 'Track next',
     shuffle: 'Shuffle {name}',
     actions: 'More actions for {name}',
-    sharedBy: 'Shared by {name}'
+    sharedBy: 'Shared by {name}',
+    countOf: {
+      one: '{shown} of {total} track',
+      other: '{shown} of {total} tracks'
+    },
+    retryPlayback: 'Retry playback',
+    retryingPlayback: 'Retrying...'
   },
   trackBars: {
     playing: 'Playing',
@@ -214,6 +236,7 @@ export const en = {
   },
   trackState: {
     removedFrom: 'Removed from {provider}',
+    stored: 'Stored',
     pending: 'Pending',
     downloading: 'Downloading',
     failed: 'Failed',

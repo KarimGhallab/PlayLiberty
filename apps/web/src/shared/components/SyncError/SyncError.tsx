@@ -7,11 +7,9 @@ import { providerLabel, useI18n } from '@playliberty/i18n';
 import styles from './SyncError.module.scss';
 
 /*
- * The sync error: one band, on the leading edge a 2px rule in the failed tone,
- * holding a sentence, a reassurance and the one action a user can take. It
- * replaces the sync summary rather than joining it, which is the component's own
- * three-way split: the header owns the state and the time, the summary owns the
- * counts, and this owns the words and the action.
+ * The sync error replaces the sync summary rather than joining it, which is the
+ * component's own three-way split: the header owns the state and the time, the
+ * summary owns the counts, and this owns the words and the action.
  *
  * Two decisions inside it are forced by the contract. `SyncRun.error` is a
  * non-null string with no length bound, so it is shown behind a control rather
@@ -29,7 +27,6 @@ interface SyncErrorProps {
    * not known, in which case the reassurance is absent: "your tracks are safe"
    * about nothing is a promise about nothing. */
   trackCount: number | null;
-  /* The playlist's provider, which the sentence and the reassurance name. */
   provider: Provider;
   /* The server's own diagnostic, behind the reveal control. Null when there is
    * nothing to reveal, which is the no-run case. */

@@ -30,8 +30,7 @@ export default defineConfig([
     /*
      * Raw SQL stays in the database module and in the access rules. The schema is
      * the one description of the storage, so a hand-written statement anywhere
-     * else is a second description that no migration and no type checks against,
-     * and the two access queries written out in three features are what that cost.
+     * else is a second description that no migration and no type checks against.
      *
      * A selector rather than no-restricted-properties, because the call is
      * `database.sqlite.prepare`, where the object is a member expression and not

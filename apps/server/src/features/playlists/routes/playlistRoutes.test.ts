@@ -8,8 +8,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   AssociationOrigin,
   PlaylistSchema,
+  PlaylistSort,
   PlaylistSyncStatus,
-  PlaylistTrackSchema,
+  PlaylistTrackListSchema,
+  PlaylistTracksPageSchema,
   ShareLevel,
   TrackFileStatus,
   TrackSourceStatus,
@@ -19,6 +21,7 @@ import {
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
 import {
+  associate,
   seedAccount,
   seedPlaylist,
   seedShare,
@@ -35,7 +38,7 @@ import {
 import { addAssociation, removeAssociation } from '../associationService.js';
 
 const PageSchema = createPageSchema(PlaylistSchema);
-const PlaylistTrackPageSchema = createPageSchema(PlaylistTrackSchema);
+const PlaylistTrackPageSchema = PlaylistTracksPageSchema;
 
 let context: TestContext | undefined;
 
@@ -112,8 +115,8 @@ function addTrack(
   addTrackAt(database, playlistId, trackId, 0);
 }
 
-/* What the associations table actually holds, counted the way this ticket
- * originally computed the field, so a stored count can be held against it. */
+/* What the associations table actually holds, so a stored count can be held
+ * against it. */
 function countAssociations(
   database: DatabaseHandle,
   playlistId: string
@@ -537,8 +540,8 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // The pair that is false and false, which is the answer for every playlist
-    // on the instance today because no route writes a share.
+    // The pair that is false and false: this playlist has no shares, so it is
+    // the owner's alone.
     expect(playlist.access).toBe('owner');
     expect(playlist.hasShares).toBe(false);
   });
@@ -1319,6 +1322,436 @@ describe('GET /playlists/:id/tracks', () => {
   });
 });
 
+/*
+ * The state filter and the counts. The filter is a query parameter rather than a
+ * client-side narrowing, so the page and its total follow it; the counts never
+ * do, because the point of a count is what is available to filter to.
+ */
+describe('the state filter and the counts', () => {
+  it('narrows the page and its total to the state asked for', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: stored } = seedTrack(context.database);
+    const { trackId: failed } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+
+    addTrackAt(context.database, playlistId, stored, 0);
+    addTrackAt(context.database, playlistId, failed, 1);
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks?state=failed`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    expect(page.items.map(item => item.track.id)).toEqual([failed]);
+    expect(page.items.map(item => item.track.fileStatus)).toEqual([
+      TrackFileStatus.Failed
+    ]);
+    // The total is the filtered total, so the paging walk stops at the rows the
+    // filter kept rather than walking the whole playlist.
+    expect(page.total).toBe(1);
+  });
+
+  it('returns every state when none is asked for', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: stored } = seedTrack(context.database);
+    const { trackId: failed } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+    const { trackId: pending } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Pending
+    });
+
+    addTrackAt(context.database, playlistId, stored, 0);
+    addTrackAt(context.database, playlistId, failed, 1);
+    addTrackAt(context.database, playlistId, pending, 2);
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    expect(page.items.map(item => item.track.id)).toEqual([
+      stored,
+      failed,
+      pending
+    ]);
+    expect(page.total).toBe(3);
+  });
+
+  it('counts the whole playlist and does not follow the filter', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database).trackId,
+      0
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database).trackId,
+      1
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, { fileStatus: TrackFileStatus.Failed })
+        .trackId,
+      2
+    );
+
+    const unfiltered = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+    const filtered = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks?state=failed`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    const counts = {
+      stored: 2,
+      pending: 0,
+      downloading: 0,
+      failed: 1,
+      unavailable: 0
+    };
+
+    expect(unfiltered.counts).toEqual(counts);
+    // The same counts under the filter, because a count is what is available to
+    // filter to and not the rows the filter kept.
+    expect(filtered.counts).toEqual(counts);
+    expect(unfiltered.total).toBe(3);
+    expect(filtered.total).toBe(1);
+  });
+
+  it('counts a stored track whose source removed it as stored', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Stored,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      0
+    );
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    // The source status is an overlay and not a bucket: the five counts are file
+    // states, so a removed-but-stored track is a stored track here.
+    expect(page.counts.stored).toBe(1);
+    expect(page.counts.unavailable).toBe(0);
+  });
+
+  it('refuses a state that is not one of the five', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks?state=broken`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
+  });
+});
+
+describe('GET /playlists/:id/queue', () => {
+  it('returns every association in position order, whatever its file status', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: third } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Pending
+    });
+
+    // Inserted out of position order, so insertion order would fail here.
+    addTrackAt(context.database, playlistId, third, 3);
+    addTrackAt(context.database, playlistId, first, 0);
+    addTrackAt(context.database, playlistId, second, 1);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    const list = PlaylistTrackListSchema.parse(response.json());
+    // Every status is returned, not only the playable ones: the client's
+    // `buildQueue` is the one place the playability rule lives.
+    expect(list.items.map(item => item.track.id)).toEqual([
+      first,
+      second,
+      third
+    ]);
+    expect(list.items.map(item => item.track.fileStatus)).toEqual([
+      TrackFileStatus.Stored,
+      TrackFileStatus.Pending,
+      TrackFileStatus.Failed
+    ]);
+    expect(list.items.map(item => item.position)).toEqual([0, 1, 3]);
+  });
+
+  it('answers a playlist with no associations as an empty list, not an error', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistTrackListSchema.parse(response.json()).items).toEqual([]);
+  });
+
+  it('answers 404 rather than 403 for a playlist the account cannot see', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      stranger.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it('answers 404 for a playlist that does not exist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+
+    const response = await get(
+      `/api/v1/playlists/${randomUUID()}/queue`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it.each([ShareLevel.Read, ShareLevel.Write])(
+    'returns the whole list to a %s collaborator',
+    async level => {
+      context = await createTestContext();
+      const owner = seedAccount(context.database);
+      const { playlistId } = seedPlaylist(context.database, owner.accountId);
+      addTrack(
+        context.database,
+        playlistId,
+        seedTrack(context.database).trackId
+      );
+      const collaborator = seedAccount(context.database);
+      seedShare(context.database, playlistId, collaborator.accountId, {
+        level
+      });
+
+      const response = await get(
+        `/api/v1/playlists/${playlistId}/queue`,
+        collaborator.pangolinUserId
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(PlaylistTrackListSchema.parse(response.json()).items).toHaveLength(
+        1
+      );
+    }
+  );
+});
+
+/*
+ * The order a playlist's tracks are read in. The dates are explicit, because two
+ * associations added in one instant share a timestamp and the tiebreak is the
+ * playlist's own position; a fixture that let the column stamp them would make
+ * the date sort a race.
+ */
+describe("the order a playlist's tracks are read in", () => {
+  const EARLY = '2026-01-01T00:00:00.000Z';
+  const MIDDLE = '2026-06-01T00:00:00.000Z';
+  const LATE = '2026-12-01T00:00:00.000Z';
+
+  function seedOutOfPositionOrder(
+    database: DatabaseHandle,
+    playlistId: string
+  ): { first: string; second: string; third: string } {
+    const { trackId: first } = seedTrack(database);
+    const { trackId: second } = seedTrack(database);
+    const { trackId: third } = seedTrack(database);
+
+    // Inserted out of position order, so insertion order would fail a date sort.
+    associate(database, playlistId, third, { position: 3, addedAt: MIDDLE });
+    associate(database, playlistId, first, { position: 0, addedAt: LATE });
+    associate(database, playlistId, second, { position: 1, addedAt: EARLY });
+
+    return { first, second, third };
+  }
+
+  it("reads the playlist's own order when no sort is saved", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const order = seedOutOfPositionOrder(context.database, playlistId);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([order.first, order.second, order.third]);
+  });
+
+  it('reads newest first once that sort is saved', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const order = seedOutOfPositionOrder(context.database, playlistId);
+
+    await patch(`/api/v1/playlists/${playlistId}/sort`, owner.pangolinUserId, {
+      sort: PlaylistSort.NewestFirst
+    });
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([order.first, order.third, order.second]);
+  });
+
+  it('reads oldest first once that sort is saved', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const order = seedOutOfPositionOrder(context.database, playlistId);
+
+    await patch(`/api/v1/playlists/${playlistId}/sort`, owner.pangolinUserId, {
+      sort: PlaylistSort.OldestFirst
+    });
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([order.second, order.third, order.first]);
+  });
+
+  it("breaks a tie by the playlist's own position", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      sort: PlaylistSort.NewestFirst
+    });
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database);
+
+    // One instant, so only the position can order them.
+    associate(context.database, playlistId, second, {
+      position: 1,
+      addedAt: EARLY
+    });
+    associate(context.database, playlistId, first, {
+      position: 0,
+      addedAt: EARLY
+    });
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+
+    expect(
+      PlaylistTrackPageSchema.parse(response.json()).items.map(
+        item => item.track.id
+      )
+    ).toEqual([first, second]);
+  });
+
+  it('answers the queue in the same order as the list', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      sort: PlaylistSort.OldestFirst
+    });
+    seedOutOfPositionOrder(context.database, playlistId);
+
+    const list = await get(
+      `/api/v1/playlists/${playlistId}/tracks`,
+      owner.pangolinUserId
+    );
+    const queue = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      owner.pangolinUserId
+    );
+
+    const listIds = PlaylistTrackPageSchema.parse(list.json()).items.map(
+      item => item.track.id
+    );
+    const queueIds = PlaylistTrackListSchema.parse(queue.json()).items.map(
+      item => item.track.id
+    );
+
+    expect(queueIds).toEqual(listIds);
+  });
+});
+
 describe('PATCH /playlists/:id', () => {
   it('renames as the owner and stores the trimmed name', async () => {
     context = await createTestContext();
@@ -1639,6 +2072,127 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
       url: `/api/v1/playlists/${playlistId}/skip-non-music`,
       headers: { 'remote-user': owner.pangolinUserId },
       payload: { skipNonMusic: false }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+describe('PATCH /playlists/:id/sort', () => {
+  it('saves the sort for the owner and returns the playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      owner.pangolinUserId,
+      { sort: PlaylistSort.NewestFirst }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).sort).toBe(
+      PlaylistSort.NewestFirst
+    );
+    expect(selectPlaylist(playlistId)?.sort).toBe(PlaylistSort.NewestFirst);
+  });
+
+  it("stores the playlist's own order as the absence", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      sort: PlaylistSort.NewestFirst
+    });
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      owner.pangolinUserId,
+      { sort: PlaylistSort.Playlist }
+    );
+
+    expect(PlaylistSchema.parse(response.json()).sort).toBe(
+      PlaylistSort.Playlist
+    );
+    expect(selectPlaylist(playlistId)?.sort).toBeNull();
+  });
+
+  it('lets a write collaborator change it and refuses a read collaborator', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const writer = seedAccount(context.database);
+    seedShare(context.database, playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const writerResponse = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      writer.pangolinUserId,
+      { sort: PlaylistSort.OldestFirst }
+    );
+    expect(writerResponse.statusCode).toBe(200);
+
+    const readerResponse = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      reader.pangolinUserId,
+      { sort: PlaylistSort.NewestFirst }
+    );
+    expect(readerResponse.statusCode).toBe(404);
+    expect(readerResponse.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it('answers 404 for a stranger and a missing playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const attempts: [string, string][] = [
+      [playlistId, stranger.pangolinUserId],
+      [randomUUID(), owner.pangolinUserId]
+    ];
+
+    for (const [targetId, pangolinUserId] of attempts) {
+      const response = await patch(
+        `/api/v1/playlists/${targetId}/sort`,
+        pangolinUserId,
+        { sort: PlaylistSort.NewestFirst }
+      );
+
+      expect(response.statusCode).toBe(404);
+    }
+  });
+
+  it('refuses a value that is not a known sort', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/sort`,
+      owner.pangolinUserId,
+      { sort: 'alphabetical' }
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await context.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/playlists/${playlistId}/sort`,
+      headers: { 'remote-user': owner.pangolinUserId },
+      payload: { sort: PlaylistSort.NewestFirst }
     });
 
     expect(response.statusCode).toBe(403);

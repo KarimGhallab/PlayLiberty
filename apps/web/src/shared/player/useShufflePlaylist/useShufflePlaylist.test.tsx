@@ -33,13 +33,8 @@ function track(id: string, fileStatus = 'stored') {
   };
 }
 
-function tracksPage(items: unknown[]) {
-  return HttpResponse.json({
-    items,
-    total: items.length,
-    limit: 50,
-    offset: 0
-  });
+function queueList(items: unknown[]) {
+  return HttpResponse.json({ items });
 }
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -74,8 +69,13 @@ describe('useShufflePlaylist', () => {
 
     expect(state.shuffle).toBe(true);
     expect(state.isPlaying).toBe(true);
-    expect(state.currentId).toBe('track-1');
-    expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+    /* The shuffled queue starts on a random stored track, so the draw is asserted
+     * by membership rather than by name. */
+    expect(['track-1', 'track-2']).toContain(state.currentId);
+    expect(state.queue[0].id).toBe(state.currentId);
+    expect(new Set(state.queue.map(item => item.id))).toEqual(
+      new Set(['track-1', 'track-2'])
+    );
   });
 
   it('replaces another playlist’s queue and starts this one shuffled', async () => {
@@ -103,7 +103,9 @@ describe('useShufflePlaylist', () => {
     );
 
     expect(usePlayerStore.getState().shuffle).toBe(true);
-    expect(usePlayerStore.getState().currentId).toBe('track-1');
+    expect(['track-1', 'track-2']).toContain(
+      usePlayerStore.getState().currentId
+    );
   });
 
   it('turns the shuffle off and leaves the transport alone when this playlist is the queue', async () => {
@@ -170,8 +172,8 @@ describe('useShufflePlaylist', () => {
 
   it('refuses a playlist with no stored track and says so', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        tracksPage([track('track-1', 'pending')])
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
+        queueList([track('track-1', 'pending')])
       )
     );
 
@@ -190,7 +192,7 @@ describe('useShufflePlaylist', () => {
 
   it('refuses a read that failed and says so', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
         HttpResponse.json(
           {
             type: 'about:blank',

@@ -4,15 +4,18 @@ import type {
   Page,
   Playlist,
   PlaylistAccess,
-  PlaylistTrack
+  PlaylistTrack,
+  PlaylistTracksPage,
+  TrackFileStatusCounts
 } from '@playliberty/contracts';
+import { PlaylistSort, TrackFileStatus } from '@playliberty/contracts';
 
+import type { Entry } from '../../shared/access/entry.js';
 import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
 } from '../../shared/access/entry.js';
-import type { Entry } from '../../shared/access/entry.js';
 import {
   playlistVisibleTo,
   resolvePlaylistAccessMany,
@@ -48,11 +51,8 @@ export interface ListPlaylistsQuery {
 }
 
 /*
- * The playlist's cover is its first track's thumbnail, so the view carries that
- * track's id and the client renders the track's own thumbnail route. The first
- * association is the lowest position; the single read takes one row, and the
- * batch read groups to the minimum position and joins back to it, so a page of
- * playlists costs one statement and never fetches the whole association table.
+ * The cover is the playlist's first track's thumbnail, carried as a track id so
+ * the client renders the track's own thumbnail route.
  */
 function coverTrackId(
   database: DatabaseHandle,
@@ -128,6 +128,7 @@ function toPlaylistView(
     lastSyncedAt: row.lastSyncedAt,
     trackCount: row.trackCount,
     skipNonMusic: row.skipNonMusic,
+    sort: row.sort ?? PlaylistSort.Playlist,
     access,
     hasShares,
     createdAt: row.createdAt,
@@ -136,9 +137,8 @@ function toPlaylistView(
 }
 
 /*
- * One playlist's view for an account already known to reach it. The level is the
- * one the entry seam resolved, so the view and the check cannot disagree, and a
- * row that vanished between the check and this read is null.
+ * The access level is the one the entry seam resolved, so the view and the check
+ * cannot disagree; a row that vanished between the check and this read is null.
  */
 function readPlaylist(
   database: DatabaseHandle,
@@ -164,10 +164,9 @@ function readPlaylist(
 }
 
 /*
- * A playlist read's outcome from the entry. A denial and a row that vanished are
- * the same not-found, which is what the route confirms: it answers "gone" for a
- * playlist this account cannot reach and for one that is not there, and never
- * distinguishes them.
+ * A denial and a row that vanished are the same not-found: the route answers
+ * "gone" for a playlist this account cannot reach and for one that is not there,
+ * and never distinguishes them.
  */
 function toReadPlaylistResult(
   entry: Entry<Playlist | null>
@@ -205,11 +204,10 @@ export function listPlaylistsForAccount(
     .offset(query.offset)
     .all();
 
-  // Access and sharing are two more questions about the same page, answered in two
-  // statements rather than a join per row. The access map cannot be missing a
-  // playlist the visibility filter just returned, so the fallback is unreachable;
-  // it is there because the compiler cannot see that, and a lie in a Playlist is
-  // worse than an unreachable branch.
+  // The access map cannot be missing a playlist the visibility filter just
+  // returned, so the `?? 'owner'` fallback is unreachable; it is there because the
+  // compiler cannot see that, and a lie in a Playlist is worse than an
+  // unreachable branch.
   const accessById = resolvePlaylistAccessMany(
     database,
     rows.map(row => row.id),
@@ -251,9 +249,9 @@ export function readPlaylistForAccount(
   accountId: string
 ): ReadPlaylistResult {
   /*
-   * The read need, through the entry seam: access first, so a playlist this
-   * account cannot reach never becomes a row that has to be thrown away again,
-   * and the 404 is answered from the same decision the list query makes.
+   * Access first, so a playlist this account cannot reach never becomes a row
+   * that has to be thrown away again, and the 404 is answered from the same
+   * decision the list query makes.
    */
   return toReadPlaylistResult(
     playlistEntry(database, playlistId, accountId, AccessNeed.Read, access =>
@@ -264,11 +262,9 @@ export function readPlaylistForAccount(
 
 /*
  * Renaming belongs to the owner alone, so a write collaborator who may curate
- * answers the same not-found a stranger does, and the route never confirms a
- * playlist the caller may not manage. The update touches the name and the row's
- * updated timestamp and nothing else: not the source, the cover, the last-synced
- * time or the sync status, because those are the source's facts and this is the
- * owner's.
+ * answers the same not-found a stranger does. The update touches the name and the
+ * row's timestamp and nothing else: the source, the cover, the last-synced time
+ * and the sync status are the source's facts, not the owner's.
  */
 export function renamePlaylistForAccount(
   database: DatabaseHandle,
@@ -290,12 +286,9 @@ export function renamePlaylistForAccount(
 }
 
 /*
- * Changing the playlist's skip-non-music setting, which the owner and a write
- * collaborator may do and a read collaborator may not. The change is not
- * retroactive: it sets the default for tracks created from now on, and every
- * track already created keeps the value it was born with, because a track
- * snapshots the setting at creation and a stored file is shared. The write
- * touches the setting and the row's timestamp and nothing else.
+ * The change is not retroactive: it sets the default for tracks created from now
+ * on, because a track snapshots the setting at creation and a stored file is
+ * shared.
  */
 export function updateSkipNonMusicForAccount(
   database: DatabaseHandle,
@@ -317,13 +310,38 @@ export function updateSkipNonMusicForAccount(
 }
 
 /*
- * Deleting belongs to the owner alone, so the not-found is the same one a stranger
- * gets. The associations and the shares go with the row through the foreign key
- * cascade, which is the one place the association service's rule, that an
- * association is only ever written through it, is bypassed, and it is safe because
- * the only stored count that would need adjusting is this playlist's own and that
- * row is going. The media is left alone: the weekly prune reclaims a file once no
- * association names its track, so the delete never waits on the disk.
+ * The playlist's own order is stored as the absence, so a playlist that was never
+ * sorted carries no value.
+ */
+export function updateSortForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string,
+  sort: PlaylistSort
+): ReadPlaylistResult {
+  return toReadPlaylistResult(
+    playlistEntry(database, playlistId, accountId, AccessNeed.Write, access => {
+      database.db
+        .update(playlists)
+        .set({
+          sort: sort === PlaylistSort.Playlist ? null : sort,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(playlists.id, playlistId))
+        .run();
+
+      return readPlaylist(database, playlistId, access);
+    })
+  );
+}
+
+/*
+ * The associations and shares go with the row through the foreign key cascade,
+ * bypassing the association service's rule that an association is only ever
+ * written through it; that is safe because the only stored count needing an
+ * adjustment is this playlist's own, and that row is going. The media is left to
+ * the weekly prune, which reclaims a file once no association names its track, so
+ * the delete never waits on the disk.
  */
 export function deletePlaylistForAccount(
   database: DatabaseHandle,
@@ -347,12 +365,11 @@ export function deletePlaylistForAccount(
 }
 
 /*
- * Removing a track belongs to the owner or a write collaborator. The answer is the
- * same not-found for a read collaborator, a stranger, a playlist that does not
- * exist and an association that is not there, so the route confirms neither a
- * playlist nor a membership the caller may not touch. The suppression is written
- * by the association service in the same transaction as the delete, so no caller
- * can remove without suppressing.
+ * The same not-found answers a read collaborator, a stranger, a playlist that
+ * does not exist and an association that is not there, so the route confirms
+ * neither a playlist nor a membership the caller may not touch. The suppression
+ * is written by the association service in the same transaction as the delete, so
+ * no caller can remove without suppressing.
  */
 export function removeTrackForAccount(
   database: DatabaseHandle,
@@ -384,17 +401,42 @@ export function removeTrackForAccount(
 export interface ListPlaylistTracksQuery {
   limit: number;
   offset: number;
+  state?: TrackFileStatus;
 }
 
 export type ReadPlaylistTracksResult =
-  | { outcome: PlaylistOutcome.Ok; page: Page<PlaylistTrack> }
+  | { outcome: PlaylistOutcome.Ok; page: PlaylistTracksPage }
   | { outcome: PlaylistOutcome.NotFound };
 
 /*
- * The stored track carries two fields the contract does not: the media path the
- * stream route resolves, and the thumbnail URL the download wrote. Neither is
- * metadata, so neither crosses the wire here; the artwork is reached through the
- * track's own route.
+ * The order a playlist's tracks are read in, from the playlist's saved sort. The
+ * playlist's own order is position first, and a date sort falls back to it for a
+ * tie: a sync that adds many rows in one instant gives them equal dates, and a
+ * client that fetched the same page twice must not see the rows swap. The
+ * association's rowid is the last tiebreak, because two associations in one run
+ * can share a position and the playlist route already breaks that tie this way.
+ */
+function playlistTrackOrder(sort: PlaylistSort | null) {
+  const ownOrder = [
+    asc(associations.position),
+    asc(sql`${associations}.rowid`)
+  ];
+
+  if (sort === PlaylistSort.NewestFirst) {
+    return [desc(associations.addedAt), ...ownOrder];
+  }
+
+  if (sort === PlaylistSort.OldestFirst) {
+    return [asc(associations.addedAt), ...ownOrder];
+  }
+
+  return ownOrder;
+}
+
+/*
+ * The stored track carries two fields the contract does not, the media path the
+ * stream route resolves and the thumbnail URL the source reported; neither is
+ * metadata, so neither crosses the wire here.
  */
 function toPlaylistTrackView(row: {
   association: AssociationRow;
@@ -405,6 +447,39 @@ function toPlaylistTrackView(row: {
     origin: row.association.origin,
     position: row.association.position
   };
+}
+
+/*
+ * Over the whole playlist rather than the page or the filter, and grouped by file
+ * status alone, so the removed-from-source overlay is not a bucket. Every state is
+ * a key, including the ones with no rows, because a state is not absent merely
+ * because nothing is in it.
+ */
+function fileStatusCounts(
+  database: DatabaseHandle,
+  playlistId: string
+): TrackFileStatusCounts {
+  const rows = database.db
+    .select({ status: tracks.fileStatus, count: sql<number>`count(*)` })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(eq(associations.playlistId, playlistId))
+    .groupBy(tracks.fileStatus)
+    .all();
+
+  const counts: TrackFileStatusCounts = {
+    [TrackFileStatus.Stored]: 0,
+    [TrackFileStatus.Pending]: 0,
+    [TrackFileStatus.Downloading]: 0,
+    [TrackFileStatus.Failed]: 0,
+    [TrackFileStatus.Unavailable]: 0
+  };
+
+  for (const row of rows) {
+    counts[row.status] = row.count;
+  }
+
+  return counts;
 }
 
 export function listPlaylistTracksForAccount(
@@ -420,7 +495,7 @@ export function listPlaylistTracksForAccount(
     AccessNeed.Read,
     () => {
       const playlist = database.db
-        .select({ trackCount: playlists.trackCount })
+        .select({ trackCount: playlists.trackCount, sort: playlists.sort })
         .from(playlists)
         .where(eq(playlists.id, playlistId))
         .get();
@@ -429,27 +504,38 @@ export function listPlaylistTracksForAccount(
         return null;
       }
 
-      // The association is membership, and this is the only join: a track held by
-      // another playlist has no row here, and a track held by this playlist and
-      // another has exactly one, so neither leaks and neither doubles.
+      const counts = fileStatusCounts(database, playlistId);
+
+      // The state narrows the page and never the counts beside it.
       const rows = database.db
         .select({ association: associations, track: tracks })
         .from(associations)
         .innerJoin(tracks, eq(associations.trackId, tracks.id))
-        .where(eq(associations.playlistId, playlistId))
-        .orderBy(asc(associations.position), asc(sql`${associations}.rowid`))
+        .where(
+          query.state === undefined
+            ? eq(associations.playlistId, playlistId)
+            : and(
+                eq(associations.playlistId, playlistId),
+                eq(tracks.fileStatus, query.state)
+              )
+        )
+        .orderBy(...playlistTrackOrder(playlist.sort))
         .limit(query.limit)
         .offset(query.offset)
         .all();
 
       return {
         items: rows.map(toPlaylistTrackView),
-        // The stored count, which the association service moves in the same
-        // transaction as the association, rather than a second count query over
-        // the rows this page already had to read.
-        total: playlist.trackCount,
+        /*
+         * The maintained stored count when nothing is filtered, rather than a
+         * second count over the rows; the state's own bucket when one is. Either
+         * way the total is the filtered total, not the whole playlist's.
+         */
+        total:
+          query.state === undefined ? playlist.trackCount : counts[query.state],
         limit: query.limit,
-        offset: query.offset
+        offset: query.offset,
+        counts
       };
     }
   );
@@ -463,4 +549,44 @@ export function listPlaylistTracksForAccount(
   }
 
   return { outcome: PlaylistOutcome.Ok, page: entry.value };
+}
+
+export type ReadPlaylistQueueResult =
+  | { outcome: PlaylistOutcome.Ok; items: PlaylistTrack[] }
+  | { outcome: PlaylistOutcome.NotFound };
+
+export function listPlaylistQueueForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string
+): ReadPlaylistQueueResult {
+  const entry = playlistEntry(
+    database,
+    playlistId,
+    accountId,
+    AccessNeed.Read,
+    () => {
+      const playlist = database.db
+        .select({ sort: playlists.sort })
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get();
+
+      const rows = database.db
+        .select({ association: associations, track: tracks })
+        .from(associations)
+        .innerJoin(tracks, eq(associations.trackId, tracks.id))
+        .where(eq(associations.playlistId, playlistId))
+        .orderBy(...playlistTrackOrder(playlist?.sort ?? null))
+        .all();
+
+      return rows.map(toPlaylistTrackView);
+    }
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  return { outcome: PlaylistOutcome.Ok, items: entry.value };
 }

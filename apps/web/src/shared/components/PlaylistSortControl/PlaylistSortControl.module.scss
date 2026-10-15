@@ -1,0 +1,216 @@
+/*
+ * The sort control at the end of the control row above the list, which the
+ * screen owns; the row's lead is the filter chips.
+ *
+ * The control is quiet on purpose: no box at rest, so the button is the order
+ * and its two marks rather than a chrome object. Hover steps the marks up a
+ * little and nothing else; the accent is spent only while the menu is open,
+ * which is the one thing the press earns.
+ */
+.sort {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+
+  &__button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--control-height);
+    padding: var(--space-1) 0;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    /* The system's own selection language: the 2px accent rule the segmented
+     * control marks its choice with, here drawn under the button and shown only
+     * while the menu is open. */
+    &::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform var(--motion-base) var(--ease-standard);
+    }
+
+    &[data-open]::after {
+      transform: scaleX(1);
+    }
+
+    /* A read collaborator still reads the value, and a shuffled list still has
+     * one, so the disabled control keeps its colours and only dims. */
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__glyph {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+    color: var(--muted);
+    transition: color var(--motion-base) var(--ease-standard);
+  }
+
+  /* The order reads as quiet as the two marks at rest, and comes up to normal on
+   * hover or while the menu is open, so the control has one resting voice. */
+  &__value {
+    color: var(--muted);
+    transition: color var(--motion-base) var(--ease-standard);
+  }
+
+  &__chevron {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+    color: var(--muted);
+    transition:
+      color var(--motion-base) var(--ease-standard),
+      transform var(--motion-base) var(--ease-standard);
+
+    [data-open] & {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__button:hover:not(:disabled) &__glyph,
+  &__button:hover:not(:disabled) &__chevron,
+  &__button:hover:not(:disabled) &__value,
+  &__button[data-open] &__glyph,
+  &__button[data-open] &__chevron,
+  &__button[data-open] &__value {
+    color: var(--ink);
+  }
+
+  &__menu {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    z-index: var(--z-overlay);
+    min-width: 200px;
+    margin: 0;
+    padding: var(--space-1);
+    list-style: none;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    box-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.55);
+    animation: sort-menu-in var(--motion-base) var(--ease-standard) both;
+  }
+
+  &__entry {
+    animation: sort-entry-in var(--motion-base) var(--ease-standard) both;
+
+    &:nth-child(2) {
+      animation-delay: 24ms;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 48ms;
+    }
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ink);
+      background: rgb(255 255 255 / 0.06);
+    }
+
+    &[aria-selected='true'] {
+      color: var(--ink);
+      font-weight: var(--weight-medium);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+    color: transparent;
+    transition: color var(--motion-base) var(--ease-standard);
+
+    [aria-selected='true'] & {
+      color: var(--accent);
+    }
+  }
+}
+
+@keyframes sort-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sort-entry-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sort {
+    &__menu,
+    &__entry {
+      animation: none;
+    }
+
+    &__chevron,
+    &__glyph,
+    &__value,
+    &__button::after,
+    &__check {
+      transition: none;
+    }
+  }
+}

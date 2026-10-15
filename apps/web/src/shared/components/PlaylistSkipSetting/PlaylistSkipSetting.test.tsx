@@ -7,9 +7,7 @@ import { I18nProvider } from '@playliberty/i18n';
 import PlaylistSkipSetting from './PlaylistSkipSetting';
 
 /*
- * The switch is the whole component: its accessible state, the value it asks for
- * on a press, and the two reasons it is disabled. The colour and the thumb are
- * the stylesheet's business.
+ * The colour and the thumb are the stylesheet's business.
  */
 
 function renderSetting(

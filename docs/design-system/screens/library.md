@@ -228,19 +228,19 @@ component record owns the naming rule and the touch target that goes with it.
 **The press starts the playlist it was pressed on.** A toggle that only flipped a flag would act on a queue
 the item may not be the source of, so the control is the same action on both surfaces: an empty queue, or one
 belonging to another playlist, is replaced by this playlist's and started, shuffled; this playlist's own queue
-flips the mode, and turning it on resumes a paused transport because reaching for shuffle is a play gesture
-like the transport's. Turning it off puts the queue back in the playlist's own order, which is why that order
-is kept beside the queue rather than discarded.
+flips the mode, and turning it on draws a fresh shuffle and starts on its leading track, because reaching for
+shuffle is a play gesture like the transport's. Turning it off puts the queue back in the playlist's own order,
+which is why that order is kept beside the queue rather than discarded.
 
-**The shuffled queue is led by the track the press kept.** The transport starts on the first entry, so the
-first entry is the one being played, or the first stored track when the queue is fresh: the leader is hoisted
-to the front and everything after it is a full scatter of the rest. Playing `D` in `A B C D E` gives
-`D C A E B` for one run, with `D` still sounding; the leader's own place in the playlist is not where it
-lands, which is what "keeps the current track" would have done and is not the rule. Undoing the shuffle
-returns `A B C D E` under a playhead still on `D`, so the next track is `E`.
+**The shuffled queue is led by a drawn track, and the playhead moves to it.** The press asks for a fresh
+shuffle rather than a re-arrangement around the track already playing, so the leader is a random playable track
+rather than the one sounding or the first stored one: it is hoisted to the front and everything after it is a
+full scatter of the rest. Playing `D` in `A B C D E` gives `B D A E C` for one run, with `B` sounding and the
+playhead reset to it; `D` keeps its place in the playlist's own order, which is what turning the shuffle off
+restores. Undoing the shuffle returns `A B C D E` under a playhead still on `B`, so the next track is `C`.
 
 **A shuffle is an order, and the transport walks it.** The randomness is spent once, on the queue's order, and
-`next` is then the next entry whatever the mode is: `D C A E B` plays `C`, `A`, `E`, `B` and stops, and
+`next` is then the next entry whatever the mode is: `B D A E C` plays `D`, `A`, `E`, `C` and stops, and
 pressing previous steps back through the same list. Nothing re-rolls at the end of a shuffled queue, because a
 next that drew a fresh track each press would play an order the listener cannot see and could repeat a track
 it had already played. A press on a row moves the playhead inside the queue on screen rather than rebuilding

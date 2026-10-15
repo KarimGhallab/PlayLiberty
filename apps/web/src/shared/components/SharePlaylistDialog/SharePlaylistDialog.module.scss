@@ -1,8 +1,7 @@
 /*
- * The share dialog's list. The rows are accounts from the directory, each with
- * its name and the two levels. It borrows the shared dialog's chrome and adds
- * only the list, because the shell already owns the card, the motion and the
- * action row.
+ * The share dialog's list. It borrows the shared dialog's chrome and adds only
+ * the list, because the shell already owns the card, the motion and the action
+ * row.
  */
 .share {
   &__note {

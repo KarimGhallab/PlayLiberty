@@ -94,7 +94,6 @@ function parsePersistedPlayerState(
   };
 }
 
-/** The persisted player, or null when there is nothing usable stored. */
 export function readPlayerState(storage: Storage): PersistedPlayerState | null {
   const raw = storage.getItem(PLAYER_STORAGE_KEY);
 

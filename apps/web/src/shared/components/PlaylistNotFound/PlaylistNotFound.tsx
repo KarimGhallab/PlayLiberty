@@ -6,12 +6,10 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './PlaylistNotFound.module.scss';
 
 /*
- * The not-found state: the list area's own state when the playlist query
- * answers 404. The design record (`docs/design-system/screens/playlist-detail.md`)
- * names it as a component this screen needs, and says why the empty state cannot
- * stand in for it: the empty state's words say nothing is here because the
- * playlist has never synced, which is a lie for a playlist that was shared and
- * is not any more.
+ * The not-found state: the list area's own state when the playlist query answers
+ * 404. The empty state cannot stand in for it: its words say nothing is here
+ * because the playlist has never synced, which is a lie for a playlist that was
+ * shared and is not any more.
  *
  * A playlist that does not exist and one the account cannot see both answer 404
  * at one status, so the copy speaks about both without claiming to know which

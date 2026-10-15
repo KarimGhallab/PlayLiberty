@@ -1,9 +1,9 @@
 /*
  * The designed values, the single source of truth.
  *
- * Transcribed from `docs/design/tokens.css` by task 10; the design records in
- * `docs/DESIGN.md` and `docs/design-system/` carry the reasoning behind each
- * one. Lengths and durations are unitless numbers here, and the emitter in
+ * Transcribed from `docs/design/tokens.css`; the design records in
+ * `docs/DESIGN.md` and `docs/design-system/` carry the reasoning behind each one.
+ * Lengths and durations are unitless numbers here, and the emitter in
  * `emitTokens.ts` is the only place a unit is ever added.
  *
  * Two tokens hold the same literal on purpose, and the design's validator keeps
@@ -25,10 +25,6 @@ import type {
   TokenGroup
 } from './types.js';
 
-/**
- * Surfaces, text, the accent, the six state tones, the control colours and the
- * six sleeve hues.
- */
 export const colors = {
   bg: { kind: TokenKind.Color, value: '#0b0d10' },
   surface: { kind: TokenKind.Color, value: '#14171b' },
@@ -68,7 +64,6 @@ export const colors = {
   'sleeve-6': { kind: TokenKind.Color, value: '#4c2c3e' }
 } as const satisfies Record<string, ColorToken>;
 
-/** The type scale, spacing, shape, control geometry, icons and the focus ring. */
 export const lengths = {
   'text-xs': { kind: TokenKind.Length, value: 12 },
   'text-sm': { kind: TokenKind.Length, value: 14 },
@@ -100,14 +95,13 @@ export const lengths = {
   'focus-offset': { kind: TokenKind.Length, value: 2 }
 } as const satisfies Record<string, LengthToken>;
 
-/** The three transitions. A decorative loop keeps the `ease-in-out` keyword. */
+/** A decorative loop keeps the `ease-in-out` keyword. */
 export const durations = {
   'motion-fast': { kind: TokenKind.Duration, value: 120 },
   'motion-base': { kind: TokenKind.Duration, value: 180 },
   'motion-slow': { kind: TokenKind.Duration, value: 240 }
 } as const satisfies Record<string, DurationToken>;
 
-/** Weights, leading ratios, opacity and the stacking order. */
 export const numbers = {
   'weight-regular': { kind: TokenKind.Number, value: 400 },
   'weight-medium': { kind: TokenKind.Number, value: 500 },
@@ -122,7 +116,7 @@ export const numbers = {
   'z-player': { kind: TokenKind.Number, value: 30 }
 } as const satisfies Record<string, NumberToken>;
 
-/** One family for the whole product. The emitter quotes it for the stylesheet. */
+/** The emitter quotes the family for the stylesheet. */
 export const families = {
   'font-ui': { kind: TokenKind.Family, value: 'IBM Plex Sans' }
 } as const satisfies Record<string, FamilyToken>;

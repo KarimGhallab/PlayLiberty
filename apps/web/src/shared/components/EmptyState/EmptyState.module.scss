@@ -1,8 +1,7 @@
 /*
- * The empty state, mirroring docs/design/components/empty-state.html. One axis,
- * centred, in the reading width, and left-aligned in its own box: a list area
- * starts at the top, so an empty list's content starts at the top too rather
- * than floating in the middle of its own space.
+ * The empty state, mirroring docs/design/components/empty-state.html. A list area
+ * starts at the top, so an empty list's content starts at the top too rather than
+ * floating in the middle of its own space.
  */
 .empty-state {
   display: flex;

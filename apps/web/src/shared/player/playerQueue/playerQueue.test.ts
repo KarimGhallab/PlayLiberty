@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AssociationOrigin,
@@ -45,6 +45,10 @@ function stored(id: string, position: number): PlaylistTrack {
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('buildQueue', () => {
@@ -126,6 +130,25 @@ describe('startPlaylistQueue', () => {
     expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
       'track-2'
     ]);
+  });
+
+  it('starts a shuffled queue on a random playable track', () => {
+    /* The draw picks the third entry, so a shuffled start does not simply begin
+     * on the top of the list. */
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
+    const started = startPlaylistQueue(
+      PLAYLIST,
+      [stored('track-1', 0), stored('track-2', 1), stored('track-3', 2)],
+      null,
+      true
+    );
+
+    expect(started).toBe(true);
+    const state = usePlayerStore.getState();
+    expect(state.shuffle).toBe(true);
+    expect(state.currentId).toBe('track-3');
+    expect(state.queue[0].id).toBe('track-3');
   });
 
   it('refuses a playlist with nothing to play and starts nothing', () => {

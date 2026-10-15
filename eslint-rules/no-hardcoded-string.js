@@ -2,15 +2,11 @@
  * Rejects a hardcoded user-facing string. The web client owns every sentence a
  * person reads through `@playliberty/i18n`, so copy written straight into JSX
  * text or into a known label prop is a string that would never be translated and
- * that a later language would silently leave in English. The rule reads the two
- * places copy lands: the text between tags, and the props that name a control or
- * describe it to assistive technology.
+ * that a later language would silently leave in English.
  *
- * The allowlist is the other half. Not every literal is copy: a symbol, a
- * placeholder like `--:--`, an HTML entity or an example URL is not a sentence,
- * and a rule that flagged them would be turned off within a day. A string with
- * no letter at all is never copy, and a URL, an entity and the few symbols the
- * interface draws are allowed outright.
+ * Not every literal is copy: a symbol, a placeholder like `--:--`, an HTML entity
+ * or an example URL is not a sentence, and a rule that flagged them would be
+ * turned off within a day.
  */
 
 const LETTER = /[A-Za-z]/;
@@ -31,14 +27,14 @@ const LABEL_PROPS = new Set([
   'actionLabel'
 ]);
 
-/* The few non-copy strings the interface draws that carry a letter or a symbol. */
+/* The few non-copy strings the interface draws; each is symbol-only, so the letter
+ * test above already lets it through. */
 const ALLOWED = new Set(['--:--', '×', '·', '%']);
 
 /*
- * The string a literal holds, or null when the node is not a plain string. A
- * template with no expressions is a string; one with expressions is dynamic and
- * is left alone, because the copy is split around the value and the rule cannot
- * see it whole.
+ * A template with no expressions is a string; one with expressions is dynamic
+ * and is left alone, because the copy is split around the value and the rule
+ * cannot see it whole.
  */
 function literalText(node) {
   if (node === null || node === undefined) {
@@ -61,7 +57,6 @@ function literalText(node) {
   return null;
 }
 
-/** Whether a string is copy that belongs in the catalog. */
 function isCopy(value) {
   const text = value.replace(ENTITY, '').trim();
 
@@ -82,10 +77,10 @@ function isCopy(value) {
 }
 
 /*
- * Walks an expression for the string literals it holds. A call is trusted whole:
- * `t('key')` is the catalog, and a formatting call holds no copy, so neither is
- * descended into. That is what lets a label prop hold `cond ? t('a') : t('b')`
- * while a plain `cond ? 'Pause' : 'Play'` is still caught.
+ * A call is trusted whole: `t('key')` is the catalog, and a formatting call
+ * holds no copy, so neither is descended into. That is what lets a label prop
+ * hold `cond ? t('a') : t('b')` while a plain `cond ? 'Pause' : 'Play'` is
+ * still caught.
  */
 function scan(node, report) {
   if (node === null || node === undefined) {

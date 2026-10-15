@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { durations } from '../values.js';
 import { playPauseMorph } from './morph.js';
 
-/** The shape the design generator writes, beside the table in the record. */
+/** The shape the design generator writes. */
 interface GeneratedMorph {
   name: string;
   frames: number;

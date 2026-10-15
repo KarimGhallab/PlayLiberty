@@ -4,6 +4,7 @@ import {
   AddTrackOutcome,
   AssociationOrigin,
   LiveEventType,
+  PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   ShareLevel,
@@ -15,6 +16,7 @@ import {
 
 const identifier = z.string().min(1);
 const isoDateTime = z.iso.datetime();
+const nonNegative = z.number().int().nonnegative();
 
 export const AccountSchema = z.object({
   id: identifier,
@@ -52,20 +54,13 @@ export const TrackSchema = z.object({
 });
 
 /*
- * The requesting account's relationship to a playlist.
- *
- * Three kinds of answer and not a fourth. A playlist the account cannot see is a
- * 404, which tickets 14 and 15 settled for the sync run and for both playlist
- * routes, so there is no "none" to carry here: the absence of a fourth value is
- * that disclosure decision restated on the wire, and adding one later would
- * reopen a question two tickets have already answered.
+ * Three kinds of answer and not a fourth: a playlist the account cannot see is a
+ * 404, so there is no "none" to carry here.
  *
  * `read` and `write` are ShareLevel's own members rather than a fresh pair of
- * strings, so a new level of sharing is automatically a new level of access and
- * nobody has to remember to add it in two places. What that cannot do is decide
- * what a new level means, and that decision is forced in the server instead:
- * playlistService's switch over ShareLevel is exhaustive, so adding a member
- * fails the build there rather than passing silently through here.
+ * strings, so a new level of sharing is automatically a new level of access. The
+ * server decides what a level means: `canWritePlaylist` admits the owner and a
+ * write level, so a new level is read-only until it is named there too.
  */
 export const PlaylistAccessSchema = z.union([
   z.literal('owner'),
@@ -83,6 +78,7 @@ export const PlaylistSchema = z.object({
   lastSyncedAt: isoDateTime.nullable(),
   trackCount: z.number().int().nonnegative(),
   skipNonMusic: z.boolean(),
+  sort: z.enum(PlaylistSort),
   access: PlaylistAccessSchema,
   hasShares: z.boolean(),
   createdAt: isoDateTime,
@@ -93,6 +89,26 @@ export const PlaylistTrackSchema = z.object({
   track: TrackSchema,
   origin: z.enum(AssociationOrigin),
   position: z.number().int().nonnegative()
+});
+
+export const PlaylistTrackListSchema = z.object({
+  items: z.array(PlaylistTrackSchema)
+});
+
+export const TrackFileStatusCountsSchema = z.object({
+  [TrackFileStatus.Stored]: nonNegative,
+  [TrackFileStatus.Pending]: nonNegative,
+  [TrackFileStatus.Downloading]: nonNegative,
+  [TrackFileStatus.Failed]: nonNegative,
+  [TrackFileStatus.Unavailable]: nonNegative
+});
+
+export const PlaylistTracksPageSchema = z.object({
+  items: z.array(PlaylistTrackSchema),
+  total: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+  counts: TrackFileStatusCountsSchema
 });
 
 export const ShareSchema = z.object({
@@ -180,6 +196,10 @@ export const SkipNonMusicInputSchema = z.object({
   skipNonMusic: z.boolean()
 });
 
+export const SortPlaylistInputSchema = z.object({
+  sort: z.enum(PlaylistSort)
+});
+
 export const SharePlaylistInputSchema = z.object({
   accountId: identifier,
   level: z.enum(ShareLevel)
@@ -188,6 +208,10 @@ export const SharePlaylistInputSchema = z.object({
 export const PageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().nonnegative().default(0)
+});
+
+export const PlaylistTracksQuerySchema = PageQuerySchema.extend({
+  state: z.enum(TrackFileStatus).optional()
 });
 
 export function createPageSchema<TItem extends z.ZodType>(

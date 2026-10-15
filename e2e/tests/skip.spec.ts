@@ -36,7 +36,6 @@ function playlistIdFromUrl(page: Page): string {
   return match[1];
 }
 
-/** Add one video to the playlist on screen, which is preselected in the dialog. */
 async function addTrack(
   page: Page,
   video: { videoId: string; title: string }
@@ -52,7 +51,6 @@ async function addTrack(
   await expect(dialog).toBeHidden();
 }
 
-/** The track a playlist holds for a video, read straight from the API. */
 async function readTrack(
   request: APIRequestContext,
   playlistId: string,
@@ -104,7 +102,6 @@ test('the skip switch flips both ways on the detail and survives a reload', asyn
     page.getByRole('switch', { name: 'Skip non-music parts' })
   ).toHaveAttribute('aria-checked', 'false');
 
-  // And back on, which is the other direction of the same write.
   await page.getByRole('switch', { name: 'Skip non-music parts' }).click();
   await expect(
     page.getByRole('switch', { name: 'Skip non-music parts' })
@@ -159,7 +156,6 @@ test('a track already created keeps its setting when a playlist changes', async 
     born.id
   );
 
-  // The second playlist's setting is turned off, and the write settles.
   const control = page.getByRole('switch', { name: 'Skip non-music parts' });
   await control.click();
   await expect(control).toHaveAttribute('aria-checked', 'false');
@@ -176,7 +172,6 @@ test('a track already created keeps its setting when a playlist changes', async 
     (await readTrack(request, firstPlaylist, FIRST.videoId)).skipNonMusic
   ).toBe(true);
 
-  // A track born after the change takes the new default.
   await addTrack(page, THIRD);
   expect(
     (await readTrack(request, secondPlaylist, THIRD.videoId)).skipNonMusic

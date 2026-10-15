@@ -4,10 +4,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import styles from './Dialog.module.scss';
 
 /*
- * The one dialog shell: a scrim over the page, a 400px card on --surface-raised
- * with a --control-border edge, a title, a body and an action row. Every dialog
- * in the app is this node with different children, so the arrival and exit are
- * written once rather than once per dialog.
+ * Every dialog in the app is this node with different children, so the arrival
+ * and exit are written once rather than once per dialog.
  *
  * Two callbacks, because closing is two moments. `onRequestClose` is the dialog
  * asking to go away (Cancel, Escape, a press on the scrim) and the caller decides:

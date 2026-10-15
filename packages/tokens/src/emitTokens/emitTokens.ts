@@ -1,6 +1,6 @@
 /*
- * The emitter. The package's own build runs the compiled file with Node; nothing
- * imports it, because it is a step and not a module.
+ * The package's own build runs the compiled file with Node; nothing imports it,
+ * because it is a step and not a module.
  *
  * It is the one place CSS syntax is added: `px` to a length, `ms` to a duration,
  * quotes around a family name, `cubic-bezier()` around a curve, and a colour or

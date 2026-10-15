@@ -1,9 +1,8 @@
 /*
- * The player state, shared by the store, the persistence and the components.
- *
- * The queue is client state that never reaches the database. It carries the
- * minimum a bar needs to render, and it names the playlist it was built from so
- * the surface can say where the music is coming from.
+ * The player state, shared by the store, the persistence and the components. The
+ * queue is client state that never reaches the database, and it names the
+ * playlist it was built from so the surface can say where the music is coming
+ * from.
  */
 
 /** One entry in the play queue, as the bar and the audio element need it. */
@@ -147,7 +146,6 @@ export function queuePlaylistId(state: PlayerState): string | null {
   return state.queue[0]?.playlistId ?? null;
 }
 
-/** The track the transport is on, or null when nothing is playing. */
 export function currentTrack(state: PlayerState): PlayerTrack | null {
   const index = currentIndex(state);
 

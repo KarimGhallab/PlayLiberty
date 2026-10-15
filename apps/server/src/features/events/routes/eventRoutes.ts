@@ -24,7 +24,6 @@ export interface EventRouteOptions {
   heartbeatMs: number;
 }
 
-/** How long an idle connection may sit before a comment frame keeps it alive. */
 export const DEFAULT_EVENT_HEARTBEAT_MS = 20_000;
 
 export function registerEventRoutes(
