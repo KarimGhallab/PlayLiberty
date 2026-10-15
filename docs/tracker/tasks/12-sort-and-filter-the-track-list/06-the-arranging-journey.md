@@ -1,39 +1,33 @@
-# The arranging journey
+# 06: The arranging journey
 
-Status: open
-Labels: `enhancement`, `ready-for-agent`
+**Blocked by:** [`03`](03-the-saved-sort-is-the-playback-order.md) and [`05`](05-the-detail-chip-row.md).
+**Status:** resolved
 
-## Objective
+## Outcome
 
-One browser journey proves the facts that are only true once the product is assembled: the saved order is
-applied by the server and read again after a reload, the counts describe the whole playlist rather than the rows
-drawn, and the controls go inert while the shuffled queue takes over.
+Implemented and verified. `e2e/tests/arrange.spec.ts` is the assembled-product journey, three tests against one
+seeded playlist: three stored tracks and one that fails to download, so the list holds two states at once.
 
-## Context
+The seed is the load-bearing part. Associations are made one at a time, the first by sync and the rest through
+the add dialog, because a single sync stamps every entry with one instant and a date sort over equal instants
+tiebreaks on the playlist's own position, which would make the sort a no-op. Distinct added-at times are what
+make the date sort a different order from the playlist's, and the failed track is added last so it is the newest.
 
-Read the spec's testing decisions, and the shuffle and skip journeys, which are the closest assembled-product
-tests. The browser is the owner, so the read-collaborator gating stays in the route and component tests.
+The three tests prove the facts that only the assembled product has:
 
-## Scope
+- The saved sort re-orders the list (newest first reverses it), survives a reload, and is the order the
+  unshuffled transport walks: the first playable is C, then B, then A, because the failed row cannot be queued.
+  Oldest first reverses it, and the playlist's own order is reachable again.
+- The chips carry the whole-playlist counts before any press (All 4, Stored 3, Pending 0, Downloading 0,
+  Failed 1, Unavailable 0), a chip narrows the list and the header's count line to the filtered total while the
+  counts stay the whole playlist's, and a state with no rows draws the named empty state whose action clears it.
+- The controls go inert while shuffled, and the list draws the shuffled queue's order: its playable rows are a
+  permutation of the stored tracks, led by the one sounding, and the transport walks them in the order drawn.
 
-- One journey file, seeding one playlist with several stored tracks and one that fails to download, so the list
-  holds two states at once.
-- It asserts: the chips carry the whole-playlist counts before any press; newest first re-orders the list and
-  the choice survives a reload; oldest first reverses it; the playlist's own order is reachable again; a chip
-  narrows the list and the header's count line, and "All" restores both; a state with no rows draws the named
-  empty state; the controls are disabled while shuffled and the list draws the shuffled order; and the saved
-  sort is the order the transport walks while unshuffled.
+Two existing journeys needed a selector scoped, because the new control row's chips carry the same words the
+track rows do: `curate.spec.ts` matched "Failed" and `live.spec.ts` matched "Downloading" unscoped, and both
+became ambiguous once the chips drew. Each now scopes to the row or the track list. This is the one regression
+the chips introduced, and it was latent until the full suite ran.
 
-## Out of scope
-
-The read-collaborator view, which the dev proxy cannot reach because it fixes one browser identity, and the
-counts of a very large playlist, which is not what a browser proves.
-
-## Blocking edges
-
-Blocked by [`03`](03-the-saved-sort-is-the-playback-order.md), which makes the order play, and
-[`05`](05-the-detail-chip-row.md), which draws the chips and the empty state.
-
-## Verification
-
-- The e2e suite and the e2e typecheck pass.
+Verification: `pnpm test:e2e` (28 passed), `pnpm run test:e2e:typecheck`, `pnpm run lint` and prettier pass. No
+em dashes. Not committed.

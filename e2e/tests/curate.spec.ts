@@ -145,8 +145,15 @@ test('retrying a failed track re-queues it and it recovers', async ({
     name: `Actions for ${FIRST.title}`
   });
   await reloadUntil(page, rowActions);
-  // Exact, because the summary's lower-case "failed" count is on the page too.
-  await expect(page.getByText('Failed', { exact: true })).toBeVisible();
+  /*
+   * Scoped to the row: the summary's lower-case "failed" and the control row's
+   * "Failed" filter chip are both on the page, so an unscoped match is
+   * ambiguous.
+   */
+  const failedState = page
+    .getByRole('listitem')
+    .getByText('Failed', { exact: true });
+  await expect(failedState).toBeVisible();
 
   // The video is downloadable now, and the retry queues it for the worker. The
   // retry lives in the row's actions menu, so the press is two: open, then pick.
@@ -155,7 +162,7 @@ test('retrying a failed track re-queues it and it recovers', async ({
   await page.getByRole('menuitem', { name: 'Retry' }).click();
 
   // The row leaves the failed state, which is the retry's own, immediate effect.
-  await expect(page.getByText('Failed', { exact: true })).toBeHidden({
+  await expect(failedState).toBeHidden({
     timeout: 15_000
   });
 
