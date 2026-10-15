@@ -72,3 +72,17 @@
     border-block-start: 1px solid var(--line);
   }
 }
+
+/*
+ * On the desk the playlists are separated by a gap as well as the hairline, so
+ * each one reads as its own object rather than a row of one continuous table.
+ * The phone keeps the tight list: a gap there would only push rows off the
+ * screen, and the hairline already does the separating.
+ */
+@media (min-width: 768px) {
+  .library {
+    &__item + &__item {
+      margin-block-start: var(--space-4);
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 
 import {
+  PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   TrackFileStatus
@@ -25,7 +26,8 @@ import {
   usePlaylists,
   useRemoveTrack,
   useRetryTrack,
-  useUpdateSkipNonMusic
+  useUpdateSkipNonMusic,
+  useUpdateSort
 } from '../../../shared/api/queries/queries';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';
@@ -35,6 +37,7 @@ import PlaylistCardHeader from '../../../shared/components/PlaylistHeader/Playli
 import PlaylistRowHeader from '../../../shared/components/PlaylistHeader/PlaylistRowHeader';
 import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/PlaylistNotFound';
 import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/PlaylistSkipSetting';
+import PlaylistSortControl from '../../../shared/components/PlaylistSortControl/PlaylistSortControl';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
@@ -114,6 +117,7 @@ export default function PlaylistDetailPage() {
   const fetchWhole = useFetchTrackWhole(playlistId);
   const removeTrack = useRemoveTrack(playlistId);
   const updateSkip = useUpdateSkipNonMusic(playlistId);
+  const updateSort = useUpdateSort(playlistId);
   const addTrack = useAddTrack();
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
@@ -514,6 +518,22 @@ export default function PlaylistDetailPage() {
             <p className={styles.playlistDetail__note}>
               {t('detail.noTracks')}
             </p>
+          ) : null}
+          {tracks.isSuccess && tracks.tracks.length > 0 ? (
+            <PlaylistSortControl
+              sort={playlist.data?.sort ?? PlaylistSort.Playlist}
+              canEdit={canWrite}
+              shuffled={shuffled && isQueue}
+              saving={updateSort.isPending}
+              onChange={value =>
+                updateSort.mutate(value, {
+                  onError: error =>
+                    setSettingRefused(
+                      problemSentence(t, error) ?? t('detail.settingFailed')
+                    )
+                })
+              }
+            />
           ) : null}
           {tracks.isSuccess && tracks.tracks.length > 0 ? (
             <ul className={styles.playlistDetail__list}>

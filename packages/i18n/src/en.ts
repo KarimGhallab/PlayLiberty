@@ -45,7 +45,11 @@ export const en = {
     removeDeferred: 'Removing track',
     trackFallback: 'Track',
     settingFailed: 'The setting could not be changed.',
-    settingNotice: 'The skip setting was not changed.'
+    settingNotice: 'The skip setting was not changed.',
+    sortBy: 'Sort by',
+    sortPlaylist: 'Playlist order',
+    sortNewest: 'Newest first',
+    sortOldest: 'Oldest first'
   },
   trackRow: {
     play: 'Play {title}',

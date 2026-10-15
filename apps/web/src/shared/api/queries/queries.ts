@@ -21,6 +21,7 @@ import {
   AccountSummarySchema,
   AddTrackResultSchema,
   PlaylistSchema,
+  PlaylistSort,
   PlaylistTrackListSchema,
   PlaylistTrackSchema,
   ShareListSchema,
@@ -406,6 +407,44 @@ export function useUpdateSkipNonMusic(
     onSuccess: playlist => {
       queryClient.setQueryData(key, playlist);
       cacheEffects.libraryChanged(queryClient);
+    }
+  });
+}
+
+/*
+ * Saving the order a playlist's tracks are read in. Unlike the skip setting, this
+ * one moves the track reads: the saved order is the order the list and the queue
+ * are read in, so the playlist-scoped invalidation is the one that asks both
+ * again. The optimistic write moves the playlist's own value, and the order the
+ * list draws follows when the reads answer.
+ */
+export function useUpdateSort(
+  playlistId: string
+): UseMutationResult<Playlist, Error, PlaylistSort> {
+  const queryClient = useQueryClient();
+  const key = ['playlist', playlistId];
+
+  return useMutation({
+    mutationFn: (sort: PlaylistSort) =>
+      apiPatch(`/playlists/${playlistId}/sort`, { sort }, PlaylistSchema),
+    onMutate: async (sort: PlaylistSort) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Playlist>(key);
+
+      if (previous !== undefined) {
+        queryClient.setQueryData<Playlist>(key, { ...previous, sort });
+      }
+
+      return { previous };
+    },
+    onError: (_error, _sort, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSuccess: playlist => {
+      queryClient.setQueryData(key, playlist);
+      cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
 }

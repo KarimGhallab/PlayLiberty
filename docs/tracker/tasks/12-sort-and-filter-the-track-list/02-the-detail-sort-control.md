@@ -1,44 +1,38 @@
-# The detail's sort control
+# 02: The detail's sort control
 
-Status: open
-Labels: `enhancement`, `ready-for-agent`
+**Blocked by:** [`01`](01-the-saved-sort-on-a-playlist.md).
+**Status:** resolved
 
-## Objective
+## Outcome
 
-The playlist detail gains one control row above its list, holding a sort control. Choosing the playlist's own
-order, newest first or oldest first re-orders the list at once, the choice is saved for the playlist, and it is
-the order the list opens in.
+Implemented and verified. The detail's tracks column gained a control row above the list, holding
+`PlaylistSortControl`: a menu button at the row's end that draws the order the playlist is read in and opens the
+three orders. The lead space is left for ticket `05`'s filter chips, which join the row later.
 
-## Context
+The control is presentational and the page owns the write, exactly as the skip setting does. `useUpdateSort`
+saves the order optimistically (the playlist's own value moves at once and a failure puts it back), answers the
+updated playlist, and invalidates the playlist-scoped reads, because the saved order is the order the list and
+the queue are read in. A refusal reuses the page's setting notice.
 
-Read the spec, and the detail design record for where the list sits. The control row is new: one row above the
-list, scrolling with it, and it is disabled while shuffled, because the sort belongs to the unshuffled list. The
-saved value is read by the same route that returns the rows, so there is no sort parameter.
+The control is disabled while the queue is this playlist and shuffled, and for a read collaborator, whose value
+it still is to read. The menu never opens while disabled.
 
-## Scope
+The design came from a throwaway prototype, which is deleted: the `/prototype/sort-row` route, the variant
+components and the `PrototypeSwitcher` are gone, and the catalog lint override with them. What was folded in is
+the winner: the button is quiet at rest (no box, the order and its two marks at `--muted`, coming up to `--ink`
+together on hover), the 2px accent rule the segmented control marks its choice with is drawn under it only while
+the menu is open, the chevron turns over, and the menu arrives in one rise with its entries settling in behind
+it. `prefers-reduced-motion` drops the motion.
 
-- The read carries the saved value, and the control draws it.
-- The control row above the list: a segmented control, "Sort by" over "Playlist order", "Newest first" and
-  "Oldest first", with the selected option marked by a rule and a contrast step rather than a fill.
-- A press saves the value optimistically and re-orders the list; a failure restores the previous value and says
-  so. The press invalidates the playlist and the track reads, because the order changed.
-- The control is disabled while shuffled. A read collaborator sees the same control disabled, because the value
-  is still theirs to read.
-- The row scrolls with the list rather than sticking, and scrolls sideways on a narrow screen rather than
-  wrapping.
-- New copy lives under the detail namespace.
+The copy is new keys under the detail namespace, in both catalogs: `sortBy`, `sortPlaylist`, `sortNewest`,
+`sortOldest`.
 
-## Out of scope
+The tests: `PlaylistSortControl.test.tsx` proves the order it draws, the menu's selection, the order it asks
+for on a press, that picking the order already in force asks for nothing, and the three reasons it is disabled,
+with an axe pass. The detail page gained a describe proving the chosen order is saved and the list draws it, the
+control is disabled while the shuffled list is on screen, and a read collaborator sees it disabled. The mock
+handlers gained the sort write.
 
-The queue following the order (ticket `03`), the filter and the counts (tickets `04` and `05`), and any second
-sort key.
-
-## Blocking edges
-
-Blocked by [`01`](01-the-saved-sort-on-a-playlist.md), which saves the value and orders the reads by it.
-
-## Verification
-
-- `pnpm run test` (the web component tests) and `pnpm run build` pass.
-- The component tests prove: the control draws the saved order; choosing an order saves it and re-orders the
-  list; the control is disabled while shuffled; a read collaborator sees it disabled.
+Verification: `pnpm test:unit` (web 407, server 354, packages 79), `pnpm run build`, `pnpm run lint`, the e2e
+typecheck, `design:check` and prettier pass, and the Impeccable detector reports nothing on the changed UI. No
+em dashes. Not committed.

@@ -185,6 +185,17 @@ function openQueue(): void {
   });
 }
 
+/* The titles the list draws, in order, read from the rows' own play controls. */
+function listTitles(): string[] {
+  return screen
+    .getAllByRole('button', { name: /^(Play|Pause) / })
+    .map(
+      button =>
+        button.getAttribute('aria-label')?.replace(/^(Play|Pause)\s+/, '') ?? ''
+    )
+    .filter(title => title !== 'this playlist');
+}
+
 beforeEach(() => {
   usePlayerStore.getState().clear();
 });
@@ -1329,6 +1340,95 @@ describe('PlaylistDetailPage', () => {
       rules: { 'color-contrast': { enabled: false } }
     });
     expect(results.violations).toEqual([]);
+  });
+});
+
+/*
+ * The sort control above the list. The write is the page's: the control is
+ * presentational, so the page saves the order, asks the reads again and reports a
+ * refusal.
+ */
+describe('PlaylistDetailPage sort control', () => {
+  const TITLES: Record<string, string> = {
+    'track-1': 'Blue In Green',
+    'track-2': 'Naima',
+    'track-3': 'Flamenco Sketches'
+  };
+
+  it('saves the chosen order and draws the list in it', async () => {
+    const bodies: unknown[] = [];
+    let order = ['track-1', 'track-2', 'track-3'];
+
+    server.use(
+      http.patch(
+        'http://localhost:3000/api/v1/playlists/playlist-1/sort',
+        async ({ request }) => {
+          const body = (await request.json()) as { sort: string };
+          bodies.push(body);
+          order = ['track-3', 'track-2', 'track-1'];
+
+          return HttpResponse.json({ ...playlistJson(true), sort: body.sort });
+        }
+      ),
+      http.get(
+        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        () => {
+          const items = order.map((id, index) =>
+            trackJson(id, TITLES[id] ?? id, index)
+          );
+
+          return HttpResponse.json({
+            items,
+            total: items.length,
+            limit: 50,
+            offset: 0
+          });
+        }
+      )
+    );
+
+    renderDetail();
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Sort by: Playlist order' })
+    );
+    fireEvent.click(screen.getByRole('option', { name: 'Oldest first' }));
+
+    await waitFor(() => expect(bodies).toEqual([{ sort: 'oldest_first' }]));
+    await waitFor(() =>
+      expect(listTitles()).toEqual([
+        'Flamenco Sketches',
+        'Naima',
+        'Blue In Green'
+      ])
+    );
+  });
+
+  it('disables the control while the shuffled list is the one on screen', async () => {
+    renderDetail();
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^Sort by: / })).toBeDisabled()
+    );
+  });
+
+  it('disables the control for a read collaborator', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+        HttpResponse.json({ ...playlistJson(true), access: 'read' })
+      )
+    );
+
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+    expect(screen.getByRole('button', { name: /^Sort by: / })).toBeDisabled();
   });
 });
 

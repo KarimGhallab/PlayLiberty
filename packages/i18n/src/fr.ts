@@ -47,7 +47,11 @@ export const fr: Messages = {
     removeDeferred: 'Retrait de la piste',
     trackFallback: 'Piste',
     settingFailed: "Le paramètre n'a pas pu être modifié.",
-    settingNotice: "Le paramètre n'a pas été modifié."
+    settingNotice: "Le paramètre n'a pas été modifié.",
+    sortBy: 'Trier par',
+    sortPlaylist: 'Ordre de la playlist',
+    sortNewest: "Plus récentes d'abord",
+    sortOldest: "Plus anciennes d'abord"
   },
   trackRow: {
     play: 'Lire {title}',
