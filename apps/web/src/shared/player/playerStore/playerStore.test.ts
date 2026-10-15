@@ -86,14 +86,39 @@ describe('startQueue', () => {
 });
 
 describe('applyRefetch', () => {
-  it('keeps the built order for known ids and appends new ids last', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("adopts the read's order while the queue is unshuffled", () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
     usePlayerStore.getState().applyRefetch(PLAYLIST, [second, first, third]);
 
     expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual([
-      'track-1',
       'track-2',
+      'track-1',
       'track-3'
+    ]);
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+  });
+
+  it('keeps a shuffled queue in its own order across the same read', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST, [first, second, third], first.id, true);
+
+    const shuffled = usePlayerStore.getState().queue.map(item => item.id);
+
+    usePlayerStore.getState().applyRefetch(PLAYLIST, [third, second, first]);
+
+    expect(usePlayerStore.getState().queue.map(item => item.id)).toEqual(
+      shuffled
+    );
+    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
+      'track-3',
+      'track-2',
+      'track-1'
     ]);
   });
 

@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 
-import { currentIndex, nextIndex, queuePlaylistId } from '../types';
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
+import { currentIndex, nextIndex, queuePlaylistId } from '../types';
 
 /*
- * A refetch returns the server's order, which is not the order the queue was built
- * with. Known ids keep their sequence and new ids append in the server's order, so
- * a track arriving from a sync lands at the end rather than reshuffling the queue,
- * and a track the refetch no longer returns is gone. The current id survives
- * either way, which is the whole point: the music does not move under the listener.
+ * A refetch returns the entries the server holds, in the playlist's saved order.
+ * A shuffled queue keeps its own arrangement, so known ids keep their sequence and
+ * new ids append in the read's order, and a track the refetch no longer returns is
+ * gone. The current id survives either way, which is the whole point: the music
+ * does not move under the listener.
  */
 export function mergeQueue(
   current: readonly PlayerTrack[],
@@ -161,8 +161,10 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         return state;
       }
 
-      const queue = mergeQueue(state.queue, tracks);
-      const sourceQueue = mergeQueue(state.sourceQueue, tracks);
+      const queue = state.shuffle
+        ? mergeQueue(state.queue, tracks)
+        : [...tracks];
+      const sourceQueue = [...tracks];
       const currentStillThere =
         state.currentId !== null &&
         queue.some(track => track.id === state.currentId);
