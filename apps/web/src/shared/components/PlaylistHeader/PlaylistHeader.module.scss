@@ -24,18 +24,19 @@
     position: relative;
   }
 
-  /* The card is the queue's own while playing, and the one fact worth a glance
-   * is that music is coming out of it. The accent is spent on the play control
-   * and cannot be spent twice; the emphasis amber is the system's "this is
-   * happening" and the card has never used it. It arrives as a hairline along
-   * the card's foot, so the card gains a state without gaining a box. The play's
-   * glyph is the cue that survives without colour, which is why this may be
-   * colour-led.
+  /* The card and the tile are the queue's own while playing, and the one fact
+   * worth a glance is that music is coming out of it. The accent is spent on the
+   * play control and cannot be spent twice; the emphasis amber is the system's
+   * "this is happening" and neither of these arrangements has used it. It arrives
+   * as a hairline along the item's foot, so the item gains a state without
+   * gaining a box. On the card the play's glyph is the cue that survives without
+   * colour, which is why this may be colour-led.
    *
    * The line draws in from the left when a track starts and withdraws when
    * playback stops, the sort control's own reveal, so the state change is seen
    * rather than snapped and only the compositor moves. */
-  &[data-arrangement='card']::after {
+  &[data-arrangement='card']::after,
+  &[data-arrangement='tile']::after {
     content: '';
     position: absolute;
     right: 0;
@@ -48,8 +49,16 @@
     transition: transform var(--motion-base) var(--ease-standard);
   }
 
-  &[data-arrangement='card'][data-state='playing']::after {
+  &[data-arrangement='card'][data-state='playing']::after,
+  &[data-arrangement='tile'][data-state='playing']::after {
     transform: scaleX(1);
+  }
+
+  /* The tile's line is inset to its own padding rather than full-bleed: a tile has
+   * rounded corners and cannot clip them, because an open overflow hangs past its
+   * box, so a line run to the edges would square the two bottom ones off. */
+  &[data-arrangement='tile']::after {
+    inset-inline: var(--space-2);
   }
 
   /* The library's item is a door, so the whole row carries the press: its
@@ -663,43 +672,51 @@
    * and the six skip the accent's green and the amber and red the states own, so
    * a sleeve can never be read as an action or a fault. */
   &__cover[data-sleeve='1'],
-  &__mart[data-sleeve='1'] {
+  &__mart[data-sleeve='1'],
+  &__tart[data-sleeve='1'] {
     --sleeve: var(--sleeve-1);
   }
 
   &__cover[data-sleeve='2'],
-  &__mart[data-sleeve='2'] {
+  &__mart[data-sleeve='2'],
+  &__tart[data-sleeve='2'] {
     --sleeve: var(--sleeve-2);
   }
 
   &__cover[data-sleeve='3'],
-  &__mart[data-sleeve='3'] {
+  &__mart[data-sleeve='3'],
+  &__tart[data-sleeve='3'] {
     --sleeve: var(--sleeve-3);
   }
 
   &__cover[data-sleeve='4'],
-  &__mart[data-sleeve='4'] {
+  &__mart[data-sleeve='4'],
+  &__tart[data-sleeve='4'] {
     --sleeve: var(--sleeve-4);
   }
 
   &__cover[data-sleeve='5'],
-  &__mart[data-sleeve='5'] {
+  &__mart[data-sleeve='5'],
+  &__tart[data-sleeve='5'] {
     --sleeve: var(--sleeve-5);
   }
 
   &__cover[data-sleeve='6'],
-  &__mart[data-sleeve='6'] {
+  &__mart[data-sleeve='6'],
+  &__tart[data-sleeve='6'] {
     --sleeve: var(--sleeve-6);
   }
 
-  /* The no-artwork texture, shared by the row's cover and the card's square. The
-   * hatch is the edge divided by eight, so four stripes cross either way and a
-   * larger cover carries the same number rather than a busier field. It is the
-   * sleeve's sheen now: --line over the identity hue, so a playlist with no
-   * artwork still reads as a placeholder rather than as a flat block of colour,
-   * and the fallback keeps the bare hatch for any consumer that sets no sleeve. */
+  /* The no-artwork texture, shared by the row's cover, the card's square and the
+   * tile's cover. The hatch is the edge divided by eight, so four stripes cross
+   * either way and a larger cover carries the same number rather than a busier
+   * field. It is the sleeve's sheen now: --line over the identity hue, so a
+   * playlist with no artwork still reads as a placeholder rather than as a flat
+   * block of colour, and the fallback keeps the bare hatch for any consumer that
+   * sets no sleeve. */
   &__cover[data-art='no-art'],
-  &__mart[data-art='no-art'] {
+  &__mart[data-art='no-art'],
+  &__tart[data-art='no-art'] {
     --hatch: 12px;
     background-color: var(--sleeve, var(--surface-raised));
     background-image: repeating-linear-gradient(
@@ -718,12 +735,14 @@
    * tone is spent only on a fact that changed. The state is read from the state
    * element rather than mirrored onto the root, so the two cannot disagree. */
   &:has(&__state[data-state='syncing']) &__cover,
-  &:has(&__state[data-state='syncing']) &__mart {
+  &:has(&__state[data-state='syncing']) &__mart,
+  &:has(&__state[data-state='syncing']) &__tart {
     border-color: var(--emphasis);
   }
 
   &:has(&__state[data-state='error']) &__cover,
-  &:has(&__state[data-state='error']) &__mart {
+  &:has(&__state[data-state='error']) &__mart,
+  &:has(&__state[data-state='error']) &__tart {
     border-color: var(--tone-failed);
   }
 
@@ -798,6 +817,81 @@
     flex-direction: column;
     gap: var(--space-2);
     padding: var(--space-4);
+  }
+
+  /* The tile arrangement: the library's item. The cover is a block above the
+   * identity, and the library's own mark and the two controls sit in a row under
+   * it. No play and no transport, because a tile is a door: a playlist is started
+   * from its own screen, and the gallery's whole surface is the press that opens
+   * it. The surface lifts under the pointer for the same reason the row's does,
+   * and the tile is a grid item, so the z-index is what keeps an open overflow
+   * whole over the tile below it. */
+  &[data-arrangement='tile'] {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-2);
+    border-radius: var(--radius-card);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+
+    /* The playing line at the foot anchors to the tile, not to the page. */
+    position: relative;
+
+    &:hover,
+    &:focus-within {
+      background: var(--surface-raised);
+    }
+  }
+
+  /* The tile is a grid item, so a z-index lifts it above the tiles beside and
+   * below it, which is what keeps an open overflow whole: the panel hangs past
+   * the tile into the row beneath. */
+  &[data-arrangement='tile']:has(&__menu) {
+    z-index: var(--z-sticky);
+  }
+
+  &__tart {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background-color: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  &__tart-art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &__tunder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+  /* The identity block in a column rather than the row's, so the gap between the
+   * name, the sync line, the count and the owner line is the tile's. */
+  &__tidentity {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  /* The mark leads and the controls keep the tile's end, so the row reads as the
+   * playlist's facts on the left and what may be done to it on the right. */
+  &__tacts {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
 }
 
@@ -882,7 +976,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .playlist-header[data-arrangement='card']::after {
+  .playlist-header[data-arrangement='card']::after,
+  .playlist-header[data-arrangement='tile']::after {
     transition: none;
   }
 }

@@ -111,6 +111,7 @@ export const handlers = [
           sort: 'playlist',
           access: 'owner',
           hasShares: false,
+          counts: { ...EMPTY_COUNTS, stored: 1 },
           createdAt: '2026-09-01T00:00:00.000Z',
           updatedAt: '2026-09-29T12:00:00.000Z'
         },
@@ -128,6 +129,7 @@ export const handlers = [
           sort: 'playlist',
           access: 'read',
           hasShares: false,
+          counts: { ...EMPTY_COUNTS, stored: 4 },
           createdAt: '2026-09-01T00:00:00.000Z',
           updatedAt: '2026-09-28T12:00:00.000Z'
         }

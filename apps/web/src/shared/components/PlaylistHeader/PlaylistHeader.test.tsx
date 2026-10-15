@@ -24,6 +24,7 @@ import { I18nProvider } from '@playliberty/i18n';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import PlaylistCardHeader from './PlaylistCardHeader';
 import PlaylistRowHeader from './PlaylistRowHeader';
+import PlaylistTileHeader from './PlaylistTileHeader';
 
 /*
  * The header under test sits inside a real router so its two links resolve the
@@ -74,6 +75,23 @@ function renderCard(
 ) {
   return renderInRouter(
     <PlaylistCardHeader playlist={playlist} ownerName={ownerName} {...props} />
+  );
+}
+
+function renderTile(
+  playlist: Playlist,
+  ownerName: string | null = null,
+  props: Partial<Parameters<typeof PlaylistTileHeader>[0]> = {}
+) {
+  return renderInRouter(
+    <PlaylistTileHeader
+      playlist={playlist}
+      ownerName={ownerName}
+      onShuffle={() => undefined}
+      menu={menu()}
+      onOpen={() => undefined}
+      {...props}
+    />
   );
 }
 
@@ -522,6 +540,143 @@ describe('PlaylistHeader', () => {
 
   it('has no axe violations', async () => {
     const { container } = renderRow(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const results = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } }
+    });
+    expect(results.violations).toEqual([]);
+  });
+});
+
+/*
+ * The tile: the library's arrangement. It draws the same facts as the row, adds
+ * the library's own mark, and offers nothing a gallery of destinations cannot
+ * honour, so there is no play and no transport here to press.
+ */
+describe('the tile arrangement', () => {
+  it('draws the name, the share mark, the sync line with its time and the count', async () => {
+    renderTile(playlist({ lastSyncedAt: null, trackCount: 128 }));
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Up to date')).toBeInTheDocument();
+    expect(screen.getByText('Never synced')).toBeInTheDocument();
+    expect(screen.getByText('128')).toBeInTheDocument();
+    expect(screen.getByText('tracks')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Private playlist' })
+    ).toBeInTheDocument();
+  });
+
+  it('names the owner of a shared playlist', async () => {
+    renderTile(playlist({ access: ShareLevel.Read }), 'Ada');
+
+    expect(await screen.findByText('Shared by Ada')).toBeInTheDocument();
+  });
+
+  it('offers no play and no transport, which a gallery item cannot honour', async () => {
+    renderTile(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(
+      screen.queryByRole('button', { name: 'Play this playlist' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Skip back' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Track next' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('draws the mark the library hands it', async () => {
+    renderTile(playlist(), null, {
+      mark: <span role="img" aria-label="Mark" />
+    });
+
+    expect(
+      await screen.findByRole('img', { name: 'Mark' })
+    ).toBeInTheDocument();
+  });
+
+  it('opens the playlist from a press on the tile, but not from its controls', async () => {
+    const onOpen = vi.fn();
+    renderTile(playlist(), null, { onOpen });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    fireEvent.click(screen.getByText('Up to date'));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks a pending tile, and disables every door and control', async () => {
+    const { container } = renderTile(playlist(), null, { pending: true });
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    const tile = container.querySelector('[data-arrangement="tile"]');
+    expect(tile).toHaveAttribute('aria-busy', 'true');
+    expect(tile).toHaveAttribute('data-pending', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    ).toBeDisabled();
+  });
+
+  /*
+   * The playing mark is the emphasis line along the tile's foot, which the
+   * stylesheet draws from this state and draws in over `--motion-base`. The line
+   * is a pseudo-element, so the state is what there is to hold, and the strip is
+   * asserted absent because the tile took the card's mark rather than the row's.
+   */
+  it('carries the playing state while the queue is this playlist, and no strip', async () => {
+    const { container } = renderTile(playlist(), null, {
+      current: true,
+      playing: true
+    });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(
+      container.querySelector('[data-arrangement="tile"]')
+    ).toHaveAttribute('data-state', 'playing');
+    expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
+  });
+
+  it('carries the paused state on a tile the queue does not belong to', async () => {
+    const { container } = renderTile(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(
+      container.querySelector('[data-arrangement="tile"]')
+    ).toHaveAttribute('data-state', 'paused');
+  });
+
+  it('has no axe violations', async () => {
+    const { container } = renderTile(playlist(), null, {
+      mark: <span role="img" aria-label="3 tracks are not stored" />
+    });
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 

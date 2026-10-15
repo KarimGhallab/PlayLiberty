@@ -2,7 +2,7 @@
 
 > Part of the design system. Index and cross-cutting rules: [`DESIGN.md`](../../DESIGN.md).
 
-The route a user lands on, and the only entry point to content. A header and a list.
+The route a user lands on, and the only entry point to content. A header and a gallery of tiles.
 
 ## Two arrangements, and the width every number came from
 
@@ -18,29 +18,53 @@ the screen's number is the wider one.
 
 What differs, before any other number: the header is 78.4px on web and 68px on mobile, 56px on mobile once
 the add control becomes a floating button; the surface is `--bg` in both and items sit on it directly; an
-item is 136px on web and a card is **172.2px** wide in a two-column grid on mobile; the signed-out state
-exists only on mobile; and the arriving player bar costs both arrangements the same 97px. What does not
-differ is the component: an item is [the playlist header](../components/playlist-header.md) in both, at the
-arrangements that record owns.
+item is a **tile**, **252x396px** in a four-column grid at 1056, and a card **172.2px** wide in a two-column
+grid at 390; the signed-out state exists only on mobile; and the arriving player bar costs both arrangements
+the same 97px. What does not differ is the component: an item is [the playlist
+header](../components/playlist-header.md) in both, at the arrangements that record owns.
 
 ### Which client owns the narrow width
 
 The **390 arrangements are the mobile client's** and not the web page's: the two-column card grid, the
 floating add button, the full-width sheet and the signed-out state below are the Expo app's idioms, and a
-browser that happens to be 390 wide is not that client. The **web client is the row at every width it is
-served at.** Below its 1056 column the row keeps its arrangement and narrows with the content column: the
-name truncates and is recoverable through its `title`, and at the components' `max-width: 767px` breakpoint
-the quiet controls grow to the 44px target a touchscreen is owed. The web client draws no grid, no floating
-button and no sheet, because those are the other client's idiom rather than a smaller version of this one.
+browser that happens to be 390 wide is not that client. The **web client is the tile grid at every width it
+is served at.** Below its 1056 column the grid drops a column at a time, because the track is
+`repeat(auto-fill, minmax(232px, 1fr))` rather than a count, and the tile keeps its arrangement and narrows
+with the content column: the name truncates and is recoverable through its `title`, and at the components'
+`max-width: 767px` breakpoint the quiet controls grow to the 44px target a touchscreen is owed. The web
+client draws no floating button and no sheet, because those are the other client's idiom rather than a
+smaller version of this one.
+
+**The web's grid and the mobile's are two arrangements, not one.** The web tile is 252px wide at 1056 and
+carries everything a playlist says: the cover, the name with its share mark, the sync line with its elapsed
+time, the count, the owner line of a shared playlist, the shuffle, the overflow and the mark below. The
+mobile card is 172.2px wide in its two-column grid and drops the overflow, the transport and the elapsed
+time, because those are the decisions its own record took above. The tile is the web item because the
+artwork is what a gallery indexes by and because a grid row holds four: at 1056 the row arrangement is
+**152px per playlist** against the tile's **103px**, and the list of seven that is 1271px tall is a grid of
+1024px that scrolls less as the library grows.
 
 ## The item is the playlist header, and the mobile list is a grid
 
 An item is the playlist header, not a component of this screen's own and not a smaller thing that resembles
-it. This screen is a gallery of headers, so [that record](../components/playlist-header.md) owns the
-component at both arrangements, and its rules live in `docs/design/specimen.css` beside the equalizer strip
-because there are two consumers. What the item adds to the component is four things, all consequences of a
-header becoming one item in a list: the links, the grid it stacks in, the permission facts the overflow is
-gated on, and nothing else.
+it. The web draws that component's **tile** arrangement and the mobile client its **card**, and [that
+record](../components/playlist-header.md) owns all three arrangements. What the item adds to the component
+is four things, all consequences of a header becoming one item in a gallery: the links, the grid it stacks
+in, the permission facts the overflow is gated on, and nothing else.
+
+### The web gallery is four columns at 1056
+
+The track is `repeat(auto-fill, minmax(232px, 1fr))` with `--space-4` gaps, which is **four columns** in the
+1056 column and one fewer at a time below it, so no second rule is needed at a narrower width. 232px is the
+narrowest tile the identity block stays legible in: the tile is 252px at four columns, its own and the
+under-block's padding take 32px, and the share mark takes 20px of what is left with an 8px gap, which leaves
+the name **about 190px** of text at `--text-xl`.
+
+A tile is **396px** tall, and it is 396px with the mark and without it: the mark takes the leading space of
+the actions row rather than a line of its own. The gallery's own reading is one column of artwork, so the
+figure that matters is the per-item **103px** against the row's 152px. The name is the one thing that pays:
+at `--text-xl` about a dozen characters survive, four of the six development fixtures are cut, and the full
+name rides in the `title` exactly as it does on a row.
 
 ### The mobile list is two columns
 
@@ -160,22 +184,21 @@ destination and the item is the affordance, so forty underlined names would say 
 `color: inherit` is required, because an anchor does not inherit and the user agent's `a { color }` would
 draw the name in the browser's link colour instead of `--ink`.
 
-**The row is a door even though it is not a link.** A press anywhere on the item that is not a control, a menu
-panel or one of the two links opens the playlist, which is what a gallery of destinations owes a person who
-presses the middle of a 356.4px row. It stays a div rather than an anchor, because the row holds buttons and a
-button inside an anchor is invalid, so the press is the row's own handler and the controls carve themselves out
-of it rather than being the only way past it. The name stays the one link and the one tab stop, so a screen
-reader still announces one link per item and the keyboard is unchanged; the press is the pointer's extra door
-and not a second tab stop. It is the row arrangement's, which is what the library draws on web, and the card the
-detail uses does not carry it.
+**The tile is a door even though it is not a link.** A press anywhere on the item that is not a control, a
+menu panel or one of the two links opens the playlist, which is what a gallery of destinations owes a person
+who presses the middle of a 252px tile. It stays a div rather than an anchor, because the tile holds buttons
+and a button inside an anchor is invalid, so the press is the tile's own handler and the controls carve
+themselves out of it rather than being the only way past it. The name stays the one link and the one tab stop,
+so a screen reader still announces one link per item and the keyboard is unchanged; the press is the pointer's
+extra door and not a second tab stop. The row arrangement carries the same rule for the detail's own item at
+390, and the card the detail uses as its hero does not carry it.
 
-**The row lifts to `--surface-raised` on hover, the step a playable track row already takes.** The rows sit on
-`--bg`, and a press needs a mark before it is taken; the track list answers the same question with the same
+**The tile lifts to `--surface-raised` on hover, the step a playable track row already takes.** The items sit
+on `--bg`, and a press needs a mark before it is taken; the track list answers the same question with the same
 colour, so the two lists agree rather than each inventing a hover. `focus-within` draws the mark too, so it
-follows the keyboard to the name or a control, and the pointer is set to the press the surface promises. Nothing
-moves: no box, no radius and no height, only the surface, and the dividers stay the header's own `border-top`.
-The surface eases in at `--motion-fast` rather than snapping, so running the pointer down a list reads as one
-surface following it rather than a flicker, and reduced motion drops the duration to zero.
+follows the keyboard to the name or a control, and the pointer is set to the press the surface promises.
+Nothing moves: no box, no radius and no height, only the surface. The list's closing hairline is gone with the
+list, because a grid has no per-item rule to close: the tiles are separated by the gap and by nothing else.
 
 **The list is opened by the page header and closed by one hairline.** A separator between two items is the
 header's own `.hdr + .hdr`, so the first row has no rule above it: the page's own header names the screen and
@@ -188,16 +211,14 @@ page's own ground.
 An item's cover is the header's, and the header's null case now draws the playlist's identity rather than
 the anonymous hatch: one of six `--sleeve-*` hues, chosen by hashing the playlist id. A library without
 artwork is the case this matters most in, because it is the whole gallery at once, and the wall of grey
-squares read as one object repeated rather than as forty playlists. The component record owns the values and
-the derivation; what is this screen's is the dose. The library is a gallery, so the sleeve is the one place
-a list of identical rows can be told apart before a word is read.
+squares read as one object repeated rather than as forty playlists. On the tile the sleeve has 252px of square
+to fill rather than a 96px box, so a library with no artwork is a wall of identity hues and the gallery is
+read by them.
 
-The sync state is on the cover's edge as well as in its word. A row is 136px and forty of them stack, so the
-state had to be readable from the object and not only from a 12px line inside it: the cover's hairline takes
-`--emphasis` while a run is in flight and `--tone-failed` when it broke, and a resting row keeps the neutral
+The sync state is on the cover's edge as well as in its word. A gallery is scanned by artwork, so the state
+had to be readable from the object and not only from a 12px line inside it: the cover's hairline takes
+`--emphasis` while a run is in flight and `--tone-failed` when it broke, and a resting tile keeps the neutral
 hairline. It is the same tone as the state word, read from the same element, so the two can never disagree.
-The cost is that a broken row now says so in two places, which is accepted because a fault is exactly the
-fact worth saying twice.
 
 **The dot is not a third place.** The critique counted the dot, the word and the hairline as three statements
 of one fault, where this record defends two. The dot is not a third: it is the sync line's own mark in every
@@ -210,12 +231,14 @@ object carries it.
 
 `access` is on every playlist and the overflow is gated on it; the glossary is authoritative. An owner's
 overflow holds all four items, a `write` collaborator's holds `Sync now` alone, and a `read` collaborator
-gets **no overflow button at all** rather than one with nothing in it, because there is no action to take
-and a menu that opens onto a blank lies about what it can do. The two collaborator items carry the same
-glyph and different menus, which is the honest picture: the indicator is coarser than `access` is, so what a
-person may do is invisible until the menu is open and then it is exact. The menus are drawn on the card
-rather than the item because they open upward into the picture: the item's opens downward and is 170px tall
-against a 137px item, so two would overlap by 33px.
+gets **no overflow button at all** rather than one with nothing in it, because there is no action to take and
+a menu that opens onto a blank lies about what it can do. The two collaborator items carry the same glyph and
+different menus, which is the honest picture: the indicator is coarser than `access` is, so what a person may
+do is invisible until the menu is open and then it is exact. The panel is 176px wide against a 252px tile, so
+it opens downward and stays inside the gallery's own column, and the tile lifts one tier while one is open,
+because a grid item's panel hangs past its own box into the row beneath. The mobile card holds no overflow at
+all, because rename, delete, managing shares and syncing on demand are all reachable inside the playlist on a
+phone.
 
 ## Shuffle is on every item
 
@@ -260,13 +283,27 @@ A shared item names its owner, and an owned item carries no such line. The line 
 resolved from the playlist's `ownerAccountId` through the account directory that [`05-share-a-playlist`](../../tracker/specs/05-share-a-playlist.md) built. On the account's own playlist `access` is `owner`, which already says the item is theirs, so the line is omitted there and never a "shared by yourself". When the directory does not carry the owner, the item keeps the indicator alone rather than a placeholder name, because a placeholder in a specimen is read as a decision. The line is its own row under the sync line rather than a third fact on the meta line, which at 390 already drops the time.
 
 The play. An item is a door and not a play: a playlist is started from its own screen, and the item's whole
-surface is the press that opens it, so the actions column is the shuffle and the overflow and no play.
-Nothing on the gallery then says which playlist is playing, and that is the deliberate cost: the pause and
-the equalizer strip belong to the card arrangement, where the band holds the play, and the strip's 14 bars
-need a 96px cover a card's square cannot give it.
+surface is the press that opens it, so the actions row is the shuffle and the overflow and no play. The
+gallery still says which playlist is playing, and it says it the way the detail's card does: a **2px
+`--emphasis` rule along the playing tile's foot**, drawn in from the left over `--motion-base` when a track
+starts and withdrawn when playback stops, with reduced motion dropping the transition and leaving the line.
+One tile carries it at a time, because playback is per client and at most one playlist is playing. It replaces
+the row's equalizer strip, which is the detail's narrow arrangement and which a gallery of artwork does not
+need: the strip is a mark on a 96px cover, and the gallery's item already leads with the artwork itself. The pause glyph inside a band belongs to the
+card arrangement, where the band holds the play.
+
+**The item carries the mark, and the mark is the one thing a list could not say.** How much of a playlist is
+not on disk is a fact about the object, and the sync line cannot carry it: a run that finished hours ago leaves
+a playlist reading `Up to date` with four failed tracks. The mark is one pill in the item's actions row,
+carrying the count of tracks whose file is not stored, toned by the worst reason present, with the breakdown of
+reasons on hover and on focus. One pill however many reasons are missing, because two pills on one card read
+as two facts about two things. It is `--text-xs` behind a hairline with no fill, so it reads on the tile's own
+ground and on the raised ground the tile takes under the pointer, and it costs no height: it takes the leading
+space of a row that was already there. A track whose source video was removed is not one of its reasons,
+because a stored file whose video is gone is stored; the mark is about files.
 
 The item carries the sync state, because the sync line is the header's and this screen draws headers. The
-cost is paid for in `--tone-failed` on every row.
+cost is paid for in `--tone-failed` on every tile.
 
 There is no search, no sort, no filter and no pagination. Search is a permanent non-goal in the glossary and
 the page size is `PageQuerySchema`'s default of 50, which is the API's business, so a gallery of more than 50
@@ -284,17 +321,19 @@ already use. There is no playlist count in the header, because a count of playli
 rather than a fact about a row. "Add a playlist" appears twice on the empty screen, once in the header and
 once on the gallery, and the two never coexist with a list.
 
-## The loading state is the list's shape
+## The loading state is the gallery's shape
 
-Before the first playlist arrives the page draws the list it is about to hold rather than a sentence about
-waiting. **Five rows of the item's own 136px**, each a 96px cover box and the two lines the header draws,
-**16px** of name bar and **12px** of sync line, so the read resolves into the space the skeleton held and
-nothing on the page moves when it lands. Five because that is what fills the 1056 column's first screen, and
-the geometry is the item's, so the skeleton is the list's shape rather than a second thing to keep in step.
-The shapes hold `--surface` on `--bg`, the step the track list's own surface takes, and they pulse once over
-**1.6s**; reduced motion drops the pulse and leaves the shape, and the shape is the part that matters. The
-shapes are `aria-hidden` and the only thing a screen reader hears is the status sentence "Loading playlists.",
-which is why the sentence is still on the page and off screen rather than gone.
+Before the first playlist arrives the page draws the gallery it is about to hold rather than a sentence about
+waiting. **Eight tiles in the same grid**, each a square cover box and the three lines the tile draws under
+it, **16px** of name bar, **12px** of sync line and **12px** of count line, so the read resolves into the space
+the skeleton held and nothing on the page moves when it lands. Eight because that is what fills the 1056
+column's first screen at four columns and two rows, and the geometry is the item's: the same
+`repeat(auto-fill, minmax(232px, 1fr))` track and the same `--space-4` gaps, so the skeleton is the gallery's
+shape rather than a second thing to keep in step. The shapes hold `--surface` on `--bg`, the step the track
+list's own surface takes, and they pulse once over **1.6s**; reduced motion drops the pulse and leaves the
+shape, and the shape is the part that matters. The shapes are `aria-hidden` and the only thing a screen reader
+hears is the status sentence "Loading playlists.", which is why the sentence is still on the page and off
+screen rather than gone.
 
 ## The failed read offers a way back
 
@@ -334,18 +373,20 @@ bar's bottom border is against the screen edge. That record said the bar is pers
 bar holding an empty identity and a disabled play; it is corrected in place, because the landing screen is
 where a bar with nothing in it costs the most.
 
-**The page pays for the bar at its own end.** The list is an overlay under a docked bar, so the page carries
-the bar's **97px** in its bottom padding plus the **20px** it keeps under its last row, the same step the
-header uses above the list. An **88px** allowance is a breathing room and not a clearance: it leaves the last
-row **9px** behind the bar at full scroll. The playlist detail
-docks the same bar and carries the same clearance.
+**The page pays for the bar at its own end.** The gallery is an overlay under a docked bar, so the page
+carries the bar's **97px** in its bottom padding plus the **20px** it keeps under its last row of tiles, the
+same step the header uses above the gallery. An **88px** allowance is a breathing room and not a clearance: it
+leaves the last row **9px** behind the bar at full scroll. The playlist detail docks the same bar and carries
+the same clearance.
 
-What the arrival costs is named rather than argued. On mobile the content area is **788px** at rest and
-**691px** with the bar docked, so the bar costs two of the six cards the person could see, four surviving.
-Nothing about the bar changed; the unit this screen counts in did, three times, and each time the answer had
-to be re-measured rather than carried over. The 610px budget in the ticket is the detail screen's (844 less
-a 136px playlist header and a 98px bar) and does not apply here: this screen has the first as its items
-rather than above them, and its content area is 788px, 178px more.
+What the arrival costs is named rather than argued. On web the 1056 column's first screen holds two rows of
+four tiles at 1280x900, and the docked bar's 97px leaves the second row half behind it; on mobile the content
+area is **788px** at rest and **691px** with the bar docked, so the bar costs two of the six cards the person
+could see, four surviving. Nothing about the bar changed; the unit this screen counts in did, three times, and
+each time the answer had to be re-measured rather than carried over. The 610px budget in the ticket is the
+detail screen's (844 less a 136px playlist header and a 98px bar) and it does not apply to the mobile half
+here: this screen has the first as its items rather than above them, and its content area is 788px, 178px
+more.
 
 ## Signed out, on mobile only
 
@@ -358,49 +399,49 @@ a button could only open a flow no ticket or contract has decided.
 
 ## Figures, and the width each came from
 
-|                              | at 1056, web                    | at 390, mobile                    |
-| ---------------------------- | ------------------------------- | --------------------------------- |
-| header                       | 78.4px                          | 56px, title only                  |
-| the component                | the playlist header             | the playlist header               |
-| item                         | 136px, 137px after the first    | not used                          |
-| card, one per row            | not used                        | 436.8px, superseded               |
-| card, in the grid            | not used                        | 172.2px wide, 223.6 or 247.3px    |
-| the grid                     | not used                        | 2 columns, `--space-3` gap        |
-| the header's own card        | not used                        | 468.8px, full-bleed               |
-| cover                        | 96px                            | 140.2px, square                   |
-| name                         | `--text-xl` semibold            | `--text-lg` 20px semibold         |
-| the name's column, at rest   | 848px                           | 112.2px of text                   |
-| the name's column, playing   | not drawn                       | 112.2px, unchanged                |
-| the share indicator          | 20px, beside the name           | 20px, at the row's right edge     |
-| actions column, at rest      | 72px                            | not used: the band is the picture |
-| on the picture, at rest      | not used                        | the play, 48px of 108.2           |
-| on the picture, playing      | not used                        | the pause, the same 48px          |
-| the transport                | not drawn                       | not drawn                         |
-| the top left of the picture  | not used                        | the shuffle, 32px, inset 24px     |
-| the two controls' centre     | not used                        | one axis, 40.8px from the left    |
-| below the cover              | not used                        | not drawn: no overflow on a card  |
-| the control band             | not used                        | 80px, 57.1% of the cover          |
-| the band at one card per row | not used                        | 80px, 24.7% of a 324.4px cover    |
-| the status line              | under the name, with a time     | count left, state right, 1 or 2   |
-| the status line's two facts  | state, time, count, 3 lines     | 148.4px needed, 140.2px of column |
-| the status line's alignment  | the header's `.meta` is centred | `baseline`, 0px apart             |
-| the separator                | a middot                        | none: the gap is the separator    |
-| the gap on a full line       | not used                        | 8px, the floor                    |
-| the gap on the emptiest      | not used                        | 52.62px                           |
-| the count's unit word        | `tracks`                        | kept, wraps on a four-figure one  |
-| the picture that is the link | not used                        | 63% of a resting card, was 27%    |
-| the add control              | a labelled button, 152.4px wide | a 56px FAB, no visible word       |
-| the add control's position   | in the header's right           | bottom right, --space-4 inset     |
-| the add control, bar docked  | not applicable                  | 113px up, clearing the bar by 16  |
-| the add control's clearance  | not applicable                  | 88px, 185px with the bar          |
-| the add control's glyph      | `plus` at --icon-sm beside text | `plus` at --icon-lg, 50% of it    |
-| the add control's tier       | not applicable                  | `--z-sticky`, under the scrim     |
-| content area                 | not a phone budget              | 788px at rest, 691px with the bar |
-| whole items above the fold   | not a phone budget              | 6 cards at rest, 4 with the bar   |
-| rows above the fold          | not a phone budget              | 3 at rest, 2 with the bar         |
-| empty gallery                | 220px tall                      | 244px tall                        |
-| add dialog                   | 400 by 255.6px                  | 388.4 by 234.8px, as a sheet      |
-| signed out                   | not drawn                       | 356.4 by 180px                    |
+|                              | at 1056, web                                | at 390, mobile                    |
+| ---------------------------- | ------------------------------------------- | --------------------------------- |
+| header                       | 78.4px                                      | 56px, title only                  |
+| the component                | the playlist header                         | the playlist header               |
+| item                         | the tile, 252x396px                         | not used                          |
+| the grid                     | 4 columns, `--space-4` gap                  | 2 columns, `--space-3` gap        |
+| card, one per row            | not used                                    | 436.8px, superseded               |
+| card, in the grid            | not used                                    | 172.2px wide, 223.6 or 247.3px    |
+| the header's own card        | not used                                    | 468.8px, full-bleed               |
+| cover                        | 236px, square                               | 140.2px, square                   |
+| name                         | `--text-xl` semibold                        | `--text-lg` 20px semibold         |
+| the name's column, at rest   | about 190px of text                         | 112.2px of text                   |
+| the name's column, playing   | about 190px, unchanged                      | 112.2px, unchanged                |
+| the share indicator          | 20px, beside the name                       | 20px, at the row's right edge     |
+| actions row, at rest         | under the cover: mark, shuffle, overflow    | not used: the band is the picture |
+| on the picture, at rest      | not used                                    | the play, 48px of 108.2           |
+| on the picture, playing      | not used                                    | the pause, the same 48px          |
+| the transport                | not drawn                                   | not drawn                         |
+| the top left of the picture  | not used                                    | the shuffle, 32px, inset 24px     |
+| the two controls' centre     | not used                                    | one axis, 40.8px from the left    |
+| below the cover              | the mark, the shuffle and the overflow      | not drawn: no overflow on a card  |
+| the control band             | not used                                    | 80px, 57.1% of the cover          |
+| the band at one card per row | not used                                    | 80px, 24.7% of a 324.4px cover    |
+| the status line              | under the name, with a time, then the count | count left, state right, 1 or 2   |
+| the status line's two facts  | state, time, count, 3 lines                 | 148.4px needed, 140.2px of column |
+| the status line's alignment  | the header's `.meta` is centred             | `baseline`, 0px apart             |
+| the separator                | a middot                                    | none: the gap is the separator    |
+| the gap on a full line       | not used                                    | 8px, the floor                    |
+| the gap on the emptiest      | not used                                    | 52.62px                           |
+| the count's unit word        | `tracks`                                    | kept, wraps on a four-figure one  |
+| the picture that is the link | not used                                    | 63% of a resting card, was 27%    |
+| the add control              | a labelled button, 152.4px wide             | a 56px FAB, no visible word       |
+| the add control's position   | in the header's right                       | bottom right, --space-4 inset     |
+| the add control, bar docked  | not applicable                              | 113px up, clearing the bar by 16  |
+| the add control's clearance  | not applicable                              | 88px, 185px with the bar          |
+| the add control's glyph      | `plus` at --icon-sm beside text             | `plus` at --icon-lg, 50% of it    |
+| the add control's tier       | not applicable                              | `--z-sticky`, under the scrim     |
+| content area                 | not a phone budget                          | 788px at rest, 691px with the bar |
+| whole items above the fold   | 8 tiles at rest, 4 with the bar             | 6 cards at rest, 4 with the bar   |
+| rows above the fold          | 2 at rest, 1 with the bar                   | 3 at rest, 2 with the bar         |
+| empty gallery                | 220px tall                                  | 244px tall                        |
+| add dialog                   | 400 by 255.6px                              | 388.4 by 234.8px, as a sheet      |
+| signed out                   | not drawn                                   | 356.4 by 180px                    |
 
 **Every text pairing here is one the token set already declares.** The name is `--ink` on `--bg` at
 15.94:1, the count is `--muted` on `--bg` at 6.18:1, the dialog's heading is `--ink` on `--surface-raised`
@@ -409,15 +450,13 @@ at 5.85:1, and the row's focus ring is `--accent` at 5.85:1 on `--bg`. The rows 
 `--surface`, which is the track list's own arrangement, so the two lists in this product are the same
 object.
 
-**Truncation is on both arrangements, and the grid made mobile far worse.** At `--text-xl` the sixth item's
-78-character probe name measures **923px** against a column of 848px, so it
-is cut on web. On a card in the grid the name row is **140.2px**, of which the share
-indicator takes **20px** and the row's own `--space-2` gap takes 8px, leaving **112.2px** of text: some
-**ten characters** at `--text-lg`, where one card per row fitted 27. Measured across the six fixtures,
-**four of the six names are cut**. No type step recovers more than three characters: `--text-lg` gives ten
-where `--text-xl` gave eight, and `--text-sm` would give about 13. That is what six cards above the fold
-instead of one is being paid for. The full name is not lost to the cut: it rides in the name element's
-`title`, so a truncated line is recoverable by pointer without opening the playlist.
+**Truncation is on both arrangements, and the web tile cuts harder than the row did.** At `--text-xl` the
+sixth item's 78-character probe name measures **923px** against the row's 848px column, so it was cut before
+this ticket too; on a tile the name's column is **about 190px**, which is some **eighteen characters** at that
+size, and four of the six development fixtures are cut. The full name is not lost to the cut: it rides in the
+name element's `title`, so a truncated line is recoverable by pointer without opening the playlist. On the
+mobile card the column is 140.2px, of which the share indicator takes 20px and the row's own `--space-2` gap
+takes 8px, leaving 112.2px of text, some ten characters at `--text-lg`, where one card per row fitted 27.
 
 ## What is not drawn
 

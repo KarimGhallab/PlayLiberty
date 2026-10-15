@@ -62,10 +62,11 @@ These are the components, not their specs. Each links to the file that specifies
 - **Empty state**, shown before the first sync, which is also the state where `lastSyncedAt` is still
   null. Specified in [the empty state](design-system/components/empty-state.md).
 - **Playlist header**, the playlist's identity: cover, name, share, count, sync line and actions. Specified
-  in [the playlist header](design-system/components/playlist-header.md), which owns it at both of its
-  arrangements and exists because there are two consumers: the header itself, and
-  [the library](design-system/screens/library.md), whose playlist items are this component rather than a
-  smaller thing that resembles it. Its rules live in `specimen.css` for the same reason, and a decision
+  in [the playlist header](design-system/components/playlist-header.md), which owns it at all three of its
+  arrangements (the row, the card and the tile) and exists because there are two consumers: the header
+  itself, and [the library](design-system/screens/library.md), whose playlist items are this component
+  rather than a smaller thing that resembles it. The library draws the tile, and the tile carries a mark of
+  that screen's own: how much of the playlist is not on disk, with the breakdown of reasons on hover. Its rules live in `specimen.css` for the same reason, and a decision
   that exists only as a comment in one stylesheet cannot be inherited by a second consumer. Its parts are
   split further: the strip is [the equalizer strip](design-system/components/equalizer-strip.md), the
   steps are [the transport on the playing header](design-system/components/header-transport.md), and the
@@ -107,8 +108,8 @@ no web sidebar, no mobile tab bar, and no account surface on either client.
 ## The screens
 
 A screen record lives in `docs/design-system/screens/` and its specimen in `docs/design/screens/`. A
-record carries both arrangements and attributes every measurement to a width, so neither reads as a
-variant of the other, and the first thing it does is name the two. There are two, because a screen is a
+record carries every arrangement and attributes every measurement to a width, so neither reads as a
+variant of the other, and the first thing it does is name them. There are two, because a screen is a
 surface a user reaches by route: the [library](design-system/screens/library.md), at `/` on web and the
 app root on mobile, and the [playlist detail](design-system/screens/playlist-detail.md), at
 `/playlists/:id` on web and pushed over the library root on mobile.

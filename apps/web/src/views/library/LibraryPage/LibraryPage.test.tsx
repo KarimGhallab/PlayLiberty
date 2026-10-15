@@ -15,6 +15,7 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 
+import { EMPTY_COUNTS } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import LibraryPage from './LibraryPage';
 
@@ -70,6 +71,7 @@ const newPlaylist = {
   sort: 'playlist',
   access: 'owner',
   hasShares: false,
+  counts: { ...EMPTY_COUNTS, stored: 0 },
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z'
 };
@@ -93,6 +95,7 @@ function ownedItem(id: string, name: string) {
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    counts: { ...EMPTY_COUNTS, stored: 1 },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   };
@@ -117,6 +120,7 @@ const baseItems = [
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    counts: { ...EMPTY_COUNTS, stored: 1 },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   }
@@ -301,6 +305,55 @@ describe('LibraryPage', () => {
     ).toBeInTheDocument();
   });
 
+  /*
+   * The mark is drawn from the counts the list read carries, which is why the
+   * gallery costs one read: a playlist whose tracks are all stored wears nothing,
+   * and one with tracks missing wears a single pill naming how many.
+   */
+  it('marks the playlists the list read reports as incomplete, one pill each', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists', () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              counts: { ...EMPTY_COUNTS, stored: 3, failed: 2 }
+            },
+            {
+              ...ownedItem('playlist-2', 'Night Bus'),
+              trackCount: 0,
+              counts: EMPTY_COUNTS
+            },
+            {
+              ...ownedItem('playlist-3', 'High Water'),
+              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 }
+            }
+          ],
+          total: 3,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    expect(
+      await screen.findByRole('img', {
+        name: '2 tracks are not stored · Failed 2'
+      })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    /* Two of the three are incomplete, and each wears exactly one pill. */
+    expect(
+      screen.getByRole('img', {
+        name: '4 tracks are not stored · Pending 4'
+      })
+    ).toBeInTheDocument();
+    /* Two of the three are incomplete, each wearing exactly one pill; the empty
+     * playlist has nothing to miss and stays bare. */
+    expect(screen.getAllByRole('img', { name: /not stored/ })).toHaveLength(2);
+  });
+
   it('offers the owner the four actions and the reader no overflow', async () => {
     renderLibraryPage();
 
@@ -388,6 +441,7 @@ describe('LibraryPage', () => {
                 sort: 'playlist',
                 access: 'owner',
                 hasShares: false,
+                counts: { ...EMPTY_COUNTS, stored: 1 },
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-29T12:00:00.000Z'
               },
@@ -405,6 +459,7 @@ describe('LibraryPage', () => {
                 sort: 'playlist',
                 access: 'read',
                 hasShares: false,
+                counts: { ...EMPTY_COUNTS, stored: 4 },
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-28T12:00:00.000Z'
               }
@@ -431,6 +486,7 @@ describe('LibraryPage', () => {
               sort: 'playlist',
               access: 'owner',
               hasShares: false,
+              counts: { ...EMPTY_COUNTS, stored: 1 },
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             }
@@ -817,9 +873,9 @@ describe('LibraryPage', () => {
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
 
-    /* The row the toast names is marked: dimmed, busy, and its door and controls
+    /* The tile the toast names is marked: dimmed, busy, and its door and controls
      * disabled, so the thing that is going cannot be opened or deleted again. */
-    const row = container.querySelector('[data-arrangement="row"]');
+    const row = container.querySelector('[data-arrangement="tile"]');
     expect(row).toHaveAttribute('aria-busy', 'true');
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })

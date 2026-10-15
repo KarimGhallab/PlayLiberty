@@ -20,6 +20,10 @@ export const en = {
     add: 'Add a playlist',
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
+    notDownloaded: {
+      one: '{count} track is not stored',
+      other: '{count} tracks are not stored'
+    },
     deleteDeferred: 'Deleting playlist',
     replaced: 'The earlier action was replaced.',
     willNotDelete: '“{name}” will not be deleted.',

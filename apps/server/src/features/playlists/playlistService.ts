@@ -6,6 +6,7 @@ import type {
   PlaylistAccess,
   PlaylistTrack,
   PlaylistTracksPage,
+  PlaylistWithCounts,
   TrackFileStatusCounts
 } from '@playliberty/contracts';
 import { PlaylistSort, TrackFileStatus } from '@playliberty/contracts';
@@ -186,7 +187,7 @@ export function listPlaylistsForAccount(
   database: DatabaseHandle,
   accountId: string,
   query: ListPlaylistsQuery
-): Page<Playlist> {
+): Page<PlaylistWithCounts> {
   const visible = playlistVisibleTo(database, accountId);
 
   const rows = database.db
@@ -221,6 +222,10 @@ export function listPlaylistsForAccount(
     database,
     rows.map(row => row.id)
   );
+  const countsByPlaylist = fileStatusCountsByPlaylist(
+    database,
+    rows.map(row => row.id)
+  );
 
   const counted = database.db
     .select({ total: sql<number>`count(*)` })
@@ -229,14 +234,15 @@ export function listPlaylistsForAccount(
     .all();
 
   return {
-    items: rows.map(playlist =>
-      toPlaylistView(
+    items: rows.map(playlist => ({
+      ...toPlaylistView(
         playlist,
         accessById.get(playlist.id) ?? 'owner',
         sharedIds.has(playlist.id),
         covers.get(playlist.id) ?? null
-      )
-    ),
+      ),
+      counts: countsByPlaylist.get(playlist.id) ?? noCounts()
+    })),
     total: counted[0]?.total ?? 0,
     limit: query.limit,
     offset: query.offset
@@ -450,36 +456,75 @@ function toPlaylistTrackView(row: {
 }
 
 /*
- * Over the whole playlist rather than the page or the filter, and grouped by file
- * status alone, so the removed-from-source overlay is not a bucket. Every state is
- * a key, including the ones with no rows, because a state is not absent merely
- * because nothing is in it.
+ * The five keys at zero. A state is a key even when nothing is in it, because a
+ * state is not absent merely because nothing has reached it.
  */
-function fileStatusCounts(
-  database: DatabaseHandle,
-  playlistId: string
-): TrackFileStatusCounts {
-  const rows = database.db
-    .select({ status: tracks.fileStatus, count: sql<number>`count(*)` })
-    .from(associations)
-    .innerJoin(tracks, eq(associations.trackId, tracks.id))
-    .where(eq(associations.playlistId, playlistId))
-    .groupBy(tracks.fileStatus)
-    .all();
-
-  const counts: TrackFileStatusCounts = {
+function noCounts(): TrackFileStatusCounts {
+  return {
     [TrackFileStatus.Stored]: 0,
     [TrackFileStatus.Pending]: 0,
     [TrackFileStatus.Downloading]: 0,
     [TrackFileStatus.Failed]: 0,
     [TrackFileStatus.Unavailable]: 0
   };
+}
+
+/*
+ * The file-status counts of a set of playlists, in one grouped query. The
+ * library's mark asks the same question of every playlist on the page, so a
+ * query per playlist would be one round trip per tile; the detail's chip row asks
+ * it of one playlist through the same function.
+ *
+ * Over the whole playlist rather than the page or the filter, and grouped by file
+ * status alone, so the removed-from-source overlay is not a bucket. A playlist
+ * with no associations is answered by its own zeroed bucket rather than by a
+ * missing key, so a caller never has to ask whether the counts are there.
+ */
+function fileStatusCountsByPlaylist(
+  database: DatabaseHandle,
+  playlistIds: readonly string[]
+): Map<string, TrackFileStatusCounts> {
+  const counts = new Map<string, TrackFileStatusCounts>();
+
+  for (const playlistId of playlistIds) {
+    counts.set(playlistId, noCounts());
+  }
+
+  if (playlistIds.length === 0) {
+    return counts;
+  }
+
+  const rows = database.db
+    .select({
+      playlistId: associations.playlistId,
+      status: tracks.fileStatus,
+      count: sql<number>`count(*)`
+    })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(inArray(associations.playlistId, [...playlistIds]))
+    .groupBy(associations.playlistId, tracks.fileStatus)
+    .all();
 
   for (const row of rows) {
-    counts[row.status] = row.count;
+    const bucket = counts.get(row.playlistId);
+
+    if (bucket !== undefined) {
+      bucket[row.status] = row.count;
+    }
   }
 
   return counts;
+}
+
+function fileStatusCounts(
+  database: DatabaseHandle,
+  playlistId: string
+): TrackFileStatusCounts {
+  return (
+    fileStatusCountsByPlaylist(database, [playlistId]).get(playlistId) ??
+    noCounts()
+  );
 }
 
 export function listPlaylistTracksForAccount(

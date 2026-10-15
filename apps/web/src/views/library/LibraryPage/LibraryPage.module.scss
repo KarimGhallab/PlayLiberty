@@ -57,32 +57,25 @@
     flex-shrink: 0;
   }
 
-  /* The list's end edge. The page header names the screen and holds the add
-   * control, so the first row needs no rule above it; nothing follows the last
-   * row, so one hairline closes the list rather than the row's surface running
-   * into the page's own ground. */
-  &__list {
+  /* The gallery. `auto-fill` rather than a fixed count, so the column holds as
+   * many tiles as the content column allows and the narrower widths need no
+   * second rule; four columns at 1056, which is the library's own column.
+   *
+   * The end edge is the page's and not a row's: nothing follows the last tile, so
+   * the grid simply ends. There is no closing hairline, because a grid has no
+   * per-item rule for one to close. */
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
-    border-block-end: 1px solid var(--line);
   }
 
-  &__item + &__item {
-    border-block-start: 1px solid var(--line);
-  }
-}
-
-/*
- * On the desk the playlists are separated by a gap as well as the hairline, so
- * each one reads as its own object rather than a row of one continuous table.
- * The phone keeps the tight list: a gap there would only push rows off the
- * screen, and the hairline already does the separating.
- */
-@media (min-width: 768px) {
-  .library {
-    &__item + &__item {
-      margin-block-start: var(--space-4);
-    }
+  /* A grid item's automatic minimum is its min-content width, so a long name
+   * would widen the track it sits in rather than truncate inside it. */
+  &__cell {
+    min-width: 0;
   }
 }

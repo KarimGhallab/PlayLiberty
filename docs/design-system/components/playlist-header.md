@@ -3,7 +3,8 @@
 > Part of the design system. Index and cross-cutting rules: [`DESIGN.md`](../../DESIGN.md).
 
 The cover, the name line, the share indicator, the count, the sync line and the actions. One component,
-drawn at two arrangements, and this record owns both.
+drawn at three arrangements, and this record owns all three: the **row**, the **card**, and the **tile**,
+which is the library's item and the thing this record's seam exists for.
 
 **There are three consumers, which is why its rules live in `specimen.css` rather than in the header's own
 file.** The second is [the library](../screens/library.md), whose playlist items are this component rather
@@ -20,20 +21,26 @@ below documents, because a decision that exists only as a comment in one stylesh
 - **[The transport](header-transport.md)** owns the steps' reasoning and **[the sync
   summary](sync-summary.md)** the state words and counts; this record says where they sit and what they cost.
 
-## The two arrangements
+## The three arrangements
 
-|                          | the row, at 1056                     | the card, at 390                           |
-| ------------------------ | ------------------------------------ | ------------------------------------------ |
-| cover                    | 96px, `--radius-card`                | square, `--radius-card`, `aspect-ratio: 1` |
-| name                     | `--text-xl` 24px semibold, tight     | `--text-xl` 24px semibold, tight           |
-| count                    | number `--text-sm`, unit `--text-xs` | the same                                   |
-| sync line                | under the name, with the count       | under the name, with the count             |
-| actions                  | beside the identity block            | on the picture, over a scrim               |
-| the transport            | 136px, over the band while playing   | not drawn                                  |
-| the block's height       | **136px**, 137 after the first       | **468.8px** full-bleed, 436.8px inset      |
-| the cover's radius       | `--radius-card`                      | `--radius-card`                            |
-| the hatch with no cover  | 12px                                 | 12px                                       |
-| the sleeve with no cover | one of six, from the playlist id     | the same                                   |
+|                          | the row, at 1056                     | the card, at 390                           | the tile, the library's item                   |
+| ------------------------ | ------------------------------------ | ------------------------------------------ | ---------------------------------------------- |
+| cover                    | 96px, `--radius-card`                | square, `--radius-card`, `aspect-ratio: 1` | square at the tile's width, the same           |
+| name                     | `--text-xl` 24px semibold, tight     | `--text-xl` 24px semibold, tight           | `--text-xl` 24px semibold, tight               |
+| count                    | number `--text-sm`, unit `--text-xs` | the same                                   | the same, under the sync line                  |
+| sync line                | under the name, with the count       | under the name, with the count             | under the name, with the count and its time    |
+| actions                  | beside the identity block            | on the picture, over a scrim               | a row under the cover, with the library's mark |
+| the transport            | 136px, over the band while playing   | not drawn                                  | not drawn                                      |
+| the block's height       | **136px**, 137 after the first       | **468.8px** full-bleed, 436.8px inset      | **396px** in the library's grid                |
+| the cover's radius       | `--radius-card`                      | `--radius-card`                            | `--radius-card`                                |
+| the hatch with no cover  | 12px                                 | 12px                                       | 12px                                           |
+| the sleeve with no cover | one of six, from the playlist id     | the same                                   | the same                                       |
+
+**The tile is the third arrangement and the row is not the library's item any more.** The library's gallery
+is the tile: the cover above the identity, and the mark, the shuffle and the overflow in a row under it. It
+carries no play and no transport, because there the item's whole surface is the door into the playlist, and
+it carries no ground, because the artwork is in front of the reader rather than behind a row. It is the one
+arrangement [its screen's record](../screens/library.md) sizes.
 
 The row arrangement has a consumer at 390 as well, and the two consumers disagree about one line and one
 target. [The playlist detail](../screens/playlist-detail.md) draws the row across the top of a 390 frame
@@ -159,13 +166,14 @@ word names it. A resting playlist keeps the neutral `--line`, because a tone is 
 changed, and the tone is read from the state element the header already draws, through `:has()`, rather than
 mirrored onto the root, so the ring and the word cannot disagree.
 
-The strip is on the row and not the card. It solves `7n - 4` against the artwork's content box: 40px gives 6
+The strip is on the row and not on the card or the tile. It solves `7n - 4` against the artwork's content box: 40px gives 6
 bars, 96px gives 14, both exact, and check `2l` re-derives it. The card's square cover gives 51.4, and the
 detail's 288px covers gives 34.57, so a comb at those counts is a texture rather than an equalizer; the row
 at 96px carries one, on the one item playing. Only one row ever carries it, because playback is per client
-and `data-state` is a single value, so at most one playlist is playing. Which playlist is playing is what the strip is for, where a row draws a play: [the library's
-item](../screens/library.md) draws none, because there the item's whole surface is the door into the
-playlist, so the strip is not drawn on the gallery.
+and `data-state` is a single value, so at most one playlist is playing. Which playlist is playing is what the strip is for, and it is the row's mark because a row draws no play: on
+the detail at 390 the header is the row, its whole surface above the list, and the strip is what says the list
+under it is the one playing. The tile takes the card's emphasis line instead, for the reason the card's own
+paragraph gives.
 
 ## The name line, and why the indicator is on it
 
@@ -261,7 +269,8 @@ that the playlist plays: a playlist of 300 with 290 still `pending` reads 300 an
 
 Play is the only door, so it is the only large control, and shuffle and the overflow sit beneath it because
 they are not doors. The library's item takes the play away, because there the item's whole surface is the
-door that opens the playlist, so its actions column is the shuffle and the overflow alone. The transport
+door that opens the playlist, so its actions row is the shuffle and the overflow alone, with the library's
+own mark in front of them. The transport
 appears only while something is playing and is absent rather than disabled
 when nothing is, because a paused playlist has no previous and no next to go to. [That
 record](header-transport.md) owns the steps, their targets and the width each arrangement costs the title.
@@ -309,20 +318,25 @@ names and never filled: the `.icon-btn` comment promised the 44px target on mobi
 delivered it was `.step`'s, and the ticket's first pass grew the row's box on every pointer, which is a target
 the specimen argues against.
 
-**A playing card carries an emphasis hairline along its foot, and it is the only colour the card spends on
-being alive.** While the queue is on this playlist the card is the one item in the gallery that is playing,
-and it had no mark for that beyond the accent on the play button, which is the control and not the state. The
-2px inset rule sits on the card's own bottom edge, so it adds a state without adding a box: no border, no
-radius change, and nothing moves. It is drawn on the card arrangement alone, because the library's item is
-the row, and a row is one of forty where a hairline repeated down a list is texture rather than a glance. On
-the card the block is alone in its column, so the rule reads as one item being active.
+**A playing card carries an emphasis hairline along its foot, and the tile carries the same one.** While the
+queue is on this playlist the item is the one playing, and it had no mark for that beyond the accent on the
+play button, which is the control and not the state. The 2px rule sits on the item's own bottom edge, so it
+adds a state without adding a box: no border, no radius change, and nothing moves. It draws in from the left
+over `--motion-base` when a track starts and withdraws when playback stops, the sort control's own reveal, so
+a state change is seen rather than snapped, and reduced motion drops the transition and leaves the line.
+
+It is drawn on the card and the tile and not on the row, because the row is one of forty in a list, where a
+hairline repeated down the page is texture rather than a glance; a card and a tile are each one object in a
+collection, so the rule reads as one item being active. The two are not the same line: the card's is
+full-bleed because the card clips at its own radius, and the tile's is inset to the tile's padding because a
+tile cannot clip, since an open overflow hangs past its box.
 
 ## A pending removal marks the row
 
 A deferred destructive action lifts its target into a pending state for the undo window, so the screen does
-not claim a deletion it is not showing. The row dims to `--opacity-disabled`, carries `aria-busy`, and every
-door and control it offers is disabled: the row press and its two links, the play, the shuffle and the
-overflow. The thing the toast says is going cannot be opened, renamed, shuffled or deleted again, and
+not claim a deletion it is not showing. The item dims to `--opacity-disabled`, carries `aria-busy`, and every
+door and control it offers is disabled: its press and its two links, the play where it has one, the shuffle
+and the overflow. The thing the toast says is going cannot be opened, renamed, shuffled or deleted again, and
 cancelling lifts the mark so the row is fully live again.
 
 The mark is keyed to the action's subject and not to its name, because two playlists can share a name; a

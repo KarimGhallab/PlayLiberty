@@ -1,15 +1,19 @@
-import { playlistUrl, writeScenario } from '../support/instance';
+import {
+  drainDownloads,
+  playlistUrl,
+  writeScenario
+} from '../support/instance';
+import { addPlaylist, openPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
- * Journey 1: open the library and add a playlist, the one path where content
- * enters the instance. The list the browser draws is the server's, so the item
- * that appears carries the source's own title and count, which the client never
- * knew before the request.
+ * Journeys through the library: adding a playlist, the one path where content
+ * enters the instance, and reading the gallery it lands in. The items the browser
+ * draws are the server's, so what appears carries the source's own title and
+ * count, which the client never knew before the request.
  */
 
 const PLAYLIST_ID = 'E2Eplaylist1';
-
 test('adding a playlist creates it and the item arrives from the server', async ({
   page
 }) => {
@@ -59,4 +63,44 @@ test('a refused create shows the server problem beside the field', async ({
     'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
   );
   await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+/*
+ * Journey 2: reading the gallery. A playlist whose tracks are not all stored has
+ * to say so before it is opened, because the sync line cannot: the playlist below
+ * settled, so it reads as up to date with a track that never downloaded. The mark
+ * is one pill whatever is missing, and its detail is one hover away.
+ */
+test('the gallery marks what is not stored and the tile still opens its playlist', async ({
+  page
+}) => {
+  await addPlaylist(page, {
+    sourceId: 'E2Egallery1',
+    title: 'Evening Jazz',
+    entries: [
+      { videoId: 'e2egallery01', title: 'Blue In Green' },
+      { videoId: 'e2egallery02', title: 'Naima' },
+      { videoId: 'e2egallery03', title: 'Flamenco Sketches' }
+    ],
+    downloads: { e2egallery03: 'fail' }
+  });
+  await drainDownloads(page);
+  await page.reload();
+
+  /* One pill, carrying the count of tracks whose file is not here, and the count
+   * is over the whole playlist rather than one page of it. */
+  const mark = page.getByRole('img', {
+    name: '1 track is not stored · Failed 1'
+  });
+  await expect(mark).toBeVisible();
+
+  /* The detail is the reason, not only the number. */
+  await mark.hover();
+  await expect(mark.getByText('Failed', { exact: true })).toBeVisible();
+
+  /* The tile is still a door: the name opens the playlist the mark belongs to. */
+  await openPlaylist(page, 'Evening Jazz');
+  await expect(
+    page.getByRole('heading', { name: 'Evening Jazz' })
+  ).toBeVisible();
 });

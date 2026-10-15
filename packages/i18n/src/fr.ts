@@ -23,6 +23,10 @@ export const fr: Messages = {
     add: 'Ajouter une playlist',
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
+    notDownloaded: {
+      one: "{count} piste n'est pas enregistrée",
+      other: '{count} pistes ne sont pas enregistrées'
+    },
     deleteDeferred: 'Suppression de la playlist',
     replaced: "L'action précédente a été remplacée.",
     willNotDelete: '« {name} » ne sera pas supprimée.',

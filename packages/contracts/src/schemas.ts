@@ -103,6 +103,18 @@ export const TrackFileStatusCountsSchema = z.object({
   [TrackFileStatus.Unavailable]: nonNegative
 });
 
+/*
+ * A playlist as the library's list read carries it: the playlist every other
+ * route answers with, plus the file-status counts of its associations. The counts
+ * are what a gallery needs to say how much of a playlist is not on disk without
+ * reading every playlist's tracks, and they sit on the item because a page of
+ * playlists is what a gallery holds. They are over the whole playlist and never
+ * the page's rows, and their sum is the playlist's own `trackCount`.
+ */
+export const PlaylistWithCountsSchema = PlaylistSchema.extend({
+  counts: TrackFileStatusCountsSchema
+});
+
 export const PlaylistTracksPageSchema = z.object({
   items: z.array(PlaylistTrackSchema),
   total: z.number().int().nonnegative(),

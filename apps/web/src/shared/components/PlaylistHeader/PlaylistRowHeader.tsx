@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
-import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import TrackBars from '../TrackBars';
 import styles from './PlaylistHeader.module.scss';
+import { playlistDoor } from './playlistDoor';
 import type { PlaylistHeaderSeam } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 
@@ -60,18 +60,7 @@ export default function PlaylistRowHeader({
     pending
   });
 
-  const openFromClick =
-    onOpen === undefined
-      ? undefined
-      : (event: ReactMouseEvent<HTMLDivElement>): void => {
-          const target = event.target as HTMLElement;
-
-          if (target.closest('a, button, [role="menu"]') !== null) {
-            return;
-          }
-
-          onOpen();
-        };
+  const openFromClick = onOpen === undefined ? undefined : playlistDoor(onOpen);
 
   return (
     <div

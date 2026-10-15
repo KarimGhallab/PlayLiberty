@@ -28,7 +28,7 @@ import AddPlaylistDialog from '../AddPlaylistDialog/AddPlaylistDialog';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
 import LanguageMenu from '../LanguageMenu/LanguageMenu';
 import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
-import PlaylistListItem from '../PlaylistListItem';
+import PlaylistTile from '../PlaylistTile';
 import styles from './LibraryPage.module.scss';
 
 /*
@@ -136,10 +136,10 @@ export default function LibraryPage() {
         <EmptyGallery onAdd={() => setDialogOpen(true)} />
       ) : null}
       {playlists.isSuccess && playlists.data.items.length > 0 ? (
-        <ul className={styles.library__list}>
+        <ul className={styles.library__grid}>
           {playlists.data.items.map(playlist => (
-            <li key={playlist.id} className={styles.library__item}>
-              <PlaylistListItem
+            <li key={playlist.id} className={styles.library__cell}>
+              <PlaylistTile
                 playlist={playlist}
                 ownerName={ownerNameFrom(
                   directoryItems,

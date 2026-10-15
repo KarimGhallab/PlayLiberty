@@ -14,6 +14,7 @@ import type {
   Playlist,
   PlaylistTrack,
   PlaylistTracksPage,
+  PlaylistWithCounts,
   Share,
   ShareLevel,
   SyncRun,
@@ -27,6 +28,7 @@ import {
   PlaylistSort,
   PlaylistTrackListSchema,
   PlaylistTracksPageSchema,
+  PlaylistWithCountsSchema,
   ShareListSchema,
   ShareSchema,
   SyncRunSchema,
@@ -45,11 +47,13 @@ import {
   apiPost
 } from '../client/client';
 
-const PlaylistPageSchema = createPageSchema(PlaylistSchema);
+const PlaylistPageSchema = createPageSchema(PlaylistWithCountsSchema);
 const AccountSummaryPageSchema = createPageSchema(AccountSummarySchema);
 
+/* The library's list carries each playlist its own file-status counts, and the
+ * mark on a tile is read from them rather than from a read per playlist. */
 export interface PlaylistPage {
-  items: Playlist[];
+  items: PlaylistWithCounts[];
   total: number;
   limit: number;
   offset: number;

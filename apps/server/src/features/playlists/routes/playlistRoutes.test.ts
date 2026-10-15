@@ -12,6 +12,7 @@ import {
   PlaylistSyncStatus,
   PlaylistTrackListSchema,
   PlaylistTracksPageSchema,
+  PlaylistWithCountsSchema,
   ShareLevel,
   TrackFileStatus,
   TrackSourceStatus,
@@ -37,7 +38,7 @@ import {
 } from '../../../platform/database/schema.js';
 import { addAssociation, removeAssociation } from '../associationService.js';
 
-const PageSchema = createPageSchema(PlaylistSchema);
+const PageSchema = createPageSchema(PlaylistWithCountsSchema);
 const PlaylistTrackPageSchema = PlaylistTracksPageSchema;
 
 let context: TestContext | undefined;
@@ -334,6 +335,83 @@ describe('GET /playlists', () => {
     // last. The order is part of what this asserts: a page whose order is not
     // stable cannot be paged.
     expect(page.items.map(item => item.trackCount)).toEqual([0, 0, 0, 0, 0, 2]);
+  });
+
+  it('carries every playlist its own file-status counts, which the page does not narrow', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const mixed = seedPlaylist(context.database, owner.accountId, {
+      name: 'Mixed',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    const whole = seedPlaylist(context.database, owner.accountId, {
+      name: 'Whole',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    addTrack(
+      context.database,
+      mixed.playlistId,
+      seedTrack(context.database).trackId
+    );
+    addTrack(
+      context.database,
+      mixed.playlistId,
+      seedTrack(context.database).trackId
+    );
+    addTrack(
+      context.database,
+      mixed.playlistId,
+      seedTrack(context.database, { fileStatus: TrackFileStatus.Failed })
+        .trackId
+    );
+    addTrack(
+      context.database,
+      mixed.playlistId,
+      seedTrack(context.database, { fileStatus: TrackFileStatus.Pending })
+        .trackId
+    );
+    addTrack(
+      context.database,
+      whole.playlistId,
+      seedTrack(context.database).trackId
+    );
+
+    /* One row at a time, so a count that followed the page would come up short. */
+    const secondPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=1&offset=1', owner.pangolinUserId)
+      ).json()
+    );
+
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.items[0]?.id).toBe(mixed.playlistId);
+    expect(secondPage.items[0]?.counts).toEqual({
+      stored: 2,
+      pending: 1,
+      downloading: 0,
+      failed: 1,
+      unavailable: 0
+    });
+
+    const firstPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=1&offset=0', owner.pangolinUserId)
+      ).json()
+    );
+    const listed = firstPage.items[0];
+
+    expect(listed?.id).toBe(whole.playlistId);
+    expect(listed?.counts).toEqual({
+      stored: 1,
+      pending: 0,
+      downloading: 0,
+      failed: 0,
+      unavailable: 0
+    });
+    /* The five buckets are the playlist's own count, which is the mark's sum. */
+    expect(
+      Object.values(listed?.counts ?? {}).reduce((sum, count) => sum + count, 0)
+    ).toBe(listed?.trackCount);
   });
 
   it('paginates with a stable order and a total that ignores the page', async () => {
