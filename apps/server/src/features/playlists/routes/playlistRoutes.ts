@@ -4,6 +4,7 @@ import {
   CreatePlaylistInputSchema,
   PageQuerySchema,
   PlaylistNotFoundReason,
+  PlaylistTracksQuerySchema,
   ProblemCode,
   RenamePlaylistInputSchema,
   SkipNonMusicInputSchema,
@@ -123,7 +124,7 @@ export function registerPlaylistRoutes(
   app.get<{ Params: { id: string } }>(
     '/playlists/:id/tracks',
     async (request, reply) => {
-      const parsed = parseBody(PageQuerySchema, request.query);
+      const parsed = parseBody(PlaylistTracksQuerySchema, request.query);
 
       if (!parsed.success) {
         return sendValidationFailed(reply, parsed.issues);
@@ -133,7 +134,11 @@ export function registerPlaylistRoutes(
         context.database,
         request.params.id,
         request.account.id,
-        { limit: parsed.data.limit, offset: parsed.data.offset }
+        {
+          limit: parsed.data.limit,
+          offset: parsed.data.offset,
+          state: parsed.data.state
+        }
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {

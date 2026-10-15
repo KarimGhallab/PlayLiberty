@@ -4,9 +4,11 @@ import type {
   Page,
   Playlist,
   PlaylistAccess,
-  PlaylistTrack
+  PlaylistTrack,
+  PlaylistTracksPage,
+  TrackFileStatusCounts
 } from '@playliberty/contracts';
-import { PlaylistSort } from '@playliberty/contracts';
+import { PlaylistSort, TrackFileStatus } from '@playliberty/contracts';
 
 import type { Entry } from '../../shared/access/entry.js';
 import {
@@ -415,10 +417,11 @@ export function removeTrackForAccount(
 export interface ListPlaylistTracksQuery {
   limit: number;
   offset: number;
+  state?: TrackFileStatus;
 }
 
 export type ReadPlaylistTracksResult =
-  | { outcome: PlaylistOutcome.Ok; page: Page<PlaylistTrack> }
+  | { outcome: PlaylistOutcome.Ok; page: PlaylistTracksPage }
   | { outcome: PlaylistOutcome.NotFound };
 
 /*
@@ -463,6 +466,41 @@ function toPlaylistTrackView(row: {
   };
 }
 
+/*
+ * How many of the playlist's tracks are in each file state, over the whole
+ * playlist rather than the page or the filter. Grouped by the file status alone,
+ * so the removed-from-source overlay is not a bucket: a stored track whose source
+ * removed it is still stored. Every state is a key, including the ones with no
+ * rows, because the chips are drawn from this and a state is not absent merely
+ * because nothing is in it.
+ */
+function fileStatusCounts(
+  database: DatabaseHandle,
+  playlistId: string
+): TrackFileStatusCounts {
+  const rows = database.db
+    .select({ status: tracks.fileStatus, count: sql<number>`count(*)` })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(eq(associations.playlistId, playlistId))
+    .groupBy(tracks.fileStatus)
+    .all();
+
+  const counts: TrackFileStatusCounts = {
+    [TrackFileStatus.Stored]: 0,
+    [TrackFileStatus.Pending]: 0,
+    [TrackFileStatus.Downloading]: 0,
+    [TrackFileStatus.Failed]: 0,
+    [TrackFileStatus.Unavailable]: 0
+  };
+
+  for (const row of rows) {
+    counts[row.status] = row.count;
+  }
+
+  return counts;
+}
+
 export function listPlaylistTracksForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -485,14 +523,24 @@ export function listPlaylistTracksForAccount(
         return null;
       }
 
+      const counts = fileStatusCounts(database, playlistId);
+
       // The association is membership, and this is the only join: a track held by
       // another playlist has no row here, and a track held by this playlist and
-      // another has exactly one, so neither leaks and neither doubles.
+      // another has exactly one, so neither leaks and neither doubles. The state
+      // narrows the page and never the counts beside it.
       const rows = database.db
         .select({ association: associations, track: tracks })
         .from(associations)
         .innerJoin(tracks, eq(associations.trackId, tracks.id))
-        .where(eq(associations.playlistId, playlistId))
+        .where(
+          query.state === undefined
+            ? eq(associations.playlistId, playlistId)
+            : and(
+                eq(associations.playlistId, playlistId),
+                eq(tracks.fileStatus, query.state)
+              )
+        )
         .orderBy(...playlistTrackOrder(playlist.sort))
         .limit(query.limit)
         .offset(query.offset)
@@ -500,12 +548,18 @@ export function listPlaylistTracksForAccount(
 
       return {
         items: rows.map(toPlaylistTrackView),
-        // The stored count, which the association service moves in the same
-        // transaction as the association, rather than a second count query over
-        // the rows this page already had to read.
-        total: playlist.trackCount,
+        /*
+         * The stored count when nothing is filtered, so the unfiltered read keeps
+         * the count the association service maintains rather than a second count
+         * over the rows; the state's own bucket when one is, which the aggregate
+         * beside it already holds. Either way the total is the filtered total and
+         * not the whole playlist's.
+         */
+        total:
+          query.state === undefined ? playlist.trackCount : counts[query.state],
         limit: query.limit,
-        offset: query.offset
+        offset: query.offset,
+        counts
       };
     }
   );

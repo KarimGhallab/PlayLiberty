@@ -1,37 +1,30 @@
-# The counts and the state filter
+# 04: The counts and the state filter
 
-Status: open
-Labels: `enhancement`, `ready-for-agent`
+**Blocked by:** [`01`](01-the-saved-sort-on-a-playlist.md).
+**Status:** resolved
 
-## Objective
+## Outcome
 
-The list read can be narrowed to one track state, its total becomes the filtered total, and the same response
-carries how many tracks the whole playlist holds in each of the five states.
+Implemented and verified. The tracks read takes an optional `state` query parameter, one of the five file states,
+and returns only that state's rows; its `total` is the filtered total, so the page walk stops at the rows the
+filter kept. No parameter returns every state, and an unknown one is a validation failure, because the query is
+parsed through `PlaylistTracksQuerySchema`.
 
-## Context
+The same response carries the counts: `counts` is an object keyed by the five file states, an aggregate over the
+whole playlist rather than the page or the filter. The counts never follow the filter, because the point of a
+count is what is available to filter to. The aggregate groups by the file status alone, so the
+`sourceStatus: removed` overlay is not a bucket and a stored-but-removed track counts as stored. Every state is a
+key including a zero, because the chips are drawn from this.
 
-Read the spec's decisions on the filter and the counts. The filter is a query parameter rather than a
-client-side narrowing, so the page's total and the paging walk stay honest. The counts never follow the filter,
-because the point of a count is what is available to filter to.
+The contract changes: `TrackFileStatusCountsSchema`, `PlaylistTracksPageSchema` (the page plus the counts) and
+`PlaylistTracksQuerySchema` (the page query plus the state) join the shared contracts, with their types. The
+unfiltered `total` stays the playlist's stored count rather than a second count over the rows; the filtered
+`total` is the state's own bucket from the aggregate the read already pays for.
 
-## Scope
+The route tests: the state narrows the page and its total; no state returns every state; the counts cover the
+whole playlist and do not follow the filter; a stored-but-removed track counts as stored; an unknown state is a
+validation failure. The existing tracks tests now parse the response through `PlaylistTracksPageSchema`, so the
+counts are held to the contract everywhere.
 
-- The list read takes an optional track state and returns only that state's rows; its total is the filtered
-  total. No parameter returns every state.
-- The response carries the counts: an unfiltered object keyed by the five file states, over the whole playlist.
-- The states are the five file states the row already labels. The `sourceStatus: removed` overlay is not a
-  bucket, so a stored-but-removed track counts as stored.
-
-## Out of scope
-
-The web chips and the empty state (ticket `05`), a multi-select filter, a search, and the sort (ticket `01`).
-
-## Blocking edges
-
-Blocked by [`01`](01-the-saved-sort-on-a-playlist.md), which edits the same list read.
-
-## Verification
-
-- `pnpm run test` (the server route tests) and `pnpm run build` pass.
-- The route tests prove: the state parameter narrows the page and its total; no parameter returns every state;
-  the counts cover the whole playlist and do not follow the filter.
+Verification: `pnpm test:unit` (server 359, web 408, packages 79), `pnpm run build`, `pnpm run lint`, the e2e
+typecheck and prettier pass. No em dashes. Not committed.

@@ -16,6 +16,7 @@ import {
 
 const identifier = z.string().min(1);
 const isoDateTime = z.iso.datetime();
+const nonNegative = z.number().int().nonnegative();
 
 export const AccountSchema = z.object({
   id: identifier,
@@ -99,6 +100,22 @@ export const PlaylistTrackSchema = z.object({
 
 export const PlaylistTrackListSchema = z.object({
   items: z.array(PlaylistTrackSchema)
+});
+
+export const TrackFileStatusCountsSchema = z.object({
+  [TrackFileStatus.Stored]: nonNegative,
+  [TrackFileStatus.Pending]: nonNegative,
+  [TrackFileStatus.Downloading]: nonNegative,
+  [TrackFileStatus.Failed]: nonNegative,
+  [TrackFileStatus.Unavailable]: nonNegative
+});
+
+export const PlaylistTracksPageSchema = z.object({
+  items: z.array(PlaylistTrackSchema),
+  total: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+  counts: TrackFileStatusCountsSchema
 });
 
 export const ShareSchema = z.object({
@@ -198,6 +215,10 @@ export const SharePlaylistInputSchema = z.object({
 export const PageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().nonnegative().default(0)
+});
+
+export const PlaylistTracksQuerySchema = PageQuerySchema.extend({
+  state: z.enum(TrackFileStatus).optional()
 });
 
 export function createPageSchema<TItem extends z.ZodType>(

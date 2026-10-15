@@ -11,7 +11,7 @@ import {
   PlaylistSort,
   PlaylistSyncStatus,
   PlaylistTrackListSchema,
-  PlaylistTrackSchema,
+  PlaylistTracksPageSchema,
   ShareLevel,
   TrackFileStatus,
   TrackSourceStatus,
@@ -38,7 +38,7 @@ import {
 import { addAssociation, removeAssociation } from '../associationService.js';
 
 const PageSchema = createPageSchema(PlaylistSchema);
-const PlaylistTrackPageSchema = createPageSchema(PlaylistTrackSchema);
+const PlaylistTrackPageSchema = PlaylistTracksPageSchema;
 
 let context: TestContext | undefined;
 
@@ -1319,6 +1319,176 @@ describe('GET /playlists/:id/tracks', () => {
     const track = page.items[0]?.track;
     expect(track?.thumbnailPath).toBeNull();
     expect(track?.durationSeconds).toBeNull();
+  });
+});
+
+/*
+ * The state filter and the counts. The filter is a query parameter rather than a
+ * client-side narrowing, so the page and its total follow it; the counts never
+ * do, because the point of a count is what is available to filter to.
+ */
+describe('the state filter and the counts', () => {
+  it('narrows the page and its total to the state asked for', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: stored } = seedTrack(context.database);
+    const { trackId: failed } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+
+    addTrackAt(context.database, playlistId, stored, 0);
+    addTrackAt(context.database, playlistId, failed, 1);
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks?state=failed`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    expect(page.items.map(item => item.track.id)).toEqual([failed]);
+    expect(page.items.map(item => item.track.fileStatus)).toEqual([
+      TrackFileStatus.Failed
+    ]);
+    // The total is the filtered total, so the paging walk stops at the rows the
+    // filter kept rather than walking the whole playlist.
+    expect(page.total).toBe(1);
+  });
+
+  it('returns every state when none is asked for', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: stored } = seedTrack(context.database);
+    const { trackId: failed } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+    const { trackId: pending } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Pending
+    });
+
+    addTrackAt(context.database, playlistId, stored, 0);
+    addTrackAt(context.database, playlistId, failed, 1);
+    addTrackAt(context.database, playlistId, pending, 2);
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    expect(page.items.map(item => item.track.id)).toEqual([
+      stored,
+      failed,
+      pending
+    ]);
+    expect(page.total).toBe(3);
+  });
+
+  it('counts the whole playlist and does not follow the filter', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database).trackId,
+      0
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database).trackId,
+      1
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, { fileStatus: TrackFileStatus.Failed })
+        .trackId,
+      2
+    );
+
+    const unfiltered = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+    const filtered = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks?state=failed`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    const counts = {
+      stored: 2,
+      pending: 0,
+      downloading: 0,
+      failed: 1,
+      unavailable: 0
+    };
+
+    expect(unfiltered.counts).toEqual(counts);
+    // The same counts under the filter, because a count is what is available to
+    // filter to and not the rows the filter kept.
+    expect(filtered.counts).toEqual(counts);
+    expect(unfiltered.total).toBe(3);
+    expect(filtered.total).toBe(1);
+  });
+
+  it('counts a stored track whose source removed it as stored', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Stored,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      0
+    );
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    // The source status is an overlay and not a bucket: the five counts are file
+    // states, so a removed-but-stored track is a stored track here.
+    expect(page.counts.stored).toBe(1);
+    expect(page.counts.unavailable).toBe(0);
+  });
+
+  it('refuses a state that is not one of the five', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/tracks?state=broken`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'validation_failed' });
   });
 });
 
