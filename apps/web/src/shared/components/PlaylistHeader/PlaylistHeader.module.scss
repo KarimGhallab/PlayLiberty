@@ -23,17 +23,36 @@
     gap: 0;
     padding: 0;
     background: var(--surface);
+    /* The foot line below anchors to the card, not to the page. */
+    position: relative;
   }
 
   /* The card is the queue's own while playing, and the one fact worth a glance
    * is that music is coming out of it. The accent is spent on the play control
    * and cannot be spent twice; the emphasis amber is the system's "this is
    * happening" and the card has never used it. It arrives as a hairline along
-   * the card's foot, the same 1px the sync line already speaks in, so the card
-   * gains a state without gaining a box. The play's glyph is the cue that
-   * survives without colour, which is why this may be colour-led. */
-  &[data-arrangement='card'][data-state='playing'] {
-    box-shadow: inset 0 -2px 0 var(--emphasis);
+   * the card's foot, so the card gains a state without gaining a box. The play's
+   * glyph is the cue that survives without colour, which is why this may be
+   * colour-led.
+   *
+   * The line draws in from the left when a track starts and withdraws when
+   * playback stops, the sort control's own reveal, so the state change is seen
+   * rather than snapped and only the compositor moves. */
+  &[data-arrangement='card']::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--emphasis);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--motion-base) var(--ease-standard);
+  }
+
+  &[data-arrangement='card'][data-state='playing']::after {
+    transform: scaleX(1);
   }
 
   /* The library's item is a door, so the whole row carries the press: its
@@ -865,5 +884,11 @@
 
   100% {
     transform: scaleY(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playlist-header[data-arrangement='card']::after {
+    transition: none;
   }
 }
