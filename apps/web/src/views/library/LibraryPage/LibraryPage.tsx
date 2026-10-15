@@ -11,6 +11,7 @@ import {
   useCreatePlaylist,
   usePlaylists
 } from '../../../shared/api/queries/queries';
+import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoToast from '../../../shared/components/UndoToast/UndoToast';
@@ -18,17 +19,23 @@ import {
   UNDO_WINDOW_MS,
   useDeferredAction
 } from '../../../shared/components/useDeferredAction/useDeferredAction';
+import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
+import { currentTrack } from '../../../shared/player/types';
 import {
   NOTICE_WINDOW_MS,
   refusalNotice,
-  useShufflePlaylist
-} from '../../../shared/player/useShufflePlaylist/useShufflePlaylist';
+  useStartPlaylist
+} from '../../../shared/player/useStartPlaylist/useStartPlaylist';
+import {
+  MOBILE_QUERY,
+  useMediaQuery
+} from '../../../shared/useMediaQuery/useMediaQuery';
 
 import AddPlaylistDialog from '../AddPlaylistDialog/AddPlaylistDialog';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
 import LanguageMenu from '../LanguageMenu/LanguageMenu';
 import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
-import PlaylistTile from '../PlaylistTile';
+import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';
 
 /*
@@ -54,10 +61,13 @@ function replacedSentence(
  * a user lands on. Four states and no fifth: loading, a failed read, the empty
  * gallery, and the populated list.
  *
- * The add control lives in the header, and on the empty state it is the gallery's
- * framed action alone: the header's is suppressed there so the one screen where a
- * person has seen neither control offers one invitation, not two. Both open one
- * dialog. On success the dialog closes and the list is invalidated, so the new
+ * The add control is a labelled button in the header on the web and a floating
+ * round button on a phone, where the header's height is the gallery's to spend and
+ * a word in it is 56.9% of a card's width. Only one of the two is drawn at a time,
+ * because the two are one control at two widths and a second copy would be a
+ * second invitation. On the empty state neither is drawn: the gallery's framed
+ * action is alone there, so the one screen where a person has seen neither control
+ * offers one invitation, not two. All three open one dialog. On success the dialog closes and the list is invalidated, so the new
  * playlist arrives from the server rather than from a row this screen invented;
  * the person stays here and watches it appear rather than being taken into a
  * playlist they have not seen yet.
@@ -73,7 +83,9 @@ export default function LibraryPage() {
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
   const deferred = useDeferredAction();
-  const { shufflePlaylist, refusal } = useShufflePlaylist();
+  const { playPlaylist, shufflePlaylist, refusal } = useStartPlaylist();
+  const isMobile = useMediaQuery(MOBILE_QUERY);
+  const docked = usePlayerStore(state => currentTrack(state) !== null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   /*
@@ -103,12 +115,12 @@ export default function LibraryPage() {
   }, [createPlaylist.isSuccess]);
 
   return (
-    <main className={styles.library}>
+    <main className={styles.library} data-player={docked ? 'true' : undefined}>
       <div className={styles.library__head}>
         <h1 className={styles.library__title}>{t('app.name')}</h1>
         <div className={styles.library__actions}>
           <LanguageMenu />
-          {isEmpty ? null : (
+          {isEmpty || isMobile ? null : (
             <button
               type="button"
               className={styles.library__add}
@@ -123,7 +135,9 @@ export default function LibraryPage() {
           )}
         </div>
       </div>
-      {playlists.isPending ? <LibrarySkeleton /> : null}
+      {playlists.isPending ? (
+        <LibrarySkeleton layout={isMobile ? 'card' : 'tile'} />
+      ) : null}
       {playlists.isError ? (
         <ReadFailure
           message={t('library.readFailed')}
@@ -139,20 +153,28 @@ export default function LibraryPage() {
         <ul className={styles.library__grid}>
           {playlists.data.items.map(playlist => (
             <li key={playlist.id} className={styles.library__cell}>
-              <PlaylistTile
+              <PlaylistItem
                 playlist={playlist}
                 ownerName={ownerNameFrom(
                   directoryItems,
                   playlist.ownerAccountId
                 )}
                 pending={deferred.pending?.id === playlist.id}
+                layout={isMobile ? 'card' : 'tile'}
                 defer={deferred.defer}
+                onPlay={() => playPlaylist(playlist)}
                 onShuffle={() => shufflePlaylist(playlist)}
               />
             </li>
           ))}
         </ul>
       ) : null}
+      {isEmpty || !isMobile ? null : (
+        <FloatingAction
+          label={t('library.add')}
+          onClick={() => setDialogOpen(true)}
+        />
+      )}
       <AddPlaylistDialog
         open={dialogOpen}
         onSubmit={(url, skipNonMusic) =>

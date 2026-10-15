@@ -182,7 +182,7 @@ export const en = {
     playing: 'Playing',
     paused: 'Paused'
   },
-  shuffle: {
+  start: {
     empty: 'Nothing to play in “{name}”.',
     emptyDetail: 'No track in it has finished downloading.',
     unreachable: '“{name}” could not be read.',

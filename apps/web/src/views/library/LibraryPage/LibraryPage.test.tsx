@@ -14,9 +14,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { I18nProvider } from '@playliberty/i18n';
 
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
+import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
 import { EMPTY_COUNTS } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
+import { stubViewport } from '../../../testing/viewport';
 import LibraryPage from './LibraryPage';
 
 function emptyPage() {
@@ -650,6 +652,88 @@ describe('LibraryPage', () => {
     expect(new Set(state.queue.map(item => item.id))).toEqual(
       new Set(['track-1', 'track-2'])
     );
+  });
+
+  /*
+   * The arrangement is the width's: the card at the phone breakpoint, where a
+   * gallery of tiles would be one playlist per screen, and the tile above it.
+   */
+  it('draws the card at the phone width and the tile above it', async () => {
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      const { container, unmount } = renderLibraryPage();
+
+      await screen.findByText('Rain On The Window');
+
+      expect(
+        container.querySelector('[data-arrangement="card"]')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-arrangement="tile"]')
+      ).not.toBeInTheDocument();
+
+      unmount();
+    } finally {
+      restore();
+    }
+
+    const { container: desk } = renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    expect(desk.querySelector('[data-arrangement="tile"]')).toBeInTheDocument();
+    expect(
+      desk.querySelector('[data-arrangement="card"]')
+    ).not.toBeInTheDocument();
+  });
+
+  /* The add control follows the width: a labelled button in the header where there
+   * is room for a word, and a floating round button on the frame's corner where the
+   * header's height is the gallery's. One of the two is drawn at a time. */
+  it('offers the add control as a floating button at the phone width', async () => {
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      renderLibraryPage();
+
+      await screen.findByText('Rain On The Window');
+
+      const add = screen.getByRole('button', { name: 'Add a playlist' });
+
+      fireEvent.click(add);
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  /* The card's band is the only play in the library, and it starts the playlist in
+   * the playlist's own order rather than shuffled. */
+  it('starts the playlist in its own order from the card’s play', async () => {
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      renderLibraryPage();
+
+      await screen.findByText('Rain On The Window');
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'Play this playlist' })[0]
+      );
+
+      await waitFor(() =>
+        expect(usePlayerStore.getState().queue).toHaveLength(2)
+      );
+
+      const state = usePlayerStore.getState();
+
+      expect(state.shuffle).toBe(false);
+      expect(state.isPlaying).toBe(true);
+      expect(state.currentId).toBe('track-1');
+      expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+    } finally {
+      restore();
+    }
   });
 
   it('refuses to shuffle a playlist with nothing stored yet', async () => {

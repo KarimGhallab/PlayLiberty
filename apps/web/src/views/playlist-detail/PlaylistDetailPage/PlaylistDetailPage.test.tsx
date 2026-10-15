@@ -26,6 +26,7 @@ import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
 import { EMPTY_COUNTS, countsOf } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
+import { stubViewport } from '../../../testing/viewport';
 import PlaylistDetailPage from './PlaylistDetailPage';
 
 /*
@@ -116,32 +117,6 @@ function trackJson(
     },
     origin: 'remote',
     position
-  };
-}
-
-/*
- * The media-query stub answers one query and delegates every other to the
- * global default, so a test can move the viewport without disturbing the
- * `prefers-reduced-motion` checks. The returned function puts the original back,
- * because a stub left in place would follow every later test.
- */
-function stubViewport(matchingQuery: string): () => void {
-  const original = window.matchMedia;
-
-  window.matchMedia = (query: string) =>
-    ({
-      matches: query === matchingQuery,
-      media: query,
-      onchange: null,
-      addListener: () => undefined,
-      removeListener: () => undefined,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-      dispatchEvent: () => false
-    }) as MediaQueryList;
-
-  return () => {
-    window.matchMedia = original;
   };
 }
 
@@ -241,6 +216,11 @@ describe('PlaylistDetailPage', () => {
       expect(
         container.querySelector('[data-arrangement="card"]')
       ).not.toBeInTheDocument();
+
+      /* The add control is the floating action at this width, because the way-home
+       * row has no second end to hold it, and the same press opens the dialog. */
+      fireEvent.click(screen.getByRole('button', { name: 'Add a track' }));
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
     } finally {
       restore();
     }

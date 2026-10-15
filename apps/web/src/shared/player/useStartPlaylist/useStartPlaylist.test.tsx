@@ -8,7 +8,7 @@ import { Language, catalogs, createTranslator } from '@playliberty/i18n';
 
 import { server } from '../../../testing/mocks/server';
 import { usePlayerStore } from '../playerStore/playerStore';
-import { refusalNotice, useShufflePlaylist } from './useShufflePlaylist';
+import { refusalNotice, useStartPlaylist } from './useStartPlaylist';
 
 const PLAYLIST = { id: 'playlist-1', name: 'Rain On The Window' } as const;
 
@@ -48,14 +48,14 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 function control() {
-  return renderHook(() => useShufflePlaylist(), { wrapper });
+  return renderHook(() => useStartPlaylist(), { wrapper });
 }
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
 });
 
-describe('useShufflePlaylist', () => {
+describe('useStartPlaylist', () => {
   it('starts a shuffled queue when there is none', async () => {
     const { result } = control();
 
@@ -168,6 +168,73 @@ describe('useShufflePlaylist', () => {
 
     expect(usePlayerStore.getState().shuffle).toBe(true);
     expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  /*
+   * The play is the shuffle's sibling and not a second read: the same queue, the
+   * playlist's own order, and the first playable track rather than a draw.
+   */
+  it('starts the playlist in its own order when there is no queue', async () => {
+    const { result } = control();
+
+    act(() => result.current.playPlaylist(PLAYLIST));
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+
+    const state = usePlayerStore.getState();
+
+    expect(state.shuffle).toBe(false);
+    expect(state.isPlaying).toBe(true);
+    expect(state.currentId).toBe('track-1');
+    expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+  });
+
+  /*
+   * While the queue is this playlist's the play is the transport's own control,
+   * so a press pauses and the next resumes. Neither rebuilds the queue, which is
+   * what the queue's identity and its shuffle mode say.
+   */
+  it('pauses and resumes the queue that is already this playlist’s', () => {
+    const { result } = control();
+
+    usePlayerStore.getState().startQueue(
+      'playlist-1',
+      [
+        {
+          id: 'track-2',
+          title: 'Two',
+          playlistId: 'playlist-1',
+          playlistName: 'Rain On The Window',
+          durationSeconds: 200,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-1',
+          title: 'One',
+          playlistId: 'playlist-1',
+          playlistName: 'Rain On The Window',
+          durationSeconds: 200,
+          thumbnailPath: null
+        }
+      ],
+      'track-2',
+      true
+    );
+
+    act(() => result.current.playPlaylist(PLAYLIST));
+
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+
+    act(() => result.current.playPlaylist(PLAYLIST));
+
+    const state = usePlayerStore.getState();
+
+    expect(state.isPlaying).toBe(true);
+    expect(state.currentId).toBe('track-2');
+    expect(state.shuffle).toBe(true);
+    expect(state.queue.map(item => item.id)).toEqual(['track-2', 'track-1']);
   });
 
   it('refuses a playlist with no stored track and says so', async () => {

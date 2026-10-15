@@ -23,24 +23,27 @@ below documents, because a decision that exists only as a comment in one stylesh
 
 ## The three arrangements
 
-|                          | the row, at 1056                     | the card, at 390                           | the tile, the library's item                   |
-| ------------------------ | ------------------------------------ | ------------------------------------------ | ---------------------------------------------- |
-| cover                    | 96px, `--radius-card`                | square, `--radius-card`, `aspect-ratio: 1` | square at the tile's width, the same           |
-| name                     | `--text-xl` 24px semibold, tight     | `--text-xl` 24px semibold, tight           | `--text-xl` 24px semibold, tight               |
-| count                    | number `--text-sm`, unit `--text-xs` | the same                                   | the same, under the sync line                  |
-| sync line                | under the name, with the count       | under the name, with the count             | under the name, with the count and its time    |
-| actions                  | beside the identity block            | on the picture, over a scrim               | a row under the cover, with the library's mark |
-| the transport            | 136px, over the band while playing   | not drawn                                  | not drawn                                      |
-| the block's height       | **136px**, 137 after the first       | **468.8px** full-bleed, 436.8px inset      | **396px** in the library's grid                |
-| the cover's radius       | `--radius-card`                      | `--radius-card`                            | `--radius-card`                                |
-| the hatch with no cover  | 12px                                 | 12px                                       | 12px                                           |
-| the sleeve with no cover | one of six, from the playlist id     | the same                                   | the same                                       |
+|                          | the row, at 1056                     | the card, at 390                           | the tile, the library's item                |
+| ------------------------ | ------------------------------------ | ------------------------------------------ | ------------------------------------------- |
+| cover                    | 96px, `--radius-card`                | square, `--radius-card`, `aspect-ratio: 1` | square at the tile's width, the same        |
+| name                     | `--text-xl` 24px semibold, tight     | `--text-xl` 24px semibold, tight           | `--text-xl` 24px semibold, tight            |
+| count                    | number `--text-sm`, unit `--text-xs` | the same                                   | the same, under the sync line               |
+| sync line                | under the name, with the count       | under the name, with the count             | under the name, with the count and its time |
+| actions                  | beside the identity block            | the band on the picture, over a scrim      | the play on the bare cover, a row below it  |
+| the transport            | 136px, over the band while playing   | not drawn                                  | not drawn                                   |
+| the block's height       | **136px**, 137 after the first       | **468.8px** full-bleed, 436.8px inset      | **396px** in the library's grid             |
+| the cover's radius       | `--radius-card`                      | `--radius-card`                            | `--radius-card`                             |
+| the hatch with no cover  | 12px                                 | 12px                                       | 12px                                        |
+| the sleeve with no cover | one of six, from the playlist id     | the same                                   | the same                                    |
 
-**The tile is the third arrangement and the row is not the library's item any more.** The library's gallery
-is the tile: the cover above the identity, and the mark, the shuffle and the overflow in a row under it. It
-carries no play and no transport, because there the item's whole surface is the door into the playlist, and
-it carries no ground, because the artwork is in front of the reader rather than behind a row. It is the one
-arrangement [its screen's record](../screens/library.md) sizes.
+**The tile is the third arrangement, the desk's item, and the card is the phone's.** The library's gallery is
+the tile above its 767px breakpoint: the cover above the identity, the play in the cover's bottom-left corner,
+and the mark, the shuffle and the overflow in a row under it. It carries no transport, because the library has
+no list to step through, and no ground, because the artwork is in front of the reader rather than behind a
+row. Below 767 the library draws this record's **card** instead, which is the mobile client's own
+arrangement: one tile per row there is a playlist per screen. The card as an item carries the play its band
+was always specified for, so the library plays from a phone and opens from a desk, and both are
+[its screen's record](../screens/library.md) to size.
 
 The row arrangement has a consumer at 390 as well, and the two consumers disagree about one line and one
 target. [The playlist detail](../screens/playlist-detail.md) draws the row across the top of a 390 frame
@@ -61,13 +64,16 @@ effective target is 38.8px, which still clears WCAG 2.2's 24px minimum. The plac
 decision and is recorded there; it is named here because the rule assumes an inset somewhere and this
 arrangement provides none.
 
-**Six things differ at the library's width, and all six are that screen's decisions declared in [its
-record](../screens/library.md), not this component's:** no overflow; the name drops to `--text-lg` 20px; the
-sync line joins the count and drops the time, with the count left and the state right and no separator; no
-transport, so the card's band holds one control; the shuffle moves to the picture's top left at 24px
-(`--space-6`) so the chip and the play share a **centre** rather than a left edge; and the name row is
-`space-between`. The last reverses this record's own indicator decision and is scoped to the row below,
-because on a card the cost was measured as nil.
+**Seven things differ for a card in the library's grid, and all seven are that screen's decisions declared
+in [its record](../screens/library.md), not this component's:** the overflow moves from the band to the
+cover's top-right corner; the name drops to `--text-lg` 20px; the sync line joins the count and drops the time, with the count left and the state right and no
+separator; no transport, so the band holds the play alone; the shuffle moves to the picture's top left, at
+16px with the band's inset at `--space-2`, so the chip and the play share a **centre** rather than a left
+edge; the library's mark ends the name row rather than sitting in the band, which is what lets the band hold
+one control; and the picture is a link. The name row keeps `space-between` and adds the mark to the pair it
+spreads, which reverses this record's own indicator decision on the grid's grounds and is scoped to the card
+below: on the row, where the name is 848px wide and there is no second row to align with, the indicator
+belongs beside the text.
 
 **The row is 136px and every row after the first is 137px**, the extra pixel being the row's own
 `border-top`. What responds to state is the actions column, not the height: 72px at rest and 136px while
@@ -85,9 +91,9 @@ on web: the column is 848px resting and 784px playing, so 64 and 60 characters f
 
 **The card is drawn at three widths and only the middle one is in a grid.** This record's own card is
 468.8px with a 356.4px cover, full-bleed and alone on its screen. The library draws it at **172.2px with a
-140.2px square cover** in a two-column grid, and the detail at **320px with a 288px square cover** as the
-left column of a two-column desktop screen. The cover needs no second size at any of the three, because
-`.mart` is `aspect-ratio: 1`.
+140.2px square cover** in a `minmax(172px, 1fr)` grid, which is two columns at 390 and four at 767, and the
+detail at **320px with a 288px square cover** as the left column of a two-column desktop screen. The cover
+needs no second size at any of the three, because `.mart` is `aspect-ratio: 1`.
 
 The detail's 320px card declares no difference, and what it costs is two figures this record predicts: the
 scrim is **27.8%** of a 288px picture against **24.7%** of a 324.4px one, because the band is a fixed 80px
@@ -112,15 +118,18 @@ row's sentence, which fitted on one line at 390px, was pushed onto two, taking t
 ones keep the mark. **A class name in a shared stylesheet is a claim about every element carrying it, not
 about the file that wrote it.**
 
-**At 172.2px the three controls do not fit on the picture.** The cover is 140.2px and 108.2px of that is
-inside the band's 16px padding, while the play, shuffle and overflow together need 168px: the overflow is
-clipped by the picture, and on a playing card the transport and action row need 256px and overrun the card by
-85px. The library's answer (no overflow, no transport, the shuffle on the picture's top left) supersedes the
-intermediate version that kept the play and shuffle in the band.
+**At 172.2px the three controls do not fit on the picture, and two of them are all the band holds.** The
+cover is 140.2px and 108.2px of that is inside the band's 16px padding, while the play, shuffle and overflow
+together need 168px: the overflow is clipped by the picture, and on a playing card the transport and action
+row need 256px and overrun the card by 85px. The library's answer (no overflow, no transport, the shuffle on
+the picture's top left, the band with the play alone and the band's padding at `--space-2`) supersedes the
+intermediate versions that kept the play and shuffle in the band and that kept the library's mark there with
+them.
 
-**The scrim survives the narrower card and covers 57.1% of a 140.2px cover**, against 24.7% of the 324.4px
+**The scrim survives the narrower card and covers 45.4% of a 141px cover**, against 24.7% of the 324.4px
 cover one card per row gave it, which contradicts this record's own argument that a band must be short
-enough not to eat the artwork. It is recorded as the cost of the grid. A three-up card grid is unavailable by
+enough not to eat the artwork. It is recorded as the cost of the grid, and it is smaller than it was while
+the mark sat in the band: `--mactions` is 64px there rather than 80. A three-up card grid is unavailable by
 arithmetic: at 111.33px the content needs 154px, the action row is 76px against a 47.33px cover box, and the
 80px band would be 100.9% of a 79.33px cover.
 
@@ -188,12 +197,21 @@ pushes the indicator to the far edge, where it stops being attached to the name 
 aligned with the cover. `0 1 auto` keeps the text at the width it needs and lets it shrink; the indicator
 holds its 20px because it cannot shrink either.
 
-A card at 172.2px does the thing this argues against, and the reason does not transfer. The library sets
-`space-between` on the card's name row so the indicator lines up on one x, on the grid's grounds that the
-card's status line terminates on the right and both rows should end on the same edge. Measured before doing
-it, the cost is nil: the name's column is 112.2px either way, four of the six fixtures are cut whichever
-arrangement is used, and the predicted fault cannot happen because `.share` is `flex-shrink: 0`. On the row,
-where the name is 848px wide and there is no second row to align with, the indicator belongs beside the text.
+A card at 172.2px does the thing this argues against, and the reason does not transfer. The library spreads
+the card's name row so the indicator lines up on one x, on the grid's grounds that the card's status line
+terminates on the right and both rows should end on the same edge. Measured before doing it, the cost of the
+indicator alone was nil: the name's column is 112.2px either way and the predicted fault cannot happen
+because `.share` is `flex-shrink: 0`. On the row, where the name is 848px wide and there is no second row to
+align with, the indicator belongs beside the text.
+
+The library's own mark then joined that row, and this is where the cost stops being nil: the mark is 48.9px
+and takes the second `--space-2` gap with it, so the name's column is **56.1px of text** where it was 112.2,
+about five characters at `--text-lg` against ten. Three of the six development fixtures are cut and `Chine`
+is cut at five characters. The alternatives are recorded in
+[the library's record](../screens/library.md): the mark at the picture's own top-right corner keeps the name
+whole, and a narrower pill on a card buys 12px. Neither was taken, because the mark is a fact about the
+playlist and the name row is where a card's facts are read, and because the mark is one component whose
+proportions are not a width's to decide.
 
 The indicator is coarser than the permission model: one glyph covers both collaborator levels, so it says
 you are not the owner and nothing about what you may do. On a gallery that matters more, because a person may
@@ -201,6 +219,11 @@ rename one row and not the next, and the indicator cannot tell them apart; the o
 the level is shown where it acts.
 
 ## The tooltip reveals on hover or focus, and answers Escape
+
+At a card's trailing edge, where the library's mark ends the name row, the panel hangs from the mark's right
+rather than its centre: a centred 92px panel on a mark 20px from the card's right edge puts its own right edge
+past the phone's. The centred placement stays everywhere else, where the indicator sits beside the name and
+nothing bounds it on the right.
 
 `display: none` at rest rather than `opacity: 0`, because a transparent panel is still in the accessibility
 tree and still takes hit tests. The panel is a child of the indicator it labels, so hovering the panel keeps
@@ -268,15 +291,21 @@ that the playlist plays: a playlist of 300 with 290 still `pending` reads 300 an
 ## The actions, and what the library adds to them
 
 Play is the only door, so it is the only large control, and shuffle and the overflow sit beneath it because
-they are not doors. The library's item takes the play away, because there the item's whole surface is the
-door that opens the playlist, so its actions row is the shuffle and the overflow alone, with the library's
-own mark in front of them. The transport
+they are not doors. Both library arrangements put the play on the picture, which is a change from this
+record's first answer: the tile's is in the cover's bottom-left corner and the card's in its band, and a
+gallery whose items lead with artwork should be playable from the artwork. Only the card's takes a scrim:
+a band across a row needs a known ground, where a single filled circle is one. The tile's cover is therefore a
+block with a link inside it rather than a link itself, because a button inside an anchor is invalid HTML. The
+actions row under the tile's cover is the library's own mark, the shuffle and the overflow. The transport
 appears only while something is playing and is absent rather than disabled
 when nothing is, because a paused playlist has no previous and no next to go to. [That
 record](header-transport.md) owns the steps, their targets and the width each arrangement costs the title.
 
 The overflow holds four items and `access` decides which exist: Share, Rename, Sync now, Delete playlist,
-with a rule before the one that destroys it. The glossary is authoritative: an owner's overflow holds all
+with a rule before the one that destroys it. Which edge it hangs from is the arrangement's: the tile's and the
+card hero's panels open **upward**, because their control is at the item's foot and a panel below it would run
+off the item; the library's card draws its control on the cover's top-right, so its panel opens **downward**
+and is a child of the card rather than of the picture, because the picture clips at its own rounded square. The glossary is authoritative: an owner's overflow holds all
 four, a `write` collaborator's holds Sync now alone, and a `read` collaborator's holds nothing at all, so no
 overflow button rather than an empty panel. The panel is present only when open, the opposite of the
 tooltip's arrangement: a tooltip labels something already on screen, a menu is not there until asked for.

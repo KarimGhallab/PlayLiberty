@@ -98,6 +98,15 @@ export interface PlaylistHeaderSeam {
   /* The elapsed sync time beside the state, which only the row asks for. */
   showSyncTime?: boolean;
   now?: Date;
+  /*
+   * The library's own mark, drawn at the end of the name row beside the share indicator.
+   */
+  mark?: ReactNode;
+  /*
+   * Whether the count and the sync state share one line, the count at the left
+   * and the state at the right, which is the card item's arrangement.
+   */
+  statusLine?: boolean;
   displayedCount?: number;
   /*
    * The total the count line describes. It is the playlist's own count when no
@@ -173,6 +182,8 @@ export function usePlaylistHeader({
   ground = false,
   showSyncTime = false,
   now = new Date(),
+  statusLine = false,
+  mark: nameMark,
   displayedCount,
   countTotal,
   playbackFailed = false,
@@ -484,6 +495,38 @@ export function usePlaylistHeader({
       </span>
     );
 
+  const countLine = partial ? (
+    <span>
+      {t('header.countOf', {
+        count: total,
+        shown: shownCount,
+        total
+      })}
+    </span>
+  ) : (
+    <>
+      <span>{total}</span>
+      <span className={styles.playlistHeader__countUnit}>
+        {trackCountUnit(t, total)}
+      </span>
+    </>
+  );
+
+  const countNode = (
+    <div className={styles.playlistHeader__count}>{countLine}</div>
+  );
+
+  /* The one state element, drawn by both groupings: the status line holds it
+   * beside the count and the stacked identity holds it on its own line with the
+   * elapsed time. */
+  const stateNode = (
+    <span
+      className={styles.playlistHeader__state}
+      data-state={playlist.syncStatus}>
+      {syncStateLabel(t, playlist.syncStatus)}
+    </span>
+  );
+
   const identity = (
     <>
       <div className={styles.playlistHeader__name}>
@@ -530,42 +573,31 @@ export function usePlaylistHeader({
             {t(mark.label)}
           </span>
         </span>
+        {nameMark}
       </div>
-      <div className={styles.playlistHeader__meta}>
-        <span
-          className={styles.playlistHeader__state}
-          data-state={playlist.syncStatus}>
-          {syncStateLabel(t, playlist.syncStatus)}
-        </span>
-        {showSyncTime ? (
-          <>
-            <span className={styles.playlistHeader__sep} aria-hidden="true">
-              &middot;
-            </span>
-            <span className={styles.playlistHeader__time}>
-              {formatLastSynced(t, lastSyncedAt, now)}
-            </span>
-          </>
-        ) : null}
-      </div>
-      <div className={styles.playlistHeader__count}>
-        {partial ? (
-          <span>
-            {t('header.countOf', {
-              count: total,
-              shown: shownCount,
-              total
-            })}
-          </span>
-        ) : (
-          <>
-            <span>{total}</span>
-            <span className={styles.playlistHeader__countUnit}>
-              {trackCountUnit(t, total)}
-            </span>
-          </>
-        )}
-      </div>
+      {statusLine ? (
+        <div className={styles.playlistHeader__mstat}>
+          {countNode}
+          {stateNode}
+        </div>
+      ) : (
+        <>
+          <div className={styles.playlistHeader__meta}>
+            {stateNode}
+            {showSyncTime ? (
+              <>
+                <span className={styles.playlistHeader__sep} aria-hidden="true">
+                  &middot;
+                </span>
+                <span className={styles.playlistHeader__time}>
+                  {formatLastSynced(t, lastSyncedAt, now)}
+                </span>
+              </>
+            ) : null}
+          </div>
+          {countNode}
+        </>
+      )}
       {sharedBy === null ? null : (
         <p className={styles.playlistHeader__owner}>
           {t('header.sharedBy', { name: sharedBy })}

@@ -68,14 +68,12 @@ takes `disabled`, so a second press cannot start a second request. The Cancel be
 part worth naming: a live Cancel beside a spinner gives somebody a way to leave a request in flight
 with no way back to it.
 
-**A modal takes `--z-player` for its own stacking, and that is the one thing in the system that is not
-the player bar.** The ordering a modal needs is bar, then scrim, then dialog, and the only level above
-`--z-overlay` is `--z-player`, so the dialog takes it and wins against the bar on document order, being
-later in the document than the scrim. Four levels still, and no z-index argument. The first draft of
-this dialog sat at `--z-base`, which put the scrim on top of the dialog it was dimming: every
-measurement of it was correct and a screenshot read as a dialog that had been deliberately dimmed,
-which is a thing a designer might have meant. Check `2q` exists for it and was proved by putting the
-fault back.
+**A modal takes the top tier, `--z-overlay`, and so does the scrim under it.** The ordering a modal needs
+is bar, then scrim, then dialog, and the bar is the tier _below_ the overlays: the dialog is later in the
+document than its own scrim, and the scrim is what covers the bar. Four levels, and no z-index argument. The
+first draft of this dialog sat at `--z-base`, which put the scrim on top of the dialog it was dimming: every
+measurement of it was correct and a screenshot read as a dialog that had been deliberately dimmed, which is a
+thing a designer might have meant. Check `2q` exists for it and was proved by putting the fault back.
 
 **It fades in and out over `--motion-base`, and the fade carries the arrival rather than decorating
 it.** The scrim fades and the card fades while rising from **98% scale** to 100%, so it resolves into

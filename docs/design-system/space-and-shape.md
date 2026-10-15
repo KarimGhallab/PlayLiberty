@@ -16,8 +16,10 @@ the lanes line up regardless of content. A gap alone does not align anything.
 
 `--radius-artwork` 4px for album art, square and barely softened so a grid of covers reads as one
 surface. `--radius-control` 6px for buttons and inputs. `--radius-card` 10px for cards, the player bar
-and the empty state. `--radius-chip` 999px is the only pill in the system, and only for a genuine filter
-chip.
+and the empty state. `--radius-chip` 999px is the full round rather than a corner, and it is a circle
+wherever the object is one: a spinner, a knob, the play button, the 7px state dot. It draws a pill on a
+switch track, the filter chips and the library's not-stored mark, and none of those borrow it to soften a
+control's corners.
 
 Depth comes from the surface step and the hairline, never from a shadow. No glow, no glassmorphism, no
 drop shadow heavier than a subtle lift on the player bar.

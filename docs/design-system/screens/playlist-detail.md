@@ -325,7 +325,10 @@ fault the validator already checks for in the track row.
 
 **The add control is in the way-home row, top-right, not in the overflow.** It mirrors the library's add
 button: the same accent pill, the same `plus`, in the row that already holds the way home, which becomes
-`space-between` so the two ends sit apart. It is present for the owner and a `write` collaborator and absent
+`space-between` so the two ends sit apart. At the phone width it becomes
+[the floating action](../components/floating-action.md) instead, which is the same control the library draws:
+the row has no second end to hold a word there, and the height the header gives up is height the track list
+gets. One of the two is drawn at a time. It is present for the owner and a `write` collaborator and absent
 for a `read` one, the same rule the overflow follows, and it opens the
 [add-a-track dialog](../components/add-track-dialog.md). It is on its own rather than in the overflow because
 adding a track is the one curating action every writable account has and the most frequent thing done on this

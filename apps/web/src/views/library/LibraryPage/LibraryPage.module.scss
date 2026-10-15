@@ -71,11 +71,54 @@
     margin: 0;
     padding: 0;
     list-style: none;
+
+    /* The phone's card grid. The constraint is the card's own minimum and not a
+     * column count, which is what the web's tile grid already does, so 390 is the
+     * two columns the record measured and a wider viewport takes three or four
+     * rather than two cards the size of a tablet. The gap is --space-3 rather than
+     * the web grid's --space-4, because a card brings its own --space-4 padding and
+     * its picture brings the card's own margin.
+     *
+     * 160 and not the card's own 172.2, which is 8px short of two columns in a
+     * desktop browser at a 390 window: the scrollbar takes 10px, the page's padding
+     * 32, and 348 of content is less than 2 x 172 + 12. 160 still refuses a third
+     * column at 390, which is the arithmetic the record's own figures give, and it
+     * holds two at 375 and at 390 alike. */
+    @media (max-width: 767px) {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-3);
+    }
   }
 
   /* A grid item's automatic minimum is its min-content width, so a long name
    * would widen the track it sits in rather than truncate inside it. */
   &__cell {
     min-width: 0;
+  }
+}
+
+/*
+ * The phone's library. The header spends its height on the title and the language
+ * control alone, because the add control is the floating button now: --space-3
+ * around a 32px control and a --text-lg title is the 56px the record measures,
+ * against 68.8px with the labelled button in the row, and the height it gives up
+ * is height the gallery gets.
+ */
+@media (max-width: 767px) {
+  .library {
+    &__head {
+      padding: var(--space-3) 0;
+    }
+
+    &__title {
+      font-size: var(--text-lg);
+    }
+
+    /* With the bar docked, the page has to hold both the 97px bar and the 56px
+     * button and the --space-4 either side of the button, or the last row of cards
+     * scrolls up under a control that cannot move. */
+    &[data-player='true'] {
+      padding-block-end: calc(97px + var(--space-4) + 56px + var(--space-4));
+    }
   }
 }

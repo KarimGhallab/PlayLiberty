@@ -6,10 +6,10 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import LibrarySkeleton from './LibrarySkeleton';
 
-function renderSkeleton() {
+function renderSkeleton(layout: 'tile' | 'card' = 'tile') {
   return render(
     <I18nProvider preferred={['en']}>
-      <LibrarySkeleton />
+      <LibrarySkeleton layout={layout} />
     </I18nProvider>
   );
 }

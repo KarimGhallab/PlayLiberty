@@ -1,0 +1,47 @@
+/*
+ * The floating add action: a 56px circle on the frame's bottom-right corner, inset
+ * `--space-4`, above the grid and below the player bar.
+ *
+ * It carries no visible word, so the plus is `--icon-lg` and half the box: at
+ * `--icon-sm` it is 29% of a 56px box and at `--md` 36%, and an extended pill
+ * carrying "Add" measured 98 by 56px, which is 56.9% of a card's width.
+ */
+.floating-action {
+  position: fixed;
+  inset-block-end: var(--space-4);
+  inset-inline-end: var(--space-4);
+  z-index: var(--z-sticky);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  width: 56px;
+  height: 56px;
+  color: var(--bg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+
+  &:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-width) solid var(--accent);
+    outline-offset: var(--focus-offset);
+  }
+
+  /* The bar is an overlay 97px tall, so the button clears it by --space-4 rather
+   * than sitting behind it. Only the bar's presence moves the button, because both
+   * pages pay for the bar whether or not it is there. */
+  &[data-docked='true'] {
+    inset-block-end: calc(97px + var(--space-4));
+  }
+
+  &__icon {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+  }
+}

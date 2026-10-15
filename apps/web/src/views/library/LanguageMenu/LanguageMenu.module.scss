@@ -7,6 +7,7 @@
   position: relative;
 
   &__trigger {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -53,6 +54,26 @@
 
     &:hover {
       background: var(--surface);
+    }
+  }
+
+  /*
+   * On a phone the header spends its height on the title and this control alone,
+   * so the box comes down to 32px: --space-3 around it is the record's 56px header.
+   * The 44px target a thumb is owed grows outward from the 32px box rather than
+   * making the box itself taller, the same trade the header's own quiet controls
+   * make at this width.
+   */
+  @media (max-width: 767px) {
+    &__trigger {
+      width: 32px;
+      height: 32px;
+
+      &::before {
+        content: '';
+        position: absolute;
+        inset: -6px;
+      }
     }
   }
 

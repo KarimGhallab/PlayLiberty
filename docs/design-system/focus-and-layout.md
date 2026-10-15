@@ -7,7 +7,11 @@ surface including the raised one at 4.92:1. The ring colour is `--accent` and de
 token, so the accent cannot be changed in one place and not the other.
 
 Four stacking levels and no more, so a z-index argument never happens: `--z-base` 0, `--z-sticky` 10,
-`--z-overlay` 20, `--z-player` 30.
+`--z-player` 20, `--z-overlay` 30. The docked bar is the third level and the overlays are the fourth, which is
+the order the two are met in: the bar is chrome the app keeps on screen, and an overlay is what the reader has
+just opened, so a playlist's action menu opened near the foot of the screen covers the bar rather than being
+cut off by it. Notices sit one above the top tier, at `--z-overlay` + 1, because they are the one thing that
+outranks what the reader is in the middle of doing.
 
 Single column on mobile, no fixed chrome on web, a comfortable reading width, and a persistent player
 bar anchored to the bottom. There is no web sidebar: the library is

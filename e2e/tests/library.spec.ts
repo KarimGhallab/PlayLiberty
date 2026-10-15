@@ -104,3 +104,109 @@ test('the gallery marks what is not stored and the tile still opens its playlist
     page.getByRole('heading', { name: 'Evening Jazz' })
   ).toBeVisible();
 });
+
+/*
+ * Journey 3: the gallery on a phone. The item is the card at this width and the
+ * grid is more than one column, because a tile per row is a playlist per screen.
+ * The band holds the play, which is the one control a library item has that starts
+ * playback: a press starts the playlist and the same control becomes the pause.
+ * The picture is a second way in, because the card puts its play on the artwork
+ * and an anchor cannot hold a button.
+ */
+test('the gallery is a grid of cards on a phone, and a card plays its playlist', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await addPlaylist(page, {
+    sourceId: 'E2Ephone001',
+    title: 'Evening Jazz',
+    entries: [
+      { videoId: 'e2ephone001', title: 'Blue In Green' },
+      { videoId: 'e2ephone002', title: 'Naima' }
+    ]
+  });
+  await drainDownloads(page);
+  await page.reload();
+
+  const card = page.locator('[data-arrangement="card"]').first();
+  await expect(card).toBeVisible();
+  await expect(page.locator('[data-arrangement="tile"]')).toHaveCount(0);
+
+  const columns = await page
+    .locator('main ul')
+    .evaluate(
+      grid => getComputedStyle(grid).gridTemplateColumns.split(' ').length
+    );
+
+  expect(columns).toBeGreaterThan(1);
+
+  /* The band's play is the item's own control: it starts the playlist and reports
+   * the queue's state, and no step appears beside it. */
+  await card.getByRole('button', { name: 'Play this playlist' }).click();
+  await expect(
+    card.getByRole('button', { name: 'Pause this playlist' })
+  ).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Track next' })).toHaveCount(0);
+
+  /* The picture opens the playlist, which is the door the band's dead area falls
+   * through to. */
+  await card.locator('a[aria-hidden="true"]').click();
+  await expect(
+    page.getByRole('heading', { name: 'Evening Jazz' })
+  ).toBeVisible();
+});
+
+/*
+ * Journey 4: a menu over the docked bar. The bar is chrome the app keeps on screen
+ * and a menu is what the reader has just opened, so the menu is the tier above it.
+ * The card's overflow is the case it can still happen in: its panel opens downward
+ * from the cover's top, so a card partway down the screen puts the panel's own foot
+ * in the bar's band. The press is the assertion, because a menu behind the bar is a
+ * menu whose items the bar intercepts.
+ */
+test('a playlist’s action menu covers the docked bar', async ({ page }) => {
+  /* Short enough that the first card's panel reaches the bar's band: the card's top
+   * and the panel's 48 + 170 are more than a 360px viewport leaves above a 98px bar. */
+  await page.setViewportSize({ width: 390, height: 360 });
+  await addPlaylist(page, {
+    sourceId: 'E2Emenu0001',
+    title: 'Evening Jazz',
+    entries: [
+      { videoId: 'e2emenu001', title: 'Blue In Green' },
+      { videoId: 'e2emenu002', title: 'Naima' }
+    ]
+  });
+  await drainDownloads(page);
+  await page.reload();
+
+  /* The bar docks when a playlist plays, which is what puts it under the menu. */
+  await page
+    .getByRole('button', { name: 'Play this playlist' })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Pause this playlist' }).first()
+  ).toBeVisible();
+
+  await page
+    .getByRole('button', { name: /More actions/ })
+    .first()
+    .click();
+
+  const item = await page
+    .getByRole('menuitem', { name: 'Delete playlist' })
+    .boundingBox();
+  const dock = await page.locator('footer').boundingBox();
+
+  expect(item).not.toBeNull();
+  expect(dock).not.toBeNull();
+  /* Asserted rather than assumed: a layout that moved the panel clear of the bar
+   * would leave this journey passing without testing anything. */
+  expect(item!.y + item!.height).toBeGreaterThan(dock!.y);
+
+  await page.getByRole('menuitem', { name: 'Delete playlist' }).click();
+
+  /* The deferred delete the press starts is the proof that the press was the
+   * menu's: if the bar took it, the undo window would never open. */
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+});

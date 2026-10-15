@@ -28,6 +28,11 @@ import styles from './IncompleteBadge.module.scss';
  * a gallery of forty playlists asks once. `counts` is null where the caller's read
  * does not carry them, and then the mark draws nothing rather than a zero it
  * cannot stand behind.
+ *
+ * The breakdown hangs from the edge of the pill the row anchors it to, which is the
+ * caller's to say because the caller is what put the mark there: the tile leads its
+ * actions row with it, and the card ends its name row with it. A panel that hung
+ * the same way from both would leave the frame on one of them.
  */
 
 interface MissingState {
@@ -53,9 +58,14 @@ const SEVERITY: readonly TrackFileStatus[] = [
 
 interface IncompleteBadgeProps {
   counts: TrackFileStatusCounts | null;
+  /* Which edge of the pill the breakdown hangs from. */
+  tipEdge?: 'start' | 'end';
 }
 
-export default function IncompleteBadge({ counts }: IncompleteBadgeProps) {
+export default function IncompleteBadge({
+  counts,
+  tipEdge = 'start'
+}: IncompleteBadgeProps) {
   const { t } = useI18n();
 
   if (counts === null) {
@@ -91,6 +101,7 @@ export default function IncompleteBadge({ counts }: IncompleteBadgeProps) {
     <span
       className={styles.incompleteBadge}
       data-tone={tone}
+      data-tip={tipEdge}
       role="img"
       aria-label={label}
       tabIndex={0}>

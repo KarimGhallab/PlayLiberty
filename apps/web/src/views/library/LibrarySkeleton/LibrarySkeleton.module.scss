@@ -26,6 +26,13 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
     gap: var(--space-4);
+
+    /* The phone's card grid, the same track and gaps the gallery takes, so the
+     * skeleton and the cards land in the same columns. */
+    @media (max-width: 767px) {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-3);
+    }
   }
 
   /* The tile's own padding, so the cover box lands where the real one does. */
@@ -35,6 +42,46 @@
     gap: var(--space-3);
     padding: var(--space-2);
     min-width: 0;
+  }
+
+  /* The card's own geometry: the block with its own surface, the picture inset by
+   * the card's --space-4, and the two lines of its status under it. The width is
+   * stated on the picture for the reason the tile's cover states it: a box with no
+   * content would collapse without a definite width. */
+  &__card {
+    display: flex;
+    flex-direction: column;
+    padding: 0 var(--space-4);
+    background: var(--surface);
+    min-width: 0;
+  }
+
+  &__picture {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  &__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+  }
+
+  &__status {
+    width: 55%;
+    height: 12px;
+    background: var(--surface-raised);
+    border-radius: var(--radius-control);
+  }
+
+  /* The name line is the tile's on the page's own ground and the card's on the
+   * card's surface, so it takes one step up inside the card. */
+  &__card-body &__name {
+    background: var(--surface-raised);
   }
 
   /* The width is stated for the same reason the tile's square states it: in the

@@ -127,12 +127,17 @@
 
   /* The row is its own stacking context, so a later sibling would paint over the
    * menu and the tip that overflow it. Lifting the row above its siblings while
-   * either is open keeps them whole, on a tier below the overlay the header's own
-   * language menu uses. */
+   * either is open keeps them whole: the sticky tier for a hover or a focus, which
+   * is above the rows and below the docked bar, and the overlay tier for an open
+   * menu, because a context swallows its children's own z-index and the panel has
+   * to clear the bar as well as the rows. */
   &[data-arrangement='row'][data-ground='true']:hover,
-  &[data-arrangement='row'][data-ground='true']:focus-within,
-  &[data-arrangement='row'][data-ground='true']:has(&__menu) {
+  &[data-arrangement='row'][data-ground='true']:focus-within {
     z-index: var(--z-sticky);
+  }
+
+  &[data-arrangement='row'][data-ground='true']:has(&__menu) {
+    z-index: var(--z-overlay);
   }
 
   &[data-arrangement='row'][data-ground='true'] &__ground {
@@ -261,15 +266,30 @@
     left: 50%;
     translate: -50% 0;
     z-index: var(--z-overlay);
+    /* Centred on its mark, its own content's width, and bounded by the frame, so a
+     * longer label in another catalog cannot run off an edge. `break-word` and not
+     * `anywhere`: the latter would size the panel to a single character. */
+    width: max-content;
+    max-width: calc(100dvw - var(--space-4) * 2);
+    overflow-wrap: break-word;
     padding: var(--space-1) var(--space-2);
     color: var(--ink);
     font-size: var(--text-xs);
     font-weight: var(--weight-regular);
     line-height: var(--leading-normal);
-    white-space: nowrap;
+    white-space: normal;
     background-color: var(--surface-raised);
     border: 1px solid var(--control-border);
     border-radius: var(--radius-card);
+  }
+
+  /* At a card's trailing edge the panel hangs from the mark's right rather than its
+   * centre: the mark ends the name row there, so a centred 92px panel puts its own
+   * right edge past the phone's. */
+  &[data-arrangement='card'][data-item='true'] &__share-tip {
+    right: 0;
+    left: auto;
+    translate: none;
   }
 
   &__share:hover &__share-tip,
@@ -294,6 +314,7 @@
 
   &__meta {
     display: flex;
+    justify-content: space-between;
     align-items: center;
     gap: var(--space-3);
     min-width: 0;
@@ -790,11 +811,19 @@
     margin-left: auto;
   }
 
-  /* The card opens its menu upward, into the picture, because the control is at
-   * the foot of the artwork and a panel below it would run off the card. */
-  &[data-arrangement='card'] &__menu {
+  /* The tile and the card's hero open their menus upward, into the picture, because
+   * their control is at the item's foot and a panel below it would run off the item.
+   * The card's item is the other way round: its controls are on the picture's top
+   * corners, so its panel opens downward, into the card. */
+  &[data-arrangement='card'] &__menu,
+  &[data-arrangement='tile'] &__menu {
     top: auto;
     bottom: calc(100% + var(--space-2));
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__menu {
+    top: calc(100% + var(--space-2));
+    bottom: auto;
   }
 
   /* The card's quiet controls draw 32 and are hit at 44, the target the card
@@ -810,6 +839,145 @@
     content: '';
     position: absolute;
     inset: -6px;
+  }
+
+  &__mark {
+    display: inline-flex;
+  }
+
+  &[data-arrangement='tile'] &__mark {
+    margin-inline-end: auto;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__munder,
+  &[data-arrangement='card'][data-item='true'] &__name,
+  &[data-arrangement='card'][data-item='true'] &__name-text,
+  &[data-arrangement='card'][data-item='true'] &__mstat,
+  &[data-arrangement='card'][data-item='true'] &__count {
+    min-width: 0;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__mstat {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__mstat &__state {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__mstat &__state:only-child {
+    margin-inline-start: auto;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__mstat &__count {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+  }
+
+  &[data-arrangement='card'][data-item='true']
+    &__mstat
+    &__count
+    > span:first-child {
+    flex: none;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__name {
+    font-size: var(--text-lg);
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__name &__share {
+    margin-inline-start: auto;
+  }
+
+  &[data-arrangement='card'][data-item='true'] {
+    --mactions: none;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__macts {
+    padding: var(--space-2);
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__macts,
+  &[data-arrangement='card'][data-item='true'] &__macts * {
+    pointer-events: none;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__macts button,
+  &[data-arrangement='card'][data-item='true'] &__mshuffle,
+  &[data-arrangement='card'][data-item='true'] &__mshuffle *,
+  &[data-arrangement='card'][data-item='true'] &__menu-anchor > &__icon-btn,
+  &[data-arrangement='card'][data-item='true'] &__menu-anchor &__menu,
+  &[data-arrangement='card'][data-item='true'] &__menu-anchor &__menu * {
+    pointer-events: auto;
+  }
+
+  &__mart-link,
+  &__tart-link {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__mshuffle {
+    position: absolute;
+    top: var(--space-2);
+    inset-inline-start: var(--space-2);
+    z-index: var(--z-base);
+    display: inline-flex;
+    background-color: var(--surface-raised);
+    border-radius: var(--radius-control);
+  }
+
+  /* The overflow, the shuffle's mirror on the cover's top-right corner.
+   *
+   * Its chip is drawn on the cover and its anchor is a child of the card, because the
+   * picture clips at its own rounded square: a 170px panel hanging from a chip on a
+   * 136px cover would be cut off by it. The anchor is stretched between the picture's
+   * own insets and holds the chip at its end, which is also what bounds the panel,
+   * since `max-width: 100%` is then the card's width: a 176px panel hung from a 32px
+   * chip on the card's right runs off the phone by 36px, so the panel is the card's
+   * width and its labels wrap instead.
+   *
+   * It carries no pointer events of its own, so the artwork under it is still the
+   * door, and no z-index, because a positioned box with one is a stacking context and
+   * the band is later in the item and would paint its play over the panel's items. */
+  &[data-arrangement='card'][data-item='true'] &__menu-anchor {
+    position: absolute;
+    top: var(--space-2);
+    inset-inline: calc(var(--space-4) + var(--space-2));
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__menu-anchor > &__icon-btn {
+    background-color: var(--surface-raised);
+    border-color: var(--control-border);
+    border-radius: var(--radius-control);
+  }
+
+  /* The chip's own top and box plus its gap, so the panel opens under it. */
+  &[data-arrangement='card'][data-item='true'] &__menu {
+    top: calc(var(--space-2) + 32px + var(--space-2));
+    min-width: 0;
+  }
+
+  &[data-arrangement='row'] &__menu {
+    left: 0;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__menu-item {
+    white-space: normal;
+  }
+
+  &[data-arrangement='card'][data-item='true'] &__mshuffle &__icon-btn {
+    background-color: var(--surface-raised);
+    border-color: var(--control-border);
   }
 
   &__munder {
@@ -844,11 +1012,17 @@
     }
   }
 
-  /* The tile is a grid item, so a z-index lifts it above the tiles beside and
-   * below it, which is what keeps an open overflow whole: the panel hangs past
-   * the tile into the row beneath. */
-  &[data-arrangement='tile']:has(&__menu) {
-    z-index: var(--z-sticky);
+  /* The play, in the cover's bottom-left corner and on the picture rather than in
+   * the actions row, which the mark, the shuffle and the overflow keep. It draws no
+   * ribbon: it is a filled accent circle and brings its own ground, and the tile's
+   * cover is the item's artwork rather than a band across it. The link under it
+   * covers the rest of the artwork, so a press on the picture opens the playlist and
+   * a press on the play starts it. */
+  &[data-arrangement='tile'] &__play {
+    position: absolute;
+    inset-block-end: var(--space-2);
+    inset-inline-start: var(--space-2);
+    z-index: var(--z-base);
   }
 
   &__tart {
@@ -872,7 +1046,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    min-width: 0;
+    width: 100%;
     padding: 0 var(--space-2) var(--space-2);
   }
 

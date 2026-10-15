@@ -13,14 +13,19 @@ import { usePlayerStore } from '../playerStore/playerStore';
 import { queuePlaylistId } from '../types';
 
 /*
- * The shuffle control's action, in one place because two surfaces draw the same
- * control: the library gives every item one, and the detail's header draws one for
- * the playlist it shows. Shuffle is a property of playback, so the control is not
- * a flag on a row: pressing it starts the playlist it was pressed on, shuffled,
- * whether the queue was empty, another playlist's, or this one already.
+ * The playlist-start action, in one place because three controls draw it: the
+ * library gives every item a shuffle and a play at phone width, and the detail's
+ * header draws both for the playlist it shows. Whether the queue was empty,
+ * another playlist's, or this one already, the press acts on the playlist it was
+ * pressed on rather than on the queue.
  *
- * The read is the playlist's whole association list, not a page, so a shuffled
- * queue covers the playlist rather than its first page.
+ * When the queue is already this playlist's, neither control starts anything: the
+ * play pauses and resumes it and the shuffle turns the mode over, which are the
+ * store's own rules and what makes the two controls over playback rather than
+ * over the list.
+ *
+ * The read is the playlist's whole association list, not a page, so the queue
+ * covers the playlist rather than its first page.
  *
  * Only the queue read knows whether a playlist has anything to play, and the
  * queue may belong to another playlist, so a press can be refused. The refusal is
@@ -32,40 +37,46 @@ import { queuePlaylistId } from '../types';
 /** How long a refusal stands before it withdraws itself. */
 export const NOTICE_WINDOW_MS = 4000;
 
-export interface ShuffleRefusal {
+export interface StartRefusal {
   readonly name: string;
   readonly reason: 'empty' | 'unreachable';
 }
 
-export interface ShuffleOptions {
+export interface StartOptions {
   readonly onUnreachable?: () => void;
 }
 
-export interface ShuffleControl {
+export interface PlaylistStartControl {
+  /* Start the playlist in its own order, or pause and resume the queue that is
+   * already its own. */
+  readonly playPlaylist: (playlist: Pick<Playlist, 'id' | 'name'>) => void;
+  /* Start it shuffled, or turn the mode over. */
   readonly shufflePlaylist: (
     playlist: Pick<Playlist, 'id' | 'name'>,
-    options?: ShuffleOptions
+    options?: StartOptions
   ) => void;
-  readonly refusal: ShuffleRefusal | null;
+  readonly refusal: StartRefusal | null;
 }
 
-export function useShufflePlaylist(): ShuffleControl {
+export function useStartPlaylist(): PlaylistStartControl {
   const queryClient = useQueryClient();
-  const [refusal, setRefusal] = useState<ShuffleRefusal | null>(null);
+  const [refusal, setRefusal] = useState<StartRefusal | null>(null);
 
-  const shufflePlaylist = useCallback(
-    (playlist: Pick<Playlist, 'id' | 'name'>, options: ShuffleOptions = {}) => {
+  const start = useCallback(
+    (
+      playlist: Pick<Playlist, 'id' | 'name'>,
+      mode: 'play' | 'shuffle',
+      options: StartOptions = {}
+    ) => {
       const player = usePlayerStore.getState();
 
       if (queuePlaylistId(player) === playlist.id) {
-        /*
-         * The queue is already this playlist's, so the press changes the mode:
-         * turning it on draws a new shuffle and starts on its random leading
-         * track, turning it off restores the playlist's own order and leaves the
-         * transport where it is. Both are the store's own rules.
-         */
-        player.setShuffle(!player.shuffle);
+        if (mode === 'shuffle') {
+          player.setShuffle(!player.shuffle);
+          return;
+        }
 
+        player.setPlaying(!player.isPlaying);
         return;
       }
 
@@ -87,7 +98,12 @@ export function useShufflePlaylist(): ShuffleControl {
           return;
         }
 
-        const started = startPlaylistQueue(playlist, tracks, null, true);
+        const started = startPlaylistQueue(
+          playlist,
+          tracks,
+          null,
+          mode === 'shuffle'
+        );
 
         if (!started) {
           setRefusal({ name: playlist.name, reason: 'empty' });
@@ -95,6 +111,17 @@ export function useShufflePlaylist(): ShuffleControl {
       })();
     },
     [queryClient]
+  );
+
+  const playPlaylist = useCallback(
+    (playlist: Pick<Playlist, 'id' | 'name'>) => start(playlist, 'play'),
+    [start]
+  );
+
+  const shufflePlaylist = useCallback(
+    (playlist: Pick<Playlist, 'id' | 'name'>, options?: StartOptions): void =>
+      start(playlist, 'shuffle', options),
+    [start]
   );
 
   /*
@@ -112,16 +139,17 @@ export function useShufflePlaylist(): ShuffleControl {
     return () => clearTimeout(timer);
   }, [refusal]);
 
-  return { shufflePlaylist, refusal };
+  return { playPlaylist, shufflePlaylist, refusal };
 }
 
 /*
  * The refusal in words: one sentence and one line under it, naming the playlist
- * and saying why the press did nothing. Both screens draw the same notice, so the
- * wording lives with the action rather than in either of them.
+ * and saying why the press did nothing. It is the action's copy rather than
+ * either control's, because a play and a shuffle refuse for the same two
+ * reasons and say the same thing.
  */
 export function refusalNotice(
-  refusal: ShuffleRefusal,
+  refusal: StartRefusal,
   t: Translator<Messages>
 ): {
   message: string;
@@ -129,13 +157,13 @@ export function refusalNotice(
 } {
   if (refusal.reason === 'unreachable') {
     return {
-      message: t('shuffle.unreachable', { name: refusal.name }),
-      detail: t('shuffle.unreachableDetail')
+      message: t('start.unreachable', { name: refusal.name }),
+      detail: t('start.unreachableDetail')
     };
   }
 
   return {
-    message: t('shuffle.empty', { name: refusal.name }),
-    detail: t('shuffle.emptyDetail')
+    message: t('start.empty', { name: refusal.name }),
+    detail: t('start.emptyDetail')
   };
 }

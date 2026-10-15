@@ -31,6 +31,7 @@ import {
 } from '../../../shared/api/queries/queries';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';
+import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
 import LoadMoreControl from '../../../shared/components/LoadMoreControl/LoadMoreControl';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
@@ -52,12 +53,16 @@ import { startPlaylistQueue } from '../../../shared/player/playerQueue/playerQue
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
-import { hasNext, queuePlaylistId } from '../../../shared/player/types';
+import {
+  currentTrack,
+  hasNext,
+  queuePlaylistId
+} from '../../../shared/player/types';
 import {
   NOTICE_WINDOW_MS,
   refusalNotice,
-  useShufflePlaylist
-} from '../../../shared/player/useShufflePlaylist/useShufflePlaylist';
+  useStartPlaylist
+} from '../../../shared/player/useStartPlaylist/useStartPlaylist';
 import {
   canWritePlaylist,
   usePlaylistActions
@@ -128,6 +133,7 @@ export default function PlaylistDetailPage() {
   /* The card and the row are different modules rather than two stylesheets, so
    * the viewport decides which is drawn rather than CSS. */
   const isMobile = useMediaQuery(MOBILE_QUERY);
+  const docked = usePlayerStore(state => currentTrack(state) !== null);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
@@ -135,7 +141,7 @@ export default function PlaylistDetailPage() {
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const shuffled = usePlayerStore(state => state.shuffle);
   const queue = usePlayerStore(state => state.queue);
-  const { shufflePlaylist, refusal } = useShufflePlaylist();
+  const { shufflePlaylist, refusal } = useStartPlaylist();
   const playingPlaylistId = usePlayerStore(queuePlaylistId);
   const isQueue = playingPlaylistId === playlistId;
   /* The list draws the shuffled queue's own order while this playlist is the
@@ -420,7 +426,9 @@ export default function PlaylistDetailPage() {
   };
 
   return (
-    <main className={styles.playlistDetail}>
+    <main
+      className={styles.playlistDetail}
+      data-player={docked ? 'true' : undefined}>
       <nav className={styles.playlistDetail__wayhome}>
         <Link to="/" className={styles.playlistDetail__back}>
           <IconChevronLeft
@@ -431,12 +439,14 @@ export default function PlaylistDetailPage() {
           {t('detail.back')}
         </Link>
         {/*
-         * The add control, mirroring the library's own: the same pill, the same
-         * plus, in the top-right of the page. It is present for the owner and a
-         * write collaborator and absent for a read one, the screen's own rule for
-         * every control it does not offer a refusal through.
+         * The add control is a labelled button in the way-home row above the phone
+         * breakpoint and the floating action at it and below, where the row has no
+         * second end to hold it: it is the same control the library draws for the
+         * same reason, and one of the two is drawn at a time. It is present for the
+         * owner and a write collaborator and absent for a read one, the screen's
+         * own rule for every control it does not offer a refusal through.
          */}
-        {canWrite ? (
+        {canWrite && !isMobile ? (
           <button
             type="button"
             className={styles.playlistDetail__add}
@@ -453,6 +463,16 @@ export default function PlaylistDetailPage() {
           </button>
         ) : null}
       </nav>
+
+      {canWrite && isMobile ? (
+        <FloatingAction
+          label={t('detail.addTrack')}
+          onClick={() => {
+            addTrack.reset();
+            setAddOpen(true);
+          }}
+        />
+      ) : null}
 
       <div className={styles.playlistDetail__columns}>
         <div className={styles.playlistDetail__left}>

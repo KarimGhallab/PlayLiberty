@@ -112,8 +112,8 @@ export const numbers = {
   'opacity-disabled': { kind: TokenKind.Number, value: 0.45 },
   'z-base': { kind: TokenKind.Number, value: 0 },
   'z-sticky': { kind: TokenKind.Number, value: 10 },
-  'z-overlay': { kind: TokenKind.Number, value: 20 },
-  'z-player': { kind: TokenKind.Number, value: 30 }
+  'z-player': { kind: TokenKind.Number, value: 20 },
+  'z-overlay': { kind: TokenKind.Number, value: 30 }
 } as const satisfies Record<string, NumberToken>;
 
 /** The emitter quotes the family for the stylesheet. */

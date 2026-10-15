@@ -187,7 +187,7 @@ export const fr: Messages = {
     playing: 'En lecture',
     paused: 'En pause'
   },
-  shuffle: {
+  start: {
     empty: 'Rien à lire dans « {name} ».',
     emptyDetail: "Aucune piste n'a fini de se télécharger.",
     unreachable: "« {name} » n'a pas pu être lue.",
@@ -207,36 +207,36 @@ export const fr: Messages = {
     validationFailed: 'La requête contient une valeur invalide.'
   },
   relative: {
-    justNow: "à l'instant",
-    yesterday: 'hier',
+    justNow: "À l'instant",
+    yesterday: 'Hier',
     minute: {
-      one: 'il y a {count} minute',
-      other: 'il y a {count} minutes'
+      one: 'Il y a {count} minute',
+      other: 'Il y a {count} minutes'
     },
     hour: {
-      one: 'il y a {count} heure',
-      other: 'il y a {count} heures'
+      one: 'Il y a {count} heure',
+      other: 'Il y a {count} heures'
     },
     day: {
-      one: 'il y a {count} jour',
-      other: 'il y a {count} jours'
+      one: 'Il y a {count} jour',
+      other: 'Il y a {count} jours'
     },
     week: {
-      one: 'il y a {count} semaine',
-      other: 'il y a {count} semaines'
+      one: 'Il y a {count} semaine',
+      other: 'Il y a {count} semaines'
     },
     month: {
-      one: 'il y a {count} mois',
-      other: 'il y a {count} mois'
+      one: 'Il y a {count} mois',
+      other: 'Il y a {count} mois'
     },
     year: {
-      one: 'il y a {count} an',
-      other: 'il y a {count} ans'
+      one: 'Il y a {count} an',
+      other: 'Il y a {count} ans'
     }
   },
   lastSynced: {
     never: 'Jamais synchronisée',
-    synced: 'Synchronisée {time}'
+    synced: '{time}'
   },
   syncState: {
     upToDate: 'À jour',

@@ -40,6 +40,7 @@ than misleading a reader.
 | Add a playlist               | [add a playlist](design-system/components/add-playlist-dialog.md)      | [add a playlist](design/components/add-playlist-dialog.html) |
 | Add a track                  | [add a track](design-system/components/add-track-dialog.md)            | [add a track](design/components/add-track-dialog.html)       |
 | Language menu                | [language menu](design-system/components/language-menu.md)             | not drawn                                                    |
+| Floating action              | [floating action](design-system/components/floating-action.md)         | [library](design/screens/library.html)                       |
 | Empty gallery                | [empty gallery](design-system/components/empty-gallery.md)             | [library](design/screens/library.html)                       |
 | Library                      | [library](design-system/screens/library.md)                            | [library](design/screens/library.html)                       |
 | Playlist detail              | [playlist detail](design-system/screens/playlist-detail.md)            | [playlist detail](design/screens/playlist-detail.html)       |
@@ -65,8 +66,9 @@ These are the components, not their specs. Each links to the file that specifies
   in [the playlist header](design-system/components/playlist-header.md), which owns it at all three of its
   arrangements (the row, the card and the tile) and exists because there are two consumers: the header
   itself, and [the library](design-system/screens/library.md), whose playlist items are this component
-  rather than a smaller thing that resembles it. The library draws the tile, and the tile carries a mark of
-  that screen's own: how much of the playlist is not on disk, with the breakdown of reasons on hover. Its rules live in `specimen.css` for the same reason, and a decision
+  rather than a smaller thing that resembles it. The library draws the tile above its 767px breakpoint and
+  the card at it and below, and the item carries a mark of that screen's own: how much of the playlist is not
+  on disk, with the breakdown of reasons on hover. Its rules live in `specimen.css` for the same reason, and a decision
   that exists only as a comment in one stylesheet cannot be inherited by a second consumer. Its parts are
   split further: the strip is [the equalizer strip](design-system/components/equalizer-strip.md), the
   steps are [the transport on the playing header](design-system/components/header-transport.md), and the
@@ -92,6 +94,11 @@ These are the components, not their specs. Each links to the file that specifies
   active language checked, and the switch the copy follows. Specified in
   [the language menu](design-system/components/language-menu.md). It is on the library only, because there
   is no account surface and no settings.
+- **Floating action**, the phone's add control on both screens that add something: the library's "add a
+  playlist" and the detail's "add a track". It is one component because the two differ in the accessible name
+  and nothing else, and it is drawn only at the phone width, where a labelled control in the header is a word
+  the header's height cannot afford. Specified in
+  [the floating action](design-system/components/floating-action.md).
 
 ## What is not yet designed
 
