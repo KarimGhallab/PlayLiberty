@@ -1,17 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
-
 import {
-  AccountSummarySchema,
-  AddTrackResultSchema,
-  PlaylistSchema,
-  PlaylistTrackSchema,
-  ShareListSchema,
-  ShareSchema,
-  SyncRunSchema,
-  TrackSchema,
-  createPageSchema
-} from '@playliberty/contracts';
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient
+} from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+
 import type {
   AccountSummary,
   AddTrackResult,
@@ -21,6 +16,18 @@ import type {
   ShareLevel,
   SyncRun,
   Track
+} from '@playliberty/contracts';
+import {
+  AccountSummarySchema,
+  AddTrackResultSchema,
+  PlaylistSchema,
+  PlaylistTrackListSchema,
+  PlaylistTrackSchema,
+  ShareListSchema,
+  ShareSchema,
+  SyncRunSchema,
+  TrackSchema,
+  createPageSchema
 } from '@playliberty/contracts';
 
 import { cacheEffects } from '../cacheEffects/cacheEffects';
@@ -162,26 +169,119 @@ export function playlistTracksKey(playlistId: string) {
 }
 
 /*
- * The tracks of one playlist, which is the only list a queue is built from. A
- * plain fetch beside the hook, so a caller that is not a component can build a
- * queue from it without restating the route.
+ * The key the playlist's whole association list is cached under, which is what a
+ * queue is built from. It is separate from the tracks key because the two reads
+ * answer differently: the tracks key holds pages and this holds every
+ * association in one response.
  */
-export async function fetchPlaylistTracks(
-  playlistId: string
-): Promise<PlaylistTrack[]> {
-  const page = await apiGet(
-    `/playlists/${playlistId}/tracks`,
-    PlaylistTrackPageSchema
-  );
-  return page.items;
+export function playlistQueueKey(playlistId: string) {
+  return ['playlist', playlistId, 'queue'] as const;
 }
 
-export function usePlaylistTracks(
+const PLAYLIST_TRACKS_PAGE_SIZE = 100;
+
+interface PlaylistTrackPage {
+  items: PlaylistTrack[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+async function fetchPlaylistTrackPage(
+  playlistId: string,
+  offset: number
+): Promise<PlaylistTrackPage> {
+  return apiGet(
+    `/playlists/${playlistId}/tracks?limit=${PLAYLIST_TRACKS_PAGE_SIZE}&offset=${offset}`,
+    PlaylistTrackPageSchema
+  );
+}
+
+function nextTracksPageParam(lastPage: PlaylistTrackPage): number | undefined {
+  const loaded = lastPage.offset + lastPage.items.length;
+
+  return loaded < lastPage.total ? loaded : undefined;
+}
+
+export interface PlaylistTracksRead {
+  readonly tracks: readonly PlaylistTrack[];
+  readonly isPending: boolean;
+  readonly isError: boolean;
+  readonly isSuccess: boolean;
+  readonly error: Error | null;
+  readonly retrying: boolean;
+  readonly retry: () => void;
+  readonly hasMore: boolean;
+  readonly loadingMore: boolean;
+  readonly moreFailed: boolean;
+  readonly loadMore: () => void;
+}
+
+export function usePlaylistTracks(playlistId: string): PlaylistTracksRead {
+  const query = useInfiniteQuery({
+    queryKey: playlistTracksKey(playlistId),
+    queryFn: ({ pageParam }) => fetchPlaylistTrackPage(playlistId, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: nextTracksPageParam
+  });
+  /* Stable, because a sentinel observes it: a fresh callback on every render
+   * would tear the observer down and build it again on every render of the list. */
+  const loadMore = useCallback(
+    () => void query.fetchNextPage(),
+    [query.fetchNextPage]
+  );
+
+  const pages = query.data?.pages;
+  /* Stable while the data is, so a caller that keys an effect or a memo on the
+   * list does not see a new array on every render. */
+  const tracks = useMemo(
+    () => pages?.flatMap(page => page.items) ?? [],
+    [pages]
+  );
+
+  return {
+    tracks,
+    isPending: query.isPending,
+    isError: query.isError,
+    isSuccess: query.isSuccess,
+    error: query.error,
+    /* A refetch of the first page, not of the next one: the next page has its
+     * own retry through `loadMore`. */
+    retrying: query.isFetching && !query.isFetchingNextPage,
+    retry: () => void query.refetch(),
+    hasMore: query.hasNextPage,
+    loadingMore: query.isFetchingNextPage,
+    moreFailed: query.isFetchNextPageError,
+    loadMore
+  };
+}
+
+/*
+ * The playlist's whole association list, which is the queue's own read. It is one
+ * response and not a page walk, because a queue has to hold every playable track.
+ * The read is lazy: the detail enables it only while this playlist is the queue,
+ * and a play or shuffle press reads it through the query cache before it starts,
+ * so a press never waits on a read that is only for the list.
+ */
+export async function fetchPlaylistQueue(
   playlistId: string
+): Promise<PlaylistTrack[]> {
+  const list = await apiGet(
+    `/playlists/${playlistId}/queue`,
+    PlaylistTrackListSchema
+  );
+
+  return list.items;
+}
+
+export function usePlaylistQueue(
+  playlistId: string,
+  enabled: boolean
 ): UseQueryResult<PlaylistTrack[], Error> {
   return useQuery({
-    queryKey: playlistTracksKey(playlistId),
-    queryFn: () => fetchPlaylistTracks(playlistId)
+    queryKey: playlistQueueKey(playlistId),
+    queryFn: () => fetchPlaylistQueue(playlistId),
+    enabled
   });
 }
 

@@ -38,6 +38,11 @@ export const fr: Messages = {
     loadingTracks: 'Chargement des pistes.',
     readFailed: 'Impossible de charger les pistes.',
     noTracks: 'Aucune piste.',
+    loadMore: 'Charger la suite',
+    loadMoreLoading: 'Chargement...',
+    loadMoreRetry: 'Réessayer',
+    playbackFailed:
+      "La lecture n'a pas pu démarrer : la file d'attente n'a pas été chargée.",
     deleteDeferred: 'Suppression de la playlist',
     removeDeferred: 'Retrait de la piste',
     trackFallback: 'Piste',
@@ -152,7 +157,13 @@ export const fr: Messages = {
     trackNext: 'Piste suivante',
     shuffle: 'Lecture aléatoire de {name}',
     actions: 'Actions pour {name}',
-    sharedBy: 'Partagée par {name}'
+    sharedBy: 'Partagée par {name}',
+    countOf: {
+      one: '{shown} sur {total} piste',
+      other: '{shown} sur {total} pistes'
+    },
+    retryPlayback: 'Relancer la lecture',
+    retryingPlayback: 'Chargement...'
   },
   trackBars: {
     playing: 'En lecture',

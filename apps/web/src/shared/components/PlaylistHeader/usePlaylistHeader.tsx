@@ -1,4 +1,5 @@
 import {
+  IconAlertTriangle,
   IconArrowsShuffle,
   IconDots,
   IconLock,
@@ -95,12 +96,15 @@ export interface PlaylistHeaderSeam {
   onShuffle?: () => void;
   shuffled?: boolean;
   menu?: readonly PlaylistAction[];
-  /* The cover as a blurred ground behind the header. The library's row and the
-   * detail's card both ask for it. */
+  /* The cover as a blurred ground behind the header. */
   ground?: boolean;
   /* The elapsed sync time beside the state, which only the row asks for. */
   showSyncTime?: boolean;
   now?: Date;
+  displayedCount?: number;
+  playbackFailed?: boolean;
+  playbackStarting?: boolean;
+  onRetryPlayback?: () => void;
 }
 
 export interface PlaylistHeaderParts {
@@ -165,7 +169,11 @@ export function usePlaylistHeader({
   menu = [],
   ground = false,
   showSyncTime = false,
-  now = new Date()
+  now = new Date(),
+  displayedCount,
+  playbackFailed = false,
+  playbackStarting = false,
+  onRetryPlayback
 }: PlaylistHeaderSeam): PlaylistHeaderParts {
   const { t } = useI18n();
   const mark = shareMark(playlist);
@@ -303,6 +311,8 @@ export function usePlaylistHeader({
   };
 
   const playable = playlist.trackCount > 0;
+  const shownCount = displayedCount ?? playlist.trackCount;
+  const partial = shownCount < playlist.trackCount;
   const lastSyncedAt =
     playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
 
@@ -316,7 +326,7 @@ export function usePlaylistHeader({
         type="button"
         className={styles.playlistHeader__play}
         aria-label={playing ? t('header.pause') : t('header.play')}
-        disabled={!playable || pending}
+        disabled={!playable || pending || playbackStarting}
         data-run={run}
         onAnimationEnd={endRun}
         onClick={onPlay}>
@@ -337,7 +347,7 @@ export function usePlaylistHeader({
     onSkipBack !== undefined &&
     onSkipNext !== undefined;
 
-  const primaryControl = showTransport ? (
+  const transportOrPlay = showTransport ? (
     <div className={styles.playlistHeader__transport}>
       <button
         type="button"
@@ -368,14 +378,36 @@ export function usePlaylistHeader({
     playControl
   );
 
+  const retryControl =
+    onRetryPlayback === undefined ? null : (
+      <button
+        type="button"
+        className={styles.playlistHeader__retry}
+        disabled={playbackStarting}
+        onClick={onRetryPlayback}>
+        <IconAlertTriangle
+          className={styles.playlistHeader__retryIcon}
+          aria-hidden="true"
+          focusable="false"
+        />
+        {playbackStarting
+          ? t('header.retryingPlayback')
+          : t('header.retryPlayback')}
+      </button>
+    );
+
+  const failed = playbackFailed && retryControl !== null;
+
+  const primaryControl = failed ? retryControl : transportOrPlay;
+
   const shuffleControl =
-    onShuffle === undefined ? null : (
+    failed || onShuffle === undefined ? null : (
       <button
         type="button"
         className={styles.playlistHeader__iconBtn}
         aria-pressed={shuffled && current}
         aria-label={t('header.shuffle', { name: playlist.name })}
-        disabled={pending}
+        disabled={pending || playbackStarting}
         onClick={onShuffle}>
         <IconArrowsShuffle
           className={styles.playlistHeader__icon}
@@ -514,10 +546,22 @@ export function usePlaylistHeader({
         ) : null}
       </div>
       <div className={styles.playlistHeader__count}>
-        <span>{playlist.trackCount}</span>
-        <span className={styles.playlistHeader__countUnit}>
-          {trackCountUnit(t, playlist.trackCount)}
-        </span>
+        {partial ? (
+          <span>
+            {t('header.countOf', {
+              count: playlist.trackCount,
+              shown: shownCount,
+              total: playlist.trackCount
+            })}
+          </span>
+        ) : (
+          <>
+            <span>{playlist.trackCount}</span>
+            <span className={styles.playlistHeader__countUnit}>
+              {trackCountUnit(t, playlist.trackCount)}
+            </span>
+          </>
+        )}
       </div>
       {sharedBy === null ? null : (
         <p className={styles.playlistHeader__owner}>

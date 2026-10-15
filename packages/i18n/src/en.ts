@@ -37,6 +37,10 @@ export const en = {
     loadingTracks: 'Loading tracks.',
     readFailed: 'Tracks could not be loaded.',
     noTracks: 'No tracks yet.',
+    loadMore: 'Load more',
+    loadMoreLoading: 'Loading...',
+    loadMoreRetry: 'Try again',
+    playbackFailed: 'Playback could not start: the queue was not loaded.',
     deleteDeferred: 'Deleting playlist',
     removeDeferred: 'Removing track',
     trackFallback: 'Track',
@@ -150,7 +154,13 @@ export const en = {
     trackNext: 'Track next',
     shuffle: 'Shuffle {name}',
     actions: 'More actions for {name}',
-    sharedBy: 'Shared by {name}'
+    sharedBy: 'Shared by {name}',
+    countOf: {
+      one: '{shown} of {total} track',
+      other: '{shown} of {total} tracks'
+    },
+    retryPlayback: 'Retry playback',
+    retryingPlayback: 'Retrying...'
   },
   trackBars: {
     playing: 'Playing',

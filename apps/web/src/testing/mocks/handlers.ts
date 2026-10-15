@@ -6,6 +6,68 @@ import { HttpResponse, http } from 'msw';
  * test exercises the schema parsing, the ordering and the two access levels as
  * well as the render.
  */
+/*
+ * The first playlist's associations, in the playlist's own order. Two stored and
+ * one still pending, so a test has a playable track and a not-yet-playable one to
+ * tell apart. The tracks route pages them and the queue route returns them whole.
+ */
+const PLAYLIST_ONE_TRACKS = [
+  {
+    track: {
+      id: 'track-1',
+      provider: 'youtube',
+      videoId: 'video-1',
+      title: 'Blue In Green',
+      durationSeconds: 337,
+      skipNonMusic: true,
+      thumbnailPath: null,
+      fileStatus: 'stored',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    },
+    origin: 'remote',
+    position: 0
+  },
+  {
+    track: {
+      id: 'track-2',
+      provider: 'youtube',
+      videoId: 'video-2',
+      title: 'Naima',
+      durationSeconds: 273,
+      skipNonMusic: true,
+      thumbnailPath: null,
+      fileStatus: 'stored',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    },
+    origin: 'remote',
+    position: 1
+  },
+  {
+    track: {
+      id: 'track-3',
+      provider: 'youtube',
+      videoId: 'video-3',
+      title: 'Flamenco Sketches',
+      durationSeconds: 565,
+      skipNonMusic: true,
+      thumbnailPath: null,
+      fileStatus: 'pending',
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    },
+    origin: 'remote',
+    position: 2
+  }
+];
+
 export const handlers = [
   http.get('http://localhost:3000/api/v1/playlists', () =>
     HttpResponse.json({
@@ -134,70 +196,19 @@ export const handlers = [
   /*
    * The tracks of the first playlist, in the playlist's own order. Two stored and
    * one still pending, so a test has a playable track and a not-yet-playable one
-   * to tell apart.
+   * to tell apart. The queue route answers the same list, every status, because a
+   * queue is built from the whole association list and filtered on the client.
    */
   http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
     HttpResponse.json({
-      items: [
-        {
-          track: {
-            id: 'track-1',
-            provider: 'youtube',
-            videoId: 'video-1',
-            title: 'Blue In Green',
-            durationSeconds: 337,
-            skipNonMusic: true,
-            thumbnailPath: null,
-            fileStatus: 'stored',
-            sourceStatus: 'available',
-            failureReason: null,
-            createdAt: '2026-09-01T00:00:00.000Z',
-            updatedAt: '2026-09-29T12:00:00.000Z'
-          },
-          origin: 'remote',
-          position: 0
-        },
-        {
-          track: {
-            id: 'track-2',
-            provider: 'youtube',
-            videoId: 'video-2',
-            title: 'Naima',
-            durationSeconds: 273,
-            skipNonMusic: true,
-            thumbnailPath: null,
-            fileStatus: 'stored',
-            sourceStatus: 'available',
-            failureReason: null,
-            createdAt: '2026-09-01T00:00:00.000Z',
-            updatedAt: '2026-09-29T12:00:00.000Z'
-          },
-          origin: 'remote',
-          position: 1
-        },
-        {
-          track: {
-            id: 'track-3',
-            provider: 'youtube',
-            videoId: 'video-3',
-            title: 'Flamenco Sketches',
-            durationSeconds: 565,
-            skipNonMusic: true,
-            thumbnailPath: null,
-            fileStatus: 'pending',
-            sourceStatus: 'available',
-            failureReason: null,
-            createdAt: '2026-09-01T00:00:00.000Z',
-            updatedAt: '2026-09-29T12:00:00.000Z'
-          },
-          origin: 'remote',
-          position: 2
-        }
-      ],
-      total: 3,
+      items: PLAYLIST_ONE_TRACKS,
+      total: PLAYLIST_ONE_TRACKS.length,
       limit: 50,
       offset: 0
     })
+  ),
+  http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
+    HttpResponse.json({ items: PLAYLIST_ONE_TRACKS })
   ),
   /*
    * Retry and remove, so the row's action lane has a route to answer. The retry

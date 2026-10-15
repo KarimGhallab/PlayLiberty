@@ -9,6 +9,7 @@ import {
   AssociationOrigin,
   PlaylistSchema,
   PlaylistSyncStatus,
+  PlaylistTrackListSchema,
   PlaylistTrackSchema,
   ShareLevel,
   TrackFileStatus,
@@ -1317,6 +1318,117 @@ describe('GET /playlists/:id/tracks', () => {
     expect(track?.thumbnailPath).toBeNull();
     expect(track?.durationSeconds).toBeNull();
   });
+});
+
+describe('GET /playlists/:id/queue', () => {
+  it('returns every association in position order, whatever its file status', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: third } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed
+    });
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Pending
+    });
+
+    // Inserted out of position order, so insertion order would fail here.
+    addTrackAt(context.database, playlistId, third, 3);
+    addTrackAt(context.database, playlistId, first, 0);
+    addTrackAt(context.database, playlistId, second, 1);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    const list = PlaylistTrackListSchema.parse(response.json());
+    // Every status is returned, not only the playable ones: the client's
+    // `buildQueue` is the one place the playability rule lives.
+    expect(list.items.map(item => item.track.id)).toEqual([
+      first,
+      second,
+      third
+    ]);
+    expect(list.items.map(item => item.track.fileStatus)).toEqual([
+      TrackFileStatus.Stored,
+      TrackFileStatus.Pending,
+      TrackFileStatus.Failed
+    ]);
+    expect(list.items.map(item => item.position)).toEqual([0, 1, 3]);
+  });
+
+  it('answers a playlist with no associations as an empty list, not an error', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistTrackListSchema.parse(response.json()).items).toEqual([]);
+  });
+
+  it('answers 404 rather than 403 for a playlist the account cannot see', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const response = await get(
+      `/api/v1/playlists/${playlistId}/queue`,
+      stranger.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it('answers 404 for a playlist that does not exist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+
+    const response = await get(
+      `/api/v1/playlists/${randomUUID()}/queue`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it.each([ShareLevel.Read, ShareLevel.Write])(
+    'returns the whole list to a %s collaborator',
+    async level => {
+      context = await createTestContext();
+      const owner = seedAccount(context.database);
+      const { playlistId } = seedPlaylist(context.database, owner.accountId);
+      addTrack(
+        context.database,
+        playlistId,
+        seedTrack(context.database).trackId
+      );
+      const collaborator = seedAccount(context.database);
+      seedShare(context.database, playlistId, collaborator.accountId, {
+        level
+      });
+
+      const response = await get(
+        `/api/v1/playlists/${playlistId}/queue`,
+        collaborator.pangolinUserId
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(PlaylistTrackListSchema.parse(response.json()).items).toHaveLength(
+        1
+      );
+    }
+  );
 });
 
 describe('PATCH /playlists/:id', () => {

@@ -117,21 +117,23 @@ async function seed(page: Page): Promise<void> {
   });
 }
 
-test('the queue a shuffle builds leads with the first stored track and the list draws it', async ({
+test('the queue a shuffle builds leads with a stored track and the list draws it', async ({
   page
 }) => {
   await seed(page);
   await pressShuffle(page);
 
-  /* The first stored track leads the queue, and it is the one sounding. */
+  /* The draw picks a stored track to lead, and it is the one sounding. */
   const playing = currentRow(page);
   await expect(playing).toHaveCount(1);
-  await expect(playing).toHaveText(new RegExp(A.title));
+  const sounding = await soundingTitle(page);
+  expect(STORED.map(entry => entry.title)).toContain(sounding);
 
-  /* The list is drawn in the queue's order, and the failed row stays in its
-   * playlist neighbourhood rather than being promoted or dropped. */
+  /* The list is drawn in the queue's order, led by the sounding track, and the
+   * failed row stays in its playlist neighbourhood rather than being promoted or
+   * dropped. */
   const titles = await rowTitles(page);
-  expect(titles[0]).toBe(A.title);
+  expect(titles[0]).toBe(sounding);
   expect(titles).toContain(FAILED.title);
   expect(new Set(titles)).toEqual(new Set(ENTRIES.map(entry => entry.title)));
 });

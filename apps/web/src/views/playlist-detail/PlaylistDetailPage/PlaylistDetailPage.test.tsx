@@ -90,6 +90,34 @@ function playlistJson(skipNonMusic: boolean) {
   };
 }
 
+/* One association for a tracks page or a queue list, so a paging test states only
+ * its ids, titles and positions. */
+function trackJson(
+  id: string,
+  title: string,
+  position: number,
+  fileStatus = 'stored'
+) {
+  return {
+    track: {
+      id,
+      provider: 'youtube',
+      videoId: `video-${id}`,
+      title,
+      durationSeconds: 200 + position,
+      skipNonMusic: true,
+      thumbnailPath: null,
+      fileStatus,
+      sourceStatus: 'available',
+      failureReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-29T12:00:00.000Z'
+    },
+    origin: 'remote',
+    position
+  };
+}
+
 /*
  * The media-query stub answers one query and delegates every other to the
  * global default, so a test can move the viewport without disturbing the
@@ -240,13 +268,18 @@ describe('PlaylistDetailPage', () => {
       await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
     );
 
-    /* The queue holds the two stored tracks; a fresh shuffled queue starts on the
-     * first stored track, so `Naima` leads and `Blue In Green` follows, while the
-     * pending row joins the group before it. */
     await waitFor(() =>
-      expect(usePlayerStore.getState().queue[0].id).toBe('track-1')
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
     );
 
+    /*
+     * The list is the queue's order, whatever the draw produced: the two stored
+     * rows are the playable tracks in the queue's own sequence, and the pending
+     * row joins the group before it.
+     */
+    const queueTitles = usePlayerStore
+      .getState()
+      .queue.map(track => track.title);
     const titles = screen
       .getAllByRole('button', { name: /^(Play|Pause) / })
       .map(
@@ -255,7 +288,8 @@ describe('PlaylistDetailPage', () => {
           ''
       )
       .filter(title => title !== 'this playlist');
-    expect(titles).toEqual(['Blue In Green', 'Naima']);
+
+    expect(titles).toEqual(queueTitles);
   });
 
   /*
@@ -307,6 +341,10 @@ describe('PlaylistDetailPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
 
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+
     const state = usePlayerStore.getState();
 
     expect(state.queue.map(track => track.title)).toEqual([
@@ -337,8 +375,19 @@ describe('PlaylistDetailPage', () => {
     const shuffledQueue = usePlayerStore
       .getState()
       .queue.map(track => track.id);
+    /* A row other than the one the draw started on, so the press is a move and not
+     * a pause. */
+    const target = usePlayerStore
+      .getState()
+      .queue.find(track => track.id !== usePlayerStore.getState().currentId);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
+    if (target === undefined) {
+      throw new Error('the shuffled queue should hold a second track');
+    }
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: `Play ${target.title}` })
+    );
 
     const state = usePlayerStore.getState();
 
@@ -346,8 +395,151 @@ describe('PlaylistDetailPage', () => {
      * cursor and leaves the order, the mode and the position of every entry. */
     expect(state.queue.map(track => track.id)).toEqual(shuffledQueue);
     expect(state.shuffle).toBe(true);
-    expect(state.currentId).toBe('track-2');
+    expect(state.currentId).toBe(target.id);
     expect(state.isPlaying).toBe(true);
+  });
+
+  /*
+   * The list pages in. The server's total is three and a page is two here, so the
+   * first screen draws two rows and the header reads the window; the control
+   * loads the rest and the header goes back to the standing total.
+   */
+  it('pages the list in and reads the displayed count', async () => {
+    const all = [
+      trackJson('page-1', 'First Page', 0),
+      trackJson('page-2', 'Second Page', 1),
+      trackJson('page-3', 'Third Page', 2)
+    ];
+    server.use(
+      http.get(
+        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        ({ request }) => {
+          const offset = Number(
+            new URL(request.url).searchParams.get('offset') ?? '0'
+          );
+
+          return HttpResponse.json({
+            items: all.slice(offset, offset + 2),
+            total: all.length,
+            limit: 2,
+            offset
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('button', { name: 'Play First Page' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Play Second Page' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Play Third Page' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('2 of 3 tracks')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Play Third Page' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('2 of 3 tracks')).not.toBeInTheDocument();
+  });
+
+  /*
+   * The queue comes from the whole-list read, not from the page on screen: the
+   * list shows one of two tracks and a press still queues both.
+   */
+  it('plays the whole playlist from the whole-list read, not the page', async () => {
+    const all = [
+      trackJson('whole-1', 'Whole One', 0),
+      trackJson('whole-2', 'Whole Two', 1)
+    ];
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
+        HttpResponse.json({
+          items: all.slice(0, 1),
+          total: all.length,
+          limit: 1,
+          offset: 0
+        })
+      ),
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
+        HttpResponse.json({ items: all })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    );
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+    expect(usePlayerStore.getState().queue.map(track => track.id)).toEqual([
+      'whole-1',
+      'whole-2'
+    ]);
+  });
+
+  /*
+   * The queue read behind a press fails, and the header's own play control owns
+   * it: the control becomes the retry, a caption sits under the header, and a
+   * retry recovers.
+   */
+  it('owns a failed queue read on the header control and recovers on retry', async () => {
+    const all = [
+      trackJson('recover-1', 'Recover One', 0),
+      trackJson('recover-2', 'Recover Two', 1)
+    ];
+    let attempts = 0;
+    server.use(
+      http.get(
+        'http://localhost:3000/api/v1/playlists/playlist-1/queue',
+        () => {
+          attempts += 1;
+
+          if (attempts === 1) {
+            return HttpResponse.json(
+              {
+                type: 'about:blank',
+                title: 'Service unavailable',
+                status: 503,
+                detail: 'The queue is unavailable.',
+                code: 'service_unavailable'
+              },
+              { status: 503 }
+            );
+          }
+
+          return HttpResponse.json({ items: all });
+        }
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Retry playback' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Playback could not start: the queue was not loaded.')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry playback' }));
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Retry playback' })
+    ).not.toBeInTheDocument();
   });
 
   it('disables the header next when the playing track is the last', async () => {
@@ -367,7 +559,7 @@ describe('PlaylistDetailPage', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Play Blue In Green' })
     );
-    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Pause Blue In Green' })
@@ -380,7 +572,7 @@ describe('PlaylistDetailPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
     fireEvent.click(
-      screen.getByRole('button', { name: 'Pause this playlist' })
+      await screen.findByRole('button', { name: 'Pause this playlist' })
     );
 
     expect(usePlayerStore.getState().isPlaying).toBe(false);

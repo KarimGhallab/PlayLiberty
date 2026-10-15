@@ -41,6 +41,22 @@ function clampVolume(volume: number): number {
 }
 
 /*
+ * A random entry of a queue, or undefined when it is empty. It is the draw the
+ * shuffle spends on which track leads: pressing shuffle is asking for a new
+ * arrangement and a new start, so the leader is drawn rather than taken from
+ * wherever the playhead already stands.
+ */
+export function randomTrack(
+  queue: readonly PlayerTrack[]
+): PlayerTrack | undefined {
+  if (queue.length === 0) {
+    return undefined;
+  }
+
+  return queue[Math.floor(Math.random() * queue.length)];
+}
+
+/*
  * Fisher-Yates over every track but the one that leads the result. The leading
  * track is the one being played, or the first stored one when a fresh queue is
  * opened, and it is hoisted to the front rather than left where the shuffle
@@ -322,18 +338,30 @@ export const usePlayerStore = create<PlayerState>()(set => ({
 
       /*
        * Shuffle reorders the queue in place and its answer is the queue itself.
-       * Turning it on hoists the track being played to the front, so the press
-       * keeps the music where it stands and the transport is on the first entry;
-       * turning it off puts the queue back in the playlist's own order, which is
-       * why that order is kept beside it.
+       * Turning it on draws a new arrangement and a new start: a random entry
+       * leads, the rest scatter behind it, and the playhead moves to that entry,
+       * because the press asked for a fresh shuffle rather than a re-arrangement
+       * around the track already playing. Turning it off puts the queue back in
+       * the playlist's own order and leaves the playhead where it stands, which
+       * is why that order is kept beside the queue.
        */
       if (!shuffle) {
         return { shuffle, queue: [...state.sourceQueue] };
       }
 
+      const leader = randomTrack(state.queue);
+
+      if (leader === undefined) {
+        return { shuffle };
+      }
+
       return {
         shuffle,
-        queue: shuffledWithLeader(state.queue, state.currentId)
+        queue: shuffledWithLeader(state.queue, leader.id),
+        currentId: leader.id,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: true
       };
     }),
   clearSeek: () => set({ seekTo: null }),

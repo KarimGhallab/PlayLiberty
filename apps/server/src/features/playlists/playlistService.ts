@@ -7,12 +7,12 @@ import type {
   PlaylistTrack
 } from '@playliberty/contracts';
 
+import type { Entry } from '../../shared/access/entry.js';
 import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
 } from '../../shared/access/entry.js';
-import type { Entry } from '../../shared/access/entry.js';
 import {
   playlistVisibleTo,
   resolvePlaylistAccessMany,
@@ -463,4 +463,38 @@ export function listPlaylistTracksForAccount(
   }
 
   return { outcome: PlaylistOutcome.Ok, page: entry.value };
+}
+
+export type ReadPlaylistQueueResult =
+  | { outcome: PlaylistOutcome.Ok; items: PlaylistTrack[] }
+  | { outcome: PlaylistOutcome.NotFound };
+
+export function listPlaylistQueueForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string
+): ReadPlaylistQueueResult {
+  const entry = playlistEntry(
+    database,
+    playlistId,
+    accountId,
+    AccessNeed.Read,
+    () => {
+      const rows = database.db
+        .select({ association: associations, track: tracks })
+        .from(associations)
+        .innerJoin(tracks, eq(associations.trackId, tracks.id))
+        .where(eq(associations.playlistId, playlistId))
+        .orderBy(asc(associations.position), asc(sql`${associations}.rowid`))
+        .all();
+
+      return rows.map(toPlaylistTrackView);
+    }
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
+    return { outcome: PlaylistOutcome.NotFound };
+  }
+
+  return { outcome: PlaylistOutcome.Ok, items: entry.value };
 }

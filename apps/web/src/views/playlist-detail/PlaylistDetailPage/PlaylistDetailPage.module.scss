@@ -109,16 +109,49 @@
     gap: var(--space-6);
   }
 
-  &__side {
+  /* The left column is pinned while the list scrolls, so the playlist stays in
+   * view as its own tracks go by. A column taller than the viewport scrolls
+   * inside itself, so nothing is pinned out of reach; the 97px is the docked
+   * player bar, which overlays the foot of the column. */
+  &__left {
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
     width: 320px;
     flex-shrink: 0;
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100dvh - 97px);
+    overflow-y: auto;
   }
 
-  /* The one state component under the header. It owns the gap above it, so the
-   * state starts the same distance from the header at either arrangement. */
+  /* The state blocks under the header: the skip setting and the one run state.
+   * They are their own group so the mobile arrangement can take the header out of
+   * the column without taking them with it. */
+  &__side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  /* The queue read behind a press failed. It sits under the header, which owns
+   * the retry, so the sentence and the control are read together. */
+  &__playback-failed {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
+  /* The one state component under the header: the sync error or the summary,
+   * never both. Its distance from the block above it is the side's own gap, so it
+   * carries no margin. */
   &__state {
     display: flex;
     flex-direction: column;
@@ -160,16 +193,27 @@
       padding: var(--space-2) 0 0 0;
     }
 
-    /* One column. The side stops being a fixed 320px and takes the whole frame,
-     * so the header's own row fills it and the state block sits under it rather
-     * than beside the tracks. The side's own --space-5 gap is the distance the
-     * design puts between the header and the state, so nothing is added here. */
+    /* One column. The left column stops being a box of its own, so its two parts
+     * join the page's flow: the header is pinned against the whole scroll rather
+     * than against the short column, which is what let it come unstuck as the
+     * list went by, and the state blocks scroll away under it. The header carries
+     * the page's own ground so the rows pass beneath rather than through. */
     &__columns {
       display: block;
     }
 
-    &__side {
-      width: auto;
+    &__left {
+      display: contents;
+    }
+
+    &__header {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+      background: var(--bg);
+      /* The gap the dissolved column held between the header and the blocks under
+       * it. */
+      margin-bottom: var(--space-5);
     }
 
     /* The list is full width under the header, with the same 20px the side uses

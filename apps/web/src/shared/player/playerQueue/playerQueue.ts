@@ -1,7 +1,7 @@
 import type { Playlist, PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 
-import { usePlayerStore } from '../playerStore/playerStore';
+import { randomTrack, usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 
 /*
@@ -43,9 +43,11 @@ export function buildQueue(
 /*
  * Build one playlist's queue and start it. `startTrackId` is the track to begin
  * on, or null for the first playable one; `shuffle` is the mode the new queue is
- * drawn in. Returns false when there is nothing to play, which is the refusal the
- * shuffle control reports and the detail's controls never reach, because they
- * already hold a list.
+ * drawn in, and a shuffled queue with no named track begins on a random playable
+ * one, because the press asked for a shuffle and not for the top of the list.
+ * Returns false when there is nothing to play, which is the refusal the shuffle
+ * control reports and the detail's controls never reach, because they already
+ * hold a list.
  */
 export function startPlaylistQueue(
   playlist: Pick<Playlist, 'id' | 'name'>,
@@ -54,7 +56,8 @@ export function startPlaylistQueue(
   shuffle = false
 ): boolean {
   const queue = buildQueue(tracks, playlist);
-  const start = startTrackId ?? queue[0]?.id;
+  const start =
+    startTrackId ?? (shuffle ? randomTrack(queue)?.id : queue[0]?.id);
 
   if (start === undefined || !queue.some(track => track.id === start)) {
     return false;

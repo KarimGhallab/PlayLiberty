@@ -35,6 +35,7 @@ import {
 import {
   PlaylistOutcome,
   deletePlaylistForAccount,
+  listPlaylistQueueForAccount,
   listPlaylistTracksForAccount,
   listPlaylistsForAccount,
   readPlaylistForAccount,
@@ -139,6 +140,27 @@ export function registerPlaylistRoutes(
 
       if (result.outcome === PlaylistOutcome.Ok) {
         return reply.send(result.page);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  app.get<{ Params: { id: string } }>(
+    '/playlists/:id/queue',
+    async (request, reply) => {
+      const result = listPlaylistQueueForAccount(
+        context.database,
+        request.params.id,
+        request.account.id
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        return reply.send({ items: result.items });
       }
 
       return exhaust(result);

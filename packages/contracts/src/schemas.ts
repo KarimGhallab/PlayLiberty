@@ -95,6 +95,10 @@ export const PlaylistTrackSchema = z.object({
   position: z.number().int().nonnegative()
 });
 
+export const PlaylistTrackListSchema = z.object({
+  items: z.array(PlaylistTrackSchema)
+});
+
 export const ShareSchema = z.object({
   accountId: identifier,
   account: AccountSummarySchema,
