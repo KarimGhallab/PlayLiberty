@@ -345,4 +345,30 @@ describe('the playlist and track events', () => {
       { type: LiveEventType.TrackChanged, playlistIds: [playlistA] }
     ]);
   });
+
+  it('publishes nothing when a playlist is pinned, because a pin is not the playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const collaborator = seedAccount(context.database, {
+      pangolinUserId: 'collaborator-1'
+    });
+    seedShare(context.database, playlistId, collaborator.accountId);
+    const ownerEvents = collect(owner.accountId);
+    const collaboratorEvents = collect(collaborator.accountId);
+
+    const response = await request(
+      'PATCH',
+      `/api/v1/playlists/${playlistId}/pin`,
+      'owner-1',
+      { pinned: true }
+    );
+
+    expect(response.statusCode).toBe(200);
+    // A pin is the account's own placement: the playlist did not change, so
+    // nobody is told to refetch it, and the acting client invalidates its own
+    // gallery instead.
+    expect(ownerEvents).toEqual([]);
+    expect(collaboratorEvents).toEqual([]);
+  });
 });

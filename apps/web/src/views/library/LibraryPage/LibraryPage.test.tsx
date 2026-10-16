@@ -73,6 +73,7 @@ const newPlaylist = {
   sort: 'playlist',
   access: 'owner',
   hasShares: false,
+  pinned: false,
   counts: { ...EMPTY_COUNTS, stored: 0 },
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z'
@@ -97,6 +98,7 @@ function ownedItem(id: string, name: string) {
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    pinned: false,
     counts: { ...EMPTY_COUNTS, stored: 1 },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
@@ -122,6 +124,7 @@ const baseItems = [
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    pinned: false,
     counts: { ...EMPTY_COUNTS, stored: 1 },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
@@ -443,6 +446,7 @@ describe('LibraryPage', () => {
                 sort: 'playlist',
                 access: 'owner',
                 hasShares: false,
+                pinned: false,
                 counts: { ...EMPTY_COUNTS, stored: 1 },
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-29T12:00:00.000Z'
@@ -461,6 +465,7 @@ describe('LibraryPage', () => {
                 sort: 'playlist',
                 access: 'read',
                 hasShares: false,
+                pinned: false,
                 counts: { ...EMPTY_COUNTS, stored: 4 },
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-28T12:00:00.000Z'
@@ -488,6 +493,7 @@ describe('LibraryPage', () => {
               sort: 'playlist',
               access: 'owner',
               hasShares: false,
+              pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 1 },
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'

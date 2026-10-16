@@ -165,6 +165,31 @@ export const shares = sqliteTable(
   ]
 );
 
+/*
+ * An account's placement of a playlist in its own gallery. The pair is the key
+ * and the row's existence is the pin, so pinning refreshes `pinned_at` rather
+ * than inserting a second row and unpinning deletes it. It follows the share and
+ * the suppression and not the playlist: created and deleted, never edited, so it
+ * carries no update timestamp. Both foreign keys cascade, and the account index
+ * serves the order the section is read in.
+ */
+export const playlistPins = sqliteTable(
+  'playlist_pin',
+  {
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    playlistId: text('playlist_id')
+      .notNull()
+      .references(() => playlists.id, { onDelete: 'cascade' }),
+    pinnedAt: text('pinned_at').notNull().$defaultFn(createdAt)
+  },
+  table => [
+    primaryKey({ columns: [table.accountId, table.playlistId] }),
+    index('playlist_pin_account_idx').on(table.accountId, table.pinnedAt)
+  ]
+);
+
 export const syncRuns = sqliteTable(
   'sync_run',
   {
@@ -191,4 +216,5 @@ export type PlaylistRow = typeof playlists.$inferSelect;
 export type TrackRow = typeof tracks.$inferSelect;
 export type AssociationRow = typeof associations.$inferSelect;
 export type ShareRow = typeof shares.$inferSelect;
+export type PlaylistPinRow = typeof playlistPins.$inferSelect;
 export type SyncRunRow = typeof syncRuns.$inferSelect;

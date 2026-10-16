@@ -87,6 +87,7 @@ function playlistJson(skipNonMusic: boolean) {
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    pinned: false,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   };
@@ -1146,6 +1147,7 @@ describe('PlaylistDetailPage', () => {
           sort: 'playlist',
           access: 'read',
           hasShares: false,
+          pinned: false,
           createdAt: '2026-09-01T00:00:00.000Z',
           updatedAt: '2026-09-29T12:00:00.000Z'
         })
@@ -1232,6 +1234,7 @@ describe('PlaylistDetailPage', () => {
               sort: 'playlist',
               access: 'owner',
               hasShares: false,
+              pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 3 },
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
@@ -1250,6 +1253,7 @@ describe('PlaylistDetailPage', () => {
               sort: 'playlist',
               access: 'owner',
               hasShares: false,
+              pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 3 },
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'

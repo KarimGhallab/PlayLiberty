@@ -111,6 +111,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     sort: PlaylistSort.Playlist,
     access: 'owner',
     hasShares: false,
+    pinned: false,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z',
     ...overrides

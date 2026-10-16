@@ -28,17 +28,15 @@ function names(database: DatabaseHandle, query: string): string[] {
  * runMigrations resolves it from the compiled file's depth rather than from
  * config. This is the one test that proves the folder is found and applied: it
  * starts from an empty database, runs the real migrator, and checks the schema
- * the initial migration carries.
+ * the folder leaves behind.
  *
- * There is a single migration because the app is not live: while no database is
- * deployed there is no earlier state to migrate from and no backfill to
- * exercise, so a schema change regenerates the initial migration instead of
- * appending to it. The columns the schema carries are still asserted, because
- * that is what proves a regenerated initial migration creates the whole schema
- * rather than the first draft.
+ * The whole table list is asserted, because from empty the schema's shape is
+ * what matters and a migration that created nothing would leave the list short.
+ * The columns the schema carries are asserted for the same reason: they prove
+ * the folder creates the whole schema and not its first draft.
  */
 describe('runMigrations', () => {
-  it('applies the initial migration to an empty database', async () => {
+  it('applies the migrations to an empty database', async () => {
     const root = await mkdtemp(join(tmpdir(), 'playliberty-migration-'));
     directory = root;
 
@@ -56,6 +54,7 @@ describe('runMigrations', () => {
       'account',
       'association',
       'playlist',
+      'playlist_pin',
       'share',
       'suppression',
       'sync_run',

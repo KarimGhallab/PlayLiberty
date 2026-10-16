@@ -31,6 +31,7 @@ import type {
 } from '../../platform/database/schema.js';
 import {
   associations,
+  playlistPins,
   playlists,
   tracks
 } from '../../platform/database/schema.js';
@@ -116,6 +117,7 @@ function toPlaylistView(
   row: PlaylistRow,
   access: PlaylistAccess,
   hasShares: boolean,
+  pinned: boolean,
   coverTrackId: string | null
 ): Playlist {
   return {
@@ -132,9 +134,33 @@ function toPlaylistView(
     sort: row.sort ?? PlaylistSort.Playlist,
     access,
     hasShares,
+    pinned,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   };
+}
+
+/*
+ * Whether the account has this playlist in its own gallery. The row's existence
+ * is the pin, so one lookup answers the boolean the playlist carries.
+ */
+function isPinned(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string
+): boolean {
+  return (
+    database.db
+      .select({ playlistId: playlistPins.playlistId })
+      .from(playlistPins)
+      .where(
+        and(
+          eq(playlistPins.accountId, accountId),
+          eq(playlistPins.playlistId, playlistId)
+        )
+      )
+      .get() !== undefined
+  );
 }
 
 /*
@@ -144,6 +170,7 @@ function toPlaylistView(
 function readPlaylist(
   database: DatabaseHandle,
   playlistId: string,
+  accountId: string,
   access: PlaylistAccess
 ): Playlist | null {
   const row = database.db
@@ -160,6 +187,7 @@ function readPlaylist(
     row,
     access,
     sharedPlaylistIds(database, [playlistId]).has(playlistId),
+    isPinned(database, playlistId, accountId),
     coverTrackId(database, playlistId)
   );
 }
@@ -191,19 +219,38 @@ export function listPlaylistsForAccount(
   const visible = playlistVisibleTo(database, accountId);
 
   const rows = database.db
-    .select()
+    .select({ playlist: playlists, pinnedAt: playlistPins.pinnedAt })
     .from(playlists)
+    /*
+     * The account's own pins first, most recently pinned first, then everything
+     * else in creation order. The pin is a left join, so a playlist nobody has
+     * pinned comes through with a null instant and lands after every pin.
+     */
+    .leftJoin(
+      playlistPins,
+      and(
+        eq(playlistPins.playlistId, playlists.id),
+        eq(playlistPins.accountId, accountId)
+      )
+    )
     .where(visible)
     /*
      * Qualified, because the rowid fallback is ambiguous the moment a second table
-     * is in play, and the share table carries a rowid of its own. Two runs can be
-     * created inside the same millisecond, so created_at alone would let the same
-     * request return a different order on two calls.
+     * is in play, and the share and pin tables each carry a rowid of their own. Two
+     * runs can be created inside the same millisecond, so created_at alone would
+     * let the same request return a different order on two calls.
      */
-    .orderBy(desc(playlists.createdAt), desc(sql`${playlists}.rowid`))
+    .orderBy(
+      sql`${playlistPins.pinnedAt} is null`,
+      desc(playlistPins.pinnedAt),
+      desc(playlists.createdAt),
+      desc(sql`${playlists}.rowid`)
+    )
     .limit(query.limit)
     .offset(query.offset)
     .all();
+
+  const playlistRows = rows.map(row => row.playlist);
 
   // The access map cannot be missing a playlist the visibility filter just
   // returned, so the `?? 'owner'` fallback is unreachable; it is there because the
@@ -211,20 +258,20 @@ export function listPlaylistsForAccount(
   // unreachable branch.
   const accessById = resolvePlaylistAccessMany(
     database,
-    rows.map(row => row.id),
+    playlistRows.map(row => row.id),
     accountId
   );
   const sharedIds = sharedPlaylistIds(
     database,
-    rows.map(row => row.id)
+    playlistRows.map(row => row.id)
   );
   const covers = coverTrackIds(
     database,
-    rows.map(row => row.id)
+    playlistRows.map(row => row.id)
   );
   const countsByPlaylist = fileStatusCountsByPlaylist(
     database,
-    rows.map(row => row.id)
+    playlistRows.map(row => row.id)
   );
 
   const counted = database.db
@@ -234,11 +281,12 @@ export function listPlaylistsForAccount(
     .all();
 
   return {
-    items: rows.map(playlist => ({
+    items: rows.map(({ playlist, pinnedAt }) => ({
       ...toPlaylistView(
         playlist,
         accessById.get(playlist.id) ?? 'owner',
         sharedIds.has(playlist.id),
+        pinnedAt !== null,
         covers.get(playlist.id) ?? null
       ),
       counts: countsByPlaylist.get(playlist.id) ?? noCounts()
@@ -261,7 +309,7 @@ export function readPlaylistForAccount(
    */
   return toReadPlaylistResult(
     playlistEntry(database, playlistId, accountId, AccessNeed.Read, access =>
-      readPlaylist(database, playlistId, access)
+      readPlaylist(database, playlistId, accountId, access)
     )
   );
 }
@@ -286,7 +334,7 @@ export function renamePlaylistForAccount(
         .where(eq(playlists.id, playlistId))
         .run();
 
-      return readPlaylist(database, playlistId, access);
+      return readPlaylist(database, playlistId, accountId, access);
     })
   );
 }
@@ -310,7 +358,7 @@ export function updateSkipNonMusicForAccount(
         .where(eq(playlists.id, playlistId))
         .run();
 
-      return readPlaylist(database, playlistId, access);
+      return readPlaylist(database, playlistId, accountId, access);
     })
   );
 }
@@ -336,15 +384,58 @@ export function updateSortForAccount(
         .where(eq(playlists.id, playlistId))
         .run();
 
-      return readPlaylist(database, playlistId, access);
+      return readPlaylist(database, playlistId, accountId, access);
     })
   );
 }
 
 /*
- * The associations and shares go with the row through the foreign key cascade,
- * bypassing the association service's rule that an association is only ever
- * written through it; that is safe because the only stored count needing an
+ * Placing a playlist in the account's own gallery, or taking it out again. The
+ * row's existence is the pin, so pinning upserts and refreshes the instant rather
+ * than failing, and unpinning deletes; the check is the read need, because the
+ * handler writes the account's own state and never the playlist, so a read
+ * collaborator may pin a playlist they can only read. The view is read back
+ * through the same helper every mutation answers with, so a pin's own answer
+ * carries the flag it just wrote.
+ */
+export function updatePinForAccount(
+  database: DatabaseHandle,
+  playlistId: string,
+  accountId: string,
+  pinned: boolean
+): ReadPlaylistResult {
+  return toReadPlaylistResult(
+    playlistEntry(database, playlistId, accountId, AccessNeed.Read, access => {
+      if (pinned) {
+        database.db
+          .insert(playlistPins)
+          .values({ accountId, playlistId })
+          .onConflictDoUpdate({
+            target: [playlistPins.accountId, playlistPins.playlistId],
+            set: { pinnedAt: new Date().toISOString() }
+          })
+          .run();
+      } else {
+        database.db
+          .delete(playlistPins)
+          .where(
+            and(
+              eq(playlistPins.accountId, accountId),
+              eq(playlistPins.playlistId, playlistId)
+            )
+          )
+          .run();
+      }
+
+      return readPlaylist(database, playlistId, accountId, access);
+    })
+  );
+}
+
+/*
+ * The associations, shares and pins go with the row through the foreign key
+ * cascade, bypassing the association service's rule that an association is only
+ * ever written through it; that is safe because the only stored count needing an
  * adjustment is this playlist's own, and that row is going. The media is left to
  * the weekly prune, which reclaims a file once no association names its track, so
  * the delete never waits on the disk.

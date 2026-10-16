@@ -81,6 +81,7 @@ export const PlaylistSchema = z.object({
   sort: z.enum(PlaylistSort),
   access: PlaylistAccessSchema,
   hasShares: z.boolean(),
+  pinned: z.boolean(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime
 });
@@ -210,6 +211,10 @@ export const SkipNonMusicInputSchema = z.object({
 
 export const SortPlaylistInputSchema = z.object({
   sort: z.enum(PlaylistSort)
+});
+
+export const PinPlaylistInputSchema = z.object({
+  pinned: z.boolean()
 });
 
 export const SharePlaylistInputSchema = z.object({

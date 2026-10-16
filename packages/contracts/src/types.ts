@@ -8,6 +8,7 @@ import {
   CreatePlaylistInputSchema,
   LiveEventSchema,
   PageQuerySchema,
+  PinPlaylistInputSchema,
   PlaylistAccessSchema,
   PlaylistSchema,
   PlaylistTrackSchema,
@@ -46,6 +47,7 @@ export type RenamePlaylistInput = z.infer<typeof RenamePlaylistInputSchema>;
 export type SharePlaylistInput = z.infer<typeof SharePlaylistInputSchema>;
 export type SkipNonMusicInput = z.infer<typeof SkipNonMusicInputSchema>;
 export type SortPlaylistInput = z.infer<typeof SortPlaylistInputSchema>;
+export type PinPlaylistInput = z.infer<typeof PinPlaylistInputSchema>;
 export type PageQuery = z.infer<typeof PageQuerySchema>;
 
 export interface Page<T> {

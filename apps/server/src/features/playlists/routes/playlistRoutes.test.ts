@@ -24,6 +24,7 @@ import { createTestContext } from '../../../app/testing/createTestContext.js';
 import {
   associate,
   seedAccount,
+  seedPin,
   seedPlaylist,
   seedShare,
   seedTrack
@@ -31,6 +32,7 @@ import {
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import {
+  playlistPins,
   playlists,
   shares,
   suppressions,
@@ -213,6 +215,39 @@ function hasSuppression(playlistId: string, videoId: string): boolean {
       )
       .get() !== undefined
   );
+}
+
+/* The pin rows one playlist holds, so a cascade or a second pin can be held
+ * against the table rather than inferred from an answer. */
+function pinCount(playlistId: string): number {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const row = context.database.db
+    .select({ total: sql<number>`count(*)` })
+    .from(playlistPins)
+    .where(eq(playlistPins.playlistId, playlistId))
+    .get();
+
+  return row?.total ?? 0;
+}
+
+function selectPin(accountId: string, playlistId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.database.db
+    .select()
+    .from(playlistPins)
+    .where(
+      and(
+        eq(playlistPins.accountId, accountId),
+        eq(playlistPins.playlistId, playlistId)
+      )
+    )
+    .get();
 }
 
 describe('GET /playlists', () => {
@@ -442,6 +477,93 @@ describe('GET /playlists', () => {
       'Playlist 1'
     ]);
     expect(secondPage.items.map(item => item.name)).toEqual(['Playlist 0']);
+  });
+
+  it("returns the account's pins first, most recently pinned first, then the rest in creation order", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const first = seedPlaylist(context.database, owner.accountId, {
+      name: 'Pinned first',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    const second = seedPlaylist(context.database, owner.accountId, {
+      name: 'Pinned second',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Unpinned newer',
+      createdAt: '2026-09-04T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Unpinned older',
+      createdAt: '2026-09-03T10:00:00.000Z'
+    });
+    // Pinned first, then second, so the section's order is the instant and not
+    // the creation date, which is the reverse.
+    seedPin(context.database, owner.accountId, first.playlistId, {
+      pinnedAt: '2026-10-01T10:00:00.000Z'
+    });
+    seedPin(context.database, owner.accountId, second.playlistId, {
+      pinnedAt: '2026-10-02T10:00:00.000Z'
+    });
+
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+
+    expect(page.items.map(item => item.name)).toEqual([
+      'Pinned second',
+      'Pinned first',
+      'Unpinned newer',
+      'Unpinned older'
+    ]);
+    /* The flag rides on every item, pinned or not, so the client groups on it
+     * rather than sorting for itself. */
+    expect(page.items.map(item => item.pinned)).toEqual([
+      true,
+      true,
+      false,
+      false
+    ]);
+    // A pin moves a row within the page rather than adding one.
+    expect(page.total).toBe(4);
+  });
+
+  it('pages across the pins and the rest in the same order', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const pinned = seedPlaylist(context.database, owner.accountId, {
+      name: 'Pinned',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Newest',
+      createdAt: '2026-09-03T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Middle',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    seedPin(context.database, owner.accountId, pinned.playlistId, {
+      pinnedAt: '2026-10-01T10:00:00.000Z'
+    });
+
+    const firstPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=2&offset=0', owner.pangolinUserId)
+      ).json()
+    );
+    const secondPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=2&offset=2', owner.pangolinUserId)
+      ).json()
+    );
+
+    expect(firstPage.items.map(item => item.name)).toEqual([
+      'Pinned',
+      'Newest'
+    ]);
+    expect(secondPage.items.map(item => item.name)).toEqual(['Middle']);
   });
 
   it('lists a playlist shared to the account alongside the ones it owns', async () => {
@@ -2275,6 +2397,279 @@ describe('PATCH /playlists/:id/sort', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+});
+
+/*
+ * The pin is the account's own placement, so the check is the read need: a read
+ * collaborator may pin a playlist it can only read, and one account's pin never
+ * moves another account's gallery. The route answers the updated playlist, so
+ * every assertion reads the flag the write just wrote.
+ */
+describe('PATCH /playlists/:id/pin', () => {
+  it('pins for the account and returns the playlist flagged', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      owner.pangolinUserId,
+      { pinned: true }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).pinned).toBe(true);
+    expect(selectPin(owner.accountId, playlistId)?.playlistId).toBe(playlistId);
+  });
+
+  it('lets a read collaborator pin and unpin a playlist it can only read', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const pinned = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      reader.pangolinUserId,
+      { pinned: true }
+    );
+    expect(pinned.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(pinned.json()).pinned).toBe(true);
+
+    const unpinned = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      reader.pangolinUserId,
+      { pinned: false }
+    );
+    expect(unpinned.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(unpinned.json()).pinned).toBe(false);
+    expect(pinCount(playlistId)).toBe(0);
+  });
+
+  it('refreshes the instant on a second pin rather than failing', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    seedPin(context.database, owner.accountId, playlistId, {
+      pinnedAt: '2020-01-01T00:00:00.000Z'
+    });
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      owner.pangolinUserId,
+      { pinned: true }
+    );
+
+    expect(response.statusCode).toBe(200);
+    // The pair is the key, so the second pin is the same row with a new instant.
+    expect(pinCount(playlistId)).toBe(1);
+    expect(selectPin(owner.accountId, playlistId)?.pinnedAt).not.toBe(
+      '2020-01-01T00:00:00.000Z'
+    );
+  });
+
+  it('unpins and removes the row', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    seedPin(context.database, owner.accountId, playlistId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      owner.pangolinUserId,
+      { pinned: false }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).pinned).toBe(false);
+    expect(pinCount(playlistId)).toBe(0);
+  });
+
+  it('answers 404 for a stranger and a missing playlist in both directions', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const attempts: [string, string][] = [
+      [playlistId, stranger.pangolinUserId],
+      [randomUUID(), owner.pangolinUserId]
+    ];
+
+    for (const [targetId, pangolinUserId] of attempts) {
+      for (const pinned of [true, false]) {
+        const response = await patch(
+          `/api/v1/playlists/${targetId}/pin`,
+          pangolinUserId,
+          { pinned }
+        );
+
+        expect(response.statusCode).toBe(404);
+        expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+      }
+    }
+  });
+
+  it('refuses a changed body that is not a boolean', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const attempts: Record<string, unknown>[] = [{ pinned: 'yes' }, {}];
+
+    for (const payload of attempts) {
+      const response = await patch(
+        `/api/v1/playlists/${playlistId}/pin`,
+        owner.pangolinUserId,
+        payload
+      );
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: 'validation_failed' });
+    }
+  });
+
+  it('refuses a request without the client header', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const response = await context.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/playlists/${playlistId}/pin`,
+      headers: { 'remote-user': owner.pangolinUserId },
+      payload: { pinned: true }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+
+  it("keeps one account's pin out of another's gallery and lets both pin the same shared playlist", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const reader = seedAccount(context.database);
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Mine',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    const { playlistId: sharedId } = seedPlaylist(
+      context.database,
+      owner.accountId,
+      { name: 'Shared', createdAt: '2026-09-02T10:00:00.000Z' }
+    );
+    seedShare(context.database, sharedId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const readerPin = await patch(
+      `/api/v1/playlists/${sharedId}/pin`,
+      reader.pangolinUserId,
+      { pinned: true }
+    );
+    expect(readerPin.statusCode).toBe(200);
+
+    const readerPage = PageSchema.parse(
+      (await get('/api/v1/playlists', reader.pangolinUserId)).json()
+    );
+    expect(readerPage.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Shared', true]
+    ]);
+
+    /* The owner's gallery is exactly as it was: the same creation order and
+     * nothing pinned, which is the whole reason the row is per account. */
+    const ownerPage = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+    expect(ownerPage.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Shared', false],
+      ['Mine', false]
+    ]);
+
+    const ownerPin = await patch(
+      `/api/v1/playlists/${sharedId}/pin`,
+      owner.pangolinUserId,
+      { pinned: true }
+    );
+    expect(ownerPin.statusCode).toBe(200);
+
+    const ownerAfter = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+    expect(ownerAfter.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Shared', true],
+      ['Mine', false]
+    ]);
+    expect(pinCount(sharedId)).toBe(2);
+  });
+
+  it('takes its pins with it when the playlist is deleted', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+    seedPin(context.database, owner.accountId, playlistId);
+    seedPin(context.database, reader.accountId, playlistId);
+    expect(pinCount(playlistId)).toBe(2);
+
+    const response = await del(
+      `/api/v1/playlists/${playlistId}`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(pinCount(playlistId)).toBe(0);
+  });
+
+  it('hides a pin when a share is revoked and returns it when the share is granted again', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      name: 'Shared'
+    });
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    await patch(`/api/v1/playlists/${playlistId}/pin`, reader.pangolinUserId, {
+      pinned: true
+    });
+
+    context.database.db
+      .delete(shares)
+      .where(
+        and(
+          eq(shares.playlistId, playlistId),
+          eq(shares.accountId, reader.accountId)
+        )
+      )
+      .run();
+
+    const hidden = PageSchema.parse(
+      (await get('/api/v1/playlists', reader.pangolinUserId)).json()
+    );
+    expect(hidden.items).toEqual([]);
+    // The placement is hidden, not swept: the row is still there to return.
+    expect(pinCount(playlistId)).toBe(1);
+
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const restored = PageSchema.parse(
+      (await get('/api/v1/playlists', reader.pangolinUserId)).json()
+    );
+    expect(restored.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Shared', true]
+    ]);
   });
 });
 

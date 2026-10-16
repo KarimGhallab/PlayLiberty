@@ -9,6 +9,7 @@ export type {
   LiveEvent,
   Page,
   PageQuery,
+  PinPlaylistInput,
   Playlist,
   PlaylistAccess,
   PlaylistTrack,

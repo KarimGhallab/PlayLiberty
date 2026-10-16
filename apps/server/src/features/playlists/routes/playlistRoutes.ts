@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import {
   CreatePlaylistInputSchema,
   PageQuerySchema,
+  PinPlaylistInputSchema,
   PlaylistNotFoundReason,
   PlaylistTracksQuerySchema,
   ProblemCode,
@@ -43,6 +44,7 @@ import {
   readPlaylistForAccount,
   removeTrackForAccount,
   renamePlaylistForAccount,
+  updatePinForAccount,
   updateSkipNonMusicForAccount,
   updateSortForAccount
 } from '../playlistService.js';
@@ -269,6 +271,43 @@ export function registerPlaylistRoutes(
 
       if (result.outcome === PlaylistOutcome.Ok) {
         publishPlaylistChanged(context, request.params.id);
+        return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  /*
+   * Placing a playlist in the account's own gallery. The check is the read need
+   * and not write: a pin is the account's own placement and the handler writes
+   * that account's state and never the playlist, so a read collaborator may pin a
+   * playlist they can only read. A stranger, a missing playlist and one the
+   * account cannot see are one not-found. No event is published: a pin is not a
+   * change to the playlist, and the playlist-changed event would refetch every
+   * account that can see it, whose own gallery did not move.
+   */
+  app.patch<{ Params: { id: string } }>(
+    '/playlists/:id/pin',
+    async (request, reply) => {
+      const parsed = parseBody(PinPlaylistInputSchema, request.body);
+
+      if (!parsed.success) {
+        return sendValidationFailed(reply, parsed.issues);
+      }
+
+      const result = updatePinForAccount(
+        context.database,
+        request.params.id,
+        request.account.id,
+        parsed.data.pinned
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
         return reply.send(result.playlist);
       }
 

@@ -19,6 +19,7 @@ import type { DatabaseHandle } from '../../platform/database/client.js';
 import {
   accounts,
   associations,
+  playlistPins,
   playlists,
   shares,
   syncRuns,
@@ -104,6 +105,10 @@ export interface AssociateOptions {
 
 export interface SeedShareOptions {
   level?: ShareLevel;
+}
+
+export interface SeedPinOptions {
+  pinnedAt?: string;
 }
 
 export interface SeedSyncRunOptions {
@@ -237,6 +242,27 @@ export function seedShare(
       playlistId,
       accountId,
       level: options.level ?? ShareLevel.Read
+    })
+    .run();
+}
+
+/*
+ * One account's pin on one playlist. The instant is the order the gallery reads
+ * the section in, so a test that fixes it can assert the order rather than the
+ * wall clock; the default is now, which is the order a live pin would take.
+ */
+export function seedPin(
+  database: DatabaseHandle,
+  accountId: string,
+  playlistId: string,
+  options: SeedPinOptions = {}
+): void {
+  database.db
+    .insert(playlistPins)
+    .values({
+      accountId,
+      playlistId,
+      pinnedAt: options.pinnedAt ?? new Date().toISOString()
     })
     .run();
 }
