@@ -1,3 +1,16 @@
+/*
+ * The product's one family, self-hosted, so the private instance makes no
+ * external request to draw its own text. `swap` rather than the specimens'
+ * `block`: the app must never render invisible text on a first visit.
+ */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../assets/fonts/plex-sans-var-latin.woff2') format('woff2');
+}
+
 :root {
   color-scheme: dark;
 }

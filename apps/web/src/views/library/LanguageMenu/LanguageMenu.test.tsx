@@ -66,6 +66,23 @@ describe('LanguageMenu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
+  it('lands on the first language and walks with the arrows', () => {
+    renderMenu();
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Language' }), {
+      key: 'ArrowDown'
+    });
+
+    const english = screen.getByRole('menuitemradio', { name: 'English' });
+    expect(english).toHaveFocus();
+
+    fireEvent.keyDown(english, { key: 'ArrowDown' });
+
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Français' })
+    ).toHaveFocus();
+  });
+
   it('has no axe violations with the menu open', async () => {
     const { container } = renderMenu();
 

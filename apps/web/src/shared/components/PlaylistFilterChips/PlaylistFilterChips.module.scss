@@ -124,15 +124,3 @@
     transform: scale(1);
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .chips {
-    &__chip {
-      transition: none;
-
-      &[aria-pressed='true']::before {
-        animation: none;
-      }
-    }
-  }
-}

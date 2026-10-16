@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import type { Locator, Page } from '@playwright/test';
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
 import { playlistUrl, writeScenario } from './instance';
 import type { Scenario } from './instance';
@@ -41,6 +41,24 @@ export async function addPlaylist(
 
 export async function openPlaylist(page: Page, title: string): Promise<void> {
   await page.getByRole('link', { name: title }).click();
+}
+
+/* A playlist created through the route, for a test that needs more names in a
+ * picker than a journey should click through. A create answers 202 with its run. */
+export async function createPlaylist(
+  request: APIRequestContext,
+  sourceId: string
+): Promise<void> {
+  const response = await request.post('/api/v1/playlists', {
+    headers: { 'X-PlayLiberty-Client': 'web' },
+    data: { url: playlistUrl(sourceId) }
+  });
+
+  if (response.status() !== 202) {
+    throw new Error(
+      `Creating ${sourceId} answered ${response.status()}, not 202.`
+    );
+  }
 }
 
 export async function openHeaderMenu(page: Page): Promise<void> {

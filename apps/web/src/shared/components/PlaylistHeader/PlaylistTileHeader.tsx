@@ -86,7 +86,7 @@ export default function PlaylistTileHeader({
             className={styles.playlistHeader__tartArt}
             src={cover}
             alt=""
-            loading="eager"
+            loading="lazy"
             decoding="async"
             onError={onCoverError}
           />

@@ -1041,9 +1041,8 @@
   }
 }
 
-/* The equalizer's shape, redeclared because a CSS module scopes a keyframe
- * name, so the header cannot read the track row's; the phase table stays
- * TrackBars'. */
+/* The shape is redeclared because a CSS module scopes a keyframe name; the phase
+ * table stays TrackBars'. */
 @keyframes pl-equalize {
   0% {
     transform: scaleY(0.3);
@@ -1063,12 +1062,5 @@
 
   100% {
     transform: scaleY(0.3);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .playlist-header[data-arrangement='card']::after,
-  .playlist-header__line::after {
-    transition: none;
   }
 }

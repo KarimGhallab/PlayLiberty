@@ -205,13 +205,15 @@ export default function Dialog({
         aria-labelledby={headId}
         aria-describedby={bodyId}
         tabIndex={-1}>
-        <h2 className={styles.dialog__head} id={headId}>
-          {title}
-        </h2>
-        <p className={styles.dialog__body} id={bodyId}>
-          {description}
-        </p>
-        {children}
+        <div className={styles.dialog__content}>
+          <h2 className={styles.dialog__head} id={headId}>
+            {title}
+          </h2>
+          <p className={styles.dialog__body} id={bodyId}>
+            {description}
+          </p>
+          {children}
+        </div>
         <div className={styles.dialog__actions}>{actions}</div>
       </div>
     </div>

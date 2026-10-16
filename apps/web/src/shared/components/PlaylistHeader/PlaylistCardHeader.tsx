@@ -71,6 +71,7 @@ export default function PlaylistCardHeader({
             className={styles.playlistHeader__martArt}
             src={cover}
             alt=""
+            loading="lazy"
             decoding="async"
             onError={onCoverError}
           />

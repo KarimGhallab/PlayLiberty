@@ -61,10 +61,3 @@
     opacity: 0;
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .notice {
-    /* The fade is decoration; the host's timer still disposes the notice. */
-    animation: none;
-  }
-}

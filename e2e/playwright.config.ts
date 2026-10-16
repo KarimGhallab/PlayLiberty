@@ -29,7 +29,18 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /phone\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] }
+    },
+    {
+      name: 'phone',
+      testMatch: /phone\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true
+      }
     }
   ],
   // The stack must be built first: `pnpm run build` produces the dist booted

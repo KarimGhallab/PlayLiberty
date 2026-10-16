@@ -16,8 +16,13 @@
 }
 
 .dialog {
+  display: flex;
+  flex-direction: column;
   width: 400px;
   max-width: calc(100% - var(--space-4) * 2);
+  /* A dialog taller than the viewport scrolls its own content rather than putting
+   * its action row past the edge, where nothing can reach it. */
+  max-height: calc(100dvh - var(--space-4) * 2);
   padding: var(--space-6);
   background: var(--surface-raised);
   border: 1px solid var(--control-border);
@@ -29,6 +34,14 @@
    * focusable inside; it is not a control, so it takes no ring. */
   &:focus {
     outline: none;
+  }
+
+  /* The one scroll region, so the action row below it stays on screen;
+   * `min-height: 0` lets a flex item shrink to the bound above. */
+  &__content {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   &__head {
@@ -51,6 +64,7 @@
     justify-content: flex-end;
     gap: var(--space-2);
     margin-top: var(--space-5);
+    flex-shrink: 0;
   }
 
   &__secondary,
@@ -182,7 +196,6 @@
   .dialog__spinner {
     border-top-color: currentColor;
     opacity: 0.6;
-    animation: none;
   }
 }
 

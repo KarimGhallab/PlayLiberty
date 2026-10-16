@@ -27,6 +27,18 @@
     cursor: pointer;
     transition: background var(--motion-fast) var(--ease-standard);
 
+    /* The label beside it is not part of the target, so the switch owns the whole
+     * target a thumb is owed: 44 centred, which is 11 over the drawn box. */
+    &::before {
+      content: '';
+      position: absolute;
+      width: var(--control-touch);
+      height: var(--control-touch);
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+    }
+
     &[data-on='true'] {
       background: var(--accent);
       border-color: var(--accent);

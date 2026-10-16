@@ -37,8 +37,9 @@ export default function LanguageMenu() {
   useDismissibleMenu({
     open,
     containerRef: rootRef,
-    onClose: () => setOpen(false),
-    returnFocusTo: triggerRef
+    triggerRef,
+    onOpen: () => setOpen(true),
+    onClose: () => setOpen(false)
   });
 
   return (
@@ -63,6 +64,7 @@ export default function LanguageMenu() {
               key={option.value}
               type="button"
               role="menuitemradio"
+              tabIndex={-1}
               aria-checked={language === option.value}
               className={styles.languageMenu__option}
               onClick={() => {

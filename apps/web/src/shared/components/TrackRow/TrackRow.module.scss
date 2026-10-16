@@ -236,6 +236,7 @@
   /* The overflow, one control on every curatable row; a control boundary rather
    * than a hairline, because the lane is a target and not a rule. */
   &__action {
+    position: relative;
     display: grid;
     place-items: center;
     width: var(--control-size-inline);
@@ -246,6 +247,18 @@
     border: 1px solid var(--control-border);
     border-radius: var(--radius-control);
     cursor: pointer;
+
+    /* The target a thumb is owed, centred on the control. The lane stacks above
+     * the row's own play layer, so it takes the presses at its own edges. */
+    &::before {
+      content: '';
+      position: absolute;
+      width: var(--control-touch);
+      height: var(--control-touch);
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+    }
 
     &:hover:not(:disabled) {
       color: var(--ink);
@@ -293,6 +306,7 @@
     height: 34px;
     padding: 0 var(--space-3);
     color: var(--ink);
+    font-family: inherit;
     font-size: var(--text-sm);
     text-align: left;
     white-space: nowrap;
@@ -361,20 +375,5 @@
 @media (max-width: 767px) {
   .track-row {
     padding: var(--space-3) 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .track-row[data-downloading='true'] .track-row__art,
-  .track-row[data-downloading='true'] .track-row__body,
-  .track-row[data-downloading='true'] .track-row__duration,
-  .track-row[data-downloading='true'] .track-row__lane-slot {
-    animation: none;
-  }
-
-  /* The bars rest at their --rest scales: a reader who asked for no motion loses
-   * the movement and keeps the mark. */
-  .track-row__bar {
-    animation: none;
   }
 }

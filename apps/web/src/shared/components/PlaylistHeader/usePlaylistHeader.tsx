@@ -9,7 +9,7 @@ import {
   IconUserShare
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
@@ -174,9 +174,6 @@ export function usePlaylistHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  /* Whether the next open should land on the last item (ArrowUp) or the first. */
-  const menuFocusLastRef = useRef(false);
   const [shareTipDismissed, setShareTipDismissed] = useState(false);
   const { run, endRun } = usePlayPauseMorph(playing);
 
@@ -184,33 +181,8 @@ export function usePlaylistHeader({
     setCoverFailed(false);
   }, [playlist.coverTrackId]);
 
-  /* Read from the DOM on each use: Sync stops while a run is in flight, so the
-   * wrap must count only what can be pressed now. */
-  const enabledMenuItems = (): HTMLButtonElement[] => {
-    const menu = menuRef.current;
-
-    if (menu === null) {
-      return [];
-    }
-
-    return Array.from(
-      menu.querySelectorAll<HTMLButtonElement>(
-        '[role="menuitem"]:not([disabled])'
-      )
-    );
-  };
-
-  const focusMenuItem = (index: number): void => {
-    const items = enabledMenuItems();
-
-    if (items.length === 0) {
-      return;
-    }
-
-    const wrapped = ((index % items.length) + items.length) % items.length;
-    items[wrapped]?.focus();
-  };
-
+  /* A chosen item closes the menu and puts the keyboard back on the control it
+   * opened from; the hook will not, because the item's action runs here. */
   const closeMenu = (): void => {
     setMenuOpen(false);
     menuButtonRef.current?.focus();
@@ -219,55 +191,10 @@ export function usePlaylistHeader({
   useDismissibleMenu({
     open: menuOpen,
     containerRef: menuAnchorRef,
-    onClose: () => setMenuOpen(false),
-    returnFocusTo: menuButtonRef
+    triggerRef: menuButtonRef,
+    onOpen: () => setMenuOpen(true),
+    onClose: () => setMenuOpen(false)
   });
-
-  /* Opening moves focus onto an item, as `role="menu"` promises: ArrowUp opens
-   * onto the last item, every other way onto the first. */
-  useEffect(() => {
-    if (menuOpen) {
-      focusMenuItem(
-        menuFocusLastRef.current ? enabledMenuItems().length - 1 : 0
-      );
-    }
-  }, [menuOpen]);
-
-  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
-    const items = enabledMenuItems();
-    const activeIndex = items.findIndex(
-      item => item === document.activeElement
-    );
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      focusMenuItem(activeIndex + 1);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      focusMenuItem(activeIndex - 1);
-      return;
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      focusMenuItem(0);
-      return;
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      focusMenuItem(items.length - 1);
-      return;
-    }
-
-    /* Tab closes the panel; focus returns to the button's own tab stop. */
-    if (event.key === 'Tab') {
-      closeMenu();
-    }
-  };
 
   const playable = playlist.trackCount > 0;
   const total = countTotal ?? playlist.trackCount;
@@ -384,17 +311,7 @@ export function usePlaylistHeader({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           disabled={pending}
-          onClick={() => {
-            menuFocusLastRef.current = false;
-            setMenuOpen(open => !open);
-          }}
-          onKeyDown={event => {
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-              event.preventDefault();
-              menuFocusLastRef.current = event.key === 'ArrowUp';
-              setMenuOpen(true);
-            }
-          }}>
+          onClick={() => setMenuOpen(open => !open)}>
           <IconDots
             className={styles.playlistHeader__icon}
             aria-hidden="true"
@@ -402,11 +319,7 @@ export function usePlaylistHeader({
           />
         </button>
         {menuOpen ? (
-          <div
-            className={styles.playlistHeader__menu}
-            role="menu"
-            ref={menuRef}
-            onKeyDown={onMenuKeyDown}>
+          <div className={styles.playlistHeader__menu} role="menu">
             {menu.map((item, index) => (
               <Fragment key={item.key}>
                 {item.destructive === true && index > 0 ? <hr /> : null}

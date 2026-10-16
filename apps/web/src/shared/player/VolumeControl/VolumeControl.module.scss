@@ -10,6 +10,7 @@
    * root's top, so a button-sized root opens it just above the button. */
 
   &__button {
+    position: relative;
     display: grid;
     place-items: center;
     width: 36px;
@@ -19,6 +20,18 @@
     border: 1px solid var(--control-border);
     border-radius: var(--radius-control);
     cursor: pointer;
+
+    /* The target a thumb is owed, centred on the control: a pseudo-element is
+     * contained by the padding box, so a size is exact where an inset is not. */
+    &::before {
+      content: '';
+      position: absolute;
+      width: var(--control-touch);
+      height: var(--control-touch);
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+    }
 
     &:hover {
       color: var(--ink);

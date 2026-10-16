@@ -135,13 +135,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toast {
-    animation: none;
-  }
-
   .toast__ring {
     /* The sweep is decoration; the window itself is the host's timer. */
-    animation: none;
     border-top-color: var(--accent);
     opacity: 0.6;
   }

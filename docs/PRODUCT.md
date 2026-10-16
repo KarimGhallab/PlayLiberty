@@ -66,4 +66,4 @@ The product definition and the server, web, and mobile stacks all came out of st
 
 ## Accessibility & Inclusion
 
-Target the usual bar: keyboard reach and visible focus on the web client, sufficient contrast in light and dark, and respect for reduced-motion preferences. No UI exists yet, so nothing is enforced; enforcement starts with the first client.
+Target the usual bar: keyboard reach and visible focus on the web client, sufficient contrast in the dark theme the clients ship, and respect for reduced-motion preferences. The design decisions, and the rules that hold them, are in [DESIGN.md](DESIGN.md).

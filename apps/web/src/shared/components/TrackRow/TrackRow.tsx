@@ -19,8 +19,8 @@ import styles from './TrackRow.module.scss';
 
 /*
  * The row's body is a hit layer that plays the track; the lane at its end sits
- * above that layer, so a press there opens the menu. A track the caller cannot
- * curate gets an inert lane, and no state is ever carried by colour alone.
+ * above it, so a press there opens the menu. A stored track draws no word, the
+ * lane is inert without curate rights, and no state is carried by colour alone.
  */
 
 interface TrackRowProps {
@@ -85,11 +85,19 @@ function TrackRow({
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
+  /* A chosen item closes the menu and puts the keyboard back on the control it
+   * opened from; the hook will not, because the item's action runs here. */
+  const closeMenu = (): void => {
+    setMenuOpen(false);
+    menuButtonRef.current?.focus();
+  };
+
   useDismissibleMenu({
     open: menuOpen,
     containerRef: menuAnchorRef,
-    onClose: () => setMenuOpen(false),
-    returnFocusTo: menuButtonRef
+    triggerRef: menuButtonRef,
+    onOpen: () => setMenuOpen(true),
+    onClose: () => setMenuOpen(false)
   });
 
   /* The lane's items: a failed fileless track gets Retry and Fetch whole beside
@@ -170,10 +178,11 @@ function TrackRow({
                 key={item.label}
                 type="button"
                 role="menuitem"
+                tabIndex={-1}
                 className={styles.trackRow__menuItem}
                 data-destructive={item.destructive ? 'true' : undefined}
                 onClick={() => {
-                  setMenuOpen(false);
+                  closeMenu();
                   item.run();
                 }}>
                 {item.icon}

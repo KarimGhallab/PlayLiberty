@@ -1,6 +1,7 @@
-import { videoUrl } from '../support/instance';
+import { videoUrl, writeScenario } from '../support/instance';
 import {
   addPlaylist,
+  createPlaylist,
   openHeaderMenu,
   openPlaylist,
   reloadUntil,
@@ -187,6 +188,60 @@ test('adding one video to two playlists puts the same track in both', async ({
   await page.getByRole('link', { name: 'Back to home' }).click();
   await openPlaylist(page, 'Late Night');
   await expect(page.getByText(FIRST.title)).toBeVisible();
+});
+
+/*
+ * The picker lists every writable playlist, so its list is the one part of a
+ * dialog that grows with the account: a dialog taller than the viewport has to
+ * keep its own Add on screen and scroll the list instead.
+ */
+test('the picker keeps its own actions in view with a long playlist list', async ({
+  page,
+  request
+}) => {
+  const COUNT = 20;
+  const sources = Array.from(
+    { length: COUNT },
+    (_, index) => `E2Epicker${String(index).padStart(2, '0')}`
+  );
+  const titles = Array.from({ length: COUNT }, (_, index) => `Picker ${index}`);
+
+  /* Empty sources: the picker needs the names and nothing else, so no sync has
+   * a track to download. */
+  writeScenario({
+    sources: Object.fromEntries(
+      sources.map((source, index) => [
+        source,
+        { title: titles[index], entries: [] }
+      ])
+    )
+  });
+
+  for (const source of sources) {
+    await createPlaylist(request, source);
+  }
+
+  await page.goto('/');
+  await openPlaylist(page, titles[0]);
+
+  await page.getByRole('button', { name: 'Add a track' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add a track' });
+  const add = dialog.getByRole('button', { name: 'Add', exact: true });
+  await expect(dialog).toBeVisible();
+
+  /* The title, the field and the Add are inside the viewport while the list
+   * above the actions is what carries the overflow. */
+  await expect(
+    dialog.getByRole('heading', { name: 'Add a track' })
+  ).toBeInViewport();
+  await expect(dialog.getByLabel('Video link')).toBeInViewport();
+  await expect(add).toBeInViewport();
+
+  // The same at the phone height, where the dialog has the least room.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(dialog.getByLabel('Video link')).toBeInViewport();
+  await expect(add).toBeInViewport();
 });
 
 test('an added video is fetched once and becomes playable', async ({

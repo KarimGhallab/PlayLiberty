@@ -159,6 +159,26 @@ describe('TrackRow', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
+  it('lands on the first item and walks with the arrows', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Failed }),
+      onRetry: () => undefined,
+      onFetchWhole: () => undefined
+    });
+
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' }),
+      { key: 'ArrowDown' }
+    );
+
+    const retry = screen.getByRole('menuitem', { name: 'Retry' });
+    expect(retry).toHaveFocus();
+
+    fireEvent.keyDown(retry, { key: 'ArrowDown' });
+
+    expect(screen.getByRole('menuitem', { name: 'Fetch whole' })).toHaveFocus();
+  });
+
   it('draws no menu when the caller cannot curate', () => {
     renderRow({ onRemove: null });
 

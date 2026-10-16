@@ -68,6 +68,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`45-e2e-presentation-and-shadowed-journeys`](45-e2e-presentation-and-shadowed-journeys.md)                                                               | `resolved` | `enhancement` | The e2e specs asserted component-owned presentation and two fully-shadowed journeys.                                        |
 | [`46-the-detail-pages-and-plays-the-whole-playlist`](46-the-detail-pages-and-plays-the-whole-playlist.md)                                                 | `resolved` | `enhancement` | The detail read and queued one page; the list pages in, play covers the playlist, the header pins and owns a failed start.  |
 | [`47-retire-the-design-system-and-specimens`](47-retire-the-design-system-and-specimens.md)                                                               | `resolved` | `enhancement` | The design records, specimens and their tooling are retired; the shipped token packages stay.                               |
+| [`58-the-web-clients-unkept-contracts`](58-the-web-clients-unkept-contracts.md)                                                                           | `resolved` | `bug`         | Eight of the audit's nine findings are fixed; the touch targets and the phone width are ticket 33.                          |
 
 ## Conventions
 
