@@ -34,5 +34,5 @@ control is disabled while the shuffled list is on screen, and a read collaborato
 handlers gained the sort write.
 
 Verification: `pnpm test:unit` (web 407, server 354, packages 79), `pnpm run build`, `pnpm run lint`, the e2e
-typecheck, `design:check` and prettier pass, and the Impeccable detector reports nothing on the changed UI. No
+typecheck and prettier pass, and the Impeccable detector reports nothing on the changed UI. No
 em dashes. Not committed.

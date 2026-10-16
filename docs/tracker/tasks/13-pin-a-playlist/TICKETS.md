@@ -2,7 +2,7 @@
 
 Tickets for [`13-pin-a-playlist`](../../specs/13-pin-a-playlist.md). One file per ticket, numbered in dependency
 order, each declaring its blocking edges. The server tickets are verifiable through the API; the web tickets
-through the screen and its tests. One set, `01` to `05`, with the design record's specimen alongside and the
+through the screen and its tests. One set, `01` to `05`, with the design alongside and the
 journey last.
 
 | Ticket                                                                                              | Status     | Blocked by                                         | Blocks                                             |
@@ -22,7 +22,7 @@ journey last.
   tickets are tracer bullets through the screen, its read, its store and its tests.
 - The documentation this spec decided is already amended: "favorites" has left the three non-goal lists, the
   glossary carries the `Pin` row and its mix-up pair, the library spec carries its forward pointer, and the
-  design record carries the section on the pinned section. No ticket repeats it.
+  design work carries the section on the pinned section. No ticket repeats it.
 - Resolve a ticket by recording its outcome in the ticket and updating its row here. Do not delete it.
 - A ticket the product no longer needs is marked **superseded** rather than deleted, and its edges are dropped,
   so the decision it recorded stays readable.

@@ -34,9 +34,8 @@ retry; the menu disabled while an action is in flight), two on the policy word, 
 failed track's menu POSTs `fetch-whole` and draws the policy word. The E2E retry journey now goes through the
 menu, since the direct retry is gone.
 
-The design record carries it: [`playlist-detail.md`](../../../design-system/screens/playlist-detail.md) gains a
-"The row's actions" section, and both specimens' failed rows draw the actions menu rather than a retry, with the
-CSS rule and the usage line updated. `track-row.html`'s now-unused retry glyph was removed with them.
+The design carried it: a "The row's actions" section recorded it, and both screens' failed rows drew the
+actions menu rather than a retry, with the CSS rule and the usage line updated. The now-unused retry glyph was
+removed with them.
 
-Verification: `pnpm run test` (server 248, web 279, youtube 22, e2e 23), `pnpm run build`, `pnpm run lint` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+Verification: `pnpm run test` (server 248, web 279, youtube 22, e2e 23), `pnpm run build`, `pnpm run lint` pass. No em dashes. Not committed.

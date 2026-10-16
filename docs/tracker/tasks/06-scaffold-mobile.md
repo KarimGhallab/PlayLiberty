@@ -9,7 +9,7 @@ Create the minimal compiling skeleton for `apps/mobile` as decided in [`The mobi
 
 ## Context
 
-Read `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/PRODUCT.md`, and `docs/GLOSSARY.md` first.
+Read `docs/ARCHITECTURE.md`, `docs/PRODUCT.md`, and `docs/GLOSSARY.md` first.
 
 ## Scope
 

@@ -20,4 +20,4 @@ And the claim is a single conditional update, so two passes cannot start the sam
 the batch to the configured concurrency.
 
 Verification: `pnpm run test` (92 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

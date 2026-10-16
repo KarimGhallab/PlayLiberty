@@ -15,4 +15,4 @@ it; a sync without the client header is refused; and a sync from a foreign origi
 origin is configured. Shares are seeded directly, because the three share routes (spec 05) are still stubs.
 
 Verification: `pnpm run test` (89 server tests, 4 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

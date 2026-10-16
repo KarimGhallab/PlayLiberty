@@ -25,5 +25,5 @@ for the playlist and its tracks and the stream and thumbnail stay `403`. The tes
 and names the reason.
 
 Verification: `pnpm run test` (190 server tests, 5 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

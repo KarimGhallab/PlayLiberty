@@ -37,8 +37,7 @@ which cost the play the picture's own corner; with it out, the picture's inset i
 draws the mark at the end of the name row ([`usePlaylistHeader`](../../../apps/web/src/shared/components/PlaylistHeader/usePlaylistHeader.tsx)
 takes it as a slot and the tile keeps its own copy in its actions row), and the name is what pays: its column
 is **56.1px of text** rather than 112.2, about five characters at `--text-lg`, so three of the six
-development fixtures are cut. The alternatives are recorded in
-[`library.md`](../../design-system/screens/library.md) and were not taken.
+development fixtures are cut. The alternatives are recorded by the library design and were not taken.
 
 **The breakdown hangs from the edge the mark is anchored to and cannot leave the frame.**
 `IncompleteBadge` takes `tipEdge`, so a mark at a row's end turns its panel around and sizes it to its
@@ -72,8 +71,8 @@ the detail's way-home row gives up the labelled button there, so the row holds t
 full-width sheet and the signed-out state stay the mobile client's: this is the web's, and the web has no
 signed-out state to draw.
 
-**Verified.** `pnpm run build`, `pnpm run lint`, `pnpm test:unit` (web 449, server 360, packages 79),
-`pnpm test:e2e` (30) and `pnpm run design:check` pass. In the browser at 390: two 173px columns, a 56px
+**Verified.** `pnpm run build`, `pnpm run lint`, `pnpm test:unit` (web 449, server 360, packages 79)
+and `pnpm test:e2e` (30) pass. In the browser at 390: two 173px columns, a 56px
 header, the FAB above the docked bar, the card's play starting the playlist and becoming the pause, the
 picture and the name opening it, and the mark's breakdown on hover and on focus; at 1280 the tile is
 unchanged with the mark still leading its actions row.

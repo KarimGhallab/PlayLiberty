@@ -16,4 +16,4 @@ and covered from the video; a re-post returns the same playlist id and leaves on
 the resulting playlist re-syncs like any other, adding nothing on a second pass.
 
 Verification: `pnpm run test` (85 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

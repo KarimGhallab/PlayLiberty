@@ -15,8 +15,8 @@ Done. A blocking read failure now offers a way back, on all three surfaces.
 - Tests: the component (the detail, the fallback, the retry, the locked state), the library (the detail, the
   fallback, the recovery), the detail (the detail, the recovery) and the share dialog (the detail, the
   recovery).
-- Records: [`library.md`](../../design-system/screens/library.md) now has a "The failed read offers a way
-  back" state beside loading, empty and signed-out. The library's now-unused `&__note` style was removed.
+- Recorded: the library has a "The failed read offers a way back" state beside loading, empty and
+  signed-out. The library's now-unused `&__note` style was removed.
 
-Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (328 tests), the full unit suite, the e2e
-suite (27 tests) and `node docs/design/scripts/validate-design-tokens.cjs` all pass. Not committed.
+Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (328 tests), the full unit suite and the
+e2e suite (27 tests) all pass. Not committed.

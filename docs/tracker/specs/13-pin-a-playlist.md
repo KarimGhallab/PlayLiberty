@@ -136,10 +136,9 @@ while something is pinned, and a pinned playlist is lifted out of the list below
   shuffle toggle's precedent for the wording.
 - **There is no tooltip.** A menu item carries no tip: the word is the whole of it, and the menu's own button
   already names the playlist it opens onto.
-- **The two glyphs join the pinned set and the icons record.** Neither is in the pin today, so the specimen
-  that draws the menu items, the path table the validator checks it against, and the icons record's own entry
-  for the pair are part of this work rather than a follow-up, because the record's figures come from its
-  specimen and a specimen that draws an absent glyph fails validation.
+- **The two glyphs join the pinned set and the icons record.** Neither is in the pin today, so drawing the
+  two menu-item glyphs and adding the pair's entry to the icons record are part of this work rather than a
+  follow-up, because the record's figures come from the drawn glyphs and an absent glyph fails validation.
 - **The copy is the screen's own vocabulary.** The section heading is "Pinned"; the menu reads "Pin" and
   "Unpin"; the failure notice is "The pin could not be changed." The new keys live under the library and header
   namespaces, and the French catalogues take the same keys with the section heading inflected for playlists.

@@ -31,7 +31,7 @@ The copy adds `detail.filterBy`, `detail.filterAll`, `detail.filterShowAll` and 
 sentences in both catalogs, and the stored chip adds `trackState.stored`, the one state word the row is silent
 on; the other four chips reuse the row's own words.
 
-The detail record's list section is amended with "The control row above the list", naming the row and its two
+The detail design's list section is amended with "The control row above the list", naming the row and its two
 controls, and its count paragraph now says the total is the filtered total while a chip is in force.
 
 The tests: `PlaylistFilterChips.test.tsx` proves every chip draws its whole-playlist count and All the total,
@@ -42,5 +42,5 @@ nothing draws the named empty state and its Show all restores the list, the chip
 and a filter that matched nothing still plays every playable track. The mock handlers gained the counts and the
 state filter.
 
-Verification: `pnpm test:unit` (web 419, server 359, packages 79), `pnpm run build`, `pnpm run lint`,
-`design:check` and prettier pass. No em dashes. Not committed.
+Verification: `pnpm test:unit` (web 419, server 359, packages 79), `pnpm run build`, `pnpm run lint` and prettier
+pass. No em dashes. Not committed.

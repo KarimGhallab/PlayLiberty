@@ -1,5 +1,5 @@
 /*
- * The empty state, mirroring docs/design/components/empty-state.html. A list area
+ * The empty state. A list area
  * starts at the top, so an empty list's content starts at the top too rather than
  * floating in the middle of its own space.
  */
@@ -44,7 +44,7 @@
   }
 
   /* The primary button the form controls own, restated so this component does
-   * not depend on another specimen's stylesheet. */
+   * not depend on another surface's stylesheet. */
   &__button {
     display: inline-flex;
     align-items: center;

@@ -26,7 +26,7 @@ Done, and the guard is the change.
   reassurance, the retry and the revealed diagnostic. It fails if the path from the library to the reason
   breaks.
 - **Four pre-existing broken tracker links** in tasks 21, 22 and 24, left by the folder refactor, were
-  corrected, because the design check fails on them.
+  corrected.
 
-Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (314 tests), the e2e suite (27 tests)
-and `node docs/design/scripts/validate-design-tokens.cjs` all pass. Not committed.
+Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (314 tests) and the e2e suite (27 tests)
+all pass. Not committed.

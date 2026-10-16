@@ -18,5 +18,4 @@ present keys rather than absent ones. The seed helper now carries a title, a dur
 failure reason so a case can put a track in the state it is about.
 
 Verification: `pnpm run test` (132 server tests, 14 new), `pnpm run build`, `pnpm run lint`,
-`npx depcruise .`, `npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+`npx depcruise .`, `npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No em dashes. Not committed.

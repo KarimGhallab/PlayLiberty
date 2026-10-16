@@ -15,9 +15,9 @@ on hover and focus, toned by state) and then removed: the `PlaylistTileHeader` c
 only as the menu item; the menu item, the failure notice and the pinned section are unchanged.
 
 Verification at the reverted state: `pnpm test:unit` (server 373, web 468, i18n 39, youtube 31, ui-foundation
-6, tokens 3), `pnpm run build`, `pnpm run lint` and `pnpm run design:check` pass. Not committed.
+6, tokens 3), `pnpm run build`, `pnpm run lint` pass. Not committed.
 
 The removal left one hole, now closed: with no cover control a read collaborator had no pin at all, because
 `02` kept a reader's menu empty. The reader's overflow now carries Pin and Unpin alone, so `menu is enough`
-holds for everyone the server lets pin. That change is in `02`'s outcome, and the record and the spec follow
+holds for everyone the server lets pin. That change is in `02`'s outcome, and the spec follows
 it.

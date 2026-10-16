@@ -8,9 +8,6 @@ PlayLiberty is an audio player for web and mobile that syncs YouTube playlists a
 - `docs/GLOSSARY.md` - the project's vocabulary. Read it before naming a domain concept.
 - `docs/DOMAIN.md` - where the product and architecture docs live, and how to consume them.
 - `docs/ARCHITECTURE.md` - components, layer boundaries, and where things live.
-- `docs/DESIGN.md` - the design system for the web and mobile surfaces: the index, the
-  cross-cutting rules, and the map into `docs/design-system/`, which holds one file per
-  subject and the reasoning behind each.
 - `docs/adr/` - architecture decision records.
 - `docs/tracker/` - AI work tracking: issues, specs, tasks.
 

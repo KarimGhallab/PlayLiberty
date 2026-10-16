@@ -25,5 +25,5 @@ Writing the matrix surfaced no defect: all nine refusals were already the intend
 collaborator's four capabilities worked through the existing routes.
 
 Verification: `pnpm run test` (197 server tests, 7 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

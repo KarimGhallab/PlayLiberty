@@ -17,4 +17,4 @@ existing track is still left exactly as it is, which keeps the append-only rule 
 timer: a failed track is not `pending`, so a later pass does not claim it.
 
 Verification: `pnpm run test` (96 server tests, 4 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

@@ -21,5 +21,4 @@ Two tests were added to `syncService.test.ts` and the create test there gained t
 playlist route tests gained assertions in place. Web fixtures that build a `Playlist` literal gained
 `skipNonMusic`, because the contract field is required.
 
-Verification: `pnpm run test` (server 226 tests, web 262, e2e 21), `pnpm run build`, `pnpm run lint` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+Verification: `pnpm run test` (server 226 tests, web 262, e2e 21), `pnpm run build`, `pnpm run lint` pass. No em dashes. Not committed.

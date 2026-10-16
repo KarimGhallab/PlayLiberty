@@ -15,4 +15,4 @@ and a thumbnail that fails logs a warning and leaves the path null while the tra
 is fetched only on the success path, so a failed or gone download never leaves artwork without a track.
 
 Verification: `pnpm run test` (103 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

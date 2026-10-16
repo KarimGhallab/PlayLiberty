@@ -16,5 +16,5 @@ and sync routes already make when they answer `404` rather than `403`, so the ba
 playlist ids exist. It notes the shared `url` field with the create-a-playlist route, the `playlistIds` field
 that tells the two apart, and the video-only rule, and it records the alternatives it rejects.
 
-Verification: `pnpm run format`, `pnpm run lint`, `pnpm run build` and `pnpm run design:check` pass. No code
+Verification: `pnpm run format`, `pnpm run lint`, `pnpm run build` pass. No code
 changed, so no test run; no em dashes. Not committed.

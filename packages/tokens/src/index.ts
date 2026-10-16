@@ -1,4 +1,4 @@
-export { playPauseMorph } from './morph/morph.js';
+export { playPauseMorph } from './morph.js';
 export { TokenKind } from './types.js';
 export type {
   ColorToken,

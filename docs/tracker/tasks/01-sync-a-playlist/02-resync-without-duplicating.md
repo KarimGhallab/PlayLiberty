@@ -14,7 +14,7 @@ flight answers `409 sync_already_running`, on the resync route and on a re-paste
 path now stores the source URL and shares `beginRun` with the resync route.
 
 Verification: `pnpm run test` (73 server tests, 5 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.
 
 Known gap, not this ticket's: a run left `running` by a crash is never reclaimed, so its playlist would answer
 `409` until something marks it failed. No current ticket owns that recovery.

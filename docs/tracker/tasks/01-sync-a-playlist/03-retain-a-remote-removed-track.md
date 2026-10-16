@@ -18,4 +18,4 @@ the flag on a retained track, because the reconcile leaves an associated video e
 not in this ticket.
 
 Verification: `pnpm run test` (76 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

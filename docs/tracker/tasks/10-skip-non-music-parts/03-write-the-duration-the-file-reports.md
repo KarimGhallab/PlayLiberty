@@ -25,5 +25,4 @@ case leaving the source value alone, and the E2E fake reporting its file's lengt
 constant, so the probe's own process is not exercised by a unit test; it is the adapter's seam and there is no
 harness below it.
 
-Verification: `pnpm run test` (server 231, web 262, youtube 18, e2e 21), `pnpm run build`, `pnpm run lint` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+Verification: `pnpm run test` (server 231, web 262, youtube 18, e2e 21), `pnpm run build`, `pnpm run lint` pass. No em dashes. Not committed.

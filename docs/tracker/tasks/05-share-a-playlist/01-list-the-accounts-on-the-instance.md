@@ -21,5 +21,5 @@ anywhere, display-name order with paging and the true total, and the unauthentic
 provisioned through the identity hook rather than seeded, so the directory lists rows the app really made.
 
 Verification: `pnpm run test` (177 server tests, 4 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

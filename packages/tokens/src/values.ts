@@ -1,14 +1,12 @@
 /*
  * The designed values, the single source of truth.
  *
- * Transcribed from `docs/design/tokens.css`; the design records in
- * `docs/DESIGN.md` and `docs/design-system/` carry the reasoning behind each one.
  * Lengths and durations are unitless numbers here, and the emitter in
  * `emitTokens.ts` is the only place a unit is ever added.
  *
- * Two tokens hold the same literal on purpose, and the design's validator keeps
- * them honest: `tone-downloading` and `emphasis` are both the amber. They are
- * two names for two decisions, not one token aliasing another.
+ * Two tokens hold the same literal on purpose: `tone-downloading` and
+ * `emphasis` are both the amber. They are two names for two decisions, not one
+ * token aliasing another.
  *
  * A font token is the family name alone. The fallback stack is the client's,
  * because React Native takes one family name and cannot parse a CSS stack; the

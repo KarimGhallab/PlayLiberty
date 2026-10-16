@@ -20,11 +20,9 @@ deletion it is not showing.
 - Tests: the hook (the id and the same-name replacement), the header and the track row (the mark and the
   disabled controls), and the library and the detail (the mark and the lift on Cancel). The existing
   deferred-delete tests still pass.
-- Records: [`playlist-header.md`](../../design-system/components/playlist-header.md) and
-  [`track-row-play-control.md`](../../design-system/components/track-row-play-control.md) describe the
-  pending state.
+- Recorded: the header and the track row carry the pending state.
 
-Verification: `pnpm run lint`, the full unit suite (web 335 tests), the e2e suite (27 tests) and
-`node docs/design/scripts/validate-design-tokens.cjs` all pass. `pnpm run build` is blocked only by the
+Verification: `pnpm run lint`, the full unit suite (web 335 tests) and the e2e suite (27 tests) all pass.
+`pnpm run build` is blocked only by the
 concurrent session's untracked prototype (`src/prototype/library-ambience/`), whose `tsc` error is the sole
 one; this change's files compile cleanly. Not committed.

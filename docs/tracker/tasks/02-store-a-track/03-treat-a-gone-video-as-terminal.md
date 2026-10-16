@@ -21,6 +21,5 @@ A gone track is terminal. `unavailable` is not `pending`, so a later pass never 
 only returns `failed` tracks to `pending`, so a sync leaves it alone; both halves are tested.
 
 Verification: `pnpm run test` (100 server tests, 3 new; 20 youtube tests, one new file), `pnpm run build`,
-`pnpm run lint`, `npx depcruise .`, `npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and
-`pnpm run design:check` pass. `pnpm run script:unused-code` still reports its pre-existing unused exports in
+`pnpm run lint`, `npx depcruise .`, `npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. `pnpm run script:unused-code` still reports its pre-existing unused exports in
 files this ticket does not touch.

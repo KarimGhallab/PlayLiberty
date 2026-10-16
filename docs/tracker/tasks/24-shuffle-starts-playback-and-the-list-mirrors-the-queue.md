@@ -41,9 +41,8 @@ Done, and the restore is the change that forced the rest.
 
 Tests: the store's restore and its source order through a refetch, the persistence payload and its migration,
 the order function with a pending row, the action's five branches, and the library's start, refusal and
-second-press restore. Records: [`library.md`](../../design-system/screens/library.md) and
-[`playlist-header.md`](../../design-system/components/playlist-header.md) now say the control starts the
+second-press restore. Recorded: the library design and
+the playlist-header design now say the control starts the
 playlist rather than flagging a row. Not committed.
 
-Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (259 tests) and
-`node docs/design/scripts/validate-design-tokens.cjs` all pass.
+Verification: `pnpm run build`, `pnpm run lint` and the web unit suite (259 tests) all pass.

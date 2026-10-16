@@ -1,5 +1,5 @@
 /*
- * The sync error, mirroring docs/design/components/sync-error.html. The 2px rule
+ * The sync error. The 2px rule
  * on the leading edge is not a card and not a border on all four sides, because
  * the rule says "this block is a state" and a box around it would say "this block
  * is an object".
@@ -45,7 +45,7 @@
 
   /* The one action on this surface. The retry is the primary button the form
    * controls own, restated here so the panel does not depend on another
-   * specimen's stylesheet. */
+   * surface's stylesheet. */
   &__retry {
     display: inline-flex;
     align-items: center;

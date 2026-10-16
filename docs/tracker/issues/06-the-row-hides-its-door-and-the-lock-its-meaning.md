@@ -19,8 +19,7 @@ Done. The share indicator's meaning is available without a pointer, and the tool
 - The tooltip stays `role="presentation"` and keeps its words, so the state is not announced twice.
 - Tests: the mark is a tab stop and takes focus; Escape sets the flag and blur plus a later focus clears it; a
   mouse-enter clears it; the tooltip is decorative. The axe run on the default header stays clean.
-- Record: [`playlist-header.md`](../../design-system/components/playlist-header.md) now states the mark is
-  focusable, the tip reveals on focus, and Escape dismisses it.
+- Recorded: the mark is focusable, the tip reveals on focus, and Escape dismisses it.
 
 Verification: `pnpm run test:unit` (PlaylistHeader 31 tests, axe included) and `pnpm run lint` pass. Not
 committed.

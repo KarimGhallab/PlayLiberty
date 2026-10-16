@@ -21,4 +21,4 @@ suppression, and a suppressed video the source still lists stays removed. The te
 suppression of its own" was renamed to "creates no suppression of its own" to say what is still true.
 
 Verification: `pnpm run test` (79 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

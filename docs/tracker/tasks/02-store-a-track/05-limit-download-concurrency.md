@@ -16,4 +16,4 @@ drives a pass with any cap. The fake adapter yields inside each download, which 
 observable rather than theoretical.
 
 Verification: `pnpm run test` (105 server tests, 2 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

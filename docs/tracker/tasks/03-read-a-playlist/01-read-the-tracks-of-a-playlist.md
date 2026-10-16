@@ -21,5 +21,5 @@ read-only property, and the invalid query string. The read-only test scopes its 
 tables, because the identity hook upserts the account on every request and that write is not this route's.
 
 Verification: `pnpm run test` (118 server tests, 10 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No contract
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No contract
 change, no migration, no em dashes.

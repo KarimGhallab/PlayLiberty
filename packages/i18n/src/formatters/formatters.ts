@@ -179,7 +179,7 @@ export function trackCountUnit(t: Translator<Messages>, count: number): string {
 
 /**
  * It counts associations, is drawn even before the tracks load, and takes no
- * thousands separator on purpose: the specimens draw `1284 tracks`.
+ * thousands separator on purpose: the count reads `1284 tracks`.
  */
 export function formatTrackCount(
   t: Translator<Messages>,
@@ -194,7 +194,7 @@ function pad(value: number): string {
 
 /**
  * `M:SS`, or `H:MM:SS` once it passes an hour. The minute is unpadded below an
- * hour because the specimens draw `4:18`, and padded above it so the hour column
+ * hour because the display reads `4:18`, and padded above it so the hour column
  * lines up. It reads the same in every language, which is why it takes no
  * translator.
  */

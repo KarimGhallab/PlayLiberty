@@ -21,8 +21,8 @@ import { useI18n } from '@playliberty/i18n';
  * background tab), so the row still differs from a paused one without a second
  * table to keep in step.
  *
- * The geometry and the table are transcribed from `docs/design/specimen.css` at
- * the `.art > .bars` size; the module stylesheet carries them.
+ * The geometry lives in the module stylesheet at the `.art > .bars` size, and the
+ * phase table lives here.
  */
 
 /** The phases, in bar order, as `--rest` scale values. */

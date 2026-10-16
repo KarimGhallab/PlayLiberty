@@ -27,5 +27,5 @@ now and is outside this ticket's promise of "associated again". A second accepte
 sync to observe the absence, so a video that leaves and returns entirely between two syncs is never re-added.
 
 Verification: `pnpm run test` (173 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

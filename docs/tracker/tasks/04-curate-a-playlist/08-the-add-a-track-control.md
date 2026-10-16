@@ -13,9 +13,9 @@ button.
 - The way-home row becomes `space-between` and holds the control: the same accent pill, the same `plus`, the
   label "Add a track". It is absent for a `read` collaborator, the screen's rule for every control it does not
   offer a refusal through.
-- The design records: [`playlist-detail.md`](../../../design-system/screens/playlist-detail.md) gains the control
-  in its access table and its own paragraph; the control is outside the overflow because adding a track is the
-  one curating action every writable account has and the most frequent thing done on the screen.
+- The design records the control in its access table and its own paragraph; the control is outside the overflow
+  because adding a track is the one curating action every writable account has and the most frequent thing done
+  on the screen.
 
 **Outcome**
 
@@ -28,4 +28,4 @@ field takes a video URL.
 
 - `PlaylistDetailPage.test.tsx`: the owner sees the control and it opens the dialog; a read collaborator sees
   neither the overflow nor the control.
-- `pnpm run build`, `pnpm run lint`, `pnpm run design:check` and the web suite pass.
+- `pnpm run build`, `pnpm run lint` and the web suite pass.

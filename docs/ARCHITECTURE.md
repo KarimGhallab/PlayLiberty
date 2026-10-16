@@ -87,7 +87,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `packages/youtube/src/` - the yt-dlp adapter.
 - `scripts/validate-tsconfig-paths.cjs` - keeps `tsconfig.depcruise.json` paths aligned with the workspace.
 - `.dependency-cruiser.cjs` - layer and dependency rules, run on commit.
-- `docs/` - product, domain, architecture, design, and decisions.
+- `docs/` - product, domain, architecture, and decisions.
 - `docs/tracker/tasks/` - the stack tasks and the scaffold tasks.
 
 ## Deployment shapes
@@ -122,7 +122,7 @@ One Node 26 process built with Fastify 5 and compiled by `tsc`, owning a local S
 
 ### The mobile stack
 
-`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.2, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over a typed token module mirroring `docs/design-system/`, dark only. The access token lives in `expo-secure-store`. Distribution in v1 is a development build and a sideloaded Android APK; the code stays cross-platform but iOS is not built or tested.
+`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.2, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The access token lives in `expo-secure-store`. Distribution in v1 is a development build and a sideloaded Android APK; the code stays cross-platform but iOS is not built or tested.
 
 ### Mobile provisioning
 

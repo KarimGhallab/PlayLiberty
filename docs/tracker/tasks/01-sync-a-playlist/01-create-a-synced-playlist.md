@@ -14,6 +14,6 @@ uniqueness is now per owner (migration `0002`), and `createTestContext` takes a 
 `fakeYoutube` the fake shared with the CSRF suite.
 
 Verification: `pnpm run test` (68 server tests, 7 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.
 `pnpm run script:unused-code` reports two unused exports, `PangolinConfig` and `PlayerStoreApi`, in files this
 ticket does not touch, so that finding is pre-existing.

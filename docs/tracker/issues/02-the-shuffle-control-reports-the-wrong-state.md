@@ -15,9 +15,7 @@ playlist.
 - Tests: the header (pressed only with both facts), the library (two rows, shuffling one leaves the other
   unpressed, and a second press turns it off) and the detail (pressed while this playlist is the queue,
   unpressed while the queue is another).
-- Records: [`library.md`](../../design-system/screens/library.md) and
-  [`playlist-header.md`](../../design-system/components/playlist-header.md) now state that only the queue's
-  playlist reports pressed.
+- Recorded: only the queue's playlist reports pressed.
 
-Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (319 tests), the full unit suite, the e2e
-suite (27 tests) and `node docs/design/scripts/validate-design-tokens.cjs` all pass. Not committed.
+Verification: `pnpm run build`, `pnpm run lint`, the web unit suite (319 tests), the full unit suite and the
+e2e suite (27 tests) all pass. Not committed.

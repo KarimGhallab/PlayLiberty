@@ -15,14 +15,13 @@ choice do not linger.
 The dialog's own row lives in a new `AddPlaylistDialog.module.scss`, so the shared shell is untouched and the
 field and verbs are unchanged.
 
-The design record was stale from ticket 01: it said "one field, because `CreatePlaylistInputSchema` has one",
-and the schema now takes the URL and the boolean. The record and its specimen were updated together: the
-specimen draws the control in all four arrangements, and the heights were re-measured rather than guessed. The
+The design was stale from ticket 01: it said "one field, because `CreatePlaylistInputSchema` has one",
+and the schema now takes the URL and the boolean. The design was updated to match: the control is drawn in
+all four arrangements, and the heights were re-measured rather than guessed. The
 rest dialog is **327.2px** (was 255.6), the invalid one **367.6px** (was 296), and the sheet **306.2px** (was
 234.8); the control's row is 55.3px and the dialog grows 71.6px for it.
 
 The tests: the control starts checked; a submit sends true; turning it off sends false; and the library sends
 the value in the create request both ways. `axe` runs over the dialog with the control in place.
 
-Verification: `pnpm run test` (server 242, web 265, youtube 22, e2e 21), `pnpm run build`, `pnpm run lint` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+Verification: `pnpm run test` (server 242, web 265, youtube 22, e2e 21), `pnpm run build`, `pnpm run lint` pass. No em dashes. Not committed.

@@ -23,5 +23,4 @@ SponsorBlock failure leaves `failed` with the fixed reason and `available`, and 
 and a sync test that drives the failure through the worker, syncs again, finds the track back at `pending`, and
 stores it on the next pass.
 
-Verification: `pnpm run test` (server 233, web 262, youtube 22, e2e 21), `pnpm run build`, `pnpm run lint` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+Verification: `pnpm run test` (server 233, web 262, youtube 22, e2e 21), `pnpm run build`, `pnpm run lint` pass. No em dashes. Not committed.

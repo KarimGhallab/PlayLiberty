@@ -32,5 +32,4 @@ add whose first writable playlist is second and refused-first, a worker pass tha
 adapter, the tracks read carrying the value, and the second-association case asserting the value is unchanged.
 Web `Track` fixtures and mock JSON gained `skipNonMusic`, because the contract field is required.
 
-Verification: `pnpm run test` (server 229, web 262, youtube 17, e2e 21), `pnpm run build`, `pnpm run lint` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+Verification: `pnpm run test` (server 229, web 262, youtube 17, e2e 21), `pnpm run build`, `pnpm run lint` pass. No em dashes. Not committed.

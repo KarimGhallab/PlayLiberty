@@ -22,5 +22,5 @@ holds it; and the missing client header.
 share routes keep theirs.
 
 Verification: `pnpm run test` (161 server tests, 5 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

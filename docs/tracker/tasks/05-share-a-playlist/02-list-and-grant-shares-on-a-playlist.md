@@ -27,5 +27,5 @@ refusals; a missing playlist; and the missing client header.
 The delete route is still a `501` stub; ticket 03 owns it.
 
 Verification: `pnpm run test` (185 server tests, 8 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

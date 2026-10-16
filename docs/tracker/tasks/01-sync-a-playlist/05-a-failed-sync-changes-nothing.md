@@ -16,4 +16,4 @@ which shows the two are not confused, since the empty source retires the track w
 alone.
 
 Verification: `pnpm run test` (82 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

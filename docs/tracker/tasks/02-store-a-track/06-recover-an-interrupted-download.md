@@ -20,4 +20,4 @@ optional interval rather than the whole context, so a test drives it with a fake
 interval. The default interval stays thirty seconds.
 
 Verification: `pnpm run test` (108 server tests, 3 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass.
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass.

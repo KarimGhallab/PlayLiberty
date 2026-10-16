@@ -26,5 +26,5 @@ for a prune to finish; it signals it and returns, which is what "does not hold t
 media store" asks for.
 
 Verification: `pnpm run test` (215 server tests, 4 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs`, `pnpm run design:check` and a `tsc --noEmit`
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and a `tsc --noEmit`
 over every test file pass. No migration, no em dashes. Not committed.

@@ -22,5 +22,5 @@ each refused and unchanged, the read collaborator, stranger, orphan and missing 
 with the failed track untouched, and the missing client header.
 
 Verification: `pnpm run test` (170 server tests, 9 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

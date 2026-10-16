@@ -9,7 +9,7 @@
 The library is a gallery of cover tiles. Every tile carries what the row carried, plus a mark that says how
 much of the playlist is not on disk, and the counts that mark is drawn from travel on the list the gallery
 already reads. The prototype that settled the design is not on `main`: its four arrangements are recorded
-in [`library.md`](../../design-system/screens/library.md), which owns the decision, its figures and the
+by the design, which owns the decision, its figures and the
 reason the tile won, and the prototype itself belongs on a throwaway branch.
 
 **The tile is the header's third arrangement.** [`PlaylistTileHeader.tsx`](../../../apps/web/src/shared/components/PlaylistHeader/PlaylistTileHeader.tsx)
@@ -59,13 +59,13 @@ into the space the skeleton held.
 `Track.fileStatus` says `stored`, so the mark says "not stored" and never "missing". A track whose source
 video was removed is deliberately not a reason, because a stored file whose video is gone is stored.
 
-**The design is recorded.** [`library.md`](../../design-system/screens/library.md) now names the tile as the
+**The design is recorded.** The library design now names the tile as the
 web item, gives its figures (252x396px, four columns, 103px per item against the row's 152px, the name's
 column at about 190px), says which client owns which width now that the web draws a grid of its own and
 different from the mobile card, records the mark as something the item carries and why the play is still
 absent, corrects the claim that the gallery shows no playing mark, and redraws the loading state as the
-gallery's shape. [`playlist-header.md`](../../design-system/components/playlist-header.md) owns three
-arrangements where it owned two, and [`DESIGN.md`](../../DESIGN.md) points at the tile.
+gallery's shape. The playlist-header design owns three
+arrangements where it owned two.
 
 **The tests are the behaviours.** [`IncompleteBadge.test.tsx`](../../../apps/web/src/views/library/IncompleteBadge/IncompleteBadge.test.tsx)
 is the mark's owner: one pill for several reasons, the sum, the worst-reason tone across all four, the rows
@@ -82,4 +82,4 @@ tracks are not all stored shows one mark, the mark names what is missing on hove
 its playlist.
 
 Verification: `pnpm test:unit` (web 438, server 360, packages 79), `pnpm test:e2e` (29), `pnpm run build`,
-`pnpm run lint`, `pnpm run design:check` and prettier pass. No em dashes. Not committed.
+`pnpm run lint` and prettier pass. No em dashes. Not committed.

@@ -46,5 +46,5 @@ two-row distinct-names test. `apps/web/src/views/library/LibraryPage/LibraryPage
 `apps/web/src/views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage.test.tsx` were updated for the new names.
 
 Two follow-ups the audit found are out of this ticket's scope: the row's quiet controls keep their 32px box
-on desktop by design (`docs/design-system/components/playlist-header.md`) and now reach 44px on mobile, and
+on desktop by design and now reach 44px on mobile, and
 `SharePlaylistDialog` passes no `initialFocus` and so opens on the first focusable, which the fallback covers.

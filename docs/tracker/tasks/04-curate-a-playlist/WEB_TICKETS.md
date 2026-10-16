@@ -6,10 +6,8 @@ add dialog to the screen work. Nothing picked them up, and the add-a-track capab
 no client. This set closes the one capability `PRODUCT.md` names, "add one pasted video to several
 write-accessible playlists at once".
 
-The design is settled first: [`add-track-dialog.md`](../../../design-system/components/add-track-dialog.md) is the
-record, and [`playlist-detail.md`](../../../design-system/screens/playlist-detail.md) carries the control's place
-and its access rule. The code landed with them, so the set below is the record of what was built rather than a
-plan to build it.
+The design is settled first: the dialog, and the control's place and access rule, are all decided. The code
+landed with the design, so the set below is the record of what was built rather than a plan to build it.
 
 | Ticket                                                                | Status   | Blocked by                            | Blocks |
 | --------------------------------------------------------------------- | -------- | ------------------------------------- | ------ |

@@ -20,5 +20,5 @@ its count and a working stream response, the four non-owner cases each answering
 in place, a collaborator reading not-found from the moment of deletion, and the missing client header.
 
 Verification: `pnpm run test` (156 server tests, 6 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and `pnpm run design:check` pass. No
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` pass. No
 migration, no em dashes. Not committed.

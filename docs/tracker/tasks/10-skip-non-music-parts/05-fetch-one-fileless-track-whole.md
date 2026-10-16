@@ -25,5 +25,4 @@ collaborator may do it; the three ineligible states are refused and unchanged; t
 missing client header. One worker test drives the whole path: the route flips a `failed` track, a worker pass
 runs, and the adapter is handed `skipNonMusic: false` and stores the track.
 
-Verification: `pnpm run test` (server 242, web 262, youtube 22, e2e 21), `pnpm run build`, `pnpm run lint` and
-`pnpm run design:check` pass. No em dashes. Not committed.
+Verification: `pnpm run test` (server 242, web 262, youtube 22, e2e 21), `pnpm run build`, `pnpm run lint` pass. No em dashes. Not committed.

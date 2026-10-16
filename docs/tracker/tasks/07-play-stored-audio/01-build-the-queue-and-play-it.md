@@ -21,4 +21,4 @@ Tests: twelve in `playerStore.test.ts` covering the five criteria (build from th
 
 Verified in Chrome against the real instance: pressing the third of four tracks built a four-entry queue in playlist order, every entry carrying `playlistId`, with `currentId` on the third track and `positionSeconds` advancing; a full reload restored the queue, the same current track and a 6.79s offset, with `isPlaying` false so nothing autoplayed, and the audio element's `src` was derived from the track id (`/api/v1/tracks/<id>/stream`) rather than stored in the queue. No request other than the tracks read and the stream was made.
 
-Verification: `pnpm run test:unit` (224 server, 68 web, 14 ui-foundation, 14 youtube, 3 tokens), `pnpm run build`, `pnpm run lint`, `npx depcruise .` (138 modules, 0 violations) and `pnpm run design:check` all pass. No em dashes. Not committed.
+Verification: `pnpm run test:unit` (224 server, 68 web, 14 ui-foundation, 14 youtube, 3 tokens), `pnpm run build`, `pnpm run lint`, `npx depcruise .` (138 modules, 0 violations) all pass. No em dashes. Not committed.

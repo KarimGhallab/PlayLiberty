@@ -16,8 +16,7 @@ request, and keeps itself open to name the playlists that refused.
 - The refusal state: the dialog closes on an all-success batch, where there is nothing to read, and stays open
   on any `refused`, naming the refused playlists by name and claiming no cause, because the route withholds it
   on purpose so the batch cannot enumerate other accounts' playlists.
-- The design record: [`add-track-dialog.md`](../../../design-system/components/add-track-dialog.md) and its
-  specimen, `docs/design/components/add-track-dialog.html`, in both arrangements.
+- The design settled the dialog in both arrangements.
 
 **Outcome**
 
@@ -32,4 +31,4 @@ decided from the batch's own size, not the checkboxes on screen, which can have 
   sentences, the silent all-success case, and axe.
 - `PlaylistDetailPage.test.tsx`: the request carries the chosen ids, a mixed batch keeps the dialog open and
   names the refusal, and an all-success batch closes it.
-- `pnpm run build`, `pnpm run lint`, `pnpm run design:check` and the web suite pass.
+- `pnpm run build`, `pnpm run lint` and the web suite pass.

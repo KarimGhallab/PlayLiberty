@@ -1,13 +1,12 @@
 /*
- * The playlist detail, mirroring docs/design/screens/playlist-detail.html. The
- * content column is 1056, the design's own reading width, so the two screens are
- * comparable.
+ * The playlist detail. The content column is 1056, the reading width the two
+ * screens share, so they are comparable.
  *
- * The 16px inline padding is the viewport gutter, which the design's drawn frame
- * does not have, so the max-width carries it as well: `box-sizing: border-box`
+ * The 16px inline padding is the viewport gutter, which the 1056 figure does not
+ * include, so the max-width carries it as well: `box-sizing: border-box`
  * subtracts padding from a max-width, and 1056 alone would leave the content
- * column 1024 and the track list 680 against the design's 712. Adding the
- * gutter back keeps the column the stated 1056.
+ * column 1024 and the track list 680 rather than 712. Adding the gutter back
+ * keeps the column the stated 1056.
  *
  * align-items: flex-start, so the two columns start on the same line: centring
  * them against each other would put the first track row hundreds of pixels down

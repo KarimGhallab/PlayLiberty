@@ -30,5 +30,5 @@ cadence is `PRUNE_CRON` with a weekly default, `startCronJob` guards with `prote
 throwing tick, and the startup sweep remains the backstop in `onReady`. Nothing here changes them.
 
 Verification: `pnpm run test` (211 server tests, 14 new), `pnpm run build`, `pnpm run lint`, `npx depcruise .`,
-`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs`, `pnpm run design:check` and a `tsc --noEmit`
+`npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and a `tsc --noEmit`
 over every test file pass. No migration, no em dashes. Not committed.

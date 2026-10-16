@@ -26,8 +26,8 @@ seeker, and asserts the playhead dropped. And it was checked by hand against the
 `Test` playlist: pressing a row started playback, and a click at a quarter of the seeker moved the playhead
 from 69.7s to 1:08 of 4:35, with the fill, the knob and the elapsed time all reading the same number. The bar
 measured 97px against the design's stated 98, which is line-box rounding, not a missing declaration: the
-specimen sets no fixed height and 98 is its measured sum.
+design sets no fixed height and 98 is its measured sum.
 
-One deliberate difference from the design record: the bar's boundary is a top border in `--line` rather than a
-shadow, because a dark blur over a dark page is invisible rather than subtle, which the specimen's own comment
-already argues.
+One deliberate difference from the design: the bar's boundary is a top border in `--line` rather than a
+shadow, because a dark blur over a dark page is invisible rather than subtle, as the design notes already
+argue.
