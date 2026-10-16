@@ -9,17 +9,9 @@ import {
 import { expect, test } from '../support/test';
 
 /*
- * Journey 4: curate a playlist. The detail offers every control; the library
- * item offers the same ones through its own overflow, so rename and delete are
- * journeyed from both screens. Rename, delete and remove are owner actions; the
- * retry belongs to any account that can write a playlist holding the failed
- * track.
- *
- * Rename, delete and remove are deferred: the press opens the undo window and the
- * call runs when it closes on its own, so a test that expects the change waits for
- * the window rather than for the press. The retry and the sync call the server at
- * once, and the state they produce is read again by reloading, because nothing
- * polls.
+ * Journey 4: curate a playlist, from the detail and from the library item's
+ * own overflow. Rename, delete and remove are deferred: a test waits for the
+ * undo window, not the press. Retry and sync call at once and are reloaded.
  */
 
 const SOURCE = 'E2Ecurate01';
@@ -47,8 +39,7 @@ test('renaming a playlist updates the detail and the library', async ({
     page.getByRole('heading', { name: 'Morning Jazz' })
   ).toBeVisible();
 
-  // The library item carries the new name too, because the read it draws is the
-  // server's.
+  // The library's read is the server's, so it carries the new name.
   await page.getByRole('link', { name: 'Back to home' }).click();
   await expect(page.getByRole('link', { name: 'Morning Jazz' })).toBeVisible();
 });
@@ -63,11 +54,7 @@ test('deleting a playlist removes it once the undo window closes', async ({
   await page.getByRole('menuitem', { name: 'Delete playlist' }).click();
   await expect(page.getByText('Deleting playlist')).toBeVisible();
 
-  /*
-   * The window closes on its own and the deletion lands, which navigates back to
-   * the library. The empty gallery is the deletion's own evidence, and the item
-   * is gone rather than merely hidden.
-   */
+  /* The item is gone, not merely hidden. */
   await expect(page.getByText('No playlists yet')).toBeVisible({
     timeout: 15_000
   });
@@ -99,7 +86,6 @@ test('deleting from the library item removes it once the undo window closes', as
   await page.getByRole('menuitem', { name: 'Delete playlist' }).click();
   await expect(page.getByText('Deleting playlist')).toBeVisible();
 
-  // The window closes on its own and the empty gallery is the deletion's proof.
   await expect(page.getByText('No playlists yet')).toBeVisible({
     timeout: 15_000
   });
@@ -145,22 +131,18 @@ test('retrying a failed track re-queues it and it recovers', async ({
     name: `Actions for ${FIRST.title}`
   });
   await reloadUntil(page, rowActions);
-  /*
-   * Scoped to the row: the summary's lower-case "failed" and the control row's
-   * "Failed" filter chip are both on the page, so an unscoped match is
-   * ambiguous.
-   */
+  /* Scoped to the row: the summary's "failed" and the "Failed" filter chip are
+   * both on the page. */
   const failedState = page
     .getByRole('listitem')
     .getByText('Failed', { exact: true });
   await expect(failedState).toBeVisible();
 
-  // The video is downloadable now, and the retry queues it for the worker.
+  // Downloadable now; the retry queues it for the worker.
   scriptPlaylist({ sourceId: SOURCE, title: TITLE, entries: [FIRST] });
   await rowActions.click();
   await page.getByRole('menuitem', { name: 'Retry' }).click();
 
-  // The row leaves the failed state, which is the retry's own, immediate effect.
   await expect(failedState).toBeHidden({
     timeout: 15_000
   });
@@ -181,12 +163,8 @@ test('adding one video to two playlists puts the same track in both', async ({
     entries: [SECOND]
   });
 
-  /*
-   * The video URL names the video by its own id, and the fake adapter keys the
-   * scenario by the id it extracts, so the entry has to exist under the video id
-   * as well as inside the playlist above. Adding a track takes a video and not a
-   * playlist, so this URL is the video's own.
-   */
+  /* The fake keys a scenario by the id it extracts, and this dialog takes a
+   * video, so the entry must exist under the video id too. */
   scriptPlaylist({
     sourceId: FIRST.videoId,
     title: FIRST.title,
@@ -202,11 +180,7 @@ test('adding one video to two playlists puts the same track in both', async ({
   await dialog.getByRole('checkbox', { name: 'Late Night' }).check();
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 
-  /*
-   * Every chosen playlist took it, so the dialog closes and there is no refusal
-   * to read. One request carried both ids, which is the batch route's whole
-   * shape.
-   */
+  /* One request carried both ids, which is the batch route's shape. */
   await expect(dialog).toBeHidden();
 
   await expect(page.getByText(FIRST.title)).toBeVisible();
@@ -240,11 +214,8 @@ test('an added video is fetched once and becomes playable', async ({
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(dialog).toBeHidden();
 
-  /*
-   * The worker stores the one file both associations share, so both playlists
-   * offer the play control. The row is read again by reloading, because nothing
-   * polls and the download finishes on the server's own schedule.
-   */
+  /* One file shared by both associations, stored on the server's own schedule,
+   * so the row is re-read by reloading. */
   await reloadUntil(
     page,
     page.getByRole('button', { name: `Play ${FIRST.title}` })
@@ -269,11 +240,8 @@ test('syncing a playlist picks up new source tracks and a second sync changes no
 }) => {
   await addPlaylist(page, { sourceId: SOURCE, title: TITLE, entries: [FIRST] });
   await openPlaylist(page, TITLE);
-  /*
-   * The create starts a run of its own, and a second one is refused while it
-   * runs. The track can be visible before the run is marked complete, so the
-   * settled state is what says the first run is over.
-   */
+  /* A create starts its own run and a second is refused while it runs, so the
+   * settled state is what says the first run is over. */
   await reloadUntil(page, page.getByText('Up to date'));
   await expect(page.getByText(FIRST.title)).toBeVisible();
 

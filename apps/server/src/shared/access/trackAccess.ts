@@ -3,19 +3,9 @@ import { ShareLevel } from '@playliberty/contracts';
 import type { DatabaseHandle } from '../../platform/database/client.js';
 
 /*
- * Who may reach a track. A track has no owner and no share of its own: it is
- * instance-wide, keyed by video id, and the media store is deduplicated across
- * every account. So access to one is access to it through a playlist that
- * associates it, which is the same rule playlistAccess states, asked of a
- * different row.
- *
- * It stays its own module because the answer is a different question with a
- * different consequence. A playlist this account cannot reach is a 404, and the
- * client renders its not-found state. A track it cannot reach is a 403, because a
- * track row has to tell "you cannot play this" apart from "this is not here", and
- * the track row in the design system needs the difference. Collapsing the two
- * would make a revoked share indistinguishable from a deleted track, and a
- * playlist's answer has to stay the one the playlist routes already give.
+ * A track is instance-wide, keyed by video id: access through a playlist that
+ * associates it. Its module because an unreachable track reads as a 403, not
+ * a deleted one, where an unreachable playlist reads as a 404.
  */
 const TRACK_ACCESS_SQL = `
   select 1 as allowed
@@ -41,13 +31,8 @@ export function canAccountAccessTrack(
   );
 }
 
-/*
- * Write access to a track, which is the owner of a playlist that holds it or a
- * write collaborator on one, and not a read collaborator. A track is instance-wide
- * and has no owner of its own, so the right to act on it is the right to write one
- * of the playlists it is associated with. The level is a parameter rather than a
- * literal so a new share level cannot drift out of this statement.
- */
+/* Owner of a holding playlist or a write collaborator, not a read one. The
+ * level is a parameter, so a new share level cannot drift out of the SQL. */
 const TRACK_WRITE_ACCESS_SQL = `
   select 1 as allowed
   from association a

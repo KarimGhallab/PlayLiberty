@@ -1,15 +1,7 @@
 /*
- * The filter chips at the lead of the control row. The row itself is the
- * screen's (see `playlist-detail__controls`); this module is the chip set alone.
- *
- * A chip is a border and a word, never a fill: the 3:1 a control boundary owes is
- * not a hairline's. The word is what carries the state and the tone is
- * reinforcement; in force the border takes the chip's state tone, except "All",
- * which takes the accent, the one hue the palette spends on a choice.
- *
- * The rail scrolls sideways on a phone rather than wrapping, so the row stays one
- * line and the list keeps its distance from the top; its bar is suppressed
- * because the row is one control tall and a bar would make it two.
+ * The filter chips at the lead of the control row. A chip is a border and a
+ * word, never a fill: the word carries the state, the tone reinforces it. The
+ * rail scrolls sideways on a phone so the row stays one line.
  */
 .chips {
   display: flex;
@@ -43,9 +35,8 @@
       color var(--motion-base) var(--ease-standard),
       border-color var(--motion-base) var(--ease-standard);
 
-    /* The state mark. It is drawn only on the chip in force, so its box is
-     * reserved here and scaled to nothing until then; that is what keeps the
-     * rail from shifting as the choice moves. */
+    /* Drawn only on the chip in force; its box is reserved here and scaled to
+     * nothing until then, so the rail does not shift as the choice moves. */
     &::before {
       content: '';
       width: 7px;
@@ -56,7 +47,7 @@
       transform: scale(0);
     }
 
-    /* The six tones, one per chip, read from the design's own state tokens. */
+    /* The six tones, one per chip, read from the state tokens. */
     &[data-tone='all'] {
       --chip-tone: var(--accent);
     }
@@ -95,17 +86,15 @@
       }
     }
 
-    /* Stored's tone is ink and Pending's is near-neutral, so neither reads as a
-     * selection on the word; those two take ink, while the border keeps the
-     * state's own tone. */
+    /* Stored's and Pending's tones are near-neutral, so neither reads as a
+     * selection on the word; those two take ink, the border keeps its tone. */
     &[data-tone='stored'][aria-pressed='true'],
     &[data-tone='pending'][aria-pressed='true'] {
       color: var(--ink);
     }
 
-    /* The whole rail is disabled at once while the shuffled queue is on
-     * screen, so it dims as a group rather than pretending each chip is
-     * reachable; there is no fill for the disabled pair to sit on. */
+    /* The whole rail disables at once while the shuffled queue is on screen, so
+     * it dims as a group rather than pretending each chip is reachable. */
     &:disabled {
       cursor: not-allowed;
       opacity: var(--opacity-disabled);

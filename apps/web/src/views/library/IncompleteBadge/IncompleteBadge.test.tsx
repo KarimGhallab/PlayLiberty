@@ -10,9 +10,8 @@ import { EMPTY_COUNTS } from '../../../testing/mocks/handlers';
 import IncompleteBadge from './IncompleteBadge';
 
 /*
- * The mark's own test. It is presentational: the counts come from the list the
- * library holds, so nothing here mounts a server, and the only thing under test
- * is what one pill says for a given set of counts.
+ * The mark is presentational, so nothing here mounts a server: what is under
+ * test is what one pill says for a set of counts.
  */
 
 function counts(
@@ -42,9 +41,8 @@ describe('IncompleteBadge', () => {
   });
 
   /*
-   * One pill however many reasons are missing: the count is every track whose file
-   * is not here, and two pills on one card would read as two facts about two
-   * things. The breakdown is the pill's own content.
+   * One pill however many reasons are missing: the count is every track whose
+   * file is not here, and the breakdown is the pill's own content.
    */
   it('draws one pill and one row per reason when several reasons are missing', async () => {
     renderMark(
@@ -82,9 +80,8 @@ describe('IncompleteBadge', () => {
   });
 
   /*
-   * The mark is a `role="img"`, whose children are not read out, so the breakdown
-   * has to be in the label as well as in the tip: a tip alone would be a detail
-   * only a pointer could reach.
+   * A `role="img"`'s children are not read out, so the breakdown must be in the
+   * label too, not only the pointer-reachable tip.
    */
   it('names the count and the breakdown in its label', async () => {
     renderMark(

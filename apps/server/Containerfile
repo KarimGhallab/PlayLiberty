@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# The build context is the repository root, so paths below are workspace-relative.
+# The build context is the repository root, so paths below are
+# workspace-relative.
 FROM docker.io/library/node:26-bookworm-slim AS base
 ENV CI=true
 RUN npm install --global pnpm@12.4.2
@@ -40,9 +41,8 @@ ENV MEDIA_ROOT=/media
 ENV DATABASE_PATH=/data/playliberty.db
 
 ARG YTDLP_VERSION=2026.08.19
-# The expected digest of `yt-dlp_linux` for that version, committed here so the
-# check does not trust the same release that served the binary. Bump the version
-# and this digest together, taking the value from the release's SHA2-256SUMS.
+# The SHA2-256 of `yt-dlp_linux` for that version, committed here so the check
+# does not trust the release that served the binary. Bump both together.
 ARG YTDLP_SHA256=58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a
 
 # ffmpeg ships ffprobe and is pinned to the exact Debian build, so the audio

@@ -1,8 +1,7 @@
 /*
  * The foot of a paged list. The sentinel is a one-pixel line the reader's reach
  * crosses, so the next page arrives before the button is reached; the button is
- * the control that does the same thing on purpose and the one the keyboard and
- * assistive technology see.
+ * the control the keyboard and assistive technology see.
  */
 .load-more {
   display: flex;

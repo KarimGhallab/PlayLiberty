@@ -7,9 +7,7 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import PlaylistSortControl from './PlaylistSortControl';
 
-/*
- * The colour, the rule and the menu's motion are the stylesheet's business.
- */
+/* The colour, the rule and the menu's motion are the stylesheet's business. */
 
 function renderControl(
   props: Partial<Parameters<typeof PlaylistSortControl>[0]> = {}

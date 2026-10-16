@@ -1,10 +1,7 @@
 /*
- * The package's own build runs the compiled file with Node; nothing imports it,
- * because it is a step and not a module.
- *
- * It is the one place CSS syntax is added: `px` to a length, `ms` to a duration,
- * quotes around a family name, `cubic-bezier()` around a curve, and a colour or
- * a bare number verbatim. The unit therefore lives in exactly one place.
+ * A build step, not a module: the package build runs the compiled file with
+ * Node and nothing imports it. It is the one place CSS syntax is added (`px`,
+ * `ms`, quotes, `cubic-bezier()`), so a unit lives in exactly one place.
  */
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';

@@ -6,9 +6,7 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import PlaylistSkipSetting from './PlaylistSkipSetting';
 
-/*
- * The colour and the thumb are the stylesheet's business.
- */
+/* The colour and the thumb are the stylesheet's business. */
 
 function renderSetting(
   props: Partial<Parameters<typeof PlaylistSkipSetting>[0]> = {}

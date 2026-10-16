@@ -21,10 +21,8 @@ attachPlayerPersistence({
 });
 
 /*
- * A client error is the server's answer, not a transient fault: a `404` for a
- * revoked share has to reach the gone state at once rather than after three
- * retries. Only a server error, or a request that never reached the server, is
- * worth trying again.
+ * A 4xx is the server's answer, not a transient fault: a revoked share's `404`
+ * must reach the gone state at once. Only a 5xx or an unreached server retries.
  */
 const queryClient = new QueryClient({
   defaultOptions: {

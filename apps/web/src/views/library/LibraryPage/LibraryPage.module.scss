@@ -4,9 +4,7 @@
   gap: var(--space-4);
   max-width: calc(1056px + var(--space-4) * 2);
   margin: 0 auto;
-  /* 97px is the docked player bar, which is an overlay and so has to be paid
-   * for here, and --space-5 is the gap the page keeps under its last row, the
-   * same step the header uses above the list. */
+  /* 97px is the docked player bar, an overlay, so it is paid for here. */
   padding: 0 var(--space-4) calc(97px + var(--space-5));
 
   &__head {
@@ -23,7 +21,6 @@
     font-weight: var(--weight-semibold);
   }
 
-  /* The header's right side: the language control and the add, one row. */
   &__actions {
     display: inline-flex;
     align-items: center;
@@ -57,13 +54,10 @@
     flex-shrink: 0;
   }
 
-  /* The gallery. `auto-fill` rather than a fixed count, so the column holds as
-   * many tiles as the content column allows and the narrower widths need no
-   * second rule; four columns at 1056, which is the library's own column.
-   *
-   * The end edge is the page's and not a row's: nothing follows the last tile, so
-   * the grid simply ends. There is no closing hairline, because a grid has no
-   * per-item rule for one to close. */
+  /*
+   * `auto-fill` rather than a fixed count, so narrower widths need no second
+   * rule; no closing hairline, a grid having no per-item rule.
+   */
   &__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
@@ -72,18 +66,10 @@
     padding: 0;
     list-style: none;
 
-    /* The phone's card grid. The constraint is the card's own minimum and not a
-     * column count, which is what the web's tile grid already does, so 390 is the
-     * two columns the record measured and a wider viewport takes three or four
-     * rather than two cards the size of a tablet. The gap is --space-3 rather than
-     * the web grid's --space-4, because a card brings its own --space-4 padding and
-     * its picture brings the card's own margin.
-     *
-     * 160 and not the card's own 172.2, which is 8px short of two columns in a
-     * desktop browser at a 390 window: the scrollbar takes 10px, the page's padding
-     * 32, and 348 of content is less than 2 x 172 + 12. 160 still refuses a third
-     * column at 390, which is the arithmetic the record's own figures give, and it
-     * holds two at 375 and at 390 alike. */
+    /*
+     * 160 and not the card's own 172.2: at a 390 window the scrollbar and the
+     * page padding leave 348, less than two 172 columns plus the gap.
+     */
     @media (max-width: 767px) {
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: var(--space-3);
@@ -96,24 +82,16 @@
     min-width: 0;
   }
 
-  /* The pinned section carries no separation of its own any more: the boundary
-   * below it is the rule and the two names, and the page's own gap is the space
-   * around them. */
   &__section-title {
     margin: 0 0 var(--space-4);
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
   }
 
-  /* The boundary between the pinned group and the rest, the width of the content
-   * column.
-   *
-   * --control-border rather than --line, and that is the whole of the decision:
-   * --line measures 1.28:1 and is the rule between rows inside a list, so a
-   * boundary drawn with it is a boundary nobody can see. --control-border is the
-   * token for an edge somebody acts through, which a section boundary is not: it
-   * is borrowed here because this value set has no third boundary and a separator
-   * that cannot be seen separates nothing. */
+  /*
+   * `--control-border`, not `--line`: `--line` is 1.28:1 and a boundary drawn
+   * with it cannot be seen, and the set has no third boundary token.
+   */
   &__rule {
     height: 1px;
     margin: 5px 0px;
@@ -121,8 +99,7 @@
     background: var(--control-border);
   }
 
-  /* The name of the group below the rule, one step down from the pinned heading and
-   * quiet: it labels what follows rather than reading as a second screen title. */
+  /* A step down from the pinned heading, so it labels rather than titles. */
   &__rest-title {
     margin: 0 0 var(--space-4);
     font-size: var(--text-md);
@@ -132,11 +109,8 @@
 }
 
 /*
- * The phone's library. The header spends its height on the title and the language
- * control alone, because the add control is the floating button now: --space-3
- * around a 32px control and a --text-lg title is the 56px the record measures,
- * against 68.8px with the labelled button in the row, and the height it gives up
- * is height the gallery gets.
+ * The header spends its height on the title and the language control: the add
+ * control is the floating button now, and its height goes to the gallery.
  */
 @media (max-width: 767px) {
   .library {
@@ -154,9 +128,10 @@
       font-size: var(--text-md);
     }
 
-    /* With the bar docked, the page has to hold both the 97px bar and the 56px
-     * button and the --space-4 either side of the button, or the last row of cards
-     * scrolls up under a control that cannot move. */
+    /*
+     * Hold the docked bar and the 56px floating button, or the last row scrolls
+     * up under a control that cannot move.
+     */
     &[data-player='true'] {
       padding-block-end: calc(97px + var(--space-4) + 56px + var(--space-4));
     }

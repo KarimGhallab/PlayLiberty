@@ -52,9 +52,8 @@ beforeEach(() => {
 });
 
 /*
- * The seam wired the way production wires it: a tracks read's data is handed to
- * the hook, and the live queue merges. The merge rules themselves are the
- * store's, tested there; this is the wiring that made them load-bearing.
+ * The seam wired as production does: a tracks read's data goes to the hook and
+ * the queue merges; the merge rules are the store's, tested there.
  */
 describe('useQueueRefetch', () => {
   it("adopts the read's order and keeps the current one", () => {

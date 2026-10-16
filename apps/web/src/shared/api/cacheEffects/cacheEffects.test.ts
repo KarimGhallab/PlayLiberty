@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cacheEffects } from './cacheEffects';
 
 /*
- * The one place the keys are pinned. A fact names the reads it asks again and the
- * primitive it uses; the mutations and the live-event path only name the fact, so
- * the keys are asserted here rather than at each caller.
+ * The one place the keys are pinned: a fact names the reads it asks again and
+ * the primitive it uses, so the mutations and the live-event path need only
+ * name the fact and the keys are asserted here rather than at each caller.
  */
 
 function spyOnCache() {

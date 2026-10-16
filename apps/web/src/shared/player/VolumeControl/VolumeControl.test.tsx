@@ -8,8 +8,8 @@ import VolumeControl from './VolumeControl';
 
 /*
  * The window-level key handler is what these tests drive, so the control is
- * mounted once and the presses are dispatched on the document. The store is the
- * real one, because the mute-versus-level rule is the thing under test.
+ * mounted once and presses are dispatched on the document. The store is real,
+ * because the mute-versus-level rule is what is under test.
  */
 
 function renderControl() {
@@ -76,8 +76,8 @@ describe('VolumeControl', () => {
   });
 
   /*
-   * A touch browser may never synthesize the mouseenter a tap would need, so the
-   * pointerdown itself opens the rail.
+   * A touch browser may never synthesize the mouseenter a tap would need, so
+   * the pointerdown itself opens the rail.
    */
   it('opens the rail on a tap', () => {
     renderControl();
@@ -144,7 +144,7 @@ describe('VolumeControl', () => {
     expect(screen.getAllByRole('status')).toHaveLength(1);
     expect(screen.getByRole('status')).toHaveTextContent('Volume 60%');
 
-    /* Past the first press's expiry, so this holds only if the timer restarted. */
+    /* Past the first press's expiry: holds only if the timer restarted. */
     act(() => vi.advanceTimersByTime(1500));
     expect(screen.getByRole('status')).toBeInTheDocument();
   });

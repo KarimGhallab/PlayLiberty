@@ -13,11 +13,8 @@ const ALLOWED_HOSTS = new Set([
 const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,}$/;
 const PLAYLIST_ID_PATTERN = /^[A-Za-z0-9_-]{10,}$/;
 
-/*
- * The video-id shape, shared with the adapter. An id that fails it is not a video
- * id, so it must not be stored or used, and in particular must never become a
- * filesystem path.
- */
+/* The video-id shape, shared with the adapter. An id that fails it must never
+ * be stored or used, in particular never as a filesystem path. */
 export function isValidVideoId(value: string): boolean {
   return VIDEO_ID_PATTERN.test(value);
 }

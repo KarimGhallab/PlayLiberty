@@ -1,37 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /*
- * The deferred-action window. Pressing a destructive control does not call the
- * server; it opens this window, and the call the caller passed runs only when the
- * window closes on its own. Cancelling closes the window early and the call never
- * happens, which is what makes Cancel honest rather than a compensating write.
- *
- * There is one window at a time: opening a new one replaces whatever was pending.
- * A second delete does not silently fire the first one behind the listener's back,
- * which would be a call they thought they had cancelled. Replacing is the only
- * safe reading, and the toast shows whichever window is current.
- *
- * Replacing is safe but not invisible: the hook reports the action the new window
- * displaced as `replaced`, so the surface can name the intent that was dropped
- * rather than swapping the toast without a word. A repeated press of the same
- * action is the same intent and reports nothing. `windowId` marks the window
- * itself, so a surface can restart with each one rather than letting a countdown
- * or an entrance animation outlive the window it was drawn for.
- *
- * The window is a timer, and the timer's timeout is the same duration the toast
- * draws its ring against, so the two cannot drift. The timer is not an
- * `animationend`, for the same reason the dialogs use a timer: a suppressed
- * animation never fires, and a deferred call that only ran on an animation would
- * never run at all.
+ * The deferred-action window: the call runs only when the window closes on its
+ * own, one window at a time, and opening a new one replaces what was pending
+ * rather than firing it. The timer ends it, not `animationend`.
  */
 
 export const UNDO_WINDOW_MS = 6000;
 
 export interface PendingAction {
   /**
-   * The subject's id: the playlist or the track the action is about. A surface
-   * matches its target by this id and not by `detail`, because `detail` is a name
-   * and two playlists can share one.
+   * The subject's id: a surface matches its target by this and not by `detail`,
+   * because `detail` is a name and two playlists can share one.
    */
   readonly id: string;
   /** The sentence the toast shows, in the present tense, e.g. `Deleting “Evening Jazz”`. */
@@ -43,7 +23,7 @@ export interface PendingAction {
 export interface DeferredAction {
   readonly pending: PendingAction | null;
   /**
-   * The action the current window displaced, until the window ends. Null on the
+   * The action the current window displaced, until the window ends; null on the
    * first window and when the same action is deferred twice.
    */
   readonly replaced: PendingAction | null;
@@ -75,11 +55,8 @@ export function useDeferredAction(durationMs = UNDO_WINDOW_MS): DeferredAction {
     }
   }, []);
 
-  /*
-   * Closing keeps the counter: the window that just ended is not the window that
-   * opened before it, and a reused id would restart a surface that had already
-   * moved on. Only the pending and displaced actions go.
-   */
+  /* Closing keeps the counter: a reused id would restart a surface that had
+   * already moved on, so only the pending and displaced actions go. */
   const close = useCallback((): void => {
     setWindows(current => ({ ...current, pending: null, replaced: null }));
   }, []);

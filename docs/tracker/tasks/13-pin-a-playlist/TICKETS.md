@@ -4,13 +4,13 @@ Tickets for [`13-pin-a-playlist`](../../specs/13-pin-a-playlist.md). One file pe
 order, each declaring its blocking edges. The server tickets are verifiable through the API; the web tickets
 through the screen and its tests. One set, `01` to `05`, with the journey last.
 
-| Ticket                                                                                              | Status     | Blocked by                                         | Blocks                                             |
-| --------------------------------------------------------------------------------------------------- | ---------- | -------------------------------------------------- | -------------------------------------------------- |
-| [`01-the-pin-on-a-playlist`](01-the-pin-on-a-playlist.md)                                           | resolved   | none                                               | [`02`](02-the-pinned-section-and-the-menu-item.md) |
-| [`02-the-pinned-section-and-the-menu-item`](02-the-pinned-section-and-the-menu-item.md)             | resolved   | [`01`](01-the-pin-on-a-playlist.md)                | [`05`](05-the-pinned-gallery-journey.md)           |
-| [`03-the-pin-on-the-cover`](03-the-pin-on-the-cover.md)                                             | superseded | [`02`](02-the-pinned-section-and-the-menu-item.md) | none                                               |
-| [`04-the-section-and-the-glyphs`](04-the-section-and-the-glyphs.md)                                 | resolved   | none                                               | none                                               |
-| [`05-the-pinned-gallery-journey`](05-the-pinned-gallery-journey.md)                                 | resolved   | [`02`](02-the-pinned-section-and-the-menu-item.md) | none                                               |
+| Ticket                                                                                  | Status     | Blocked by                                         | Blocks                                             |
+| --------------------------------------------------------------------------------------- | ---------- | -------------------------------------------------- | -------------------------------------------------- |
+| [`01-the-pin-on-a-playlist`](01-the-pin-on-a-playlist.md)                               | resolved   | none                                               | [`02`](02-the-pinned-section-and-the-menu-item.md) |
+| [`02-the-pinned-section-and-the-menu-item`](02-the-pinned-section-and-the-menu-item.md) | resolved   | [`01`](01-the-pin-on-a-playlist.md)                | [`05`](05-the-pinned-gallery-journey.md)           |
+| [`03-the-pin-on-the-cover`](03-the-pin-on-the-cover.md)                                 | superseded | [`02`](02-the-pinned-section-and-the-menu-item.md) | none                                               |
+| [`04-the-section-and-the-glyphs`](04-the-section-and-the-glyphs.md)                     | resolved   | none                                               | none                                               |
+| [`05-the-pinned-gallery-journey`](05-the-pinned-gallery-journey.md)                     | resolved   | [`02`](02-the-pinned-section-and-the-menu-item.md) | none                                               |
 
 ## Conventions
 

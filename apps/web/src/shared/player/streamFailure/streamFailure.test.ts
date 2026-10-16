@@ -65,13 +65,8 @@ describe('classifyStreamFailure', () => {
   });
 
   it('reports an expired session and does not treat it as a track fault', async () => {
-    /*
-     * jsdom performs no navigation but does not throw on the attempt, so the
-     * assert is the classification itself: the refusal is read as a session and
-     * returned as such, which is what keeps it from being mistaken for a broken
-     * track. The navigation the guard fires is a side effect this test cannot
-     * observe through jsdom's frozen `location`.
-     */
+    /* jsdom navigates nowhere but does not throw, so the assert is the
+     * classification: a 401 reads as a session, not a broken track. */
     streamResponds(401);
 
     await expect(classifyStreamFailure('track-1')).resolves.toBe(

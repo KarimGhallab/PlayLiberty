@@ -32,16 +32,9 @@ import {
 import type { TestContext } from './createTestContext.js';
 
 /*
- * The test data builders, one owner for the schema defaults every suite was
- * restating. A builder inserts with raw drizzle and never through a service, so a
- * service bug cannot hide behind a green fixture; the one suite that exercises a
- * service calls it explicitly. The playlist association is a separate call
- * because a track is server-wide and the membership is often the thing under
- * test.
- *
- * The chosen defaults are the common case for a fixture: a stored track of
- * three minutes, a playlist nobody has shared, a read share. A test that needs
- * another value passes the option rather than restating the columns.
+ * The test data builders, one owner for the schema defaults suites restated. A
+ * builder inserts with raw Drizzle, never a service, so a bug cannot hide
+ * behind a green fixture; membership is a separate call under test.
  */
 
 export interface SeededAccount {
@@ -246,11 +239,7 @@ export function seedShare(
     .run();
 }
 
-/*
- * One account's pin on one playlist. The instant is the order the gallery reads
- * the section in, so a test that fixes it can assert the order rather than the
- * wall clock; the default is now, which is the order a live pin would take.
- */
+/* Pin instant orders the section, so a test fixes it to assert order. */
 export function seedPin(
   database: DatabaseHandle,
   accountId: string,
@@ -293,12 +282,8 @@ export function seedSyncRun(
   return { runId };
 }
 
-/*
- * A stored track with a real file and thumbnail, for a suite that streams: the
- * two media routes need something on disk to send. It is the one composite,
- * because five suites were each building the same account, playlist, track,
- * association and pair of files by hand. It creates whatever it is not given.
- */
+/* A stored track with a real file and thumbnail on disk, so a media route has
+ * something to send. It creates whatever it is not given. */
 export async function seedStoredTrack(
   context: TestContext,
   options: SeedStoredTrackOptions = {}

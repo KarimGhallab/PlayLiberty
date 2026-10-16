@@ -17,14 +17,9 @@ import ReadFailure from '../ReadFailure/ReadFailure';
 import shareStyles from './SharePlaylistDialog.module.scss';
 
 /*
- * Share one playlist. The body lists the accounts from the directory. Each name
- * carries a level switch and an action: grant turns a level on, revoke turns it
- * off, and the two share one call because sharing is one fact about a pair of
- * accounts.
- *
- * The list is a read of the playlist's shares, so the dialog arrives knowing who
- * already has it rather than asking the person to remember. A grant and a revoke
- * both invalidate that read, so the list settles on the server's answer.
+ * Share one playlist: the body lists the directory's accounts, each with a
+ * level switch and an action. The list reads the shares, so the dialog
+ * arrives knowing who already has it.
  */
 
 interface SharePlaylistDialogProps {
@@ -55,10 +50,8 @@ export default function SharePlaylistDialog({
   const revoke = useRevokeShare(playlistId);
   const [working, setWorking] = useState<string | null>(null);
 
-  /*
-   * The directory without the reader. A share with oneself is a refusal the route
-   * owns, and offering a row that can only fail is worse than not offering it.
-   */
+  /* The directory without the reader: a share with oneself is a refusal the
+   * route owns, and a row that can only fail is worse than none. */
   const currentAccountId = me.data?.id ?? null;
   const candidates = (directory.data ?? []).filter(
     account => account.id !== currentAccountId

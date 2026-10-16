@@ -1,10 +1,7 @@
 import { Language } from '../types.js';
 
-/*
- * The locale is resolved once, per browser, and the app does not listen for
- * `languagechange`, so a browser setting change does not flip the interface
- * under the reader.
- */
+/* Resolved once per browser: `languagechange` is not listened for, so a browser
+ * setting change does not flip the interface under the reader. */
 
 const SUPPORTED: readonly Language[] = [Language.English, Language.French];
 

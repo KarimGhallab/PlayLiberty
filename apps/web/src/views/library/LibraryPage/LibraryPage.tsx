@@ -40,9 +40,8 @@ import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';
 
 /*
- * The sentence for the intent a second delete dropped. The displaced action's
- * name is the whole of it: the first delete never reaches the server, so saying
- * which playlist is no longer going is the honest correction, not a count.
+ * The displaced delete never reached the server, so naming the playlist it
+ * dropped is the honest correction rather than a count.
  */
 function replacedSentence(
   replaced: { detail: string | null } | null,
@@ -58,25 +57,8 @@ function replacedSentence(
 }
 
 /*
- * The list of playlists is the only entry point to content, so this is the route
- * a user lands on. Four states and no fifth: loading, a failed read, the empty
- * gallery, and the populated list.
- *
- * The add control is a labelled button in the header on the web and a floating
- * round button on a phone, where the header's height is the gallery's to spend and
- * a word in it is 56.9% of a card's width. Only one of the two is drawn at a time,
- * because the two are one control at two widths and a second copy would be a
- * second invitation. On the empty state neither is drawn: the gallery's framed
- * action is alone there, so the one screen where a person has seen neither control
- * offers one invitation, not two. All three open one dialog. On success the dialog closes and the list is invalidated, so the new
- * playlist arrives from the server rather than from a row this screen invented;
- * the person stays here and watches it appear rather than being taken into a
- * playlist they have not seen yet.
- *
- * The page owns the one undo window, because a delete is the one destructive
- * action an item offers and two of them in the same window must replace rather
- * than stack. An item hands its own commit to this window; the toast below is the
- * page's single surface for it.
+ * Four states and no fifth: loading, failure, the empty gallery, the list. The
+ * page owns the one undo window, so a second delete replaces the first.
  */
 export default function LibraryPage() {
   const { t } = useI18n();
@@ -92,10 +74,8 @@ export default function LibraryPage() {
   const pinnedHeadingId = useId();
 
   /*
-   * The owner line needs the directory, and the directory is a second read that
-   * may be pending, failed or short of the owner. In every one of those cases the
-   * resolved name is null and the item falls back to its share indicator, so the
-   * line never blocks the list and never invents a name.
+   * The directory may be pending, failed, or short of the owner, so the name
+   * resolves to null and the item falls back to its share indicator.
    */
   const directoryItems = directory.data ?? [];
 
@@ -104,20 +84,14 @@ export default function LibraryPage() {
   const items = playlists.isSuccess ? playlists.data.items : [];
 
   /*
-   * The gallery is two groups over one read: the items whose flag is set, in the
-   * server's own order, and the rest, which the read already ordered. The page
-   * filters and never sorts, so the section's order is the read's and the list
-   * below keeps the order it had.
+   * The page filters and never sorts, so both groups keep the server's order.
    */
   const pinned = items.filter(playlist => playlist.pinned);
   const rest = items.filter(playlist => !playlist.pinned);
 
   const isEmpty = playlists.isSuccess && items.length === 0;
 
-  /*
-   * The pin's refusal withdraws itself on the same window the other notices use,
-   * so a failed change does not stand over the gallery once it is read.
-   */
+  /* The refusal withdraws on the window the other notices use. */
   useEffect(() => {
     if (pinRefused === null) {
       return;
@@ -144,12 +118,8 @@ export default function LibraryPage() {
   );
 
   /*
-   * The dialog reports the end of its exit, which is the moment to drop anything
-   * it was holding. Success is the one close the dialog does not initiate, so the
-   * page sets `open` false and the dialog runs the same fade every other close
-   * runs; the list is already invalidated by the mutation, so the read that
-   * follows carries the new playlist and the screen they are standing on is the
-   * one that gains it.
+   * Success is the one close the dialog does not initiate, so the page drops
+   * `open` and the dialog runs its usual fade.
    */
   useEffect(() => {
     if (createPlaylist.isSuccess) {

@@ -1,8 +1,6 @@
 /*
- * The empty gallery's own rules: a centred stack
- * whose promise carries the system's reading width, and the same primary control
- * the header uses. It is centred in the room under the header rather than pinned
- * to the top, so a tall desktop does not strand it in a void.
+ * The same primary control the header uses, centred in the room under the
+ * header rather than pinned to the top, so a tall desktop does not strand it.
  */
 .empty-gallery {
   display: flex;

@@ -2,15 +2,9 @@ import type { RefObject } from 'react';
 import { useEffect } from 'react';
 
 /*
- * One dismissible menu's dismissal, shared by every overflow and dropdown in the
- * app. A menu closes on a press outside its anchor and on Escape, and the two
- * differ in where the keyboard ends up: Escape hands focus back to the trigger,
- * because the keyboard must never land on nothing, while an outside press leaves
- * focus where the user put it, because they moved it there on purpose.
- *
- * A press inside the anchor is left alone so an item's own handler can run, and
- * a press outside is guarded on `Node`, so a non-node target cannot throw the
- * containment check.
+ * One dismissible menu's dismissal, shared by every overflow in the app: a menu
+ * closes on a press outside its anchor and on Escape. Escape returns focus to
+ * the trigger; an outside press leaves focus where the user put it.
  */
 
 export interface DismissibleMenuOptions {

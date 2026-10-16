@@ -8,9 +8,7 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import PlaylistFilterChips from './PlaylistFilterChips';
 
-/*
- * The colours and the sideways scroll are the stylesheet's business.
- */
+/* The colours and the sideways scroll are the stylesheet's business. */
 
 const COUNTS: TrackFileStatusCounts = {
   stored: 2,

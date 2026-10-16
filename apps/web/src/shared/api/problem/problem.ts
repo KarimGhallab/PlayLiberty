@@ -4,9 +4,9 @@ import type { Messages, Translator } from '@playliberty/i18n';
 import { ApiError } from '../client/client';
 
 /*
- * The one seam where a refusal becomes a sentence. The API client throws an
- * `ApiError` carrying the server's problem document; every surface that shows a
- * refusal crosses here, so the unwrap and the catalog mapping are written once.
+ * The one seam where a refusal becomes a sentence: the client's `ApiError`
+ * carries the server's problem document, so the unwrap and mapping are written
+ * once.
  */
 export function problemSentence(
   t: Translator<Messages>,

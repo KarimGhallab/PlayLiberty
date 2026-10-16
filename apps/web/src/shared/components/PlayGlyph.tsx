@@ -1,12 +1,7 @@
 /*
- * The geometry is generated from the pinned icon set and never drawn by hand, so
- * the one source of truth is the generator's frames.
- *
- * The component owns the strip and nothing else: whether the resting frame is
- * play or pause is `data-state` on an ancestor, which the design system puts on
- * the host rather than the button because a sibling strip reads the same state
- * and CSS cannot reach a sibling. `data-run` is the transition, which the host
- * drops on `animationend`; this component does not run it either.
+ * The geometry is generated from the pinned icon set, never drawn by hand, so
+ * the generator's frames are the one source of truth. The component owns the
+ * strip and nothing else; `data-state` on an ancestor picks the resting frame.
  */
 
 /* The distance between frames, in SVG user units. */

@@ -1,29 +1,24 @@
 import { ApiError, probeStreamStatus } from '../../api/client/client';
 
 /*
- * What the player does about a stream that failed to load.
- *
- * The audio element cannot say why it failed, so the player asks the route for
- * its status and turns that into one of three answers: an expired session is not
- * a broken track, a track that is gone is dropped and the queue moves on, and
- * anything else is left alone because a network blip must not skip music.
+ * What to do about a stream that failed to load. The element cannot say why, so
+ * the route's status becomes one of three answers: gone is dropped, an expired
+ * session is not a track fault, anything else is left alone.
  */
 
 /** What the player should do with the current track. */
 export enum StreamFailureKind {
-  /* The track cannot be played: not found, forbidden, or has no stored media. */
+  /* Cannot be played: not found, forbidden, or no stored media. */
   Gone = 'gone',
-  /* The session expired and the client is re-authenticating. Not a track fault. */
+  /* The session expired; the client is re-authenticating, not a track fault. */
   Session = 'session',
-  /* The request failed for a reason this client cannot classify. Leave the track. */
+  /* Failed for a reason this client cannot classify; leave the track. */
   Unknown = 'unknown'
 }
 
 /*
- * The statuses a stream route uses to say an entry will never play: `404` for a
- * track the account cannot see or that is pruned, `403` for one it may not
- * stream, and `409` for one whose media is not stored. Every one of them is a
- * definitive answer about this entry, which is what makes dropping it honest.
+ * The statuses that say an entry will never play: 404 (unseen or pruned), 403,
+ * 409 (no stored media); each is definitive, so dropping the entry is honest.
  */
 const GONE_STATUSES = new Set([403, 404, 409]);
 
@@ -33,11 +28,8 @@ function streamPath(trackId: string): string {
 }
 
 /*
- * Classify a load failure by re-asking the stream route for its status. The
- * probe runs through the client's own request path, so a `401` or an opaque
- * redirect has already been handled by the re-authentication guard by the time
- * the rejection reaches here; that is why a thrown `ApiError` with a `401` is
- * the session answer and every other thrown error is unknown.
+ * Classify a load failure by re-asking the route. The probe runs through the
+ * client's path, so a thrown `401` is the session answer, else unknown.
  */
 export async function classifyStreamFailure(
   trackId: string

@@ -1,12 +1,7 @@
 /*
- * The sync summary. The band
- * sits on --bg rather than on a --surface panel: every pairing holds either way,
- * and a panel here would buy nothing over a left column that already has the
- * header's surface.
- *
- * Four equal columns, one figure and one word each. 1fr rather than a fixed
- * width, because the four words differ in length and no fixed width fits the
- * longest without wasting the gap on the other three.
+ * The sync summary: four equal columns, one figure and one word each. `1fr`
+ * rather than a fixed width, because the four words differ in length. The band
+ * sits on --bg, since a panel would buy nothing.
  */
 .sync-summary {
   display: flex;

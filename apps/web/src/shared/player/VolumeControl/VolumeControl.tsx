@@ -8,49 +8,22 @@ import { volumeIcon } from '../volumeIcon';
 import styles from './VolumeControl.module.scss';
 
 /*
- * The volume control, the player bar's rightmost item. It is the bar's one
- * disclosure: the rail is 96px of vertical travel that would dwarf the 98px bar
- * if it stood open, so it is shown while the pointer is on the pair, focus is
- * inside it or a tap has just landed, and gone once none holds. The focus and
- * pointer halves are what let a keyboard and a touch user reach the level: focus
- * opens the rail and a tap opens it too, where hover alone never would.
- *
- * The button is a mute, not an open. A press silences the output and leaves the
- * level alone, so unmuting returns to exactly where the listener had it; the rail
- * is the only thing that changes the level by pointer.
- *
- * Up, Down and M are bound on the window rather than on the control, because a
- * listener reaches for the volume without first finding it, and the bar is
- * always on screen once something plays. A text field and a held modifier are the
- * two places the keys are left alone. Up and Down change the level whether or not
- * the output is muted, so a listener who mutes, adjusts, then unmutes lands where
- * they set it.
- *
- * Up and Down also raise the volume notice, because the rail is the only other
- * readout and it is open only while the pointer is on it: a keyboard listener
- * would otherwise move the level with nothing on screen saying where it landed.
- * The notice is the keyboard's equal of the pointer's rail, and it is centred
- * above the bar so the two can each be up without covering the other.
+ * The volume control: the bar's one disclosure, its rail shown while pointer,
+ * focus or a tap holds it. The button mutes and keeps the level, so unmuting
+ * returns to it; Up, Down and M are bound on the window.
  */
 
 /** How much one press of Up/Down moves the volume. */
 const KEYBOARD_STEP = 0.05;
 
 /*
- * How long the notice stays after the last press. The host owns it: the value is
- * both the toast's own fade and the timeout that disposes it, so the two cannot
- * drift.
+ * How long the notice stays. The same value is the toast's fade duration and
+ * the host's timeout, so the two cannot drift.
  */
 const VOLUME_TOAST_MS = 1600;
 
-/*
- * Pointer capture keeps a drag alive when the pointer leaves the rail, which is
- * the difference between a drag that survives an impatient hand and one that
- * stops at the rail's edge. It is a nicety rather than the change itself, so a
- * host that does not implement it loses the drag-outside behaviour and nothing
- * else; jsdom is one such host, and an unguarded call would take the whole
- * handler down with it.
- */
+/* Pointer capture keeps a drag alive when the pointer leaves the rail. A host
+ * without it (jsdom) must not throw, so the call is optional-chained. */
 function capturePointer(element: HTMLElement, pointerId: number): void {
   element.setPointerCapture?.(pointerId);
 }
@@ -88,8 +61,7 @@ export default function VolumeControl() {
         return;
       }
 
-      /* The store is read at press time rather than closed over, so a key never
-       * acts on a level the listener has already changed. */
+      /* Read the store at press time, so a key never acts on a stale level. */
       const state = usePlayerStore.getState();
 
       if (event.key === 'ArrowUp') {
@@ -128,10 +100,8 @@ export default function VolumeControl() {
   const Icon = volumeIcon(volume, muted);
 
   /*
-   * The pointer's y against the rail's own box, as a level. The box is the truth
-   * and the store is not: the store's level is whatever the last interaction
-   * wrote, and the target is where the pointer is now. The rail fills upward, so
-   * the top of the box is full and the bottom is silent.
+   * The pointer's y against the rail's box, as a level: the box is truth, not
+   * the store. The rail fills upward, so top is full and bottom silent.
    */
   const volumeAt = (clientY: number): number => {
     const box = rail.current?.getBoundingClientRect();
@@ -158,9 +128,10 @@ export default function VolumeControl() {
           setOpen(false);
         }
       }}
-      /* The pointer's own open. Hover reaches a mouse, but a touch browser may
-       * never synthesize a mouseenter before the tap lands, so the rail opens on
-       * the pointerdown itself and a tap is not at the mercy of that synthesis. */
+      /*
+       * Open on the pointerdown itself: a touch browser may never synthesize
+       * the mouseenter a tap would need.
+       */
       onPointerDown={() => setOpen(true)}
       onFocus={() => setOpen(true)}
       onBlur={event => {

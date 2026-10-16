@@ -5,14 +5,8 @@ import type {
   YoutubeSourceEntry
 } from '@playliberty/youtube';
 
-/*
- * The source seam, substituted at the interface the app already publishes.
- *
- * A test that exercises the sync passes a fake here and never spawns yt-dlp: one
- * `listSource` call per run, answered from the queue in order, and a download that
- * throws, so a sync that tried to fetch audio would fail the run rather than pass
- * quietly.
- */
+/* The source seam: a `listSource` per run, answered from the queue in order.
+ * A download throws, so a sync fetching audio fails, not passes. */
 
 export const TEST_SOURCE_ID = 'PL1234567890abcdef';
 
@@ -42,10 +36,8 @@ export function testSource(
   };
 }
 
-/*
- * The source a video URL resolves to. One entry, which is what the adapter returns
- * for a single video, and the track the batch add creates from it.
- */
+/* The source a video URL resolves to: one entry, as the adapter returns for a
+ * single video. */
 export function testVideo(videoId: string): YoutubeSource {
   return {
     kind: YoutubeSourceKind.Video,

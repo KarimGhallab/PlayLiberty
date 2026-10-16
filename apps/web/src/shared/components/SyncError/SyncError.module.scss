@@ -1,13 +1,7 @@
 /*
- * The sync error. The 2px rule
- * on the leading edge is not a card and not a border on all four sides, because
- * the rule says "this block is a state" and a box around it would say "this block
- * is an object".
- *
- * The band is a flex column, not a plain block: as a block it would swallow the
- * gap on the wrapper, because that gap applies to the band as one child and to
- * nothing inside it, and the sentence, the reassurance and the retry would sit
- * flush against each other.
+ * The sync error. The 2px rule on the leading edge says "this block is a
+ * state"; a box around it would say "this block is an object". The band is a
+ * flex column, so the gap reaches the sentence, the reassurance and the retry.
  */
 .sync-error {
   display: flex;
@@ -23,9 +17,8 @@
     border-left: var(--focus-width) solid var(--tone-failed);
   }
 
-  /* The colour is a state marker and the sentence is the meaning, and neither
-   * does the other's job: remove the colour and the sentence still says what
-   * happened. */
+  /* The colour is a state marker and the sentence is the meaning: remove the
+   * colour and the sentence still says what happened. */
   &__say {
     margin: 0;
     color: var(--tone-failed);
@@ -33,9 +26,8 @@
     line-height: var(--leading-relaxed);
   }
 
-  /* The answer to the fault rather than part of it, so it is muted: printing
-   * the settling in the alarm colour would make the good news as loud as the
-   * bad. */
+  /* The answer to the fault rather than part of it: printing the settling in
+   * the alarm colour would make the good news as loud as the bad. */
   &__safe {
     margin: 0;
     color: var(--muted);
@@ -43,9 +35,8 @@
     line-height: var(--leading-relaxed);
   }
 
-  /* The one action on this surface. The retry is the primary button the form
-   * controls own, restated here so the panel does not depend on another
-   * surface's stylesheet. */
+  /* The one action on this surface, restated from the form controls' primary
+   * button so the panel does not depend on another stylesheet. */
   &__retry {
     display: inline-flex;
     align-items: center;
@@ -100,9 +91,8 @@
     animation: sync-error-spin 900ms linear infinite;
   }
 
-  /* The control that opens the server's words. A word and a rule rather than a
-   * button, because it opens something rather than doing something, and the
-   * retry above it is the only action on this surface. */
+  /* A word and a rule rather than a button, because it opens something rather
+   * than doing something; the retry above is the only action here. */
   &__reveal {
     align-self: flex-start;
     padding: 0;
@@ -124,9 +114,8 @@
     }
   }
 
-  /* pre-wrap, so a multi-line diagnostic stays multi-line, and a 120px cap with
-   * its own scroll, so an unbounded string cannot become the tallest thing on
-   * the screen. */
+  /* pre-wrap keeps a multi-line diagnostic multi-line, and the 120px cap with
+   * its own scroll stops an unbounded string becoming the tallest thing. */
   &__raw {
     max-height: 120px;
     margin: 0;

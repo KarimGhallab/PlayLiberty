@@ -11,17 +11,9 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './PlaylistSortControl.module.scss';
 
 /*
- * The order the playlist's tracks are read in, as a menu button at the end of the
- * control row above the list. The owner and a write collaborator may change it; a
- * read collaborator sees the same control disabled, because the value is still
- * theirs to read. It is disabled while the queue is this playlist and shuffled
- * too, because the saved order is the unshuffled list's order and the control
- * must not claim an order the list is not in.
- *
- * The page owns the mutation and the optimistic update, so this is presentational:
- * `sort` is what the server last answered (or the optimistic guess while a request
- * is in flight), `saving` locks the control until the answer lands, and `onChange`
- * fires the request.
+ * The order the playlist's tracks are read in, as a menu button at the end of
+ * the control row. The owner and a write collaborator may change it; it is
+ * disabled while the queue is this playlist and shuffled, whose order differs.
  */
 
 interface PlaylistSortControlProps {

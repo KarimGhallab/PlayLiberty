@@ -7,9 +7,8 @@ import { I18nProvider } from '@playliberty/i18n';
 import AddPlaylistDialog from './AddPlaylistDialog';
 
 /*
- * The exit is a real 180ms wait, and the dialog unmounts itself when it elapses.
- * Fake timers make that deterministic, so the tests advance the clock rather than
- * waiting on it.
+ * The 180ms exit is driven by fake timers, so the tests advance the clock
+ * rather than wait on it.
  */
 function runExit(): void {
   act(() => {
@@ -57,7 +56,6 @@ describe('AddPlaylistDialog', () => {
       </I18nProvider>
     );
 
-    /* The exit is running, so the dialog is still on screen. */
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     runExit();
@@ -167,8 +165,8 @@ describe('AddPlaylistDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     /*
-     * The caller owns `open`, so the press only asks to close. The fade then runs
-     * once the caller flips `open`, and the node unmounts when it elapses.
+     * The caller owns `open`, so the press only asks to close; the fade runs
+     * once the caller flips it.
      */
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('dialog')).toBeInTheDocument();

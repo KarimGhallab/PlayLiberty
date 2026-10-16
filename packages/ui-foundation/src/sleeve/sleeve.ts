@@ -1,22 +1,13 @@
 /*
- * The sleeve a playlist draws when it has no artwork.
- *
- * A playlist with no `coverUrl` still carries an identity, so the placeholder
- * carries one too, and it is derived from the playlist's own id rather than
- * stored: the same playlist keeps its sleeve across reloads and on every client,
+ * The sleeve a playlist with no artwork draws, derived from the playlist id
+ * rather than stored: the same playlist keeps it across reloads and clients,
  * and nothing has to persist, migrate or backfill a colour.
- *
- * The hash is FNV-1a over the id's code units and the result indexes the six
- * sleeve tokens. Only which sleeve is derived; the sleeve itself is a value the
- * design system has already drawn and measured, not one computed at run time.
  */
 
 const SLEEVE_COUNT = 6;
 
-/**
- * The one-based index of the sleeve a playlist draws. Deterministic for an id,
- * stable across clients and reloads because it reads nothing but the id.
- */
+/** The one-based index of that sleeve: deterministic because it reads only the
+ * id. */
 export function sleeveIndex(playlistId: string): number {
   let hash = 2166136261;
 

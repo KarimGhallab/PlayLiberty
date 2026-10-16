@@ -6,14 +6,9 @@ import { addPlaylist, openPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
- * Journey: the skip-non-music setting.
- *
- * The dev proxy fixes one browser identity, so the browser is the owner and the
- * read-collaborator view is left to the unit and route tests. What is proved
- * here is the browser's own part: the switch round-trips both ways and survives a
- * reload, and a track already created keeps the value it was born with when a
- * playlist that holds it changes, because the write is not retroactive. The
- * track's own value is read over the API, since no screen draws it yet.
+ * Journey: the skip-non-music setting. The switch round-trips and survives a
+ * reload, and a track keeps the value it was born with when its playlist
+ * changes, because the write is not retroactive.
  */
 
 const OWNER = 'dev-user';
@@ -46,8 +41,6 @@ async function addTrack(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Video link').fill(videoUrl(video.videoId));
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
-
-  // Every chosen playlist took it, so the dialog closes.
   await expect(dialog).toBeHidden();
 }
 
@@ -128,11 +121,8 @@ test('a track already created keeps its setting when a playlist changes', async 
     entries: [SECOND]
   });
 
-  /*
-   * The add dialog takes a video, and the fake keys the scenario by the video id,
-   * so the videos the dialog will paste are scripted under their own ids now that
-   * the playlists are already synced.
-   */
+  /* The dialog takes a video and the fake keys by video id, so these are
+   * scripted under their own ids now that the playlists are synced. */
   writeScenario({
     sources: {
       [FIRST.videoId]: { title: FIRST.title, entries: [FIRST] },

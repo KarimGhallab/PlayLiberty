@@ -28,8 +28,7 @@ import PlaylistTileHeader from './PlaylistTileHeader';
 
 /*
  * The header under test sits inside a real router so its two links resolve the
- * way they do in the app. The route is a throwaway `/playlists/$playlistId` with
- * a stub component, because nothing here asserts what the destination draws.
+ * way they do in the app; the route is a throwaway stub.
  */
 function renderInRouter(element: ReactNode) {
   const rootRoute = createRootRoute();
@@ -120,8 +119,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
 
 /*
  * The header draws the menu it is given; the access rule and the wiring live in
- * the actions module, which has its own test. One Sync now item is enough to draw
- * the overflow, so a rendering test hands the header a model directly.
+ * the actions module's own test. One item is enough to draw the overflow.
  */
 function menu(): PlaylistAction[] {
   return [
@@ -397,11 +395,8 @@ describe('PlaylistHeader', () => {
     ).toBeInTheDocument();
   });
 
-  /*
-   * The pressed state is the player's shuffle AND this playlist being the queue.
-   * A row that is not the queue reports unpressed even while the player is
-   * shuffled, so a reader can tell which playlist the shuffle belongs to.
-   */
+  /* The pressed state is the player's shuffle AND this playlist being the
+   * queue, so a reader can tell which playlist the shuffle belongs to. */
   it('leaves a row unpressed while the player is shuffled on another playlist', async () => {
     renderRow(playlist(), null, {
       onShuffle: () => undefined,
@@ -425,11 +420,8 @@ describe('PlaylistHeader', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
-  /*
-   * A deferred removal marks the row: dimmed through `data-pending`, `aria-busy`,
-   * and every door and control disabled, so the thing the toast says is going
-   * cannot still be opened, played, shuffled or acted on.
-   */
+  /* A deferred removal marks the row: dimmed, `aria-busy`, and every door and
+   * control disabled. */
   it('marks a pending row and disables every door and control', async () => {
     const { container } = renderRow(playlist(), null, {
       onOpen: () => undefined,
@@ -458,14 +450,8 @@ describe('PlaylistHeader', () => {
     ).toBeDisabled();
   });
 
-  /*
-   * The share tooltip is WCAG 1.4.13 content: the glyph's meaning has to be
-   * available to a keyboard or touch user, not only a pointer. The reveal itself
-   * is `:hover` and `:focus-visible` in the stylesheet, which jsdom does not
-   * compute, so these hold the two things the component owns: the mark is a tab
-   * stop, and Escape's dismissal flag outranks the reveal and lifts on the next
-   * focus or hover.
-   */
+  /* The tooltip's reveal is `:hover`/`:focus-visible` in the stylesheet, which
+   * jsdom does not compute; these cover the tab stop and Escape's flag. */
   it('puts the share indicator in the tab order', async () => {
     renderRow(playlist());
 
@@ -525,9 +511,8 @@ describe('PlaylistHeader', () => {
 });
 
 /*
- * The tile: the library's arrangement. It draws the same facts as the row, adds
- * the library's own mark, and offers nothing a gallery of destinations cannot
- * honour, so there is no play and no transport here to press.
+ * The tile, the library's arrangement: the same facts as the row plus the
+ * library's mark, with no transport to press.
  */
 describe('the tile arrangement', () => {
   it('draws the name, the share mark, the sync line with its time and the count', async () => {
@@ -551,12 +536,8 @@ describe('the tile arrangement', () => {
     expect(await screen.findByText('Shared by Ada')).toBeInTheDocument();
   });
 
-  /*
-   * The tile plays from its cover's bottom-left corner, which is the one press a
-   * gallery of artwork owes: the play is the seam's, so it names itself and becomes
-   * the pause while this playlist is the queue. The transport stays absent, because
-   * the library has no list to step through.
-   */
+  /* The tile plays from its cover's corner: the play is the seam's, so it
+   * names itself and pauses while this is the queue; no transport. */
   it('offers the play on the cover, and no transport', async () => {
     const onPlay = vi.fn();
 
@@ -725,11 +706,8 @@ describe('the card as an item of the library', () => {
     ).not.toBeInTheDocument();
   });
 
-  /*
-   * The item's identity is the status line rather than the hero's three lines: at
-   * 172px the count and the state share one line and the elapsed time is the fact
-   * that is dropped, because the count is what a person came to the gallery for.
-   */
+  /* The item's identity is the status line, not the hero's three lines: at
+   * 172px the count and the state share one line and the elapsed time drops. */
   it('draws the count and the state with no elapsed time', async () => {
     renderItem();
 

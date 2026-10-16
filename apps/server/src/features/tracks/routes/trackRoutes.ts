@@ -28,19 +28,8 @@ import {
   TrackThumbnailOutcome
 } from '../types.js';
 
-/*
- * The media is content-stable, so it is worth caching in the browser and worth
- * nothing to a shared cache. A track's audio is written once and the track only
- * becomes playable once stored, so the client never holds a failed one; a
- * thumbnail is keyed by a video id that never changes and the client only asks
- * for it once the path is set. Both are `private`, so no shared cache may store
- * or replay one account's media to another, and both keep their validators, so a
- * request past the window revalidates into a 304 rather than a re-download.
- *
- * The values are the `Cache-Control` string, so they are seconds; `sendFile`'s
- * `maxAge` option is milliseconds and can only produce `public`, which is why the
- * header is written here and `cacheControl` is turned off below.
- */
+/* Media is content-stable: browser-cacheable, but `private`, so no shared cache
+ * may replay one account's media to another. Cache-Control seconds. */
 const AUDIO_CACHE_CONTROL = 'private, max-age=604800';
 const THUMBNAIL_CACHE_CONTROL = 'private, max-age=2592000';
 
@@ -57,8 +46,7 @@ export function registerTrackRoutes(
 
     const info = resolveSourceUrl(parsed.data.url);
 
-    // A playlist URL is what the create-a-playlist dialog takes, and this dialog
-    // takes a video; the whole request is refused so no playlist is touched.
+    // This route takes a video; a playlist URL refuses the whole request.
     if (info === null || info.kind !== YoutubeSourceKind.Video) {
       return sendUnprocessable(reply);
     }

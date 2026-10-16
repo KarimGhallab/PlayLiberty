@@ -81,8 +81,8 @@ export function registerPlaylistRoutes(
       return sendInvalidRequest(reply);
     }
 
-    // The playlist and its run exist before this answers, so the client has an id
-    // to read the run from; the reconcile itself finishes behind the response.
+    // The playlist and run exist before this answers, giving the client an id
+    // to read the run from; the reconcile finishes behind the response.
     const started = startSyncForSource(
       context,
       request.account.id,
@@ -205,13 +205,8 @@ export function registerPlaylistRoutes(
     }
   );
 
-  /*
-   * The skip-non-music setting, which the owner and a write collaborator may
-   * change. The write is not retroactive: it sets the default for tracks created
-   * from now on, and every track already created keeps the value it was born
-   * with. A read collaborator, a stranger and a missing playlist are one
-   * not-found.
-   */
+  /* The owner and write collaborator may change the skip-non-music setting, not
+   * retroactive: it sets the default for tracks created from now on. */
   app.patch<{ Params: { id: string } }>(
     '/playlists/:id/skip-non-music',
     async (request, reply) => {
@@ -241,14 +236,8 @@ export function registerPlaylistRoutes(
     }
   );
 
-  /*
-   * The order the playlist's tracks are read in, which the owner and a write
-   * collaborator may change. The playlist's own order is the absence, so the press
-   * that clears the sort writes no value rather than a stored member. A read
-   * collaborator, a stranger and a missing playlist are one not-found. The
-   * playlist-changed event asks another client of this playlist for its playlist
-   * and its tracks again, because the order is part of both.
-   */
+  /* Owner and write collaborator may change the track order. The playlist's own
+   * order is the absence, so clearing the sort writes no value. */
   app.patch<{ Params: { id: string } }>(
     '/playlists/:id/sort',
     async (request, reply) => {
@@ -278,15 +267,8 @@ export function registerPlaylistRoutes(
     }
   );
 
-  /*
-   * Placing a playlist in the account's own gallery. The check is the read need
-   * and not write: a pin is the account's own placement and the handler writes
-   * that account's state and never the playlist, so a read collaborator may pin a
-   * playlist they can only read. A stranger, a missing playlist and one the
-   * account cannot see are one not-found. No event is published: a pin is not a
-   * change to the playlist, and the playlist-changed event would refetch every
-   * account that can see it, whose own gallery did not move.
-   */
+  /* Check is the read need, not write: a pin is the account's own placement,
+   * so a read collaborator may pin. No event: not a playlist change. */
   app.patch<{ Params: { id: string } }>(
     '/playlists/:id/pin',
     async (request, reply) => {

@@ -3,13 +3,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /*
- * `tsc` copies `.ts` files and nothing else, so the E2E fake's fixtures, a real
- * M4A and a JPEG, would be missing from `dist` and the fake would fail on the
- * first download. This copies them beside the emitted fake.
- *
- * It runs on every build rather than on an E2E-only build, because a conditional
- * build step is one more thing that can be forgotten when the fake is used. The
- * files are two kilobytes.
+ * `tsc` copies `.ts` and nothing else, so the fake's fixtures would be missing
+ * from `dist`. It runs on every build, not just E2E, because a conditional step
+ * is one more thing to forget; the files are two kilobytes.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));

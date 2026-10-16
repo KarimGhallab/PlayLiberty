@@ -15,11 +15,8 @@ afterEach(async () => {
 });
 
 /*
- * The close hook has to end the instance whether or not a prune is running, and
- * the scheduled job has to be the service rather than a stub. A cron that fires
- * every second puts a real tick inside the test's lifetime, so both can be
- * asserted without waiting a week. What the prune removes belongs to the service
- * tests; this is about the wiring and the close.
+ * Close hook must end the instance with a prune running or not; the job must be
+ * the service, not a stub. A per-second cron puts a real tick in the test.
  */
 describe('the prune scheduler', () => {
   it('runs the service on its tick and closes cleanly', async () => {
@@ -32,8 +29,7 @@ describe('the prune scheduler', () => {
       durationSeconds: null
     });
 
-    // Wait for the tick, polling rather than sleeping a fixed second, so the test
-    // is as fast as the job is and no slower.
+    // Wait for the tick by polling, not a sleep, so it is as fast as the job.
     let reclaimed = false;
     for (let attempt = 0; attempt < 50 && !reclaimed; attempt += 1) {
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -47,8 +43,7 @@ describe('the prune scheduler', () => {
 
     expect(reclaimed).toBe(true);
 
-    // The close stops the clock and signals any run in flight rather than waiting
-    // on it, so it resolves rather than hanging.
+    // The close stops the clock and signals a run, so it resolves, not hangs.
     await expect(context.cleanup()).resolves.toBeUndefined();
     context = undefined;
   });

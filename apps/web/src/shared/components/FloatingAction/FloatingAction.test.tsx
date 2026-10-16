@@ -4,9 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import FloatingAction from './FloatingAction';
 
-/*
- * The floating add action's own test: a button whose name is the whole of it.
- */
+/* The floating add action's own test: a button whose name is all of it. */
 
 describe('FloatingAction', () => {
   it('names itself for a reader and takes the press', () => {

@@ -12,11 +12,8 @@ import {
 import { createE2eYoutube } from './e2eYoutube.js';
 
 /*
- * The E2E fake is not product code, but it is the seam every E2E test trusts, and
- * its three outcomes (a song, a fault, a video that is gone) are the three shapes
- * the adapter has to answer. A test here protects them without a browser and
- * without the E2E stack, which is the only way to cover the fake while Playwright
- * is not part of the suite.
+ * The E2E fake is not product code, but every E2E test trusts it: its three
+ * outcomes (a song, a fault, a gone video) are the adapter's three shapes.
  */
 
 let directory: string;
@@ -82,8 +79,8 @@ describe('the E2E fake adapter', () => {
     });
 
     expect(result.filePath).toBe(outputPath);
-    // The fake reports the committed fixture's own length, which is what a probe
-    // would return and what the worker writes to the track.
+    // The fake reports the fixture's own length, what a probe would return and
+    // what the worker writes to the track.
     expect(result.durationSeconds).toBe(2);
     const bytes = await readFile(outputPath);
     expect(bytes.byteLength).toBeGreaterThan(0);

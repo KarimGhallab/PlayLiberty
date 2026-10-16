@@ -22,10 +22,8 @@ import {
 } from './queries';
 
 /*
- * Each mutation names one cache fact; the reads that fact asks again are pinned
- * in `cacheEffects.test.ts`. A mutation that names nothing is a screen that shows
- * the old answer, so each hook is driven through a mocked network and the fact it
- * named is asserted.
+ * Each mutation names one cache fact (reads pinned in `cacheEffects.test.ts`);
+ * one naming nothing is a stale screen, so each is asserted.
  */
 
 const PLAYLIST = 'playlist-1';

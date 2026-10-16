@@ -9,25 +9,9 @@ import dialogStyles from '../../../shared/components/Dialog/Dialog.module.scss';
 import styles from './AddPlaylistDialog.module.scss';
 
 /*
- * The add-playlist dialog, and the library's only door to a new playlist. One
- * field and one choice: the URL, because `CreatePlaylistInputSchema` takes it, and
- * whether the playlist skips the non-music parts of its videos, on by default so
- * the common case gets the behaviour without hunting for a setting. The choice
- * sets the playlist's initial value; the detail's switch changes it later.
- *
- * The schema is the client's own half of the check and the server's is the other:
- * an empty or malformed URL never leaves the browser, and a URL the server refuses
- * comes back as a problem shown in this same slot. The dialog never invents a
- * message for a refusal.
- *
- * `problem` is the server's `detail`, passed down from the mutation. While there
- * is none, a submit that the schema refuses writes the same refusal here, so the
- * one slot reads the same whichever layer said no: a person sees one field and
- * one thing wrong with it, not a client error and a server error as separate
- * layers.
- *
- * The shell, the motion and the two-phase presence belong to `Dialog`; this
- * component is the field, the choice and the two verbs.
+ * The schema is the client's half of the check and the server's is the other: a
+ * URL the server refuses comes back as a problem in the same slot, so the one
+ * field shows one thing wrong with it.
  */
 
 interface AddPlaylistDialogProps {
@@ -57,8 +41,8 @@ export default function AddPlaylistDialog({
   const [wasOpen, setWasOpen] = useState(open);
 
   /*
-   * A fresh dialog opens on an empty field and the setting on, so a cancelled
-   * paste and a cancelled choice do not linger into the next open.
+   * A fresh open must not inherit the last one's paste or choice, so the field
+   * and the setting reset here.
    */
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -71,9 +55,8 @@ export default function AddPlaylistDialog({
   }
 
   /*
-   * The server problem is the whole of the message while it stands. Typing clears
-   * it, so a corrected URL is not still accused by the previous refusal; the
-   * schema's own message replaces it on the next submit.
+   * Typing clears the server's problem, so a corrected URL is not still accused
+   * by the previous refusal.
    */
   const message = invalid ?? problem;
 
@@ -170,10 +153,6 @@ export default function AddPlaylistDialog({
           </span>
         )}
       </div>
-      {/*
-       * The playlist's initial skip setting. The label carries the name and the
-       * hint carries what it does.
-       */}
       <div className={styles.check}>
         <label className={styles.check__row} htmlFor={checkId}>
           <input

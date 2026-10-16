@@ -18,33 +18,13 @@ import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
 
 /*
- * The row's body is a hit layer that plays the track, and toggles back to pause
- * when it is already the row playing. The lane at the end is the row's own
- * control and sits above that layer, so a press on it opens the menu rather than
- * starting the track. A track with no stored file has no play layer, but its lane
- * is still there: a failed download has something to be done about.
- *
- * The lane is one overflow menu. A track the caller can curate gets the menu; a
- * track it cannot gets an inert lane, because a control that cannot be pressed is
- * worse than no control. For a failed fileless track it offers Retry, Fetch whole
- * and Remove, and for every other track Remove alone. Fetch whole re-fetches the
- * one fileless track without trimming, so it is offered only where the route
- * accepts it, which is a failed track.
- *
- * Two rules from the design record hold here and not one more:
- *
- *   Stored says nothing. The default state draws no word, because a row with
- *   nothing wrong should not announce that it is fine. The one exception is the
- *   policy: a track recorded as full length carries the word, because a
- *   full-length track when a trimmed one was expected must read as deliberate.
- *
- *   A state is never carried by colour alone. Every other state has a word, and
- *   a failed or unavailable row also carries the server's own reason.
+ * The row's body is a hit layer that plays the track; the lane at its end sits
+ * above that layer, so a press there opens the menu. A track the caller cannot
+ * curate gets an inert lane, and no state is ever carried by colour alone.
  */
 
 interface TrackRowProps {
   readonly association: PlaylistTrack;
-  /** Whether this row is the queue's current track. */
   readonly current: boolean;
   /** Whether the queue is actually playing, which decides play against pause. */
   readonly playing: boolean;
@@ -112,14 +92,8 @@ function TrackRow({
     returnFocusTo: menuButtonRef
   });
 
-  /*
-   * The lane's one control, and the row's rule is what its menu holds. A failed
-   * fileless track the caller can act on gets Retry and Fetch whole beside the
-   * remove; every other curatable row gets the remove alone. A row with nothing
-   * to do keeps a reserved, inert lane so the duration column never moves. A
-   * downloading row keeps the menu but disables it: the download owns the track
-   * while it runs, and a remove or retry would race it.
-   */
+  /* The lane's items: a failed fileless track gets Retry and Fetch whole beside
+   * the remove; a downloading row keeps the menu but disables it. */
   const laneItems: LaneItem[] = [
     ...(failed && onRetry !== undefined
       ? [
@@ -250,18 +224,15 @@ function TrackRow({
               {stateLabel}
             </span>
           )}
-          {/* The recorded policy, and only when it is the non-default one: a
-           * track fetched whole reads as deliberate rather than as a trim that
-           * silently failed. The default, trimmed, says nothing. */}
+          {/* The recorded policy, drawn only when it is the non-default one: a
+           * track fetched whole must read as deliberate. */}
           {track.skipNonMusic ? null : (
             <span className={styles.trackRow__policy}>
               {t('trackRow.fullLength')}
             </span>
           )}
-          {/* The server's own reason, kept as secondary copy: the mapped word is
-           * primary, and the sentence is bounded to one ellipsized line with the
-           * full text in `title`, so an untrusted, unbounded string cannot set
-           * the row's geometry or overflow toward the duration column. */}
+          {/* The server's untrusted, unbounded reason, kept secondary to the
+           * mapped word, ellipsized to one line so it cannot set the row. */}
           {track.failureReason === null ? null : (
             <span
               className={styles.trackRow__reason}
@@ -293,9 +264,7 @@ function TrackRow({
 }
 
 /*
- * Memoized so a parent render skips a row whose own props did not change. The
- * detail page holds the callbacks it passes stable, which is what makes the
- * comparison meaningful: without both halves a queue change re-renders every
- * row, which is the long-list cost this guards.
+ * Memoized so a parent render skips a row whose props did not change; the
+ * detail page keeps its callbacks stable, which makes that meaningful.
  */
 export default memo(TrackRow);

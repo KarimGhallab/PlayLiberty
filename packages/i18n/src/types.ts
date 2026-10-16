@@ -13,11 +13,8 @@ export interface PluralMessage {
   readonly other: string;
 }
 
-/*
- * A message built from its parameters, for the rare sentence a template cannot
- * carry. The catalogs prefer a string with `{placeholders}`; a function is the
- * escape hatch, not the default.
- */
+/* For a sentence a `{placeholder}` template cannot carry; the escape hatch, not
+ * the default. */
 export type MessageFunction = (params: MessageParams) => string;
 
 export type Message = string | PluralMessage | MessageFunction;

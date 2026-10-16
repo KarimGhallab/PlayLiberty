@@ -8,31 +8,9 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './IncompleteBadge.module.scss';
 
 /*
- * The mark a playlist wears while part of it is not on disk: one pill carrying the
- * count, and on hover or focus the count broken down by state. A gallery of covers
- * cannot say "one of these is still coming" any other way, and the sync state says
- * it wrongly: a run that finished hours ago leaves a playlist reading "Up to date"
- * with four failed tracks.
- *
- * One pill per playlist however many reasons are missing, toned by the worst
- * reason present, because two pills on one card would read as two facts about two
- * things. The count is every association whose file is not stored, which is the
- * sum of the four other states: `stored` is the one state that means the file is
- * here, so its complement is the answer.
- *
- * A track whose source video is gone is not a reason here. The counts the server
- * sends group by file status alone, so a stored file whose video was removed is
- * stored, and this mark is about files.
- *
- * The mark carries no read of its own: its counts come from the library's list, so
- * a gallery of forty playlists asks once. `counts` is null where the caller's read
- * does not carry them, and then the mark draws nothing rather than a zero it
- * cannot stand behind.
- *
- * The breakdown hangs from the edge of the pill the row anchors it to, which is the
- * caller's to say because the caller is what put the mark there: the tile leads its
- * actions row with it, and the card ends its name row with it. A panel that hung
- * the same way from both would leave the frame on one of them.
+ * The sync state cannot carry this: a run that finished hours ago leaves a
+ * playlist reading "Up to date" with four failed tracks. The counts group by
+ * file status alone, so a stored file whose video was removed is stored.
  */
 
 interface MissingState {
@@ -87,10 +65,8 @@ export default function IncompleteBadge({
     SEVERITY.find(state => counts[state] > 0) ?? TrackFileStatus.Pending;
 
   /*
-   * The breakdown rides in the label rather than only in the tip: the mark is a
-   * `role="img"`, whose children are not read out, so a tip alone would be a
-   * detail only a pointer could reach. The middot is this system's own separator
-   * between two facts on one line.
+   * A `role="img"`'s children are not read out, so the breakdown rides in the
+   * label; the middot is this system's separator between two facts on one line.
    */
   const label = [
     t('library.notDownloaded', { count: missing }),

@@ -12,33 +12,16 @@ import { currentTrack, hasNext } from '../types';
 import styles from './PlayerBar.module.scss';
 
 /*
- * The player bar, the shell's only persistent chrome and the one component whose
- * height is paid for by the list it covers. The middle column of the grid is the
- * transport, so the transport posts 0px of offset and the title has equal room
- * either side.
- *
- * The bar is absent at rest and appears on the first track, because 98px on the
- * landing screen would be spent on a play that cannot act. Once playback exists
- * the bar persists across both routes, because music keeps playing while the
- * listener browses elsewhere.
- *
- * The transport is always drawn once the bar exists, unlike the header's, which
- * is absent unless the playlist is playing: the bar is the one place a listener
- * goes looking for the steps, and a control that appears and disappears there is
- * worse than one that is always present.
+ * The player bar: absent at rest; once playback exists it persists across both
+ * routes, like the music. Its transport is always drawn, unlike the header's,
+ * so a control never appears and disappears.
  */
 
 /** How many seconds one press of an arrow key moves the playhead. */
 const KEYBOARD_STEP_SECONDS = 5;
 
-/*
- * Pointer capture keeps the drag alive when the pointer leaves the track, which
- * is the difference between a scrub that survives an impatient hand and one that
- * stops at the track's edge. It is a nicety rather than the seek itself, so a
- * host that does not implement it loses the drag-outside behaviour and nothing
- * else; jsdom is one such host, and an unguarded call would take the whole
- * handler down with it.
- */
+/* Pointer capture keeps a drag alive when the pointer leaves the track. A host
+ * without it (jsdom) must not throw, so the call is optional-chained. */
 function capturePointer(element: HTMLElement, pointerId: number): void {
   element.setPointerCapture?.(pointerId);
 }
@@ -61,15 +44,8 @@ export default function PlayerBar() {
   const draggingRef = useRef(false);
   const { run, endRun } = usePlayPauseMorph(isPlaying);
 
-  /*
-   * The keyboard transport, bound to the window so a press reaches the player
-   * wherever focus sits. Space toggles playback; the arrows move the playhead by
-   * the same step the focused seeker uses. Text entry keeps its keys: an input, a
-   * textarea or any editable region is left alone, which is the one place a
-   * shortcut for a letterless key would cost the listener something. The store is
-   * read at press time rather than closed over, so a shortcut never acts on a
-   * track the listener has already left.
-   */
+  /* The keyboard transport, on the window so a press reaches it wherever focus
+   * sits. Text entry keeps its keys; the store is read at press time. */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const target = event.target;
@@ -130,9 +106,8 @@ export default function PlayerBar() {
       ? null
       : `${API_PREFIX}/tracks/${current.id}/thumbnail`;
 
-  /* The pointer's x against the track's own box, in seconds. The element is the
-   * truth for the target, not the store, because the store's position is
-   * whatever the last interaction wrote. */
+  /* The pointer's x against the track's own box, in seconds: the element is the
+   * truth for the target, not the store's last-written position. */
   const secondsAt = (clientX: number): number => {
     const box = scrubRef.current?.getBoundingClientRect();
 

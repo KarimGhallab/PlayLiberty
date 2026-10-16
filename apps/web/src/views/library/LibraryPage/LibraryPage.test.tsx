@@ -85,10 +85,7 @@ const newPlaylist = {
   updatedAt: '2026-10-03T12:00:00.000Z'
 };
 
-/*
- * An owned playlist. Two of these stand in a list when a test needs two
- * deletable items to press Delete on inside one undo window.
- */
+/* Two of these stand in a list when a test needs two deletable items. */
 function ownedItem(id: string, name: string) {
   return {
     id,
@@ -112,8 +109,8 @@ function ownedItem(id: string, name: string) {
 }
 
 /*
- * The shared item the base handlers return, which is a read collaborator: it
- * carries a share indicator and no overflow at all.
+ * The base handlers' shared item, a read collaborator: a share indicator and
+ * no overflow at all.
  */
 function sharedItem() {
   return {
@@ -138,8 +135,8 @@ function sharedItem() {
 }
 
 /*
- * The list the base handlers return, repeated here so the create flow has a list
- * to leave before it has one to gain.
+ * The base handlers' list, repeated so the create flow has a list to leave
+ * before it has one to gain.
  */
 const baseItems = [
   {
@@ -164,10 +161,8 @@ const baseItems = [
 ];
 
 /*
- * A create that answers `202` with the run, and a list read that carries the new
- * playlist only once the create has happened. That pair is the route's own shape:
- * the item is not in the response, it arrives from the server on the next read,
- * and the read before the create does not see it.
+ * The route's own shape: the create answers the run, and the new playlist
+ * arrives from the server on the next read, not in the response.
  */
 function createSucceeds(): { requests: Request[] } {
   const requests: Request[] = [];
@@ -193,13 +188,8 @@ function createSucceeds(): { requests: Request[] } {
 }
 
 /*
- * The dialog fades out over 180ms and unmounts itself when that elapses. These
- * tests run on real timers, so the exit is awaited rather than advanced.
- */
-/*
- * A directory that carries one account and not the shared item's owner, so the
- * item must fall back to its indicator alone. `account-2` is the shared item's
- * owner in the base fixture, so a directory of `account-9` is a real miss.
+ * A directory that misses the shared item's owner (`account-2`), so the item
+ * must fall back to its indicator alone.
  */
 function directoryOf(ownerId: string): void {
   server.use(
@@ -214,6 +204,10 @@ function directoryOf(ownerId: string): void {
   );
 }
 
+/*
+ * The dialog fades out over 180ms; these tests run on real timers, so the exit
+ * is awaited rather than advanced.
+ */
 async function waitForDialogExit(): Promise<void> {
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -242,10 +236,7 @@ function createRefused(): { requests: Request[] } {
   return { requests };
 }
 
-/*
- * A list read whose items are exactly what the test hands in, so a test can pin
- * what it wants and order the rest.
- */
+/* A list read whose items are exactly what the test hands in. */
 function pinnedRead(items: ReturnType<typeof ownedItem>[]): void {
   server.use(
     http.get('http://localhost:3000/api/v1/playlists', () =>
@@ -260,8 +251,8 @@ function pinnedRead(items: ReturnType<typeof ownedItem>[]): void {
 }
 
 /*
- * A pin write the list read reflects, so the item the press lifted into the
- * section stays there once the gallery is read again rather than snapping back.
+ * A pin write the list read reflects, so the lifted item stays in the section
+ * rather than snapping back.
  */
 function pinSucceeds(): { bodies: { pinned: boolean }[] } {
   const bodies: { pinned: boolean }[] = [];
@@ -316,9 +307,8 @@ function pinFails(): void {
 }
 
 /*
- * The library is rendered inside a real router because every item carries links
- * to the playlist. The detail route is a stub, since nothing here asserts what it
- * draws.
+ * A real router, because every item carries links; the detail route is a stub,
+ * since nothing here asserts what it draws.
  */
 function renderLibraryPage() {
   const rootRoute = createRootRoute();
@@ -369,10 +359,7 @@ describe('LibraryPage', () => {
   });
 
   /*
-   * The shuffle is a property of the queue, so a row reports pressed only while
-   * the queue is that playlist and shuffle is on. Shuffling one item must leave
-   * every other row unpressed, which is what tells a reader which playlist the
-   * shuffle belongs to.
+   * Shuffle belongs to the queue, so only the queue's own row reports pressed.
    */
   it('presses only the playlist the queue belongs to', async () => {
     renderLibraryPage();
@@ -388,7 +375,6 @@ describe('LibraryPage', () => {
     expect(own).toHaveAttribute('aria-pressed', 'true');
     expect(other).toHaveAttribute('aria-pressed', 'false');
 
-    /* A second press on this playlist's own queue turns the shuffle off. */
     fireEvent.click(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     );
@@ -415,11 +401,7 @@ describe('LibraryPage', () => {
     ).toBeInTheDocument();
   });
 
-  /*
-   * The mark is drawn from the counts the list read carries, which is why the
-   * gallery costs one read: a playlist whose tracks are all stored wears nothing,
-   * and one with tracks missing wears a single pill naming how many.
-   */
+  /* The counts come from the list read, so marking costs it nothing extra. */
   it('marks the playlists the list read reports as incomplete, one pill each', async () => {
     server.use(
       http.get('http://localhost:3000/api/v1/playlists', () =>
@@ -453,14 +435,11 @@ describe('LibraryPage', () => {
       })
     ).toBeInTheDocument();
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
-    /* Two of the three are incomplete, and each wears exactly one pill. */
     expect(
       screen.getByRole('img', {
         name: '4 tracks are not stored · Pending 4'
       })
     ).toBeInTheDocument();
-    /* Two of the three are incomplete, each wearing exactly one pill; the empty
-     * playlist has nothing to miss and stays bare. */
     expect(screen.getAllByRole('img', { name: /not stored/ })).toHaveLength(2);
   });
 
@@ -507,8 +486,6 @@ describe('LibraryPage', () => {
       within(section).getByRole('link', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
 
-    /* Two lists: the section's own and the one below. The flagged item is in the
-     * first and not the second, which is the section's whole job. */
     const lists = screen.getAllByRole('list');
     expect(
       within(lists[0]!).getByRole('link', { name: 'Rain On The Window' })
@@ -606,7 +583,6 @@ describe('LibraryPage', () => {
       await screen.findByText('The pin could not be changed.')
     ).toBeInTheDocument();
 
-    /* The optimistic lift is undone: no section, and the item is back in the list. */
     expect(
       screen.queryByRole('region', { name: 'Pinned' })
     ).not.toBeInTheDocument();
@@ -634,7 +610,6 @@ describe('LibraryPage', () => {
     await screen.findByText('Shared Mix');
 
     expect(screen.getByText('Shared by Ada')).toBeInTheDocument();
-    /* One line only: the owned item carries none. */
     expect(screen.getAllByText(/Shared by/)).toHaveLength(1);
   });
 
@@ -652,9 +627,8 @@ describe('LibraryPage', () => {
 
   it('drops a revoked playlist on the next list read and changes nothing else', async () => {
     /*
-     * The create invalidates the list, so the read that follows is a real second
-     * read. In this fixture the shared playlist has been revoked in the meantime,
-     * so that read carries the owned one alone.
+     * The create invalidates the list, so the read after it is a real second
+     * read; this fixture has the shared playlist revoked in the meantime.
      */
     let read = 0;
     server.use(
@@ -760,11 +734,7 @@ describe('LibraryPage', () => {
     renderLibraryPage();
 
     expect(await screen.findByText('No playlists yet')).toBeInTheDocument();
-    /*
-     * One invitation, not two: the header's add is suppressed on the empty state
-     * so the gallery's framed action is the only control, and the two never
-     * duplicate.
-     */
+    /* The header's add is suppressed here, so the gallery's action is alone. */
     expect(
       screen.getAllByRole('button', { name: 'Add a playlist' })
     ).toHaveLength(1);
@@ -775,7 +745,6 @@ describe('LibraryPage', () => {
     failedPage();
     renderLibraryPage();
 
-    /* The server's own detail, and the one control that refetches the read. */
     expect(
       await screen.findByText('The library is unavailable.')
     ).toBeInTheDocument();
@@ -871,10 +840,6 @@ describe('LibraryPage', () => {
     );
   });
 
-  /*
-   * The arrangement is the width's: the card at the phone breakpoint, where a
-   * gallery of tiles would be one playlist per screen, and the tile above it.
-   */
   it('draws the card at the phone width and the tile above it', async () => {
     const restore = stubViewport(MOBILE_QUERY);
 
@@ -905,9 +870,6 @@ describe('LibraryPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  /* The add control follows the width: a labelled button in the header where there
-   * is room for a word, and a floating round button on the frame's corner where the
-   * header's height is the gallery's. One of the two is drawn at a time. */
   it('offers the add control as a floating button at the phone width', async () => {
     const restore = stubViewport(MOBILE_QUERY);
 
@@ -925,8 +887,6 @@ describe('LibraryPage', () => {
     }
   });
 
-  /* The card's band is the only play in the library, and it starts the playlist in
-   * the playlist's own order rather than shuffled. */
   it('starts the playlist in its own order from the card’s play', async () => {
     const restore = stubViewport(MOBILE_QUERY);
 
@@ -1041,10 +1001,7 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('New Mix')).toBeInTheDocument();
-    /*
-     * Success is a close like any other: the dialog is still there while its fade
-     * runs, and the fade is what takes it away. The item has already arrived.
-     */
+    /* Success is a close like any other: the fade removes the dialog. */
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await waitForDialogExit();
@@ -1174,8 +1131,6 @@ describe('LibraryPage', () => {
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
 
-    /* The tile the toast names is marked: dimmed, busy, and its door and controls
-     * disabled, so the thing that is going cannot be opened or deleted again. */
     const row = container.querySelector('[data-arrangement="tile"]');
     expect(row).toHaveAttribute('aria-busy', 'true');
     expect(

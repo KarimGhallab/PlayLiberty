@@ -24,10 +24,8 @@ const first = track('track-1');
 const second = track('track-2');
 
 /*
- * jsdom has no media pipeline: `play` and `pause` throw "Not implemented", and
- * `currentTime` is a setter that does record but that a real element would clamp.
- * The element is stubbed here rather than replaced, so the component under test is
- * the real one and only the browser's missing half is supplied.
+ * jsdom has no media pipeline (`play`/`pause` throw), so the element is
+ * stubbed, not replaced: the real component runs on a faked browser half.
  */
 let playMock: ReturnType<typeof vi.fn>;
 let pauseMock: ReturnType<typeof vi.fn>;
@@ -381,10 +379,8 @@ describe('PlayerAudio', () => {
     const state = usePlayerStore.getState();
 
     /*
-     * The re-auth flag is the client's own record that it took the edge path,
-     * and it is the only part of that path jsdom can show. What matters here is
-     * the queue: an expired session is not a broken track, so nothing is dropped
-     * and the listener is not moved.
+     * The flag is the only edge-path part jsdom can show; the queue matters: a
+     * session expiry is not a broken track, so nothing drops.
      */
     expect(window.sessionStorage.getItem('playliberty.re-auth-attempt')).toBe(
       '1'

@@ -1,15 +1,13 @@
 import { HttpResponse, http } from 'msw';
 
 /*
- * The handlers the tests run against. The response is two valid playlists, one
- * owned and one shared, in the order the route returned them, so a component
- * test exercises the schema parsing, the ordering and the two access levels as
- * well as the render.
+ * The handlers the tests run against: two valid playlists, one owned and one
+ * shared, in the route's order, so a component test also exercises schema
+ * parsing, ordering and both access levels.
  */
 /*
- * The first playlist's associations, in the playlist's own order. Two stored and
- * one still pending, so a test has a playable track and a not-yet-playable one to
- * tell apart. The tracks route pages them and the queue route returns them whole.
+ * Two stored and one pending, so a test has a playable track and one that is
+ * not yet playable to tell apart; the queue route returns them whole.
  */
 const PLAYLIST_ONE_TRACKS = [
   {
@@ -68,10 +66,7 @@ const PLAYLIST_ONE_TRACKS = [
   }
 ];
 
-/*
- * The whole-playlist counts the tracks read folds in. Every state is a key
- * including a zero, so the filter chips have one to draw.
- */
+/* Every state is a key including a zero, so the chips have one to draw. */
 export const EMPTY_COUNTS = {
   stored: 0,
   pending: 0,
@@ -142,9 +137,8 @@ export const handlers = [
     })
   ),
   /*
-   * The account directory. Both owners are present, so the shared item resolves
-   * to Ada and the owned item's owner resolves too but is never drawn, which is
-   * the header's own rule rather than a gap in this fixture.
+   * Both owners are present: the shared item resolves to Ada, and the owned
+   * item's owner resolves but is never drawn, the header's own rule.
    */
   http.get('http://localhost:3000/api/v1/accounts', () =>
     HttpResponse.json({
@@ -181,9 +175,8 @@ export const handlers = [
     () => new HttpResponse(null, { status: 204 })
   ),
   /*
-   * The single playlist, which is where the detail reads its name. It is the same
-   * row as the first list item, so a test can tell the two reads apart by their
-   * keys while the data stays consistent.
+   * The same row as the first list item, so a test can tell the two reads apart
+   * by their keys while the data stays consistent.
    */
   http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
     HttpResponse.json({
@@ -205,10 +198,7 @@ export const handlers = [
       updatedAt: '2026-09-29T12:00:00.000Z'
     })
   ),
-  /*
-   * The latest sync run of the first playlist. A completed run, so the detail's
-   * left column draws the summary under the card rather than the error.
-   */
+  /* Completed, so the detail draws the summary rather than the error. */
   http.get(
     'http://localhost:3000/api/v1/playlists/playlist-1/sync-runs/latest',
     () =>
@@ -226,10 +216,8 @@ export const handlers = [
       })
   ),
   /*
-   * The tracks route's state parameter narrows the page and its total, while the
-   * counts stay the whole playlist's; the queue route answers the same list, every
-   * status, because a queue is built from the whole association list and filtered
-   * on the client.
+   * `state` narrows the page and its total while the counts stay whole; the
+   * queue route answers every status, because the client builds and filters it.
    */
   http.get(
     'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
@@ -255,9 +243,8 @@ export const handlers = [
     HttpResponse.json({ items: PLAYLIST_ONE_TRACKS })
   ),
   /*
-   * Retry and remove, so the row's action lane has a route to answer. The retry
-   * returns the track, now downloading, which is the shape the route sends back;
-   * the remove is a `204` with no body.
+   * The retry returns the track now downloading, the route's own shape; the
+   * remove is a `204` with no body.
    */
   http.post('http://localhost:3000/api/v1/tracks/:trackId/retry', () =>
     HttpResponse.json({
@@ -315,10 +302,7 @@ export const handlers = [
       updatedAt: '2026-09-29T12:00:00.000Z'
     })
   ),
-  /*
-   * The skip-non-music write, which echoes the value it was sent so a test can
-   * read the optimistic result back from the server.
-   */
+  /* Echoes the sent value, so a test reads the optimistic result back. */
   http.patch(
     'http://localhost:3000/api/v1/playlists/playlist-1/skip-non-music',
     async ({ request }) => {
@@ -344,10 +328,6 @@ export const handlers = [
       });
     }
   ),
-  /*
-   * The sort write, which echoes the value it was sent so a test can read the
-   * optimistic result back from the server.
-   */
   http.patch(
     'http://localhost:3000/api/v1/playlists/playlist-1/sort',
     async ({ request }) => {
@@ -373,10 +353,6 @@ export const handlers = [
       });
     }
   ),
-  /*
-   * The pin write, which echoes the value it was sent so a test can read the
-   * optimistic result back from the server.
-   */
   http.patch(
     'http://localhost:3000/api/v1/playlists/playlist-1/pin',
     async ({ request }) => {
@@ -403,8 +379,8 @@ export const handlers = [
     }
   ),
   /*
-   * The batch add, one outcome per chosen playlist. The default fixture says the
-   * first playlist took it; a test that needs a refusal overrides it per test.
+   * One outcome per chosen playlist; the default says the first took it, and a
+   * test needing a refusal overrides it.
    */
   http.post('http://localhost:3000/api/v1/tracks', () =>
     HttpResponse.json({
@@ -429,7 +405,6 @@ export const handlers = [
       { status: 202 }
     )
   ),
-  /* Starting a sync answers the run it started. */
   http.post('http://localhost:3000/api/v1/playlists/playlist-1/sync', () =>
     HttpResponse.json(
       {

@@ -15,9 +15,8 @@ afterEach(async () => {
 });
 
 /*
- * Accounts are provisioned the way the app provisions them, through the identity
- * hook, so the directory lists rows the app really made. The name is always sent,
- * because the hook refreshes the caller's display fields on every request.
+ * Accounts are provisioned through the identity hook, as the app does, so the
+ * directory lists rows the app really made. The name is always sent.
  */
 function provision(
   pangolinUserId: string,

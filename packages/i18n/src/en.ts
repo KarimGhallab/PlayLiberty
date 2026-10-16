@@ -1,8 +1,6 @@
 /*
- * The source of truth for the `Messages` shape.
- *
- * Keys are symbolic and hierarchical: a key names the surface and the fact, not
- * the English sentence, so a copy edit does not churn a key.
+ * The source of truth for the `Messages` shape. Keys name the surface and the
+ * fact, never the English sentence, so a copy edit does not churn a key.
  */
 export const en = {
   app: {

@@ -1,7 +1,6 @@
 /*
- * The library header's language control. It is the same quiet control surface as
- * the header's other controls: a box on the raised surface, the accent on hover,
- * and the menu on the overlay tier.
+ * The same quiet surface as the header's other controls: a raised box, the
+ * accent on hover, the menu on the overlay tier.
  */
 .language-menu {
   position: relative;
@@ -58,11 +57,8 @@
   }
 
   /*
-   * On a phone the header spends its height on the title and this control alone,
-   * so the box comes down to 32px: --space-3 around it is the record's 56px header.
-   * The 44px target a thumb is owed grows outward from the 32px box rather than
-   * making the box itself taller, the same trade the header's own quiet controls
-   * make at this width.
+   * 32px here, with the 44px thumb target growing outward through `::before`
+   * rather than making the box taller.
    */
   @media (max-width: 767px) {
     &__trigger {
@@ -77,8 +73,7 @@
     }
   }
 
-  /* The check holds its 14px whether it is drawn or not, so the two rows never
-   * shift when the active one moves. */
+  /* Holds its 14px when hidden, so the rows never shift as the check moves. */
   &__check {
     flex-shrink: 0;
     color: var(--accent-hover);

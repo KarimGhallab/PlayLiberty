@@ -35,45 +35,25 @@ import { registerHealthRoutes } from './health/healthRoutes/healthRoutes.js';
 import { registerCsrfHook } from './hooks/csrf/csrf.js';
 import { registerIdentityHook } from './hooks/identity/identity.js';
 
-/*
- * What the composition root is given. `youtube` is the one optional field, and it
- * is optional in exactly one place: a caller with no adapter of its own gets the
- * real one built from config. Everything downstream receives a complete AppContext
- * and never has to check whether the adapter is there, so the substitutable seam
- * exists for tests without leaking a "maybe undefined" into every feature.
- */
+/* `youtube` is optional only here, resolved from config, so downstream gets a
+ * complete AppContext and never checks for a missing adapter. */
 export interface AppOptions {
   config: AppContext['config'];
   database: AppContext['database'];
   mediaPaths: AppContext['mediaPaths'];
   youtube?: AppContext['youtube'];
-  /*
-   * A test's replacement for the worker wake-up. The real `onReady` swaps in the
-   * worker's own kick; a test with the background jobs off passes a spy here and
-   * observes that a sync queued work, without a worker to actually download it.
-   */
+  /* A test's replacement for the worker wake-up; real `onReady` swaps in the
+   * worker's own kick. */
   kickDownloads?: () => void;
-  /*
-   * Whether the background loops start. True in every real process; a unit test
-   * that drives `processPendingTracks` by hand turns it off so the background
-   * worker does not race the assertions.
-   */
+  /* Whether the background loops start. A unit test that drives a pass by hand
+   * turns it off so the worker does not race its assertions. */
   startBackgroundJobs?: boolean;
-  /*
-   * How long the live stream may sit idle before it writes a heartbeat. The
-   * default is the real one; a test that watches the heartbeat shortens it so it
-   * does not wait twenty seconds for a comment frame.
-   */
+  /* The live stream's idle heartbeat interval; a test that watches it shortens
+   * it. */
   sseHeartbeatMs?: number;
-  /*
-   * The live bus. A real process gets one built here; a test passes its own so it
-   * can subscribe and observe what a feature published.
-   */
+  /* The live bus: a real process gets one built here, a test passes its own. */
   events?: AppContext['events'];
-  /*
-   * A test's logger, so a test can read the audit lines the app writes. A real
-   * process builds its own from config and passes nothing here.
-   */
+  /* A test's logger, so it can read the audit lines the app writes. */
   loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
 
@@ -88,12 +68,8 @@ function createYoutubeClient(
     download: config.download
   });
 }
-/*
- * Human-readable colored logs while developing in a terminal, and structured
- * JSON everywhere else, so the container's collector and a piped run both get
- * the object. `pino-pretty` is a devDependency named only as a transport target
- * string, which is why knip is told to leave it alone.
- */
+/* Colored logs in a terminal, JSON elsewhere. `pino-pretty` is a devDependency
+ * named only as a transport target, which is why knip leaves it alone. */
 function createLoggerOptions(
   config: AppContext['config']
 ): FastifyServerOptions['logger'] {
@@ -187,11 +163,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         heartbeatMs: options.sseHeartbeatMs ?? DEFAULT_EVENT_HEARTBEAT_MS
       });
 
-      /*
-       * The E2E reset, only in a test process and only under the API prefix so
-       * the browser can reach it through the same proxy the product uses. It is
-       * not part of the API surface and never exists outside `NODE_ENV=test`.
-       */
+      /* The E2E reset. Not API surface, only under `NODE_ENV=test`, under API
+       * prefix so the browser reaches it through the proxy. */
       if (context.config.nodeEnv === 'test') {
         const { registerE2eRoutes } = await import('./testing/e2eRoutes.js');
         registerE2eRoutes(api, context);

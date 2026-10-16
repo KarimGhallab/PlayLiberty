@@ -164,8 +164,8 @@ describe('useStartPlaylist', () => {
   });
 
   /*
-   * The play is the shuffle's sibling and not a second read: the same queue, the
-   * playlist's own order, and the first playable track rather than a draw.
+   * The play is the shuffle's sibling, not a second read: the same queue and
+   * the playlist's own order, the first playable track rather than a draw.
    */
   it('starts the playlist in its own order when there is no queue', async () => {
     const { result } = control();
@@ -182,11 +182,8 @@ describe('useStartPlaylist', () => {
     expect(state.isPlaying).toBe(true);
   });
 
-  /*
-   * While the queue is this playlist's the play is the transport's own control,
-   * so a press pauses and the next resumes. Neither rebuilds the queue, which is
-   * what the queue's identity and its shuffle mode say.
-   */
+  /* While the queue is this playlist's, the play is the transport's control: a
+   * press pauses, the next resumes, and neither rebuilds the queue. */
   it('pauses and resumes the queue that is already this playlist’s', () => {
     const { result } = control();
 

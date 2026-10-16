@@ -6,15 +6,9 @@ import type { PlaylistHeaderSeam } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 
 /*
- * The card arrangement of the playlist header: the cover as a square block above
- * the identity, the actions on the cover's scrim. It has two consumers, and the
- * `item` flag is the whole of the difference between them.
- *
- * The playlist detail draws it as its hero in its 320px left column above 768px,
- * where the page is the playlist and the header is the block at the top of it.
- * The hero is not a door: it is already the page it would open, so it carries no
- * cover link and no `onOpen`, and it does not draw the elapsed sync line, which
- * the library's row is the surface for.
+ * The card arrangement: the cover as a square block above the identity, the
+ * actions on the cover's scrim. The detail draws it as its hero, the library as
+ * one item of its grid, and `item` is the whole of the difference.
  */
 
 export type PlaylistCardHeaderProps = Omit<
@@ -108,10 +102,8 @@ export default function PlaylistCardHeader({
           )}
         </div>
       </div>
-      {/* The item's overflow is outside the picture and not on it: the picture
-       * clips, because the cover is a square with rounded corners, and a panel
-       * hanging from a chip on a 136px cover would be cut off by it. Its chip still
-       * sits on the cover's top-right corner, positioned from the card instead. */}
+      {/* The item's overflow is outside the picture: it clips, so a panel
+       * hanging from a chip on the cover would be cut off. */}
       {item ? menuControl : null}
       <div className={styles.playlistHeader__munder}>{identity}</div>
     </div>

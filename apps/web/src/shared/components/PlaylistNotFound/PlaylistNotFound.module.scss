@@ -1,10 +1,7 @@
 /*
- * The not-found state, the sibling of the empty state. It stands in for the list,
- * so it is on --bg and not on a --surface panel.
- *
- * The action is a link, not a button, because it navigates rather than acts, and
- * it is the secondary treatment (a bordered control on the surface) rather than
- * the accent: this is a way out, not the thing to do.
+ * The not-found state, the empty state's sibling, standing in for the list.
+ * The action is a link, not a button, because it navigates rather than acts;
+ * it is a way out, not the thing to do.
  */
 .playlist-not-found {
   display: flex;

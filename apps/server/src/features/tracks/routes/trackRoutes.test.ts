@@ -186,9 +186,8 @@ describe('POST /tracks', () => {
     );
     const caller = seedAccount(database());
     const other = seedAccount(database());
-    // A refused playlist comes first and a writable one second, so the value must
-    // come from the first *writable* id, not the first id. The writable one is off,
-    // so the track is fetched whole.
+    // Refused playlist first, writable second: the value comes from the first
+    // *writable* id, not the first id.
     const readOnly = seedPlaylist(database(), other.accountId, {
       skipNonMusic: true
     }).playlistId;
@@ -240,8 +239,7 @@ describe('POST /tracks', () => {
       { playlistId: missing, outcome: AddTrackOutcome.Refused }
     ]);
 
-    // A refused playlist the account can see and one that does not exist answer
-    // the same, so nothing tells them apart.
+    // A refused playlist it can see and a missing one are one answer, not two.
     expect(result.results[1]?.outcome).toBe(result.results[2]?.outcome);
 
     const writablePlaylist = database()
@@ -267,7 +265,7 @@ describe('POST /tracks', () => {
   });
 
   it('reports a playlist that already holds the video as already_present and succeeds', async () => {
-    // No source is queued: the track exists, so the route must not read the source.
+    // No source is queued: the track exists, so the route must not read it.
     context = await createTestContext({}, { youtube: createFakeYoutube() });
     const owner = seedAccount(database());
     const holding = seedPlaylist(database(), owner.accountId).playlistId;
@@ -753,7 +751,7 @@ describe('POST /tracks/:id/fetch-whole', () => {
         .where(eq(tracks.id, trackId))
         .get();
       expect(row?.fileStatus).toBe(fileStatus);
-      /* A stored track's shared file is never re-cut behind the other playlists. */
+      /* A stored track's shared file is never re-cut behind the others. */
       expect(row?.skipNonMusic).toBe(true);
     }
   );
@@ -838,12 +836,8 @@ describe('POST /tracks/:id/fetch-whole', () => {
   });
 });
 
-/*
- * The cache headers are a contract, not an implementation detail: they are what
- * keeps the media out of a shared cache and decide how much the browser reuses.
- * These read the header off a real response, so a regression is caught here
- * rather than in a browser.
- */
+/* Cache headers are a contract: media stays out of a shared cache, and reuse
+ * is the browser's. Read off a real response so a regression shows here. */
 describe('media cache headers', () => {
   it('caches a stored track audio privately for a week', async () => {
     context = await createTestContext();

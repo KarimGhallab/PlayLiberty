@@ -27,11 +27,8 @@ export function createProblem(input: ProblemInput): Problem {
   };
 }
 
-/*
- * Every refusal carries `no-store`. A problem is a state, not a resource, and a 404
- * is exactly the status a cache is allowed to store by heuristic, so the whole
- * document is barred from every cache.
- */
+/* `no-store` on every refusal: a 404 is exactly the status a cache may store by
+ * heuristic, so the document is barred from every cache. */
 export function sendProblem(
   reply: FastifyReply,
   input: ProblemInput
@@ -55,11 +52,8 @@ export function sendNotImplemented(
   });
 }
 
-/*
- * A playlist the account cannot reach, as the one code and the scope it was
- * refused in. The client maps the reason to its own sentence, so the server keeps
- * no second copy of that English.
- */
+/* One code plus the scope it was refused in; the client maps the reason to its
+ * own sentence, so the server keeps no second copy of that English. */
 export function sendPlaylistNotFound(
   reply: FastifyReply,
   reason: PlaylistNotFoundReason
@@ -81,13 +75,8 @@ export type ParseResult<T> =
   | { success: true; data: T }
   | { success: false; issues: readonly ProblemIssue[] };
 
-/*
- * Parses any untrusted input against a schema and reports the failure as a problem
- * document, so every route turns a bad body or a bad query string the same way.
- *
- * The failure is the structured issues and never Zod's English prose: the code and
- * the parameters travel, and the client owns the sentence it renders.
- */
+/* Parses untrusted input, reporting failure as issues, never Zod's prose: the
+ * code and params travel, and the client owns the sentence. */
 export function parseBody<T>(
   schema: z.ZodType<T>,
   body: unknown
@@ -107,11 +96,8 @@ export function parseBody<T>(
   };
 }
 
-/*
- * Both ways a request produces a problem document sit in one module: they write the
- * same shape to the same content type, and a route that produced a malformed-input
- * problem by hand would be the one route whose 400 looked different.
- */
+/* Both malformed-input helpers live here: one shape, one content type, so no
+ * route's 400 looks different. */
 export function sendInvalidRequest(reply: FastifyReply): FastifyReply {
   return sendProblem(reply, {
     status: 400,
@@ -120,11 +106,8 @@ export function sendInvalidRequest(reply: FastifyReply): FastifyReply {
   });
 }
 
-/*
- * A Zod failure, as one code and its parameters rather than Zod's own English.
- * The status is the caller's, because the add-track route refuses a body it read
- * and would not act on with a 422 while every other route uses the plain 400.
- */
+/* One code and its parameters, never Zod's English. The status is the caller's:
+ * add-track uses 422 where every other route uses 400. */
 export function sendValidationFailed(
   reply: FastifyReply,
   issues: readonly ProblemIssue[],
@@ -141,13 +124,8 @@ export function sendValidationFailed(
   });
 }
 
-/*
- * The batch add's whole-request refusal. The request is syntactically fine and
- * still cannot be carried out, because "add a video" was handed a playlist URL, or
- * an empty list, or more ids than one request may name. 422 rather than 400 keeps
- * the two apart: a 400 is a body the server could not read, a 422 is a body it read
- * and would not act on.
- */
+/* The batch add's whole-request refusal. 422, not 400: a 400 is a body the
+ * server could not read, a 422 a body it read and would not act on. */
 export function sendUnprocessable(reply: FastifyReply): FastifyReply {
   return sendProblem(reply, {
     status: 422,

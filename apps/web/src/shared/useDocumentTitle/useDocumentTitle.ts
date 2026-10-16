@@ -10,12 +10,9 @@ import type { PlayerTrack } from '../player/types';
 import { currentTrack } from '../player/types';
 
 /*
- * The tab's title, the one place it is written. It follows where the listener is
- * and what is sounding: the app's name alone at home, the open playlist's name
- * once one is open, and the playing track's name under its playlist while one
- * plays. A track outranks the open playlist, because the track is what the tab is
- * for. The shape lives in the catalog with the rest of the copy, so a locale
- * punctuates it its own way.
+ * The tab's title, the one place it is written: the app's name at home, the
+ * open playlist's name, or the playing track's name under its playlist. A track
+ * outranks the open playlist; the shape lives in the catalog.
  */
 export function documentTitle(
   t: Translator<Messages>,
@@ -40,9 +37,8 @@ export function documentTitle(
 }
 
 /*
- * Mounted once in the shell, so a route change and a track change compose into
- * one title rather than racing. The open playlist's name is read here and cached
- * by the detail page's own read, so the title does not fetch it twice.
+ * Mounted once in the shell so a route change and a track change compose into
+ * one title; the playlist read is shared with the detail's, not fetched twice.
  */
 export function useDocumentTitle(): void {
   const { t } = useI18n();

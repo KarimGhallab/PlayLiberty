@@ -338,10 +338,8 @@ describe('TrackRow', () => {
     expect(screen.getByRole('img', { name: 'Playing' })).toBeInTheDocument();
   });
 
-  /*
-   * The mark is drawn for the current track in both states, so its label is the
-   * state and not the row's presence: a held queue must not announce "Playing".
-   */
+  /* The mark is drawn for the current track in both states, so its label is the
+   * state and not the row's presence. */
   it('announces paused, not playing, on the current track while the queue is held', () => {
     renderRow({ current: true, playing: false });
 

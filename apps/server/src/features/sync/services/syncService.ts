@@ -36,15 +36,9 @@ import { findTrackByVideoId } from '../../tracks/service/trackService.js';
 import { markTrackSourceRemoved } from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 /*
- * Syncing a Synced playlist with its Source.
- *
- * One run at a time per playlist. A second request while a run is in flight is
- * refused rather than queued, because two runs would each assign positions and
- * write the playlist's counts and the loser would overwrite the winner's numbers.
- * A reconcile reads the source through the adapter, so it cannot finish inside a
- * request: starting a sync creates the playlist if it is new, opens a run in
- * `running`, returns it, and lets the reconcile finish in the background, where a
- * client learns the outcome from the latest-run route.
+ * One run per playlist: a concurrent start is refused, not queued, because two
+ * runs would each assign positions and overwrite the playlist's counts. A
+ * reconcile cannot finish inside a request, so it runs in the background.
  */
 
 export enum StartSyncOutcome {
@@ -68,10 +62,8 @@ export function startSyncForSource(
 ): StartOrConflict {
   const database = context.database;
 
-  // Source uniqueness is per owner, so this finds the caller's own playlist for
-  // the source and never one belonging to somebody else. The insert is a
-  // conflict-no-op rather than a check-then-insert, so two simultaneous pastes of
-  // one source cannot both create a playlist.
+  // Conflict-no-op, not check-then-insert, so two simultaneous pastes of one
+  // source cannot both create a playlist. Source uniqueness is per owner.
   const inserted = database.db
     .insert(playlists)
     .values({
@@ -88,9 +80,7 @@ export function startSyncForSource(
     .returning()
     .get();
 
-  // The insert returns the row it created, or nothing when the caller already
-  // holds this source. On a conflict the row belongs to the earlier paste, so it
-  // is read rather than assumed.
+  // On conflict the row belongs to the earlier paste, so read it, not assume.
 
   const playlist =
     inserted ??
@@ -110,9 +100,8 @@ export function startSyncForSource(
     throw new Error('The playlist could not be created or found.');
   }
 
-  // A playlist whose stored URL differs from what was just pasted, including one
-  // that predates the column, is filled in so the next sync has something to
-  // read.
+  // A playlist whose stored URL differs from what was just pasted is filled in
+  // so the next sync has something to read.
   if (playlist.sourceUrl !== info.url) {
     database.db
       .update(playlists)
@@ -131,9 +120,8 @@ export function startSyncForPlaylist(
 ): StartSyncResult {
   const writable = canWritePlaylist(context.database, playlistId, accountId);
 
-  // A read collaborator and a stranger both answer not-found, so the route does
-  // not confirm a playlist the caller cannot write. Rename, delete and share
-  // management stay with the owner; a write collaborator may sync.
+  // A read collaborator and a stranger answer not-found alike, so the route
+  // confirms nothing. A write collaborator may sync; owner ops stay owner-only.
   if (!writable) {
     return { outcome: StartSyncOutcome.PlaylistNotFound };
   }
@@ -200,11 +188,8 @@ function beginRun(context: AppContext, playlist: PlaylistRow): StartOrConflict {
   return { outcome: StartSyncOutcome.Started, playlistId: playlist.id, run };
 }
 
-/*
- * One pass over the source membership, adding and never subtracting. A video the
- * playlist already associates is left exactly as it is, which is what makes a
- * second sync change nothing.
- */
+/* One pass adding, never subtracting: an already-associated video is untouched,
+ * so a second sync changes nothing. */
 async function reconcile(
   context: AppContext,
   runId: string,
@@ -220,17 +205,12 @@ async function reconcile(
     const source = await context.youtube.listSource(playlist.sourceUrl);
     const presentVideoIds = source.entries.map(item => item.videoId);
 
-    // A suppression lasts only while the source still lists the video. Once the
-    // source drops it, the listener's removal has nothing left to hold against, so
-    // a video that later returns is treated as new rather than staying removed.
+    // A suppression lasts only while the source still lists the video, so one
+    // that later returns is treated as new rather than staying removed.
     liftAbsentSuppressions(database, playlist.id, presentVideoIds);
 
-    /*
-     * The reconcile is one queueing operation: it queues every new track across the
-     * whole source, so the worker is woken once at the end rather than once per
-     * track. The run is settled and the playlist published inside the operation, so
-     * the wake follows them.
-     */
+    /* One queueing operation for the whole source, so the worker is woken once
+     * at the end. The run is settled and the playlist published first. */
     withDownloadQueue(context, queue => {
       let nextPosition = nextPositionFor(database, playlist.id);
       let added = 0;
@@ -276,8 +256,8 @@ async function reconcile(
           : playlist.sourcePlaylistId;
       const finishedAt = new Date().toISOString();
 
-      // In one transaction, so a client never reads a finished run beside a
-      // playlist that still says it is syncing.
+      // One transaction, so a client never reads a finished run beside a
+      // syncing playlist.
       database.sqlite.transaction(() => {
         database.db
           .update(syncRuns)
@@ -331,14 +311,8 @@ async function reconcile(
   }
 }
 
-/*
- * A video the source no longer lists does not take its track with it. A stored
- * track keeps its file and is marked remote-removed, which is the retention the
- * product promises; a track that never got a file becomes unavailable rather than
- * sitting queued forever. The flag lives on the track, so every playlist holding
- * it reads the same answer. Only the stored case is a retention, because nothing
- * was kept for a track that had no file.
- */
+/* The source dropping a video does not take its track: stored keeps its file,
+ * no-file becomes unavailable, and the flag is per track. */
 function retainAbsentTracks(
   database: DatabaseHandle,
   playlistId: string,
@@ -367,8 +341,7 @@ function retainAbsentTracks(
       continue;
     }
 
-    // The rule lives in one place, shared with the download worker, so a
-    // video that leaves the source and a download that finds it gone agree.
+    // The shared rule: a source drop and a download that finds it gone agree.
     markTrackSourceRemoved(database, row.trackId);
 
     if (row.fileStatus === TrackFileStatus.Stored) {
@@ -379,17 +352,8 @@ function retainAbsentTracks(
   return retained;
 }
 
-/*
- * Lifting the suppressions whose video the source no longer lists. This is the one
- * write the reconcile makes to suppressions, and it is what keeps a removal a
- * choice about the playlist rather than a permanent deletion of the video: if the
- * source later lists the video again, nothing holds it back. A suppression whose
- * video is still present is left alone, so a removed track stays removed while the
- * source still has it.
- *
- * The read is bounded by the playlist's own suppressions rather than by the source
- * size, so a large playlist does not build a huge `not in` list.
- */
+/* Lifts only suppressions whose video the source no longer lists: a removal is
+ * a playlist choice, not a permanent deletion. */
 function liftAbsentSuppressions(
   database: DatabaseHandle,
   playlistId: string,
@@ -420,11 +384,7 @@ function liftAbsentSuppressions(
     .run();
 }
 
-/*
- * A suppression is a video the listener removed from this playlist, and the
- * reconcile honours it rather than reopening the question: the video is skipped
- * and gets no association.
- */
+/* A suppression is a video the listener removed, so the reconcile skips it. */
 function isSuppressed(
   database: DatabaseHandle,
   playlistId: string,
@@ -456,10 +416,8 @@ function ensureTrack(
   const existing = findTrackByVideoId(database, videoId);
 
   if (existing !== undefined) {
-    // A failed download is retried by the next sync: the row goes back to pending
-    // so the worker claims it again, and the stale reason goes with it. Every other
-    // existing track is left exactly as it is, which is the one way the sync's
-    // reuse differs from the batch add's, which reuses a failed track untouched.
+    // A failed download is retried by the next sync; other tracks are left
+    // untouched, the one way sync's reuse differs from the batch add's.
     if (existing.fileStatus === TrackFileStatus.Failed) {
       queue.retry(existing.id);
     }
@@ -472,8 +430,7 @@ function ensureTrack(
     title,
     durationSeconds,
     thumbnailUrl,
-    // The syncing playlist's current value: first-wins dedup, so a second playlist
-    // that later references this track cannot change it.
+    // First-wins dedup: a later playlist cannot change the track's setting.
     skipNonMusic
   });
 }

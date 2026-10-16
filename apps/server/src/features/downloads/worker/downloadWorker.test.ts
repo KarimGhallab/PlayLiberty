@@ -54,13 +54,8 @@ afterEach(async () => {
   context = undefined;
 });
 
-/*
- * A stand-in for the adapter that writes a real file where the worker asked for
- * it, so the store, the move and the stream route are exercised on real bytes
- * rather than on a claim that a file exists. It records the video ids it was
- * asked to fetch, which is how a test says a track was never claimed without
- * reading the row it did not touch.
- */
+/* An adapter that writes a real file where the worker asked, so the store, the
+ * move and the stream route run on real bytes. It records video ids fetched. */
 interface FakeDownloaderOptions {
   failTimes?: number;
   error?: Error;
@@ -100,8 +95,8 @@ function fakeDownloader(options: FakeDownloaderOptions = {}): {
 
         active += 1;
         stats.maxActive = Math.max(stats.maxActive, active);
-        // Yield, so two claimed downloads overlap and a cap above one is
-        // observable rather than theoretical.
+        // Yield, so two claimed downloads overlap and a cap above one is seen
+        // rather than theoretical.
         await new Promise(resolve => setTimeout(resolve, 0));
 
         await mkdir(dirname(request.outputPath), { recursive: true });
@@ -258,7 +253,7 @@ describe('the download worker', () => {
 
     await run(fake.youtube);
 
-    // The worker has no playlist in scope, so the value comes from the track row.
+    // The worker has no playlist in scope, so the value comes from the track.
     expect(fake.requests[0]?.skipNonMusic).toBe(false);
   });
 
@@ -292,8 +287,8 @@ describe('the download worker', () => {
 
     const row = trackRow(seeded.trackId);
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
-    // No probe ran, so no file duration was written and the row keeps the source
-    // value it was created with.
+    // No probe ran, so no file duration was written and the row keeps its
+    // source value.
     expect(row?.durationSeconds).toBe(180);
   });
 
@@ -319,7 +314,7 @@ describe('the download worker', () => {
 
     await run(fake.youtube);
 
-    // The route set the row to false, so the worker asks the adapter for no cut.
+    // The route set the row false, so the worker asks the adapter for no cut.
     expect(fake.requests[0]?.skipNonMusic).toBe(false);
     expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
   });
@@ -335,8 +330,8 @@ describe('the download worker', () => {
     await run(fake.youtube);
     expect(fake.downloads).toEqual([seeded.videoId]);
 
-    // A second account associates the same track row. Its playlist is on, but the
-    // track keeps the policy of the fetch that stored it: first-wins.
+    // A second account associates the same track row. Its playlist is on, but
+    // the track keeps the policy of the fetch that stored it: first-wins.
     const otherAccount = seedAccount(context.database, {
       pangolinUserId: 'owner-2'
     });
@@ -641,13 +636,12 @@ describe('the download worker', () => {
       },
       concurrency: 1,
       logger: context.app.log,
-      // An interval far longer than the test, so the only pass that can run is the
-      // immediate one.
+      // An interval far longer than the test, so the only pass that can run is
+      // the immediate one.
       intervalMs: 60_000
     });
 
-    // No `started` gate to wait on: the claim is that the row is already stored
-    // before any interval could fire.
+    // No `started` gate: the row is stored before any interval could fire.
     await vi.waitFor(() => {
       expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
     });

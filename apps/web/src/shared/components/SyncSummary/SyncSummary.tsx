@@ -5,23 +5,9 @@ import { formatLastSynced, useI18n } from '@playliberty/i18n';
 import styles from './SyncSummary.module.scss';
 
 /*
- * The sync summary is never drawn beside the sync error, which replaces it: the
- * summary says what the run did and the error says what to do about it, and the
- * two would put the same news in the same column twice.
- *
- * A playlist with no run has no summary and renders nothing at all rather than
- * four zeroes: a summary of a run that never happened is a claim about the last
- * run that there was not one.
- *
- * The figure is quiet by default and colour is spent only on a count that is not
- * zero, so a run that changed nothing needs no reading at all. The stamp is the
- * run's `finishedAt`, which a running run does not have yet, so a run still in
- * flight draws its own word in place of the stamp.
- *
- * The in-flight line is derived, and says so. There is no stored pending count
- * anywhere in the contract, so while a run is active the downloading figure
- * comes from the tracks the client already holds and the surface states that
- * rather than presenting a number the server never reported.
+ * The summary is never drawn beside the sync error, which replaces it, and a
+ * playlist with no run renders nothing rather than four zeroes. The in-flight
+ * downloading figure is derived client-side, since no pending count is stored.
  */
 
 interface SyncSummaryProps {

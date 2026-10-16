@@ -7,16 +7,8 @@ import styles from './PlaylistFilterChips.module.scss';
 
 /*
  * Every chip is always drawn, a zero included, because the count is the reason
- * the chip exists: the choice is made knowing what the list will hold.
- *
- * The counts are the whole-playlist aggregate folded into the list read, so they
- * never follow the filter. The chips are disabled while the list draws the
- * shuffled queue's order, because the filter is the unshuffled list's view and
- * the shuffled list is not narrowed.
- *
- * The component is presentational: the page owns the read and the filter state,
- * `active` is the one chip in force (null is "All"), and `onChange` asks for the
- * state's rows. Pressing the chip already in force asks for nothing.
+ * the chip exists. The counts are the whole-playlist aggregate, so they never
+ * follow the filter, and the chips are disabled while the shuffled queue is on.
  */
 
 interface PlaylistFilterChipsProps {

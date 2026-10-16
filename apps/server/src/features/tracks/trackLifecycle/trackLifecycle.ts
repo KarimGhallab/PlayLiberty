@@ -29,10 +29,7 @@ export interface StoreTrackInput {
   durationSeconds: number | null;
 }
 
-/*
- * The state fields a transition writes. Kept to the columns the lifecycle owns
- * so a transition cannot reach for a field it has no business setting.
- */
+/* Only the columns the lifecycle owns, so a transition cannot set another. */
 type TrackStateFields = Partial<{
   fileStatus: TrackFileStatus;
   sourceStatus: TrackSourceStatus;
@@ -43,12 +40,8 @@ type TrackStateFields = Partial<{
   thumbnailPath: string | null;
 }>;
 
-/*
- * The one shape a single-track transition takes: move the row only while it is
- * in a state the move leaves, and hand back the row as written. The conditional
- * write is the guard, so a row in any other state is left exactly as it is; the
- * read afterwards only says which of the two refusals happened.
- */
+/* The single transition shape: the conditional write is the guard, so a row in
+ * another state is untouched, and the read only names the refusal. */
 function applyTransition(
   database: DatabaseHandle,
   trackId: string,
@@ -77,10 +70,7 @@ function applyTransition(
     : { outcome: TrackTransitionOutcome.Refused };
 }
 
-/*
- * The provider is fixed because YouTube is the only source, and the video id is
- * the key every later read uses.
- */
+/* Provider fixed: YouTube is the only source. The video id is the key. */
 export function createPendingTrack(
   database: DatabaseHandle,
   seed: TrackSeed
@@ -109,11 +99,8 @@ export function createPendingTrack(
 }
 
 /*
- * The claim moves the oldest `pending` rows up to the cap to `downloading`,
- * returning exactly the ones it moved. A row another pass already took is not in
- * the result, so no download is started twice. The two statements are the guard:
- * the second moves only what the first selected and only while it is still
- * pending.
+ * Moves the oldest `pending` rows to the cap to `downloading`, returning what
+ * it moved, so no download starts twice. The two statements are the guard.
  */
 export function claimPendingTracks(
   database: DatabaseHandle,
@@ -186,12 +173,8 @@ export function retryTrack(
   });
 }
 
-/*
- * The fetch-whole: a pending or failed track back in the queue with the policy
- * turned off, so the next pass fetches it without the cut. A stored track is not
- * eligible, because its file is shared by every association and re-cutting it
- * would change every playlist that references the video.
- */
+/* Fetch-whole: a pending or failed track requeued with the policy off. A stored
+ * track is ineligible, because its file is shared across every association. */
 export function fetchTrackWhole(
   database: DatabaseHandle,
   trackId: string
@@ -208,10 +191,8 @@ export function fetchTrackWhole(
   );
 }
 
-/*
- * A video that is gone from its source is not a failure: the track is kept and
- * marked removed, and only a track with no stored file becomes unavailable.
- */
+/* Gone is not a failure: the track is kept and marked removed; only one with no
+ * stored file becomes unavailable. */
 export function markTrackSourceRemoved(
   database: DatabaseHandle,
   trackId: string
@@ -250,11 +231,8 @@ export function markTrackSourceRemoved(
   return { outcome: TrackTransitionOutcome.Applied, track: updated };
 }
 
-/*
- * The startup sweep's reset: a download interrupted by a crash leaves a row still
- * claiming to be downloading, so every such row returns to `pending` and is
- * claimed again. The batch update is the guard: only `downloading` rows move.
- */
+/* An interrupted download's `downloading` row returns to `pending`; the batch
+ * update is the guard, moving only `downloading` rows. */
 export function resetDownloadingTracks(database: DatabaseHandle): number {
   const result = database.db
     .update(tracks)
@@ -268,9 +246,7 @@ export function resetDownloadingTracks(database: DatabaseHandle): number {
   return result.changes;
 }
 
-/*
- * Best effort: a stored track with no thumbnail path is still playable.
- */
+/* Best effort: a track with no thumbnail path is still playable. */
 export function storeThumbnail(
   database: DatabaseHandle,
   trackId: string,
@@ -283,11 +259,8 @@ export function storeThumbnail(
     .run();
 }
 
-/*
- * The death: an orphan track's row is removed once its media is gone. The caller
- * removes the media first and only calls this when that succeeded, so a row never
- * points at a file that is not there.
- */
+/* The caller removes the media first, calling this only on success: a row never
+ * points at a file that is not there. */
 export function removeTrack(database: DatabaseHandle, trackId: string): void {
   database.db.delete(tracks).where(eq(tracks.id, trackId)).run();
 }

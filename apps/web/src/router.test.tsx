@@ -16,11 +16,6 @@ import type { PlayerTrack } from './shared/player/types';
 import { routeTree } from './router';
 import { createFakeEventStream } from './testing/fakeEventStream';
 
-/*
- * The claim under test is that a route change does not restart the track: the
- * audio element is not remounted, so its source is loaded and played once.
- */
-
 const PLAYLIST = 'playlist-1';
 
 /* The element's `play` is the observable of "the source was not restarted". */
@@ -62,9 +57,8 @@ beforeEach(() => {
   usePlayerStore.getState().clear();
   playMock.mockClear();
   /*
-   * jsdom's `play` returns undefined, so the element's `.catch` on the playback
-   * promise would throw. The shell mounts the real audio element, so the browser
-   * half it lacks is supplied here.
+   * jsdom's `play` returns undefined, so the element's `.catch` would throw.
+   * The shell mounts the real audio element, so its browser half is supplied.
    */
   HTMLMediaElement.prototype.play = playMock as unknown as () => Promise<void>;
   HTMLMediaElement.prototype.pause = vi.fn() as unknown as () => void;
@@ -91,9 +85,8 @@ describe('AppShell', () => {
   });
 
   /*
-   * The tab title is derived from the route and the player together, which only
-   * the assembled shell can prove: the owner's branches are unit-tested, and this
-   * shows the one writer mounted above both following a real navigation.
+   * Only the assembled shell proves the route and the player feed one writer;
+   * the owner's own branches are unit-tested.
    */
   it('names the tab after the open playlist, then after the playing track', async () => {
     const { router } = renderShell('/');

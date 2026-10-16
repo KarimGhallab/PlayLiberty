@@ -8,9 +8,7 @@ import type { LoadMoreControlProps } from './LoadMoreControl';
 
 /*
  * A stand-in for the platform observer, so the sentinel's wiring is exercised
- * without a real layout engine. jsdom has no `IntersectionObserver`, and the
- * component deliberately falls back to its button when the platform has none, so
- * the fake is installed only where the sentinel is under test.
+ * without a real layout engine; jsdom has no `IntersectionObserver`.
  */
 class FakeIntersectionObserver implements IntersectionObserver {
   static readonly instances: FakeIntersectionObserver[] = [];

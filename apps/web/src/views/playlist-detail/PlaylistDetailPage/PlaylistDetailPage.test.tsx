@@ -30,10 +30,8 @@ import { stubViewport } from '../../../testing/viewport';
 import PlaylistDetailPage from './PlaylistDetailPage';
 
 /*
- * The row-render measurement at the end of this file counts `formatDuration`
- * calls per row, so the formatter is spied while still delegating to the real
- * one: the output the rows draw is unchanged and the call count is the per-row
- * render count.
+ * Spied while still delegating to the real formatter, so the row output is
+ * unchanged and the call count measures per-row renders.
  */
 vi.mock('@playliberty/i18n', async importOriginal => {
   const actual = await importOriginal<typeof import('@playliberty/i18n')>();
@@ -68,10 +66,7 @@ function renderDetail(playlistId = PLAYLIST_ID) {
   );
 }
 
-/*
- * The playlist read the skip-setting tests answer with, so a handler can echo the
- * value it was sent without repeating the whole shape.
- */
+/* The playlist read a handler echoes a value into, without the whole shape. */
 function playlistJson(skipNonMusic: boolean) {
   return {
     id: 'playlist-1',
@@ -93,8 +88,7 @@ function playlistJson(skipNonMusic: boolean) {
   };
 }
 
-/* One association for a tracks page or a queue list, so a paging test states only
- * its ids, titles and positions. */
+/* One association, so a test states only its ids, titles and positions. */
 function trackJson(
   id: string,
   title: string,
@@ -183,13 +177,6 @@ describe('PlaylistDetailPage', () => {
     ).toHaveAttribute('href', '/');
   });
 
-  /*
-   * The header's two arrangements are different markup, so the viewport decides
-   * between them: the web draws the card, whose cover sits above the identity,
-   * and a phone draws the row, whose cover sits beside it. The assertion is the
-   * attribute the component renders, because that is what picks the markup the
-   * rest of the header hangs off.
-   */
   it('draws the header as the card at the web width', async () => {
     const { container } = renderDetail();
 
@@ -218,8 +205,6 @@ describe('PlaylistDetailPage', () => {
         container.querySelector('[data-arrangement="card"]')
       ).not.toBeInTheDocument();
 
-      /* The add control is the floating action at this width, because the way-home
-       * row has no second end to hold it, and the same press opens the dialog. */
       fireEvent.click(screen.getByRole('button', { name: 'Add a track' }));
       expect(await screen.findByRole('dialog')).toBeInTheDocument();
     } finally {
@@ -242,9 +227,8 @@ describe('PlaylistDetailPage', () => {
     renderDetail();
 
     /*
-     * `Flamenco Sketches` is pending in the fixtures, so it is listed and
-     * unplayable. The control is absent rather than disabled: a button that
-     * cannot be pressed would claim a track can be heard when it cannot.
+     * The pending track is listed and unplayable: absent rather than disabled,
+     * so the control never claims a track can be heard when it cannot.
      */
     expect(await screen.findByText('Flamenco Sketches')).toBeInTheDocument();
     expect(
@@ -263,11 +247,6 @@ describe('PlaylistDetailPage', () => {
       expect(usePlayerStore.getState().queue).toHaveLength(2)
     );
 
-    /*
-     * The list is the queue's order, whatever the draw produced: the two stored
-     * rows are the playable tracks in the queue's own sequence, and the pending
-     * row joins the group before it.
-     */
     const queueTitles = usePlayerStore
       .getState()
       .queue.map(track => track.title);
@@ -283,11 +262,6 @@ describe('PlaylistDetailPage', () => {
     expect(titles).toEqual(queueTitles);
   });
 
-  /*
-   * The header's shuffle presses on the queue's own playlist, so the detail's
-   * control is pressed while this playlist is the queue and unpressed while the
-   * queue is another one, even though the player is shuffled either way.
-   */
   it('presses the header shuffle while this playlist is the queue', async () => {
     renderDetail();
 
@@ -366,8 +340,7 @@ describe('PlaylistDetailPage', () => {
     const shuffledQueue = usePlayerStore
       .getState()
       .queue.map(track => track.id);
-    /* A row other than the one the draw started on, so the press is a move and not
-     * a pause. */
+    /* Not the row the draw started on, so the press moves, not pauses. */
     const target = usePlayerStore
       .getState()
       .queue.find(track => track.id !== usePlayerStore.getState().currentId);
@@ -382,8 +355,6 @@ describe('PlaylistDetailPage', () => {
 
     const state = usePlayerStore.getState();
 
-    /* The queue the listener can see is the queue that plays: the press moves the
-     * cursor and leaves the order, the mode and the position of every entry. */
     expect(state.queue.map(track => track.id)).toEqual(shuffledQueue);
     expect(state.shuffle).toBe(true);
     expect(state.currentId).toBe(target.id);
@@ -391,9 +362,8 @@ describe('PlaylistDetailPage', () => {
   });
 
   /*
-   * The list pages in. The server's total is three and a page is two here, so the
-   * first screen draws two rows and the header reads the window; the control
-   * loads the rest and the header goes back to the standing total.
+   * The list pages in: the server's total is three and a page is two, so the
+   * first screen draws two rows and the header reads the window.
    */
   it('pages the list in and reads the displayed count', async () => {
     const all = [
@@ -441,8 +411,8 @@ describe('PlaylistDetailPage', () => {
   });
 
   /*
-   * The queue comes from the whole-list read, not from the page on screen: the
-   * list shows one of two tracks and a press still queues both.
+   * The queue comes from the whole-list read, not the page on screen: the list
+   * shows one of two tracks and a press still queues both.
    */
   it('plays the whole playlist from the whole-list read, not the page', async () => {
     const all = [
@@ -478,11 +448,6 @@ describe('PlaylistDetailPage', () => {
     ]);
   });
 
-  /*
-   * The queue read behind a press fails, and the header's own play control owns
-   * it: the control becomes the retry, a caption sits under the header, and a
-   * retry recovers.
-   */
   it('owns a failed queue read on the header control and recovers on retry', async () => {
     const all = [
       trackJson('recover-1', 'Recover One', 0),
@@ -669,17 +634,10 @@ describe('PlaylistDetailPage', () => {
       screen.getByRole('menuitem', { name: 'Remove from playlist' })
     );
 
-    /* The press opens the window; the call waits for its deadline, and the
-     * toast speaks in the present because nothing has been removed yet. */
     expect(await screen.findByText('Removing track')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
-  /*
-   * The row the toast names is marked while the removal waits: dimmed, busy, and
-   * its play and lane disabled, so a track that is going cannot be played or
-   * removed again. Cancel lifts the mark and the row is live again.
-   */
   it('marks a track pending while its removal waits, and lifts it on Cancel', async () => {
     const { container } = renderDetail();
 
@@ -708,10 +666,6 @@ describe('PlaylistDetailPage', () => {
     ).toBeEnabled();
   });
 
-  /*
-   * The header is the target of the playlist's own deferred delete, so it wears
-   * the same mark: dimmed and busy, its door and controls disabled.
-   */
   it('marks the header pending while its delete waits', async () => {
     const { container } = renderDetail();
 
@@ -730,9 +684,8 @@ describe('PlaylistDetailPage', () => {
   });
 
   /*
-   * The playlist's own delete takes its tracks with it: every row wears the same
-   * mark, so a track that cannot survive its playlist's deletion stays unplayable
-   * while the window waits.
+   * The playlist's delete takes its tracks with it, so every row wears the same
+   * mark while the window waits.
    */
   it('marks the track rows pending while the playlist delete waits', async () => {
     renderDetail();
@@ -856,7 +809,6 @@ describe('PlaylistDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
-    /* The dialog's body arrives: the directory's accounts, the reader left out. */
     expect(await screen.findByText('Ada')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Try again' })
@@ -1050,8 +1002,6 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'This playlist is not here' })
     ).toBeInTheDocument();
-    /* Neither cause is claimed, and the header for a playlist that is not there
-     * is not drawn. */
     expect(screen.queryByText('Rain On The Window')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: 'Nothing here yet' })
@@ -1065,10 +1015,8 @@ describe('PlaylistDetailPage', () => {
   });
 
   /*
-   * The failure half of the page's one-state pairing: a playlist the server
-   * marked failed draws the band with the run's own reason, the reassurance and
-   * the retry, and not the summary. This is the page pairing the status with the
-   * reason, which the component test alone cannot prove.
+   * The page pairs the status with the run's reason, which the component test
+   * alone cannot prove.
    */
   it('draws the run reason instead of the summary when the sync failed', async () => {
     server.use(
@@ -1308,8 +1256,7 @@ describe('PlaylistDetailPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
-    /* An all-success batch has nothing to read, so the dialog goes, after its
-     * exit. */
+    /* An all-success batch has nothing to read, so the dialog goes. */
     await waitFor(() => {
       expect(
         screen.queryByRole('dialog', { name: 'Add a track' })
@@ -1330,9 +1277,8 @@ describe('PlaylistDetailPage', () => {
 });
 
 /*
- * The sort control above the list. The write is the page's: the control is
- * presentational, so the page saves the order, asks the reads again and reports a
- * refusal.
+ * The control is presentational: the page saves the order, re-asks the reads
+ * and reports a refusal.
  */
 describe('PlaylistDetailPage sort control', () => {
   const TITLES: Record<string, string> = {
@@ -1394,10 +1340,8 @@ describe('PlaylistDetailPage sort control', () => {
 });
 
 /*
- * The filter chips above the list. The counts come from the tracks read's own
- * whole-playlist aggregate, a chip narrows the list and the header's count line,
- * a filter that matches nothing names its empty state, and the chips step aside
- * while the shuffled queue is the list on screen.
+ * A chip narrows the list and the header's count line from the read's own
+ * whole-playlist counts; the chips step aside under the shuffled queue.
  */
 describe('PlaylistDetailPage filter chips', () => {
   function headerCard(container: HTMLElement): HTMLElement {
@@ -1470,9 +1414,8 @@ describe('PlaylistDetailPage filter chips', () => {
   });
 
   /*
-   * A filter changes what is seen and not what plays: the queue is built from the
-   * whole-playlist read, so a filter that matched nothing still queues every
-   * playable track.
+   * A filter changes what is seen, not what plays: the queue comes from the
+   * whole-playlist read.
    */
   it('plays every playable track under a filter that matched nothing', async () => {
     renderDetail();
@@ -1496,9 +1439,8 @@ describe('PlaylistDetailPage filter chips', () => {
 });
 
 /*
- * The hot list's render count. `formatDuration` is called once per rendered track
- * row with that row's own duration, and the three fixture tracks have distinct
- * durations, so counting calls per argument is a per-row render count.
+ * The formatter runs once per row with that row's duration, so the fixture's
+ * distinct durations make calls per argument a per-row render count.
  */
 describe('PlaylistDetailPage row rendering', () => {
   it('re-renders only the row a queue change affects', async () => {

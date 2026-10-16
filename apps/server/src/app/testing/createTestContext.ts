@@ -30,34 +30,17 @@ export interface TestContext {
 }
 
 export interface TestContextOptions {
-  /*
-   * The source seam. A test that exercises the sync passes a fake here and never
-   * spawns yt-dlp; a test that does not care gets the real client built from
-   * config, which it never calls.
-   */
+  /* The source seam: a sync test passes a fake, others get the real client. */
   youtube?: IYoutubeClient;
-  /*
-   * A spy a test passes to observe that a sync queued work. The background jobs
-   * are off by default, so nothing replaces it and the test reads exactly what the
-   * sync asked for.
-   */
+  /* A spy to observe that a sync queued work; jobs are off by default. */
   kickDownloads?: () => void;
-  /*
-   * Whether the background download worker and prune scheduler run. Off by
-   * default: a unit test drives `processPendingTracks` by hand, and a background
-   * worker ticking beside it would download the same rows first and race the
-   * assertions. A test that wants the loop passes `true`.
-   */
+  /* Whether the worker and scheduler run. Off by default, so a unit test that
+   * drives a pass by hand is not raced by a ticking worker. */
   startBackgroundJobs?: boolean;
-  /*
-   * How long the live stream may sit idle before it writes a heartbeat. A test
-   * that watches the heartbeat shortens it rather than waiting out the default.
-   */
+  /* The stream's idle heartbeat; a test that watches it shortens it. */
   sseHeartbeatMs?: number;
-  /*
-   * A logger a test supplies to read the audit lines the app writes. Absent, the
-   * app builds its own from config, which the test context silences.
-   */
+  /* A logger to read the audit lines; absent, the app builds one, silenced by
+   * config. */
   loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
 

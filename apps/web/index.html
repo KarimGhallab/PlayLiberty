@@ -5,14 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <!--
-      The icon set. Every plate is the accent on 78% emblem fit, so the tile
-      reads as one object rather than as artwork sitting on a colour. The three
-      shapes exist because three different maskers own the corners: browsers
-      apply no radius to a favicon, iOS masks and does not flatten the touch
-      icon, and Android crops a maskable icon to the launcher's own shape. The
-      colours below are literals, not tokens, because JSON and HTML cannot read
-      a custom property. `@playliberty/tokens` owns them: a change to --bg there
-      has to be mirrored here or the installed app and the app disagree.
+      Three shapes because browsers, iOS and Android each mask the corners
+      differently. Colors are literals; mirror --bg from @playliberty/tokens.
     -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />

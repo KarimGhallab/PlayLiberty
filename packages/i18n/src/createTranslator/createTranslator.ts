@@ -6,21 +6,18 @@ import type {
 import { Language } from '../types.js';
 
 /*
- * There is no third-party i18n dependency, because the web client and Hermes
- * must say the same sentence and ICU and `Intl` differ by platform.
+ * No third-party i18n dependency: the web client and Hermes must say the same
+ * sentence, and ICU and `Intl` differ by platform.
  */
 
-/**
- * The dotted keys of a catalog, derived from its shape so `t` is typed against
- * the key union and a typo is a compile error.
- */
+/** The catalog's dotted keys, derived from its shape, so a typo is a compile
+ * error. */
 export type MessageKey<T> = {
   [K in keyof T & string]: T[K] extends string | PluralMessage | MessageFunction
     ? K
     : `${K}.${MessageKey<T[K]>}`;
 }[keyof T & string];
 
-/** The translator a catalog yields, keyed to that catalog's shape. */
 export type Translator<M> = (
   key: MessageKey<M>,
   params?: MessageParams
@@ -61,10 +58,8 @@ function interpolate(template: string, params: MessageParams): string {
   );
 }
 
-/*
- * English singles out one; French singles out zero and one, so `0 piste` reads
- * right. A catalog carries two forms and no ICU.
- */
+/* French singles out zero and one (`0 piste`), English only one; a catalog
+ * carries two forms and no ICU. */
 function pluralCategory(
   language: Language,
   count: number

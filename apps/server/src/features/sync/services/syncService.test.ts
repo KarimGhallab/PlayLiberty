@@ -91,10 +91,8 @@ function get(url: string, pangolinUserId: string) {
 }
 
 /*
- * A client learns a run's outcome from the latest-run route, so that is where the
- * test reads it too. The fake adapter resolves immediately, so the background run
- * is finished by the first poll or two; the loop is a guard against a flake rather
- * than a delay.
+ * The test reads a run's outcome from the latest-run route, as a client would;
+ * fake resolver is immediate, so the poll loop is a flake guard, not a delay.
  */
 async function runFinished(
   playlistId: string,
@@ -126,12 +124,8 @@ async function readPlaylist(playlistId: string, pangolinUserId: string) {
   );
 }
 
-/*
- * The per-track effects of a sync (the association's origin and position beside
- * the track's own file and source status) are read from the database here.
- * Everything the API exposes (the run's counts, the playlist's count, status and
- * name) is asserted through the API above this.
- */
+/* Per-track fields (association origin/position, file/source status) are read
+ * from the database; API-exposed fields go through the API above. */
 function readAssociations(playlistId: string) {
   if (context === undefined) {
     throw new Error('the test context is not created');
@@ -221,8 +215,8 @@ describe('POST /playlists', () => {
     );
     await runFinished(first.playlistId, 'owner-1');
 
-    // The second paste finds the owner's existing playlist and keeps its value:
-    // the setting is kept from the first creation, not re-chosen on each paste.
+    // The second paste finds the existing playlist and keeps its value: the
+    // setting is from the first creation, not re-chosen.
     const second = SyncRunSchema.parse(
       (await post(PLAYLIST_URL, 'owner-1')).json()
     );
@@ -248,7 +242,7 @@ describe('POST /playlists', () => {
     );
     await runFinished(run.playlistId, 'owner-1');
 
-    // Two tracks were queued, so the worker was woken rather than left until its
+    // Two tracks were queued, so the worker was woken rather than left to its
     // next interval.
     expect(kick).toHaveBeenCalledTimes(1);
   });
@@ -261,8 +255,8 @@ describe('POST /playlists', () => {
       { youtube: fake, kickDownloads: kick }
     );
 
-    // The first sync adds the track and kicks; the spy is cleared after it so the
-    // second sync is what is measured.
+    // The first sync adds the track and kicks; the spy is cleared so the second
+    // sync is what is measured.
     const first = SyncRunSchema.parse(
       (await post(PLAYLIST_URL, 'owner-1')).json()
     );
@@ -272,8 +266,8 @@ describe('POST /playlists', () => {
     await post(PLAYLIST_URL, 'owner-1');
     await runFinished(first.playlistId, 'owner-1');
 
-    // The second sync found the same video already associated, so it queued
-    // nothing and there is no work to start.
+    // The second sync found the video already associated, queued nothing, so no
+    // work to start.
     expect(kick).not.toHaveBeenCalled();
   });
 
@@ -519,8 +513,8 @@ describe('POST /playlists/:id/sync', () => {
 
     expect(rows.map(row => row.videoId)).toEqual(['a', 'b', 'c']);
     expect(rows.map(row => row.position)).toEqual([0, 1, 2]);
-    // The second read named 'a' differently. The track keeps the metadata it was
-    // created with, which is what "left exactly as it is" means.
+    // The second read named 'a' differently. The track keeps the metadata it
+    // was created with, which is what "left exactly as it is" means.
     expect(readTrackTitle('a')).toBe('Track a');
   });
 
@@ -629,12 +623,8 @@ function associationCount(videoId: string): number {
   return row?.total ?? 0;
 }
 
-/*
- * A synced track arrives `pending`, so a test about retaining a file has to put
- * one there first. The bytes are written where the static handler will look for
- * the stored path, so the stream route really serves them rather than merely
- * agreeing that a path exists.
- */
+/* Synced track arrives `pending`, so a file test places one first. The bytes go
+ * where the static handler looks, so the stream route really serves them. */
 async function storeTrack(trackId: string, videoId: string): Promise<void> {
   if (context === undefined) {
     throw new Error('the test context is not created');
@@ -823,8 +813,7 @@ describe('honouring a suppression', () => {
     );
     await runFinished(first.playlistId, 'owner-1');
 
-    // A suppression is seeded directly, which is the state a removed track leaves
-    // behind.
+    // A suppression is seeded directly, the state a removed track leaves.
     suppress(first.playlistId, 'aaaaaaaaaaa');
 
     await postSync(first.playlistId, 'owner-1');
@@ -985,9 +974,8 @@ describe('lifting a suppression', () => {
 });
 
 /*
- * The queue-flavoured fake answers every read from a list of sources; this one
- * takes a script of sources and errors, so a test can say exactly which read
- * fails and which succeeds.
+ * A scripted fake: list of sources and errors, so a test says which read fails
+ * and which succeeds.
  */
 function scriptedYoutube(script: (YoutubeSource | Error)[]): IYoutubeClient {
   let index = 0;
@@ -1219,10 +1207,8 @@ describe('authorizing a sync', () => {
     );
     await runFinished(created.playlistId, 'owner-1');
 
-    /*
-     * The share is seeded directly rather than granted through the route, so the
-     * fixture does not depend on the share flow to set up a collaborator.
-     */
+    /* The share is seeded directly, not through the route, so the fixture
+     * does not depend on the share flow to set up a collaborator. */
     const writerAccount = seedAccount(context.database, {
       pangolinUserId: 'writer-1'
     });
@@ -1320,10 +1306,8 @@ describe('authorizing a sync', () => {
 });
 
 /*
- * A fake that both reads a source and stores a file, for the end-to-end retry:
- * a sync creates the track, a fetch fails, the next sync re-queues it, and a
- * worker pass stores it. `failFirstWith` makes the first download fail with a
- * chosen typed error, so a test can drive the classification the worker records.
+ * A fake that reads a source and stores a file, for the end-to-end retry:
+ * `failFirstWith` makes the first download fail with a chosen error.
  */
 function storingYoutube(
   options: { failFirstWith?: Error } = {},
@@ -1402,8 +1386,7 @@ describe('retrying a failed download', () => {
     await postSync(created.playlistId, 'owner-1');
     await runFinished(created.playlistId, 'owner-1');
 
-    // The track already had its association, so nothing was added; re-queueing it
-    // is what the worker had to be woken for.
+    // Already associated: re-queueing it is what woke the worker.
     expect(kick).toHaveBeenCalledTimes(1);
 
     // The sync returns it to pending and clears the stale reason.
@@ -1454,7 +1437,7 @@ describe('retrying a failed download', () => {
 
     const failed = trackByVideoId('aaaaaaaaaaa');
     expect(failed?.fileStatus).toBe(TrackFileStatus.Failed);
-    // Not a gone video: the source status stays available, so the sync retries it.
+    // Not a gone video: the status stays available, so the sync retries it.
     expect(failed?.sourceStatus).toBe(TrackSourceStatus.Available);
     expect(failed?.failureReason).toBe(SPONSORBLOCK_FAILURE_REASON);
 

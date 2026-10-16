@@ -1,7 +1,6 @@
 /*
- * The library's loading state, the tile's own geometry held open: the same
- * `auto-fill` grid, a square cover, and the three lines the tile draws under it,
- * so the real gallery resolves into the space rather than pushing the page down.
+ * The tile's own geometry held open, so the real gallery resolves into the
+ * space rather than pushing the page down.
  */
 .library-skeleton {
   position: relative;
@@ -27,8 +26,7 @@
     grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
     gap: var(--space-4);
 
-    /* The phone's card grid, the same track and gaps the gallery takes, so the
-     * skeleton and the cards land in the same columns. */
+    /* The gallery's own card track and gaps, so both fit the same columns. */
     @media (max-width: 767px) {
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: var(--space-3);
@@ -44,10 +42,10 @@
     min-width: 0;
   }
 
-  /* The card's own geometry: the block with its own surface, the picture inset by
-   * the card's --space-4, and the two lines of its status under it. The width is
-   * stated on the picture for the reason the tile's cover states it: a box with no
-   * content would collapse without a definite width. */
+  /*
+   * The card's own geometry: its own surface, the picture inset by --space-4.
+   * The picture states its width because an empty box would collapse.
+   */
   &__card {
     display: flex;
     flex-direction: column;
@@ -84,9 +82,6 @@
     background: var(--surface-raised);
   }
 
-  /* The width is stated for the same reason the tile's square states it: in the
-   * column the height comes from the aspect ratio, and a box with no content
-   * would collapse without a definite width. */
   &__cover {
     width: 100%;
     aspect-ratio: 1;

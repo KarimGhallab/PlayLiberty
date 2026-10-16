@@ -24,18 +24,8 @@ module.exports = {
       }
     },
     {
-      /*
-       * The server's four top-level folders are a direction, not a naming
-       * convention, and these are the rules that make it one. Without them the
-       * layout is a suggestion that the next feature quietly ignores.
-       *
-       *   app/       the composition root and the request pipeline. The only
-       *              module allowed to import every feature.
-       *   features/  one folder per domain module. Imports shared and platform.
-       *   shared/    cross-cutting code no feature owns: the context, the problem
-       *              document, the access rules.
-       *   platform/  the resources features sit on, with no domain knowledge.
-       */
+      // The four server folders are a direction, not a naming convention; these
+      // rules enforce it.
       name: 'server-platform-and-shared-must-not-import-features',
       severity: 'error',
       comment:
@@ -166,9 +156,7 @@ module.exports = {
       from: {},
       to: {
         moreThanOneDependencyType: true,
-        // as it's pretty common to have a type import be a type only import
-        // _and_ (e.g.) a devDependency - don't consider type-only dependency
-        // types for this rule
+        // A type-only import is often a devDependency, so it is not counted.
         dependencyTypesNot: ['type-only']
       }
     },
@@ -200,8 +188,7 @@ module.exports = {
       },
       to: {
         dependencyTypes: ['npm-dev'],
-        // type only dependencies are not a problem as they don't end up in the
-        // production code or are ignored by the runtime.
+        // Type-only deps never reach production; the runtime ignores them.
         dependencyTypesNot: ['type-only'],
         pathNot: ['node_modules/@types/']
       }

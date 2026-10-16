@@ -5,10 +5,8 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './EmptyGallery.module.scss';
 
 /*
- * The library with no playlists at all. A different component from the playlist
- * empty state, and the difference is one word: that one's action is `Sync now`,
- * because a playlist that exists and has no tracks has never been synced; this
- * one's action is `Add a playlist`, because there is nothing to sync.
+ * A different component from the playlist empty state: that one syncs a
+ * playlist that exists, this one has nothing to sync.
  */
 
 interface EmptyGalleryProps {

@@ -22,10 +22,8 @@ import {
 } from './entry.js';
 
 /*
- * The entry seam is what makes the check structural: a new entry point is a
- * handler handed to `playlistEntry` or `trackEntry`, and the handler cannot run
- * unless the access module grants the need. These tests write entry points and
- * show the guard is on them.
+ * Entry seam makes the check structural: a handler handed to `playlistEntry`
+ * or `trackEntry` cannot run unless the access module grants the need.
  */
 
 let context: TestContext | undefined;

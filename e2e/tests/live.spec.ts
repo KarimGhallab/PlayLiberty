@@ -13,17 +13,9 @@ import {
 import { expect, test } from '../support/test';
 
 /*
- * The live stream, proved through the browser.
- *
- * The playlist is created through the API rather than the add dialog, and that is
- * the whole design of the test: a create made by the dialog invalidates the
- * library itself, so the row would appear without the stream and prove nothing. A
- * create made outside the tab is a change the tab never asked about, so the only
- * way the library can gain the item is the event the server pushed.
- *
- * The title is the source's own, which the tab never fetched before the event, so
- * a passing assertion means the refetch happened rather than that a cached row
- * was re-rendered.
+ * The tab never asked for this create, so the only way the library gains the
+ * item is the pushed event. The title is the source's own, never fetched by the
+ * tab, so a pass means the refetch happened rather than a re-render.
  */
 
 const SOURCE = 'E2Elive0001';
@@ -62,13 +54,8 @@ test('a playlist created outside this tab appears in the library without a reloa
   await expect(page.getByRole('link', { name: TITLE })).toBeVisible();
 });
 
-/*
- * The other half of the stream: a track's own state. The video is added through
- * the API rather than the dialog, so the detail never asked about it and only the
- * worker's events can make its row appear and change. The download is slowed, so
- * the downloading state is observable rather than gone before the browser reads
- * it.
- */
+/* The detail never asked for this add, so only the worker's events make the row
+ * appear; the download is slowed so `Downloading` is observable. */
 
 const TRACK_SOURCE = 'E2Elive2001';
 const TRACK_TITLE = 'Live Evening Jazz';
@@ -114,17 +101,12 @@ test('an added video moves through the download states to playable without a rel
     { url: videoUrl(ADDED.videoId), id: playlistId }
   );
 
-  /*
-   * The worker claims the track and answers while the download is still in
-   * flight, so the row's downloading state is the stream's to deliver; nothing
-   * here reloads the page.
-   */
+  /* The worker answers while the download is in flight, so the state is the
+   * stream's to deliver; nothing here reloads. */
   await drainDownloads(page);
 
-  /*
-   * Scoped to the track list, because the control row's "Downloading" filter
-   * chip carries the same word.
-   */
+  /* Scoped to the track list: the "Downloading" filter chip carries the same
+   * word. */
   await expect(
     page.getByRole('list').getByText('Downloading', { exact: true })
   ).toBeVisible();
@@ -133,12 +115,8 @@ test('an added video moves through the download states to playable without a rel
   ).toBeVisible();
 });
 
-/*
- * A mutation in one tab reaching another. The two tabs are two browser contexts
- * and the same account, because the edge identity is the Vite proxy's, so the
- * event is the only thing that can carry the rename across: the second tab never
- * made a request and never reloads.
- */
+/* Two contexts, one account, so the event is the only thing that can carry the
+ * rename: the second tab never requests and never reloads. */
 
 const OTHER_SOURCE = 'E2Elive3001';
 const OTHER_TITLE = 'Live Sunday Jazz';
@@ -178,12 +156,8 @@ test('a rename in one tab appears in another without a reload', async ({
   }
 });
 
-/*
- * A share, and its revocation, crossing accounts. The dev proxy fixes one browser
- * identity, so the partner is a second context that supplies its own `Remote-*`
- * headers, and the account is provisioned over the API first. Both tabs hold a
- * stream, so the grant and the revoke are what move the item, never a reload.
- */
+/* The partner is a second context supplying its own `Remote-*` headers, so the
+ * grant and the revoke are what move the item, never a reload. */
 
 const SHARE_SOURCE = 'E2Elive4001';
 const SHARE_TITLE = 'Live Shared Jazz';
@@ -246,8 +220,8 @@ test('a granted share appears in the other account and a revoke takes it away, w
       'X-PlayLiberty-Client': 'web'
     };
 
-    // The owner grants over the API, so the owner's own tab does not invalidate
-    // locally and the stream is what carries the share to the partner.
+    // Granted over the API, so the owner's tab does not invalidate locally and
+    // the stream carries the share.
     const granted = await request.post(
       `http://127.0.0.1:${SERVER_PORT}/api/v1/playlists/${playlistId}/shares`,
       {

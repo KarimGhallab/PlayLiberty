@@ -9,14 +9,8 @@ import { useDismissibleMenu } from '../../../shared/components/useDismissibleMen
 import styles from './LanguageMenu.module.scss';
 
 /*
- * The library header's language control: a globe opening a two-row menu, the
- * active language checked. It is on the library only, because there is no
- * account surface and no settings. The menu is a radio group: choosing a row
- * switches the interface at once and remembers the choice.
- *
- * The trigger carries the label rather than a visible word, so it is named for a
- * screen reader by `language.label`. The language names are endonyms and read
- * the same in both catalogs.
+ * On the library only, because there is no account surface and no settings. The
+ * trigger is named through `language.label` rather than a visible word.
  */
 
 const OPTIONS: readonly {

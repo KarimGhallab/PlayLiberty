@@ -1,8 +1,4 @@
-/*
- * The empty state. A list area
- * starts at the top, so an empty list's content starts at the top too rather than
- * floating in the middle of its own space.
- */
+/* The empty state; a list area starts at the top, so its content does too. */
 .empty-state {
   display: flex;
   flex-direction: column;

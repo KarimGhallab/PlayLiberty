@@ -1,22 +1,7 @@
 /*
- * The shared dialog shell. The invalid field keeps
- * its ink and moves the red to the border and the message, so a person can still
- * read what they typed while correcting it.
- *
- * Appearance motion is one transition at --motion-base on --ease-standard, and it
- * carries a state rather than decorating: the dialog arriving and leaving. The
- * scrim fades; the card fades and rises from 98% scale, so it resolves into place
- * rather than popping.
- *
- * The two halves name two animations, and that is forced rather than chosen.
- * Reusing one keyframe and flipping `animation-direction: reverse` on the exit does
- * not replay it: the entrance animation has already finished by the time the exit
- * starts, and a finished animation whose direction changes is re-resolved at its
- * end value instead of restarting, so the opacity sits at 1 for the whole exit and
- * the node is torn down still fully opaque. Changing `animation-name` is what
- * starts a fresh animation, so the exit gets its own name and therefore really
- * runs. The cost is four keyframes instead of two, and the pair that mirrors
- * (`-in` and `-out`) is kept adjacent so a reader sees the reversal.
+ * The shared dialog shell. The exit names its own animation rather than
+ * reversing the entrance, which a finished animation would not replay; and an
+ * invalid field keeps its ink, moving the red to the border and the message.
  */
 .scrim {
   position: fixed;
@@ -138,9 +123,8 @@
 }
 
 /*
- * The exit runs its own named animations, which is what makes the browser start
- * them rather than re-resolve the finished entrance. The card mirrors the scrim,
- * so one attribute moves both.
+ * The exit runs its own named animations, so the browser starts them rather
+ * than re-resolving the finished entrance. One attribute moves both.
  */
 .scrim[data-closing='true'] {
   animation-name: pl-dialog-fade-out;
@@ -240,9 +224,8 @@
     }
   }
 
-  /* The complaint sits at the label's size rather than the body's, and the
-   * medium weight is what lifts it out of the surrounding regular: an error a
-   * person skims past is an error the field did not report. */
+  /* The complaint sits at the label's size and medium weight, lifting it out
+   * of the surrounding regular: an error skimmed past was not reported. */
   &__message {
     color: var(--tone-failed);
     font-size: var(--text-xs);

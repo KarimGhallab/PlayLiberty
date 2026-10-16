@@ -1,9 +1,7 @@
 /*
- * The two endpoints are the pinned Tabler glyphs drawn verbatim, and the six
- * frames between them are the morph. Both clients draw one frame at a time from
- * this table and step an index, so the table and the frame count are what is
- * shared; the strip, the keyframes and the `steps()` timing are each client's
- * own.
+ * The two pinned endpoints are the Tabler glyphs, drawn verbatim; the six
+ * frames between them are the morph. The strip, the keyframes, the `steps()`
+ * timing and the stepped index are each client's own.
  */
 import type { Morph } from './types.js';
 import { durations } from './values.js';

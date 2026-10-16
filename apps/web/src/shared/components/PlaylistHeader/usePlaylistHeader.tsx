@@ -30,89 +30,49 @@ import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
 
 /*
- * The playlist header's shared seam: what the row and the card both draw, built
- * once. The cover's state, the identity block and the menu model live here, and
- * each arrangement composes them into its own markup, so the two cannot drift
- * on the name, the share mark, the count, the sync line or the overflow.
- *
- * The actions column is the play, the transport that replaces it while the queue
- * is this playlist, the shuffle and the overflow, each absent when the caller
- * offers no callback: the header is gated by what the caller can do rather than
- * by a level string it would have to learn. The overflow's items are not the
- * header's to decide: the actions module builds them by access and hands them in
- * as `menu`, so an owner gets the five it can act on, a writer the pair it can,
- * and a reader the pin alone.
- *
- * `ownerName` is the resolved display name of a playlist that is not the
- * account's, and null when the directory does not carry the owner. It is drawn
- * only for a shared playlist: on the account's own playlist `access` is `owner`,
- * which already says the item is theirs, so a "shared by" line there would be a
- * sentence about the person reading it. A null name draws nothing at all rather
- * than a placeholder, because a placeholder reads as a decision about who owns
- * the playlist, and the share indicator beside the name is the honest fallback.
+ * The header's shared seam: the cover state, the identity block and the menu
+ * model, built once so the arrangements cannot drift. Each control is drawn
+ * only when the caller offers its callback.
  */
 
 export interface PlaylistHeaderSeam {
   playlist: Playlist;
   ownerName?: string | null;
-  /*
-   * Whether the name is the page heading rather than a self-link. The detail's
-   * header owns the route it names, so its name is a heading; the library's item
-   * is a door and its name is the link beside the cover's own.
-   */
+  /* Whether the name is the page heading rather than a self-link. The detail's
+   * header owns the route it names. */
   heading?: boolean;
-  /*
-   * Whether a deferred action is about to remove this playlist. It dims the
-   * header, sets `aria-busy`, and disables every control and door it offers, so
-   * the thing the toast says is going cannot still be opened, renamed, shuffled
-   * or deleted again.
-   */
+  /* Whether a deferred action is about to remove this playlist: it dims the
+   * header and disables every control and door it offers. */
   pending?: boolean;
-  /* The one play door. Optional, so a consumer that cannot start playback
-   * simply does not draw it. */
+  /* The play door; absent when the caller cannot start playback. */
   onPlay?: () => void;
   playing?: boolean;
-  /*
-   * Whether this playlist is the one the queue is on, paused or playing. The
-   * transport's steps act on the queue, so they stay whenever the header is the
-   * queue's own and the caller offers both, and a playlist the queue is not on
-   * keeps the single play that starts it.
-   */
+  /* Whether this playlist is the one the queue is on, paused or playing. */
   current?: boolean;
-  /* The transport's steps. The pair and `current` together decide whether the
-   * transport replaces the standalone play; an absent pair keeps the standalone
-   * play, so a consumer that cannot skip does not lose its door. */
+  /* The transport's steps; absent keeps the standalone play, so a consumer that
+   * cannot skip does not lose its door. */
   onSkipBack?: () => void;
   onSkipNext?: () => void;
-  /*
-   * Whether the queue has a track after the current one. The transport is drawn
-   * while playing, and a last track's next has nowhere to go, so the control
-   * disables rather than offering a press that does nothing.
-   */
+  /* Whether the queue has a track after the current one: the last track's next
+   * disables. */
   hasNext?: boolean;
   onShuffle?: () => void;
   shuffled?: boolean;
   menu?: readonly PlaylistAction[];
   /* The cover as a blurred ground behind the header. */
   ground?: boolean;
-  /* The elapsed sync time beside the state, which only the row asks for. */
+  /* The elapsed sync time beside the state. */
   showSyncTime?: boolean;
   now?: Date;
-  /*
-   * The library's own mark, drawn at the end of the name row beside the share indicator.
-   */
+  /* The library's own mark, drawn at the end of the name row beside the
+   * share indicator. */
   mark?: ReactNode;
-  /*
-   * Whether the count and the sync state share one line, the count at the left
-   * and the state at the right, which is the card item's arrangement.
-   */
+  /* Whether the count and the sync state share one line: count left, state
+   * right. */
   statusLine?: boolean;
   displayedCount?: number;
-  /*
-   * The total the count line describes. It is the playlist's own count when no
-   * filter is on, and the filtered total when the detail has narrowed the list:
-   * the line must not claim rows the filter removed.
-   */
+  /* The total the count line describes: the playlist's own when no filter is
+   * on, the filtered total otherwise, so the line never claims removed rows. */
   countTotal?: number;
   playbackFailed?: boolean;
   playbackStarting?: boolean;
@@ -139,12 +99,8 @@ interface ShareMark {
   readonly Icon: typeof IconLock;
 }
 
-/*
- * Three share states and one glyph each. The indicator is coarser than the
- * permission model on purpose: one glyph says you are not the owner and nothing
- * about what you may do, because the level is shown where it acts, in the
- * overflow.
- */
+/* The indicator is deliberately coarser than the permission model: one glyph
+ * says you are not the owner, not what you may do. */
 function shareMark(playlist: Playlist): ShareMark {
   if (playlist.access !== 'owner') {
     return {
@@ -224,16 +180,12 @@ export function usePlaylistHeader({
   const [shareTipDismissed, setShareTipDismissed] = useState(false);
   const { run, endRun } = usePlayPauseMorph(playing);
 
-  /* The cover's failure flag resets when the playlist points at a new track. */
   useEffect(() => {
     setCoverFailed(false);
   }, [playlist.coverTrackId]);
 
-  /*
-   * The enabled items of the open panel, read from the DOM on each use rather
-   * than captured: Sync stops while a run is in flight, so the wrap and the ends
-   * must count only what can be pressed now.
-   */
+  /* Read from the DOM on each use: Sync stops while a run is in flight, so the
+   * wrap must count only what can be pressed now. */
   const enabledMenuItems = (): HTMLButtonElement[] => {
     const menu = menuRef.current;
 
@@ -271,13 +223,8 @@ export function usePlaylistHeader({
     returnFocusTo: menuButtonRef
   });
 
-  /*
-   * Opening moves focus onto an item, which is where a menu button leaves it and
-   * what `role="menu"` promises; ArrowUp on the button opens onto the last item
-   * and every other way opens onto the first. The arrows, Home and End walk the
-   * panel and Tab leaves it. The handler is on the panel, so it answers only keys
-   * that arrive while the menu owns focus.
-   */
+  /* Opening moves focus onto an item, as `role="menu"` promises: ArrowUp opens
+   * onto the last item, every other way onto the first. */
   useEffect(() => {
     if (menuOpen) {
       focusMenuItem(
@@ -316,8 +263,7 @@ export function usePlaylistHeader({
       return;
     }
 
-    /* Tab closes the panel and lets the browser walk on from the button focus is
-     * returned to, which is the menu button's own tab stop. */
+    /* Tab closes the panel; focus returns to the button's own tab stop. */
     if (event.key === 'Tab') {
       closeMenu();
     }
@@ -330,10 +276,8 @@ export function usePlaylistHeader({
   const lastSyncedAt =
     playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
 
-  /* The one door. It is a pause while the queue is this playlist, which is the
-   * header's own swap, and it is disabled rather than absent on a playlist with
-   * nothing to play: a control that is there and cannot be pressed is a
-   * different thing from a control that is not there. */
+  /* Disabled rather than absent on a playlist with nothing to play: a control
+   * that cannot be pressed differs from one that is not there. */
   const playControl =
     onPlay === undefined ? null : (
       <button
@@ -351,10 +295,8 @@ export function usePlaylistHeader({
       </button>
     );
 
-  /* The transport is the queue's own control, so it is drawn while this card is
-   * the queue, paused or playing, and it needs both steps and the play to be one
-   * control. A playlist the queue is not on has nowhere to step, so it keeps the
-   * single play. */
+  /* Drawn while this card is the queue, paused or playing, with both steps: a
+   * playlist the queue is not on keeps the single play. */
   const showTransport =
     current &&
     onPlay !== undefined &&
@@ -516,9 +458,8 @@ export function usePlaylistHeader({
     <div className={styles.playlistHeader__count}>{countLine}</div>
   );
 
-  /* The one state element, drawn by both groupings: the status line holds it
-   * beside the count and the stacked identity holds it on its own line with the
-   * elapsed time. */
+  /* The one state element; the status line holds it beside the count, the
+   * stacked identity on its own line. */
   const stateNode = (
     <span
       className={styles.playlistHeader__state}
@@ -530,8 +471,7 @@ export function usePlaylistHeader({
   const identity = (
     <>
       <div className={styles.playlistHeader__name}>
-        {/* The line truncates to fit its column, so the full name rides in
-         * `title`: a name cut by the gallery's own width must still be
+        {/* The line truncates, so the full name rides in `title` to stay
          * recoverable without opening the playlist. */}
         {heading ? (
           <h1 className={styles.playlistHeader__nameText} title={playlist.name}>

@@ -23,18 +23,8 @@ function names(database: DatabaseHandle, query: string): string[] {
   );
 }
 
-/*
- * The migrations are one committed folder the server applies at startup, and
- * runMigrations resolves it from the compiled file's depth rather than from
- * config. This is the one test that proves the folder is found and applied: it
- * starts from an empty database, runs the real migrator, and checks the schema
- * the folder leaves behind.
- *
- * The whole table list is asserted, because from empty the schema's shape is
- * what matters and a migration that created nothing would leave the list short.
- * The columns the schema carries are asserted for the same reason: they prove
- * the folder creates the whole schema and not its first draft.
- */
+/* The migrations are one folder the server applies at startup, found from the
+ * compiled file's depth. From empty, it asserts the whole schema it leaves. */
 describe('runMigrations', () => {
   it('applies the migrations to an empty database', async () => {
     const root = await mkdtemp(join(tmpdir(), 'playliberty-migration-'));

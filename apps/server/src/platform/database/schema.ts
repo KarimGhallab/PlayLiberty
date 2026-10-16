@@ -165,14 +165,8 @@ export const shares = sqliteTable(
   ]
 );
 
-/*
- * An account's placement of a playlist in its own gallery. The pair is the key
- * and the row's existence is the pin, so pinning refreshes `pinned_at` rather
- * than inserting a second row and unpinning deletes it. It follows the share and
- * the suppression and not the playlist: created and deleted, never edited, so it
- * carries no update timestamp. Both foreign keys cascade, and the account index
- * serves the order the section is read in.
- */
+/* A playlist's placement in an account's gallery. The pair is the key; pinning
+ * refreshes `pinned_at`; created and deleted, never edited. */
 export const playlistPins = sqliteTable(
   'playlist_pin',
   {

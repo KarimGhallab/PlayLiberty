@@ -10,9 +10,8 @@ import { addPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
- * Journeys through the library: adding a playlist, the one path where content
- * enters the instance, and reading the gallery it lands in. The items the browser
- * draws are the server's, so what appears carries the source's own title and
+ * Journeys through the library: adding a playlist and reading the gallery it
+ * lands in. The items are the server's, carrying the source's own title and
  * count, which the client never knew before the request.
  */
 
@@ -42,8 +41,7 @@ test('adding a playlist creates it and the item arrives from the server', async 
   await page.getByLabel('Playlist link').fill(playlistUrl(PLAYLIST_ID));
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
-  // The dialog closes and the item is the server's: the name is the source's own
-  // title, which the browser could not have guessed.
+  // The name is the source's own, which the browser could not have guessed.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Evening Jazz' })).toBeVisible();
 });
@@ -68,13 +66,8 @@ test('a refused create shows the server problem beside the field', async ({
   await expect(page.getByRole('dialog')).toBeVisible();
 });
 
-/*
- * Journey 2: reading the gallery. A playlist whose tracks are not all stored has
- * to say so before it is opened, because the sync line cannot: the playlist below
- * settled, so it reads as up to date with a track that never downloaded. The count
- * is the server's own aggregate after a real failed download, which is what no
- * lower layer crosses.
- */
+/* A settled playlist reads up to date while holding a track that never
+ * downloaded, so the mark is the only thing that says so. */
 test('the gallery marks what is not stored', async ({ page }) => {
   await addPlaylist(page, {
     sourceId: 'E2Egallery1',
@@ -89,24 +82,18 @@ test('the gallery marks what is not stored', async ({ page }) => {
   await drainDownloads(page);
   await page.reload();
 
-  /* One pill, carrying the count of tracks whose file is not here, and the count
-   * is over the whole playlist rather than one page of it. */
+  /* The count is over the whole playlist, not one page of it. */
   await expect(
     page.getByRole('img', { name: '1 track is not stored · Failed 1' })
   ).toBeVisible();
 });
 
 /*
- * Journey 3: a menu over the docked bar. The bar is chrome the app keeps on screen
- * and a menu is what the reader has just opened, so the menu is the tier above it.
- * The card's overflow is the case it can still happen in: its panel opens downward
- * from the cover's top, so a card partway down the screen puts the panel's own foot
- * in the bar's band. The press is the assertion, because a menu behind the bar is a
- * menu whose items the bar intercepts.
+ * The bar is chrome and a menu is the fresher tier, so a card partway down puts
+ * the panel's foot in the bar's band and the press proves it was not swallowed.
  */
 test('a playlist’s action menu covers the docked bar', async ({ page }) => {
-  /* Short enough that the first card's panel reaches the bar's band: the card's top
-   * and the panel's 48 + 170 are more than a 360px viewport leaves above a 98px bar. */
+  /* Short enough that the first card's panel reaches the bar's band. */
   await page.setViewportSize({ width: 390, height: 360 });
   await addPlaylist(page, {
     sourceId: 'E2Emenu0001',
@@ -140,27 +127,18 @@ test('a playlist’s action menu covers the docked bar', async ({ page }) => {
 
   expect(item).not.toBeNull();
   expect(dock).not.toBeNull();
-  /* Asserted rather than assumed: a layout that moved the panel clear of the bar
-   * would leave this journey passing without testing anything. */
+  /* Asserted, not assumed: a panel clear of the bar would pass vacuously. */
   expect(item!.y + item!.height).toBeGreaterThan(dock!.y);
 
   await page.getByRole('menuitem', { name: 'Delete playlist' }).click();
 
-  /* The deferred delete the press starts is the proof that the press was the
-   * menu's: if the bar took it, the undo window would never open. */
+  /* The undo window proves the press reached the menu and not the bar. */
   await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
 });
 
 /*
- * Journey 4: the pinned gallery. Three facts are true only once the product is
- * assembled, so this is the one place they are asserted together: the pin is
- * written by the server and read again after a reload, a pinned playlist leaves
- * the list below rather than being drawn in both, and an account that can only
- * read a playlist still pins it.
- *
- * The dev proxy fixes one browser identity, so the browser is the reader of the
- * second playlist and the other account is arranged over the API, exactly as the
- * share journey arranges it. Two accounts, one browser.
+ * Only the assembled product has these: the pin survives a reload, a pinned
+ * playlist leaves the list below, and a read-level account can still pin.
  */
 
 const PIN_OWN_SOURCE = 'E2Epinown01';
@@ -177,12 +155,8 @@ const PIN_PARTNER = {
 
 const PIN_API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 
-/*
- * The pin's write landing and the drawn move are two things, and the reload that
- * follows the press reads the server. So the press is paired with the response it
- * starts rather than with the optimistic move, or the reload could outrun the
- * write and read a gallery the server has not changed yet.
- */
+/* The reload reads the server, so the press is paired with the write's response
+ * rather than the optimistic move, or it could outrun the write. */
 async function pinPlaylist(
   page: Page,
   title: string,
@@ -208,12 +182,8 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
     entries: [PIN_OWN_TRACK]
   });
 
-  /*
-   * A second playlist owned by another account and shared with the browser's at
-   * the read level. The partner is created by reading their own account with the
-   * edge headers, then pastes the link over the API; the fake answers the source
-   * the scenario names now that the owned playlist is already synced.
-   */
+  /* A second playlist owned by another account and shared read-level: the
+   * partner exists by reading their own account with the edge headers. */
   const partner = {
     'Remote-User': PIN_PARTNER.id,
     'Remote-Name': PIN_PARTNER.name,
@@ -224,11 +194,8 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
   const seen = await request.get(`${PIN_API}/me`, { headers: partner });
   expect(seen.ok()).toBe(true);
 
-  /*
-   * The share names an account by its id, and the browser's is not the edge's
-   * `dev-user` but the row the identity hook created for it, so it is read back
-   * through the same headers the proxy injects.
-   */
+  /* The share names an account by id, and the browser's row is not the edge's
+   * `dev-user`, so it is read back through the proxy's headers. */
   const me = await request.get(`${PIN_API}/me`, {
     headers: { 'Remote-User': 'dev-user' }
   });
@@ -263,12 +230,10 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
     page.getByRole('link', { name: PIN_SHARED_TITLE })
   ).toBeVisible();
 
-  /* Pin the account's own playlist from its menu. */
   await pinPlaylist(page, PIN_OWN_TITLE, 'Pin');
 
   const pinned = page.getByRole('region', { name: 'Pinned' });
   await expect(pinned.getByRole('link', { name: PIN_OWN_TITLE })).toBeVisible();
-  /* Drawn once: in the section, and nowhere in the list below. */
   await expect(page.getByRole('link', { name: PIN_OWN_TITLE })).toHaveCount(1);
   await expect(
     pinned.getByRole('link', { name: PIN_SHARED_TITLE })
@@ -282,21 +247,20 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
       .getByRole('link', { name: PIN_OWN_TITLE })
   ).toBeVisible();
 
-  /* A reader's menu holds the pin alone, which is the action visibility allows. */
+  /* A reader's menu holds the pin alone. */
   await page
     .getByRole('button', { name: `More actions for ${PIN_SHARED_TITLE}` })
     .click();
   await page.getByRole('menuitem', { name: 'Pin', exact: true }).click();
 
-  /* Each group in name order. The pinned one was pinned first and this one most
-   * recently, so the section's order is the name and no longer the pin instant. */
+  /* The section is in name order, not pin order: the pinned one was first and
+   * this one most recent. */
   const section = page.getByRole('region', { name: 'Pinned' });
   const sectionItems = section.getByRole('link');
   await expect(sectionItems).toHaveCount(2);
   await expect(sectionItems.nth(0)).toHaveAccessibleName(PIN_OWN_TITLE);
   await expect(sectionItems.nth(1)).toHaveAccessibleName(PIN_SHARED_TITLE);
 
-  /* Unpin both: the section withdraws and the list holds both in name order. */
   await pinPlaylist(page, PIN_SHARED_TITLE, 'Unpin');
   await pinPlaylist(page, PIN_OWN_TITLE, 'Unpin');
 

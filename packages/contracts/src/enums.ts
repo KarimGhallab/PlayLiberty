@@ -37,12 +37,9 @@ export enum AssociationOrigin {
   Manual = 'manual'
 }
 
-/*
- * What one playlist did with a pasted video. `already_present` is the outcome the
- * association service already returns, and it is a success rather than a failure:
- * the desired end state is the one the user asked for. `refused` carries no reason,
- * so a playlist the account cannot see and one it cannot write are one answer.
- */
+/* `already_present` is a success, not a failure: the desired end state is
+ * met. `refused` carries no reason, so cannot-see and cannot-write are one
+ * answer. */
 export enum AddTrackOutcome {
   Added = 'added',
   AlreadyPresent = 'already_present',
@@ -60,12 +57,8 @@ export enum SyncRunStatus {
   Failed = 'failed'
 }
 
-/*
- * The events the server pushes to a client over the live stream, one connection
- * per tab. An event is an invalidation hint and never data: it names what
- * changed, and the client refetches the reads it already owns. `ready` is sent
- * when a connection opens, so a client that reconnects re-reads what it holds.
- */
+/* An event is an invalidation hint, never data: it names what changed and the
+ * client refetches. `ready` follows a connection opening or reopening. */
 export enum LiveEventType {
   Ready = 'ready',
   PlaylistChanged = 'playlist.changed',
@@ -73,13 +66,8 @@ export enum LiveEventType {
   TrackChanged = 'track.changed'
 }
 
-/*
- * The problem codes the server may answer with, as one contract shared by both
- * ends. The server cannot build a problem outside this set, and the client's
- * mapping is checked against the same members, so a code cannot be renamed on one
- * side and left behind on the other. A code is stable and never localised: the
- * client owns the sentence and the server owns the reason that varies it.
- */
+/* One contract, both ends: a rename on either side fails to compile, and a code
+ * is stable and never localised. The client owns the sentence. */
 export enum ProblemCode {
   NotImplemented = 'not_implemented',
   InvalidRequest = 'invalid_request',
@@ -105,13 +93,8 @@ export enum ProblemCode {
   CsrfOriginMismatch = 'csrf_origin_mismatch'
 }
 
-/*
- * The scope a `playlist_not_found` is refused in. The code is one, the sentence
- * is four, and the reason is the only thing that varies: a read, a write, the
- * share management, or the track route's narrower "cannot write it, or the track
- * is not in it". The client maps each member to its own sentence, so the reason
- * is a contract and not free text.
- */
+/* `playlist_not_found` carries one code but four sentences; this reason is what
+ * varies the copy, and the client maps each member to its own sentence. */
 export enum PlaylistNotFoundReason {
   Read = 'read',
   Write = 'write',

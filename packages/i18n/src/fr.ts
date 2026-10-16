@@ -1,11 +1,8 @@
 import type { Messages } from './en.js';
 
 /*
- * Typed as `Messages`, so every English key is required here and a missing one
- * fails the build.
- *
- * The language names are endonyms: `English` and `Français` read the same in
- * both catalogs, because a language is named in itself.
+ * Typed as `Messages`, so a missing English key fails the build. Language names
+ * are endonyms: the same word in both catalogs.
  */
 export const fr: Messages = {
   app: {

@@ -1,14 +1,11 @@
 /*
- * The add-a-track dialog, which the shared shell at Dialog.module.scss draws and
- * this file adds the two blocks the shell does not own: the writable-playlist
- * list and the refusal report. The field and the buttons are the shell's, so a
- * dialog reads the same whichever one it is.
+ * The two blocks the shared shell does not own: the writable-playlist list and
+ * the refusal report. The field and the buttons are the shell's, so a dialog
+ * reads the same whichever one it is.
  */
 
-/* The writable playlists. The row is a label over a checkbox, so the tick is the
- * checkbox's own and the label carries the name; a hand-drawn mark beside the
- * name would be a mark that costs a rule, which the form controls record
- * forbids. */
+/* The row is a label over a checkbox, so the tick is the checkbox's own; a
+ * hand-drawn mark beside the name is forbidden by the form controls record. */
 .add-track__pick {
   display: flex;
   flex-direction: column;
@@ -56,10 +53,8 @@
   font-weight: var(--weight-medium);
 }
 
-/* The refusal report. One line per playlist that refused it, named by name, and
- * nothing about the cause: the route withholds it on purpose. The fault tone is
- * on the names and not on the lead, so the sentence a person must read stays in
- * --ink and the colour marks the playlist that said no. */
+/* One line per playlist that refused it, nothing about the cause; the route
+ * withholds it. The fault tone is on the names, not the lead. */
 .add-track__refused {
   margin: 0 0 var(--space-4);
   padding: var(--space-3) var(--space-4);

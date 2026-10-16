@@ -43,11 +43,8 @@ function database(): DatabaseHandle {
   return context.database;
 }
 
-/*
- * The logger is a spy rather than a real pino instance, because the only thing a
- * test needs from it is which line was written with what. It satisfies the
- * logger's shape by being cast at the call, which is the one place the seam is.
- */
+/* A spy logger, not a real pino: a test only needs which line, with what.
+ * It satisfies the logger's shape by being cast at the call. */
 function recordingLogger(): {
   logger: FastifyBaseLogger;
   warnings: Record<string, unknown>[];
@@ -69,12 +66,8 @@ function recordingLogger(): {
   return { logger, warnings };
 }
 
-/*
- * A logger whose first warning aborts the controller. It is the deterministic hook
- * for stopping a run mid-scan: the run warns when a track's media cannot be
- * removed, and that is the moment the test asks it to stop, rather than racing a
- * timer against the run's own speed.
- */
+/* A logger whose first warning aborts the controller: the deterministic hook
+ * for stopping a run mid-scan, not racing a timer against the run's speed. */
 function abortsOnWarning(controller: AbortController): {
   logger: FastifyBaseLogger;
   warnings: Record<string, unknown>[];
@@ -231,7 +224,7 @@ describe('pruning orphaned tracks', () => {
     const { trackId } = seedTrack(database(), { filePath: relativePath });
     const audio = await writeBytes(relativePath);
 
-    // The parent directory is made read-only, so the file cannot be unlinked while
+    // The parent directory is read-only, so the file cannot be unlinked while
     // it stays readable to the process.
     await chmod(dirname(audio), 0o500);
 
@@ -385,9 +378,8 @@ describe('pruning orphaned tracks', () => {
   it('finishes the track in flight and leaves the rest for a later run', async () => {
     context = await createTestContext();
 
-    // Three orphans in a deterministic order (rowid), the first of which fails to
-    // remove its media. That failure is the hook: the logger warns, the controller
-    // is aborted, and the run then stops before claiming the second track.
+    // Three orphans in rowid order, the first failing to remove its media: the
+    // logger warns, the controller aborts, and the run stops before the second.
     const controller = new AbortController();
     const { trackId: first } = seedTrack(database(), {
       filePath: mediaRelativePath('aaaaaaaaaaa', '.m4a')
@@ -404,8 +396,8 @@ describe('pruning orphaned tracks', () => {
 
     const removed = await prune(logger, controller.signal);
 
-    // Nothing was removed: the first track could not, and the abort stopped the run
-    // before it reached the others.
+    // Nothing was removed: the first track could not, and the abort stopped the
+    // run before it reached the others.
     expect(removed).toBe(0);
     expect(trackRow(first)).toBeDefined();
     expect(trackRow(second)).toBeDefined();
@@ -425,9 +417,8 @@ describe('pruning orphaned tracks', () => {
   it('finishes the removal in progress when the signal arrives during it', async () => {
     context = await createTestContext();
 
-    // The first track fails to remove its media, which warns and aborts; the run
-    // then stops before the second. The second is therefore untouched, not half
-    // removed, which is the property: the stop lands between tracks.
+    // The first track fails to remove its media, warning and aborting; the run
+    // stops before the second, which is untouched, not half removed.
     const controller = new AbortController();
     const { trackId: blocked } = seedTrack(database(), {
       filePath: mediaRelativePath('aaaaaaaaaaa', '.m4a')

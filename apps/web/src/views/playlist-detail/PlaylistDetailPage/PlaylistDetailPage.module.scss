@@ -1,33 +1,17 @@
 /*
- * The playlist detail. The content column is 1056, the reading width the two
- * screens share, so they are comparable.
- *
- * The 16px inline padding is the viewport gutter, which the 1056 figure does not
- * include, so the max-width carries it as well: `box-sizing: border-box`
- * subtracts padding from a max-width, and 1056 alone would leave the content
- * column 1024 and the track list 680 rather than 712. Adding the gutter back
- * keeps the column the stated 1056.
- *
- * align-items: flex-start, so the two columns start on the same line: centring
- * them against each other would put the first track row hundreds of pixels down
- * the screen under the header's own height.
- *
- * The extra bottom padding clears the docked player bar.
+ * 1056 is the shared reading column, and its max-width carries the 16px gutter
+ * too, because `border-box` would subtract it. `align-items: flex-start` keeps
+ * the columns' tops level, where centring would push the list far down.
  */
 .playlist-detail {
   display: flex;
   flex-direction: column;
   max-width: calc(1056px + var(--space-4) * 2);
   margin: 0 auto;
-  /* 97px is the docked player bar, which is an overlay and so has to be paid
-   * for here; --space-5 is the gap under the last row. The library pays it too,
-   * because both screens dock the same bar. */
+  /* 97px is the docked player bar, an overlay, so it is paid for here. */
   padding: 0 var(--space-4) calc(97px + var(--space-5));
 
-  /* The way home: the back link and, for a writer, the add control. The 20px is
-   * the design's own --space-5 at this row, and the header's own `padding: 20px 0`
-   * below it, so the two pieces of the screen speak the same vertical rhythm and
-   * the first rule sits the design's stated distance from the top. */
+  /* The back link and, for a writer, the add control, one row. */
   &__wayhome {
     display: flex;
     align-items: center;
@@ -36,9 +20,10 @@
     padding: var(--space-5) 0;
   }
 
-  /* Type and an arrow, not a button: no border and no fill, so it stays quieter
-   * than the card below it while its label says what it does. The ink turns to
-   * the accent only under the pointer. */
+  /*
+   * Type and an arrow, not a button: no border and no fill, so it stays quieter
+   * than the card below it.
+   */
   &__back {
     display: inline-flex;
     align-items: center;
@@ -67,8 +52,7 @@
     flex-shrink: 0;
   }
 
-  /* The add control, mirroring the library's own: the glyph is the affordance
-   * and the label is the name. */
+  /* The glyph is the affordance, the label the name, as the library's add. */
   &__add {
     display: inline-flex;
     align-items: center;
@@ -102,10 +86,10 @@
     gap: var(--space-6);
   }
 
-  /* The left column is pinned while the list scrolls, so the playlist stays in
-   * view as its own tracks go by. A column taller than the viewport scrolls
-   * inside itself, so nothing is pinned out of reach; the 97px is the docked
-   * player bar, which overlays the foot of the column. */
+  /*
+   * Pinned while the list scrolls, and scrolling inside itself when taller than
+   * the viewport; 97px is the docked bar overlaying its foot.
+   */
   &__left {
     display: flex;
     flex-direction: column;
@@ -118,9 +102,10 @@
     overflow-y: auto;
   }
 
-  /* The state blocks under the header: the skip setting and the one run state.
-   * They are their own group so the mobile arrangement can take the header out of
-   * the column without taking them with it. */
+  /*
+   * Its own group so the mobile arrangement can take the header out of the
+   * column without taking these with it.
+   */
   &__side {
     display: flex;
     flex-direction: column;
@@ -133,8 +118,7 @@
     gap: var(--space-2);
   }
 
-  /* The queue read behind a press failed. It sits under the header, which owns
-   * the retry, so the sentence and the control are read together. */
+  /* Under the header, which owns the retry, so both are read together. */
   &__playback-failed {
     margin: 0;
     color: var(--muted);
@@ -142,9 +126,10 @@
     line-height: var(--leading-normal);
   }
 
-  /* The one state component under the header: the sync error or the summary,
-   * never both. Its distance from the block above it is the side's own gap, so it
-   * carries no margin. */
+  /*
+   * The sync error or the summary, never both; it carries no margin, the side's
+   * own gap is its distance.
+   */
   &__state {
     display: flex;
     flex-direction: column;
@@ -160,8 +145,7 @@
     color: var(--muted);
   }
 
-  /* The top border closes the list; each row draws its own bottom border, the
-   * design's own list treatment. */
+  /* The top border closes the list; each row draws its own bottom border. */
   &__list {
     margin: 0;
     padding: 0;
@@ -170,11 +154,8 @@
   }
 
   /*
-   * The control row above the list: the filter chips in the lead and the sort at
-   * the end. The chips take the room and scroll sideways within it, so the row
-   * stays one line on a phone and the list stays close to the top; the sort keeps
-   * its place at the end. The list's own top border closes the row, so it carries
-   * no rule of its own.
+   * The chips take the room and scroll sideways, keeping the row one line on a
+   * phone; the list's own top border closes the row.
    */
   &__controls {
     display: flex;
@@ -183,10 +164,7 @@
     padding-bottom: var(--space-3);
   }
 
-  /*
-   * A filter that matched nothing. It stands where the list would be, under the
-   * chip row that caused it, and owns one way back to the whole list.
-   */
+  /* A filter that matched nothing, under the chip row with one way back. */
   &__filter-empty {
     display: flex;
     flex-direction: column;
@@ -230,14 +208,8 @@
 }
 
 /*
- * The mobile arrangement, at 390 and under. One column rather than two, which
- * is the whole difference: on the desk a width is a division and here it is the
- * whole frame. The design draws two widths (1056 web, 390 phone) and names no
- * breakpoint between them, so 768 is this implementation's own line, chosen as
- * the first width at which a 320px card beside a track list stops leaving the
- * list a usable title column. The header's arrangement is picked in the
- * component, not here, because the card and the row are different markup and
- * CSS cannot turn one into the other.
+ * One column rather than two. 768 is this file's own line, the first width
+ * where a 320px card beside a track list leaves a usable title column.
  */
 @media (max-width: 767px) {
   .playlist-detail {
@@ -245,11 +217,10 @@
       padding: var(--space-2) 0 0 0;
     }
 
-    /* One column. The left column stops being a box of its own, so its two parts
-     * join the page's flow: the header is pinned against the whole scroll rather
-     * than the short column, and the state blocks scroll away under it. The
-     * header carries the page's own ground so the rows pass beneath rather than
-     * through. */
+    /*
+     * The dissolved column: the header is pinned against the whole scroll, and
+     * the state blocks scroll away under it.
+     */
     &__columns {
       display: block;
     }
@@ -263,21 +234,19 @@
       top: 0;
       z-index: var(--z-sticky);
       background: var(--bg);
-      /* The gap the dissolved column held between the header and the blocks under
-       * it. */
+      /* The gap the dissolved column held. */
       margin-bottom: var(--space-5);
     }
 
-    /* The list is full width under the header, with the same 20px the side uses
-     * between its own two blocks. Its top border closes it, the desk's own
-     * treatment. */
-    /* With the floating action on the frame's corner and the bar docked, the page
-     * has to hold the bar, the button and the --space-4 either side of it, or the
-     * last track row scrolls up under a control that cannot move. */
+    /*
+     * Hold the docked bar and the floating action, or the last row scrolls up
+     * under a control that cannot move.
+     */
     &[data-player='true'] {
       padding-block-end: calc(97px + var(--space-4) + 56px + var(--space-4));
     }
 
+    /* Full width under the header, with the side's own 20px above it. */
     &__tracks {
       margin-top: var(--space-5);
     }

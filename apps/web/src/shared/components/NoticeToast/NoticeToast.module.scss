@@ -1,13 +1,7 @@
 /*
- * The notice. Centred above the player bar, the slot the volume notice uses,
- * because both answer a press rather than ask for one, and clear of both the undo
- * toast's corner and the bar itself.
- *
- * It never blocks: `pointer-events: none`, no scrim and no focus, because there is
- * nothing to press. Its whole life is one animation, a short rise in and a fade at
- * the end, so the removal the host performs is not a pop; `forwards` holds the
- * faded frame until the host unmounts it, and reduced motion leaves the sentence
- * on the host's clock.
+ * The notice, centred above the player bar, the slot the volume notice uses. It
+ * never blocks: `pointer-events: none`, no scrim and no focus, since there is
+ * nothing to press. One animation is its whole life.
  */
 .notice {
   position: fixed;

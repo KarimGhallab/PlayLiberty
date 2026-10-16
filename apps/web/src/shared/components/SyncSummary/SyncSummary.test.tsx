@@ -9,7 +9,7 @@ import SyncSummary from './SyncSummary';
 
 /*
  * The detail page's test covers that the page draws the summary; this covers
- * what the summary draws.
+ * what it draws.
  */
 
 const NOW = new Date('2026-10-08T12:00:00.000Z');

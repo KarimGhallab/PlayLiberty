@@ -12,30 +12,9 @@ import { usePlaylistActions } from '../../shared/playlistActions/playlistActions
 import IncompleteBadge from './IncompleteBadge/IncompleteBadge';
 
 /*
- * One item in the library: the header at the arrangement the page's width asks
- * for, with this item's own wiring. It is a component rather than markup in the
- * page for the reason the item before it was: the actions module is a hook, and a
- * hook cannot be called in a loop.
- *
- * The two arrangements are the header's own and this component chooses between
- * them rather than drawing both: a tile above the phone breakpoint, where the
- * gallery is artwork in columns, and a card at it and below, where a tile per row
- * is a playlist per screen. Both play: the tile from the corner of its cover and
- * the card from its band, because both lead with artwork and a press on artwork
- * should start it.
- *
- * The delete is the one action an item does not own. It hands the page a deferred
- * action carrying its own commit, so the page keeps a single undo window and a
- * second delete replaces the first rather than raising a second toast. Both
- * arrangements carry the overflow the actions module builds: the tile in its
- * actions row, and the card on the cover's top-right corner, which is a shortcut to
- * the same actions the playlist itself offers.
- *
- * Shuffle is a property of playback and not of a playlist, so the item reads the
- * store only to press the controls on the item the queue belongs to.
- *
- * The mark is the library's own, which is why it is passed in rather than drawn by
- * the header: the counts come from the list the gallery holds.
+ * A component rather than markup in the page because the actions module is a
+ * hook and a hook cannot be called in a loop. The delete is the one action the
+ * item does not own: it hands the page its commit, so one undo window holds it.
  */
 
 interface PlaylistItemProps {
@@ -43,7 +22,6 @@ interface PlaylistItemProps {
   ownerName: string | null;
   /* Whether a deferred action is about to remove this playlist. */
   pending: boolean;
-  /* Which arrangement the page's width asks for. */
   layout: 'tile' | 'card';
   /* Open the page's one deferred-action window. */
   defer: (action: PendingAction) => void;

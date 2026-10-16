@@ -77,9 +77,8 @@ describe('buildQueue', () => {
 
   it('keeps a track that left its source when its file is still stored', () => {
     /*
-     * A video removed from YouTube is a fact about the source, not about the
-     * copy this server holds. The stored file still plays, so the entry stays:
-     * keeping the media is the whole point of the product.
+     * A video removed from YouTube is a fact about the source, not the stored
+     * copy: the file still plays, which is the point of the product.
      */
     const queue = buildQueue(
       [

@@ -1,15 +1,7 @@
 /*
- * The volume notice. Centred above the player bar, so it clears the rail that
- * opens from the volume control at the right corner and the undo toast that
- * lives at the left, and it reads as a HUD rather than a second notice competing
- * for a corner.
- *
- * It never blocks: `pointer-events: none`, no scrim and no focus, because there
- * is nothing to press. Its whole life is one animation, full strength for the
- * first stretch and a fade at the end, so the removal the host performs is not a
- * pop. `forwards` holds the faded frame until the host unmounts it, and
- * `prefers-reduced-motion` drops the animation so the notice simply shows and is
- * disposed on the host's clock.
+ * The volume notice: centred above the bar, clearing the rail at right and the
+ * undo toast at left. It never blocks (`pointer-events: none`, no focus) and
+ * lives one animation held until unmount.
  */
 .toast {
   position: fixed;
@@ -50,9 +42,8 @@
     background: var(--control-border);
   }
 
-  /* The fill keeps its width while muted; only the colour changes, because the
-   * level is a fact the listener set and muting does not move it. The same rule
-   * the rail states. */
+  /* The fill keeps its width while muted; only the colour changes, the rule the
+   * rail states. */
   &__fill {
     position: absolute;
     inset: 0 auto 0 0;

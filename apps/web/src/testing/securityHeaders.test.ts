@@ -4,14 +4,10 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /*
- * The origin's security headers are deployment config, not app code, but a config
- * that silently loses them is exactly the regression this guards: the headers live
- * in one included snippet, and nginx drops inherited `add_header` directives at any
- * level that defines one, so the shell and the assets have to include it again.
- *
- * The path is taken from the package working directory, because the jsdom
- * environment makes `import.meta.url` an http URL rather than the file's own.
+ * nginx drops inherited `add_header` directives at any level that defines one,
+ * so the shell and the assets must include the headers snippet again.
  */
+/* `process.cwd()`, because jsdom makes `import.meta.url` an http URL. */
 function readDeploy(name: string): string {
   return readFileSync(resolve(process.cwd(), 'deploy', name), 'utf8');
 }

@@ -52,10 +52,8 @@ export interface ListPlaylistsQuery {
   offset: number;
 }
 
-/*
- * The cover is the playlist's first track's thumbnail, carried as a track id so
- * the client renders the track's own thumbnail route.
- */
+/* The cover is the first track's id, so the client renders the track's own
+ * thumbnail route. */
 function coverTrackId(
   database: DatabaseHandle,
   playlistId: string
@@ -140,10 +138,7 @@ function toPlaylistView(
   };
 }
 
-/*
- * Whether the account has this playlist in its own gallery. The row's existence
- * is the pin, so one lookup answers the boolean the playlist carries.
- */
+/* The pin is the row's existence, so one lookup answers the boolean. */
 function isPinned(
   database: DatabaseHandle,
   playlistId: string,
@@ -163,10 +158,8 @@ function isPinned(
   );
 }
 
-/*
- * The access level is the one the entry seam resolved, so the view and the check
- * cannot disagree; a row that vanished between the check and this read is null.
- */
+/* The access level comes from the entry seam, so the view and the check cannot
+ * disagree. */
 function readPlaylist(
   database: DatabaseHandle,
   playlistId: string,
@@ -192,11 +185,7 @@ function readPlaylist(
   );
 }
 
-/*
- * A denial and a row that vanished are the same not-found: the route answers
- * "gone" for a playlist this account cannot reach and for one that is not there,
- * and never distinguishes them.
- */
+/* A denial and a vanished row are the same not-found, never distinguished. */
 function toReadPlaylistResult(
   entry: Entry<Playlist | null>
 ): ReadPlaylistResult {
@@ -212,17 +201,12 @@ function toReadPlaylistResult(
 }
 
 /*
- * The gallery's name comparison, fixed to one locale so the order does not follow
- * how the process happens to be started. `sensitivity: 'base'` makes case and
- * accents one for the order, so the base order decides between two playlists that
- * differ only in either.
+ * Fixed locale, so the order does not follow how the process started. 'base'
+ * folds case and accents into one.
  */
 const byName = new Intl.Collator('en', { sensitivity: 'base' });
 
-/*
- * The pinned group is a rank rather than a comparison, so the sort reads in the
- * order a reader sees rather than in the order the columns happen to sit in.
- */
+/* The pinned group is a rank, so the sort reads in the order a reader sees. */
 function pinnedRank(pinnedAt: string | null): number {
   return pinnedAt === null ? 1 : 0;
 }
@@ -237,10 +221,8 @@ export function listPlaylistsForAccount(
   const visibleRows = database.db
     .select({ playlist: playlists, pinnedAt: playlistPins.pinnedAt })
     .from(playlists)
-    /*
-     * The pin is a left join, so a playlist nobody has pinned comes through with a
-     * null instant and lands after every pin once the sort below has run.
-     */
+    /* Left join, so an unpinned playlist carries a null instant and sorts after
+     * every pin. */
     .leftJoin(
       playlistPins,
       and(
@@ -249,40 +231,25 @@ export function listPlaylistsForAccount(
       )
     )
     .where(visible)
-    /*
-     * Qualified, because the rowid is ambiguous the moment a second table is in
-     * play and the share and pin tables each carry a rowid of their own. It is the
-     * base order rather than the order: it is what separates two playlists the
-     * collator below cannot, which is what lets this route page.
-     */
+    /* Qualified: rowid is ambiguous once a second table is in play. It is the
+     * base order, separating what the collator cannot so paging is stable. */
     .orderBy(asc(sql`${playlists}.rowid`))
     .all();
 
-  /*
-   * The order a reader sees, and it is applied here rather than in SQL because
-   * SQLite is built without ICU: its own comparison folds at most the ASCII range,
-   * so `order by name` would place "Été" after "Zebra". An account's own pins come
-   * first, then the rest, and each group is in name order. The whole visible list is
-   * sorted rather than one page of it, because a comparison the database cannot
-   * make cannot be a LIMIT either: sorting a page would order the page and not the
-   * gallery.
-   */
+  /* Sorted in JS: SQLite has no ICU, so `order by name` would place "Été" after
+   * "Zebra". The whole list is sorted; that comparison cannot be a LIMIT. */
   const ordered = [...visibleRows].sort(
     (left, right) =>
       pinnedRank(left.pinnedAt) - pinnedRank(right.pinnedAt) ||
       byName.compare(left.playlist.name, right.playlist.name)
   );
 
-  /* The whole visible list is in hand, so the total is its length rather than a
-   * second count over the same filter. */
   const rows = ordered.slice(query.offset, query.offset + query.limit);
 
   const playlistRows = rows.map(row => row.playlist);
 
-  // The access map cannot be missing a playlist the visibility filter just
-  // returned, so the `?? 'owner'` fallback is unreachable; it is there because the
-  // compiler cannot see that, and a lie in a Playlist is worse than an
-  // unreachable branch.
+  // The `?? 'owner'` fallback is unreachable; it is there because the compiler
+  // cannot see the map is complete.
   const accessById = resolvePlaylistAccessMany(
     database,
     playlistRows.map(row => row.id),
@@ -323,11 +290,8 @@ export function readPlaylistForAccount(
   playlistId: string,
   accountId: string
 ): ReadPlaylistResult {
-  /*
-   * Access first, so a playlist this account cannot reach never becomes a row
-   * that has to be thrown away again, and the 404 is answered from the same
-   * decision the list query makes.
-   */
+  /* Access first, so an unreachable playlist never becomes a row, and the 404
+   * comes from the same decision the list query makes. */
   return toReadPlaylistResult(
     playlistEntry(database, playlistId, accountId, AccessNeed.Read, access =>
       readPlaylist(database, playlistId, accountId, access)
@@ -336,10 +300,8 @@ export function readPlaylistForAccount(
 }
 
 /*
- * Renaming belongs to the owner alone, so a write collaborator who may curate
- * answers the same not-found a stranger does. The update touches the name and the
- * row's timestamp and nothing else: the source, the cover, the last-synced time
- * and the sync status are the source's facts, not the owner's.
+ * Owner alone: a write collaborator answers the same not-found a stranger does.
+ * Only name and timestamp are updated; the rest are the source's facts.
  */
 export function renamePlaylistForAccount(
   database: DatabaseHandle,
@@ -360,11 +322,8 @@ export function renamePlaylistForAccount(
   );
 }
 
-/*
- * The change is not retroactive: it sets the default for tracks created from now
- * on, because a track snapshots the setting at creation and a stored file is
- * shared.
- */
+/* Not retroactive: a track snapshots the setting at creation, so this only sets
+ * the default from now on. */
 export function updateSkipNonMusicForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -384,10 +343,7 @@ export function updateSkipNonMusicForAccount(
   );
 }
 
-/*
- * The playlist's own order is stored as the absence, so a playlist that was never
- * sorted carries no value.
- */
+/* Own order is stored as the absence of a value. */
 export function updateSortForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -410,15 +366,8 @@ export function updateSortForAccount(
   );
 }
 
-/*
- * Placing a playlist in the account's own gallery, or taking it out again. The
- * row's existence is the pin, so pinning upserts and refreshes the instant rather
- * than failing, and unpinning deletes; the check is the read need, because the
- * handler writes the account's own state and never the playlist, so a read
- * collaborator may pin a playlist they can only read. The view is read back
- * through the same helper every mutation answers with, so a pin's own answer
- * carries the flag it just wrote.
- */
+/* Existence is the pin, so pinning upserts. Access is the read need: the
+ * handler writes the account's own state, so a read collaborator may pin. */
 export function updatePinForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -454,12 +403,8 @@ export function updatePinForAccount(
 }
 
 /*
- * The associations, shares and pins go with the row through the foreign key
- * cascade, bypassing the association service's rule that an association is only
- * ever written through it; that is safe because the only stored count needing an
- * adjustment is this playlist's own, and that row is going. The media is left to
- * the weekly prune, which reclaims a file once no association names its track, so
- * the delete never waits on the disk.
+ * The cascade bypasses the association service's write rule, safe because the
+ * only count is this row's and it is going. Media is left to the weekly prune.
  */
 export function deletePlaylistForAccount(
   database: DatabaseHandle,
@@ -483,11 +428,8 @@ export function deletePlaylistForAccount(
 }
 
 /*
- * The same not-found answers a read collaborator, a stranger, a playlist that
- * does not exist and an association that is not there, so the route confirms
- * neither a playlist nor a membership the caller may not touch. The suppression
- * is written by the association service in the same transaction as the delete, so
- * no caller can remove without suppressing.
+ * The same not-found answers every denial and every absence, revealing neither
+ * the playlist nor the membership. Suppression shares the delete's transaction.
  */
 export function removeTrackForAccount(
   database: DatabaseHandle,
@@ -503,8 +445,7 @@ export function removeTrackForAccount(
     () => {
       const outcome = removeAssociation(database, { playlistId, trackId });
 
-      // A removal answers removed or absent; the add outcomes cannot come from
-      // it, and only absent is not a successful removal.
+      // Only Absent is not a successful removal.
       return outcome === AssociationOutcome.Absent
         ? PlaylistOutcome.NotFound
         : PlaylistOutcome.Ok;
@@ -526,14 +467,8 @@ export type ReadPlaylistTracksResult =
   | { outcome: PlaylistOutcome.Ok; page: PlaylistTracksPage }
   | { outcome: PlaylistOutcome.NotFound };
 
-/*
- * The order a playlist's tracks are read in, from the playlist's saved sort. The
- * playlist's own order is position first, and a date sort falls back to it for a
- * tie: a sync that adds many rows in one instant gives them equal dates, and a
- * client that fetched the same page twice must not see the rows swap. The
- * association's rowid is the last tiebreak, because two associations in one run
- * can share a position and the playlist route already breaks that tie this way.
- */
+/* Position first; a date sort falls back to it so equal-addedAt rows cannot
+ * swap across a re-fetch. Rowid breaks ties, as positions can collide. */
 function playlistTrackOrder(sort: PlaylistSort | null) {
   const ownOrder = [
     asc(associations.position),
@@ -551,11 +486,7 @@ function playlistTrackOrder(sort: PlaylistSort | null) {
   return ownOrder;
 }
 
-/*
- * The stored track carries two fields the contract does not, the media path the
- * stream route resolves and the thumbnail URL the source reported; neither is
- * metadata, so neither crosses the wire here.
- */
+/* The media path and thumbnail URL stay off the wire; neither is metadata. */
 function toPlaylistTrackView(row: {
   association: AssociationRow;
   track: TrackRow;
@@ -567,10 +498,8 @@ function toPlaylistTrackView(row: {
   };
 }
 
-/*
- * The five keys at zero. A state is a key even when nothing is in it, because a
- * state is not absent merely because nothing has reached it.
- */
+/* Every state is a key, zero when empty: a state is not absent because nothing
+ * has reached it. */
 function noCounts(): TrackFileStatusCounts {
   return {
     [TrackFileStatus.Stored]: 0,
@@ -581,17 +510,8 @@ function noCounts(): TrackFileStatusCounts {
   };
 }
 
-/*
- * The file-status counts of a set of playlists, in one grouped query. The
- * library's mark asks the same question of every playlist on the page, so a
- * query per playlist would be one round trip per tile; the detail's chip row asks
- * it of one playlist through the same function.
- *
- * Over the whole playlist rather than the page or the filter, and grouped by file
- * status alone, so the removed-from-source overlay is not a bucket. A playlist
- * with no associations is answered by its own zeroed bucket rather than by a
- * missing key, so a caller never has to ask whether the counts are there.
- */
+/* One grouped query over the whole playlist, not the page or filter. Every
+ * playlist gets a zeroed bucket, never a missing key. */
 function fileStatusCountsByPlaylist(
   database: DatabaseHandle,
   playlistIds: readonly string[]
@@ -683,11 +603,8 @@ export function listPlaylistTracksForAccount(
 
       return {
         items: rows.map(toPlaylistTrackView),
-        /*
-         * The maintained stored count when nothing is filtered, rather than a
-         * second count over the rows; the state's own bucket when one is. Either
-         * way the total is the filtered total, not the whole playlist's.
-         */
+        /* Unfiltered: the maintained count; filtered: the state's bucket.
+         * Either way the total is filtered, not the whole playlist. */
         total:
           query.state === undefined ? playlist.trackCount : counts[query.state],
         limit: query.limit,

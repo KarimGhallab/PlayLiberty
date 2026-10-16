@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Ensures every package under apps/, scripts/ and packages/ is listed in
+ * Every package under apps/, scripts/ and packages/ must be listed in
  * tsconfig.depcruise.json, which depcruiser needs to resolve their imports.
  */
 

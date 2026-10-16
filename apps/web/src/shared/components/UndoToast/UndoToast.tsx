@@ -3,20 +3,9 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './UndoToast.module.scss';
 
 /*
- * The deferred action's surface: an action the server has not been asked to
- * perform yet sits here for a few seconds with the one control that stops it. It
- * never blocks, carrying no scrim and no focus trap, because it is a notice with
- * one press and not a dialog.
- *
- * The countdown ring is the window made visible, and `aria-hidden`: a screen
- * reader reading seconds would be a number that changes with no action behind
- * it. The sentence and the control are the whole of what it announces.
- *
- * A second deferred action replaces the first, so this notice also carries the
- * displaced intent when there was one: `replacedLabel` names what was dropped,
- * and the live region announces it with the new sentence. The ring is keyed to
- * `windowKey`, so a replacement restarts the sweep rather than letting the old
- * window's progress stand for a fresh one.
+ * The deferred action's surface: an action the server has not yet been asked to
+ * perform, with the one control that stops it. It never blocks: no scrim and no
+ * focus trap. A second action replaces the first.
  */
 
 interface UndoToastProps {

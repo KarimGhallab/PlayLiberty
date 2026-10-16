@@ -1,14 +1,7 @@
 /*
- * The player bar. The artwork is a left rail spanning the bar's full inner height
- * rather than a 40px square in the top row, so the thumbnail covers the title,
- * the playlist name and the seeker row as one block.
- *
- * The flush phone arrangement is the media query at the foot of the file, at
- * 767px and under.
- *
- * The boundary is --line and not a shadow. Depth allows the bar one subtle lift,
- * but a shadow is dark and the page is dark, so a dark blur over a dark page is
- * invisible rather than subtle.
+ * The player bar. Artwork is a left rail spanning the bar's height, not a 40px
+ * top-row square. The boundary is `--line`, not a shadow: dark on dark reads
+ * invisible. The flush phone arrangement is the media query at the foot.
  */
 .player-bar {
   position: fixed;
@@ -28,11 +21,8 @@
   border-block-start: 1px solid var(--line);
 
   /*
-   * The third column: the volume control, held against the right edge and seated
-   * on the bar's foot, level with the seeker row. The column stretches the bar's
-   * full height so the control can sit at the bottom of it, but the control's own
-   * box is the button alone, which is what lets its rail open just above the
-   * button rather than above the bar.
+   * The third column: the control sits on the bar's foot, and the column
+   * stretches full height so the rail opens just above the button.
    */
   &__volume {
     grid-column: 3;
@@ -57,15 +47,8 @@
     min-width: 0;
   }
 
-  /* The left rail is a square whose side is the bar's fixed inner height. A
-   * stretched height with a derived width and a content-measured bar is a
-   * circular dependency (height drives width drives height), and it inflated the
-   * bar instead; fixing the height breaks that loop, and the aspect-ratio then
-   * yields the width with nothing to feed back into.
-   *
-   * 98px is the measured sum of the two rows it draws. The content is centred in
-   * the fixed box, so the number is the bar's height rather than a floor on its
-   * content. */
+  /* A square of the fixed bar height: a stretched height fed width back into
+   * height and inflated the bar, so the height is fixed to break the loop. */
   &__art {
     grid-row: 1 / -1;
     position: relative;
@@ -109,9 +92,10 @@
     text-overflow: ellipsis;
   }
 
-  /* The playlist the queue came from. TrackSchema has no artist and no album, so
-   * the second line every player bar spends on the artist has nothing else to
-   * carry, and naming the source is what it is for here. */
+  /*
+   * The queue's playlist: `TrackSchema` has no artist or album, so the bar's
+   * second line names the source instead.
+   */
   &__source {
     color: var(--muted);
     font-size: var(--text-xs);
@@ -151,9 +135,10 @@
       opacity: var(--opacity-disabled);
     }
 
-    /* A borderless control has no box to wrap, so the 44px target grows outward
-     * six pixels a side by a box that paints nothing. Six is the half of the
-     * 12px gap, so two targets meet in the middle and neither eats the other. */
+    /*
+     * A 44px target grown outward six a side by a box that paints nothing; six
+     * is half the 12px gap, so two targets meet without overlapping.
+     */
     &::before {
       content: '';
       position: absolute;
@@ -211,9 +196,10 @@
     transform: translateX(-168px);
   }
 
-  /* The transition, attached only while the play button carries `data-run`. The
-   * animation's end value is the resting rule's own number, so clearing it when
-   * the morph ends does not move the glyph, and `reverse` plays pause to play. */
+  /*
+   * Attached only while the play button carries `data-run`; the end value is
+   * the resting rule's number, so clearing it does not move the glyph.
+   */
   &__play[data-run] &__strip {
     animation: pl-play-pause var(--motion-base) steps(7, jump-end) both;
   }
@@ -238,10 +224,10 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* 4px, not a hairline, and the difference is whether this is a control: a 2px
-   * line is a report and a 4px track is a target. The fill is the accent and the
-   * knob is ink inside a surface ring, because ink straight onto accent is the
-   * pairing the system forbids; the ring puts the surface between the two. */
+  /*
+   * 4px, not a hairline: a 2px line is a report, a 4px track a target. The knob
+   * is ink in a surface ring, because ink straight onto accent is forbidden.
+   */
   &__scrub {
     position: relative;
     width: 480px;
@@ -251,9 +237,10 @@
     background: var(--control-border);
     cursor: pointer;
 
-    /* 4px is a report, not a target: the visible track stays 4px and the target
-     * grows to the 44px the system owes a thumb through a box that paints
-     * nothing, the same pattern the transport's steps carry. */
+    /*
+     * The track stays 4px and the target grows to 44px through a box that
+     * paints nothing, the pattern the transport's steps carry.
+     */
     &::before {
       content: '';
       position: absolute;
@@ -298,17 +285,8 @@
 }
 
 /*
- * The flush arrangement, at 767px and under, and the design's own rule at the two
- * widths rather than a preference: the centre and the 480px cap are both web
- * decisions and neither survives a phone. The centre has to go because a
- * symmetric bar needs room for two halves and a 390px bar has 314px of content,
- * which gave the title 21px; the cap has to go because 480px does not fit, so
- * the seeker flexes rather than being capped to a smaller literal. The volume
- * column stays: the design's own bar carries no volume, but this one does, and a
- * core control the phone can reach is not something to drop on the way down.
- *
- * The breakpoint is this implementation's own line, matching the detail's, and
- * not a token: the design draws 390 and 1056 and names nothing between them.
+ * Flush arrangement, 767px and under: the centre needs the room a 390px bar
+ * lacks and the 480px cap does not fit, so the seeker flexes.
  */
 @media (max-width: 767px) {
   .player-bar {
@@ -316,16 +294,18 @@
      * their width for the title. */
     padding: var(--space-3);
 
-    /* Two columns rather than three: the identity flexes and the transport lands
-     * on the right edge. The volume is the third and is unchanged. */
+    /*
+     * Two columns rather than three: the identity flexes and the transport
+     * lands on the right edge. The volume is the third and is unchanged.
+     */
     &__top {
       grid-template-columns: 1fr auto;
     }
 
-    /* The two time stamps and their 4px gap are what the seeker gives up on a
-     * phone; the times stay, because an elapsed time is a datum and not a
-     * label, and the design's own flush bar keeps them against the track's
-     * ends. */
+    /*
+     * The seeker gives up its 4px gap to the times on a phone: an elapsed time
+     * is a datum, not a label, so it stays against the track's end.
+     */
     &__position {
       justify-content: stretch;
     }

@@ -12,26 +12,13 @@ import {
 } from '../../platform/database/schema.js';
 
 /*
- * Who may see and who may write, for a playlist. An account reaches a playlist it
- * owns, or one it holds a share on. There is no global library and an admin role
- * carries no override, so there is no `isAdmin` branch here, and adding one would
- * be a decision rather than an omission.
- *
- * Every function returns `null`, or omits the playlist from a map or a set, for an
- * account that cannot reach it. None of them returns a forbidden: a client
- * rendering a playlist screen has no state for "you may not see this", and a
- * revoked share has to read as gone. A caller sends 404 on null without having to
- * know why.
+ * An account reaches a playlist it owns or holds a share on; no global library,
+ * no admin override. An unreachable one is null or absent, never forbidden, so
+ * revoked share reads as gone and the caller answers 404.
  */
 
-// Raw SQL for the two reads, and the query builder does not express these cleanly.
-// Both answers depend on a correlated lookup into share that may or may not
-// match, and a left join that yields a null level is a worse thing to read than a
-// nullable column. Every other read in the app goes through Drizzle.
-//
-// The account id binds first in both statements, matching the join predicate's
-// order rather than the where clause's, so the binding list reads in one order and
-// not two.
+// Raw SQL: the builder cannot express the correlated share lookup cleanly.
+// The account id binds first in both, matching the join predicate's order.
 const SINGLE_ACCESS_SQL = `
   select p.owner_account_id as owner, s.level as level
   from playlist p
@@ -67,10 +54,7 @@ function toAccess(
   return row.level;
 }
 
-/*
- * A fragment for a list query, so "the playlists I can see" composes into Drizzle
- * instead of being fetched and filtered in memory.
- */
+/* A SQL fragment, so "the playlists I can see" composes into Drizzle. */
 export function playlistVisibleTo(
   database: DatabaseHandle,
   accountId: string
@@ -97,12 +81,8 @@ export function resolvePlaylistAccess(
   return toAccess(row, accountId);
 }
 
-/*
- * One statement rather than one per playlist, so the request costs a single round
- * trip whatever the user checked. A playlist missing from the map is one this
- * account cannot reach, and the caller reports it exactly as it reports one that
- * does not exist.
- */
+/* One statement, so a single round trip whatever the user checked. A playlist
+ * missing from the map is unreachable, reported like a nonexistent one. */
 export function resolvePlaylistAccessMany(
   database: DatabaseHandle,
   playlistIds: string[],
@@ -132,11 +112,8 @@ export function resolvePlaylistAccessMany(
   return resolved;
 }
 
-/*
- * Ownership, and only ownership, for the three actions no collaborator has:
- * rename, delete and managing shares. A share is a grant of access, so an account
- * that could grant access would be an owner wearing a collaborator's label.
- */
+/* Ownership only, for rename, delete and shares: a share is a grant of
+ * access, so a grantor is an owner wearing a collaborator's label. */
 export function isPlaylistOwner(
   database: DatabaseHandle,
   playlistId: string,
@@ -145,11 +122,8 @@ export function isPlaylistOwner(
   return resolvePlaylistAccess(database, playlistId, accountId) === 'owner';
 }
 
-/*
- * Write access is the owner or a write collaborator, and not a read one. A
- * playlist the account cannot reach resolves to no access and is not writable, so
- * its callers answer not-found exactly as they do for a missing row.
- */
+/* Owner or write collaborator, not a read one. An unreachable playlist is not
+ * writable, so callers answer not-found as for a missing row. */
 export function canWritePlaylist(
   database: DatabaseHandle,
   playlistId: string,
@@ -160,13 +134,8 @@ export function canWritePlaylist(
   return access === 'owner' || access === 'write';
 }
 
-/*
- * Which of these playlists are shared with anybody at all, for the `hasShares` flag
- * the playlist view carries. Distinct from the access level on purpose: an owner
- * needs to know a playlist is shared out even though their own access is 'owner'
- * and tells them nothing, and a collaborator needs the same flag without learning
- * who else holds a share.
- */
+/* The `hasShares` flag, distinct from access on purpose: an owner's 'owner'
+ * access tells nothing, and a collaborator must not learn who shares it. */
 export function sharedPlaylistIds(
   database: DatabaseHandle,
   playlistIds: string[]
@@ -184,13 +153,8 @@ export function sharedPlaylistIds(
   return new Set(rows.map(row => row.playlistId));
 }
 
-/*
- * Every account that can see a playlist: the owner and each collaborator. It is
- * the audience a live event about the playlist is published to, so the rule for
- * who may see a playlist and the rule for who is told it changed are the same
- * rule read two ways rather than two lists that can drift. A playlist that does
- * not exist has no audience, and a publisher of nothing is a no-op.
- */
+/* Owner plus collaborators, the audience a live event is published to: the same
+ * rule as visibility, not a second list that can drift. */
 export function playlistAudience(
   database: DatabaseHandle,
   playlistId: string
@@ -214,15 +178,8 @@ export function playlistAudience(
   return [owner.ownerAccountId, ...collaborators.map(row => row.accountId)];
 }
 
-/*
- * Who hears a change to a track, and which playlists each of them may be told
- * about. A track is shared across playlists and one file is fetched once, so a
- * change to it is a change to every playlist that associates it; but the event
- * carries the playlist ids, so the answer is per account: an account hears only
- * about the holding playlists it can reach, and one that can reach none is left
- * out entirely. A track no playlist holds has no audience, so a publisher of
- * nothing is a no-op.
- */
+/* Per account: an account hears only about the holding playlists it can reach,
+ * and one that reaches none is left out. */
 export interface TrackAudience {
   accountId: string;
   playlistIds: string[];

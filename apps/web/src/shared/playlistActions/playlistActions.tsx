@@ -25,21 +25,9 @@ import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylist
 import type { PendingAction } from '../components/useDeferredAction/useDeferredAction';
 
 /*
- * One module owns a playlist's actions: the rule that decides which of pin,
- * share, rename, sync and delete an account may perform, the menu the header
- * draws, and the effects behind each item. The library item and the detail page
- * hand a playlist in and take the menu and the dialogs back, so neither
- * re-derives the rule nor re-wires the effects.
- *
- * Two things stay with the consumer because they genuinely differ. The undo
- * window is the surface's, because the library keeps one for the whole gallery
- * and the detail keeps its own; the module hands the delete to it. And leaving
- * the gone route is the detail's, so the module takes an `onDeleted` that runs
- * after the delete commits.
- *
- * `playlistId` is separate from `playlist` because the detail's route carries the
- * id before the playlist has loaded: the mutations are keyed by the id and are
- * ready, while the rule and the delete's name wait for the playlist.
+ * One module owns a playlist's actions: which of pin, share, rename, sync and
+ * delete an account may perform, the menu, and the effects, so the two surfaces
+ * share it. `playlistId` is separate: the id precedes the playlist's load.
  */
 
 export interface PlaylistAction {
@@ -56,12 +44,11 @@ export interface PlaylistActionsOptions {
   readonly defer: (action: PendingAction) => void;
   /** The sentence the delete toast shows, which differs by surface. */
   readonly deleteMessage: MessageKey<Messages>;
-  /** Runs after the delete commits, for a consumer that must leave the route. */
+  /** Runs after the delete commits, for a consumer leaving the route. */
   readonly onDeleted?: () => void;
   /*
-   * The pin, which is the library's own action. Present puts Pin or Unpin on the
-   * menu and hands a failed write back to the surface, which owns the notice;
-   * absent, as on the detail, leaves the menu without it.
+   * The library's own action: present puts Pin or Unpin on the menu and hands a
+   * failed write to the surface, which owns the notice; absent on the detail.
    */
   readonly pin?: {
     readonly onRefused: (error: Error) => void;
@@ -69,23 +56,20 @@ export interface PlaylistActionsOptions {
 }
 
 export interface PlaylistActions {
-  /** The items the header draws, already gated by access. Empty for a reader. */
+  /** The items the header draws, gated by access; empty for a reader. */
   readonly menu: readonly PlaylistAction[];
   /** The rename and share dialogs, for the consumer to place. */
   readonly dialogs: ReactNode;
   /** Start a sync. The same mutation the menu's Sync now item runs. */
   readonly syncNow: () => void;
-  /** Whether that sync is in flight. */
   readonly syncing: boolean;
   /** Whether the account may write: the owner or a write collaborator. */
   readonly canWrite: boolean;
 }
 
 /*
- * Whether the account may write to a playlist: it owns it or holds a write
- * share. A playlist that has not loaded is not writable, which is the same
- * answer a reader gets. It is exported so the menu's gating here and the
- * detail's writable set are one rule rather than two that must agree.
+ * Whether the account may write: it owns the playlist or holds a write share;
+ * an unloaded one is not writable. Exported so the menu and detail agree.
  */
 export function canWritePlaylist(playlist: Playlist | undefined): boolean {
   const access = playlist?.access ?? null;
@@ -118,10 +102,8 @@ export function usePlaylistActions(
   });
 
   /*
-   * The delete is the one item the module cannot finish on its own: it opens the
-   * consumer's undo window, and the commit leaves the route only where the
-   * consumer says so. A playlist that has not loaded has no name to defer, so the
-   * item is absent rather than opening a toast that names nothing.
+   * The delete opens the consumer's undo window; an unloaded playlist has no
+   * name to defer, so the item is absent.
    */
   const deleteItem = (): PlaylistAction | null => {
     if (playlist === undefined) {
@@ -147,11 +129,8 @@ export function usePlaylistActions(
   const menu: PlaylistAction[] = [];
 
   /*
-   * The pin is on every menu there is, because visibility alone grants it: an
-   * owner's and a writer's hold the rest of their actions beside it, and a
-   * reader's holds the pin alone, which is the one action a share at the read
-   * level allows. The item is one toggle: its label and glyph are the action, and
-   * its own key stays `pin` so the control that pressed it never moves.
+   * Visibility alone grants the pin, so every menu holds it, a reader's alone.
+   * Its key stays `pin` while its label toggles, so the control never moves.
    */
   const pinItem = (): PlaylistAction | null => {
     if (playlist === undefined || options.pin === undefined) {
@@ -209,9 +188,8 @@ export function usePlaylistActions(
   }
 
   /*
-   * The dialogs are mounted only while open, which is the library's rule: a
-   * gallery of fifty closed items must not ask the account directory or the
-   * reader's own account any questions.
+   * Mount the dialogs only while open: a gallery of closed items must not ask
+   * the account directory or the reader's account anything.
    */
   const dialogs =
     playlist === undefined ? null : (

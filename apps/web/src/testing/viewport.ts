@@ -1,8 +1,7 @@
 /*
- * The media-query stub answers one query and delegates every other to the global
- * default, so a test can move the viewport without disturbing the
- * `prefers-reduced-motion` checks. The returned function puts the original back,
- * because a stub left in place would follow every later test.
+ * Answers one query and delegates every other to the global default, so moving
+ * the viewport leaves `prefers-reduced-motion` alone. The returned function
+ * restores the original; a stub left in place would follow every later test.
  */
 export function stubViewport(matchingQuery: string): () => void {
   const original = window.matchMedia;

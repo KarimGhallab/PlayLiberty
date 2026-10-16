@@ -27,19 +27,8 @@ export default defineConfig([
     }
   },
   {
-    /*
-     * Raw SQL stays in the database module and in the access rules. The schema is
-     * the one description of the storage, so a hand-written statement anywhere
-     * else is a second description that no migration and no type checks against.
-     *
-     * A selector rather than no-restricted-properties, because the call is
-     * `database.sqlite.prepare`, where the object is a member expression and not
-     * a name. The property rule would have matched a local variable called sqlite
-     * in a test and missed every real call in the app.
-     *
-     * Dependency-cruiser cannot enforce this: a `.prepare()` call is a member
-     * expression, not an import.
-     */
+    // Raw SQL stays in the database module and the access rules; a selector,
+    // because `db.sqlite.prepare()` is a member expression, not an import.
     files: ['apps/server/src/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
@@ -54,42 +43,29 @@ export default defineConfig([
     }
   },
   {
-    // The driver itself. Creating the connection and running migrations is the
-    // whole job here, and the readiness probe's `select 1` is the cheapest true
-    // statement there is.
+    // The driver itself: the connection, the migrations, the readiness probe.
     files: ['apps/server/src/platform/database/**/*.ts'],
     rules: { 'no-restricted-syntax': 'off' }
   },
   {
-    // shared/access holds the only two hand-written statements in the app. Both
-    // answer a correlated question about shares that the query builder cannot
-    // express without a join returning a nullable level, and both are the one
-    // access rule.
+    // The only two hand-written statements in the app: a correlated question
+    // about shares the query builder cannot express without a nullable join.
     files: ['apps/server/src/shared/access/**/*.ts'],
     rules: { 'no-restricted-syntax': 'off' }
   },
   {
-    // A test may reach for the driver to build a state no service produces, and to
-    // observe what a service asked the database. Neither is a second description
-    // of the schema, and forbidding it in tests would only move the raw SQL
-    // somewhere less obvious.
+    // A test may drive the database directly, to build a state no service
+    // produces or to observe what a service asked. That is not the schema.
     files: ['apps/server/src/**/*.test.ts'],
     rules: { 'no-restricted-syntax': 'off' }
   },
   {
-    /*
-     * The web client owns every sentence a person reads through
-     * `@playliberty/i18n`, so a hardcoded user-facing string in JSX or in a
-     * label prop is copy a second language would leave in English. The rule's
-     * allowlist covers the symbols, entities and example URLs that are not copy.
-     */
     files: ['apps/web/src/**/*.tsx'],
     plugins: { local: localPlugin },
     rules: { 'local/no-hardcoded-string': 'error' }
   },
   {
-    // A test renders fixtures and asserts the copy the app would render, so its
-    // strings are the assertion rather than copy the catalog should own.
+    // A test's strings are its assertion, not copy the catalog owns.
     files: ['apps/web/src/**/*.test.tsx'],
     rules: { 'local/no-hardcoded-string': 'off' }
   }

@@ -23,16 +23,9 @@ import {
 } from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 /*
- * The slot that processes pending tracks. The queue is the `track` rows themselves,
- * so there is no jobs table and nothing to enqueue: a row with
- * `fileStatus: pending` is the work, and this is the one thing in the process that
- * acts on it.
- *
- * The worker is stoppable because the server has to shut down cleanly, and a
- * download interrupted mid-flight leaves a temporary file and a row still claiming
- * to be downloading, which is what the startup sweep undoes on the next boot.
- * The interval is the platform's, because unref'ing a timer and clearing it on
- * stop is not this feature's business. What a tick does is.
+ * The queue is the `track` rows: no jobs table, nothing to enqueue, a
+ * `pending` row is the work and this is the one thing that acts on it. An
+ * interrupted download is left to the startup sweep.
  */
 export interface DownloadWorkerOptions {
   context: WorkerContext;
@@ -46,12 +39,8 @@ export interface DownloadWorkerHandle {
   kick(): void;
 }
 
-/*
- * The worker reads four things from the context: the database it claims rows in,
- * the media paths it writes under, the adapter it fetches through, and the bus it
- * publishes a track's state changes to. Naming just those lets a test drive one
- * pass with a fake adapter and a bus of its own and no server around it.
- */
+/* The four things a pass reads, so a test can drive one with fakes and no
+ * server. */
 type WorkerContext = Pick<
   AppContext,
   'database' | 'mediaPaths' | 'youtube' | 'events'
@@ -62,10 +51,8 @@ const WORKER_INTERVAL_MS = 30_000;
 export function startDownloadWorker(
   options: DownloadWorkerOptions
 ): DownloadWorkerHandle {
-  // A tick is asynchronous and a download outlasts the interval, so a second tick
-  // while one is still running is skipped rather than started. The claim below is
-  // what stops two passes from taking the same track; this stops two passes from
-  // existing at all.
+  // A download outlasts the interval, so an overlapping tick is skipped: the
+  // claim stops two passes taking one track, this stops two passes existing.
   let inFlight: Promise<void> | null = null;
 
   const tick = (): void => {
@@ -87,11 +74,8 @@ export function startDownloadWorker(
     tick
   });
 
-  /*
-   * One pass now, rather than waiting a whole interval for the first. A server
-   * that boots with `pending` rows, which is every restart after a crash, would
-   * otherwise sit idle while the work is already there to do.
-   */
+  /* A pass now, not after a whole interval: a boot with `pending` rows must not
+   * wait. */
   tick();
 
   return {
@@ -106,12 +90,8 @@ export function startDownloadWorker(
   };
 }
 
-/*
- * One pass, exposed so a test can drive it without waiting on the interval. It
- * claims at most `concurrency` pending tracks in one guarded move and downloads
- * exactly the ones it moved, so a track another pass already claimed is not
- * fetched twice and a backlog is worked through across passes.
- */
+/* One pass, exposed for tests. It claims in one guarded move and downloads just
+ * what it moved, so a track another pass claimed is never fetched twice. */
 export async function processPendingTracks(
   context: WorkerContext,
   logger: FastifyBaseLogger,
@@ -133,10 +113,8 @@ async function processClaimedTrack(
   logger: FastifyBaseLogger,
   track: TrackRow
 ): Promise<void> {
-  // The adapter writes the finished file under the temporary directory, and the
-  // move into the media store is one rename on the same filesystem. A crash
-  // therefore leaves a temporary file and no stored file, never a stored file that
-  // was half written, which is what the startup sweep cleans up.
+  // The adapter writes to temp and the move is one same-filesystem rename, so a
+  // crash leaves a temp file, never a half-written stored one.
   const relativePath = mediaRelativePath(track.videoId, '.m4a');
   const storedPath = join(context.mediaPaths.root, relativePath);
   const tempPath = join(
@@ -163,9 +141,8 @@ async function processClaimedTrack(
 
     logger.info({ trackId: track.id, videoId: track.videoId }, 'track stored');
   } catch (error) {
-    // A video the adapter reports as gone is terminal, not a failure: the track is
-    // marked removed from the source and is never retried, reaching the same pair of
-    // values the sync's retention pass produces.
+    // A video reported gone is terminal, not a failure: marked removed, never
+    // retried, the same values the sync's retention pass produces.
     if (error instanceof YoutubeVideoUnavailableError) {
       markTrackSourceRemoved(context.database, track.id);
       publishTrackChanged(context, track.id);
@@ -176,12 +153,8 @@ async function processClaimedTrack(
       return;
     }
 
-    // Any other failure is transient: the reason is a bounded single line rather
-    // than the adapter's raw output, because the row carries it and a stack trace is
-    // not something a person acts on; the full error goes to the log. A SponsorBlock
-    // failure is one of these, and its reason is the typed error's fixed sentence
-    // rather than the tool's stderr, so it reads the same on every track. The next
-    // sync returns the track to `pending` so it is tried again.
+    // Any other failure is transient. The reason is a bounded line, not the
+    // raw output, since the row carries it; the next sync retries the track.
     failTrack(context.database, track.id, summarizeFailure(error));
 
     publishTrackChanged(context, track.id);
@@ -197,11 +170,8 @@ async function processClaimedTrack(
   publishTrackChanged(context, track.id);
 }
 
-/*
- * The picture is fetched after the audio and on its own terms: a thumbnail that
- * fails leaves the path null and the track stored, because a missing picture is a
- * cosmetic loss and a failed audio fetch is not.
- */
+/* A failed thumbnail leaves the path null and the track stored: cosmetic, not
+ * fatal. */
 async function fetchThumbnail(
   context: WorkerContext,
   logger: FastifyBaseLogger,
@@ -233,11 +203,8 @@ async function fetchThumbnail(
 
 const FAILURE_REASON_MAX = 200;
 
-/*
- * One line, bounded. The adapter's error message can be a multi-line tool excerpt,
- * and the stored reason is rendered in a track row and kept for a report, so it is
- * collapsed to a single line and capped rather than stored raw.
- */
+/* Collapsed and capped: the adapter message can be a multi-line tool excerpt,
+ * the reason is rendered in a track row. */
 function summarizeFailure(error: unknown): string {
   const collapsed = (error instanceof Error ? error.message : '')
     .replace(/\s+/g, ' ')

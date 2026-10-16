@@ -19,10 +19,8 @@ import {
 } from '../../app/testing/fixtures.js';
 
 /*
- * The events the playlist and track features publish, observed on the bus the
- * test context builds. The routes are driven through `inject`, so what is under
- * test is the real handler deciding to publish and the audience it chose, not a
- * publisher called by hand.
+ * Events the playlist and track features publish, observed on the context's
+ * bus. Routes run through `inject`, so the real audience is what is tested.
  */
 
 const VIDEO_URL = 'https://www.youtube.com/watch?v=bbbbbbbbbbb';
@@ -365,9 +363,8 @@ describe('the playlist and track events', () => {
     );
 
     expect(response.statusCode).toBe(200);
-    // A pin is the account's own placement: the playlist did not change, so
-    // nobody is told to refetch it, and the acting client invalidates its own
-    // gallery instead.
+    // Pin is the account's own placement: the playlist did not change, so no
+    // refetch happens, and the acting client invalidates its own gallery.
     expect(ownerEvents).toEqual([]);
     expect(collaboratorEvents).toEqual([]);
   });

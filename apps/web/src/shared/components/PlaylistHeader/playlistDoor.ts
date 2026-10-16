@@ -1,11 +1,9 @@
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
 /*
- * The door rule the header's arrangements share, which is the library's own: a
- * press anywhere on an item that is not a link, a control or an open panel opens
- * the playlist. It is why an item stays a div rather than an anchor, which cannot
- * hold the buttons an item carries, and why the controls and the two links carve
- * themselves out rather than being the only way past it.
+ * The door rule the header's arrangements share: a press anywhere on an item
+ * that is not a link, a control or an open panel opens the playlist. An item
+ * stays a div because an anchor cannot hold the buttons it carries.
  */
 export function playlistDoor(
   onOpen: () => void

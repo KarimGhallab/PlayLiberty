@@ -13,25 +13,9 @@ import { usePlayerStore } from '../playerStore/playerStore';
 import { queuePlaylistId } from '../types';
 
 /*
- * The playlist-start action, in one place because three controls draw it: the
- * library gives every item a shuffle and a play at phone width, and the detail's
- * header draws both for the playlist it shows. Whether the queue was empty,
- * another playlist's, or this one already, the press acts on the playlist it was
- * pressed on rather than on the queue.
- *
- * When the queue is already this playlist's, neither control starts anything: the
- * play pauses and resumes it and the shuffle turns the mode over, which are the
- * store's own rules and what makes the two controls over playback rather than
- * over the list.
- *
- * The read is the playlist's whole association list, not a page, so the queue
- * covers the playlist rather than its first page.
- *
- * Only the queue read knows whether a playlist has anything to play, and the
- * queue may belong to another playlist, so a press can be refused. The refusal is
- * returned rather than drawn here, so each screen puts it in the notice slot it
- * already owns; the unreachable case is optionally handed back instead, because
- * the detail's header owns that failure on its own play control.
+ * The playlist-start action, in one place because three controls draw it. A
+ * press acts on the playlist pressed, not the current queue; a refusal is
+ * returned, not drawn, so the screen owns its notice.
  */
 
 /** How long a refusal stands before it withdraws itself. */
@@ -70,6 +54,8 @@ export function useStartPlaylist(): PlaylistStartControl {
     ) => {
       const player = usePlayerStore.getState();
 
+      /* Already this playlist's queue: play pauses/resumes, shuffle toggles
+       * the mode; neither rebuilds the queue. */
       if (queuePlaylistId(player) === playlist.id) {
         if (mode === 'shuffle') {
           player.setShuffle(!player.shuffle);
@@ -125,9 +111,8 @@ export function useStartPlaylist(): PlaylistStartControl {
   );
 
   /*
-   * The notice withdraws itself, so it cannot stand over the library once it has
-   * been read. The window lives here rather than in the notice, because it is the
-   * action's and the notice is only its surface.
+   * The notice withdraws itself so it cannot stand over the library; the window
+   * is the action's, the notice only its surface.
    */
   useEffect(() => {
     if (refusal === null) {
@@ -143,10 +128,8 @@ export function useStartPlaylist(): PlaylistStartControl {
 }
 
 /*
- * The refusal in words: one sentence and one line under it, naming the playlist
- * and saying why the press did nothing. It is the action's copy rather than
- * either control's, because a play and a shuffle refuse for the same two
- * reasons and say the same thing.
+ * The refusal in words: one sentence and a line, naming the playlist and why
+ * the press did nothing. The action's copy, shared by play and shuffle.
  */
 export function refusalNotice(
   refusal: StartRefusal,

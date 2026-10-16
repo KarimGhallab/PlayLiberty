@@ -407,8 +407,10 @@ describe('shuffle', () => {
     usePlayerStore
       .getState()
       .startQueue(PLAYLIST, [first, second, third], second.id);
-    /* The draw picks the third entry, so the leader is a fresh track rather than
-     * the one already playing. */
+    /*
+     * The draw picks the third entry, so the leader is a fresh track rather
+     * than the one already playing.
+     */
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     usePlayerStore.getState().setShuffle(true);
@@ -437,8 +439,10 @@ describe('shuffle', () => {
     const d = track('d');
     const e = track('e');
 
-    /* A fixed order, set directly so the walk is asserted rather than sampled:
-     * the shuffle under test is the queue's order, not the draw that made it. */
+    /*
+     * A fixed order, set directly so the walk is asserted rather than sampled:
+     * the shuffle under test is the queue's order, not the draw that made it.
+     */
     usePlayerStore.setState({
       queue: [d, c, a, e, b],
       sourceQueue: [a, b, c, d, e],

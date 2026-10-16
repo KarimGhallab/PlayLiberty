@@ -75,24 +75,9 @@ import {
 import styles from './PlaylistDetailPage.module.scss';
 
 /*
- * The screen the product exists for: the only place stored tracks become
- * audible.
- *
- * The left column is the header's card arrangement, not the row the library
- * draws: the card is what fits inside its 320px width. Beneath the card sits one
- * state component and never two, the summary when there is a run and the error
- * when the sync failed.
- *
- * Under 768px the header is the component's row rather than its card, the
- * design's mobile arrangement, where the card would be 470.4px tall against the
- * row's 136px. The way home is drawn at every width; the mobile block only
- * tightens its top padding.
- *
- * The list is drawn in the playlist's own order and every association appears,
- * playable or not, because a track that silently vanished from the list would
- * make "why is this track missing" unanswerable. The play control's presence is
- * the server's file status, the same fact `buildQueue` filters on, so the list
- * and the queue agree by construction.
+ * Every association is drawn, playable or not: a vanished track would make
+ * "why is this missing" unanswerable. The play control is the server's file
+ * status, the same fact the queue build filters on.
  */
 enum PlaybackStart {
   Play = 'play',
@@ -106,9 +91,7 @@ export default function PlaylistDetailPage() {
   const playlist = usePlaylist(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
-  /* The library read, which is where the writable playlists for the add dialog
-   * come from: the dialog adds to several, and this is the list the account can
-   * already see. */
+  /* The library read: the add dialog's writable playlists come from here. */
   const playlists = usePlaylists();
   const retry = useRetryTrack(playlistId);
   const fetchWhole = useFetchTrackWhole(playlistId);
@@ -148,15 +131,13 @@ export default function PlaylistDetailPage() {
    * queue, which is also when the filter and the sort step aside. */
   const listShuffled = shuffled && isQueue;
   /*
-   * The filter is a view for the visit: it lives here and is never stored, and
-   * leaving the screen clears it with the component. It is not applied while the
-   * shuffled queue is on screen, so a shuffle shows the whole queue; the choice
-   * is kept for when the shuffle is turned off.
+   * The filter lasts for the visit only, and is not applied while the shuffled
+   * queue is on screen; the choice survives until the shuffle is turned off.
    */
   const [trackState, setTrackState] = useState<TrackFileStatus | null>(null);
   /*
-   * The route reuses this component as the id changes, so the filter is cleared
-   * when the playlist does rather than carried onto the next screen.
+   * The route reuses this component across ids, so the filter is cleared with
+   * the playlist rather than carried onto the next screen.
    */
   useEffect(() => {
     setTrackState(null);
@@ -205,10 +186,7 @@ export default function PlaylistDetailPage() {
     [playlistId, playlist.data, queryClient]
   );
 
-  /*
-   * A row press moves the playhead, and moves it inside the queue the listener
-   * is looking at.
-   */
+  /* A row press moves the playhead inside the queue the listener sees. */
   const playTrack = useCallback(
     (trackId: string): void => {
       const player = usePlayerStore.getState();
@@ -238,8 +216,8 @@ export default function PlaylistDetailPage() {
   };
 
   /*
-   * The failure's way out: re-run the press that failed, so a failed shuffle
-   * retries as a shuffle rather than silently becoming a plain play.
+   * Re-run the press that failed, so a failed shuffle retries as a shuffle
+   * rather than silently becoming a plain play.
    */
   const retryPlayback = (): void => {
     void startFrom(
@@ -250,10 +228,8 @@ export default function PlaylistDetailPage() {
   };
 
   /*
-   * Removing a track is deferred the same way as deleting the playlist: the call
-   * waits out the window, and the toast's Cancel stops it. The track is named
-   * because two rows can read alike and the toast is the only place the removal is
-   * still reversible.
+   * Deferred like the playlist delete: the toast's Cancel is the only place a
+   * removal is still reversible, so the track is named in it.
    */
   const removeTrackDeferred = useCallback(
     (trackId: string): void => {
@@ -272,8 +248,8 @@ export default function PlaylistDetailPage() {
   );
 
   /*
-   * The lane's two actions, stable for the same reason `playTrack` is: each is
-   * passed to every row, so a fresh identity would defeat the row's memo.
+   * Stable identities, as `playTrack` is: each is passed to every row, so a
+   * fresh identity would defeat the row's memo.
    */
   const retryTrack = useCallback(
     (trackId: string): void => retry.mutate(trackId),
@@ -295,28 +271,20 @@ export default function PlaylistDetailPage() {
   const neverSynced = playlist.data?.lastSyncedAt === null;
 
   /*
-   * The playlists the add dialog may offer: the account's own and any it can
-   * write, never a read one, because a playlist it cannot write to is absent
-   * rather than disabled. The one being looked at is always in the set when the
-   * account can write to it, which is the state this control is drawn in.
+   * The account's own playlists and any it can write, never a read one: an
+   * unwritable playlist is absent rather than disabled.
    */
   const writablePlaylists = (playlists.data?.items ?? []).filter(
     canWritePlaylist
   );
 
-  /*
-   * The refused playlists of the last batch, which is what keeps the dialog open.
-   * While a batch has refusals the dialog stays; one with none closes, because an
-   * all-success result has nothing to read.
-   */
   const refusedOutcomes =
     addTrack.data?.results.filter(entry => entry.outcome === 'refused') ?? [];
   const batchRefused = refusedOutcomes.length > 0;
 
   /*
-   * A batch with no refusals closes the dialog on the settled result, and a fresh
-   * open clears the previous one so a stale refusal does not reappear. The reset
-   * runs when the dialog opens, so the block is empty until a batch returns.
+   * A settled batch with no refusals closes the dialog; the reset clears a
+   * stale refusal before the next open.
    */
   useEffect(() => {
     if (addTrack.isSuccess && !batchRefused) {
@@ -325,10 +293,7 @@ export default function PlaylistDetailPage() {
     }
   }, [addTrack.isSuccess, batchRefused]);
 
-  /*
-   * The setting's refusal withdraws itself, on the same window the shuffle notice
-   * uses, so a failed change does not stand over the screen once it is read.
-   */
+  /* The refusal withdraws on the window the shuffle notice uses. */
   useEffect(() => {
     if (settingRefused === null) {
       return;
@@ -343,19 +308,14 @@ export default function PlaylistDetailPage() {
   const playingThis = isPlaying && isQueue;
 
   /*
-   * The control row above the list, and what it describes. The chips are the
-   * whole-playlist counts the tracks read folds in, so they are drawn only once
-   * that read has answered; the row stays while the playlist holds any track,
-   * which keeps it on screen under a filter that matched nothing so "Show all"
-   * is reachable. The header's count line follows the read's own total, which is
-   * the filtered total once a state is asked.
+   * The chips are the whole-playlist counts the read folds in, drawn only once
+   * it has answered; the row survives an empty filter to keep "Show all".
    */
   const counts = tracks.counts;
   const hasTracks = (playlist.data?.trackCount ?? 0) > 0;
   /*
-   * A filter that matched nothing. The empty state waits for the filter's own
-   * answer rather than reading the previous state's total, which
-   * `keepPreviousData` keeps on hand while the next state loads.
+   * The empty state waits for the filter's own answer: `keepPreviousData` keeps
+   * the previous total on hand while the next state loads.
    */
   const filterEmpty =
     activeState !== null && !tracks.isPlaceholderData && tracks.total === 0;
@@ -363,20 +323,14 @@ export default function PlaylistDetailPage() {
     activeState === null ? null : t(`detail.filterEmpty.${activeState}`);
 
   /*
-   * The in-flight figure the summary draws is the whole playlist's downloading
-   * count, which the read folds in as an aggregate, so it does not follow the
-   * filter. It is only meaningful while a run is active, which is the only time
-   * the summary reads it.
+   * The whole playlist's downloading count, an aggregate the read folds in, so
+   * it does not follow the filter.
    */
   const downloadingCount = counts?.[TrackFileStatus.Downloading] ?? 0;
 
   /*
-   * A playlist query that answers 404, whether because the playlist does not
-   * exist or because the account can no longer see it, is the not-found state
-   * and not an error: the header for a playlist that is not there, and a list
-   * area with an error sentence, both assert something the server denied. The
-   * whole two-column body is replaced, and the state owns one action, back to
-   * the library.
+   * A 404, whether the playlist is gone or no longer visible, is the not-found
+   * state rather than an error: the whole body is replaced by the way back.
    */
   if (playlist.isError) {
     return (
@@ -387,12 +341,8 @@ export default function PlaylistDetailPage() {
   }
 
   /*
-   * The props both header arrangements take. The detail is the one surface that
-   * draws both: the card in its left column above 768px and the row below it.
-   * They are different modules with different prop surfaces, but every prop the
-   * detail passes is honoured by both, so the set is named once and each module
-   * is handed it. The card takes no `onOpen` and no sync time, which the detail
-   * never passes; the row takes both, and neither is in this set.
+   * Every prop here is honoured by both header arrangements, the card above
+   * 768px and the row below it, so the set is named once.
    */
   const headerProps = {
     ownerName,
@@ -415,9 +365,8 @@ export default function PlaylistDetailPage() {
       ),
     shuffled,
     menu: actions.menu,
-    /* The count is the rows on screen only once the read has answered; while it
-     * is pending the header keeps the playlist's standing total. `countTotal` is
-     * that total, narrowed to the filtered total when a chip is in force. */
+    /* The rows on screen once the read has answered, the standing total until
+     * then. */
     displayedCount: tracks.isSuccess ? tracks.tracks.length : undefined,
     countTotal: tracks.total ?? playlist.data?.trackCount,
     playbackFailed: failedStart !== null,
@@ -439,12 +388,8 @@ export default function PlaylistDetailPage() {
           {t('detail.back')}
         </Link>
         {/*
-         * The add control is a labelled button in the way-home row above the phone
-         * breakpoint and the floating action at it and below, where the row has no
-         * second end to hold it: it is the same control the library draws for the
-         * same reason, and one of the two is drawn at a time. It is present for the
-         * owner and a write collaborator and absent for a read one, the screen's
-         * own rule for every control it does not offer a refusal through.
+         * The labelled button above the phone breakpoint, the floating action
+         * below it, one at a time; absent for a reader, like any control.
          */}
         {canWrite && !isMobile ? (
           <button
@@ -608,10 +553,8 @@ export default function PlaylistDetailPage() {
                 : tracks.tracks
               ).map(association => {
                 /*
-                 * `playing` is only read by a current row, so a non-current row
-                 * is told `false` rather than the queue's state: the global
-                 * `isPlaying` would change every row's props on a play or a
-                 * pause and re-render the whole list.
+                 * A non-current row is told `playing: false`; the global
+                 * `isPlaying` would re-render every row on a play or a pause.
                  */
                 const isCurrent = association.track.id === currentId;
 

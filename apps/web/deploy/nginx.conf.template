@@ -1,14 +1,6 @@
-# The single public origin. It serves the built SPA and proxies the API to the
-# server, so the browser sees one origin and no CORS is needed. The upstream is
-# `WEB_UPSTREAM`: `server:8080` in the dev stack, where they are separate Compose
-# services, and `127.0.0.1:8081` in the production pod, where the two containers
-# share a network namespace and only nginx is reachable from the edge. Production
-# publishes no host port; the edge attaches to this container.
-#
-# A template, not a finished config: the nginx entrypoint runs envsubst over it at
-# container start, which is how the edge assertion is read from the environment
-# rather than committed. Only variables present in the environment are substituted,
-# so nginx's own `$host` and friends are left alone.
+# The single public origin: the SPA and an API proxy to ${WEB_UPSTREAM}, so the
+# browser sees one origin and CORS never applies. An envsubst template; the
+# production pod publishes no host port and the edge attaches to this container.
 server {
     listen 8080;
     server_name _;
@@ -23,9 +15,8 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 
-    # The secret assertion the server requires so it can tell the edge apart from a
-    # direct caller. Set EDGE_ASSERTION to the same value the server carries. The
-    # location blocks below inherit this, the live stream included.
+    # The secret assertion the server requires to tell the edge from a direct
+    # caller. Must match the server's EDGE_ASSERTION; locations inherit it.
     proxy_set_header X-PlayLiberty-Edge "${EDGE_ASSERTION}";
 
     # The security headers every response carries. A location that adds its own
@@ -36,10 +27,8 @@ server {
         proxy_pass http://${WEB_UPSTREAM};
     }
 
-    # The live event stream never ends, so its response is not buffered and its
-    # read timeout outlasts the heartbeat. Every other API response keeps nginx's
-    # defaults, which is why this is its own location rather than a setting on
-    # `/api/`.
+    # The live stream never ends: no buffering, a read timeout past the
+    # heartbeat. Every other API response keeps nginx's defaults.
     location = /api/v1/events {
         proxy_pass http://${WEB_UPSTREAM};
         proxy_buffering off;
@@ -65,8 +54,7 @@ server {
         include /etc/nginx/snippets/security-headers.conf;
     }
 
-    # Client routes fall back to the shell. /api and /healthz never reach here,
-    # because each has its own location above.
+    # Client routes fall back to the shell; /api and /healthz have their own.
     location / {
         try_files $uri $uri/ /index.html;
     }

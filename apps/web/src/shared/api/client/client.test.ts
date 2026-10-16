@@ -8,11 +8,9 @@ import { server } from '../../../testing/mocks/server';
 import { ApiError, apiGet } from './client';
 
 /*
- * The re-authentication guard, which is the client half of the edge's session.
- * A `401` means the edge must re-run its flow, which only a top-level navigation
- * can do; a second refusal in the same tab must not navigate again, or a broken
- * edge becomes a reload loop with no exit. The tab's record lives in session
- * storage, so it survives the navigation the first refusal causes.
+ * The re-auth guard. A `401` needs a top-level navigation so the edge can
+ * re-run its flow; a second refusal in the tab must not navigate again, or it
+ * loops. The tab's record is in session storage, so it survives navigation.
  */
 
 const RE_AUTH_ATTEMPT_KEY = 'playliberty.re-auth-attempt';

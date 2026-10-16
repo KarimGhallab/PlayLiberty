@@ -50,21 +50,8 @@ afterEach(async () => {
   context = undefined;
 });
 
-/*
- * The statements a piece of work causes the driver to prepare.
- *
- * There is no query counter in this harness and better-sqlite3 v13 has no
- * db.trace, so the seam is sqlite.prepare, which is the one method drizzle
- * reaches the database through. It is patched on the instance for the duration
- * and restored by stop(), and it is a test-only seam: nothing in the server
- * knows it exists.
- *
- * It records rather than counts, because the caller wants different things from
- * it. A total says whether the work grew with the page, which is the property
- * that matters and which no knowledge of the SQL is needed for. A filter over
- * the recorded statements says what shape the queries took, which is worth
- * pinning separately and is worth naming in the test that does it.
- */
+/* The statements a piece of work makes the driver prepare, recorded rather than
+ * counted: a total shows whether the page grew, a filter the query shape. */
 function recordStatements(database: DatabaseHandle): {
   statements: string[];
   stop(): void;
@@ -88,11 +75,8 @@ function recordStatements(database: DatabaseHandle): {
   };
 }
 
-/*
- * Associations are created through the service rather than by inserting rows,
- * because that is the only path that maintains the stored count. A test that
- * inserted directly would see a count of 0 and prove nothing about the column.
- */
+/* Associations are created through the service, the only path that maintains
+ * the stored count; an inserted row would show 0 and prove nothing. */
 function addTrackAt(
   database: DatabaseHandle,
   playlistId: string,
@@ -118,8 +102,7 @@ function addTrack(
   addTrackAt(database, playlistId, trackId, 0);
 }
 
-/* What the associations table actually holds, so a stored count can be held
- * against it. */
+/* What the associations table holds, so a stored count can be checked. */
 function countAssociations(
   database: DatabaseHandle,
   playlistId: string
@@ -217,8 +200,8 @@ function hasSuppression(playlistId: string, videoId: string): boolean {
   );
 }
 
-/* The pin rows one playlist holds, so a cascade or a second pin can be held
- * against the table rather than inferred from an answer. */
+/* The pin rows one playlist holds, so a cascade or a second pin is held against
+ * the table. */
 function pinCount(playlistId: string): number {
   if (context === undefined) {
     throw new Error('the test context is not created');
@@ -366,7 +349,7 @@ describe('GET /playlists', () => {
     expect(response.statusCode).toBe(200);
     const page = PageSchema.parse(response.json());
     expect(page.items).toHaveLength(6);
-    // The two tracks are on "Playlist 0", which sorts first, so the 2 lands first.
+    // Both tracks are on "Playlist 0", which sorts first, so the 2 lands first.
     expect(page.items.map(item => item.trackCount)).toEqual([2, 0, 0, 0, 0, 0]);
   });
 
@@ -410,7 +393,7 @@ describe('GET /playlists', () => {
     );
 
     /* One row at a time, so a count that followed the page would come up short.
-     * The name order is what decides the pages: "Mixed" before "Whole". */
+     * The name order decides the pages: "Mixed" before "Whole". */
     const secondPage = PageSchema.parse(
       (
         await get('/api/v1/playlists?limit=1&offset=1', owner.pangolinUserId)
@@ -442,7 +425,7 @@ describe('GET /playlists', () => {
       failed: 1,
       unavailable: 0
     });
-    /* The five buckets are the playlist's own count, which is the mark's sum. */
+    /* The five buckets are the playlist's own count, the mark's sum. */
     expect(
       Object.values(listed?.counts ?? {}).reduce((sum, count) => sum + count, 0)
     ).toBe(listed?.trackCount);
@@ -451,10 +434,8 @@ describe('GET /playlists', () => {
   it('paginates with a stable order and a total that ignores the page', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    /*
-     * Seeded against the name order, so a page that came back in insertion order
-     * would fail here rather than pass for the wrong reason.
-     */
+    /* Seeded against the name order, so a page that came back in insertion
+     * order would fail here rather than pass for the wrong reason. */
     for (const [index, name] of ['Charlie', 'Alpha', 'Bravo'].entries()) {
       seedPlaylist(context.database, owner.accountId, {
         name,
@@ -498,11 +479,8 @@ describe('GET /playlists', () => {
       name: 'Antelope',
       createdAt: '2026-09-03T10:00:00.000Z'
     });
-    /*
-     * Night Drive was pinned most recently, and Zebra was created most recently, so
-     * a list in either of those orders would fail here: both groups are in name
-     * order, the pins first.
-     */
+    /* Night Drive was pinned most recently and Zebra created most recently, so
+     * either order fails: both groups are in name order, the pins first. */
     seedPin(context.database, owner.accountId, pinnedEarlier.playlistId, {
       pinnedAt: '2026-10-01T10:00:00.000Z'
     });
@@ -521,7 +499,7 @@ describe('GET /playlists', () => {
       'Zebra'
     ]);
     /* The flag rides on every item, pinned or not, so the client groups on it
-     * rather than sorting for itself. */
+     * rather than sorting. */
     expect(page.items.map(item => item.pinned)).toEqual([
       true,
       true,
@@ -742,8 +720,7 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // The pair that is false and false: this playlist has no shares, so it is
-    // the owner's alone.
+    // No shares: this playlist is the owner's alone.
     expect(playlist.access).toBe('owner');
     expect(playlist.hasShares).toBe(false);
   });
@@ -763,9 +740,8 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // owner and shared is the pair the header draws as a padlock and an arrow,
-    // so it is the one that has to be reachable and distinguishable from owner
-    // and not shared.
+    // The header's padlock-and-arrow pair: reachable and distinct from
+    // owner-and-not-shared.
     expect(playlist.access).toBe('owner');
     expect(playlist.hasShares).toBe(true);
   });
@@ -790,10 +766,8 @@ describe("the requesting account's access to a playlist", () => {
         ).json()
       );
 
-      // A playlist a collaborator holds a share on is shared by definition, so
-      // hasShares is true for them too and carries no new information. access is
-      // the field that has to distinguish the two levels, because the overflow
-      // menu differs: a write collaborator may sync and a read one may not.
+      // A playlist a collaborator holds is shared by definition, so hasShares
+      // adds nothing; access distinguishes the two levels.
       expect(playlist.access).toBe(level);
       expect(playlist.access).not.toBe('owner');
       expect(playlist.hasShares).toBe(true);
@@ -820,21 +794,19 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // Same playlist, same body, two different answers, which is the whole reason
-    // access is a property of the request rather than of the row.
+    // Same playlist and body, two answers: access is a property of the request,
+    // not of the row.
     expect(asOwner.id).toBe(asCollaborator.id);
     expect(asOwner.access).toBe('owner');
     expect(asCollaborator.access).toBe(ShareLevel.Write);
-    // And hasShares is the one that does not change with who is asking.
+    // And hasShares is the one that does not change with the asker.
     expect(asOwner.hasShares).toBe(asCollaborator.hasShares);
   });
 
   it('lists an owned playlist and a shared one with different access in one page', async () => {
     context = await createTestContext();
-    // One account, holding one playlist of its own and a share on somebody
-    // else's. A page where the reader owns nothing would be all collaborator
-    // rows, and a page where nobody is a collaborator would be all owner rows;
-    // only a page with both can catch access being hardcoded to either.
+    // One account owning one playlist and holding a share on another: only a
+    // page with both can catch access hardcoded to either.
     const reader = seedAccount(context.database);
     const other = seedAccount(context.database);
     seedPlaylist(context.database, reader.accountId, {
@@ -857,20 +829,14 @@ describe("the requesting account's access to a playlist", () => {
       (await get('/api/v1/playlists', reader.pangolinUserId)).json()
     );
 
-    // This is the assertion that stops access being hardcoded to owner on the
-    // list route. The library is not owner-scoped: visibleTo returns owned or
-    // shared, so a page can hold both kinds of row and the field has to differ
-    // between them.
+    // This stops access being hardcoded to owner on the list route: visibleTo
+    // returns owned or shared, so a page holds both.
     expect(page.items.map(item => [item.name, item.access])).toEqual([
       ['Mine', 'owner'],
       ['Theirs', ShareLevel.Read]
     ]);
-    // And the two fields are not the same fact wearing two names. The reader
-    // holds a share on Theirs and none on Mine, so access differs between the
-    // two rows while hasShares is true for one and false for the other. A field
-    // derived from the requester's own share would be true for both, and a field
-    // derived from access alone could not be false for a playlist the reader
-    // owns.
+    // The two fields are not one fact twice: access differs between the rows
+    // while hasShares is true for one and false for the other.
     expect(page.items.map(item => item.hasShares)).toEqual([false, true]);
   });
 
@@ -888,8 +854,8 @@ describe("the requesting account's access to a playlist", () => {
     expect(response.statusCode).toBe(404);
     const body = response.json();
     expect(body).toMatchObject({ code: 'playlist_not_found' });
-    // The disclosure is that the playlist is not there. Naming whether it is
-    // shared, or who holds it, in the body would confirm it exists.
+    // The disclosure is that the playlist is not there; naming whether it is
+    // shared, or who holds it, would confirm it exists.
     expect(JSON.stringify(body)).not.toContain('access');
     expect(JSON.stringify(body)).not.toContain('hasShares');
   });
@@ -900,9 +866,8 @@ describe("the requesting account's access to a playlist", () => {
     seedPlaylist(context.database, owner.accountId, { name: 'Private' });
     const stranger = seedAccount(context.database);
 
-    // The list route has no 404 to give: a page simply does not contain it. The
-    // pair of routes is asserted together because only one of them can be a 404
-    // and the disclosure property is that neither reveals the playlist.
+    // The list route has no 404, so the two routes are asserted together:
+    // neither may reveal the playlist.
     const page = PageSchema.parse(
       (await get('/api/v1/playlists', stranger.pangolinUserId)).json()
     );
@@ -935,12 +900,8 @@ describe("the requesting account's access to a playlist", () => {
     expect(oneRow.items).toHaveLength(1);
     expect(sixRows.items).toHaveLength(6);
 
-    // This is the whole of "no N+1", and it is asserted without reading a single
-    // statement of SQL. A per-row lookup for either new fact is one more
-    // statement per playlist, so a six-row page would prepare six more and this
-    // would fail with 3 against 8. It also catches a lookup added for a field
-    // nobody has asked for yet, which a test that only counted share statements
-    // would not.
+    // The whole of "no N+1", asserted without reading SQL: a per-row lookup
+    // adds a statement per playlist, so a six-row page fails.
     expect(recordingSixRows.statements.length).toBe(
       recordingOneRow.statements.length
     );
@@ -951,12 +912,8 @@ describe("the requesting account's access to a playlist", () => {
     const owner = seedAccount(context.database);
     seedPlaylist(context.database, owner.accountId);
 
-    // This test asserts the shape of the SQL, and says so in its name, because
-    // the property test above would also pass on an implementation that got
-    // has-shares right by some other route. The pattern is matched against the
-    // whole statement: the page query and the count query each contain
-    // 'from "share"' inside their visibility subquery, and only this one is the
-    // page-level lookup.
+    // Asserts the SQL shape: the page query and the count query
+    // each contain 'from "share"', and only the former is the page lookup.
     const recording = recordStatements(context.database);
     await get('/api/v1/playlists', owner.pangolinUserId);
     recording.stop();
@@ -1109,8 +1066,8 @@ describe('GET /playlists/:id/tracks', () => {
       AssociationOrigin.Remote,
       AssociationOrigin.Manual
     ]);
-    /* The recorded policy crosses the wire on the track, so a client can show why
-     * a track is full length. */
+    /* The recorded policy crosses the wire, so a client can show why a track is
+     * full length. */
     expect(page.items[0]?.track.skipNonMusic).toBe(false);
     expect(page.items[1]?.track.skipNonMusic).toBe(true);
   });
@@ -1285,10 +1242,8 @@ describe('GET /playlists/:id/tracks', () => {
     await get(`/api/v1/playlists/${playlistId}/tracks`, owner.pangolinUserId);
     recording.stop();
 
-    // The route reads state and writes none. The identity hook upserts the
-    // account on every request, so the claim is about the playlist's own tables:
-    // no insert, update or delete touches the playlist, its associations or its
-    // tracks, and the associations are exactly where they were.
+    // The route reads state and writes none: the identity hook upserts the
+    // account, but nothing touches the playlist's own tables.
     const writes = recording.statements.filter(
       statement =>
         /^\s*(insert|update|delete)\b/i.test(statement) &&
@@ -1491,8 +1446,8 @@ describe('GET /playlists/:id/tracks', () => {
       ).json()
     );
 
-    // Not truncated here: the row is where a long reason is bounded, and this
-    // route returns what the download wrote.
+    // Not truncated here: the row bounds a long reason, and this route returns
+    // what the download wrote.
     expect(page.items[0]?.track.failureReason).toBe(reason);
   });
 
@@ -1524,11 +1479,8 @@ describe('GET /playlists/:id/tracks', () => {
   });
 });
 
-/*
- * The state filter and the counts. The filter is a query parameter rather than a
- * client-side narrowing, so the page and its total follow it; the counts never
- * do, because the point of a count is what is available to filter to.
- */
+/* The state filter is a query parameter, so it narrows the page and its total,
+ * never the counts: a count is what is available to filter to. */
 describe('the state filter and the counts', () => {
   it('narrows the page and its total to the state asked for', async () => {
     context = await createTestContext();
@@ -1556,7 +1508,7 @@ describe('the state filter and the counts', () => {
       TrackFileStatus.Failed
     ]);
     // The total is the filtered total, so the paging walk stops at the rows the
-    // filter kept rather than walking the whole playlist.
+    // filter kept.
     expect(page.total).toBe(1);
   });
 
@@ -1643,8 +1595,8 @@ describe('the state filter and the counts', () => {
     };
 
     expect(unfiltered.counts).toEqual(counts);
-    // The same counts under the filter, because a count is what is available to
-    // filter to and not the rows the filter kept.
+    // Same counts under the filter: a count is what is available to filter to,
+    // not the rows kept.
     expect(filtered.counts).toEqual(counts);
     expect(unfiltered.total).toBe(3);
     expect(filtered.total).toBe(1);
@@ -1673,7 +1625,7 @@ describe('the state filter and the counts', () => {
       ).json()
     );
 
-    // The source status is an overlay and not a bucket: the five counts are file
+    // The source status is an overlay, not a bucket: the five counts are file
     // states, so a removed-but-stored track is a stored track here.
     expect(page.counts.stored).toBe(1);
     expect(page.counts.unavailable).toBe(0);
@@ -1806,10 +1758,8 @@ describe('GET /playlists/:id/queue', () => {
 });
 
 /*
- * The order a playlist's tracks are read in. The dates are explicit, because two
- * associations added in one instant share a timestamp and the tiebreak is the
- * playlist's own position; a fixture that let the column stamp them would make
- * the date sort a race.
+ * The order a playlist's tracks are read in: the dates are explicit, so two
+ * added in one instant share a timestamp and position is the tiebreak.
  */
 describe("the order a playlist's tracks are read in", () => {
   const EARLY = '2026-01-01T00:00:00.000Z';
@@ -1824,7 +1774,7 @@ describe("the order a playlist's tracks are read in", () => {
     const { trackId: second } = seedTrack(database);
     const { trackId: third } = seedTrack(database);
 
-    // Inserted out of position order, so insertion order would fail a date sort.
+    // Inserted out of position order, so insertion order fails a date sort.
     associate(database, playlistId, third, { position: 3, addedAt: MIDDLE });
     associate(database, playlistId, first, { position: 0, addedAt: LATE });
     associate(database, playlistId, second, { position: 1, addedAt: EARLY });
@@ -2385,9 +2335,7 @@ describe('PATCH /playlists/:id/sort', () => {
 
 /*
  * The pin is the account's own placement, so the check is the read need: a read
- * collaborator may pin a playlist it can only read, and one account's pin never
- * moves another account's gallery. The route answers the updated playlist, so
- * every assertion reads the flag the write just wrote.
+ * collaborator may pin, and one account's pin never moves another's gallery.
  */
 describe('PATCH /playlists/:id/pin', () => {
   it('pins for the account and returns the playlist flagged', async () => {
@@ -2448,7 +2396,7 @@ describe('PATCH /playlists/:id/pin', () => {
     );
 
     expect(response.statusCode).toBe(200);
-    // The pair is the key, so the second pin is the same row rather than a new one.
+    // The pair is the key, so a repeat pin is the same row, not a new one.
     expect(pinCount(playlistId)).toBe(1);
   });
 
@@ -2560,8 +2508,8 @@ describe('PATCH /playlists/:id/pin', () => {
       ['Shared', true]
     ]);
 
-    /* The owner's gallery is exactly as it was: the same name order and nothing
-     * pinned, which is the whole reason the row is per account. */
+    /* The owner's gallery is unchanged: the same name order and nothing pinned,
+     * which is why the row is per account. */
     const ownerPage = PageSchema.parse(
       (await get('/api/v1/playlists', owner.pangolinUserId)).json()
     );
@@ -2687,8 +2635,8 @@ describe('DELETE /playlists/:id', () => {
 
     await del(`/api/v1/playlists/${playlistId}`, owner.pangolinUserId);
 
-    // The playlist is gone; the file and the now-orphan track row are not, so the
-    // weekly prune is what reclaims the disk.
+    // The playlist is gone; the file and the now-orphan track row are not, so
+    // the weekly prune is what reclaims the disk.
     await expect(readFile(storedPath, 'utf8')).resolves.toBe('stored-audio');
     expect(selectTrack(trackId)).toBeDefined();
   });

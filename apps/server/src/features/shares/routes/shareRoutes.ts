@@ -119,11 +119,8 @@ export function registerShareRoutes(
         return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
       }
 
-      /*
-       * The revoked account is told the playlist is gone, so a screen open on it
-       * reads as not-found rather than as a fault; the owner and the accounts
-       * that remain hear the change, which is the audience read after the delete.
-       */
+      /* The revoked account is told the playlist is gone, so its screen reads
+       * not-found; the remaining audience hears the change. */
       audit(request.log, {
         action: 'share_revoked',
         outcome: 'allowed',

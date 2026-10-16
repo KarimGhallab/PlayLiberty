@@ -8,11 +8,8 @@ import styles from './Dialog/Dialog.module.scss';
 
 /*
  * `RenamePlaylistInputSchema` is the client's own half of the check: an empty or
- * over-long name never leaves the browser.
- *
- * `problem` is the server's `detail`, passed down from the mutation. A refusal
- * and the schema's own message share one slot, because a person sees one field
- * and one thing wrong with it.
+ * over-long name never leaves the browser. `problem` and the schema's message
+ * share one slot, since a person sees one field and one thing wrong.
  */
 
 interface RenamePlaylistDialogProps {
@@ -39,11 +36,8 @@ export default function RenamePlaylistDialog({
   const [name, setName] = useState(currentName);
   const [invalid, setInvalid] = useState<string | null>(null);
 
-  /*
-   * A cancelled edit must not linger, so the field resets to the current name
-   * each time the dialog opens. The value arrives selected, so a person can type
-   * over it or adjust it.
-   */
+  /* A cancelled edit must not linger, so the field resets to the current name
+   * on each open; the value arrives selected, so a person can type over it. */
   const [wasOpen, setWasOpen] = useState(open);
 
   if (open !== wasOpen) {

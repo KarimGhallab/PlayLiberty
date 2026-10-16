@@ -10,13 +10,9 @@ import { accounts, shares } from '../../platform/database/schema.js';
 import { toAccountSummary } from '../accounts/accountService.js';
 
 /*
- * Sharing a playlist. A share is a grant of access, so every route here is
- * owner-only: an account that could grant access would be an owner by definition,
- * and a write collaborator allowed to share would be a second owner wearing a
- * collaborator's label. The level is the share-level enum's own two members and
- * nothing else, and what each one means is enforced by the access rules the rest
- * of the app already asks (a read share reads and plays, a write share also adds,
- * removes, retries and syncs).
+ * Sharing is owner-only: a share grants access, so a collaborator allowed to
+ * share would be a second owner. The level is the enum's two members; what each
+ * means is enforced by the access rules the rest of the app already asks.
  */
 
 function toShareView(share: ShareRow, account: AccountRow): Share {
@@ -28,12 +24,8 @@ function toShareView(share: ShareRow, account: AccountRow): Share {
   };
 }
 
-/*
- * The owner's view of who holds a playlist. A playlist the caller does not own,
- * and one that does not exist, are the same null, so the route confirms neither.
- * Ordered by display name with the rowid tiebreak for the same reason the account
- * directory carries one: two accounts can share a name.
- */
+/* The owner's view of who holds a playlist; not-owner and missing are the same
+ * null. Ordered by display name with a rowid tiebreak for equal names. */
 export function listSharesForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -72,15 +64,8 @@ export enum ShareRevokeOutcome {
   PlaylistNotFound = 'playlist_not_found'
 }
 
-/*
- * Granting or changing a share. It is an upsert, so a second grant changes the
- * level on the one share the unique index on playlist and account already defines
- * rather than adding a second row; the created time is the first grant's and is
- * left alone. A share to the owner is refused because it would be a second path to
- * access the owner already has, and a share to an account that does not exist is
- * refused so a mistyped choice is not lost silently. A playlist the caller does
- * not own, and one that does not exist, are the same not-found.
- */
+/* An upsert on the (playlist, account) index: a regrant changes the level; the
+ * first created time stays. Every other refusal is the same not-found. */
 export function grantShareForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -123,16 +108,8 @@ export function grantShareForAccount(
   return { outcome: GrantShareOutcome.Ok, share: toShareView(share, target) };
 }
 
-/*
- * Taking a share back. It is owner-only like every other route here, so a
- * collaborator and a stranger get the same not-found. The delete is idempotent: a
- * share that is not there, including one aimed at an account that does not exist,
- * leaves the playlist unchanged and still succeeds, because the end state it asks
- * for already holds, which is what the user chose over a 404. No check that the
- * target account exists is made, because the account id is only ever a row to
- * delete and a share's absence is the same answer whether the account was ever
- * there.
- */
+/* A collaborator and a stranger get one not-found. The delete is idempotent, so
+ * an absent share, even for an unknown account, still succeeds. */
 export function revokeShareForAccount(
   database: DatabaseHandle,
   playlistId: string,

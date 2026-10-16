@@ -26,12 +26,8 @@ export const AccountSchema = z.object({
   role: z.enum(UserRole)
 });
 
-/*
- * The narrow view of an account a picker is drawn from: who they are, and nothing
- * about how to reach them or what they may do. The wider AccountSchema is the
- * caller's own view, served by GET /me, and reusing it in the directory would hand
- * every account in the household every other account's email address and role.
- */
+/* The picker's narrow view: who they are, without the email and role that
+ * AccountSchema would hand every account in the household. */
 export const AccountSummarySchema = z.object({
   id: identifier,
   displayName: z.string(),
@@ -53,15 +49,8 @@ export const TrackSchema = z.object({
   updatedAt: isoDateTime
 });
 
-/*
- * Three kinds of answer and not a fourth: a playlist the account cannot see is a
- * 404, so there is no "none" to carry here.
- *
- * `read` and `write` are ShareLevel's own members rather than a fresh pair of
- * strings, so a new level of sharing is automatically a new level of access. The
- * server decides what a level means: `canWritePlaylist` admits the owner and a
- * write level, so a new level is read-only until it is named there too.
- */
+/* Three answers, not four: a playlist the account cannot see is a 404. `read`
+ * and `write` are ShareLevel's own members, so a new level is a new access. */
 export const PlaylistAccessSchema = z.union([
   z.literal('owner'),
   z.enum(ShareLevel)
@@ -104,14 +93,8 @@ export const TrackFileStatusCountsSchema = z.object({
   [TrackFileStatus.Unavailable]: nonNegative
 });
 
-/*
- * A playlist as the library's list read carries it: the playlist every other
- * route answers with, plus the file-status counts of its associations. The counts
- * are what a gallery needs to say how much of a playlist is not on disk without
- * reading every playlist's tracks, and they sit on the item because a page of
- * playlists is what a gallery holds. They are over the whole playlist and never
- * the page's rows, and their sum is the playlist's own `trackCount`.
- */
+/* The playlist read plus file-status counts over the whole playlist, never the
+ * page's rows; their sum is `trackCount`. */
 export const PlaylistWithCountsSchema = PlaylistSchema.extend({
   counts: TrackFileStatusCountsSchema
 });
@@ -152,18 +135,14 @@ export const ProblemSchema = z.object({
   status: z.number().int(),
   code: z.string(),
   detail: z.string().optional(),
-  /* The values the client interpolates into the sentence for a code whose copy
-   * varies, e.g. the `playlist_not_found` reason. The client owns the words, so
-   * the server sends the parameters rather than a second English sentence. */
+  /* The values the client interpolates into a sentence whose copy varies, e.g.
+   * the `playlist_not_found` reason. The client owns the words. */
   params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   instance: z.string().optional()
 });
 
-/*
- * The live stream's payload. A discriminated union on `type`, so a new event
- * kind is a compile error at every handler that switches on it rather than a
- * silent drop, and the server and the client parse the same schema.
- */
+/* A discriminated union on `type`, so a new event kind is a compile error at
+ * every handler rather than a silent drop. */
 export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(LiveEventType.Ready) }),
   z.object({

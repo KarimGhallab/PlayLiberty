@@ -3,16 +3,9 @@ import type { PlaylistTrack } from '@playliberty/contracts';
 import type { PlayerTrack } from '../types';
 
 /*
- * The playlist's rows in the order the queue plays them.
- *
- * The queue carries only the tracks that can play, while the list draws every
- * association so a track that is missing or still downloading stays answerable.
- * A row the queue carries opens a group at its own place in the queue, and a row
- * it does not carry joins the group opened before it, which keeps it inside the
- * neighbourhood it has in the playlist's own order rather than relegating it to
- * the end. A row the queue does not contain is either not stored yet or has left
- * the playlist since the queue was built; either way it is not somewhere the
- * queue can put it, so the playlist's order is the only answer left.
+ * The playlist's rows in queue order. A row the queue carries opens a group at
+ * its own place; a row it does not carry joins the group opened before it, so
+ * it stays in its playlist neighbourhood rather than at the end.
  */
 export function orderTracksByQueue(
   tracks: readonly PlaylistTrack[],

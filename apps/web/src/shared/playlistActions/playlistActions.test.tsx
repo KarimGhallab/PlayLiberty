@@ -16,9 +16,9 @@ import type { PlaylistActionsOptions } from './playlistActions';
 import { canWritePlaylist, usePlaylistActions } from './playlistActions';
 
 /*
- * The rule under test is which of the playlist actions an account may perform, by
- * its access. The dialogs and the mutations are the hook's implementation, not
- * the seam this test crosses.
+ * The rule under test is which actions an account may perform, by its access;
+ * the dialogs and mutations are the hook's implementation, not this test's
+ * seam.
  */
 
 function playlist(overrides: Partial<Playlist> = {}): Playlist {
@@ -157,9 +157,8 @@ describe('usePlaylistActions', () => {
 });
 
 /*
- * The predicate the menu's gating and the detail's writable set both consume.
- * It is the one place `owner || write` is written, so it is tested on its own
- * rather than only through the hook.
+ * The one place `owner || write` is written, consumed by the menu and the
+ * detail, so it is tested on its own rather than only through the hook.
  */
 describe('canWritePlaylist', () => {
   it('is true for the owner and a write collaborator', () => {

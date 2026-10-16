@@ -4,10 +4,9 @@ import type {
 } from '../shared/api/useEventStream/useEventStream';
 
 /*
- * A stand-in for `EventSource`, which jsdom does not have and MSW cannot fake. A
- * test provides it through `EventStreamContext` and drives frames by hand, so it
- * asserts the invalidation a frame causes rather than a socket. A closed
- * connection is removed, so a frame after a reconnect reaches only the live one.
+ * A stand-in for `EventSource`, which jsdom lacks and MSW cannot fake: a test
+ * supplies it and drives frames by hand. A closed connection is removed, so a
+ * frame after a reconnect reaches only the live one.
  */
 export interface FakeEventStream {
   readonly factory: EventStreamFactory;
@@ -15,9 +14,7 @@ export interface FakeEventStream {
   readonly urls: string[];
   /** Deliver a message frame to every open connection. */
   emit(data: string): void;
-  /** Signal that every open connection opened. */
   open(): void;
-  /** Signal that every open connection errored. */
   error(): void;
   connectionCount(): number;
   closeCount(): number;

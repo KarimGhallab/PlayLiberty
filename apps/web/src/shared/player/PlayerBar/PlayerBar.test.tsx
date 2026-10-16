@@ -62,10 +62,8 @@ describe('PlayerBar', () => {
     expect(screen.getByText('3:00')).toBeInTheDocument();
   });
 
-  /*
-   * The rail is in the fixed bar and always visible, so it is not deferred; it
-   * only decodes off the main thread.
-   */
+  /* In the fixed, always-visible bar, so the artwork is not deferred: it only
+   * decodes off the main thread. */
   it('async-decodes the artwork without deferring it', () => {
     const withArt = {
       ...first,

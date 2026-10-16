@@ -6,9 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import Dialog from './Dialog';
 
 /*
- * The exit is a real 180ms wait and the dialog unmounts itself when it elapses.
- * Fake timers make that deterministic, so the closing tests advance the clock
- * rather than waiting on it.
+ * The exit is a real 180ms wait and the dialog unmounts itself when it elapses;
+ * fake timers make the closing tests advance the clock rather than wait.
  */
 function runExit(): void {
   act(() => {

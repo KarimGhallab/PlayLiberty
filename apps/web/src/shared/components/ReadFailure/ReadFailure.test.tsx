@@ -8,8 +8,7 @@ import ReadFailure from './ReadFailure';
 
 /*
  * The recovery surface's own contract: the fallback sentence when the error
- * carries no mapped sentence, and the one retry that names itself and locks
- * while it works. The mapping itself is the problem module's, tested there.
+ * carries no mapped sentence, and the one retry. The mapping is tested there.
  */
 
 const FALLBACK = 'Playlists could not be loaded.';
