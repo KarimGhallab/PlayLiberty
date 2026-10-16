@@ -40,8 +40,8 @@ import styles from './PlaylistHeader.module.scss';
  * offers no callback: the header is gated by what the caller can do rather than
  * by a level string it would have to learn. The overflow's items are not the
  * header's to decide: the actions module builds them by access and hands them in
- * as `menu`, so an owner gets the four it can act on, a writer the one it can, and
- * a reader an empty menu and no overflow.
+ * as `menu`, so an owner gets the five it can act on, a writer the pair it can,
+ * and a reader an empty menu and no overflow.
  *
  * `ownerName` is the resolved display name of a playlist that is not the
  * account's, and null when the directory does not carry the owner. It is drawn

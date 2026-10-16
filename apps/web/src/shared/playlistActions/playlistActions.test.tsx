@@ -16,9 +16,9 @@ import type { PlaylistActionsOptions } from './playlistActions';
 import { canWritePlaylist, usePlaylistActions } from './playlistActions';
 
 /*
- * The rule under test is which of the four playlist actions an account may
- * perform, by its access. The dialogs and the mutations are the hook's
- * implementation, not the seam this test crosses.
+ * The rule under test is which of the playlist actions an account may perform, by
+ * its access. The dialogs and the mutations are the hook's implementation, not
+ * the seam this test crosses.
  */
 
 function playlist(overrides: Partial<Playlist> = {}): Playlist {
@@ -60,24 +60,27 @@ function control(
   options: Partial<PlaylistActionsOptions> = {}
 ) {
   const defer = vi.fn();
+  const onPinRefused = vi.fn();
   const rendered = renderHook(
     () =>
       usePlaylistActions('playlist-1', playlistValue, {
         defer,
         deleteMessage: 'library.deleteDeferred',
+        pin: { onRefused: onPinRefused },
         ...options
       }),
     { wrapper }
   );
 
-  return { ...rendered, defer };
+  return { ...rendered, defer, onPinRefused };
 }
 
 describe('usePlaylistActions', () => {
-  it('offers the owner the four actions, in order', () => {
+  it('offers the owner the five actions, with the pin first and the delete last', () => {
     const { result } = control(playlist());
 
     expect(result.current.menu.map(item => item.key)).toEqual([
+      'pin',
       'share',
       'rename',
       'sync',
@@ -86,11 +89,34 @@ describe('usePlaylistActions', () => {
     expect(result.current.canWrite).toBe(true);
   });
 
-  it('offers a write collaborator Sync now alone', () => {
+  it('offers a write collaborator the pin and Sync now', () => {
     const { result } = control(playlist({ access: ShareLevel.Write }));
 
-    expect(result.current.menu.map(item => item.key)).toEqual(['sync']);
+    expect(result.current.menu.map(item => item.key)).toEqual(['pin', 'sync']);
     expect(result.current.canWrite).toBe(true);
+  });
+
+  it('reads Pin on an unpinned playlist and Unpin on a pinned one', () => {
+    const unpinned = control(playlist({ pinned: false }));
+    const pinned = control(playlist({ pinned: true }));
+
+    expect(
+      unpinned.result.current.menu.find(item => item.key === 'pin')?.label
+    ).toBe('header.pin');
+    expect(
+      pinned.result.current.menu.find(item => item.key === 'pin')?.label
+    ).toBe('header.unpin');
+  });
+
+  it('leaves the pin off a surface that does not offer one', () => {
+    const { result } = control(playlist(), { pin: undefined });
+
+    expect(result.current.menu.map(item => item.key)).toEqual([
+      'share',
+      'rename',
+      'sync',
+      'delete'
+    ]);
   });
 
   it('offers a read collaborator nothing and no overflow', () => {

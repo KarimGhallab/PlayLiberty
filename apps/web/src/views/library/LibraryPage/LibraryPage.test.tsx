@@ -6,7 +6,7 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -102,6 +102,32 @@ function ownedItem(id: string, name: string) {
     counts: { ...EMPTY_COUNTS, stored: 1 },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
+  };
+}
+
+/*
+ * The shared item the base handlers return, which is a read collaborator: it
+ * carries a share indicator and no overflow at all.
+ */
+function sharedItem() {
+  return {
+    id: 'playlist-2',
+    ownerAccountId: 'account-2',
+    name: 'Shared Mix',
+    coverTrackId: null,
+    provider: 'youtube',
+    sourcePlaylistId: 'PL-shared',
+    syncStatus: 'idle',
+    lastSyncedAt: '2026-09-28T12:00:00.000Z',
+    trackCount: 4,
+    skipNonMusic: true,
+    sort: 'playlist',
+    access: 'read',
+    hasShares: false,
+    pinned: false,
+    counts: { ...EMPTY_COUNTS, stored: 4 },
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-28T12:00:00.000Z'
   };
 }
 
@@ -208,6 +234,79 @@ function createRefused(): { requests: Request[] } {
   );
 
   return { requests };
+}
+
+/*
+ * A list read whose items are exactly what the test hands in, so a test can pin
+ * what it wants and order the rest.
+ */
+function pinnedRead(items: ReturnType<typeof ownedItem>[]): void {
+  server.use(
+    http.get('http://localhost:3000/api/v1/playlists', () =>
+      HttpResponse.json({
+        items,
+        total: items.length,
+        limit: 50,
+        offset: 0
+      })
+    )
+  );
+}
+
+/*
+ * A pin write the list read reflects, so the item the press lifted into the
+ * section stays there once the gallery is read again rather than snapping back.
+ */
+function pinSucceeds(): { bodies: { pinned: boolean }[] } {
+  const bodies: { pinned: boolean }[] = [];
+  let pinned = false;
+
+  server.use(
+    http.patch(
+      'http://localhost:3000/api/v1/playlists/playlist-1/pin',
+      async ({ request }) => {
+        const body = (await request.json()) as { pinned: boolean };
+        bodies.push(body);
+        pinned = body.pinned;
+
+        return HttpResponse.json({
+          ...ownedItem('playlist-1', 'Rain On The Window'),
+          pinned
+        });
+      }
+    ),
+    http.get('http://localhost:3000/api/v1/playlists', () =>
+      HttpResponse.json({
+        items: [
+          { ...ownedItem('playlist-1', 'Rain On The Window'), pinned },
+          sharedItem()
+        ],
+        total: 2,
+        limit: 50,
+        offset: 0
+      })
+    )
+  );
+
+  return { bodies };
+}
+
+/* A pin write the route refuses, so the optimistic lift must be undone. */
+function pinFails(): void {
+  server.use(
+    http.patch('http://localhost:3000/api/v1/playlists/playlist-1/pin', () =>
+      HttpResponse.json(
+        {
+          type: 'about:blank',
+          title: 'Internal Server Error',
+          status: 500,
+          code: 'internal_error',
+          detail: 'The pin could not be written.'
+        },
+        { status: 500 }
+      )
+    )
+  );
 }
 
 /*
@@ -359,7 +458,7 @@ describe('LibraryPage', () => {
     expect(screen.getAllByRole('img', { name: /not stored/ })).toHaveLength(2);
   });
 
-  it('offers the owner the four actions and the reader no overflow', async () => {
+  it('offers the owner the five actions and the reader no overflow', async () => {
     renderLibraryPage();
 
     await screen.findByText('Rain On The Window');
@@ -369,17 +468,136 @@ describe('LibraryPage', () => {
       name: 'More actions for Rain On The Window'
     });
     expect(menus).toHaveLength(1);
+    expect(
+      screen.queryByRole('button', { name: 'More actions for Shared Mix' })
+    ).not.toBeInTheDocument();
 
     fireEvent.click(menus[0]);
-    expect(screen.getByRole('menuitem', { name: 'Share' })).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitem', { name: 'Rename' })
+      screen.getAllByRole('menuitem').map(item => item.textContent)
+    ).toEqual(['Pin', 'Share', 'Rename', 'Sync now', 'Delete playlist']);
+  });
+
+  it('draws a flagged item in the named section above the list and not in the list below', async () => {
+    pinnedRead([
+      { ...ownedItem('playlist-1', 'Rain On The Window'), pinned: true },
+      sharedItem()
+    ]);
+    renderLibraryPage();
+
+    const section = await screen.findByRole('region', { name: 'Pinned' });
+
+    expect(
+      within(section).getByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+
+    /* Two lists: the section's own and the one below. The flagged item is in the
+     * first and not the second, which is the section's whole job. */
+    const lists = screen.getAllByRole('list');
+    expect(
+      within(lists[0]!).getByRole('link', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitem', { name: 'Sync now' })
-    ).toBeInTheDocument();
+      within(lists[1]!).queryByRole('link', { name: 'Rain On The Window' })
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole('menuitem', { name: 'Delete playlist' })
+      within(lists[1]!).getByRole('link', { name: 'Shared Mix' })
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the items below the section in the order the read returned', async () => {
+    pinnedRead([
+      { ...ownedItem('playlist-1', 'Pinned one'), pinned: true },
+      { ...ownedItem('playlist-2', 'Pinned two'), pinned: true },
+      ownedItem('playlist-3', 'Rest newer'),
+      ownedItem('playlist-4', 'Rest older')
+    ]);
+    renderLibraryPage();
+
+    await screen.findByRole('region', { name: 'Pinned' });
+
+    const lists = screen.getAllByRole('list');
+    const namesIn = (list: HTMLElement) =>
+      within(list)
+        .getAllByRole('link')
+        .map(link => link.textContent);
+
+    expect(namesIn(lists[0]!)).toEqual(['Pinned one', 'Pinned two']);
+    expect(namesIn(lists[1]!)).toEqual(['Rest newer', 'Rest older']);
+  });
+
+  it('draws no pinned section when the account has pinned nothing', async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    expect(
+      screen.queryByRole('region', { name: 'Pinned' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Pinned')).not.toBeInTheDocument();
+  });
+
+  it('reads Unpin in a pinned item’s menu', async () => {
+    pinnedRead([
+      { ...ownedItem('playlist-1', 'Rain On The Window'), pinned: true },
+      sharedItem()
+    ]);
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+
+    expect(screen.getByRole('menuitem', { name: 'Unpin' })).toBeInTheDocument();
+  });
+
+  it('pins from the menu, asking the server and lifting the item into the section', async () => {
+    const { bodies } = pinSucceeds();
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }));
+
+    const section = await screen.findByRole('region', { name: 'Pinned' });
+    expect(
+      within(section).getByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+
+    expect(bodies).toEqual([{ pinned: true }]);
+  });
+
+  it('puts a refused pin back and draws the notice', async () => {
+    pinFails();
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }));
+
+    expect(
+      await screen.findByText('The pin could not be changed.')
+    ).toBeInTheDocument();
+
+    /* The optimistic lift is undone: no section, and the item is back in the list. */
+    expect(
+      screen.queryByRole('region', { name: 'Pinned' })
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list')).getByRole('link', {
+        name: 'Rain On The Window'
+      })
     ).toBeInTheDocument();
   });
 

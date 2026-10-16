@@ -374,6 +374,35 @@ export const handlers = [
     }
   ),
   /*
+   * The pin write, which echoes the value it was sent so a test can read the
+   * optimistic result back from the server.
+   */
+  http.patch(
+    'http://localhost:3000/api/v1/playlists/playlist-1/pin',
+    async ({ request }) => {
+      const body = (await request.json()) as { pinned: boolean };
+
+      return HttpResponse.json({
+        id: 'playlist-1',
+        ownerAccountId: 'account-1',
+        name: 'Rain On The Window',
+        coverTrackId: null,
+        provider: 'youtube',
+        sourcePlaylistId: 'PL-demo',
+        syncStatus: 'idle',
+        lastSyncedAt: '2026-09-29T12:00:00.000Z',
+        trackCount: 3,
+        skipNonMusic: true,
+        sort: 'playlist',
+        access: 'owner',
+        hasShares: false,
+        pinned: body.pinned,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        updatedAt: '2026-09-29T12:00:00.000Z'
+      });
+    }
+  ),
+  /*
    * The batch add, one outcome per chosen playlist. The default fixture says the
    * first playlist took it; a test that needs a refusal overrides it per test.
    */

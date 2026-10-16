@@ -1,6 +1,7 @@
 import { IconPlus } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
+import type { PlaylistWithCounts } from '@playliberty/contracts';
 import type { Messages, Translator } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
@@ -87,6 +88,8 @@ export default function LibraryPage() {
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const docked = usePlayerStore(state => currentTrack(state) !== null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pinRefused, setPinRefused] = useState<Error | null>(null);
+  const pinnedHeadingId = useId();
 
   /*
    * The owner line needs the directory, and the directory is a second read that
@@ -98,7 +101,47 @@ export default function LibraryPage() {
 
   const refused = problemSentence(t, createPlaylist.error);
 
-  const isEmpty = playlists.isSuccess && playlists.data.items.length === 0;
+  const items = playlists.isSuccess ? playlists.data.items : [];
+
+  /*
+   * The gallery is two groups over one read: the items whose flag is set, in the
+   * server's own order, and the rest, which the read already ordered. The page
+   * filters and never sorts, so the section's order is the read's and the list
+   * below keeps the order it had.
+   */
+  const pinned = items.filter(playlist => playlist.pinned);
+  const rest = items.filter(playlist => !playlist.pinned);
+
+  const isEmpty = playlists.isSuccess && items.length === 0;
+
+  /*
+   * The pin's refusal withdraws itself on the same window the other notices use,
+   * so a failed change does not stand over the gallery once it is read.
+   */
+  useEffect(() => {
+    if (pinRefused === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setPinRefused(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [pinRefused]);
+
+  const renderItem = (playlist: PlaylistWithCounts) => (
+    <li key={playlist.id} className={styles.library__cell}>
+      <PlaylistItem
+        playlist={playlist}
+        ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
+        pending={deferred.pending?.id === playlist.id}
+        layout={isMobile ? 'card' : 'tile'}
+        defer={deferred.defer}
+        onPlay={() => playPlaylist(playlist)}
+        onShuffle={() => shufflePlaylist(playlist)}
+        onPinRefused={error => setPinRefused(error)}
+      />
+    </li>
+  );
 
   /*
    * The dialog reports the end of its exit, which is the moment to drop anything
@@ -146,28 +189,19 @@ export default function LibraryPage() {
           retrying={playlists.isFetching}
         />
       ) : null}
-      {playlists.isSuccess && playlists.data.items.length === 0 ? (
-        <EmptyGallery onAdd={() => setDialogOpen(true)} />
+      {isEmpty ? <EmptyGallery onAdd={() => setDialogOpen(true)} /> : null}
+      {playlists.isSuccess && pinned.length > 0 ? (
+        <section
+          className={styles.library__section}
+          aria-labelledby={pinnedHeadingId}>
+          <h2 id={pinnedHeadingId} className={styles.library__sectionTitle}>
+            {t('library.pinned')}
+          </h2>
+          <ul className={styles.library__grid}>{pinned.map(renderItem)}</ul>
+        </section>
       ) : null}
-      {playlists.isSuccess && playlists.data.items.length > 0 ? (
-        <ul className={styles.library__grid}>
-          {playlists.data.items.map(playlist => (
-            <li key={playlist.id} className={styles.library__cell}>
-              <PlaylistItem
-                playlist={playlist}
-                ownerName={ownerNameFrom(
-                  directoryItems,
-                  playlist.ownerAccountId
-                )}
-                pending={deferred.pending?.id === playlist.id}
-                layout={isMobile ? 'card' : 'tile'}
-                defer={deferred.defer}
-                onPlay={() => playPlaylist(playlist)}
-                onShuffle={() => shufflePlaylist(playlist)}
-              />
-            </li>
-          ))}
-        </ul>
+      {playlists.isSuccess && rest.length > 0 ? (
+        <ul className={styles.library__grid}>{rest.map(renderItem)}</ul>
       ) : null}
       {isEmpty || !isMobile ? null : (
         <FloatingAction
@@ -202,6 +236,13 @@ export default function LibraryPage() {
       {refusal === null ? null : (
         <NoticeToast
           {...refusalNotice(refusal, t)}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {pinRefused === null ? null : (
+        <NoticeToast
+          message={t('library.pinFailed')}
+          detail={problemSentence(t, pinRefused)}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

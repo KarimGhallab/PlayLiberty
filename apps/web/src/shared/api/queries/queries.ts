@@ -472,6 +472,52 @@ export function useUpdateSort(
 }
 
 /*
+ * Pinning a playlist into the account's own gallery, or taking it out again. The
+ * route answers the updated playlist, but the read that moved is the library's:
+ * the flag is on every item and the read's order is the section's, so the write
+ * flips the flag on the cached page and the page moves the item between its two
+ * groups. The flag is the only thing the client touches, because grouping on it
+ * is the client's whole part and the server owns the order; the gallery is then
+ * invalidated so the read settles that order. A failure puts the snapshot back,
+ * and the notice is the caller's. No event arrives for a pin, so this read is the
+ * only thing that carries the new placement.
+ */
+export function useUpdatePin(
+  playlistId: string
+): UseMutationResult<Playlist, Error, boolean> {
+  const queryClient = useQueryClient();
+  const key = ['playlists'];
+
+  return useMutation({
+    mutationFn: (pinned: boolean) =>
+      apiPatch(`/playlists/${playlistId}/pin`, { pinned }, PlaylistSchema),
+    onMutate: async (pinned: boolean) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<PlaylistPage>(key);
+
+      if (previous !== undefined) {
+        queryClient.setQueryData<PlaylistPage>(key, {
+          ...previous,
+          items: previous.items.map(item =>
+            item.id === playlistId ? { ...item, pinned } : item
+          )
+        });
+      }
+
+      return { previous };
+    },
+    onError: (_error, _pinned, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSuccess: () => {
+      cacheEffects.libraryChanged(queryClient);
+    }
+  });
+}
+
+/*
  * Deleting one playlist. The route answers `204`, so there is nothing to return;
  * the library is invalidated and the page navigates home on success, which the
  * caller owns because a component does not decide where a deletion lands.

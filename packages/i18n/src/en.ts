@@ -24,6 +24,8 @@ export const en = {
     add: 'Add a playlist',
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
+    pinned: 'Pinned',
+    pinFailed: 'The pin could not be changed.',
     notDownloaded: {
       one: '{count} track is not stored',
       other: '{count} tracks are not stored'
@@ -166,6 +168,8 @@ export const en = {
     private: 'Private playlist',
     share: 'Share',
     rename: 'Rename',
+    pin: 'Pin',
+    unpin: 'Unpin',
     syncNow: 'Sync now',
     delete: 'Delete playlist',
     play: 'Play this playlist',

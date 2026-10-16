@@ -27,6 +27,8 @@ export const fr: Messages = {
     add: 'Ajouter une playlist',
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
+    pinned: 'Épinglées',
+    pinFailed: "L'épingle n'a pas pu être modifiée.",
     notDownloaded: {
       one: "{count} piste n'est pas enregistrée",
       other: '{count} pistes ne sont pas enregistrées'
@@ -171,6 +173,8 @@ export const fr: Messages = {
     private: 'Playlist privée',
     share: 'Partager',
     rename: 'Renommer',
+    pin: 'Épingler',
+    unpin: 'Désépingler',
     syncNow: 'Synchroniser',
     delete: 'Supprimer la playlist',
     play: 'Lire cette playlist',

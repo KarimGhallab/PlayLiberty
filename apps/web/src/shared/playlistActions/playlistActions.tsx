@@ -1,5 +1,7 @@
 import {
   IconPencil,
+  IconPin,
+  IconPinnedOff,
   IconRotate,
   IconShare,
   IconTrash
@@ -15,7 +17,8 @@ import { problemSentence } from '../api/problem/problem';
 import {
   useDeletePlaylist,
   useRenamePlaylist,
-  useSyncPlaylist
+  useSyncPlaylist,
+  useUpdatePin
 } from '../api/queries/queries';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
@@ -23,9 +26,9 @@ import type { PendingAction } from '../components/useDeferredAction/useDeferredA
 
 /*
  * One module owns a playlist's actions: the owner/writer rule that decides which
- * of share, rename, sync and delete an account may perform, the menu the header
- * draws, and the effects behind each item. The library item and the detail page
- * hand a playlist in and take the menu and the dialogs back, so neither
+ * of pin, share, rename, sync and delete an account may perform, the menu the
+ * header draws, and the effects behind each item. The library item and the detail
+ * page hand a playlist in and take the menu and the dialogs back, so neither
  * re-derives the rule nor re-wires the effects.
  *
  * Two things stay with the consumer because they genuinely differ. The undo
@@ -40,7 +43,7 @@ import type { PendingAction } from '../components/useDeferredAction/useDeferredA
  */
 
 export interface PlaylistAction {
-  readonly key: 'share' | 'rename' | 'sync' | 'delete';
+  readonly key: 'pin' | 'share' | 'rename' | 'sync' | 'delete';
   readonly label: MessageKey<Messages>;
   readonly Icon: typeof IconShare;
   readonly onSelect: () => void;
@@ -55,6 +58,14 @@ export interface PlaylistActionsOptions {
   readonly deleteMessage: MessageKey<Messages>;
   /** Runs after the delete commits, for a consumer that must leave the route. */
   readonly onDeleted?: () => void;
+  /*
+   * The pin, which is the library's own action. Present puts Pin or Unpin on the
+   * menu and hands a failed write back to the surface, which owns the notice;
+   * absent, as on the detail, leaves the menu without it.
+   */
+  readonly pin?: {
+    readonly onRefused: (error: Error) => void;
+  };
 }
 
 export interface PlaylistActions {
@@ -91,6 +102,7 @@ export function usePlaylistActions(
   const sync = useSyncPlaylist(playlistId);
   const rename = useRenamePlaylist(playlistId);
   const remove = useDeletePlaylist(playlistId);
+  const pin = useUpdatePin(playlistId);
   const [renameOpen, setRenameOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -133,7 +145,36 @@ export function usePlaylistActions(
   };
 
   const menu: PlaylistAction[] = [];
+
+  /*
+   * The pin is on the two menus that exist, and never on a reader's: a reader
+   * gets no overflow at all and reaches the pin from the cover control instead.
+   * The item is one toggle: its label and glyph are the action, and the model's
+   * own key stays `pin` so the control that pressed it never moves.
+   */
+  const pinItem = (): PlaylistAction | null => {
+    if (playlist === undefined || options.pin === undefined) {
+      return null;
+    }
+
+    const refused = options.pin.onRefused;
+
+    return {
+      key: 'pin',
+      label: playlist.pinned ? 'header.unpin' : 'header.pin',
+      Icon: playlist.pinned ? IconPinnedOff : IconPin,
+      disabled: pin.isPending,
+      onSelect: () => pin.mutate(!playlist.pinned, { onError: refused })
+    };
+  };
+
+  const pinEntry = pinItem();
+
   if (access === 'owner') {
+    if (pinEntry !== null) {
+      menu.push(pinEntry);
+    }
+
     menu.push(
       {
         key: 'share',
@@ -155,6 +196,10 @@ export function usePlaylistActions(
       menu.push(del);
     }
   } else if (access === 'write') {
+    if (pinEntry !== null) {
+      menu.push(pinEntry);
+    }
+
     menu.push(syncItem());
   }
 

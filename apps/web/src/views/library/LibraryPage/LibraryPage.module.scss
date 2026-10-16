@@ -95,6 +95,20 @@
   &__cell {
     min-width: 0;
   }
+
+  /* The pinned section. It stands --space-7 from the list, and the page's own gap
+   * is --space-4, so this carries the difference rather than a second gap. */
+  &__section {
+    margin-block-end: calc(var(--space-7) - var(--space-4));
+  }
+
+  /* The section's own name above its first row, at the gallery's left edge. It is
+   * the section's accessible name and carries no count. */
+  &__section-title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+  }
 }
 
 /*
@@ -112,6 +126,12 @@
 
     &__title {
       font-size: var(--text-lg);
+    }
+
+    /* One step under the page title, which is --text-lg at this width, so the
+     * section does not read as a second screen title. */
+    &__section-title {
+      font-size: var(--text-md);
     }
 
     /* With the bar docked, the page has to hold both the 97px bar and the 56px

@@ -17,6 +17,7 @@ import {
   useRetryTrack,
   useRevokeShare,
   useSyncPlaylist,
+  useUpdatePin,
   useUpdateSkipNonMusic
 } from './queries';
 
@@ -111,6 +112,20 @@ describe('the mutation cache facts', () => {
 
     await act(async () => {
       result.current.mutate(false);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(facts.libraryChanged).toHaveBeenCalledWith(queryClient);
+  });
+
+  it('pinning a playlist refreshes the library', async () => {
+    const { queryClient, facts, wrapper } = setup();
+    const { result } = renderHook(() => useUpdatePin(PLAYLIST), { wrapper });
+
+    await act(async () => {
+      result.current.mutate(true);
     });
 
     await waitFor(() => {

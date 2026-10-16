@@ -1,54 +1,36 @@
 # 02: The pinned section and the pin in the item's menu
 
 **Blocked by:** [`01`](01-the-pin-on-a-playlist.md).
-**Status:** open
-**Labels:** `enhancement`, `ready-for-agent`
+**Status:** resolved
 
-## Objective
+## Outcome
 
-Pinning works from the item's actions menu, and the playlist leaves the gallery's list to appear in a named
-section above it. Unpinning puts it back. The section is not drawn at all when the account has pinned nothing,
-so an account that never pins sees exactly the gallery it has today.
+Implemented and verified. The gallery draws two lists over the one read: a labelled `<section>` holding the
+items whose `pinned` flag is set, and the existing `<ul>` holding the rest. Each group is its own list, so the
+grouping is real to a screen reader, and the heading is the section's accessible name through
+`aria-labelledby`. The page filters on the flag and never sorts, so the section's order is the read's and the
+list below keeps the order it had. The section carries no count, stands `--space-7` from the list, and is not
+drawn at all while nothing is pinned; the loading state is untouched.
 
-## Context
+`useUpdatePin` flips the flag on the cached gallery and restores the snapshot on a failure, then invalidates
+the gallery read so the read's own order settles. The page owns the notice: a failed pin draws
+`library.pinFailed` with the server's problem sentence under it, on the same self-withdrawing window the other
+notices use. There is no toast on success.
 
-Read [`13-pin-a-playlist`](../../specs/13-pin-a-playlist.md), and the library record's section on the pinned
-section and the pin on the cover, which owns the drawing and its reasons.
+`usePlaylistActions` owns the write, so the menu item and the cover control in `03` are two affordances over
+one action. Pin or Unpin is the menu's first item, gated to the two menus that exist, the owner's and a write
+collaborator's, and never a reader's, whose menu stays empty. The detail passes no pin, so its menu is
+unchanged. The copy is `library.pinned`, `library.pinFailed`, `header.pin`, `header.unpin`, with the French
+heading inflected (`Épinglées`, `Épingler`, `Désépingler`).
 
-`01` lands the read and the write: the gallery's read already returns pinned items first with the flag on each,
-so the page groups on the flag and never sorts. The module that owns a playlist's actions already owns their
-single owner and their write rule at the client, and the per-playlist settings are the precedent for a write
-that moves the value at once, puts it back on a failure, and draws the screen's notice.
+The mock handlers gained the pin write, and the design record's menu counts were corrected: the owner's
+overflow now holds five and a writer's Pin and Sync now.
 
-## Scope
+The tests: the library page suite proves the section above the list and the item's absence from it, the rest's
+order, the Pin and Unpin labels, the press's request body and the optimistic lift, and the rollback with the
+notice and no section; `playlistActions` proves the five-item owner menu, the two-item writer menu, the empty
+reader menu, the Pin/Unpin label and the detail's missing pin; `mutationInvalidation` proves the gallery
+invalidation.
 
-- **The gallery draws two lists.** A labelled section above the gallery's own list, holding the items whose
-  flag is set, and the existing list holding the rest. Each group is its own list, so the grouping is real to a
-  reader who cannot see it, and the heading is the section's accessible name.
-- **The heading is the section's name alone**, with no count, and the section stands the record's own distance
-  from the list rather than behind a rule.
-- **The section is withdrawn when nothing is pinned**, and the loading state is unchanged.
-- **The item's actions menu gains Pin and Unpin**, over the same owner that holds the rest of the actions,
-  rather than a second owner of the same write. A read collaborator's menu is still empty, which is the
-  record's rule and stays true; pinning reaches them through the cover control in `03`.
-- **The write moves the item at once and puts it back on a failure**, which draws the notice. There is no toast
-  on success: the item moving between the two groups is the whole answer.
-- **The acting client invalidates the gallery read**, because the read's order is what changed, and no event
-  arrives for a pin.
-- **Both catalogues gain the keys**: the section heading, the two menu labels, and the failure notice, with the
-  heading inflected for playlists in French.
-- **The mock handlers gain the pin write**, and every playlist literal in the web tests gains the required flag.
-
-## Out of scope
-
-The cover control and its reveal (`03`), the specimen and the glyphs (`04`), the browser journey (`05`), and
-the pin on the card arrangement.
-
-## Verification
-
-- `pnpm test:unit`, `pnpm run build`, `pnpm run lint` and prettier pass.
-- The library page tests prove: a flagged item is drawn in the section above the list, under the section's own
-  name, and is not drawn in the list below; no section is drawn with nothing pinned; the items below keep the
-  order they had; the menu reads Pin on an unpinned item and Unpin on a pinned one; a read collaborator sees no
-  menu and no item moves; a press asks the server for the change; and a failure leaves the item where it was and
-  draws the notice.
+Verification: `pnpm test:unit` (server 373, web 468, i18n 39, youtube 31, ui-foundation 6, tokens 3),
+`pnpm run build` and `pnpm run lint` pass. Not committed.

@@ -272,7 +272,7 @@ object carries it.
 ## The three overflows, and what `access` decides
 
 `access` is on every playlist and the overflow is gated on it; the glossary is authoritative. An owner's
-overflow holds all four items, a `write` collaborator's holds `Sync now` alone, and a `read` collaborator
+overflow holds all five items, a `write` collaborator's holds `Pin` and `Sync now`, and a `read` collaborator
 gets **no overflow button at all** rather than one with nothing in it, because there is no action to take and
 a menu that opens onto a blank lies about what it can do. The two collaborator items carry the same glyph and
 different menus, which is the honest picture: the indicator is coarser than `access` is, so what a person may

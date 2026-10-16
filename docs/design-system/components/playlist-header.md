@@ -301,12 +301,12 @@ appears only while something is playing and is absent rather than disabled
 when nothing is, because a paused playlist has no previous and no next to go to. [That
 record](header-transport.md) owns the steps, their targets and the width each arrangement costs the title.
 
-The overflow holds four items and `access` decides which exist: Share, Rename, Sync now, Delete playlist,
+The overflow holds five items and `access` decides which exist: Pin, Share, Rename, Sync now, Delete playlist,
 with a rule before the one that destroys it. Which edge it hangs from is the arrangement's: the tile's and the
 card hero's panels open **upward**, because their control is at the item's foot and a panel below it would run
 off the item; the library's card draws its control on the cover's top-right, so its panel opens **downward**
 and is a child of the card rather than of the picture, because the picture clips at its own rounded square. The glossary is authoritative: an owner's overflow holds all
-four, a `write` collaborator's holds Sync now alone, and a `read` collaborator's holds nothing at all, so no
+five, a `write` collaborator's holds Pin and Sync now, and a `read` collaborator's holds nothing at all, so no
 overflow button rather than an empty panel. The panel is present only when open, the opposite of the
 tooltip's arrangement: a tooltip labels something already on screen, a menu is not there until asked for.
 

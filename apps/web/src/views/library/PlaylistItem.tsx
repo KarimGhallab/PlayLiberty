@@ -51,6 +51,8 @@ interface PlaylistItemProps {
   onPlay: () => void;
   /* Start this playlist, shuffled, or turn its shuffle off. */
   onShuffle: () => void;
+  /* The page's notice surface, which a failed pin opens. */
+  onPinRefused: (error: Error) => void;
 }
 
 export default function PlaylistItem({
@@ -60,12 +62,14 @@ export default function PlaylistItem({
   layout,
   defer,
   onPlay,
-  onShuffle
+  onShuffle,
+  onPinRefused
 }: PlaylistItemProps) {
   const navigate = useNavigate();
   const { menu, dialogs } = usePlaylistActions(playlist.id, playlist, {
     defer,
-    deleteMessage: 'library.deleteDeferred'
+    deleteMessage: 'library.deleteDeferred',
+    pin: { onRefused: onPinRefused }
   });
   const shuffled = usePlayerStore(state => state.shuffle);
   const isPlaying = usePlayerStore(state => state.isPlaying);
