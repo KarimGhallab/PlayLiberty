@@ -380,18 +380,19 @@ focus ring, the same one the share mark takes.
 The item carries the sync state, because the sync line is the header's and this screen draws headers. The
 cost is paid for in `--tone-failed` on every tile.
 
-There is no search, no sort, no filter and no pagination. Search is a permanent non-goal in the glossary and
-the page size is `PageQuerySchema`'s default of 50, which is the API's business, so a gallery of more than 50
-playlists is a gallery this screen cannot show all of. That is recorded as a known limit rather than solved
-by inventing a control the glossary has ruled out.
+The gallery is in name order, which is the route's rather than a control's, and there is no search, no sort, no
+filter and no pagination. Search is a permanent non-goal in the glossary and the page size is
+`PageQuerySchema`'s default of 50, which is the API's business, so a gallery of more than 50 playlists is a
+gallery this screen cannot show all of. That is recorded as a known limit rather than solved by inventing a
+control the glossary has ruled out.
 
 ## The pinned section
 
-The gallery is no longer one list. A pinned playlist leaves the list and is drawn in a section above it, most
-recently pinned first, and the section holds nothing while an account has pinned nothing, so an account that
-never pins one sees the gallery this record already describes. It is not the second section this record
-refused: what was refused is a shared item reachable only from a section, which is a second meaning for one
-thing, and a pin is the account's own placement of a thing the list still holds.
+The gallery is no longer one list. A pinned playlist leaves the list and is drawn in a section above it, in
+name order like the list below, and the section holds nothing while an account has pinned nothing, so an
+account that never pins one sees the gallery this record already describes. It is not the second section this
+record refused: what was refused is a shared item reachable only from a section, which is a second meaning for
+one thing, and a pin is the account's own placement of a thing the list still holds.
 
 **The pinned item is the same item, and the heading is the only thing the section adds.** One heading at the
 gallery's own left edge above the first row, the same tile at the same arrangement below it, and a list of its

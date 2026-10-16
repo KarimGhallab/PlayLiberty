@@ -24,8 +24,8 @@ documents contradicting the product and leaves the next reader to reinvent the w
 
 The gallery gains a pinned section above its list, and every item's actions menu gains Pin and Unpin. A pin is
 per account and per playlist, so it follows the account rather than the browser, is granted by visibility
-alone, and never moves anyone else's gallery. Most recently pinned comes first, the section exists only while
-something is pinned, and a pinned playlist is lifted out of the list below rather than drawn twice.
+alone, and never moves anyone else's gallery. The section is in name order like the list below, it exists only
+while something is pinned, and a pinned playlist is lifted out of the list below rather than drawn twice.
 
 ## User Stories
 
@@ -33,7 +33,8 @@ something is pinned, and a pinned playlist is lifted out of the list below rathe
    look first.
 2. As a listener, I want a pinned playlist lifted out of the list below, so that it appears once and in one
    place.
-3. As a listener, I want the most recently pinned first, so that the section is in the order I decided.
+3. As a listener, I want the section in name order like the list below, so that I look a playlist up the same
+   way wherever it sits.
 4. As a listener, I want no limit on how many playlists I pin, so that the feature never refuses me.
 5. As a listener, I want the section to disappear when I have pinned nothing, so that the gallery is exactly
    what it was before I pinned anything.
@@ -77,23 +78,28 @@ something is pinned, and a pinned playlist is lifted out of the list below rathe
   where the track order and the skip setting live. Those are properties of the playlist that everyone who
   reads it shares, and a pin is the opposite, the account's own placement, granted by visibility rather than
   by write access.
-- **The pin instant is the order, and re-pinning refreshes it.** Nothing else orders the section: most
-  recently pinned first, and unpinning deletes the row. _Decided here:_ no position column and no explicit
-  order, so no drag, no touch target for one, and no second stored sequence. A later explicit order adds one
-  column to this table, which is one migration, which is why nothing speculative is written now.
-- **The table carries no update timestamp.** It follows the share and the suppression, which are created and
-  deleted rather than edited, and not the account, the playlist and the track.
+- **The pin is a placement and not an order.** The section is in name order like the list below, and the
+  instant a pin was made is recorded and no longer read for the order: unpinning deletes the row and re-pinning
+  refreshes it. _Decided here:_ the gallery is one order, so a pin never has to explain a second one and the
+  section is looked up the same way the list below is. No position column and no drag, so no second stored
+  sequence; an explicit order is the feature that would add one.
+- **The table carries no update timestamp beyond the instant the pin was made.** It follows the share and the
+  suppression, which are created and deleted rather than edited, and not the account, the playlist and the
+  track.
 - **There is no cap on how many playlists an account pins.** _Decided here,_ and the cost is recorded rather
   than paid: an account that pins its whole gallery turns the section into the gallery, which is a choice and
   not a defect. A cap would make the action refuse, and a refusal is a worse answer than a large section.
 - **The pinned state rides on the playlist the list read already returns.** One boolean on the playlist
   schema, so the gallery's single read carries the flag. _Decided here,_ a field on the existing read rather
   than a second read of the pins, which would be a second thing to keep current for one bit.
-- **The list read returns pinned items first, most recently pinned first, then creation as it does today.**
-  The client groups on the flag and never sorts. _Decided here:_ the order is the server's rather than a
-  client partition, so the two groups cannot disagree with the read, and so nothing has to re-derive the
-  order when the gallery pages. The page's total is unchanged: a pin moves a row within the page rather than
-  adding one.
+- **The list read returns pinned items first, then the rest, and each group in name order.** The comparison is
+  a collator rather than the database's own, because SQLite here is built without ICU: `order by name` folds at
+  most the ASCII range and would put `Été` after `Zebra`. Case and accents are one for the order, so the rowid
+  decides between two names that differ only in either. The client groups on the flag and never sorts.
+  _Decided here:_ the order is the server's rather than a client partition, so the two groups cannot disagree
+  with the read, and so nothing has to re-derive the order when the gallery pages. The whole visible list is
+  sorted rather than one page of it, because a comparison the database cannot make cannot be a LIMIT either;
+  the total is the count of visible playlists, so a pin moves a row within the page rather than adding one.
 - **The pin is written by a mutation that mirrors the skip setting's route.** A `PATCH` on the playlist with a
   required boolean body, validated, answering the updated playlist. _Decided here:_ one route with a body
   rather than a put and a delete, so a retry is idempotent and the two directions cannot drift apart.
@@ -169,7 +175,7 @@ something is pinned, and a pinned playlist is lifted out of the list below rathe
   section is asserted by its name and by the order of the items, never by a tag or a class, which is the rule
   the presentation-assertion issue already settled.
 - **The cases that must exist:**
-  - the list read returns the most recently pinned first, the rest in creation order, and the flag on each
+  - the list read returns the pins first and the rest below, each group in name order, and the flag on each
     item;
   - a pin written by one account leaves another account's list order unchanged, and both can pin the same
     shared playlist;
@@ -218,6 +224,6 @@ something is pinned, and a pinned playlist is lifted out of the list below rathe
   product decided this placement is wanted, and the feature is called a pin rather than a favorite: a
   favorite is a judgement about a thing, and this is a placement of it in one account's gallery. The
   glossary's mix-up list carries the pair so the two words do not become one.
-- **The section orders by when the pin was made, so unpinning and re-pinning moves a playlist to the front.**
-  That is the rule and it is not a defect: it is how an account says "this one, now". An explicit order is the
-  feature that would replace it, and it is out of scope.
+- **The section is in name order, so unpinning and re-pinning moves nothing.** A pin is a placement and not a
+  promotion: it lifts a playlist out of the list and into the section, and where it sits in either group is the
+  name. An explicit order is the feature that would replace that, and it is out of scope.

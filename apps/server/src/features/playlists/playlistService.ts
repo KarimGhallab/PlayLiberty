@@ -211,6 +211,22 @@ function toReadPlaylistResult(
   return { outcome: PlaylistOutcome.Ok, playlist: entry.value };
 }
 
+/*
+ * The gallery's name comparison, fixed to one locale so the order does not follow
+ * how the process happens to be started. `sensitivity: 'base'` makes case and
+ * accents one for the order, so the base order decides between two playlists that
+ * differ only in either.
+ */
+const byName = new Intl.Collator('en', { sensitivity: 'base' });
+
+/*
+ * The pinned group is a rank rather than a comparison, so the sort reads in the
+ * order a reader sees rather than in the order the columns happen to sit in.
+ */
+function pinnedRank(pinnedAt: string | null): number {
+  return pinnedAt === null ? 1 : 0;
+}
+
 export function listPlaylistsForAccount(
   database: DatabaseHandle,
   accountId: string,
@@ -218,13 +234,12 @@ export function listPlaylistsForAccount(
 ): Page<PlaylistWithCounts> {
   const visible = playlistVisibleTo(database, accountId);
 
-  const rows = database.db
+  const visibleRows = database.db
     .select({ playlist: playlists, pinnedAt: playlistPins.pinnedAt })
     .from(playlists)
     /*
-     * The account's own pins first, most recently pinned first, then everything
-     * else in creation order. The pin is a left join, so a playlist nobody has
-     * pinned comes through with a null instant and lands after every pin.
+     * The pin is a left join, so a playlist nobody has pinned comes through with a
+     * null instant and lands after every pin once the sort below has run.
      */
     .leftJoin(
       playlistPins,
@@ -235,20 +250,32 @@ export function listPlaylistsForAccount(
     )
     .where(visible)
     /*
-     * Qualified, because the rowid fallback is ambiguous the moment a second table
-     * is in play, and the share and pin tables each carry a rowid of their own. Two
-     * runs can be created inside the same millisecond, so created_at alone would
-     * let the same request return a different order on two calls.
+     * Qualified, because the rowid is ambiguous the moment a second table is in
+     * play and the share and pin tables each carry a rowid of their own. It is the
+     * base order rather than the order: it is what separates two playlists the
+     * collator below cannot, which is what lets this route page.
      */
-    .orderBy(
-      sql`${playlistPins.pinnedAt} is null`,
-      desc(playlistPins.pinnedAt),
-      desc(playlists.createdAt),
-      desc(sql`${playlists}.rowid`)
-    )
-    .limit(query.limit)
-    .offset(query.offset)
+    .orderBy(asc(sql`${playlists}.rowid`))
     .all();
+
+  /*
+   * The order a reader sees, and it is applied here rather than in SQL because
+   * SQLite is built without ICU: its own comparison folds at most the ASCII range,
+   * so `order by name` would place "Été" after "Zebra". An account's own pins come
+   * first, then the rest, and each group is in name order. The whole visible list is
+   * sorted rather than one page of it, because a comparison the database cannot
+   * make cannot be a LIMIT either: sorting a page would order the page and not the
+   * gallery.
+   */
+  const ordered = [...visibleRows].sort(
+    (left, right) =>
+      pinnedRank(left.pinnedAt) - pinnedRank(right.pinnedAt) ||
+      byName.compare(left.playlist.name, right.playlist.name)
+  );
+
+  /* The whole visible list is in hand, so the total is its length rather than a
+   * second count over the same filter. */
+  const rows = ordered.slice(query.offset, query.offset + query.limit);
 
   const playlistRows = rows.map(row => row.playlist);
 
@@ -274,12 +301,6 @@ export function listPlaylistsForAccount(
     playlistRows.map(row => row.id)
   );
 
-  const counted = database.db
-    .select({ total: sql<number>`count(*)` })
-    .from(playlists)
-    .where(visible)
-    .all();
-
   return {
     items: rows.map(({ playlist, pinnedAt }) => ({
       ...toPlaylistView(
@@ -291,7 +312,7 @@ export function listPlaylistsForAccount(
       ),
       counts: countsByPlaylist.get(playlist.id) ?? noCounts()
     })),
-    total: counted[0]?.total ?? 0,
+    total: visibleRows.length,
     limit: query.limit,
     offset: query.offset
   };

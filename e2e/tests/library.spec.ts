@@ -356,14 +356,15 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
   await expect(page.getByRole('menuitem')).toHaveAccessibleName('Pin');
   await page.getByRole('menuitem', { name: 'Pin', exact: true }).click();
 
-  /* Most recently pinned first. */
+  /* Each group in name order. The pinned one was pinned first and this one most
+   * recently, so the section's order is the name and no longer the pin instant. */
   const section = page.getByRole('region', { name: 'Pinned' });
   const sectionItems = section.getByRole('link');
   await expect(sectionItems).toHaveCount(2);
-  await expect(sectionItems.nth(0)).toHaveAccessibleName(PIN_SHARED_TITLE);
-  await expect(sectionItems.nth(1)).toHaveAccessibleName(PIN_OWN_TITLE);
+  await expect(sectionItems.nth(0)).toHaveAccessibleName(PIN_OWN_TITLE);
+  await expect(sectionItems.nth(1)).toHaveAccessibleName(PIN_SHARED_TITLE);
 
-  /* Unpin both: the section withdraws and the list holds both in the order it had. */
+  /* Unpin both: the section withdraws and the list holds both in name order. */
   await pinPlaylist(page, PIN_SHARED_TITLE, 'Unpin');
   await pinPlaylist(page, PIN_OWN_TITLE, 'Unpin');
 
@@ -372,6 +373,6 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
   await expect(list).toHaveCount(1);
   const listItems = list.getByRole('link');
   await expect(listItems).toHaveCount(2);
-  await expect(listItems.nth(0)).toHaveAccessibleName(PIN_SHARED_TITLE);
-  await expect(listItems.nth(1)).toHaveAccessibleName(PIN_OWN_TITLE);
+  await expect(listItems.nth(0)).toHaveAccessibleName(PIN_OWN_TITLE);
+  await expect(listItems.nth(1)).toHaveAccessibleName(PIN_SHARED_TITLE);
 });

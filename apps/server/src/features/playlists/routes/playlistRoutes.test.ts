@@ -366,10 +366,8 @@ describe('GET /playlists', () => {
     expect(response.statusCode).toBe(200);
     const page = PageSchema.parse(response.json());
     expect(page.items).toHaveLength(6);
-    // Newest first, and the two tracks are on the oldest playlist, so the 2 lands
-    // last. The order is part of what this asserts: a page whose order is not
-    // stable cannot be paged.
-    expect(page.items.map(item => item.trackCount)).toEqual([0, 0, 0, 0, 0, 2]);
+    // The two tracks are on "Playlist 0", which sorts first, so the 2 lands first.
+    expect(page.items.map(item => item.trackCount)).toEqual([2, 0, 0, 0, 0, 0]);
   });
 
   it('carries every playlist its own file-status counts, which the page does not narrow', async () => {
@@ -411,7 +409,8 @@ describe('GET /playlists', () => {
       seedTrack(context.database).trackId
     );
 
-    /* One row at a time, so a count that followed the page would come up short. */
+    /* One row at a time, so a count that followed the page would come up short.
+     * The name order is what decides the pages: "Mixed" before "Whole". */
     const secondPage = PageSchema.parse(
       (
         await get('/api/v1/playlists?limit=1&offset=1', owner.pangolinUserId)
@@ -419,12 +418,12 @@ describe('GET /playlists', () => {
     );
 
     expect(secondPage.items).toHaveLength(1);
-    expect(secondPage.items[0]?.id).toBe(mixed.playlistId);
+    expect(secondPage.items[0]?.id).toBe(whole.playlistId);
     expect(secondPage.items[0]?.counts).toEqual({
-      stored: 2,
-      pending: 1,
+      stored: 1,
+      pending: 0,
       downloading: 0,
-      failed: 1,
+      failed: 0,
       unavailable: 0
     });
 
@@ -435,12 +434,12 @@ describe('GET /playlists', () => {
     );
     const listed = firstPage.items[0];
 
-    expect(listed?.id).toBe(whole.playlistId);
+    expect(listed?.id).toBe(mixed.playlistId);
     expect(listed?.counts).toEqual({
-      stored: 1,
-      pending: 0,
+      stored: 2,
+      pending: 1,
       downloading: 0,
-      failed: 0,
+      failed: 1,
       unavailable: 0
     });
     /* The five buckets are the playlist's own count, which is the mark's sum. */
@@ -452,9 +451,13 @@ describe('GET /playlists', () => {
   it('paginates with a stable order and a total that ignores the page', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    for (let index = 0; index < 3; index += 1) {
+    /*
+     * Seeded against the name order, so a page that came back in insertion order
+     * would fail here rather than pass for the wrong reason.
+     */
+    for (const [index, name] of ['Charlie', 'Alpha', 'Bravo'].entries()) {
       seedPlaylist(context.database, owner.accountId, {
-        name: `Playlist ${index}`,
+        name,
         createdAt: `2026-09-0${index + 1}T10:00:00.000Z`
       });
     }
@@ -472,38 +475,38 @@ describe('GET /playlists', () => {
 
     expect(firstPage.total).toBe(3);
     expect(secondPage.total).toBe(3);
-    expect(firstPage.items.map(item => item.name)).toEqual([
-      'Playlist 2',
-      'Playlist 1'
-    ]);
-    expect(secondPage.items.map(item => item.name)).toEqual(['Playlist 0']);
+    expect(firstPage.items.map(item => item.name)).toEqual(['Alpha', 'Bravo']);
+    expect(secondPage.items.map(item => item.name)).toEqual(['Charlie']);
   });
 
-  it("returns the account's pins first, most recently pinned first, then the rest in creation order", async () => {
+  it("returns the account's pins first, then the rest, each group in name order", async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const first = seedPlaylist(context.database, owner.accountId, {
-      name: 'Pinned first',
+    const pinnedLater = seedPlaylist(context.database, owner.accountId, {
+      name: 'Night Drive',
       createdAt: '2026-09-01T10:00:00.000Z'
     });
-    const second = seedPlaylist(context.database, owner.accountId, {
-      name: 'Pinned second',
+    const pinnedEarlier = seedPlaylist(context.database, owner.accountId, {
+      name: 'Afternoon Drive',
       createdAt: '2026-09-02T10:00:00.000Z'
     });
     seedPlaylist(context.database, owner.accountId, {
-      name: 'Unpinned newer',
+      name: 'Zebra',
       createdAt: '2026-09-04T10:00:00.000Z'
     });
     seedPlaylist(context.database, owner.accountId, {
-      name: 'Unpinned older',
+      name: 'Antelope',
       createdAt: '2026-09-03T10:00:00.000Z'
     });
-    // Pinned first, then second, so the section's order is the instant and not
-    // the creation date, which is the reverse.
-    seedPin(context.database, owner.accountId, first.playlistId, {
+    /*
+     * Night Drive was pinned most recently, and Zebra was created most recently, so
+     * a list in either of those orders would fail here: both groups are in name
+     * order, the pins first.
+     */
+    seedPin(context.database, owner.accountId, pinnedEarlier.playlistId, {
       pinnedAt: '2026-10-01T10:00:00.000Z'
     });
-    seedPin(context.database, owner.accountId, second.playlistId, {
+    seedPin(context.database, owner.accountId, pinnedLater.playlistId, {
       pinnedAt: '2026-10-02T10:00:00.000Z'
     });
 
@@ -512,10 +515,10 @@ describe('GET /playlists', () => {
     );
 
     expect(page.items.map(item => item.name)).toEqual([
-      'Pinned second',
-      'Pinned first',
-      'Unpinned newer',
-      'Unpinned older'
+      'Afternoon Drive',
+      'Night Drive',
+      'Antelope',
+      'Zebra'
     ]);
     /* The flag rides on every item, pinned or not, so the client groups on it
      * rather than sorting for itself. */
@@ -533,16 +536,16 @@ describe('GET /playlists', () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
     const pinned = seedPlaylist(context.database, owner.accountId, {
-      name: 'Pinned',
-      createdAt: '2026-09-01T10:00:00.000Z'
+      name: 'Bravo',
+      createdAt: '2026-09-02T10:00:00.000Z'
     });
     seedPlaylist(context.database, owner.accountId, {
-      name: 'Newest',
+      name: 'Alpha',
       createdAt: '2026-09-03T10:00:00.000Z'
     });
     seedPlaylist(context.database, owner.accountId, {
-      name: 'Middle',
-      createdAt: '2026-09-02T10:00:00.000Z'
+      name: 'Charlie',
+      createdAt: '2026-09-01T10:00:00.000Z'
     });
     seedPin(context.database, owner.accountId, pinned.playlistId, {
       pinnedAt: '2026-10-01T10:00:00.000Z'
@@ -559,11 +562,10 @@ describe('GET /playlists', () => {
       ).json()
     );
 
-    expect(firstPage.items.map(item => item.name)).toEqual([
-      'Pinned',
-      'Newest'
-    ]);
-    expect(secondPage.items.map(item => item.name)).toEqual(['Middle']);
+    /* The pinned row leads whatever its name, and the rest stay in name order
+     * across the page boundary. */
+    expect(firstPage.items.map(item => item.name)).toEqual(['Bravo', 'Alpha']);
+    expect(secondPage.items.map(item => item.name)).toEqual(['Charlie']);
   });
 
   it('lists a playlist shared to the account alongside the ones it owns', async () => {
@@ -860,8 +862,8 @@ describe("the requesting account's access to a playlist", () => {
     // shared, so a page can hold both kinds of row and the field has to differ
     // between them.
     expect(page.items.map(item => [item.name, item.access])).toEqual([
-      ['Theirs', ShareLevel.Read],
-      ['Mine', 'owner']
+      ['Mine', 'owner'],
+      ['Theirs', ShareLevel.Read]
     ]);
     // And the two fields are not the same fact wearing two names. The reader
     // holds a share on Theirs and none on Mine, so access differs between the
@@ -869,7 +871,7 @@ describe("the requesting account's access to a playlist", () => {
     // derived from the requester's own share would be true for both, and a field
     // derived from access alone could not be false for a playlist the reader
     // owns.
-    expect(page.items.map(item => item.hasShares)).toEqual([true, false]);
+    expect(page.items.map(item => item.hasShares)).toEqual([false, true]);
   });
 
   it('answers 404 for a playlist neither owned nor shared, and says nothing about shares', async () => {
@@ -2580,14 +2582,14 @@ describe('PATCH /playlists/:id/pin', () => {
       ['Shared', true]
     ]);
 
-    /* The owner's gallery is exactly as it was: the same creation order and
-     * nothing pinned, which is the whole reason the row is per account. */
+    /* The owner's gallery is exactly as it was: the same name order and nothing
+     * pinned, which is the whole reason the row is per account. */
     const ownerPage = PageSchema.parse(
       (await get('/api/v1/playlists', owner.pangolinUserId)).json()
     );
     expect(ownerPage.items.map(item => [item.name, item.pinned])).toEqual([
-      ['Shared', false],
-      ['Mine', false]
+      ['Mine', false],
+      ['Shared', false]
     ]);
 
     const ownerPin = await patch(
