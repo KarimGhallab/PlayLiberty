@@ -356,9 +356,10 @@ a state change is seen rather than snapped, and reduced motion drops the transit
 
 It is drawn on the card and the tile and not on the row, because the row is one of forty in a list, where a
 hairline repeated down the page is texture rather than a glance; a card and a tile are each one object in a
-collection, so the rule reads as one item being active. The two are not the same line: the card's is
-full-bleed because the card clips at its own radius, and the tile's is inset to the tile's padding because a
-tile cannot clip, since an open overflow hangs past its box.
+collection, so the rule reads as one item being active. It is one bar in both: a 2px rule at the item's foot,
+full-bleed and clipped to the item's radius so it meets the two rounded corners rather than stopping short of
+them. The card clips the bar with its own overflow; the tile cannot clip, since the menu and the share tip
+open past its box, so the bar rides a box of its own that carries the tile's radius and clips only the bar.
 
 ## A pending removal marks the row
 

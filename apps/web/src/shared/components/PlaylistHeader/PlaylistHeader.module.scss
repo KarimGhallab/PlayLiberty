@@ -34,9 +34,14 @@
    *
    * The line draws in from the left when a track starts and withdraws when
    * playback stops, the sort control's own reveal, so the state change is seen
-   * rather than snapped and only the compositor moves. */
+   * rather than snapped and only the compositor moves.
+   *
+   * It is one bar in both arrangements. The card clips it with its own overflow
+   * and its own radius. The tile cannot clip, since an open overflow hangs past
+   * its box, so the bar rides `__line`, a box that carries the tile's radius and
+   * clips only the bar. */
   &[data-arrangement='card']::after,
-  &[data-arrangement='tile']::after {
+  &__line::after {
     content: '';
     position: absolute;
     right: 0;
@@ -50,15 +55,16 @@
   }
 
   &[data-arrangement='card'][data-state='playing']::after,
-  &[data-arrangement='tile'][data-state='playing']::after {
+  &[data-arrangement='tile'][data-state='playing'] &__line::after {
     transform: scaleX(1);
   }
 
-  /* The tile's line is inset to its own padding rather than full-bleed: a tile has
-   * rounded corners and cannot clip them, because an open overflow hangs past its
-   * box, so a line run to the edges would square the two bottom ones off. */
-  &[data-arrangement='tile']::after {
-    inset-inline: var(--space-2);
+  &__line {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
   }
 
   /* The library's item is a door, so the whole row carries the press: its
@@ -1151,7 +1157,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .playlist-header[data-arrangement='card']::after,
-  .playlist-header[data-arrangement='tile']::after {
+  .playlist-header__line::after {
     transition: none;
   }
 }

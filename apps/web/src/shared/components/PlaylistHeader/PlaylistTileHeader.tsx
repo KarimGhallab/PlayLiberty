@@ -141,6 +141,8 @@ export default function PlaylistTileHeader({
           {menuControl}
         </div>
       </div>
+      {/* The tile cannot clip its own playing line, so this box clips it. */}
+      <span className={styles.playlistHeader__line} aria-hidden="true" />
     </div>
   );
 }
