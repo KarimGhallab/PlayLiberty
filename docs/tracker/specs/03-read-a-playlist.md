@@ -92,8 +92,8 @@ playlist beside it.
 - **The route reports state and nothing else.** Every field it returns is a field of the track or the
   association as stored. It adds no derived flags, no counts, and no booleans about playability, because the
   playability rule is already one line for a client to apply and a second encoding of it is a second thing to
-  keep in step. What the web client derives, it derives from the same two status fields the design system
-  already labels.
+  keep in step. What the web client derives, it derives from the same two status fields the contracts
+  already define.
 - **The total is the playlist's stored track count**, which moves in the same transaction as the association
   that changed it, in the association service that already exists. The count is therefore the number of rows in
   the playlist, which is what a client needs to know when it has fetched every page.

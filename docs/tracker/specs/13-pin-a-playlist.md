@@ -210,8 +210,8 @@ while something is pinned, and a pinned playlist is lifted out of the list below
 - **The no-cap risk.** An account can pin every playlist it can see, and at that point the section holds the
   gallery and distinguishes nothing. That is accepted rather than capped, because the section's own size is
   the feedback and a refusal would be a worse answer than a full section.
-- **The pin rides the menu, so it needs no narrow-arrangement figure.** The design record carries one record
-  for both clients, and this corpus is web only. The item's overflow is where a playlist's actions already
+- **The pin rides the menu, so it needs no narrow-arrangement figure.** The corpus is web only, and the menu
+  does not change across widths. The item's overflow is where a playlist's actions already
   live, so the pin adds a menu item and nothing is placed on a cover; the card has no pin of its own to draw.
 - **One decision of the library spec is narrowed and not replaced.** That spec decided the gallery is one list
   with no sections, on the grounds that a shared item reachable only from a section is a second meaning for

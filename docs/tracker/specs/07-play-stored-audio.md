@@ -102,8 +102,7 @@ reflected in the browser's own media controls, from the same state.
 - **A track is playable when its stored file exists, and that is a fact the server sends.** The client does not
   probe, does not guess from a duration, and does not keep its own copy of whether a file arrived. The track
   list carries the file status, and the play control is present exactly when the status says there is something
-  to play. A control that is visible and cannot be pressed is a fault the design system's own checks already
-  treat as one.
+  to play. A control that is visible and cannot be pressed is a fault in its own right.
 - **A queue entry whose file has gone is dropped when it is reached,** and playback continues to the next one. A
   track that fails to load mid-queue behaves the same way, so one broken track ends nothing. _Decided here:_ a
   queue that stops on an error is a session over, and the listener has no way to say which track did it.
@@ -127,8 +126,7 @@ reflected in the browser's own media controls, from the same state.
   else.
 - **The player bar is the only persistent surface, and the track list is the queue.** The playlist detail's
   track list is where the queue is seen and where a track is chosen; there is no separate queue panel and no
-  route for one, which the design records settled. The player bar appears when something is playing and is
-  absent at rest, which is the library record's own correction of the player bar record.
+  route for one. The player bar appears when something is playing and is absent at rest.
 - **A track held by two playlists is one file and one stream address,** and the queue plays the same audio
   either way. The deduplication that makes this true is a property of the media store, and the player simply
   never knows there was a second playlist.

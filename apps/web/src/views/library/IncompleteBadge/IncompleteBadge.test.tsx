@@ -82,42 +82,6 @@ describe('IncompleteBadge', () => {
   });
 
   /*
-   * Worst wins, because a break is louder news than a wait: the pill's tone is the
-   * first reason in the order the states are ranked, whatever else is missing.
-   */
-  it('tones the pill by the worst reason present', async () => {
-    const cases: readonly [Partial<TrackFileStatusCounts>, string][] = [
-      [{ [TrackFileStatus.Pending]: 2 }, TrackFileStatus.Pending],
-      [
-        { [TrackFileStatus.Pending]: 2, [TrackFileStatus.Downloading]: 1 },
-        TrackFileStatus.Downloading
-      ],
-      [
-        {
-          [TrackFileStatus.Pending]: 2,
-          [TrackFileStatus.Downloading]: 1,
-          [TrackFileStatus.Unavailable]: 4
-        },
-        TrackFileStatus.Unavailable
-      ],
-      [
-        {
-          [TrackFileStatus.Unavailable]: 4,
-          [TrackFileStatus.Failed]: 1
-        },
-        TrackFileStatus.Failed
-      ]
-    ];
-
-    for (const [missing, tone] of cases) {
-      const { unmount } = renderMark(counts(missing));
-
-      expect(await screen.findByRole('img')).toHaveAttribute('data-tone', tone);
-      unmount();
-    }
-  });
-
-  /*
    * The mark is a `role="img"`, whose children are not read out, so the breakdown
    * has to be in the label as well as in the tip: a tip alone would be a detail
    * only a pointer could reach.

@@ -136,9 +136,9 @@ answers exactly as a playlist that never existed.
   reached from outside it. The private boundary is structural: the only way in is an account, and the only way
   to have an account is to pass the edge.
 - **The library names the owner of a shared playlist, and this is where the name comes from.** The library
-  record wanted a "shared by" line and had no route to supply a display name. The directory does, and the web
+  wanted a "shared by" line and had no route to supply a display name. The directory does, and the web
   client resolves `ownerAccountId` through it for the items that are not its own. _Decided here:_ the
-  alternative, showing only the share indicator, is the state the design record was written in, and this spec
+  alternative, showing only the share indicator, was the state before the directory existed, and this spec
   is what makes the line affordable. [`08-see-the-library`](08-see-the-library.md) owns how the line is drawn.
 - **Inherited constraints are owned by the architecture and not restated here:** the private deployment with no access from outside the instance ([Deployment behind the Pangolin edge](../../ARCHITECTURE.md#deployment-behind-the-pangolin-edge)), identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
 
@@ -185,5 +185,5 @@ answers exactly as a playlist that never existed.
   override.
 - Revoking every share at once, and transferring ownership of a playlist to another account.
 - Any notification that a playlist has been shared, in any direction.
-- The controls that make sharing usable, which are the share dialog and the overflow menu, specified in the
-  design records and cut as their own tickets.
+- The controls that make sharing usable, which are the share dialog and the overflow menu, cut as their own
+  tickets.

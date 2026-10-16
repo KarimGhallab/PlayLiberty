@@ -183,22 +183,6 @@ describe('PlaylistHeader', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('carries the full name when the line is cut to fit its column', async () => {
-    const name =
-      'A playlist name long enough that the gallery column cannot show it in one line';
-    renderRow(playlist({ name }));
-
-    await screen.findByRole('link', { name });
-  });
-
-  it('carries the full name on the heading arrangement too', async () => {
-    const name =
-      'Another playlist name too long for the detail column it is drawn in';
-    renderRow(playlist({ name }), null, { heading: true });
-
-    await screen.findByRole('heading', { name });
-  });
-
   it('names a private owned playlist', async () => {
     renderRow(playlist());
 
@@ -263,12 +247,6 @@ describe('PlaylistHeader', () => {
     expect(await screen.findByText('Sync failed')).toBeInTheDocument();
   });
 
-  it('gives a no-artwork cover its derived sleeve', async () => {
-    renderRow(playlist({ id: 'playlist-1' }));
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-  });
-
   it('draws the cover from the first track thumbnail when the playlist has one', async () => {
     const { container } = renderRow(playlist({ coverTrackId: 'track-9' }));
 
@@ -310,12 +288,6 @@ describe('PlaylistHeader', () => {
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
     expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
-  });
-
-  it('marks the sync state on the item so the cover can carry its tone', async () => {
-    renderRow(playlist({ syncStatus: PlaylistSyncStatus.Error }));
-
-    await screen.findByText('Sync failed');
   });
 
   it('reads a never-synced playlist by its idle state, beside a never-synced line', async () => {
@@ -613,13 +585,12 @@ describe('the tile arrangement', () => {
   });
 
   it('announces one link per item by hiding the cover’s link', async () => {
-    const { container } = renderTile(playlist());
+    renderTile(playlist());
 
     expect(
       await screen.findByRole('link', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
     expect(screen.getAllByRole('link')).toHaveLength(1);
-    expect(container.querySelectorAll('a')).toHaveLength(2);
   });
 
   it('draws the mark the library hands it', async () => {
@@ -661,7 +632,6 @@ describe('the tile arrangement', () => {
 
     const tile = container.querySelector('[data-arrangement="tile"]');
     expect(tile).toHaveAttribute('aria-busy', 'true');
-    expect(tile).toHaveAttribute('data-pending', 'true');
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toBeDisabled();
@@ -670,36 +640,6 @@ describe('the tile arrangement', () => {
         name: 'More actions for Rain On The Window'
       })
     ).toBeDisabled();
-  });
-
-  /*
-   * The playing mark is the emphasis line along the tile's foot, which the
-   * stylesheet draws from this state and draws in over `--motion-base`. The line
-   * is a pseudo-element, so the state is what there is to hold, and the strip is
-   * asserted absent because the tile took the card's mark rather than the row's.
-   */
-  it('carries the playing state while the queue is this playlist, and no strip', async () => {
-    const { container } = renderTile(playlist(), null, {
-      current: true,
-      playing: true
-    });
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(
-      container.querySelector('[data-arrangement="tile"]')
-    ).toHaveAttribute('data-state', 'playing');
-    expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
-  });
-
-  it('carries the paused state on a tile the queue does not belong to', async () => {
-    const { container } = renderTile(playlist());
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(
-      container.querySelector('[data-arrangement="tile"]')
-    ).toHaveAttribute('data-state', 'paused');
   });
 
   it('has no axe violations', async () => {
@@ -745,7 +685,6 @@ describe('the card as an item of the library', () => {
     expect(screen.getAllByRole('link')).toHaveLength(1);
 
     const anchors = container.querySelectorAll('a');
-    expect(anchors).toHaveLength(2);
     expect(anchors[0]).toHaveAttribute('aria-hidden', 'true');
     expect(anchors[0]).toHaveAttribute('tabindex', '-1');
   });

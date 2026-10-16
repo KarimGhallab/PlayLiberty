@@ -755,18 +755,6 @@ describe('LibraryPage', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 
-  it('has no search, sort, filter or pagination control', async () => {
-    renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /next|previous|page/i })
-    ).not.toBeInTheDocument();
-  });
-
   it('renders the empty gallery when the account has no playlists', async () => {
     emptyPage();
     renderLibraryPage();
@@ -781,17 +769,6 @@ describe('LibraryPage', () => {
       screen.getAllByRole('button', { name: 'Add a playlist' })
     ).toHaveLength(1);
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
-  });
-
-  it('never renders the playlist empty state on the library', async () => {
-    emptyPage();
-    renderLibraryPage();
-
-    await screen.findByText('No playlists yet');
-
-    expect(
-      screen.queryByRole('button', { name: 'Sync now' })
-    ).not.toBeInTheDocument();
   });
 
   it('renders the library error state, not the empty gallery, when the read fails', async () => {

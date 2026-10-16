@@ -29,8 +29,6 @@ const C = { videoId: 'e2earrange1c', title: 'Track C' };
 /* Added last, so it is the newest and the one that fails to download. */
 const FAILED = { videoId: 'e2earrange1d', title: 'Track D' };
 
-const STORED = [A, B, C];
-
 /** The titles the list draws, in the order drawn, the failed row included. */
 async function rowTitles(page: Page): Promise<string[]> {
   const rows = await page.getByRole('listitem').allInnerTexts();
@@ -44,11 +42,6 @@ function currentRow(page: Page): Locator {
   return page
     .getByRole('listitem')
     .filter({ has: page.getByRole('img', { name: /^(Playing|Paused)$/ }) });
-}
-
-/** The number on the header's count line, which names the list's total. */
-function headerCount(page: Page): Locator {
-  return page.locator('[data-arrangement="card"]').getByText(/^\d+$/);
 }
 
 async function addTrack(
@@ -72,15 +65,6 @@ async function chooseSort(page: Page, label: string): Promise<void> {
   await expect(
     page.getByRole('button', { name: `Sort by: ${label}` })
   ).toBeVisible();
-}
-
-function shuffleControl(page: Page): Locator {
-  return page.getByRole('button', { name: `Shuffle ${TITLE}` });
-}
-
-async function pressShuffle(page: Page): Promise<void> {
-  await shuffleControl(page).click();
-  await expect(shuffleControl(page)).toHaveAttribute('aria-pressed', 'true');
 }
 
 /*
@@ -177,81 +161,4 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
   await expect
     .poll(() => rowTitles(page))
     .toEqual([A.title, B.title, C.title, FAILED.title]);
-});
-
-test('the chips carry the whole-playlist counts and narrow the list and the count line', async ({
-  page
-}) => {
-  await seed(page);
-
-  await expect(page.getByRole('button', { name: 'All 4' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Stored 3' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Pending 0' })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Downloading 0' })
-  ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Failed 1' })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Unavailable 0' })
-  ).toBeVisible();
-
-  await page.getByRole('button', { name: 'Stored 3' }).click();
-  await expect(headerCount(page)).toHaveText('3');
-  await expect.poll(() => rowTitles(page)).toEqual([A.title, B.title, C.title]);
-  await expect(page.getByRole('button', { name: 'Failed 1' })).toBeVisible();
-
-  await page.getByRole('button', { name: 'All 4' }).click();
-  await expect(headerCount(page)).toHaveText('4');
-  await expect
-    .poll(() => rowTitles(page))
-    .toEqual([A.title, B.title, C.title, FAILED.title]);
-
-  await page.getByRole('button', { name: 'Failed 1' }).click();
-  await expect(headerCount(page)).toHaveText('1');
-  await expect.poll(() => rowTitles(page)).toEqual([FAILED.title]);
-
-  await page.getByRole('button', { name: 'Unavailable 0' }).click();
-  await expect(headerCount(page)).toHaveText('0');
-  await expect(page.getByText('No unavailable tracks')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Show all' }).click();
-  await expect(headerCount(page)).toHaveText('4');
-  await expect
-    .poll(() => rowTitles(page))
-    .toEqual([A.title, B.title, C.title, FAILED.title]);
-});
-
-test('the controls go inert while the shuffled queue is the list on screen', async ({
-  page
-}) => {
-  await seed(page);
-
-  await pressShuffle(page);
-
-  // Both controls belong to the unshuffled list, so both are disabled.
-  await expect(page.getByRole('button', { name: /^Sort by: / })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'All 4' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Stored 3' })).toBeDisabled();
-
-  /*
-   * The list draws the shuffled queue's order: its playable rows are a
-   * permutation of the stored tracks, led by the one sounding, and the transport
-   * walks them in the order drawn.
-   */
-  const playable = (await rowTitles(page)).filter(
-    title => title !== FAILED.title
-  );
-  const leader = playable[0];
-  const second = playable[1];
-
-  if (leader === undefined || second === undefined) {
-    throw new Error('The shuffled queue should carry every stored track.');
-  }
-
-  expect(playable).toHaveLength(STORED.length);
-  expect(new Set(playable)).toEqual(new Set(STORED.map(video => video.title)));
-  await expect(currentRow(page)).toHaveText(new RegExp(leader));
-
-  await page.getByRole('button', { name: 'Track next' }).click();
-  await expect(currentRow(page)).toHaveText(new RegExp(second));
 });

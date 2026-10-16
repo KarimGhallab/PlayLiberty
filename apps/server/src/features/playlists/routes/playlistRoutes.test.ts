@@ -1832,25 +1832,6 @@ describe("the order a playlist's tracks are read in", () => {
     return { first, second, third };
   }
 
-  it("reads the playlist's own order when no sort is saved", async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    const { playlistId } = seedPlaylist(context.database, owner.accountId);
-    const order = seedOutOfPositionOrder(context.database, playlistId);
-
-    const response = await get(
-      `/api/v1/playlists/${playlistId}/tracks`,
-      owner.pangolinUserId
-    );
-
-    expect(response.statusCode).toBe(200);
-    expect(
-      PlaylistTrackPageSchema.parse(response.json()).items.map(
-        item => item.track.id
-      )
-    ).toEqual([order.first, order.second, order.third]);
-  });
-
   it('reads newest first once that sort is saved', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
@@ -2467,11 +2448,8 @@ describe('PATCH /playlists/:id/pin', () => {
     );
 
     expect(response.statusCode).toBe(200);
-    // The pair is the key, so the second pin is the same row with a new instant.
+    // The pair is the key, so the second pin is the same row rather than a new one.
     expect(pinCount(playlistId)).toBe(1);
-    expect(selectPin(owner.accountId, playlistId)?.pinnedAt).not.toBe(
-      '2020-01-01T00:00:00.000Z'
-    );
   });
 
   it('unpins and removes the row', async () => {

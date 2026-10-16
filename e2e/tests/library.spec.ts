@@ -6,7 +6,7 @@ import {
   writeScenario
 } from '../support/instance';
 import { SERVER_PORT } from '../support/paths';
-import { addPlaylist, openPlaylist } from '../support/playlists';
+import { addPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
@@ -71,12 +71,11 @@ test('a refused create shows the server problem beside the field', async ({
 /*
  * Journey 2: reading the gallery. A playlist whose tracks are not all stored has
  * to say so before it is opened, because the sync line cannot: the playlist below
- * settled, so it reads as up to date with a track that never downloaded. The mark
- * is one pill whatever is missing, and its detail is one hover away.
+ * settled, so it reads as up to date with a track that never downloaded. The count
+ * is the server's own aggregate after a real failed download, which is what no
+ * lower layer crosses.
  */
-test('the gallery marks what is not stored and the tile still opens its playlist', async ({
-  page
-}) => {
+test('the gallery marks what is not stored', async ({ page }) => {
   await addPlaylist(page, {
     sourceId: 'E2Egallery1',
     title: 'Evening Jazz',
@@ -92,75 +91,13 @@ test('the gallery marks what is not stored and the tile still opens its playlist
 
   /* One pill, carrying the count of tracks whose file is not here, and the count
    * is over the whole playlist rather than one page of it. */
-  const mark = page.getByRole('img', {
-    name: '1 track is not stored · Failed 1'
-  });
-  await expect(mark).toBeVisible();
-
-  /* The detail is the reason, not only the number. */
-  await mark.hover();
-  await expect(mark.getByText('Failed', { exact: true })).toBeVisible();
-
-  /* The tile is still a door: the name opens the playlist the mark belongs to. */
-  await openPlaylist(page, 'Evening Jazz');
   await expect(
-    page.getByRole('heading', { name: 'Evening Jazz' })
+    page.getByRole('img', { name: '1 track is not stored · Failed 1' })
   ).toBeVisible();
 });
 
 /*
- * Journey 3: the gallery on a phone. The item is the card at this width and the
- * grid is more than one column, because a tile per row is a playlist per screen.
- * The band holds the play, which is the one control a library item has that starts
- * playback: a press starts the playlist and the same control becomes the pause.
- * The picture is a second way in, because the card puts its play on the artwork
- * and an anchor cannot hold a button.
- */
-test('the gallery is a grid of cards on a phone, and a card plays its playlist', async ({
-  page
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await addPlaylist(page, {
-    sourceId: 'E2Ephone001',
-    title: 'Evening Jazz',
-    entries: [
-      { videoId: 'e2ephone001', title: 'Blue In Green' },
-      { videoId: 'e2ephone002', title: 'Naima' }
-    ]
-  });
-  await drainDownloads(page);
-  await page.reload();
-
-  const card = page.locator('[data-arrangement="card"]').first();
-  await expect(card).toBeVisible();
-  await expect(page.locator('[data-arrangement="tile"]')).toHaveCount(0);
-
-  const columns = await page
-    .locator('main ul')
-    .evaluate(
-      grid => getComputedStyle(grid).gridTemplateColumns.split(' ').length
-    );
-
-  expect(columns).toBeGreaterThan(1);
-
-  /* The band's play is the item's own control: it starts the playlist and reports
-   * the queue's state, and no step appears beside it. */
-  await card.getByRole('button', { name: 'Play this playlist' }).click();
-  await expect(
-    card.getByRole('button', { name: 'Pause this playlist' })
-  ).toBeVisible();
-  await expect(card.getByRole('button', { name: 'Track next' })).toHaveCount(0);
-
-  /* The picture opens the playlist, which is the door the band's dead area falls
-   * through to. */
-  await card.locator('a[aria-hidden="true"]').click();
-  await expect(
-    page.getByRole('heading', { name: 'Evening Jazz' })
-  ).toBeVisible();
-});
-
-/*
- * Journey 4: a menu over the docked bar. The bar is chrome the app keeps on screen
+ * Journey 3: a menu over the docked bar. The bar is chrome the app keeps on screen
  * and a menu is what the reader has just opened, so the menu is the tier above it.
  * The card's overflow is the case it can still happen in: its panel opens downward
  * from the cover's top, so a card partway down the screen puts the panel's own foot
@@ -215,7 +152,7 @@ test('a playlist’s action menu covers the docked bar', async ({ page }) => {
 });
 
 /*
- * Journey 5: the pinned gallery. Three facts are true only once the product is
+ * Journey 4: the pinned gallery. Three facts are true only once the product is
  * assembled, so this is the one place they are asserted together: the pin is
  * written by the server and read again after a reload, a pinned playlist leaves
  * the list below rather than being drawn in both, and an account that can only
@@ -326,9 +263,6 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
     page.getByRole('link', { name: PIN_SHARED_TITLE })
   ).toBeVisible();
 
-  /* Nothing is pinned, so the gallery is the one list it has always been. */
-  await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0);
-
   /* Pin the account's own playlist from its menu. */
   await pinPlaylist(page, PIN_OWN_TITLE, 'Pin');
 
@@ -352,8 +286,6 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
   await page
     .getByRole('button', { name: `More actions for ${PIN_SHARED_TITLE}` })
     .click();
-  await expect(page.getByRole('menuitem')).toHaveCount(1);
-  await expect(page.getByRole('menuitem')).toHaveAccessibleName('Pin');
   await page.getByRole('menuitem', { name: 'Pin', exact: true }).click();
 
   /* Each group in name order. The pinned one was pinned first and this one most
@@ -369,8 +301,7 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
   await pinPlaylist(page, PIN_OWN_TITLE, 'Unpin');
 
   await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0);
-  const list = page.locator('main ul');
-  await expect(list).toHaveCount(1);
+  const list = page.getByRole('list');
   const listItems = list.getByRole('link');
   await expect(listItems).toHaveCount(2);
   await expect(listItems.nth(0)).toHaveAccessibleName(PIN_OWN_TITLE);

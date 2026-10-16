@@ -151,8 +151,8 @@ built to protect, and it is a refusal rather than a recovery.
 - **`lastSyncedAt` is set when a run finishes, whether it completed or failed**, because a failed run is a
   sync that happened. `syncStatus` is `syncing` while a run is in flight, `error` after a failure, and `idle`
   after a success. _Decided here:_ the alternative, leaving `lastSyncedAt` null on failure, makes a failed
-  first sync indistinguishable from a playlist that has never synced, and the design system's empty state is
-  defined as `lastSyncedAt` being null.
+  first sync indistinguishable from a playlist that has never synced, and the empty state is defined as
+  `lastSyncedAt` being null.
 - **The playlist takes its name and cover from the source**, both read in the same pass, because the name is
   non-nullable and nothing else in the contracts says where a name comes from. A source with no usable title
   falls back to its source id. _Decided here._

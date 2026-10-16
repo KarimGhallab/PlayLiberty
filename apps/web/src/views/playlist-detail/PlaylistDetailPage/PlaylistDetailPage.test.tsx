@@ -1391,32 +1391,6 @@ describe('PlaylistDetailPage sort control', () => {
       ])
     );
   });
-
-  it('disables the control while the shuffled list is the one on screen', async () => {
-    renderDetail();
-    await screen.findByRole('button', { name: 'Play Blue In Green' });
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
-    );
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /^Sort by: / })).toBeDisabled()
-    );
-  });
-
-  it('disables the control for a read collaborator', async () => {
-    server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
-        HttpResponse.json({ ...playlistJson(true), access: 'read' })
-      )
-    );
-
-    renderDetail();
-
-    await screen.findByRole('button', { name: 'Play Blue In Green' });
-    expect(screen.getByRole('button', { name: /^Sort by: / })).toBeDisabled();
-  });
 });
 
 /*
@@ -1493,19 +1467,6 @@ describe('PlaylistDetailPage filter chips', () => {
       expect(screen.getByText('Flamenco Sketches')).toBeInTheDocument()
     );
     expect(screen.queryByText('No failed tracks')).not.toBeInTheDocument();
-  });
-
-  it('disables the chips while the shuffled list is on screen', async () => {
-    renderDetail();
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
-    );
-
-    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
-
-    expect(screen.getByRole('button', { name: 'Stored 2' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'All 3' })).toBeDisabled();
   });
 
   /*

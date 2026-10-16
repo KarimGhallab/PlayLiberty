@@ -6,7 +6,6 @@ PlayLiberty is an audio player for web and mobile that syncs YouTube playlists a
 
 - `docs/PRODUCT.md` - product intent, users, constraints, principles.
 - `docs/GLOSSARY.md` - the project's vocabulary. Read it before naming a domain concept.
-- `docs/DOMAIN.md` - where the product and architecture docs live, and how to consume them.
 - `docs/ARCHITECTURE.md` - components, layer boundaries, and where things live.
 - `docs/adr/` - architecture decision records.
 - `docs/tracker/` - AI work tracking: issues, specs, tasks.
@@ -25,7 +24,7 @@ and consumed with `workspace:*`.
 - No transcoding, ever. The stored AAC/M4A is served verbatim. See `docs/ARCHITECTURE.md`.
 - Identity comes from Pangolin's forwarded `Remote-*` headers and fails closed when they are absent. See `docs/ARCHITECTURE.md`.
 - Never use em dashes in generated text.
-- After a change, run `pnpm run build` and `pnpm run lint`. Do not run prettier or format. The pre-commit hook already runs lint-staged, syncpack, and dependency-cruiser; do not run those by hand.
+- After a change, run `pnpm run build` and `pnpm run lint`. The pre-commit hook already runs lint-staged, syncpack, and dependency-cruiser; do not run those by hand.
 - Apps are leaves: never import an app from a package (enforced by the `no-apps-import` dependency-cruiser rule).
 - A test earns its place only if it fails when behavior a user relies on changes, with one owner test per behavior plus at most one assembly test. See the testing guideline (`~/.config/opencode/refs/guidelines/testing.md`).
 
@@ -38,7 +37,3 @@ Work is tracked as local markdown under `docs/tracker/`. The board and the track
 ### Triage labels
 
 The five canonical state roles plus `bug` and `enhancement`. See `docs/TRIAGE_LABEL.md`.
-
-### Domain docs
-
-Single-context layout: product intent, glossary, architecture, and decisions. See `docs/DOMAIN.md`.

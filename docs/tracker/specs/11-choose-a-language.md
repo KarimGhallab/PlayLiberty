@@ -131,8 +131,7 @@ the same sentences and figures from one place. `ui-foundation` keeps only the pr
   required, not optional, and its selector follows the runtime chosen above.
 - **The change owes documentation, and the documentation is part of the work.** The documentation records the
   client-owns-copy decision, the shared package and the hand-rolled runtime; the glossary gains `Language`
-  and `Locale`; the design system gains a record for the language button and its menu; the specs tracker
-  gains this spec's row. _Decided here._
+  and `Locale`; the specs tracker gains this spec's row. _Decided here._
 - **The mobile client consumes the package, and no mobile behavior is specified here.** The package is
   client-neutral by construction; wiring the future mobile client is a later spec. See Further Notes for the
   corpus-convention tension this raises.
