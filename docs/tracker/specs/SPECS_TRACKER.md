@@ -20,7 +20,8 @@ and [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) are out of 
 | [`09-keep-the-screens-current`](09-keep-the-screens-current.md)             | resolved | [`01`](01-sync-a-playlist.md), [`03`](03-read-a-playlist.md), [`04`](04-curate-a-playlist.md), [`05`](05-share-a-playlist.md) | none                                                                                                                                                                                                                                 |
 | [`10-skip-non-music-parts`](10-skip-non-music-parts.md)                     | resolved | [`01`](01-sync-a-playlist.md), [`02`](02-store-a-track.md), [`04`](04-curate-a-playlist.md)                                   | none                                                                                                                                                                                                                                 |
 | [`11-choose-a-language`](11-choose-a-language.md)                           | resolved | none                                                                                                                          | none                                                                                                                                                                                                                                 |
-| [`12-sort-and-filter-the-track-list`](12-sort-and-filter-the-track-list.md) | ready    | [`03`](03-read-a-playlist.md), [`07`](07-play-stored-audio.md), [`10`](10-skip-non-music-parts.md)                            | none                                                                                                                                                                                                                                 |
+| [`12-sort-and-filter-the-track-list`](12-sort-and-filter-the-track-list.md) | resolved | [`03`](03-read-a-playlist.md), [`07`](07-play-stored-audio.md), [`10`](10-skip-non-music-parts.md)                            | none                                                                                                                                                                                                                                 |
+| [`13-pin-a-playlist`](13-pin-a-playlist.md)                                 | ready    | [`03`](03-read-a-playlist.md), [`08`](08-see-the-library.md)                                                                  | none                                                                                                                                                                                                                                 |
 
 ## Conventions
 
@@ -36,6 +37,6 @@ and [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) are out of 
 
 ## Out of scope in this corpus
 
-- The permanent non-goals: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, favorites, ratings, play counts, and search.
+- The permanent non-goals: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
 - Offline playback and a service worker.
 - Reordering a playlist.

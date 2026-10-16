@@ -71,7 +71,9 @@ server rather than from the client's optimism.
 - **One list, no sections.** A shared playlist and an owned one are the same item in the same list, ordered by
   creation like the route returns them. The design record rejected a second section because a shared item
   reachable only from a section is a second meaning for the same thing, and because a second section splits an
-  empty gallery into two empty shelves.
+  empty gallery into two empty shelves. The pinned section is the one exception, because it is the account's
+  own placement rather than a second meaning for a shared item, and because it is withdrawn when nothing is
+  pinned; see [`13-pin-a-playlist`](13-pin-a-playlist.md).
 - **The item is the playlist header, drawn at the arrangement the design record fixes, and this spec adds no
   second item component.** The cover and the name are the two links to `/playlists/:id`, the cover link is
   hidden from the accessible name so a reader announces one link per item, and the sync line and the share

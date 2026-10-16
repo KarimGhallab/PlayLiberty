@@ -16,7 +16,7 @@ Done, and the restore is the change that forced the rest.
 - **Persistence.** The stored payload is `sourceQueue`, and `hydrate` derives the playback queue from it and
   starts with `shuffle: false`; a payload written before the split reads its `queue` as the source order, the
   leniency `volume` already had. A relaunch therefore starts on the playlist's order, as the record says.
-- **The press.** [`useShufflePlaylist`](../../../apps/web/src/shared/player/useShufflePlaylist/useShufflePlaylist.ts) is the one
+- **The press.** [`useStartPlaylist`](../../../apps/web/src/shared/player/useStartPlaylist/useStartPlaylist.ts) is the one
   action both surfaces call: an empty or foreign queue is built from this playlist shuffled, this playlist's
   own queue toggles the mode, and turning it on resumes a paused transport. The library and the detail's
   header both pass the playlist, and the detail passes its own `shuffle` into every `startQueue` so a rebuilt

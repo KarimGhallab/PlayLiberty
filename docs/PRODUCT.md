@@ -31,6 +31,8 @@ Capabilities in v1:
 - Stream stored tracks to the web and mobile clients.
 - Multiple accounts, each with its own playlists; a playlist owner can share read-only or read-write with specific accounts.
 - Add one pasted video to several write-accessible playlists at once.
+- Pin playlists to the top of the account's own gallery, as a per-account placement and not a rating or a
+  favorites list.
 - Manual sync, retention, and weekly orphan pruning.
 
 Hard constraints:
@@ -44,7 +46,7 @@ Hard constraints:
 
 ## Non-Goals
 
-Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, favorites, ratings, play counts, and search.
+Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
 
 ## Brand Commitments
 

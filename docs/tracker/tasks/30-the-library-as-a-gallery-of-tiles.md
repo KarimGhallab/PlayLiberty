@@ -21,8 +21,8 @@ beside the other two arrangements, which is where the sleeve, the no-artwork hat
 equalizer strip already live, so the tile added no copy of any of them. The door rule the row and the tile
 share moved to [`playlistDoor.ts`](../../../apps/web/src/shared/components/PlaylistHeader/playlistDoor.ts).
 
-**The item wires it.** [`PlaylistTile.tsx`](../../../apps/web/src/views/library/PlaylistTile.tsx) is
-[`PlaylistListItem`](../../../apps/web/src/views/library/PlaylistTile.tsx)'s replacement and the reason it
+**The item wires it.** [`PlaylistItem.tsx`](../../../apps/web/src/views/library/PlaylistItem.tsx) is
+[`PlaylistListItem`](../../../apps/web/src/views/library/PlaylistItem.tsx)'s replacement and the reason it
 exists: the actions module is a hook and a hook cannot be called in a loop. It hands the page one deferred
 delete and passes the library's own mark into the header, which is why the mark takes a slot rather than
 belonging to the header.

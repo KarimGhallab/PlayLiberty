@@ -108,8 +108,8 @@ the same sentences and figures from one place. `ui-foundation` keeps only the pr
   checked, and nothing else. It is on the library only. _Decided here,_ from the prototype: the account-menu
   framing was dropped because there is no account surface, no settings and no sign out.
 - **The page's `lang` attribute follows the resolved language.** The document declares the language the
-  reader is in, so a screen reader and the browser's own typography agree. The app's own name stays
-  `PlayLiberty` in both languages.
+  reader is in, so a screen reader and the browser's own typography agree. The app's own name is localized
+  with the interface: `PlayLiberty` in English and `PlayLiberté` in French.
 - **The formatters move into the package; `ui-foundation` keeps only what language cannot touch.**
   `formatRelativeTime`, `formatLastSynced`, `syncStateLabel`, `trackStateLabel`, `providerLabel`,
   `trackCountUnit`, `formatTrackCount` and `formatDuration` live in `@playliberty/i18n` as catalog entries or
