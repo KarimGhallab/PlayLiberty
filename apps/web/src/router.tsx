@@ -8,6 +8,7 @@ import {
 import { useEventStream } from './shared/api/useEventStream/useEventStream';
 import PlayerAudio from './shared/player/PlayerAudio/PlayerAudio';
 import PlayerBar from './shared/player/PlayerBar/PlayerBar';
+import { useDocumentTitle } from './shared/useDocumentTitle/useDocumentTitle';
 
 import LibraryPage from './views/library/LibraryPage/LibraryPage';
 import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage';
@@ -20,9 +21,14 @@ import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage/Playl
  *
  * The live stream is mounted here for the same reason: one connection for the
  * tab, held across navigation rather than reopened per route.
+ *
+ * The tab title is written here for the same reason: it is derived from the route
+ * and the player together, so it needs one owner above both rather than a writer
+ * per route that would fight the player's.
  */
 export function AppShell() {
   useEventStream();
+  useDocumentTitle();
 
   return (
     <>

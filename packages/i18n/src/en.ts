@@ -6,7 +6,11 @@
  */
 export const en = {
   app: {
-    name: 'PlayLiberty'
+    name: 'PlayLiberty',
+    title: {
+      playlist: '{app} - {name}',
+      track: '{app} - {playlist} ({track})'
+    }
   },
   language: {
     label: 'Language',

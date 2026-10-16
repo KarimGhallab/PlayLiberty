@@ -4,7 +4,7 @@ import {
   createMemoryHistory,
   createRouter
 } from '@tanstack/react-router';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '@playliberty/i18n';
@@ -88,5 +88,34 @@ describe('AppShell', () => {
     expect(screen.getByLabelText('Player')).toBeInTheDocument();
     expect(screen.getByText('Blue In Green')).toBeInTheDocument();
     expect(playMock).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * The tab title is derived from the route and the player together, which only
+   * the assembled shell can prove: the owner's branches are unit-tested, and this
+   * shows the one writer mounted above both following a real navigation.
+   */
+  it('names the tab after the open playlist, then after the playing track', async () => {
+    const { router } = renderShell('/');
+    await waitFor(() => {
+      expect(document.title).toBe('PlayLiberty');
+    });
+
+    await router.navigate({
+      to: '/playlists/$playlistId',
+      params: { playlistId: PLAYLIST }
+    });
+    await waitFor(() => {
+      expect(document.title).toBe('PlayLiberty - Rain On The Window');
+    });
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [TRACK], TRACK.id);
+    });
+    await waitFor(() => {
+      expect(document.title).toBe(
+        'PlayLiberty - Rain On The Window (Blue In Green)'
+      );
+    });
   });
 });

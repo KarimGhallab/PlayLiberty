@@ -9,7 +9,11 @@ import type { Messages } from './en.js';
  */
 export const fr: Messages = {
   app: {
-    name: 'PlayLiberty'
+    name: 'PlayLiberté',
+    title: {
+      playlist: '{app} - {name}',
+      track: '{app} - {playlist} ({track})'
+    }
   },
   language: {
     label: 'Langue',

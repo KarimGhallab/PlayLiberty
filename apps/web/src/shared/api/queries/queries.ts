@@ -308,13 +308,17 @@ export function usePlaylistQueue(
  * Where the playlist's name comes from. The queue carries that name so the player
  * can label its source, and the read is separate from the tracks read because the
  * name belongs to the playlist and not to any track in it.
+ *
+ * `null` is no playlist open, which is the tab title's case at home: the read is
+ * disabled rather than asked for a name there is none of.
  */
 export function usePlaylist(
-  playlistId: string
+  playlistId: string | null
 ): UseQueryResult<Playlist, Error> {
   return useQuery({
     queryKey: ['playlist', playlistId],
-    queryFn: () => apiGet(`/playlists/${playlistId}`, PlaylistSchema)
+    queryFn: () => apiGet(`/playlists/${playlistId}`, PlaylistSchema),
+    enabled: playlistId !== null
   });
 }
 
