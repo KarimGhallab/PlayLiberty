@@ -1,40 +1,31 @@
 # 05: The pinned gallery journey
 
-**Blocked by:** [`02`](02-the-pinned-section-and-the-menu-item.md), [`03`](03-the-pin-on-the-cover.md).
-**Status:** open
+**Blocked by:** [`02`](02-the-pinned-section-and-the-menu-item.md).
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 
-## Objective
+## Outcome
 
-One browser journey proves the three facts that are true only once the product is assembled: the pin is written
-by the server and read again after a reload, a pinned playlist is lifted out of the list below rather than drawn
-twice, and an account that can only read a playlist can still pin it.
+Implemented and verified. One journey in [`library.spec.ts`](../../../../e2e/tests/library.spec.ts) proves the
+three facts that are true only of the assembled product: the pin is written by the server and read again after a
+reload, a pinned playlist leaves the list below rather than being drawn twice, and an account that can only read
+a playlist still pins it.
 
-## Context
+The dev proxy fixes one browser identity, so the browser is the **reader** of the second playlist and the other
+account is arranged over the API: the journey creates the partner with the edge headers, has them paste a link
+and grant the browser account a read share, and only then drives the browser. The share names an account by its
+id, which is the row the identity hook created rather than the edge's `dev-user`, so it is read back through the
+same headers the proxy injects.
 
-Read [`13-pin-a-playlist`](../../specs/13-pin-a-playlist.md). The library already has a journey and the suite
-already seeds an instance per journey, so this ticket writes one more journey rather than a harness. The
-two-account isolation case stays in the route tests of `01`, where a second account can be seeded without a
-second browser.
+The press is paired with the response it starts rather than with its optimistic move: the reload that follows
+would otherwise be able to outrun the write and read a gallery the server has not changed yet.
 
-## Scope
+The journey asserts, in order: nothing is pinned, so the gallery is the one list; the account's own playlist
+leaves the list below for the section when it is pinned from its menu, and it is drawn once; the pin is still
+there after a reload; a reader's menu holds the pin alone and pins the shared playlist from it, and the section
+now holds the two most recently pinned first; and unpinning both withdraws the section and leaves the list
+holding both in the order it had.
 
-- **Seed one playlist the account owns and one shared with it at the read level**, so both the permission case
-  and the two-group case are in one journey.
-- **Pin from the cover control**, which is the affordance this journey is about, and assert the section appears
-  above the list, names itself, and holds the pinned item while the list below does not.
-- **Reload and assert the pin is still there**, because the placement is the account's and not the tab's.
-- **Pin the second playlist and assert the order**: the most recently pinned first.
-- **Unpin both and assert the section withdraws entirely**, with the list below holding both in the order it
-  had.
-- **Assert that the read-only playlist pins**, which is the case the menu cannot carry.
-
-## Out of scope
-
-The two-account isolation case, which lives in the route tests. The card arrangement's own pin. The specimen.
-
-## Verification
-
-- `pnpm test:e2e` passes with the new journey, and `pnpm run test:e2e:typecheck` passes.
-- The journey fails if the pin is not written by the server, if a pinned playlist is drawn in both groups, or if
-  the read-only playlist cannot be pinned.
+Verification: `pnpm test:e2e` passes with the journey, and `pnpm run test:e2e:typecheck` passes. The journey
+fails if the pin is not written by the server, if a pinned playlist is drawn in both groups, or if the read-only
+playlist cannot be pinned. Not committed.

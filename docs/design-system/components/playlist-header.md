@@ -306,8 +306,8 @@ with a rule before the one that destroys it. Which edge it hangs from is the arr
 card hero's panels open **upward**, because their control is at the item's foot and a panel below it would run
 off the item; the library's card draws its control on the cover's top-right, so its panel opens **downward**
 and is a child of the card rather than of the picture, because the picture clips at its own rounded square. The glossary is authoritative: an owner's overflow holds all
-five, a `write` collaborator's holds Pin and Sync now, and a `read` collaborator's holds nothing at all, so no
-overflow button rather than an empty panel. The panel is present only when open, the opposite of the
+five, a `write` collaborator's holds Pin and Sync now, and a `read` collaborator's holds Pin and Unpin, the
+one action a share at the read level allows and the reason a reader's menu is not empty. The panel is present only when open, the opposite of the
 tooltip's arrangement: a tooltip labels something already on screen, a menu is not there until asked for.
 
 A gallery puts forty shuffle toggles on one screen, the price of reusing the component exactly. Shuffle is

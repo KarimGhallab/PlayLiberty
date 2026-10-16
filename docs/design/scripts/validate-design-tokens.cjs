@@ -1038,6 +1038,30 @@ const PINNED_ICONS = {
     'M19 18a3.5 3.5 0 0 0 0 -7h-1a5 4.5 0 0 0 -11 -2a4.6 4.4 0 0 0 -2.1 8.4',
     'M12 13l0 9',
     'M9 19l3 3l3 -3'
+  ],
+  /* The pin and the unpinning, the library item's one toggle. They are a pair and
+   * the reading is the action: `pin` is the pinning and `pinned-off` is the
+   * unpinning, drawn as the pin crossed out, because the menu item's label is the
+   * action and the drawing may not contradict the word. Neither carries an
+   * optical correction. `pin` is a diagonal and its ink centre lands a quarter of
+   * a unit right and a quarter up of the middle of the 24 unit grid, which at
+   * --icon-sm is 0.17px and under the correction's own threshold, the same
+   * absence the checkbox tick and the chevron take. `pinned-off` is the pin under
+   * a slash that spans the whole box, so it is centred to nothing.
+   *
+   * Verbatim from @tabler/icons 3.48.0, the outline variants, whose first path is
+   * the bounding-box filler every glyph in the set carries and this table drops,
+   * so the paths below start at the real geometry like the rest of it. */
+  pin: [
+    'M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4',
+    'M9 15l-4.5 4.5',
+    'M14.5 4l5.5 5.5'
+  ],
+  'pinned-off': [
+    'M3 3l18 18',
+    'M15 4.5l-3.249 3.249m-2.57 1.433l-2.181 .818l-1.5 1.5l7 7l1.5 -1.5l.82 -2.186m1.43 -2.563l3.25 -3.251',
+    'M9 15l-4.5 4.5',
+    'M14.5 4l5.5 5.5'
   ]
 };
 

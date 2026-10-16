@@ -17,20 +17,21 @@ the gallery read so the read's own order settles. The page owns the notice: a fa
 `library.pinFailed` with the server's problem sentence under it, on the same self-withdrawing window the other
 notices use. There is no toast on success.
 
-`usePlaylistActions` owns the write, so the menu item and the cover control in `03` are two affordances over
-one action. Pin or Unpin is the menu's first item, gated to the two menus that exist, the owner's and a write
-collaborator's, and never a reader's, whose menu stays empty. The detail passes no pin, so its menu is
-unchanged. The copy is `library.pinned`, `library.pinFailed`, `header.pin`, `header.unpin`, with the French
-heading inflected (`Épinglées`, `Épingler`, `Désépingler`).
+`usePlaylistActions` owns the write, and it is the menu's first item: an owner's and a writer's carry the rest
+of their actions beside it, and a reader's carries Pin or Unpin alone, because visibility is the whole of what
+pinning needs. The cover control `03` proposed as a second affordance was later superseded, so the menu is the
+only one. The detail passes no pin, so its menu is unchanged. The copy is `library.pinned`,
+`library.pinFailed`, `header.pin`, `header.unpin`, with the French heading inflected (`Épinglées`, `Épingler`,
+`Désépingler`).
 
 The mock handlers gained the pin write, and the design record's menu counts were corrected: the owner's
-overflow now holds five and a writer's Pin and Sync now.
+overflow holds five, a writer's Pin and Sync now, and a reader's Pin and Unpin.
 
 The tests: the library page suite proves the section above the list and the item's absence from it, the rest's
 order, the Pin and Unpin labels, the press's request body and the optimistic lift, and the rollback with the
-notice and no section; `playlistActions` proves the five-item owner menu, the two-item writer menu, the empty
-reader menu, the Pin/Unpin label and the detail's missing pin; `mutationInvalidation` proves the gallery
-invalidation.
+notice and no section; `playlistActions` proves the five-item owner menu, the two-item writer menu, the
+reader's pin-only menu, the Pin/Unpin label and the detail's missing pin; `mutationInvalidation` proves the
+gallery invalidation.
 
 Verification: `pnpm test:unit` (server 373, web 468, i18n 39, youtube 31, ui-foundation 6, tokens 3),
 `pnpm run build` and `pnpm run lint` pass. Not committed.

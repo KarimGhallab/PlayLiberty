@@ -72,7 +72,7 @@ function control(
     { wrapper }
   );
 
-  return { ...rendered, defer, onPinRefused };
+  return { ...rendered, defer };
 }
 
 describe('usePlaylistActions', () => {
@@ -119,10 +119,10 @@ describe('usePlaylistActions', () => {
     ]);
   });
 
-  it('offers a read collaborator nothing and no overflow', () => {
+  it('offers a read collaborator the pin alone', () => {
     const { result } = control(playlist({ access: ShareLevel.Read }));
 
-    expect(result.current.menu).toEqual([]);
+    expect(result.current.menu.map(item => item.key)).toEqual(['pin']);
     expect(result.current.canWrite).toBe(false);
   });
 

@@ -37,6 +37,18 @@ a cross is symmetric about the middle of its own box, and the one figure that sa
 unit, is raster noise. It is drawn at `--icon-sm` beside a `--text-sm` label, because at `--icon-md` its
 ink would be 1.36 times the cap height of the word next to it and at `--icon-sm` it is 1.09.
 
+**The pin and the unpinning are the library item's one toggle, and the pair is the action rather than the
+state.** `pin` is the pinning and `pinned-off` is the unpinning, drawn as the pin crossed out, because the
+menu item's word is the action and the drawing may not contradict it: the item reads `Pin` while the playlist
+is unpinned and `Unpin` while it is pinned, and the glyph flips with the word. Neither carries an optical
+correction, and both absences are the assertion. `pin` is a diagonal whose ink centre lands a quarter of a unit
+right and a quarter up of the middle of the 24 unit grid, which is 0.17px at `--icon-sm` and under the
+correction's own threshold, the same absence the checkbox tick and the chevron take; `pinned-off` is the pin
+under a slash that spans the whole box, so it is centred to nothing. Both are drawn at `--icon-sm` beside a
+`--text-sm` label, because a menu item is a mark on a label rather than a peer of it, the pair the two marks
+on a button already use. Verbatim from `@tabler/icons` 3.48.0 `icons/outline/pin.svg` and
+`icons/outline/pinned-off.svg`.
+
 **The chevron is in the pin for one control, and it is the fourth thing a route needs and only the
 second screen has ever drawn.** `chevron-left`, one path, `M15 6l-6 6l6 6`, verbatim from
 `@tabler/icons` 3.48.0 `icons/outline/chevron-left.svg`. It is the way home off

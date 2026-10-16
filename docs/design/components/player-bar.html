@@ -921,7 +921,7 @@
 
    data-state is which frame rests, and it is on whatever owns the state rather
    than on the button: the cover's equalizer strip is driven by the same fact and
-   the cover is a sibling of the button, and CSS cannot reach a sibling. All 4 hosts that use this control are listed, which is why this block is
+   the cover is a sibling of the button, and CSS cannot reach a sibling. All 5 hosts that use this control are listed, which is why this block is
    identical in every specimen and no copy can drift. data-run is that a
    transition is under way and which way, and the client drops it on
    animationend. It stays on the button, because it describes that control's
@@ -934,6 +934,7 @@
       }
       .hdr[data-state='playing'] .play__strip,
       .mhdr[data-state='playing'] .play__strip,
+      .thdr[data-state='playing'] .play__strip,
       .row[data-state='playing'] .play__strip,
       .bar[data-state='playing'] .play__strip {
         transform: translateX(-168px);

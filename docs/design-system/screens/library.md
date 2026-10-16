@@ -52,10 +52,10 @@ artwork is what a gallery indexes by and because a grid row holds four: at 1056 
 An item is the playlist header, not a component of this screen's own and not a smaller thing that resembles
 it. The web draws that component's **tile** above its 767px breakpoint and its **card** at it and below, and
 the mobile client draws the card alone; [that record](../components/playlist-header.md) owns all three
-arrangements. What the item adds to the component is four things, all consequences of a header becoming one
-item in a gallery: the links, the grid it stacks in, the permission facts the overflow is gated on where
-there is one, and nothing else. Only the card plays, because only the card's band has room for a play: the
-tile is a door and nothing more.
+arrangements. What the item adds to the component is three things, all consequences of a header becoming one
+item in a gallery: the links on its picture and its name, the grid it sits in, and the permission facts the
+overflow is gated on where there is one. Both arrangements play from their artwork, the tile from its cover's
+bottom-left corner and the card from its band, so the gallery plays from a desk and from a phone.
 
 ### The web gallery is four columns at 1056
 
@@ -66,8 +66,10 @@ under-block's padding take 32px, and the share mark takes 20px of what is left w
 the name **about 190px** of text at `--text-xl`.
 
 A tile is **396px** tall, and it is 396px with the mark and without it: the mark takes the leading space of
-the actions row rather than a line of its own. The gallery's own reading is one column of artwork, so the
-figure that matters is the per-item **103px** against the row's 152px. The name is the one thing that pays:
+the actions row rather than a line of its own. A tile that names an owner is **420px**, because that line is
+its own row under the count, and a grid row takes the height of its tallest tile. The gallery's own reading is
+one column of artwork, so the figure that matters is the per-item **103px** against the row's 152px. The name
+is the one thing that pays:
 at `--text-xl` about a dozen characters survive, four of the six development fixtures are cut, and the full
 name rides in the `title` exactly as it does on a row.
 
@@ -272,9 +274,9 @@ object carries it.
 ## The three overflows, and what `access` decides
 
 `access` is on every playlist and the overflow is gated on it; the glossary is authoritative. An owner's
-overflow holds all five items, a `write` collaborator's holds `Pin` and `Sync now`, and a `read` collaborator
-gets **no overflow button at all** rather than one with nothing in it, because there is no action to take and
-a menu that opens onto a blank lies about what it can do. The two collaborator items carry the same glyph and
+overflow holds all five items, a `write` collaborator's holds `Pin` and `Sync now`, and a `read`
+collaborator's holds `Pin` and `Unpin`, the one action a share at the read level allows. The two collaborator
+items carry the same glyph and
 different menus, which is the honest picture: the indicator is coarser than `access` is, so what a person may
 do is invisible until the menu is open and then it is exact. The panel is 176px wide against a 252px tile, so
 it opens downward and stays inside the gallery's own column, and the tile lifts one tier while one is open,
@@ -383,7 +385,7 @@ the page size is `PageQuerySchema`'s default of 50, which is the API's business,
 playlists is a gallery this screen cannot show all of. That is recorded as a known limit rather than solved
 by inventing a control the glossary has ruled out.
 
-## The pinned section, and the pin on the cover
+## The pinned section
 
 The gallery is no longer one list. A pinned playlist leaves the list and is drawn in a section above it, most
 recently pinned first, and the section holds nothing while an account has pinned nothing, so an account that
@@ -398,31 +400,12 @@ There is no count in the heading, by the header's own rule: a count of playlists
 than a fact about a row, and a count of pins is the same kind of number. The section stands `--space-7` away
 from the list rather than behind a hairline, which in this system marks a tone and not a grouping.
 
-**The pin is on the cover's top right, and the cover is where this record has refused a control before.** The
-overflow was clipped by the picture on the card and the transport overran it, and both were answered by
-removing a control rather than moving one. The pin is the control this record keeps, on the grounds that it is
-not a third item control: it is one glyph on the artwork the gallery is read by. It is `--icon-sm` in the
-item's own quiet box, 32px at this width and the 44px target a touchscreen is owed where the record already
-gives one, inset `--space-2` from the cover's top right corner, and it sits on the `--scrim` because the
-artwork underneath is unknown and this system has no shadow token to lift a glyph off a picture. It takes
-`--accent` while the playlist is pinned and `--muted` while it is not. The two glyphs are `pin` and
-`pinned-off`, and they join the pinned set with the rest: see [icons](../icons.md).
-
-**It is hidden at rest and it is still focusable, which is where it parts from the share indicator.** That
-mark's tooltip is a `display: none` panel and can be, because the mark itself never hides. A control cannot:
-a display-none element takes no focus, so the reveal would lose its keyboard half and the pin would be
-reachable by pointer alone. The pin is `opacity: 0` with `pointer-events: none` until the item is hovered,
-both lifted by the item's `:hover` and by the pin's own `:focus-visible`, so the cover keeps the press that
-opens the playlist and nothing invisible sits over the artwork. It takes the `--accent` ring, for the reason
-the mark takes it: a tab stop owes a visible focus indicator. A pinned item's pin stays visible at rest,
-because the state is what the glyph is for, and becomes the unpinning under the pointer.
-
-**Where there is no hover it never hides.** The rule is the query for a device without hover rather than a
-width, because it is the pointer over the item that the reveal waits for and a touch screen has none, so a
-hidden pin there is a pin nobody can press. That is the only thing this record fixes about the pin on a card.
-Where the pin sits on a card is the card arrangement's own subject, because a card's picture already carries
-the shuffle at its top left and the play in its band, and
-[the playlist header](../components/playlist-header.md) owns that arrangement.
+**The pin is in the item's overflow, and not on the cover.** The menu the item already draws is the one
+affordance, so nothing appears over the artwork on hover and the picture keeps the whole of its own press. An
+owner's and a writer's overflow already existed; a reader's now holds `Pin` and `Unpin` and nothing else,
+because visibility is the whole of what pinning needs and a menu that opens onto a blank lies about what it
+can do. The item is one toggle: it reads `Pin` while the playlist is unpinned and `Unpin` while it is pinned,
+and the pressed state carries the meaning so the drawing can never contradict the word.
 
 ## The header
 

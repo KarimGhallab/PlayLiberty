@@ -578,9 +578,10 @@ export function frameJson(count = MORPH.frames) {
  * the header does, and the block could not be verified at all if the selector
  * had to be added by hand. The alternative was a fourth hand-written copy of
  * the travel beside the generated one, and a computed number restated by hand
- * is the exact failure this block exists to prevent.
+ * is the exact failure this block exists to prevent. `thdr` joined the list with
+ * the tile, the library's item, whose play is this same control.
  */
-export const MORPH_HOSTS = ['hdr', 'mhdr', 'row', 'bar'];
+export const MORPH_HOSTS = ['hdr', 'mhdr', 'thdr', 'row', 'bar'];
 
 export function styleBlock(count = MORPH.frames, hosts = MORPH_HOSTS) {
   const travel = -(count - 1) * 24;

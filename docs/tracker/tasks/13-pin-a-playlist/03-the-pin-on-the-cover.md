@@ -1,50 +1,23 @@
 # 03: The pin on the cover
 
 **Blocked by:** [`02`](02-the-pinned-section-and-the-menu-item.md).
-**Status:** open
-**Labels:** `enhancement`, `ready-for-agent`
+**Status:** superseded
 
-## Objective
+## Outcome
 
-The item carries a pin in the top-right corner of its cover: out of the way until it is reached for, always
-there where there is no pointer to reach with, and saying at rest whether the playlist is pinned. It is the
-same action as the menu item and not a second one.
+Superseded by [`02`](02-the-pinned-section-and-the-menu-item.md): the item's menu already carries Pin and
+Unpin, so the product decided the pin is not drawn on the cover, and a control that appears on hover is noise.
 
-## Context
+The cover control was built first (a 32px `--scrim` box on the cover's top-right, hidden at rest and revealed
+on hover and focus, toned by state) and then removed: the `PlaylistTileHeader` control, its
+`header.pinPlaylist` / `header.unpinPlaylist` copy, the `PlaylistPinToggle` model and the
+`@media (hover: none)` reveal are gone, and the tile is back to `02`'s shape. `usePlaylistActions` owns the pin
+only as the menu item; the menu item, the failure notice and the pinned section are unchanged.
 
-Read [`13-pin-a-playlist`](../../specs/13-pin-a-playlist.md), and the library record's section on the pinned
-section and the pin on the cover, which is where the drawing and its reasons live.
+Verification at the reverted state: `pnpm test:unit` (server 373, web 468, i18n 39, youtube 31, ui-foundation
+6, tokens 3), `pnpm run build`, `pnpm run lint` and `pnpm run design:check` pass. Not committed.
 
-The share indicator's tooltip is the closest thing in the item and it is not the model: its panel is hidden at
-rest behind a mark that never hides, and a control cannot be hidden that way, because a hidden element takes no
-focus and the reveal would lose its keyboard half and leave the control reachable by pointer alone. The shuffle
-toggle is the model for the semantics: a pressed state with a stable name.
-
-## Scope
-
-- **The control sits in the cover's top-right corner**, in the item's own quiet box and at the touch target the
-  record owes where it owes one, inset from the corner, on the ground the cover puts under a mark, toned as the
-  record decides for each state.
-- **Hidden at rest and still focusable.** Visually hidden with pointer events declined, revealed by hovering the
-  item and by the control's own focus, taking the accent ring every control takes. A pinned item's control is
-  visible at rest, because the state is what the glyph is for.
-- **Wherever hover does not exist it is always visible**, expressed as the query for a device without hover
-  rather than as a width.
-- **It does not swallow the press that opens the playlist** while it is hidden: the cover keeps its own press,
-  and no invisible target sits over the artwork.
-- **It is a toggle.** Its pressed state is the pin; its accessible name names the action and the playlist so
-  forty of them are distinguishable; the glyph at rest is the state and the glyph under the pointer is the
-  action. No tooltip, and so no dismissal.
-- **It consumes the same action as the menu item** rather than writing its own.
-
-## Out of scope
-
-The menu item and the section, which are `02`. The specimen, the glyph geometry and the pinned set, which are
-`04`. The browser journey, which is `05`. Where the control sits on the card arrangement.
-
-## Verification
-
-- `pnpm test:unit`, `pnpm run build`, `pnpm run lint` and prettier pass.
-- The item's tests prove: the control is present on every item and names the action and the playlist; it
-  reports its pressed state; a press pins and a second press unpins; it is revealed by focus; the cover's own
-  press still opens the playlist while the control is hidden; and an axe pass is clean.
+The removal left one hole, now closed: with no cover control a read collaborator had no pin at all, because
+`02` kept a reader's menu empty. The reader's overflow now carries Pin and Unpin alone, so `menu is enough`
+holds for everyone the server lets pin. That change is in `02`'s outcome, and the record and the spec follow
+it.

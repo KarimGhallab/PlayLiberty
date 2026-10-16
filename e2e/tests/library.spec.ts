@@ -1,8 +1,11 @@
+import type { Page } from '@playwright/test';
+
 import {
   drainDownloads,
   playlistUrl,
   writeScenario
 } from '../support/instance';
+import { SERVER_PORT } from '../support/paths';
 import { addPlaylist, openPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
@@ -209,4 +212,166 @@ test('a playlist’s action menu covers the docked bar', async ({ page }) => {
   /* The deferred delete the press starts is the proof that the press was the
    * menu's: if the bar took it, the undo window would never open. */
   await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+});
+
+/*
+ * Journey 5: the pinned gallery. Three facts are true only once the product is
+ * assembled, so this is the one place they are asserted together: the pin is
+ * written by the server and read again after a reload, a pinned playlist leaves
+ * the list below rather than being drawn in both, and an account that can only
+ * read a playlist still pins it.
+ *
+ * The dev proxy fixes one browser identity, so the browser is the reader of the
+ * second playlist and the other account is arranged over the API, exactly as the
+ * share journey arranges it. Two accounts, one browser.
+ */
+
+const PIN_OWN_SOURCE = 'E2Epinown01';
+const PIN_SHARED_SOURCE = 'E2Epinshare1';
+const PIN_OWN_TITLE = 'Evening Jazz';
+const PIN_SHARED_TITLE = 'Focus 2009';
+const PIN_OWN_TRACK = { videoId: 'e2epinown01', title: 'Blue In Green' };
+const PIN_SHARED_TRACK = { videoId: 'e2epinsh01', title: 'Naima' };
+const PIN_PARTNER = {
+  id: 'e2e-pin-partner',
+  name: 'Ada Owner',
+  email: 'ada@example.test'
+};
+
+const PIN_API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
+
+/*
+ * The pin's write landing and the drawn move are two things, and the reload that
+ * follows the press reads the server. So the press is paired with the response it
+ * starts rather than with the optimistic move, or the reload could outrun the
+ * write and read a gallery the server has not changed yet.
+ */
+async function pinPlaylist(
+  page: Page,
+  title: string,
+  label: 'Pin' | 'Unpin'
+): Promise<void> {
+  await page.getByRole('button', { name: `More actions for ${title}` }).click();
+
+  await Promise.all([
+    page.waitForResponse(response =>
+      /\/api\/v1\/playlists\/[^/]+\/pin$/.test(new URL(response.url()).pathname)
+    ),
+    page.getByRole('menuitem', { name: label, exact: true }).click()
+  ]);
+}
+
+test('a pinned playlist leaves the list for a section above, and a reader can pin too', async ({
+  page,
+  request
+}) => {
+  await addPlaylist(page, {
+    sourceId: PIN_OWN_SOURCE,
+    title: PIN_OWN_TITLE,
+    entries: [PIN_OWN_TRACK]
+  });
+
+  /*
+   * A second playlist owned by another account and shared with the browser's at
+   * the read level. The partner is created by reading their own account with the
+   * edge headers, then pastes the link over the API; the fake answers the source
+   * the scenario names now that the owned playlist is already synced.
+   */
+  const partner = {
+    'Remote-User': PIN_PARTNER.id,
+    'Remote-Name': PIN_PARTNER.name,
+    'Remote-Email': PIN_PARTNER.email,
+    'X-PlayLiberty-Client': 'web'
+  };
+
+  const seen = await request.get(`${PIN_API}/me`, { headers: partner });
+  expect(seen.ok()).toBe(true);
+
+  /*
+   * The share names an account by its id, and the browser's is not the edge's
+   * `dev-user` but the row the identity hook created for it, so it is read back
+   * through the same headers the proxy injects.
+   */
+  const me = await request.get(`${PIN_API}/me`, {
+    headers: { 'Remote-User': 'dev-user' }
+  });
+  expect(me.ok()).toBe(true);
+  const readerId: string = (await me.json()).id;
+
+  writeScenario({
+    sources: {
+      [PIN_SHARED_SOURCE]: {
+        title: PIN_SHARED_TITLE,
+        entries: [PIN_SHARED_TRACK]
+      }
+    }
+  });
+
+  const created = await request.post(`${PIN_API}/playlists`, {
+    headers: partner,
+    data: { url: playlistUrl(PIN_SHARED_SOURCE) }
+  });
+  expect(created.status()).toBe(202);
+  const sharedId: string = (await created.json()).playlistId;
+
+  const granted = await request.post(
+    `${PIN_API}/playlists/${sharedId}/shares`,
+    { headers: partner, data: { accountId: readerId, level: 'read' } }
+  );
+  expect(granted.ok()).toBe(true);
+
+  await page.reload();
+  await expect(page.getByRole('link', { name: PIN_OWN_TITLE })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: PIN_SHARED_TITLE })
+  ).toBeVisible();
+
+  /* Nothing is pinned, so the gallery is the one list it has always been. */
+  await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0);
+
+  /* Pin the account's own playlist from its menu. */
+  await pinPlaylist(page, PIN_OWN_TITLE, 'Pin');
+
+  const pinned = page.getByRole('region', { name: 'Pinned' });
+  await expect(pinned.getByRole('link', { name: PIN_OWN_TITLE })).toBeVisible();
+  /* Drawn once: in the section, and nowhere in the list below. */
+  await expect(page.getByRole('link', { name: PIN_OWN_TITLE })).toHaveCount(1);
+  await expect(
+    pinned.getByRole('link', { name: PIN_SHARED_TITLE })
+  ).toHaveCount(0);
+
+  /* The pin is the server's fact and not the tab's. */
+  await page.reload();
+  await expect(
+    page
+      .getByRole('region', { name: 'Pinned' })
+      .getByRole('link', { name: PIN_OWN_TITLE })
+  ).toBeVisible();
+
+  /* A reader's menu holds the pin alone, which is the action visibility allows. */
+  await page
+    .getByRole('button', { name: `More actions for ${PIN_SHARED_TITLE}` })
+    .click();
+  await expect(page.getByRole('menuitem')).toHaveCount(1);
+  await expect(page.getByRole('menuitem')).toHaveAccessibleName('Pin');
+  await page.getByRole('menuitem', { name: 'Pin', exact: true }).click();
+
+  /* Most recently pinned first. */
+  const section = page.getByRole('region', { name: 'Pinned' });
+  const sectionItems = section.getByRole('link');
+  await expect(sectionItems).toHaveCount(2);
+  await expect(sectionItems.nth(0)).toHaveAccessibleName(PIN_SHARED_TITLE);
+  await expect(sectionItems.nth(1)).toHaveAccessibleName(PIN_OWN_TITLE);
+
+  /* Unpin both: the section withdraws and the list holds both in the order it had. */
+  await pinPlaylist(page, PIN_SHARED_TITLE, 'Unpin');
+  await pinPlaylist(page, PIN_OWN_TITLE, 'Unpin');
+
+  await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0);
+  const list = page.locator('main ul');
+  await expect(list).toHaveCount(1);
+  const listItems = list.getByRole('link');
+  await expect(listItems).toHaveCount(2);
+  await expect(listItems.nth(0)).toHaveAccessibleName(PIN_SHARED_TITLE);
+  await expect(listItems.nth(1)).toHaveAccessibleName(PIN_OWN_TITLE);
 });

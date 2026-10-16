@@ -406,31 +406,38 @@ body {
  * and the amber and red the states own, so a sleeve can never be read as an
  * action or a fault. */
 .cover[data-sleeve='1'],
-.mart[data-sleeve='1'] {
+.mart[data-sleeve='1'],
+.tart[data-sleeve='1'] {
   --sleeve: var(--sleeve-1);
 }
 .cover[data-sleeve='2'],
-.mart[data-sleeve='2'] {
+.mart[data-sleeve='2'],
+.tart[data-sleeve='2'] {
   --sleeve: var(--sleeve-2);
 }
 .cover[data-sleeve='3'],
-.mart[data-sleeve='3'] {
+.mart[data-sleeve='3'],
+.tart[data-sleeve='3'] {
   --sleeve: var(--sleeve-3);
 }
 .cover[data-sleeve='4'],
-.mart[data-sleeve='4'] {
+.mart[data-sleeve='4'],
+.tart[data-sleeve='4'] {
   --sleeve: var(--sleeve-4);
 }
 .cover[data-sleeve='5'],
-.mart[data-sleeve='5'] {
+.mart[data-sleeve='5'],
+.tart[data-sleeve='5'] {
   --sleeve: var(--sleeve-5);
 }
 .cover[data-sleeve='6'],
-.mart[data-sleeve='6'] {
+.mart[data-sleeve='6'],
+.tart[data-sleeve='6'] {
   --sleeve: var(--sleeve-6);
 }
 .cover.no-art[data-sleeve],
-.mart.no-art[data-sleeve] {
+.mart.no-art[data-sleeve],
+.tart.no-art[data-sleeve] {
   background-color: var(--sleeve, var(--surface-raised));
   background-image: repeating-linear-gradient(
     45deg,
@@ -621,13 +628,13 @@ body {
   border-radius: var(--cover-radius, var(--radius-card));
 }
 
-/* ================================================== the playlist header, at both
- * of its arrangements
+/* =============================================== the playlist header, at its
+ * three arrangements
  *
  * Lifted out of playlist-header.html and shared with the library, whose
  * playlist items are this component rather than a smaller thing that resembles
- * it. Two consumers is the reason it is here, and the same reason the cover is:
- * two copies that are allowed to disagree will, and they did. The library's first
+ * it. Three consumers is the reason it is here, and the same reason the cover is:
+ * copies that are allowed to disagree will, and they did. The library's first
  * version of an item drew its own cover, its own name line, its own count and
  * its own share indicator under five class names of its own, and it reproduced
  * flex: 1 on the name, which the comment on .name__text below calls the mistake
@@ -641,14 +648,16 @@ body {
  *   - The morph's block, which scripts/splice-morph-block.mjs writes into every
  *     file declaring data-morph=, so it cannot live in a stylesheet only one of
  *     them links. It is emitted text, and the splicer is what keeps the copies
- *     identical. Its host rule below already listed four hosts including .mhdr
- *     and .row, which is the same argument made before anybody needed it twice.
+ *     identical. Its host rule below already listed the hosts, .hdr, .mhdr,
+ *     .thdr and .row among them, which is the same argument made before anybody
+ *     needed it twice.
  *   - The phone frame, the fold, the case labels and the track list, which are
  *     that file's specimen rather than this component.
  *
- * The two arrangements are the row at 1056 and the card at 390, and the card's
- * own rules are at the end of this block rather than in a second one, because a
- * card is this component at a width and not a different component.
+ * The three arrangements are the row at 1056, the card at 390 and the tile, which
+ * is the library's item above its 767px breakpoint. The card's and the tile's own
+ * rules are at the end of this block rather than in a second one, because each is
+ * this component at an arrangement and not a different component.
  */
 .hdr {
   display: flex;
@@ -777,7 +786,8 @@ body {
  * time; the body's own gap spaces it. Scoped to a header for the reason .state
  * below is: `.owner` is a generic word and the track row must not inherit it. */
 .hdr > .body .owner,
-.mhdr > .body .owner {
+.mhdr > .body .owner,
+.thdr .tidentity .owner {
   margin: 0;
   font-size: var(--text-xs);
   line-height: var(--leading-normal);
@@ -808,14 +818,16 @@ body {
  * neither. The descendant combinator separates them on the markup rather than on
  * which file was loaded first, and all nineteen keep the dot to the digit. */
 .hdr .state,
-.mhdr .state {
+.mhdr .state,
+.thdr .state {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   white-space: nowrap;
 }
 .hdr .state::before,
-.mhdr .state::before {
+.mhdr .state::before,
+.thdr .state::before {
   content: '';
   width: 7px;
   height: 7px;
@@ -824,19 +836,23 @@ body {
   background: currentColor;
 }
 .hdr .state.idle,
-.mhdr .state.idle {
+.mhdr .state.idle,
+.thdr .state.idle {
   color: var(--muted);
 }
 .hdr .state.syncing,
-.mhdr .state.syncing {
+.mhdr .state.syncing,
+.thdr .state.syncing {
   color: var(--tone-downloading);
 }
 .hdr .state.syncing::before,
-.mhdr .state.syncing::before {
+.mhdr .state.syncing::before,
+.thdr .state.syncing::before {
   animation: pl-breathe 1.4s ease-in-out infinite;
 }
 .hdr .state.error,
-.mhdr .state.error {
+.mhdr .state.error,
+.thdr .state.error {
   color: var(--tone-failed);
 }
 
@@ -847,11 +863,13 @@ body {
  * cannot disagree. A resting playlist keeps the neutral --line, because a tone is
  * spent only on a fact that changed. */
 .hdr:has(.state.syncing) .cover,
-.mhdr:has(.state.syncing) .mart {
+.mhdr:has(.state.syncing) .mart,
+.thdr:has(.state.syncing) .tart {
   border-color: var(--emphasis);
 }
 .hdr:has(.state.error) .cover,
-.mhdr:has(.state.error) .mart {
+.mhdr:has(.state.error) .mart,
+.thdr:has(.state.error) .tart {
   border-color: var(--tone-failed);
 }
 @keyframes pl-breathe {
@@ -1121,6 +1139,115 @@ body {
 }
 .mhdr:not([data-state='playing']) .transport {
   display: none;
+}
+
+/* The tile, the library's item above its 767px breakpoint. The cover is a block
+ * above the identity and the play is a filled accent circle on the cover's own
+ * bottom-left corner, which brings its own ground so the artwork loses nothing to
+ * it. The mark, the shuffle and the overflow sit in a row under the identity and
+ * keep the tile's end. No transport, because the library has no list to step
+ * through, and no ground, because the artwork is in front of the reader rather
+ * than behind a row.
+ *
+ * The tile is a grid item, so the surface lifts under the pointer for the reason
+ * the row's does, and the tile's own z-index is what keeps an open overflow whole
+ * over the tile below it. Its playing line rides .tline, a box that carries the
+ * tile's radius and clips only the bar: the tile itself cannot clip, because an
+ * open menu hangs past its box. */
+.thdr {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.thdr:hover,
+.thdr:focus-within {
+  background: var(--surface-raised);
+}
+
+.thdr .tart {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  /* background-color, not the shorthand, for the reason .cover gives. */
+  background-color: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+.thdr .tart.no-art {
+  --hatch: 12px;
+}
+
+.thdr .tartlink {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.thdr .play {
+  position: absolute;
+  inset-block-end: var(--space-2);
+  inset-inline-start: var(--space-2);
+  z-index: var(--z-base);
+}
+
+.thdr .tunder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0 var(--space-2) var(--space-2);
+}
+.thdr .tidentity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.thdr .tacts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* The tile's control is at the item's foot, so its panel opens upward into the
+ * picture rather than running off the item. */
+.thdr .menu {
+  top: auto;
+  bottom: calc(100% + var(--space-2));
+}
+
+/* The playing line, drawn in from the left when a track starts and withdrawn when
+ * playback stops. It is the emphasis amber, the system's "this is happening", and
+ * the item gains a state without gaining a box. */
+.thdr .tline {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.thdr .tline::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--emphasis);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--motion-base) var(--ease-standard);
+}
+.thdr[data-state='playing'] .tline::after {
+  transform: scaleX(1);
 }
 
 .cover > .bars {

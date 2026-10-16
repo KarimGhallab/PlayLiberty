@@ -25,10 +25,10 @@ import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylist
 import type { PendingAction } from '../components/useDeferredAction/useDeferredAction';
 
 /*
- * One module owns a playlist's actions: the owner/writer rule that decides which
- * of pin, share, rename, sync and delete an account may perform, the menu the
- * header draws, and the effects behind each item. The library item and the detail
- * page hand a playlist in and take the menu and the dialogs back, so neither
+ * One module owns a playlist's actions: the rule that decides which of pin,
+ * share, rename, sync and delete an account may perform, the menu the header
+ * draws, and the effects behind each item. The library item and the detail page
+ * hand a playlist in and take the menu and the dialogs back, so neither
  * re-derives the rule nor re-wires the effects.
  *
  * Two things stay with the consumer because they genuinely differ. The undo
@@ -147,10 +147,11 @@ export function usePlaylistActions(
   const menu: PlaylistAction[] = [];
 
   /*
-   * The pin is on the two menus that exist, and never on a reader's: a reader
-   * gets no overflow at all and reaches the pin from the cover control instead.
-   * The item is one toggle: its label and glyph are the action, and the model's
-   * own key stays `pin` so the control that pressed it never moves.
+   * The pin is on every menu there is, because visibility alone grants it: an
+   * owner's and a writer's hold the rest of their actions beside it, and a
+   * reader's holds the pin alone, which is the one action a share at the read
+   * level allows. The item is one toggle: its label and glyph are the action, and
+   * its own key stays `pin` so the control that pressed it never moves.
    */
   const pinItem = (): PlaylistAction | null => {
     if (playlist === undefined || options.pin === undefined) {
@@ -201,6 +202,10 @@ export function usePlaylistActions(
     }
 
     menu.push(syncItem());
+  } else if (access === 'read') {
+    if (pinEntry !== null) {
+      menu.push(pinEntry);
+    }
   }
 
   /*

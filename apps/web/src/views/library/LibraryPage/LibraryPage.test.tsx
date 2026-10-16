@@ -6,7 +6,13 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within
+} from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -458,24 +464,34 @@ describe('LibraryPage', () => {
     expect(screen.getAllByRole('img', { name: /not stored/ })).toHaveLength(2);
   });
 
-  it('offers the owner the five actions and the reader no overflow', async () => {
+  it('offers the owner the five actions', async () => {
     renderLibraryPage();
 
     await screen.findByText('Rain On The Window');
 
-    /* One menu: the owned item's. The read collaborator gets no button at all. */
-    const menus = screen.getAllByRole('button', {
-      name: 'More actions for Rain On The Window'
-    });
-    expect(menus).toHaveLength(1);
-    expect(
-      screen.queryByRole('button', { name: 'More actions for Shared Mix' })
-    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
 
-    fireEvent.click(menus[0]);
     expect(
       screen.getAllByRole('menuitem').map(item => item.textContent)
     ).toEqual(['Pin', 'Share', 'Rename', 'Sync now', 'Delete playlist']);
+  });
+
+  it('offers a read collaborator the pin alone', async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Shared Mix');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Shared Mix' })
+    );
+
+    expect(
+      screen.getAllByRole('menuitem').map(item => item.textContent)
+    ).toEqual(['Pin']);
   });
 
   it('draws a flagged item in the named section above the list and not in the list below', async () => {

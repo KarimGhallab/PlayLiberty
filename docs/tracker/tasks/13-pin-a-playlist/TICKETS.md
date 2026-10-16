@@ -5,13 +5,13 @@ order, each declaring its blocking edges. The server tickets are verifiable thro
 through the screen and its tests. One set, `01` to `05`, with the design record's specimen alongside and the
 journey last.
 
-| Ticket                                                                                              | Status | Blocked by                                                                             | Blocks                                                                       |
-| --------------------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [`01-the-pin-on-a-playlist`](01-the-pin-on-a-playlist.md)                                           | resolved | none                                                                                   | [`02`](02-the-pinned-section-and-the-menu-item.md)                           |
-| [`02-the-pinned-section-and-the-menu-item`](02-the-pinned-section-and-the-menu-item.md)             | resolved | [`01`](01-the-pin-on-a-playlist.md)                                                    | [`03`](03-the-pin-on-the-cover.md), [`05`](05-the-pinned-gallery-journey.md) |
-| [`03-the-pin-on-the-cover`](03-the-pin-on-the-cover.md)                                             | open   | [`02`](02-the-pinned-section-and-the-menu-item.md)                                     | [`05`](05-the-pinned-gallery-journey.md)                                     |
-| [`04-the-section-in-the-specimen-and-the-glyphs`](04-the-section-in-the-specimen-and-the-glyphs.md) | open   | none                                                                                   | none                                                                         |
-| [`05-the-pinned-gallery-journey`](05-the-pinned-gallery-journey.md)                                 | open   | [`02`](02-the-pinned-section-and-the-menu-item.md), [`03`](03-the-pin-on-the-cover.md) | none                                                                         |
+| Ticket                                                                                              | Status     | Blocked by                                         | Blocks                                             |
+| --------------------------------------------------------------------------------------------------- | ---------- | -------------------------------------------------- | -------------------------------------------------- |
+| [`01-the-pin-on-a-playlist`](01-the-pin-on-a-playlist.md)                                           | resolved   | none                                               | [`02`](02-the-pinned-section-and-the-menu-item.md) |
+| [`02-the-pinned-section-and-the-menu-item`](02-the-pinned-section-and-the-menu-item.md)             | resolved   | [`01`](01-the-pin-on-a-playlist.md)                | [`05`](05-the-pinned-gallery-journey.md)           |
+| [`03-the-pin-on-the-cover`](03-the-pin-on-the-cover.md)                                             | superseded | [`02`](02-the-pinned-section-and-the-menu-item.md) | none                                               |
+| [`04-the-section-in-the-specimen-and-the-glyphs`](04-the-section-in-the-specimen-and-the-glyphs.md) | resolved   | none                                               | none                                               |
+| [`05-the-pinned-gallery-journey`](05-the-pinned-gallery-journey.md)                                 | resolved   | [`02`](02-the-pinned-section-and-the-menu-item.md) | none                                               |
 
 ## Conventions
 
@@ -22,5 +22,7 @@ journey last.
   tickets are tracer bullets through the screen, its read, its store and its tests.
 - The documentation this spec decided is already amended: "favorites" has left the three non-goal lists, the
   glossary carries the `Pin` row and its mix-up pair, the library spec carries its forward pointer, and the
-  design record carries the section on the pinned section and the pin on the cover. No ticket repeats it.
+  design record carries the section on the pinned section. No ticket repeats it.
 - Resolve a ticket by recording its outcome in the ticket and updating its row here. Do not delete it.
+- A ticket the product no longer needs is marked **superseded** rather than deleted, and its edges are dropped,
+  so the decision it recorded stays readable.

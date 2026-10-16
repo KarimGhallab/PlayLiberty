@@ -22,11 +22,10 @@ documents contradicting the product and leaves the next reader to reinvent the w
 
 ## Solution
 
-The gallery gains a pinned section above its list, and every item gains a pin control on the corner of its
-cover. A pin is per account and per playlist, so it follows the account rather than the browser, is granted
-by visibility alone, and never moves anyone else's gallery. Most recently pinned comes first, the section
-exists only while something is pinned, and a pinned playlist is lifted out of the list below rather than
-drawn twice.
+The gallery gains a pinned section above its list, and every item's actions menu gains Pin and Unpin. A pin is
+per account and per playlist, so it follows the account rather than the browser, is granted by visibility
+alone, and never moves anyone else's gallery. Most recently pinned comes first, the section exists only while
+something is pinned, and a pinned playlist is lifted out of the list below rather than drawn twice.
 
 ## User Stories
 
@@ -43,13 +42,16 @@ drawn twice.
 7. As a read collaborator, I want to pin a playlist I can only read, so that my gallery is organised around
    what I listen to and not around what I own.
 8. As a listener, I want to pin from the item itself, so that the action is where the playlist is.
-9. As a listener, I want the control out of the way until I reach for it, so that the gallery stays quiet.
-10. As a keyboard user, I want the control to appear when I reach it, so that I am not pressing at something I
-    cannot see.
-11. As a listener on a device without hover, I want the control always visible, so that pinning is not a
-    gesture that device cannot make.
-12. As a listener, I want a pinned playlist to say so at rest, so that the state reads without a pointer.
-13. As a listener, I want unpin on the same control, so that the thing that pinned is the thing that unpins.
+9. As a listener, I want the pin in the item's own menu, so that it is one action among the item's own and
+   nothing is drawn over the artwork.
+10. As a listener, I want one item that pins and unpins, so that the thing that pinned is the thing that
+    unpins.
+11. As a read collaborator, I want the pin in my menu even though it otherwise holds nothing, so that I can
+    organise a playlist I can only listen to.
+12. As a listener, I want the item's menu to read `Pin` while the playlist is unpinned and `Unpin` while it is
+    pinned, so that the action and the state are never guessed.
+13. As a keyboard user, I want the pin reached by the menu keys as every other action is, so that it needs no
+    pointer.
 14. As a listener, I want no toast when a pin succeeds, so that the item moving is the whole answer.
 15. As a listener, I want to be told when the pin did not change, so that a failure is not silent.
 16. As a listener, I want a pinned playlist I can no longer read to leave my gallery, so that nothing is
@@ -115,36 +117,26 @@ drawn twice.
   already refuses. _Decided here._
 - **The loading state does not change.** The skeleton is the gallery's shape and the read has not landed, so
   a pinned stub would either flash and withdraw or promise a pin the account may not have.
-- **The item gains a pin control on the top-right corner of its cover, and the action keeps its one owner.**
-  The module that already owns a playlist's actions, their dialogs and their write rule exposes the pin, and
-  the menu item and the corner control are two affordances over that one action rather than two owners.
-  _Decided here._
-- **The control borrows the share indicator's reveal trigger set and its focus ring, and deviates on one
-  point.** It is revealed by hovering the item and by its own focus, and it takes the same accent ring every
-  control takes. The share indicator's tooltip is a hidden panel behind an always-visible mark, and a control
-  cannot copy that: a display-none element takes no focus, so the focus half of the reveal would never fire
-  and the control would be reachable by hover alone. The control is therefore hidden visually and still
-  focusable, and it declines pointer events until the item is hovered, so the cover keeps the press that
-  opens the playlist and no invisible target sits over the artwork. _Decided here._
-- **Where there is no hover the control is always visible.** The rule is the query for a device without hover
-  rather than a width, because a touch screen has no pointer over the item and a hidden control there is a
-  control that cannot be found; the width a phone happens to be is the arrangement's business and not this
-  control's. _Decided here._
-- **The control is a toggle with a stable name.** Its pressed state is the pin and its accessible name names
-  the action and the playlist, so forty of them are distinguishable; the glyph at rest is the state, the
-  glyph under the pointer is the action, and the pressed state carries the meaning so the drawing can never
-  contradict what is announced. _Decided here,_ on the shuffle toggle's precedent.
-- **There is no tooltip, and so no Escape.** The share indicator's tip exists because the mark is an
-  indicator whose state cannot be read off the glyph. This is a control with a name and a drawn state, and
-  the shuffle toggle in the item's own actions row carries no tip either.
+- **The pin is an item of the actions menu, which stays the one owner.** The module that already owns a
+  playlist's actions, their dialogs and their write rule exposes Pin and Unpin, and the menu every arrangement
+  already draws is the one affordance, so nothing is drawn on the cover. _Decided here:_ the menu is already
+  where the item's actions live, so the pin needs no second surface and no reveal over the artwork.
+- **The menu is gated by what the account may do, not by a level.** An owner's and a writer's menu already
+  exists, so the pin sits with their other actions; a reader's menu now holds Pin and Unpin alone, because
+  visibility is the whole of what pinning needs and a share at the read level otherwise offers nothing.
+  _Decided here:_ a reader cannot be left without the one action their access allows.
+- **The item is a command with a stable word.** It reads `Pin` while the playlist is unpinned and `Unpin`
+  while it is pinned, so the label is the action and the item needs no pressed state. _Decided here,_ on the
+  shuffle toggle's precedent for the wording.
+- **There is no tooltip.** A menu item carries no tip: the word is the whole of it, and the menu's own button
+  already names the playlist it opens onto.
 - **The two glyphs join the pinned set and the icons record.** Neither is in the pin today, so the specimen
-  that draws the control, the path table the validator checks it against, and the icons record's own entry
+  that draws the menu items, the path table the validator checks it against, and the icons record's own entry
   for the pair are part of this work rather than a follow-up, because the record's figures come from its
-  specimen and a specimen that draws an unpinned glyph fails validation.
+  specimen and a specimen that draws an absent glyph fails validation.
 - **The copy is the screen's own vocabulary.** The section heading is "Pinned"; the menu reads "Pin" and
-  "Unpin"; the control's name is the action and the playlist; the failure notice is "The pin could not be
-  changed." The new keys live under the library and header namespaces, and the French catalogues take the
-  same keys with the section heading inflected for playlists.
+  "Unpin"; the failure notice is "The pin could not be changed." The new keys live under the library and header
+  namespaces, and the French catalogues take the same keys with the section heading inflected for playlists.
 - **The stale statements are amended as part of the work.** "Favorites" leaves the permanent non-goals in the
   product doc, the glossary and the specs tracker; the capability joins the product's v1 list; the glossary
   gains the one word for the idea and the mix-up pair it must not be confused with; and the library spec's
@@ -166,7 +158,7 @@ drawn twice.
 - **The end-to-end journey must exist, because three of these facts are only true once assembled:** the pin is
   written by the server and read again after a reload, the pinned playlist is lifted out of the list below
   rather than drawn twice, and an account that can only read a playlist can still pin it. It seeds one owned
-  playlist and one shared with the account at the read level, pins from the corner control, and asserts: the
+  playlist and one shared with the account at the read level, pins from the item's menu, and asserts: the
   section appears above the list and names itself; the item leaves the list below; the pin survives a reload;
   the section withdraws when the last pin is removed; and the item the account cannot write still pins. The
   browser is the owner of the assembled shape, so the two-account case stays in the route tests, where a
@@ -190,9 +182,8 @@ drawn twice.
     the placement;
   - the page draws the section above the list with the pinned item lifted out of it, and draws no section
     with nothing pinned;
-  - the corner control pins and unpins, and the item moves between the two groups;
-  - the menu item and the corner control write the same pin, and a read collaborator's menu is still empty
-    while its corner control is not;
+  - the menu item pins and unpins, and the item moves between the two groups;
+  - a read collaborator's menu holds Pin and Unpin alone and pins from it;
   - a failed pin leaves the item where it was and draws the notice.
 - **Prior art:** the library page tests, which render the page against the mocked network and already cover
   the list, the empty gallery and the failed read; the library journey, which is the assembled gallery; the
@@ -207,19 +198,16 @@ drawn twice.
 - An explicit pin order, a drag, or a stored position.
 - Favoriting a track, favoriting anything else, and any view that gathers favorites.
 - A live event for the pin.
-- The mobile client's own arrangement, and the pin's place on the web's card, which is the card's subject.
-  This corpus is web only.
+- The mobile client's own arrangement. This corpus is web only.
 
 ## Further Notes
 
 - **The no-cap risk.** An account can pin every playlist it can see, and at that point the section holds the
   gallery and distinguishes nothing. That is accepted rather than capped, because the section's own size is
   the feedback and a refusal would be a worse answer than a full section.
-- **The phone-width tension.** The design record carries one record for both clients, and this corpus is web
-  only. This spec writes the tile's figures and fixes exactly one thing on the narrow arrangement: without
-  hover the control is always visible. Where the pin sits on a card is that arrangement's own subject, because
-  a card's picture already carries the shuffle at its top left and the play in its band, and the arrangement
-  itself is being redrawn. A later reader should not read the missing half as an oversight.
+- **The pin rides the menu, so it needs no narrow-arrangement figure.** The design record carries one record
+  for both clients, and this corpus is web only. The item's overflow is where a playlist's actions already
+  live, so the pin adds a menu item and nothing is placed on a cover; the card has no pin of its own to draw.
 - **One decision of the library spec is narrowed and not replaced.** That spec decided the gallery is one list
   with no sections, on the grounds that a shared item reachable only from a section is a second meaning for
   the same thing and that a second section splits an empty gallery into two empty shelves. A pinned section

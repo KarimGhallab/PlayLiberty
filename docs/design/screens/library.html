@@ -31,56 +31,59 @@
        * in a list rather than the only thing on a page.
        */
 
-      /* The list is a stack and nothing else. The separator between two items is
-         the header's own .hdr + .hdr, so a gallery of headers is separated by the
-         rule the header already had rather than by a rule invented here. */
-      .list {
+      /* The gallery above the phone breakpoint is a grid of tiles: four columns in
+         the 1056 column and one fewer at a time below, because the track is a
+         width rather than a count, so no second rule is needed at a narrower
+         width. The closing hairline the old list had is gone with it: a grid has
+         no per-item rule for one to close.
+
+         The tile's own rules live in specimen.css, beside the row's and the card's,
+         because an item is the playlist header rather than a smaller thing that
+         resembles it. What is left here is the grid. */
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+        gap: var(--space-4);
+      }
+
+      /* The page body: the pinned section and the gallery, one column, at the gap
+         the app's page keeps between its children. The section carries its own
+         extra separation on top of that. */
+      .lib-body {
         display: flex;
         flex-direction: column;
-        /* Opened by the page's header, closed by one hairline under the last
-           row: the first row is separated by the header above it, and the last
-           has nothing after it and needs an edge. */
-        border-block-end: 1px solid var(--line);
+        gap: var(--space-4);
       }
 
-      /* The item is a door even though it is not a link: a press anywhere on it
-         that is not a control or one of the two links opens the playlist. A
-         static specimen cannot show the press, so what is drawn is the surface
-         that promises it: the row lifts to --surface-raised on hover, the step a
-         playable track row already takes, and the pointer says the press is
-         there. Nothing moves but the surface, and it eases in at --motion-fast
-         so running the pointer down the list does not flicker. */
-      .list .hdr {
-        cursor: pointer;
-        transition: background-color var(--motion-fast) var(--ease-standard);
-      }
-      .list .hdr:hover,
-      .list .hdr:focus-within {
-        background: var(--surface-raised);
+      /* The pinned section. It stands --space-7 from the list below, and the body's
+         own gap is --space-4, so the section carries the difference rather than a
+         second rhythm. It holds nothing while nothing is pinned, which is the
+         gallery the web arrangement already draws. */
+      .pinned {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        margin: 0;
+        margin-block-end: calc(var(--space-7) - var(--space-4));
       }
 
-      /* The cover is a link, and the two numbers are the header's own, because
-         the item is the header. The display line is this screen's: the header's
-         cover is a div and this one is an anchor. It is needed because an anchor
-         is inline by default, and it is stated rather than assumed because the
-         header's rule carries no display and there is no reason for it to. */
-      .cover {
-        display: block;
-        --cover: 96px;
-        --cover-radius: var(--radius-card);
-      }
-      /* The same period the header uses, for the same reason: a 96px cover
-         carries the same four stripes a 40px thumbnail does. */
-      .cover.no-art {
-        --hatch: 12px;
+      /* The section's own name above its first row, at the gallery's left edge. It
+         is the section's accessible name and carries no count. */
+      .pinned-title {
+        margin: 0;
+        font-size: var(--text-lg);
+        font-weight: var(--weight-semibold);
+        line-height: var(--leading-tight);
+        color: var(--ink);
       }
 
-      /* The card's cover cannot be the link, because the card puts its play
-         button and its overflow inside the picture and a button inside an anchor
-         is invalid. So the picture stays a div and the link is a sibling of the
-         controls, filling it. It paints below them because .macts is positioned
-         and comes later, and it carries no accessible name and no tab stop, so a
-         screen reader announces one link per item rather than two. */
+      /* A tile's picture cannot be the link, because the tile puts its play on the
+         artwork and a button inside an anchor is invalid. So the picture stays a
+         div and the link is a sibling of the control, filling it. It paints below
+         the play because the play is positioned and comes later, and it carries no
+         accessible name and no tab stop, so a screen reader announces one link per
+         item rather than two. The card's picture is the same shape of thing for the
+         same reason. */
       .martlink {
         position: absolute;
         inset: 0;
@@ -104,14 +107,14 @@
          * names with the breadcrumb above them will notice. The focus ring is
          * the header's own token pair, applied to the two elements that can take
          * focus here. */
-      .cover,
       .martlink,
+      .tartlink,
       .name__text {
         color: inherit;
         text-decoration: none;
       }
-      .cover:focus-visible,
       .martlink:focus-visible,
+      .tartlink:focus-visible,
       .name__text:focus-visible {
         outline: var(--focus-width) solid var(--accent);
         outline-offset: var(--focus-offset);
@@ -1191,7 +1194,7 @@
 
    data-state is which frame rests, and it is on whatever owns the state rather
    than on the button: the cover's equalizer strip is driven by the same fact and
-   the cover is a sibling of the button, and CSS cannot reach a sibling. All 4 hosts that use this control are listed, which is why this block is
+   the cover is a sibling of the button, and CSS cannot reach a sibling. All 5 hosts that use this control are listed, which is why this block is
    identical in every specimen and no copy can drift. data-run is that a
    transition is under way and which way, and the client drops it on
    animationend. It stays on the button, because it describes that control's
@@ -1204,6 +1207,7 @@
       }
       .hdr[data-state='playing'] .play__strip,
       .mhdr[data-state='playing'] .play__strip,
+      .thdr[data-state='playing'] .play__strip,
       .row[data-state='playing'] .play__strip,
       .bar[data-state='playing'] .play__strip {
         transform: translateX(-168px);
@@ -1310,6 +1314,21 @@
         <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
         <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
       </symbol>
+      <symbol id="i-pin" data-icon="pin@3.48.0" viewBox="0 0 24 24">
+        <path d="M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4" />
+        <path d="M9 15l-4.5 4.5" />
+        <path d="M14.5 4l5.5 5.5" />
+      </symbol>
+      <symbol
+        id="i-pinned-off"
+        data-icon="pinned-off@3.48.0"
+        viewBox="0 0 24 24">
+        <path d="M3 3l18 18" />
+        <path
+          d="M15 4.5l-3.249 3.249m-2.57 1.433l-2.181 .818l-1.5 1.5l7 7l1.5 -1.5l.82 -2.186m1.43 -2.563l3.25 -3.251" />
+        <path d="M9 15l-4.5 4.5" />
+        <path d="M14.5 4l5.5 5.5" />
+      </symbol>
     </svg>
 
     <main class="page stack">
@@ -1349,12 +1368,9 @@
             one line.
           </p>
           <p class="section-note">
-            <strong
-              >Each item is the playlist header, at the header's own
-              136px.</strong
-            >
-            Not a row that resembles one. The first version of this screen drew
-            an 88.8px row carrying the identity block alone at 64px and
+            <strong>Each item is the playlist header, at its tile.</strong> Not
+            a row that resembles one. The first version of this screen drew an
+            88.8px row carrying the identity block alone at 64px and
             <span class="token-sm">--text-md</span>, and it had its own cover,
             its own name line, its own count and its own share indicator under
             five class names of its own. It also reproduced
@@ -1363,26 +1379,47 @@
             looked right only because a count lane happened to bound it. Five
             new class names are invisible to anything that compares file names,
             so nothing caught it. The component's rules now live once in
-            <span class="token-sm">specimen.css</span> and both specimens use
-            them.
+            <span class="token-sm">specimen.css</span>, and this screen and the
+            header's own specimen use them.
           </p>
           <p class="section-note">
-            The item measures <strong>136px</strong> and every item after the
-            first <strong>137px</strong>, the extra pixel being the header's own
-            <span class="token-sm">border-top</span> between two of them. The
-            item is a door and not a play: it carries the shuffle and the
-            overflow and nothing else, so its actions column is the action row
-            alone at <strong>72px</strong> and the name keeps its full
-            <strong>848px</strong>. The play, the transport and the equalizer
-            strip belong to a playlist that is opened and played, and are drawn
-            on the detail rather than on a gallery of destinations.
+            The track is
+            <span class="token-sm">repeat(auto-fill, minmax(232px, 1fr))</span>
+            with <span class="token-sm">--space-4</span> gaps, which is
+            <strong>four columns of 252px</strong> in the 1056 column and one
+            fewer at a time below it, so no second rule is needed at a narrower
+            width. <strong>A tile is 396px tall</strong> and it is 396px with
+            the mark and without it: the mark takes the leading space of the
+            actions row rather than a line of its own. A tile that names an
+            owner is <strong>420px</strong>, because that line is its own row
+            under the count, and a grid row takes the height of its tallest
+            tile. The gallery's own reading is one column of artwork, so the
+            figure that matters is the per-item <strong>103px</strong> against
+            the row's 152px.
           </p>
           <p class="section-note">
-            The name truncates on web now, which it did not when the item was
-            88.8px and the name was 16px. At
-            <span class="token-sm">--text-xl</span> the last row's 78-character
-            name is <strong>923px against an 820px column</strong> and is cut.
-            The item before it, 32 characters, is 356px and is not.
+            <strong>The tile leads with its artwork and plays from it.</strong>
+            The cover is a block above the identity and the play is a filled
+            accent circle on the cover's own bottom-left corner, which brings
+            its own ground, so the artwork loses <strong>0%</strong> to it;
+            there is no scrim and no ribbon. Everything else a playlist says is
+            under the cover: the name with its share mark, the sync line with
+            its elapsed time, the count, and the owner line of a shared
+            playlist. The shuffle and the overflow keep the actions row's end.
+            Four states are drawn here: <strong>playing</strong> takes the 2px
+            <span class="token-sm">--emphasis</span> line along the tile's foot
+            and the pause glyph, <strong>syncing</strong> takes
+            <span class="token-sm">--emphasis</span> on the cover's edge,
+            <strong>a failed sync</strong> takes
+            <span class="token-sm">--tone-failed</span> there, and
+            <strong>no artwork</strong> takes a sleeve and the hatch.
+          </p>
+          <p class="section-note">
+            The name truncates, and this is what the tile pays for the grid: its
+            column is about <strong>190px</strong> at
+            <span class="token-sm">--text-xl</span>, so the last tile's
+            78-character name is cut. In the product it is recoverable through
+            its <span class="token-sm">title</span>; the specimen leaves it cut.
           </p>
         </div>
 
@@ -1396,40 +1433,106 @@
               Add a playlist
             </button>
           </div>
-          <div class="list">
-            <div class="hdr" data-state="paused">
-              <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-              <div class="body">
-                <div class="name">
-                  <a class="name__text" href="#">Late Night Drive</a>
-                  <span
-                    class="share"
-                    data-share="own-private"
-                    role="img"
-                    aria-label="Private playlist">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use href="#i-lock" />
-                    </svg>
-                    <span class="share__tip" role="presentation"
-                      >Private playlist</span
-                    >
-                  </span>
-                </div>
-                <div class="meta">
-                  <span class="state idle">Up to date</span>
-                  <span class="sep">&middot;</span>
-                  <span>Synced 2 days ago</span>
-                </div>
-                <div class="count">
-                  <span>128</span>
-                  <span class="unit">tracks</span>
-                </div>
+          <div class="tiles">
+            <div class="thdr" data-state="playing">
+              <div class="tart">
+                <a
+                  class="tartlink"
+                  href="#"
+                  aria-hidden="true"
+                  tabindex="-1"></a>
+                <button
+                  class="play"
+                  type="button"
+                  aria-label="Pause this playlist">
+                  <svg
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
+                    aria-hidden="true"
+                    focusable="false">
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
+                  </svg>
+                </button>
               </div>
-              <div class="actions">
-                <div class="action-row">
+              <div class="tunder">
+                <div class="tidentity">
+                  <div class="name">
+                    <a class="name__text" href="#">Late Night Drive</a>
+                    <span
+                      class="share"
+                      data-share="own-private"
+                      role="img"
+                      aria-label="Private playlist">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-lock" />
+                      </svg>
+                      <span class="share__tip" role="presentation"
+                        >Private playlist</span
+                      >
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <span class="state idle">Up to date</span>
+                    <span class="sep">&middot;</span>
+                    <span>Synced 2 days ago</span>
+                  </div>
+                  <div class="count">
+                    <span>128</span>
+                    <span class="unit">tracks</span>
+                  </div>
+                </div>
+                <div class="tacts">
                   <button
                     class="icon-btn"
                     type="button"
@@ -1459,42 +1562,107 @@
                   </span>
                 </div>
               </div>
+              <span class="tline" aria-hidden="true"></span>
             </div>
-            <div class="hdr" data-state="paused">
-              <a
-                class="cover no-art"
-                data-sleeve="1"
-                href="#"
-                aria-hidden="true"
-                tabindex="-1">
-              </a>
-              <div class="body">
-                <div class="name">
-                  <a class="name__text" href="#">Kitchen Radio</a>
-                  <span
-                    class="share"
-                    data-share="own-private"
-                    role="img"
-                    aria-label="Private playlist">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use href="#i-lock" />
-                    </svg>
-                    <span class="share__tip" role="presentation"
-                      >Private playlist</span
-                    >
-                  </span>
-                </div>
-                <div class="meta">
-                  <span class="state error">Sync failed</span>
-                  <span class="sep">&middot;</span>
-                  <span>Never synced</span>
-                </div>
+            <div class="thdr" data-state="paused">
+              <div class="tart">
+                <a
+                  class="tartlink"
+                  href="#"
+                  aria-hidden="true"
+                  tabindex="-1"></a>
+                <button
+                  class="play"
+                  type="button"
+                  aria-label="Play this playlist">
+                  <svg
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
+                    aria-hidden="true"
+                    focusable="false">
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
+                  </svg>
+                </button>
               </div>
-              <div class="actions">
-                <div class="action-row">
+              <div class="tunder">
+                <div class="tidentity">
+                  <div class="name">
+                    <a class="name__text" href="#">Focus 2009</a>
+                    <span
+                      class="share"
+                      data-share="own-shared"
+                      role="img"
+                      aria-label="Shared playlist">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use class="icon--optical" href="#i-lock-share" />
+                      </svg>
+                      <span class="share__tip" role="presentation"
+                        >Shared playlist</span
+                      >
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <span class="state syncing">Syncing</span>
+                    <span class="sep">&middot;</span>
+                    <span>Synced 5 days ago</span>
+                  </div>
+                  <div class="count">
+                    <span>66</span>
+                    <span class="unit">tracks</span>
+                  </div>
+                </div>
+                <div class="tacts">
                   <button
                     class="icon-btn"
                     type="button"
@@ -1524,40 +1692,108 @@
                   </span>
                 </div>
               </div>
+              <span class="tline" aria-hidden="true"></span>
             </div>
-            <div class="hdr" data-state="paused">
-              <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-              <div class="body">
-                <div class="name">
-                  <a class="name__text" href="#">Ada's Running Mix</a>
-                  <span
-                    class="share"
-                    data-share="own-shared"
-                    role="img"
-                    aria-label="Shared playlist">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use class="icon--optical" href="#i-lock-share" />
-                    </svg>
-                    <span class="share__tip" role="presentation"
-                      >Shared playlist</span
-                    >
-                  </span>
-                </div>
-                <div class="meta">
-                  <span class="state idle">Up to date</span>
-                  <span class="sep">&middot;</span>
-                  <span>Synced 5 days ago</span>
-                </div>
-                <div class="count">
-                  <span>62</span>
-                  <span class="unit">tracks</span>
-                </div>
+            <div class="thdr" data-state="paused">
+              <div class="tart no-art" data-sleeve="2">
+                <a
+                  class="tartlink"
+                  href="#"
+                  aria-hidden="true"
+                  tabindex="-1"></a>
+                <button
+                  class="play"
+                  type="button"
+                  aria-label="Play this playlist">
+                  <svg
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
+                    aria-hidden="true"
+                    focusable="false">
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
+                  </svg>
+                </button>
               </div>
-              <div class="actions">
-                <div class="action-row">
+              <div class="tunder">
+                <div class="tidentity">
+                  <div class="name">
+                    <a class="name__text" href="#">Deep Focus</a>
+                    <span
+                      class="share"
+                      data-share="collab"
+                      role="img"
+                      aria-label="You are a collaborator">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use class="icon--optical" href="#i-user-share" />
+                      </svg>
+                      <span class="share__tip" role="presentation"
+                        >You are a collaborator</span
+                      >
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <span class="state idle">Up to date</span>
+                    <span class="sep">&middot;</span>
+                    <span>Synced yesterday</span>
+                  </div>
+                  <div class="count">
+                    <span>340</span>
+                    <span class="unit">tracks</span>
+                  </div>
+                  <p class="owner">Shared by Ada</p>
+                </div>
+                <div class="tacts">
                   <button
                     class="icon-btn"
                     type="button"
@@ -1587,41 +1823,110 @@
                   </span>
                 </div>
               </div>
+              <span class="tline" aria-hidden="true"></span>
             </div>
-            <div class="hdr" data-state="paused">
-              <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-              <div class="body">
-                <div class="name">
-                  <a class="name__text" href="#">Focus 2009</a>
-                  <span
-                    class="share"
-                    data-share="collab-write"
-                    role="img"
-                    aria-label="You are a collaborator">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use class="icon--optical" href="#i-user-share" />
-                    </svg>
-                    <span class="share__tip" role="presentation"
-                      >You are a collaborator</span
-                    >
-                  </span>
-                </div>
-                <div class="meta">
-                  <span class="state syncing">Syncing</span>
-                  <span class="sep">&middot;</span>
-                  <span>Synced 5 days ago</span>
-                </div>
-                <p class="owner">Shared by Ada</p>
-                <div class="count">
-                  <span>66</span>
-                  <span class="unit">tracks</span>
-                </div>
+            <div class="thdr" data-state="paused">
+              <div class="tart">
+                <a
+                  class="tartlink"
+                  href="#"
+                  aria-hidden="true"
+                  tabindex="-1"></a>
+                <button
+                  class="play"
+                  type="button"
+                  aria-label="Play this playlist">
+                  <svg
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
+                    aria-hidden="true"
+                    focusable="false">
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
+                  </svg>
+                </button>
               </div>
-              <div class="actions">
-                <div class="action-row">
+              <div class="tunder">
+                <div class="tidentity">
+                  <div class="name">
+                    <a class="name__text" href="#"
+                      >A Very Long Playlist Name That Runs Past The End Of The
+                      Column And Keeps Going</a
+                    >
+                    <span
+                      class="share"
+                      data-share="own-private"
+                      role="img"
+                      aria-label="Private playlist">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-lock" />
+                      </svg>
+                      <span class="share__tip" role="presentation"
+                        >Private playlist</span
+                      >
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <span class="state error">Sync failed</span>
+                    <span class="sep">&middot;</span>
+                    <span>Synced 3 weeks ago</span>
+                  </div>
+                  <div class="count">
+                    <span>9</span>
+                    <span class="unit">tracks</span>
+                  </div>
+                </div>
+                <div class="tacts">
                   <button
                     class="icon-btn"
                     type="button"
@@ -1651,121 +1956,7 @@
                   </span>
                 </div>
               </div>
-            </div>
-            <div class="hdr" data-state="paused">
-              <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-              <div class="body">
-                <div class="name">
-                  <a class="name__text" href="#">Deep Focus</a>
-                  <span
-                    class="share"
-                    data-share="collab-write"
-                    role="img"
-                    aria-label="You are a collaborator">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use class="icon--optical" href="#i-user-share" />
-                    </svg>
-                    <span class="share__tip" role="presentation"
-                      >You are a collaborator</span
-                    >
-                  </span>
-                </div>
-                <div class="meta">
-                  <span class="state idle">Up to date</span>
-                  <span class="sep">&middot;</span>
-                  <span>Synced yesterday</span>
-                </div>
-                <p class="owner">Shared by Grace</p>
-                <div class="count">
-                  <span>340</span>
-                  <span class="unit">tracks</span>
-                </div>
-              </div>
-              <div class="actions">
-                <div class="action-row">
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    aria-pressed="false"
-                    aria-label="Shuffle">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use href="#i-shuffle" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="hdr" data-state="paused">
-              <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-              <div class="body">
-                <div class="name">
-                  <a class="name__text" href="#"
-                    >A Very Long Playlist Name That Runs Past The End Of The
-                    Column And Keeps Going</a
-                  >
-                  <span
-                    class="share"
-                    data-share="own-private"
-                    role="img"
-                    aria-label="Private playlist">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use href="#i-lock" />
-                    </svg>
-                    <span class="share__tip" role="presentation"
-                      >Private playlist</span
-                    >
-                  </span>
-                </div>
-                <div class="meta">
-                  <span class="state error">Sync failed</span>
-                  <span class="sep">&middot;</span>
-                  <span>Synced 3 weeks ago</span>
-                </div>
-                <div class="count">
-                  <span>9</span>
-                  <span class="unit">tracks</span>
-                </div>
-              </div>
-              <div class="actions">
-                <div class="action-row">
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    aria-pressed="false"
-                    aria-label="Shuffle">
-                    <svg
-                      class="icon icon--md"
-                      aria-hidden="true"
-                      focusable="false">
-                      <use href="#i-shuffle" />
-                    </svg>
-                  </button>
-                  <span class="menu-anchor">
-                    <button
-                      class="icon-btn"
-                      type="button"
-                      aria-label="More actions"
-                      aria-haspopup="menu"
-                      aria-expanded="false">
-                      <svg
-                        class="icon icon--md"
-                        aria-hidden="true"
-                        focusable="false">
-                        <use href="#i-dots" />
-                      </svg>
-                    </button>
-                  </span>
-                </div>
-              </div>
+              <span class="tline" aria-hidden="true"></span>
             </div>
           </div>
         </div>
@@ -2688,292 +2879,1130 @@
             The three overflows, one per access level
           </h2>
           <p class="section-note">
-            <strong>On web only.</strong> A mobile card carries no overflow at
-            all: renaming, deleting, managing shares and syncing on demand are
-            all available from inside the playlist on a phone, so a card has no
-            menu and no button for one. The access gating is a web question now,
-            and this section is where it is answered.
+            The overflow is gated by what an account may do. An owner's holds
+            all five items, a write collaborator's holds the pin and the sync
+            now, and a read collaborator's holds the pin alone: the pin is
+            granted by visibility, so it is the one action a share at the read
+            level allows, and a reader's tile gains an overflow where it had
+            none, because a menu that opens onto a blank lies about what it can
+            do.
           </p>
           <p class="section-note">
-            <code>access</code> is on <code>PlaylistSchema</code> as
-            <code>owner</code> or a <code>ShareLevel</code>, and the glossary is
-            explicit about what a collaborator may do: add a track, remove a
-            track, sync, and <em>not</em> rename, delete or manage shares, those
-            three staying with the owner. So the header's four items fall into
-            two groups and a collaborator's overflow holds one of them.
-          </p>
-          <p class="section-note">
-            <strong>A read collaborator gets no overflow at all</strong>, rather
-            than one with nothing in it, because there is no action to take from
-            this screen. The header's own no-tracks case argues the opposite
-            about Delete, that the overflow is exactly when you want it, and
-            that is true there and does not apply here: Delete is the owner's.
-          </p>
-          <p class="section-note">
-            The two collaborator items carry the <strong>same glyph</strong>,
-            which is the honest picture of the permission model: the indicator
-            is coarser than <code>access</code> is, one mark covering both
-            collaborator levels, so what a person may do to an item is invisible
-            until its menu is open and then it is exact.
-          </p>
-          <p class="section-note">
-            One item per arrangement, because the menu opens downward and is
-            170px tall against a 137px item, so two open at once overlap. In the
-            product opening one closes the others, so that is the specimen and
-            not the component.
+            The panel opens <strong>upward, into the picture</strong>, because
+            the control is at the item's foot and a panel below it would run off
+            the item. The item is one toggle: it reads <em>Pin</em> while the
+            playlist is unpinned and <em>Unpin</em> while it is pinned, so the
+            word is the action and the drawing may not contradict it.
           </p>
         </div>
 
         <div class="row">
           <p class="section-note">
-            The owner: all four, with the rule before the one that destroys it.
-            That rule is the header's, and the reason is that rename and delete
-            four pixels apart with nothing between them is a mis-click waiting
-            to happen.
+            An owner's, with the rule before the item that destroys it. The pin
+            sits first, over the same action the pinned section groups on, and
+            it reads
+            <em>Unpin</em> because this playlist is pinned.
           </p>
         </div>
         <div class="screen">
-          <div class="hdr" data-state="paused">
-            <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-            <div class="body">
-              <div class="name">
-                <a class="name__text" href="#">Late Night Drive</a>
-                <span
-                  class="share"
-                  data-share="own-private"
-                  role="img"
-                  aria-label="Private playlist">
-                  <svg
-                    class="icon icon--md"
-                    aria-hidden="true"
-                    focusable="false">
-                    <use href="#i-lock" />
-                  </svg>
-                  <span class="share__tip" role="presentation"
-                    >Private playlist</span
-                  >
-                </span>
-              </div>
-              <div class="meta">
-                <span class="state idle">Up to date</span>
-                <span class="sep">&middot;</span>
-                <span>Synced 2 days ago</span>
-              </div>
-              <div class="count">
-                <span>128</span>
-                <span class="unit">tracks</span>
-              </div>
-            </div>
-            <div class="actions">
-              <div class="action-row">
+          <div class="lib-head">
+            <h3 class="lib-title">PlayLiberty</h3>
+            <button class="btn btn-primary" type="button">
+              <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                <use href="#i-plus" />
+              </svg>
+              Add a playlist
+            </button>
+          </div>
+          <div class="tiles">
+            <div class="thdr" data-state="paused">
+              <div class="tart">
+                <a
+                  class="tartlink"
+                  href="#"
+                  aria-hidden="true"
+                  tabindex="-1"></a>
                 <button
-                  class="icon-btn"
+                  class="play"
                   type="button"
-                  aria-pressed="false"
-                  aria-label="Shuffle">
+                  aria-label="Play this playlist">
                   <svg
-                    class="icon icon--md"
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
                     aria-hidden="true"
                     focusable="false">
-                    <use href="#i-shuffle" />
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
                   </svg>
                 </button>
-                <span class="menu-anchor">
+              </div>
+              <div class="tunder">
+                <div class="tidentity">
+                  <div class="name">
+                    <a class="name__text" href="#">Late Night Drive</a>
+                    <span
+                      class="share"
+                      data-share="own-private"
+                      role="img"
+                      aria-label="Private playlist">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-lock" />
+                      </svg>
+                      <span class="share__tip" role="presentation"
+                        >Private playlist</span
+                      >
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <span class="state idle">Up to date</span>
+                    <span class="sep">&middot;</span>
+                    <span>Synced 2 days ago</span>
+                  </div>
+                  <div class="count">
+                    <span>128</span>
+                    <span class="unit">tracks</span>
+                  </div>
+                </div>
+                <div class="tacts">
                   <button
                     class="icon-btn"
                     type="button"
-                    aria-label="More actions"
-                    aria-haspopup="menu"
-                    aria-expanded="true">
+                    aria-pressed="false"
+                    aria-label="Shuffle">
                     <svg
                       class="icon icon--md"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-dots" />
+                      <use href="#i-shuffle" />
                     </svg>
                   </button>
-                  <div class="menu" role="menu">
-                    <button type="button" role="menuitem">
+                  <span class="menu-anchor">
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-label="More actions"
+                      aria-haspopup="menu"
+                      aria-expanded="true">
                       <svg
-                        class="icon icon--sm"
+                        class="icon icon--md"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-share" />
+                        <use href="#i-dots" />
                       </svg>
-                      Share
                     </button>
-                    <button type="button" role="menuitem">
-                      <svg
-                        class="icon icon--sm"
-                        aria-hidden="true"
-                        focusable="false">
-                        <use href="#i-pencil" />
-                      </svg>
-                      Rename
-                    </button>
-                    <button type="button" role="menuitem">
-                      <svg
-                        class="icon icon--sm"
-                        aria-hidden="true"
-                        focusable="false">
-                        <use href="#i-rotate" />
-                      </svg>
-                      Sync now
-                    </button>
-                    <hr />
-                    <button type="button" role="menuitem" class="destructive">
-                      <svg
-                        class="icon icon--sm"
-                        aria-hidden="true"
-                        focusable="false">
-                        <use href="#i-trash" />
-                      </svg>
-                      Delete playlist
-                    </button>
-                  </div>
-                </span>
+                    <div class="menu" role="menu">
+                      <button type="button" role="menuitem">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-pinned-off" />
+                        </svg>
+                        Unpin
+                      </button>
+                      <button type="button" role="menuitem">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-share" />
+                        </svg>
+                        Share
+                      </button>
+                      <button type="button" role="menuitem">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-pencil" />
+                        </svg>
+                        Rename
+                      </button>
+                      <button type="button" role="menuitem">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-rotate" />
+                        </svg>
+                        Sync now
+                      </button>
+                      <hr />
+                      <button type="button" role="menuitem" class="destructive">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-trash" />
+                        </svg>
+                        Delete playlist
+                      </button>
+                    </div>
+                  </span>
+                </div>
               </div>
+              <span class="tline" aria-hidden="true"></span>
             </div>
           </div>
         </div>
         <div class="row">
           <p class="section-note">
-            A write collaborator: sync, and nothing else. The glossary grants a
-            write collaborator the right to add a track, remove a track and
-            sync, and withholds rename, delete and managing shares, so those
-            three items are absent from this menu rather than disabled in it.
+            A write collaborator's: the pin and the sync now, and nothing else.
+            The glossary withholds rename, delete and managing shares, so those
+            three are absent from this menu rather than disabled in it.
           </p>
         </div>
         <div class="screen">
-          <div class="hdr" data-state="paused">
-            <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-            <div class="body">
-              <div class="name">
-                <a class="name__text" href="#">Focus 2009</a>
-                <span
-                  class="share"
-                  data-share="collab-write"
-                  role="img"
-                  aria-label="You are a collaborator">
-                  <svg
-                    class="icon icon--md"
-                    aria-hidden="true"
-                    focusable="false">
-                    <use class="icon--optical" href="#i-user-share" />
-                  </svg>
-                  <span class="share__tip" role="presentation"
-                    >You are a collaborator</span
-                  >
-                </span>
-              </div>
-              <div class="meta">
-                <span class="state syncing">Syncing</span>
-                <span class="sep">&middot;</span>
-                <span>Synced 5 days ago</span>
-              </div>
-              <div class="count">
-                <span>66</span>
-                <span class="unit">tracks</span>
-              </div>
-            </div>
-            <div class="actions">
-              <div class="action-row">
+          <div class="lib-head">
+            <h3 class="lib-title">PlayLiberty</h3>
+            <button class="btn btn-primary" type="button">
+              <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                <use href="#i-plus" />
+              </svg>
+              Add a playlist
+            </button>
+          </div>
+          <div class="tiles">
+            <div class="thdr" data-state="paused">
+              <div class="tart">
+                <a
+                  class="tartlink"
+                  href="#"
+                  aria-hidden="true"
+                  tabindex="-1"></a>
                 <button
-                  class="icon-btn"
+                  class="play"
                   type="button"
-                  aria-pressed="false"
-                  aria-label="Shuffle">
+                  aria-label="Play this playlist">
                   <svg
-                    class="icon icon--md"
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
                     aria-hidden="true"
                     focusable="false">
-                    <use href="#i-shuffle" />
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
                   </svg>
                 </button>
-                <span class="menu-anchor">
+              </div>
+              <div class="tunder">
+                <div class="tidentity">
+                  <div class="name">
+                    <a class="name__text" href="#">Focus 2009</a>
+                    <span
+                      class="share"
+                      data-share="own-shared"
+                      role="img"
+                      aria-label="Shared playlist">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use class="icon--optical" href="#i-lock-share" />
+                      </svg>
+                      <span class="share__tip" role="presentation"
+                        >Shared playlist</span
+                      >
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <span class="state idle">Up to date</span>
+                    <span class="sep">&middot;</span>
+                    <span>Synced 5 days ago</span>
+                  </div>
+                  <div class="count">
+                    <span>66</span>
+                    <span class="unit">tracks</span>
+                  </div>
+                </div>
+                <div class="tacts">
                   <button
                     class="icon-btn"
                     type="button"
-                    aria-label="More actions"
-                    aria-haspopup="menu"
-                    aria-expanded="true">
+                    aria-pressed="false"
+                    aria-label="Shuffle">
                     <svg
                       class="icon icon--md"
                       aria-hidden="true"
                       focusable="false">
-                      <use href="#i-dots" />
+                      <use href="#i-shuffle" />
                     </svg>
                   </button>
-                  <div class="menu" role="menu">
-                    <button type="button" role="menuitem">
+                  <span class="menu-anchor">
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-label="More actions"
+                      aria-haspopup="menu"
+                      aria-expanded="true">
                       <svg
-                        class="icon icon--sm"
+                        class="icon icon--md"
                         aria-hidden="true"
                         focusable="false">
-                        <use href="#i-rotate" />
+                        <use href="#i-dots" />
                       </svg>
-                      Sync now
                     </button>
-                  </div>
-                </span>
+                    <div class="menu" role="menu">
+                      <button type="button" role="menuitem">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-pin" />
+                        </svg>
+                        Pin
+                      </button>
+                      <button type="button" role="menuitem">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-rotate" />
+                        </svg>
+                        Sync now
+                      </button>
+                    </div>
+                  </span>
+                </div>
               </div>
+              <span class="tline" aria-hidden="true"></span>
             </div>
           </div>
         </div>
         <div class="row">
           <p class="section-note">
-            A read collaborator: no overflow at all, rather than one with
-            nothing in it. There is no action to take from this screen, and a
-            menu that opens onto a blank is a control that lies about what it
-            can do.
+            A read collaborator's: the pin alone. The mark beside the name says
+            only that the playlist is not the account's, so what may be done to
+            it is exact in the menu and invisible until then.
           </p>
         </div>
         <div class="screen">
-          <div class="hdr" data-state="paused">
-            <a class="cover" href="#" aria-hidden="true" tabindex="-1"> </a>
-            <div class="body">
-              <div class="name">
-                <a class="name__text" href="#">Deep Focus</a>
-                <span
-                  class="share"
-                  data-share="collab-write"
-                  role="img"
-                  aria-label="You are a collaborator">
-                  <svg
-                    class="icon icon--md"
-                    aria-hidden="true"
-                    focusable="false">
-                    <use class="icon--optical" href="#i-user-share" />
-                  </svg>
-                  <span class="share__tip" role="presentation"
-                    >You are a collaborator</span
-                  >
-                </span>
-              </div>
-              <div class="meta">
-                <span class="state idle">Up to date</span>
-                <span class="sep">&middot;</span>
-                <span>Synced yesterday</span>
-              </div>
-              <div class="count">
-                <span>340</span>
-                <span class="unit">tracks</span>
-              </div>
-            </div>
-            <div class="actions">
-              <div class="action-row">
+          <div class="lib-head">
+            <h3 class="lib-title">PlayLiberty</h3>
+            <button class="btn btn-primary" type="button">
+              <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                <use href="#i-plus" />
+              </svg>
+              Add a playlist
+            </button>
+          </div>
+          <div class="tiles">
+            <div class="thdr" data-state="paused">
+              <div class="tart">
+                <a
+                  class="tartlink"
+                  href="#"
+                  aria-hidden="true"
+                  tabindex="-1"></a>
                 <button
-                  class="icon-btn"
+                  class="play"
                   type="button"
-                  aria-pressed="false"
-                  aria-label="Shuffle">
+                  aria-label="Play this playlist">
                   <svg
-                    class="icon icon--md"
+                    class="icon icon--lg icon--filled play__glyph"
+                    viewBox="0 0 24 24"
+                    data-morph="play-pause"
                     aria-hidden="true"
                     focusable="false">
-                    <use href="#i-shuffle" />
+                    <g class="play__strip">
+                      <g transform="translate(-1.5 0)">
+                        <path
+                          d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                      </g>
+                      <g transform="translate(24 0)">
+                        <path
+                          d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                        <path
+                          d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                      </g>
+                      <g transform="translate(48 0)">
+                        <path
+                          d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                        <path
+                          d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                      </g>
+                      <g transform="translate(72 0)">
+                        <path
+                          d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                        <path
+                          d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                      </g>
+                      <g transform="translate(96 0)">
+                        <path
+                          d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                        <path
+                          d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                      </g>
+                      <g transform="translate(120 0)">
+                        <path
+                          d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                        <path
+                          d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                      </g>
+                      <g transform="translate(144 0)">
+                        <path
+                          d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                        <path
+                          d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                      </g>
+                      <g transform="translate(168 0)">
+                        <path
+                          d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        <path
+                          d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                      </g>
+                    </g>
                   </svg>
                 </button>
+              </div>
+              <div class="tunder">
+                <div class="tidentity">
+                  <div class="name">
+                    <a class="name__text" href="#">Deep Focus</a>
+                    <span
+                      class="share"
+                      data-share="collab"
+                      role="img"
+                      aria-label="You are a collaborator">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use class="icon--optical" href="#i-user-share" />
+                      </svg>
+                      <span class="share__tip" role="presentation"
+                        >You are a collaborator</span
+                      >
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <span class="state idle">Up to date</span>
+                    <span class="sep">&middot;</span>
+                    <span>Synced yesterday</span>
+                  </div>
+                  <div class="count">
+                    <span>340</span>
+                    <span class="unit">tracks</span>
+                  </div>
+                  <p class="owner">Shared by Ada</p>
+                </div>
+                <div class="tacts">
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    aria-pressed="false"
+                    aria-label="Shuffle">
+                    <svg
+                      class="icon icon--md"
+                      aria-hidden="true"
+                      focusable="false">
+                      <use href="#i-shuffle" />
+                    </svg>
+                  </button>
+                  <span class="menu-anchor">
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-label="More actions"
+                      aria-haspopup="menu"
+                      aria-expanded="true">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-dots" />
+                      </svg>
+                    </button>
+                    <div class="menu" role="menu">
+                      <button type="button" role="menuitem">
+                        <svg
+                          class="icon icon--sm"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-pin" />
+                        </svg>
+                        Pin
+                      </button>
+                    </div>
+                  </span>
+                </div>
+              </div>
+              <span class="tline" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="row">
+          <h2 class="section-title">The pinned section</h2>
+          <p class="section-note">
+            The gallery is two groups over one read. A pinned playlist leaves
+            the list and is drawn in a section above it, most recently pinned
+            first, and the section holds nothing while an account has pinned
+            nothing, so an account that never pins one sees the gallery the web
+            arrangement already draws.
+          </p>
+          <p class="section-note">
+            <strong
+              >The pinned item is the same item, and the heading is the only
+              thing the section adds.</strong
+            >
+            One heading at the gallery's own left edge above the first row, the
+            same tile at the same arrangement below it, and a list of its own so
+            the grouping is real to a reader who cannot see it, the heading
+            being the section's accessible name. There is no count in the
+            heading, because a count of playlists is a standing total rather
+            than a fact about a row. The section stands
+            <span class="token-sm">--space-7</span> away from the list below
+            rather than behind a hairline, which in this system marks a tone and
+            not a grouping.
+          </p>
+          <p class="section-note">
+            The pin is in the item's overflow and not on the cover. The menu the
+            item already draws is the one affordance, so nothing appears over
+            the artwork on hover and the picture keeps the whole of its own
+            press. The item is one toggle: it reads <em>Pin</em> while the
+            playlist is unpinned and <em>Unpin</em> while it is pinned.
+          </p>
+        </div>
+
+        <div class="screen">
+          <div class="lib-head">
+            <h3 class="lib-title">PlayLiberty</h3>
+            <button class="btn btn-primary" type="button">
+              <svg class="icon icon--sm" aria-hidden="true" focusable="false">
+                <use href="#i-plus" />
+              </svg>
+              Add a playlist
+            </button>
+          </div>
+          <div class="lib-body">
+            <section class="pinned">
+              <h3 class="pinned-title">Pinned</h3>
+              <div class="tiles">
+                <div class="thdr" data-state="playing">
+                  <div class="tart">
+                    <a
+                      class="tartlink"
+                      href="#"
+                      aria-hidden="true"
+                      tabindex="-1"></a>
+                    <button
+                      class="play"
+                      type="button"
+                      aria-label="Pause this playlist">
+                      <svg
+                        class="icon icon--lg icon--filled play__glyph"
+                        viewBox="0 0 24 24"
+                        data-morph="play-pause"
+                        aria-hidden="true"
+                        focusable="false">
+                        <g class="play__strip">
+                          <g transform="translate(-1.5 0)">
+                            <path
+                              d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                          </g>
+                          <g transform="translate(24 0)">
+                            <path
+                              d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                            <path
+                              d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                          </g>
+                          <g transform="translate(48 0)">
+                            <path
+                              d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                            <path
+                              d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                          </g>
+                          <g transform="translate(72 0)">
+                            <path
+                              d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                            <path
+                              d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                          </g>
+                          <g transform="translate(96 0)">
+                            <path
+                              d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                            <path
+                              d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                          </g>
+                          <g transform="translate(120 0)">
+                            <path
+                              d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                            <path
+                              d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                          </g>
+                          <g transform="translate(144 0)">
+                            <path
+                              d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                            <path
+                              d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                          </g>
+                          <g transform="translate(168 0)">
+                            <path
+                              d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                            <path
+                              d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                          </g>
+                        </g>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="tunder">
+                    <div class="tidentity">
+                      <div class="name">
+                        <a class="name__text" href="#">Focus 2009</a>
+                        <span
+                          class="share"
+                          data-share="own-shared"
+                          role="img"
+                          aria-label="Shared playlist">
+                          <svg
+                            class="icon icon--md"
+                            aria-hidden="true"
+                            focusable="false">
+                            <use class="icon--optical" href="#i-lock-share" />
+                          </svg>
+                          <span class="share__tip" role="presentation"
+                            >Shared playlist</span
+                          >
+                        </span>
+                      </div>
+                      <div class="meta">
+                        <span class="state idle">Up to date</span>
+                        <span class="sep">&middot;</span>
+                        <span>Synced 5 days ago</span>
+                      </div>
+                      <div class="count">
+                        <span>66</span>
+                        <span class="unit">tracks</span>
+                      </div>
+                    </div>
+                    <div class="tacts">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        aria-pressed="false"
+                        aria-label="Shuffle">
+                        <svg
+                          class="icon icon--md"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-shuffle" />
+                        </svg>
+                      </button>
+                      <span class="menu-anchor">
+                        <button
+                          class="icon-btn"
+                          type="button"
+                          aria-label="More actions"
+                          aria-haspopup="menu"
+                          aria-expanded="false">
+                          <svg
+                            class="icon icon--md"
+                            aria-hidden="true"
+                            focusable="false">
+                            <use href="#i-dots" />
+                          </svg>
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                  <span class="tline" aria-hidden="true"></span>
+                </div>
+              </div>
+            </section>
+            <div class="tiles">
+              <div class="thdr" data-state="playing">
+                <div class="tart">
+                  <a
+                    class="tartlink"
+                    href="#"
+                    aria-hidden="true"
+                    tabindex="-1"></a>
+                  <button
+                    class="play"
+                    type="button"
+                    aria-label="Pause this playlist">
+                    <svg
+                      class="icon icon--lg icon--filled play__glyph"
+                      viewBox="0 0 24 24"
+                      data-morph="play-pause"
+                      aria-hidden="true"
+                      focusable="false">
+                      <g class="play__strip">
+                        <g transform="translate(-1.5 0)">
+                          <path
+                            d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                        </g>
+                        <g transform="translate(24 0)">
+                          <path
+                            d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                          <path
+                            d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                        </g>
+                        <g transform="translate(48 0)">
+                          <path
+                            d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                          <path
+                            d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                        </g>
+                        <g transform="translate(72 0)">
+                          <path
+                            d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                          <path
+                            d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                        </g>
+                        <g transform="translate(96 0)">
+                          <path
+                            d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                          <path
+                            d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                        </g>
+                        <g transform="translate(120 0)">
+                          <path
+                            d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                          <path
+                            d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                        </g>
+                        <g transform="translate(144 0)">
+                          <path
+                            d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                          <path
+                            d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                        </g>
+                        <g transform="translate(168 0)">
+                          <path
+                            d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                          <path
+                            d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        </g>
+                      </g>
+                    </svg>
+                  </button>
+                </div>
+                <div class="tunder">
+                  <div class="tidentity">
+                    <div class="name">
+                      <a class="name__text" href="#">Late Night Drive</a>
+                      <span
+                        class="share"
+                        data-share="own-private"
+                        role="img"
+                        aria-label="Private playlist">
+                        <svg
+                          class="icon icon--md"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-lock" />
+                        </svg>
+                        <span class="share__tip" role="presentation"
+                          >Private playlist</span
+                        >
+                      </span>
+                    </div>
+                    <div class="meta">
+                      <span class="state idle">Up to date</span>
+                      <span class="sep">&middot;</span>
+                      <span>Synced 2 days ago</span>
+                    </div>
+                    <div class="count">
+                      <span>128</span>
+                      <span class="unit">tracks</span>
+                    </div>
+                  </div>
+                  <div class="tacts">
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-pressed="false"
+                      aria-label="Shuffle">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-shuffle" />
+                      </svg>
+                    </button>
+                    <span class="menu-anchor">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        aria-label="More actions"
+                        aria-haspopup="menu"
+                        aria-expanded="false">
+                        <svg
+                          class="icon icon--md"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-dots" />
+                        </svg>
+                      </button>
+                    </span>
+                  </div>
+                </div>
+                <span class="tline" aria-hidden="true"></span>
+              </div>
+              <div class="thdr" data-state="paused">
+                <div class="tart no-art" data-sleeve="2">
+                  <a
+                    class="tartlink"
+                    href="#"
+                    aria-hidden="true"
+                    tabindex="-1"></a>
+                  <button
+                    class="play"
+                    type="button"
+                    aria-label="Play this playlist">
+                    <svg
+                      class="icon icon--lg icon--filled play__glyph"
+                      viewBox="0 0 24 24"
+                      data-morph="play-pause"
+                      aria-hidden="true"
+                      focusable="false">
+                      <g class="play__strip">
+                        <g transform="translate(-1.5 0)">
+                          <path
+                            d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                        </g>
+                        <g transform="translate(24 0)">
+                          <path
+                            d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                          <path
+                            d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                        </g>
+                        <g transform="translate(48 0)">
+                          <path
+                            d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                          <path
+                            d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                        </g>
+                        <g transform="translate(72 0)">
+                          <path
+                            d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                          <path
+                            d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                        </g>
+                        <g transform="translate(96 0)">
+                          <path
+                            d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                          <path
+                            d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                        </g>
+                        <g transform="translate(120 0)">
+                          <path
+                            d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                          <path
+                            d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                        </g>
+                        <g transform="translate(144 0)">
+                          <path
+                            d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                          <path
+                            d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                        </g>
+                        <g transform="translate(168 0)">
+                          <path
+                            d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                          <path
+                            d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        </g>
+                      </g>
+                    </svg>
+                  </button>
+                </div>
+                <div class="tunder">
+                  <div class="tidentity">
+                    <div class="name">
+                      <a class="name__text" href="#">Deep Focus</a>
+                      <span
+                        class="share"
+                        data-share="collab"
+                        role="img"
+                        aria-label="You are a collaborator">
+                        <svg
+                          class="icon icon--md"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use class="icon--optical" href="#i-user-share" />
+                        </svg>
+                        <span class="share__tip" role="presentation"
+                          >You are a collaborator</span
+                        >
+                      </span>
+                    </div>
+                    <div class="meta">
+                      <span class="state idle">Up to date</span>
+                      <span class="sep">&middot;</span>
+                      <span>Synced yesterday</span>
+                    </div>
+                    <div class="count">
+                      <span>340</span>
+                      <span class="unit">tracks</span>
+                    </div>
+                    <p class="owner">Shared by Ada</p>
+                  </div>
+                  <div class="tacts">
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-pressed="false"
+                      aria-label="Shuffle">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-shuffle" />
+                      </svg>
+                    </button>
+                    <span class="menu-anchor">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        aria-label="More actions"
+                        aria-haspopup="menu"
+                        aria-expanded="false">
+                        <svg
+                          class="icon icon--md"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-dots" />
+                        </svg>
+                      </button>
+                    </span>
+                  </div>
+                </div>
+                <span class="tline" aria-hidden="true"></span>
+              </div>
+              <div class="thdr" data-state="paused">
+                <div class="tart">
+                  <a
+                    class="tartlink"
+                    href="#"
+                    aria-hidden="true"
+                    tabindex="-1"></a>
+                  <button
+                    class="play"
+                    type="button"
+                    aria-label="Play this playlist">
+                    <svg
+                      class="icon icon--lg icon--filled play__glyph"
+                      viewBox="0 0 24 24"
+                      data-morph="play-pause"
+                      aria-hidden="true"
+                      focusable="false">
+                      <g class="play__strip">
+                        <g transform="translate(-1.5 0)">
+                          <path
+                            d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                        </g>
+                        <g transform="translate(24 0)">
+                          <path
+                            d="M4.857 4.000L4.714 8.610L4.610 13.286L4.571 18.000L4.777 20.271L5.334 20.704L6.021 20.692L8.082 19.550L10.286 18.369L10.429 14.847L10.533 11.258L10.571 7.631L8.653 4.736L6.697 3.413L6.010 3.191L5.348 3.443L4.857 4.000Z" />
+                          <path
+                            d="M10.857 18.084L12.722 17.102L14.653 16.083L16.623 14.997L18.735 13.873L19.237 13.390L19.342 12.714L19.021 12.127L17.194 9.289L15.329 8.022L13.398 6.793L11.429 5.631L11.143 7.721L11.000 9.850L10.895 12.045L10.857 14.279L10.857 18.084Z" />
+                        </g>
+                        <g transform="translate(48 0)">
+                          <path
+                            d="M5.214 4.000L4.929 7.886L4.719 11.905L4.643 16.000L4.814 19.893L5.323 20.420L6.017 20.532L7.901 19.625L10.071 18.641L10.357 15.661L10.566 12.548L10.643 9.359L9.044 4.947L7.369 3.677L6.675 3.371L5.957 3.536L5.214 4.000Z" />
+                          <path
+                            d="M11.214 18.070L12.813 17.419L14.544 16.691L16.352 15.831L18.446 14.894L19.031 14.447L19.240 13.762L19.017 13.106L17.495 8.740L15.896 7.518L14.165 6.372L12.357 5.359L11.786 7.101L11.500 8.920L11.291 10.871L11.214 12.899L11.214 18.070Z" />
+                        </g>
+                        <g transform="translate(72 0)">
+                          <path
+                            d="M5.571 4.000L5.143 7.162L4.829 10.524L4.714 14.000L4.851 19.514L5.312 20.136L6.014 20.372L7.721 19.700L9.857 18.913L10.286 16.475L10.599 13.839L10.714 11.087L9.435 5.157L8.042 3.942L7.340 3.550L6.566 3.629L5.571 4.000Z" />
+                          <path
+                            d="M11.571 18.056L12.904 17.735L14.435 17.299L16.082 16.665L18.157 15.915L18.825 15.504L19.138 14.809L19.014 14.085L17.796 8.192L16.463 7.014L14.932 5.951L13.286 5.087L12.429 6.481L12.000 7.989L11.686 9.697L11.571 11.519L11.571 18.056Z" />
+                        </g>
+                        <g transform="translate(96 0)">
+                          <path
+                            d="M5.929 4.000L5.357 6.439L4.939 9.143L4.786 12.000L4.889 19.136L5.301 19.852L6.010 20.212L7.541 19.775L9.643 19.185L10.214 17.289L10.633 15.129L10.786 12.815L9.827 5.368L8.714 4.206L8.005 3.730L7.174 3.721L5.929 4.000Z" />
+                          <path
+                            d="M11.929 18.042L12.995 18.051L14.327 17.908L15.811 17.499L17.867 16.937L18.619 16.561L19.037 15.857L19.010 15.063L18.097 7.644L17.031 6.511L15.699 5.530L14.214 4.815L13.071 5.861L12.500 7.059L12.082 8.523L11.929 10.139L11.929 18.042Z" />
+                        </g>
+                        <g transform="translate(120 0)">
+                          <path
+                            d="M6.286 4.000L5.571 5.715L5.049 7.762L4.857 10.000L4.926 18.757L5.290 19.568L6.007 20.052L7.361 19.850L9.429 19.456L10.143 18.104L10.666 16.419L10.857 14.544L10.218 5.579L9.387 4.471L8.670 3.909L7.783 3.814L6.286 4.000Z" />
+                          <path
+                            d="M12.286 18.028L13.086 18.367L14.218 18.516L15.541 18.332L17.578 17.958L18.412 17.618L18.935 16.905L19.007 16.042L18.398 7.096L17.598 6.007L16.466 5.110L15.143 4.544L13.714 5.240L13.000 6.129L12.477 7.348L12.286 8.760L12.286 18.028Z" />
+                        </g>
+                        <g transform="translate(144 0)">
+                          <path
+                            d="M6.643 4.000L5.786 4.992L5.158 6.381L4.929 8.000L4.963 18.379L5.279 19.284L6.003 19.892L7.180 19.925L9.214 19.728L10.071 18.918L10.699 17.710L10.929 16.272L10.609 5.789L10.059 4.735L9.335 4.089L8.391 3.907L6.643 4.000Z" />
+                          <path
+                            d="M12.643 18.014L13.177 18.684L14.109 19.124L15.270 19.166L17.289 18.979L18.206 18.675L18.834 17.952L19.003 17.021L18.699 6.548L18.165 5.504L17.233 4.689L16.071 4.272L14.357 4.620L13.500 5.198L12.873 6.174L12.643 7.380L12.643 18.014Z" />
+                        </g>
+                        <g transform="translate(168 0)">
+                          <path
+                            d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                          <path
+                            d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+                        </g>
+                      </g>
+                    </svg>
+                  </button>
+                </div>
+                <div class="tunder">
+                  <div class="tidentity">
+                    <div class="name">
+                      <a class="name__text" href="#"
+                        >A Very Long Playlist Name That Runs Past The End Of The
+                        Column And Keeps Going</a
+                      >
+                      <span
+                        class="share"
+                        data-share="own-private"
+                        role="img"
+                        aria-label="Private playlist">
+                        <svg
+                          class="icon icon--md"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-lock" />
+                        </svg>
+                        <span class="share__tip" role="presentation"
+                          >Private playlist</span
+                        >
+                      </span>
+                    </div>
+                    <div class="meta">
+                      <span class="state error">Sync failed</span>
+                      <span class="sep">&middot;</span>
+                      <span>Synced 3 weeks ago</span>
+                    </div>
+                    <div class="count">
+                      <span>9</span>
+                      <span class="unit">tracks</span>
+                    </div>
+                  </div>
+                  <div class="tacts">
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-pressed="false"
+                      aria-label="Shuffle">
+                      <svg
+                        class="icon icon--md"
+                        aria-hidden="true"
+                        focusable="false">
+                        <use href="#i-shuffle" />
+                      </svg>
+                    </button>
+                    <span class="menu-anchor">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        aria-label="More actions"
+                        aria-haspopup="menu"
+                        aria-expanded="false">
+                        <svg
+                          class="icon icon--md"
+                          aria-hidden="true"
+                          focusable="false">
+                          <use href="#i-dots" />
+                        </svg>
+                      </button>
+                    </span>
+                  </div>
+                </div>
+                <span class="tline" aria-hidden="true"></span>
               </div>
             </div>
           </div>
@@ -3946,12 +4975,11 @@
             href="../components/playlist-header.html"
             style="color: var(--muted)"
             >the playlist header</a
-          >, at its own 136px on web and as its own square card on mobile. This
-          screen is a gallery of headers and adds four things to one: the links
-          on its cover and its name, the list it stacks in, the permission facts
-          its overflow is gated on, and the door it is instead of a play, since
-          a playlist is started from its own screen and the item's whole surface
-          opens it. Everything else, including the rules, belongs to that record
+          >, at its own <strong>tile</strong> above 767px and as its own
+          <strong>card</strong> at it and below. This screen is a gallery of
+          headers and adds three things to one: the links on its picture and its
+          name, the grid it sits in, and the permission facts its overflow is
+          gated on. Everything else, including the rules, belongs to that record
           and to <span class="token-sm">specimen.css</span>. An earlier version
           of this screen drew an 88.8px row carrying the header's identity block
           alone, with its own cover, name line, count and indicator under five
@@ -3964,22 +4992,21 @@
       <section class="stack">
         <h2 class="section-title">What is not drawn</h2>
         <p class="hint">
-          The owner of a shared playlist, by name, is now drawn on the two
-          collaborator items above as
-          <span class="token-sm">Shared by Ada</span> and
-          <span class="token-sm">Shared by Grace</span>, resolved from
-          <span class="token-sm">ownerAccountId</span> through
+          The owner of a shared playlist, by name, is drawn on the collaborator
+          tile above as <span class="token-sm">Shared by Ada</span>, resolved
+          from <span class="token-sm">ownerAccountId</span> through
           <span class="token-sm">GET /accounts</span>. An item whose owner is
           not on the directory page keeps the indicator alone rather than a
           placeholder, because a placeholder is read as a decision.
         </p>
         <p class="hint">
-          An equalizer strip on a card, which its own size cannot carry: a
-          square cover at 324px gives 51.4 bars against the strip's
+          An equalizer strip on a tile or a card, which neither arrangement has
+          room for: a square cover at 324px gives 51.4 bars against the strip's
           <span class="token-sm">7n - 4</span> and its reach of 178px is behind
-          the 80px of controls it would have to cross. Nor is one drawn on a
-          library item, which carries no play: the strip is the detail header's,
-          where the playlist it belongs to is the one being played.
+          the 80px of controls it would have to cross. The strip is the detail
+          header's, where the playlist it belongs to is the one being played,
+          and a gallery says what is playing with the emphasis line along the
+          item's foot and the pause on the picture instead.
         </p>
         <p class="hint">
           The queue panel, which belongs to
@@ -4005,24 +5032,27 @@
           >, the sync state, and saying so is the point of the list. It was
           recorded as a deliberate absence with a reason, and it is present
           because an item is the header rather than a smaller component. The
-          strip is the other half of the same fact and is not drawn here: a
-          gallery item carries no play, so the strip belongs to the detail
-          header, where the playlist it belongs to is the one being played.
+          strip is the other half of the same fact and is not drawn here: the
+          gallery marks what is playing with the emphasis line and the pause,
+          and the strip belongs to the detail header, where the playlist it
+          belongs to is the one being played.
         </p>
       </section>
 
       <section class="stack">
         <h2 class="section-title">Usage</h2>
         <p class="hint">
-          Do keep the list one list. A playlist shared to the account is in it,
-          and a second section for shared items would duplicate the row and
-          split an empty gallery into two meanings. Do not restate the count as
-          something playable: the count is a total of associations, so a
-          playlist of 300 with 290 still
-          <span class="token-sm">pending</span> reads 300, and nothing on a row
-          may claim otherwise. Do not add a playlist count to the header for the
-          same reason a figure is not a colour here: a standing total spends
-          attention that belongs to the list.
+          Do keep the gallery one list, apart from the pinned section. A
+          playlist shared to the account is in it, and a second section for
+          shared items would duplicate the tile and split an empty gallery into
+          two meanings; the pin is the account's own placement of a thing the
+          list still holds, which is why it is the one grouping that earns a
+          heading. Do not restate the count as something playable: the count is
+          a total of associations, so a playlist of 300 with 290 still
+          <span class="token-sm">pending</span> reads 300, and nothing on an
+          item may claim otherwise. Do not add a playlist count to the header
+          for the same reason a figure is not a colour here: a standing total
+          spends attention that belongs to the gallery.
         </p>
       </section>
     </main>
