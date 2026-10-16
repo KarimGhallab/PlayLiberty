@@ -191,14 +191,17 @@ export default function LibraryPage() {
       ) : null}
       {isEmpty ? <EmptyGallery onAdd={() => setDialogOpen(true)} /> : null}
       {playlists.isSuccess && pinned.length > 0 ? (
-        <section
-          className={styles.library__section}
-          aria-labelledby={pinnedHeadingId}>
+        <section aria-labelledby={pinnedHeadingId}>
           <h2 id={pinnedHeadingId} className={styles.library__sectionTitle}>
             {t('library.pinned')}
           </h2>
           <ul className={styles.library__grid}>{pinned.map(renderItem)}</ul>
         </section>
+      ) : null}
+      {/* A boundary needs two sides: an account that has pinned nothing, or one that
+       * has pinned everything, sees the one list it has always seen. */}
+      {playlists.isSuccess && pinned.length > 0 && rest.length > 0 ? (
+        <hr className={styles.library__rule} />
       ) : null}
       {playlists.isSuccess && rest.length > 0 ? (
         <ul className={styles.library__grid}>{rest.map(renderItem)}</ul>

@@ -394,12 +394,27 @@ account that never pins one sees the gallery this record already describes. It i
 record refused: what was refused is a shared item reachable only from a section, which is a second meaning for
 one thing, and a pin is the account's own placement of a thing the list still holds.
 
-**The pinned item is the same item, and the heading is the only thing the section adds.** One heading at the
-gallery's own left edge above the first row, the same tile at the same arrangement below it, and a list of its
-own so the grouping is real to a reader who cannot see it, the heading being the section's accessible name.
-There is no count in the heading, by the header's own rule: a count of playlists is a standing total rather
-than a fact about a row, and a count of pins is the same kind of number. The section stands `--space-7` away
-from the list rather than behind a hairline, which in this system marks a tone and not a grouping.
+**The pinned item is the same item, and the heading and the boundary are the only things the section adds.**
+One heading at the gallery's own left edge above the first row, the same tile at the same arrangement below it,
+and a list of its own so the grouping is real to a reader who cannot see it, the heading being the section's
+accessible name. There is no count in the heading, by the header's own rule: a count of playlists is a standing
+total rather than a fact about a row, and a count of pins is the same kind of number.
+
+**The boundary is a rule and a second name.** The pinned group ends at a 1px rule the width of the content
+column, and what follows is named `Other playlists` at `--text-md` `--muted`, one step down from the pinned
+heading and quiet, because it labels what follows rather than reading as a second screen title. A gap alone was
+the first answer and it does not hold: `--space-7` reads as rhythm rather than as grouping, and both groups are
+the same tile, so nothing else on the page says where one ends. The rule is `--control-border` and not `--line`,
+which is the one decision here worth defending: `--line` measures 1.28:1 and is the rule between rows inside a
+list, so a boundary drawn with it is a boundary nobody sees. `--control-border` is the token for an edge
+somebody acts through, which a section boundary is not; this value set has no third boundary, so the meaning is
+borrowed rather than invented.
+
+Three other separations were drawn beside it and are recorded as rejected, because each fails on the same
+point: a **shelf**, a `--surface` panel with its own radius; a **band**, that ground taken across the page's
+full width; and a **rail**, an `--emphasis` edge down the group's left with the group inset from it. Every one
+of them makes the pinned group a second kind of thing, and the section exists to say the pinned item is the same
+item. The rule says where the group ends without saying the group is different.
 
 **The pin is in the item's overflow, and not on the cover.** The menu the item already draws is the one
 affordance, so nothing appears over the artwork on hover and the picture keeps the whole of its own press. An

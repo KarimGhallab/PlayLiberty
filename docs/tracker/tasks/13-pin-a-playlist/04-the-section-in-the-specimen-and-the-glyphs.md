@@ -16,9 +16,10 @@ at the actions row's end. Four states are drawn: **playing** (the 2px `--emphasi
 pause), **syncing** (the `--emphasis` cover ring), **a failed sync** (`--tone-failed` there) and **no artwork**
 (a sleeve and the hatch).
 
-The specimen draws the **pinned section**: a labelled `Pinned` heading above its own grid, the `--space-7`
-separation, and the gallery below it. Its own list, standing `--space-7` from the list below rather than
-behind a hairline, is the whole of what the section adds.
+The specimen draws the **pinned section**: a labelled `Pinned` heading above its own grid, the boundary that
+follows, and the gallery below it. That boundary is a 1px `--control-border` rule the width of the column and
+the name `Other playlists` under it, and it is the whole of what the section adds; the record carries the
+decision, the token it borrows and the three separations that were drawn beside it and rejected.
 
 The item's overflow carries the **pin items**. "The three overflows, one per access level" now draws one tile
 per access level with its panel open: an owner's reads five with `Unpin` first, a writer's reads `Pin` and

@@ -96,18 +96,38 @@
     min-width: 0;
   }
 
-  /* The pinned section. It stands --space-7 from the list, and the page's own gap
-   * is --space-4, so this carries the difference rather than a second gap. */
-  &__section {
-    margin-block-end: calc(var(--space-7) - var(--space-4));
-  }
-
-  /* The section's own name above its first row, at the gallery's left edge. It is
-   * the section's accessible name and carries no count. */
+  /* The pinned section carries no separation of its own any more: the boundary
+   * below it is the rule and the two names, and the page's own gap is the space
+   * around them. */
   &__section-title {
     margin: 0 0 var(--space-4);
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
+  }
+
+  /* The boundary between the pinned group and the rest, the width of the content
+   * column.
+   *
+   * --control-border rather than --line, and that is the whole of the decision:
+   * --line measures 1.28:1 and is the rule between rows inside a list, so a
+   * boundary drawn with it is a boundary nobody can see. --control-border is the
+   * token for an edge somebody acts through, which a section boundary is not: it
+   * is borrowed here because this value set has no third boundary and a separator
+   * that cannot be seen separates nothing. */
+  &__rule {
+    height: 1px;
+    margin: 5px 0px;
+    border: 0;
+    background: var(--control-border);
+  }
+
+  /* The name of the group below the rule, one step down from the pinned heading and
+   * quiet: it labels what follows rather than reading as a second screen title. */
+  &__rest-title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    color: var(--muted);
   }
 }
 

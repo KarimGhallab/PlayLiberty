@@ -47,24 +47,44 @@
       }
 
       /* The page body: the pinned section and the gallery, one column, at the gap
-         the app's page keeps between its children. The section carries its own
-         extra separation on top of that. */
+         the app's page keeps between its children. The boundary between the two
+         groups is the rule and the second name, and not the gap. */
       .lib-body {
         display: flex;
         flex-direction: column;
         gap: var(--space-4);
       }
 
-      /* The pinned section. It stands --space-7 from the list below, and the body's
-         own gap is --space-4, so the section carries the difference rather than a
-         second rhythm. It holds nothing while nothing is pinned, which is the
-         gallery the web arrangement already draws. */
+      /* The pinned section. It holds nothing while nothing is pinned, which is the
+         gallery the web arrangement already draws, and it carries no separation of
+         its own: the rule below it is the boundary. */
       .pinned {
         display: flex;
         flex-direction: column;
         gap: var(--space-4);
         margin: 0;
-        margin-block-end: calc(var(--space-7) - var(--space-4));
+      }
+
+      /* The boundary between the two groups, the width of the content column.
+         --control-border rather than --line, and that is the decision: --line
+         measures 1.28:1 and is the rule between rows inside a list, so a boundary
+         drawn with it is a boundary nobody can see. */
+      .pinned-rule {
+        height: 1px;
+        margin: 0;
+        border: 0;
+        background: var(--control-border);
+      }
+
+      /* The name of the group below the rule, one step down from the pinned heading
+         and quiet: it labels what follows rather than reading as a second screen
+         title. */
+      .pinned-others {
+        margin: 0 0 var(--space-4);
+        font-size: var(--text-md);
+        font-weight: var(--weight-semibold);
+        line-height: var(--leading-tight);
+        color: var(--muted);
       }
 
       /* The section's own name above its first row, at the gallery's left edge. It
@@ -3441,18 +3461,31 @@
           </p>
           <p class="section-note">
             <strong
-              >The pinned item is the same item, and the heading is the only
-              thing the section adds.</strong
+              >The pinned item is the same item, and the heading and the
+              boundary are the only things the section adds.</strong
             >
             One heading at the gallery's own left edge above the first row, the
             same tile at the same arrangement below it, and a list of its own so
             the grouping is real to a reader who cannot see it, the heading
             being the section's accessible name. There is no count in the
             heading, because a count of playlists is a standing total rather
-            than a fact about a row. The section stands
-            <span class="token-sm">--space-7</span> away from the list below
-            rather than behind a hairline, which in this system marks a tone and
-            not a grouping.
+            than a fact about a row.
+          </p>
+          <p class="section-note">
+            <strong>The boundary is a rule and a second name.</strong> The
+            pinned group ends at a 1px rule the width of the content column, and
+            what follows it is named <em>Other playlists</em> at
+            <span class="token-sm">--text-md</span>
+            <span class="token-sm">--muted</span>, one step down from the pinned
+            heading and quiet, because it labels what follows rather than
+            reading as a second screen title. The rule is
+            <span class="token-sm">--control-border</span> and not
+            <span class="token-sm">--line</span>:
+            <span class="token-sm">--line</span> measures 1.28:1 and is the rule
+            between rows inside a list, so a boundary drawn with it is a
+            boundary nobody sees. A gap alone was the first answer and it does
+            not hold: both groups are the same tile, so nothing else on the page
+            says where one ends.
           </p>
           <p class="section-note">
             The pin is in the item's overflow and not on the cover. The menu the
@@ -3609,6 +3642,8 @@
                 </div>
               </div>
             </section>
+            <hr class="pinned-rule" />
+            <p class="pinned-others">Other playlists</p>
             <div class="tiles">
               <div class="thdr" data-state="playing">
                 <div class="tart">
