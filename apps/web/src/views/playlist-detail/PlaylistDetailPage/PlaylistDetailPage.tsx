@@ -29,6 +29,7 @@ import {
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';
 import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
+import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import LoadMoreControl from '../../../shared/components/LoadMoreControl/LoadMoreControl';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
@@ -315,26 +316,29 @@ export default function PlaylistDetailPage() {
           />
           {t('detail.back')}
         </Link>
-        {/*
-         * The labelled button above the phone breakpoint, the floating action
-         * below it, one at a time; absent for a reader, like any control.
-         */}
-        {canWrite && !isMobile ? (
-          <button
-            type="button"
-            className={styles.playlistDetail__add}
-            onClick={() => {
-              addTrack.reset();
-              setAddOpen(true);
-            }}>
-            <IconPlus
-              className={styles.playlistDetail__addIcon}
-              aria-hidden="true"
-              focusable="false"
-            />
-            {t('detail.addTrack')}
-          </button>
-        ) : null}
+        <div className={styles.playlistDetail__actions}>
+          <LanguageMenu />
+          {/*
+           * The labelled button above the phone breakpoint, the floating action
+           * below it, one at a time; absent for a reader, like any control.
+           */}
+          {canWrite && !isMobile ? (
+            <button
+              type="button"
+              className={styles.playlistDetail__add}
+              onClick={() => {
+                addTrack.reset();
+                setAddOpen(true);
+              }}>
+              <IconPlus
+                className={styles.playlistDetail__addIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+              {t('detail.addTrack')}
+            </button>
+          ) : null}
+        </div>
       </nav>
 
       {canWrite && isMobile ? (

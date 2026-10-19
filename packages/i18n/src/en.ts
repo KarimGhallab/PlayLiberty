@@ -23,6 +23,7 @@ export const en = {
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
     pinned: 'Pinned',
+    rest: 'Others',
     pinFailed: 'The pin could not be changed.',
     notDownloaded: {
       one: '{count} track is not stored',

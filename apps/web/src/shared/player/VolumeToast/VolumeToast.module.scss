@@ -6,7 +6,7 @@
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--space-4) + 98px);
+  bottom: calc(var(--space-4) + var(--player-bar-height));
   translate: -50% 0;
   z-index: calc(var(--z-overlay) + 1);
   display: flex;

@@ -69,6 +69,7 @@ export const lengths = {
   'control-touch': { kind: TokenKind.Length, value: 44 },
   'control-size-check': { kind: TokenKind.Length, value: 18 },
   'control-size-inline': { kind: TokenKind.Length, value: 28 },
+  'player-bar-height': { kind: TokenKind.Length, value: 98 },
   'icon-sm': { kind: TokenKind.Length, value: 16 },
   'icon-md': { kind: TokenKind.Length, value: 20 },
   'icon-lg': { kind: TokenKind.Length, value: 28 },

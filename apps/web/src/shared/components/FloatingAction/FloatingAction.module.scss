@@ -30,10 +30,10 @@
     outline-offset: var(--focus-offset);
   }
 
-  /* The bar is an overlay 97px tall, so the button clears it; only its
-   * presence moves the button; both pages pay for the bar either way. */
+  /* The bar is an overlay, so the button clears it; only its presence moves
+   * the button; both pages pay for the bar either way. */
   &[data-docked='true'] {
-    inset-block-end: calc(97px + var(--space-4));
+    inset-block-end: calc(var(--player-bar-height) + var(--space-4));
   }
 
   &__icon {

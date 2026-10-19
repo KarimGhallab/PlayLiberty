@@ -10,7 +10,7 @@ import { useDismissibleMenu } from '../../../shared/components/useDismissibleMen
 import styles from './LanguageMenu.module.scss';
 
 /*
- * On the library only, because there is no account surface and no settings. The
+ * On both surfaces, because the app has no account or settings screen. The
  * trigger is named through `language.label` rather than a visible word.
  */
 

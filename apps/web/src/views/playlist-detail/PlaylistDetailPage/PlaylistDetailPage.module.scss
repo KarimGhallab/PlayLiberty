@@ -8,8 +8,8 @@
   flex-direction: column;
   max-width: calc(1056px + var(--space-4) * 2);
   margin: 0 auto;
-  /* 97px is the docked player bar, an overlay, so it is paid for here. */
-  padding: 0 var(--space-4) calc(97px + var(--space-5));
+  /* The docked player bar is an overlay, so its height is paid for here. */
+  padding: 0 var(--space-4) calc(var(--player-bar-height) + var(--space-5));
 
   /* The back link and, for a writer, the add control, one row. */
   &__wayhome {
@@ -18,6 +18,12 @@
     justify-content: space-between;
     gap: var(--space-4);
     padding: var(--space-5) 0;
+  }
+
+  &__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
   }
 
   /*
@@ -95,7 +101,7 @@
 
   /*
    * Pinned while the list scrolls, and scrolling inside itself when taller than
-   * the viewport; 97px is the docked bar overlaying its foot.
+   * the viewport; the docked bar overlays its foot.
    */
   &__left {
     display: flex;
@@ -105,7 +111,7 @@
     flex-shrink: 0;
     position: sticky;
     top: var(--space-4);
-    max-height: calc(100dvh - 97px);
+    max-height: calc(100dvh - var(--player-bar-height));
     /* A gutter for the ring and the switch's touch target, which reach past their
      * own edge; without it the scroll box widens and draws a horizontal bar. */
     padding-right: calc(var(--focus-width) + var(--focus-offset));
@@ -253,7 +259,9 @@
      * under a control that cannot move.
      */
     &[data-player='true'] {
-      padding-block-end: calc(97px + var(--space-4) + 56px + var(--space-4));
+      padding-block-end: calc(
+        var(--player-bar-height) + var(--space-4) + 56px + var(--space-4)
+      );
     }
 
     /* Full width under the header, with the side's own 20px above it. */

@@ -25,6 +25,7 @@ export const fr: Messages = {
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
     pinned: 'Épinglées',
+    rest: 'Autres',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
     notDownloaded: {
       one: "{count} piste n'est pas enregistrée",

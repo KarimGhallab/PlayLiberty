@@ -13,6 +13,7 @@ import {
   usePlaylists
 } from '../../../shared/api/queries/queries';
 import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
+import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoToast from '../../../shared/components/UndoToast/UndoToast';
@@ -35,7 +36,6 @@ import {
 
 import AddPlaylistDialog from '../AddPlaylistDialog/AddPlaylistDialog';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
-import LanguageMenu from '../LanguageMenu/LanguageMenu';
 import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
 import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';
@@ -73,6 +73,7 @@ export default function LibraryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pinRefused, setPinRefused] = useState<Error | null>(null);
   const pinnedHeadingId = useId();
+  const restHeadingId = useId();
   const actions = usePlaylistActions({
     defer: deferred.defer,
     deleteMessage: 'library.deleteDeferred',
@@ -96,6 +97,7 @@ export default function LibraryPage() {
   const rest = items.filter(playlist => !playlist.pinned);
 
   const isEmpty = playlists.isSuccess && items.length === 0;
+  const grouped = pinned.length > 0 && rest.length > 0;
 
   /* The refusal withdraws on the window the other notices use. */
   useEffect(() => {
@@ -120,6 +122,10 @@ export default function LibraryPage() {
         onShuffle={() => shuffle(playlist)}
       />{' '}
     </li>
+  );
+
+  const renderList = (list: readonly PlaylistWithCounts[]) => (
+    <ul className={styles.library__grid}>{list.map(renderItem)}</ul>
   );
 
   /*
@@ -170,16 +176,25 @@ export default function LibraryPage() {
           <h2 id={pinnedHeadingId} className={styles.library__sectionTitle}>
             {t('library.pinned')}
           </h2>
-          <ul className={styles.library__grid}>{pinned.map(renderItem)}</ul>
+          {renderList(pinned)}
         </section>
       ) : null}
       {/* A boundary needs two sides: an account that has pinned nothing, or one that
        * has pinned everything, sees the one list it has always seen. */}
-      {playlists.isSuccess && pinned.length > 0 && rest.length > 0 ? (
+      {playlists.isSuccess && grouped ? (
         <hr className={styles.library__rule} />
       ) : null}
       {playlists.isSuccess && rest.length > 0 ? (
-        <ul className={styles.library__grid}>{rest.map(renderItem)}</ul>
+        grouped ? (
+          <section aria-labelledby={restHeadingId}>
+            <h2 id={restHeadingId} className={styles.library__restTitle}>
+              {t('library.rest')}
+            </h2>
+            {renderList(rest)}
+          </section>
+        ) : (
+          renderList(rest)
+        )
       ) : null}
       {isEmpty || !isMobile ? null : (
         <FloatingAction

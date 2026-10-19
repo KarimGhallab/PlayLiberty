@@ -1,7 +1,7 @@
 /*
  * The volume control. The rail floats over the page, not in the bar's flow:
- * 96px of travel against a 98px bar. Muted keeps the height, changes only the
- * colour, and the button edge takes the failure tone.
+ * 96px of travel, shorter than the bar it floats over. Muted keeps the height,
+ * changes only the colour, and the button edge takes the failure tone.
  */
 .volume {
   position: relative;

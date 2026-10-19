@@ -16,7 +16,7 @@ import {
 } from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ProblemCode,
@@ -179,6 +179,10 @@ beforeEach(() => {
   usePlayerStore.getState().clear();
 });
 
+afterEach(() => {
+  window.localStorage.clear();
+});
+
 describe('PlaylistDetailPage', () => {
   it('offers a labelled way home', async () => {
     renderDetail();
@@ -186,6 +190,21 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('link', { name: 'Back to home' })
     ).toHaveAttribute('href', '/');
+  });
+
+  it('switches the language from a deep-linked detail', async () => {
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play this playlist' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Language' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+
+    expect(window.localStorage.getItem('playliberty.language')).toBe('fr');
+    expect(document.documentElement.lang).toBe('fr');
+    expect(
+      screen.getByRole('link', { name: "Retour à l'accueil" })
+    ).toBeInTheDocument();
   });
 
   it('draws the header as the card at the web width', async () => {

@@ -1,50 +1,14 @@
 # 89: The bar height, the unpinned heading and the language control
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
 **Blocked by:** None. Can start immediately.
 
-## Agent Brief
+## Outcome
 
-**Category:** bug
-**Summary:** Three small residuals from the critique: the player bar is 98px while both pages reserve 97px, the unpinned gallery group has no heading after its rule, and the language control exists only on the library.
+The player bar's height is one token, `player-bar-height` (98px). The bar, both pages, the floating action and the three toasts pay for it by name, so the reserve and the bar cannot drift. The library names the rest of the gallery "Others" when a pinned section sits above it; an account with no pins keeps the one unlabelled list, and an all-pinned gallery keeps its "Pinned" heading.
 
-**Current behavior:**
-`PlayerBar.module.scss` sets `height: 98px`; `LibraryPage.module.scss` and `PlaylistDetailPage.module.scss` both reserve `97px`, so about 1px of the last row hides under the bar. The library separates pinned from unpinned with a rule and no heading, so a heading list shows only "Epinglees". `LanguageMenu` is rendered only by `LibraryPage`.
+`LanguageMenu` moved to `shared/components/LanguageMenu` and is rendered in the library header and the detail's way-home row, so a deep-linked detail can switch language. The glossary records that the control sits on both the library and the playlist detail.
 
-**Desired behavior:**
-The reserve matches the bar; the unpinned group is labelled for the heading list; and the language control's home is decided (library only, or both surfaces) and recorded.
-
-**Key interfaces:**
-
-- The reserve is a padding expression in two stylesheets; the bar's height is one declaration.
-- If the language control moves, `LanguageMenu` becomes shared.
-
-**Acceptance criteria:**
-
-- [ ] The last row is fully reachable above the docked bar.
-- [ ] A heading list in the gallery names both groups, or the single list stays unlabelled because it is one list.
-- [ ] The language control's placement is decided and documented.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The bar's internal layout and the language resolution logic.
-
-## Observed
-
-- Bar 98px; reserve 97px in both page stylesheets.
-- The unpinned group follows an `hr` with no heading.
-- Deep-linking to a detail leaves no way to switch language without going home.
-
-## Expected
-
-- No off-by-one under the bar; both groups are named; the language control has one stated home.
-
-## Evidence
-
-- `apps/web/src/shared/player/PlayerBar/PlayerBar.module.scss:16`.
-- `apps/web/src/views/library/LibraryPage/LibraryPage.module.scss`, `apps/web/src/views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage.module.scss`.
-- `apps/web/src/views/library/LibraryPage/LibraryPage.tsx:164-196`.
-- Impeccable critique of `apps/web`, 2026-10-19, minor observations.
+Verification: `pnpm run build` and `pnpm run lint` pass; the unit suites pass (tokens 2, i18n 39, youtube 31, ui-foundation 6, server 386, web 502); `pnpm test:e2e` is 35 passed.

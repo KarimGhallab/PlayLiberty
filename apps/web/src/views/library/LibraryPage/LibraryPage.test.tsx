@@ -495,6 +495,14 @@ describe('LibraryPage', () => {
     expect(
       within(lists[1]!).getByRole('link', { name: 'Shared Mix' })
     ).toBeInTheDocument();
+
+    const restSection = screen.getByRole('region', { name: 'Others' });
+    expect(
+      within(restSection).getByRole('link', { name: 'Shared Mix' })
+    ).toBeInTheDocument();
+    expect(
+      within(restSection).queryByRole('link', { name: 'Rain On The Window' })
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the items below the section in the order the read returned', async () => {

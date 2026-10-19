@@ -99,7 +99,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`86-the-gallery-announces-actions-without-names`](86-the-gallery-announces-actions-without-names.md)                                                     | open       | bug           | Every card's play button omits the playlist name, focus order puts action before name, and the badge is a no-op tab stop.   |
 | [`87-the-sort-control-hides-its-purpose`](87-the-sort-control-hides-its-purpose.md)                                                                       | open       | bug           | The sort control shows only its value; "Trier par" exists only in its aria-label.                                           |
 | [`88-quiet-the-gallerys-filled-play`](88-quiet-the-gallerys-filled-play.md)                                                                               | open       | enhancement   | Quiet the gallery's per-tile filled play, keeping the fill for the detail hero and the player bar.                          |
-| [`89-the-bar-height-the-unpinned-heading-and-the-language-control`](89-the-bar-height-the-unpinned-heading-and-the-language-control.md)                   | open       | bug           | The bar is 98px against a 97px reserve, the unpinned group has no heading, and the language control is library-only.        |
+| [`89-the-bar-height-the-unpinned-heading-and-the-language-control`](89-the-bar-height-the-unpinned-heading-and-the-language-control.md)                   | resolved   | bug           | The bar is 98px against a 97px reserve, the unpinned group has no heading, and the language control is library-only.        |
 
 ## Conventions
 
