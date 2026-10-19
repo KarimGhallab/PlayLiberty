@@ -1,9 +1,10 @@
 import { IconPlayerSkipBack, IconPlayerSkipForward } from '@tabler/icons-react';
 import { useEffect, useRef } from 'react';
 
+import { endpoints } from '@playliberty/contracts';
 import { formatDuration, useI18n } from '@playliberty/i18n';
 
-import { API_PREFIX } from '../../api/client/client';
+import { mediaUrl } from '../../api/endpoints/endpoints';
 import PlayGlyph from '../../components/PlayGlyph';
 import { usePlayPauseMorph } from '../../components/usePlayPauseMorph/usePlayPauseMorph';
 import VolumeControl from '../VolumeControl/VolumeControl';
@@ -101,7 +102,7 @@ export default function PlayerBar() {
   const artwork =
     current.thumbnailPath === null
       ? null
-      : `${API_PREFIX}/tracks/${current.id}/thumbnail`;
+      : mediaUrl(endpoints.trackThumbnail, { trackId: current.id });
 
   /* The pointer's x against the track's own box, in seconds: the element is the
    * truth for the target, not the store's last-written position. */

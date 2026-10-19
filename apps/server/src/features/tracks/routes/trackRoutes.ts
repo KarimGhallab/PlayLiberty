@@ -1,6 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 
-import { AddTrackInputSchema, ProblemCode } from '@playliberty/contracts';
+import {
+  AddTrackInputSchema,
+  ProblemCode,
+  endpoints
+} from '@playliberty/contracts';
 import { YoutubeSourceKind } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
@@ -11,6 +15,7 @@ import {
   sendUnprocessable,
   sendValidationFailed
 } from '../../../shared/problem.js';
+import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
 import { addTrackToPlaylists } from '../addTrackToPlaylists.js';
@@ -36,7 +41,7 @@ export function registerTrackRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.post('/tracks', async (request, reply) => {
+  registerEndpoint(app, endpoints.addTrack, async (request, reply) => {
     const parsed = parseBody(AddTrackInputSchema, request.body);
 
     if (!parsed.success) {
@@ -60,12 +65,13 @@ export function registerTrackRoutes(
     return reply.send(result);
   });
 
-  app.get<{ Params: { id: string } }>(
-    '/tracks/:id/stream',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.trackStream,
     async (request, reply) => {
       const result = resolveTrackForStream(
         context.database,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 
@@ -108,12 +114,13 @@ export function registerTrackRoutes(
     }
   );
 
-  app.get<{ Params: { id: string } }>(
-    '/tracks/:id/thumbnail',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.trackThumbnail,
     async (request, reply) => {
       const result = resolveTrackForThumbnail(
         context.database,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 
@@ -147,12 +154,13 @@ export function registerTrackRoutes(
     }
   );
 
-  app.post<{ Params: { id: string } }>(
-    '/tracks/:id/retry',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.retryTrack,
     async (request, reply) => {
       const result = retryTrackForAccount(
         context,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 
@@ -181,12 +189,13 @@ export function registerTrackRoutes(
     }
   );
 
-  app.post<{ Params: { id: string } }>(
-    '/tracks/:id/fetch-whole',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.fetchTrackWhole,
     async (request, reply) => {
       const result = fetchTrackWholeForAccount(
         context,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 

@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
+import { endpoints } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import {
   formatLastSynced,
@@ -22,7 +23,7 @@ import {
 } from '@playliberty/i18n';
 import { sleeveIndex } from '@playliberty/ui-foundation';
 
-import { API_PREFIX } from '../../api/client/client';
+import { mediaUrl } from '../../api/endpoints/endpoints';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import Menu from '../Menu/Menu';
 import PlayGlyph from '../PlayGlyph';
@@ -163,7 +164,7 @@ export function usePlaylistHeader({
   const coverSrc =
     playlist.coverTrackId === null
       ? null
-      : `${API_PREFIX}/tracks/${playlist.coverTrackId}/thumbnail`;
+      : mediaUrl(endpoints.trackThumbnail, { trackId: playlist.coverTrackId });
   const [coverFailed, setCoverFailed] = useState(false);
   const cover = coverFailed ? null : coverSrc;
 

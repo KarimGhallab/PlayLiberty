@@ -1,4 +1,7 @@
+import { endpoints } from '@playliberty/contracts';
+
 import { ApiError, probeStreamStatus } from '../../api/client/client';
+import { mediaPath } from '../../api/endpoints/endpoints';
 
 /*
  * What to do about a stream that failed to load. The element cannot say why, so
@@ -24,7 +27,7 @@ const GONE_STATUSES = new Set([403, 404, 409]);
 
 /** The path the stream is read from, relative to the API prefix `send` adds. */
 function streamPath(trackId: string): string {
-  return `/tracks/${trackId}/stream`;
+  return mediaPath(endpoints.trackStream, { trackId });
 }
 
 /*

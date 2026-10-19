@@ -27,21 +27,26 @@ export interface ResponseReader<T> {
   readonly parse: (input: unknown) => T;
 }
 
-/* One endpoint, one declaration: the query module reads it to send, the mock
- * harness reads it to answer, and neither writes the path. */
-export interface ApiEndpoint<TResponse> {
+/* What every declaration carries, whichever body it answers: the server
+ * registrar binds a route from the method and the path alone. */
+export interface EndpointDeclaration {
   readonly method: HttpMethod;
   readonly path: string;
-  readonly response: ResponseReader<TResponse>;
   readonly errors: readonly ProblemCode[];
 }
 
-/* A command whose success carries no body, so there is no response to parse. */
-export interface ApiCommandEndpoint {
-  readonly method: HttpMethod;
-  readonly path: string;
-  readonly errors: readonly ProblemCode[];
+/* One endpoint, one declaration: the query module reads it to send, the mock
+ * harness reads it to answer, and neither writes the path. */
+export interface ApiEndpoint<TResponse> extends EndpointDeclaration {
+  readonly response: ResponseReader<TResponse>;
 }
+
+/* A command whose success carries no body, so there is no response to parse. */
+export type ApiCommandEndpoint = EndpointDeclaration;
+
+/* A media route a browser element reads whole: the declaration carries its
+ * method and path, and the element reads the body without a schema. */
+export type ApiMediaEndpoint = EndpointDeclaration;
 
 export function defineEndpoint<TResponse>(
   endpoint: ApiEndpoint<TResponse>
@@ -52,6 +57,12 @@ export function defineEndpoint<TResponse>(
 export function defineCommandEndpoint(
   endpoint: ApiCommandEndpoint
 ): ApiCommandEndpoint {
+  return endpoint;
+}
+
+export function defineMediaEndpoint(
+  endpoint: ApiMediaEndpoint
+): ApiMediaEndpoint {
   return endpoint;
 }
 
@@ -231,6 +242,25 @@ export const endpoints = {
       ProblemCode.TrackNotFound,
       ProblemCode.TrackNotFetchable,
       ...WRITE_ERRORS
+    ]
+  }),
+  trackStream: defineMediaEndpoint({
+    method: HttpMethod.Get,
+    path: '/tracks/:trackId/stream',
+    errors: [
+      ProblemCode.TrackNotFound,
+      ProblemCode.Forbidden,
+      ProblemCode.TrackNotStored,
+      ...READ_ERRORS
+    ]
+  }),
+  trackThumbnail: defineMediaEndpoint({
+    method: HttpMethod.Get,
+    path: '/tracks/:trackId/thumbnail',
+    errors: [
+      ProblemCode.ThumbnailNotFound,
+      ProblemCode.Forbidden,
+      ...READ_ERRORS
     ]
   }),
   removeTrack: defineCommandEndpoint({

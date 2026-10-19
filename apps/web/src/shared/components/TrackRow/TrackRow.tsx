@@ -8,11 +8,11 @@ import type { ReactNode } from 'react';
 import { memo, useRef, useState } from 'react';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
-import { TrackFileStatus } from '@playliberty/contracts';
+import { TrackFileStatus, endpoints } from '@playliberty/contracts';
 import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
 import { trackTone } from '@playliberty/ui-foundation';
 
-import { API_PREFIX } from '../../api/client/client';
+import { mediaUrl } from '../../api/endpoints/endpoints';
 import Menu from '../Menu/Menu';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
@@ -77,7 +77,7 @@ function TrackRow({
   const artwork =
     track.thumbnailPath === null
       ? null
-      : `${API_PREFIX}/tracks/${track.id}/thumbnail`;
+      : mediaUrl(endpoints.trackThumbnail, { trackId: track.id });
   const label =
     current && playing
       ? t('trackRow.pause', { title: track.title })

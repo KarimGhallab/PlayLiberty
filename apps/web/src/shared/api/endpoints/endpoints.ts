@@ -1,11 +1,13 @@
 import type {
   ApiCommandEndpoint,
   ApiEndpoint,
+  ApiMediaEndpoint,
   EndpointParams
 } from '@playliberty/contracts';
 import { endpointPath } from '@playliberty/contracts';
 
 import {
+  API_PREFIX,
   apiCommand,
   apiDelete,
   apiGet,
@@ -68,4 +70,21 @@ export function deleteEndpoint(
   params: EndpointParams = {}
 ): Promise<void> {
   return apiDelete(pathOf(endpoint, params));
+}
+
+/* A media route is read whole by a browser element rather than parsed, so its
+ * declaration has no response schema; it still owns the path. */
+export function mediaPath(
+  endpoint: ApiMediaEndpoint,
+  params: EndpointParams
+): string {
+  return endpointPath(endpoint.path, params);
+}
+
+/** The same path with the api prefix, what a media element's `src` carries. */
+export function mediaUrl(
+  endpoint: ApiMediaEndpoint,
+  params: EndpointParams
+): string {
+  return `${API_PREFIX}${mediaPath(endpoint, params)}`;
 }

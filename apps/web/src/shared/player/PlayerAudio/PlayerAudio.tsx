@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 
-import { API_PREFIX } from '../../api/client/client';
+import { endpoints } from '@playliberty/contracts';
+
+import { mediaUrl } from '../../api/endpoints/endpoints';
 import {
   bindSessionHandlers,
   publishMetadata
@@ -98,7 +100,7 @@ export default function PlayerAudio() {
       return;
     }
 
-    audio.src = `${API_PREFIX}/tracks/${currentId}/stream`;
+    audio.src = mediaUrl(endpoints.trackStream, { trackId: currentId });
     audio.load();
   }, [currentId]);
 
@@ -203,7 +205,7 @@ export default function PlayerAudio() {
         : [
             {
               src: new URL(
-                `${API_PREFIX}/tracks/${current.id}/thumbnail`,
+                mediaUrl(endpoints.trackThumbnail, { trackId: current.id }),
                 window.location.origin
               ).href
             }

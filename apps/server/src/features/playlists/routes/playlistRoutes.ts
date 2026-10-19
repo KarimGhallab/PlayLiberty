@@ -9,7 +9,8 @@ import {
   ProblemCode,
   RenamePlaylistInputSchema,
   SkipNonMusicInputSchema,
-  SortPlaylistInputSchema
+  SortPlaylistInputSchema,
+  endpoints
 } from '@playliberty/contracts';
 
 import { audit } from '../../../shared/audit.js';
@@ -22,6 +23,7 @@ import {
   sendProblem,
   sendValidationFailed
 } from '../../../shared/problem.js';
+import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
 import {
@@ -47,7 +49,7 @@ export function registerPlaylistRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.get('/playlists', async (request, reply) => {
+  registerEndpoint(app, endpoints.playlists, async (request, reply) => {
     const parsed = parseBody(PageQuerySchema, request.query);
 
     if (!parsed.success) {
@@ -62,7 +64,7 @@ export function registerPlaylistRoutes(
     );
   });
 
-  app.post('/playlists', async (request, reply) => {
+  registerEndpoint(app, endpoints.createPlaylist, async (request, reply) => {
     const parsed = parseBody(CreatePlaylistInputSchema, request.body);
 
     if (!parsed.success) {
@@ -96,12 +98,13 @@ export function registerPlaylistRoutes(
     return reply.code(202).send(started.run);
   });
 
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.playlist,
     async (request, reply) => {
       const result = readPlaylistForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -117,8 +120,9 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id/tracks',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.playlistTracks,
     async (request, reply) => {
       const parsed = parseBody(PlaylistTracksQuerySchema, request.query);
 
@@ -128,7 +132,7 @@ export function registerPlaylistRoutes(
 
       const result = listPlaylistTracksForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id,
         {
           limit: parsed.data.limit,
@@ -149,12 +153,13 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id/queue',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.playlistQueue,
     async (request, reply) => {
       const result = listPlaylistQueueForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -170,8 +175,9 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.patch<{ Params: { id: string } }>(
-    '/playlists/:id',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.renamePlaylist,
     async (request, reply) => {
       const parsed = parseBody(RenamePlaylistInputSchema, request.body);
 
@@ -181,7 +187,7 @@ export function registerPlaylistRoutes(
 
       const result = renamePlaylistForAccount(
         context,
-        request.params.id,
+        request.params.playlistId,
         request.account.id,
         parsed.data.name
       );
@@ -200,8 +206,9 @@ export function registerPlaylistRoutes(
 
   /* The owner and write collaborator may change the skip-non-music setting, not
    * retroactive: it sets the default for tracks created from now on. */
-  app.patch<{ Params: { id: string } }>(
-    '/playlists/:id/skip-non-music',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.skipNonMusic,
     async (request, reply) => {
       const parsed = parseBody(SkipNonMusicInputSchema, request.body);
 
@@ -211,7 +218,7 @@ export function registerPlaylistRoutes(
 
       const result = updateSkipNonMusicForAccount(
         context,
-        request.params.id,
+        request.params.playlistId,
         request.account.id,
         parsed.data.skipNonMusic
       );
@@ -230,8 +237,9 @@ export function registerPlaylistRoutes(
 
   /* Owner and write collaborator may change the track order. The playlist's own
    * order is the absence, so clearing the sort writes no value. */
-  app.patch<{ Params: { id: string } }>(
-    '/playlists/:id/sort',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.sortPlaylist,
     async (request, reply) => {
       const parsed = parseBody(SortPlaylistInputSchema, request.body);
 
@@ -241,7 +249,7 @@ export function registerPlaylistRoutes(
 
       const result = updateSortForAccount(
         context,
-        request.params.id,
+        request.params.playlistId,
         request.account.id,
         parsed.data.sort
       );
@@ -260,8 +268,9 @@ export function registerPlaylistRoutes(
 
   /* Check is the read need, not write: a pin is the account's own placement,
    * so a read collaborator may pin. No event: not a playlist change. */
-  app.patch<{ Params: { id: string } }>(
-    '/playlists/:id/pin',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.pinPlaylist,
     async (request, reply) => {
       const parsed = parseBody(PinPlaylistInputSchema, request.body);
 
@@ -271,7 +280,7 @@ export function registerPlaylistRoutes(
 
       const result = updatePinForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id,
         parsed.data.pinned
       );
@@ -288,12 +297,13 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.delete<{ Params: { id: string } }>(
-    '/playlists/:id',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.deletePlaylist,
     async (request, reply) => {
       const outcome = deletePlaylistForAccount(
         context,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -306,7 +316,7 @@ export function registerPlaylistRoutes(
           action: 'playlist_deleted',
           outcome: 'allowed',
           actor: request.account.id,
-          playlist: request.params.id
+          playlist: request.params.playlistId
         });
         return reply.code(204).send();
       }
@@ -315,12 +325,13 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.post<{ Params: { id: string } }>(
-    '/playlists/:id/sync',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.syncPlaylist,
     async (request, reply) => {
       const result = startSyncForPlaylist(
         context,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -341,12 +352,13 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.delete<{ Params: { id: string; trackId: string } }>(
-    '/playlists/:id/tracks/:trackId',
+  registerEndpoint<{ Params: { playlistId: string; trackId: string } }>(
+    app,
+    endpoints.removeTrack,
     async (request, reply) => {
       const outcome = removeTrackForAccount(
         context,
-        request.params.id,
+        request.params.playlistId,
         request.params.trackId,
         request.account.id
       );

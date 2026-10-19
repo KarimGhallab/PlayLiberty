@@ -1,10 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 
-import { PlaylistNotFoundReason, ProblemCode } from '@playliberty/contracts';
+import {
+  PlaylistNotFoundReason,
+  ProblemCode,
+  endpoints
+} from '@playliberty/contracts';
 
 import type { AppContext } from '../../../shared/context.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import { sendPlaylistNotFound, sendProblem } from '../../../shared/problem.js';
+import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
 import { resolveLatestSyncRun } from '../syncRunService.js';
 import { SyncRunOutcome } from '../types.js';
@@ -13,12 +18,13 @@ export function registerSyncRunRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id/sync-runs/latest',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.latestSyncRun,
     async (request, reply) => {
       const result = resolveLatestSyncRun(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
