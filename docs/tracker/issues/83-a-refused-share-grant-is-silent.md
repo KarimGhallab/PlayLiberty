@@ -1,46 +1,12 @@
 # 83: A refused share grant is silent
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
-**Blocked by:** None. Can start immediately.
+## Outcome
 
-## Agent Brief
+A refused grant now opens a notice naming the account, with the server's mapped reason underneath. The dialog owns the refusal state and renders the page's `NoticeToast`; it withdraws on the same four-second window as the pin and setting notices. The toggle still derives from the shares read, so a refusal leaves it on the last truth the server gave and enabled for another attempt.
 
-**Category:** bug
-**Summary:** Granting a share has no error path: the toggle derives from the server's share list, so a refused grant simply does not move, with no message.
+The same silent path on revoke is closed with its own sentence. `shareDialog.grantFailed` and `shareDialog.revokeFailed` name the account; `problemSentence` supplies the reason. A successful write is unchanged: the shares read still invalidates on the response.
 
-**Current behavior:**
-`SharePlaylistDialog.setLevel` calls `grant.mutate({ accountId, level }, { onSettled })` with no `onError`. The pressed state comes from `levelOf(account.id)` over the shares read, so a failure leaves the control exactly as it was.
-
-**Desired behavior:**
-A refused grant surfaces a notice naming the account and the reason, the way a failed pin opens the library's notice.
-
-**Key interfaces:**
-
-- The page's notice surface is the model; the dialog sits inside it.
-- The problem-code mapping already words server refusals.
-
-**Acceptance criteria:**
-
-- [ ] A refused grant shows a message and does not leave the toggle ambiguous.
-- [ ] A successful grant is unchanged.
-- [ ] A test holds the refusal path.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The share permission model and the server route.
-
-## Observed
-
-- `SharePlaylistDialog.tsx` grants and revokes with no `onError`.
-
-## Expected
-
-- No control changes state silently or fails silently.
-
-## Evidence
-
-- `apps/web/src/shared/components/SharePlaylistDialog/SharePlaylistDialog.tsx:70-80`.
-- Impeccable critique of `apps/web`, 2026-10-19, minor observations.
+Tests: the detail page holds both refusal paths, asserting the account sentence, the mapped reason, and the untouched toggle. Verification: `pnpm run build` and `pnpm run lint` pass; the full unit suite passes (web 537 across 52 files; server, i18n and ui-foundation passed).

@@ -117,7 +117,9 @@ export const fr: Messages = {
     readFailed: 'Impossible de charger les comptes.',
     empty: "Il n'y a encore personne avec qui partager.",
     listen: 'Peut écouter',
-    edit: 'Peut modifier'
+    edit: 'Peut modifier',
+    grantFailed: 'Le partage de la playlist avec {name} a échoué.',
+    revokeFailed: 'Le retrait du partage de la playlist avec {name} a échoué.'
   },
   addTrackDialog: {
     title: 'Ajouter une piste',

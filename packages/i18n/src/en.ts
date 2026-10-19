@@ -114,7 +114,9 @@ export const en = {
     readFailed: 'Accounts could not be loaded.',
     empty: 'There is no one else here to share with yet.',
     listen: 'Can listen',
-    edit: 'Can edit'
+    edit: 'Can edit',
+    grantFailed: 'The playlist sharing with {name} has failed.',
+    revokeFailed: 'The playlist sharing with {name} could not be removed.'
   },
   addTrackDialog: {
     title: 'Add a track',

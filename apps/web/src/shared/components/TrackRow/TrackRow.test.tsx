@@ -122,10 +122,7 @@ describe('TrackRow', () => {
 
     expect(container.querySelector('[data-art="art"]')).toBeInTheDocument();
     const image = container.querySelector('img');
-    expect(image).toHaveAttribute(
-      'src',
-      '/api/v1/tracks/track-1/thumbnail'
-    );
+    expect(image).toHaveAttribute('src', '/api/v1/tracks/track-1/thumbnail');
 
     fireEvent.error(image as HTMLImageElement);
 

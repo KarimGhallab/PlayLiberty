@@ -880,6 +880,97 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('names the account and the reason when a grant is refused', async () => {
+    server.use(
+      http.post(
+        mockUrl(endpoints.grantShare, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.Forbidden,
+            status: 403,
+            title: 'Forbidden',
+            detail: 'You cannot share this playlist.'
+          })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Can listen' }));
+
+    expect(
+      await screen.findByText('The playlist sharing with Ada has failed.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('You cannot share this playlist.')
+    ).toBeInTheDocument();
+
+    /* The server's list is unchanged, so the toggle stays off and usable. */
+    const listen = screen.getByRole('button', { name: 'Can listen' });
+    expect(listen).toHaveAttribute('aria-pressed', 'false');
+    expect(listen).toBeEnabled();
+  });
+
+  it('names the account and the reason when removing a share is refused', async () => {
+    const share = {
+      accountId: 'account-2',
+      account: { id: 'account-2', displayName: 'Ada', avatarUrl: null },
+      level: 'read',
+      createdAt: '2026-09-29T12:00:00.000Z'
+    };
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistShares, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json([share])
+      ),
+      http.delete(
+        mockUrl(endpoints.revokeShare, {
+          playlistId: PLAYLIST_ID,
+          accountId: 'account-2'
+        }),
+        () =>
+          problemResponse({
+            code: ProblemCode.Forbidden,
+            status: 403,
+            title: 'Forbidden',
+            detail: 'You cannot change this share.'
+          })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
+
+    const listen = await screen.findByRole('button', { name: 'Can listen' });
+    expect(listen).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(listen);
+
+    expect(
+      await screen.findByText(
+        'The playlist sharing with Ada could not be removed.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('You cannot change this share.')
+    ).toBeInTheDocument();
+
+    /* The share still stands, so the pressed toggle tells the truth. */
+    expect(screen.getByRole('button', { name: 'Can listen' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
   it('recovers the share dialog when its failed read is retried', async () => {
     let attempts = 0;
     server.use(

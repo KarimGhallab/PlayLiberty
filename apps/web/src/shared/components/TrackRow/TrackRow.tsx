@@ -86,8 +86,7 @@ function TrackRow({
     null
   );
   const artwork =
-    track.thumbnailPath === null ||
-    failedThumbnailPath === track.thumbnailPath
+    track.thumbnailPath === null || failedThumbnailPath === track.thumbnailPath
       ? null
       : mediaUrl(endpoints.trackThumbnail, { trackId: track.id });
   const label =
