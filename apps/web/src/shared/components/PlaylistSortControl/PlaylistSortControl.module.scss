@@ -1,12 +1,16 @@
 /*
- * The sort control at the end of the control row, whose lead is the filter
- * chips. It is quiet on purpose: no box at rest, so the button is the order
- * and its two marks; the accent is spent only while the menu is open.
+ * The sort control on its own line above the filter chips. It is quiet on
+ * purpose: no box at rest, so the button is the order and its marks; the accent
+ * is spent only while the menu is open.
  */
 .sort {
   position: relative;
-  margin-left: auto;
+  align-self: flex-end;
   flex-shrink: 0;
+
+  @media (max-width: 767px) {
+    align-self: flex-start;
+  }
 
   &__button {
     position: relative;
@@ -64,8 +68,9 @@
     transition: color var(--motion-base) var(--ease-standard);
   }
 
-  /* The order reads as quiet as the two marks at rest, and comes up to normal on
-   * hover or while the menu is open, so the control has one resting voice. */
+  /* The purpose and the order read as quiet as the two marks at rest, and come
+   * up to normal on hover or while the menu is open. */
+  &__prefix,
   &__value {
     color: var(--muted);
     transition: color var(--motion-base) var(--ease-standard);
@@ -87,9 +92,11 @@
 
   &__button:hover:not(:disabled) &__glyph,
   &__button:hover:not(:disabled) &__chevron,
+  &__button:hover:not(:disabled) &__prefix,
   &__button:hover:not(:disabled) &__value,
   &__button[data-open] &__glyph,
   &__button[data-open] &__chevron,
+  &__button[data-open] &__prefix,
   &__button[data-open] &__value {
     color: var(--ink);
   }

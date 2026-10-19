@@ -1,12 +1,12 @@
 /*
- * The chips at the lead of the control row: a border and a word, never a fill,
- * with the tone reinforcing the word. The rail wraps at every width; a single
- * chip wider than the rail still scrolls, and an edge fade marks that edge.
+ * The chips under the sort: a border and a word, never a fill, with the tone
+ * reinforcing the word. The rail wraps at every width; a single chip wider than
+ * the rail still scrolls, and an edge fade marks that edge.
  */
 .chips {
   position: relative;
   display: flex;
-  flex: 1;
+  width: 100%;
   min-width: 0;
 
   &::before,

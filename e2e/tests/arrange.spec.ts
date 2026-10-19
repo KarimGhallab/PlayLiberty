@@ -81,6 +81,23 @@ async function expectChipsWhole(page: Page): Promise<void> {
   }
 }
 
+/* The sort owns the line above the chips, so the filter never competes with it
+ * for the row. */
+async function expectSortAboveChips(page: Page): Promise<void> {
+  const sort = await page
+    .getByRole('button', { name: /^Sort by: / })
+    .boundingBox();
+  const chips = await page
+    .getByRole('group', { name: 'Filter by' })
+    .boundingBox();
+
+  if (sort === null || chips === null) {
+    throw new Error('The sort and the filter chips must both be drawn.');
+  }
+
+  expect(sort.y + sort.height).toBeLessThanOrEqual(chips.y);
+}
+
 /* Three stored tracks and one that fails, so the list holds two states. Tracks
  * B, C and D arrive one at a time, each with its own added-at. */
 async function seed(page: Page): Promise<void> {
@@ -183,13 +200,15 @@ test('every filter chip is whole at a desk and on a phone, and the last is reach
   for (const width of [1440, 1280]) {
     await page.setViewportSize({ width, height: 800 });
     await expectChipsWhole(page);
+    await expectSortAboveChips(page);
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
 
-  /* The phone wraps beside the sort rather than clipping, so every chip is
+  /* The phone wraps under the sort rather than clipping, so every chip is
    * whole without a scroll; the last still takes focus and stays hittable. */
   await expectChipsWhole(page);
+  await expectSortAboveChips(page);
 
   const last = page.getByRole('button', { name: 'Unavailable 0' });
   await last.focus();

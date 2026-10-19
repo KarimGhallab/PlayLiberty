@@ -12,8 +12,8 @@ import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './PlaylistSortControl.module.scss';
 
 /*
- * The order the playlist's tracks are read in, as a menu button at the end of
- * the control row. The owner and a write collaborator may change it; it is
+ * The order the playlist's tracks are read in, as a menu button above the
+ * filter chips. The owner and a write collaborator may change it; it is
  * disabled while the queue is this playlist and shuffled, whose order differs.
  */
 
@@ -83,6 +83,7 @@ export default function PlaylistSortControl({
           aria-hidden="true"
           focusable="false"
         />
+        <span className={styles.sort__prefix}>{t('detail.sortBy')}</span>
         <span className={styles.sort__value}>{label}</span>
         <IconChevronDown
           className={styles.sort__chevron}
