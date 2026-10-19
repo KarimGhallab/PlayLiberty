@@ -7,7 +7,7 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import axe from 'axe-core';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -607,7 +607,7 @@ describe('the tile arrangement', () => {
     renderTile(playlist(), null, { onPlay });
 
     const play = await screen.findByRole('button', {
-      name: 'Play this playlist'
+      name: 'Play Rain On The Window'
     });
 
     fireEvent.click(play);
@@ -624,8 +624,39 @@ describe('the tile arrangement', () => {
     renderTile(playlist(), null, { current: true, playing: true });
 
     expect(
-      await screen.findByRole('button', { name: 'Pause this playlist' })
+      await screen.findByRole('button', { name: 'Pause Rain On The Window' })
     ).toBeInTheDocument();
+  });
+
+  it('reads the name before its controls in the document', async () => {
+    const { container } = renderTile(playlist());
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+    const tile = container.querySelector<HTMLElement>(
+      '[data-arrangement="tile"]'
+    );
+
+    if (tile === null) {
+      throw new Error('The tile header must be drawn.');
+    }
+
+    const name = within(tile).getByRole('link', {
+      name: 'Rain On The Window'
+    });
+    const controls = [
+      within(tile).getByRole('button', { name: 'Play Rain On The Window' }),
+      within(tile).getByRole('button', {
+        name: 'Shuffle Rain On The Window'
+      }),
+      within(tile).getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    ];
+
+    for (const control of controls) {
+      expect(
+        name.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).not.toBe(0);
+    }
   });
 
   it('draws the play enabled for a playlist that holds a stored track', async () => {
@@ -698,7 +729,9 @@ describe('the tile arrangement', () => {
       await screen.findByRole('link', { name: 'Rain On The Window' })
     ).toHaveAttribute('aria-disabled', 'true');
 
-    const tile = container.querySelector('[data-arrangement="tile"]');
+    const tile = container.querySelector<HTMLElement>(
+      '[data-arrangement="tile"]'
+    );
     expect(tile).toHaveAttribute('aria-busy', 'true');
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
@@ -752,16 +785,15 @@ describe('the card as an item of the library', () => {
      * pointers that land on the artwork. */
     expect(screen.getAllByRole('link')).toHaveLength(1);
 
-    const anchors = container.querySelectorAll('a');
-    expect(anchors[0]).toHaveAttribute('aria-hidden', 'true');
-    expect(anchors[0]).toHaveAttribute('tabindex', '-1');
+    const picture = container.querySelector('a[aria-hidden="true"]');
+    expect(picture).toHaveAttribute('tabindex', '-1');
   });
 
   it('holds the play in the band and both controls on the picture’s corners', async () => {
     renderItem({ menu: menu() });
 
     expect(
-      await screen.findByRole('button', { name: 'Play this playlist' })
+      await screen.findByRole('button', { name: 'Play Rain On The Window' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('img', { name: '3 tracks are not stored' })
@@ -786,11 +818,42 @@ describe('the card as an item of the library', () => {
     renderItem({ current: true, playing: true });
 
     expect(
-      await screen.findByRole('button', { name: 'Pause this playlist' })
+      await screen.findByRole('button', { name: 'Pause Rain On The Window' })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Skip back' })
     ).not.toBeInTheDocument();
+  });
+
+  it('reads the name before its controls in the document', async () => {
+    const { container } = renderItem({ menu: menu() });
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+    const card = container.querySelector<HTMLElement>(
+      '[data-arrangement="card"]'
+    );
+
+    if (card === null) {
+      throw new Error('The card header must be drawn.');
+    }
+
+    const name = within(card).getByRole('link', {
+      name: 'Rain On The Window'
+    });
+    const controls = [
+      within(card).getByRole('button', { name: 'Play Rain On The Window' }),
+      within(card).getByRole('button', {
+        name: 'Shuffle Rain On The Window'
+      }),
+      within(card).getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    ];
+
+    for (const control of controls) {
+      expect(
+        name.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).not.toBe(0);
+    }
   });
 
   /* The item's identity is the status line, not the hero's three lines: at
@@ -811,14 +874,16 @@ describe('the card as an item of the library', () => {
       await screen.findByRole('link', { name: 'Rain On The Window' })
     ).toHaveAttribute('aria-disabled', 'true');
 
-    const card = container.querySelector('[data-arrangement="card"]');
+    const card = container.querySelector<HTMLElement>(
+      '[data-arrangement="card"]'
+    );
     expect(card).toHaveAttribute('aria-busy', 'true');
 
     const picture = container.querySelectorAll('a')[0];
     expect(picture).toHaveAttribute('aria-disabled', 'true');
 
     expect(
-      screen.getByRole('button', { name: 'Play this playlist' })
+      screen.getByRole('button', { name: 'Play Rain On The Window' })
     ).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })

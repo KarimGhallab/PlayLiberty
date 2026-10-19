@@ -48,6 +48,7 @@ export default function PlaylistCardHeader({
     ground,
     playing,
     pending,
+    namedPlay: item,
     statusLine: item,
     mark: item ? mark : undefined
   });
@@ -63,6 +64,7 @@ export default function PlaylistCardHeader({
       aria-busy={pending ? true : undefined}
       data-state={playing ? 'playing' : 'paused'}>
       {groundElement}
+      <div className={styles.playlistHeader__munder}>{identity}</div>
       <div
         className={styles.playlistHeader__mart}
         data-art={cover === null ? 'no-art' : 'art'}
@@ -106,7 +108,6 @@ export default function PlaylistCardHeader({
       {/* The item's overflow is outside the picture: it clips, so a panel
        * hanging from a chip on the cover would be cut off. */}
       {item ? menuControl : null}
-      <div className={styles.playlistHeader__munder}>{identity}</div>
     </div>
   );
 }

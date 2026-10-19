@@ -883,13 +883,13 @@ describe('LibraryPage', () => {
         .getByRole('link', { name: 'Rain On The Window' })
         .closest('[data-arrangement]') as HTMLElement;
     const play = () =>
-      within(item()).getByRole('button', { name: 'Play this playlist' });
+      within(item()).getByRole('button', { name: 'Play Rain On The Window' });
     const otherPlay = () =>
       within(
         screen
           .getByRole('link', { name: 'Shared Mix' })
           .closest('[data-arrangement]') as HTMLElement
-      ).getByRole('button', { name: 'Play this playlist' });
+      ).getByRole('button', { name: 'Play Shared Mix' });
 
     fireEvent.click(play());
 
@@ -904,7 +904,9 @@ describe('LibraryPage', () => {
 
     expect(usePlayerStore.getState().queue).toHaveLength(2);
     expect(
-      within(item()).getByRole('button', { name: 'Pause this playlist' })
+      within(item()).getByRole('button', {
+        name: 'Pause Rain On The Window'
+      })
     ).not.toHaveAttribute('data-starting');
   });
 
@@ -944,7 +946,7 @@ describe('LibraryPage', () => {
     await screen.findByText('Rain On The Window');
 
     expect(
-      screen.getByRole('button', { name: 'Play this playlist' })
+      screen.getByRole('button', { name: 'Play Rain On The Window' })
     ).toBeDisabled();
   });
 
@@ -1003,7 +1005,7 @@ describe('LibraryPage', () => {
 
       await screen.findByText('Rain On The Window');
       fireEvent.click(
-        screen.getAllByRole('button', { name: 'Play this playlist' })[0]
+        screen.getByRole('button', { name: 'Play Rain On The Window' })
       );
 
       await waitFor(() =>

@@ -1,49 +1,14 @@
 # 86: The gallery announces actions without names
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
-**Blocked by:** None. Can start immediately.
+## Outcome
 
-## Agent Brief
+The gallery's play and pause name their playlist through the new `header.playNamed` and `header.pauseNamed` keys (`Play {name}`, `Pause {name}`), so seven cards no longer announce the same sentence. The detail keeps the page-scoped `header.play` and `header.pause`, where the heading already names the playlist.
 
-**Category:** bug
-**Summary:** Every gallery card's play button is announced "Lire cette playlist" with no playlist name, the card's focus order puts the play action before the link that names the playlist, the row's lane precedes its full-row play, and the incomplete badge is a focusable element that does nothing.
+The item's identity now precedes its controls in DOM order. The card is a two-row grid with the cover first visually, and the tile is a grid whose cover row holds the play; both keep their previous visual order. `TrackRow` renders its play layer before its lane. The incomplete badge leaves the tab order and keeps its `aria-label`; its keyboard-only tip went with the tab stop, and hover still shows it.
 
-**Current behavior:**
-`usePlaylistHeader` labels the play from `header.play` (`'Lire cette playlist'`) while that card's shuffle and actions use `header.shuffle` and `header.actions` with `{name}`. `PlaylistCardHeader` and `PlaylistTileHeader` render the cover and its controls before `__munder`'s identity. `TrackRow` renders `__lane-slot` before `__hit`. `IncompleteBadge` is a `role="img"` with `tabIndex={0}` that opens nothing.
+Tests: the tile and card item assert the name precedes every control; `TrackRow` asserts the play precedes the lane; `IncompleteBadge` asserts no `tabindex` while the label still speaks. The gallery unit, page and e2e labels use the named play.
 
-**Desired behavior:**
-Every control carries the playlist's name, the item's name precedes its actions in DOM order, and the badge leaves the tab order while keeping its `aria-label`.
-
-**Key interfaces:**
-
-- The i18n catalog gains the named play string; `{title}` exists for tracks already.
-- The DOM order change must not change the visual order.
-
-**Acceptance criteria:**
-
-- [ ] Each card's play button names its playlist.
-- [ ] In DOM order a card reads name first, then its controls; a row reads its play before its lane.
-- [ ] The badge is not a tab stop and is still announced.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The menu and dialog contracts, which already name their items.
-
-## Observed
-
-- Seven cards announce the same `Lire cette playlist`; shuffle and actions include the name.
-- Focus order per card: play, name, share mark, badge, shuffle, menu.
-
-## Expected
-
-- Controls are distinguishable and ordered name-first.
-
-## Evidence
-
-- `packages/i18n/src/fr.ts:177-183`, `packages/i18n/src/en.ts:173-178`.
-- `apps/web/src/shared/components/PlaylistHeader/usePlaylistHeader.tsx:222-240,392-420`.
-- `apps/web/src/views/library/IncompleteBadge/IncompleteBadge.tsx:70-95`.
-- Impeccable critique of `apps/web`, 2026-10-19, priority issue P2.
+Verification: `pnpm run build` and `pnpm run lint` pass; the web suite is 520 passed across 51 files; `pnpm test:e2e` is 37 passed.

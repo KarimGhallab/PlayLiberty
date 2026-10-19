@@ -84,6 +84,9 @@ export interface PlaylistHeaderSeam {
   /* Whether this playlist has anything to play. Required: the seam cannot
    * derive it from `trackCount`, which counts every association. */
   playable: boolean;
+  /* Whether the play names its playlist: true where several cards stand
+   * together, false where the page heading already names it. */
+  namedPlay?: boolean;
   playbackFailed?: boolean;
   /* Whether this header's play or shuffle is the press waiting on its read. */
   playbackStarting?: boolean;
@@ -159,6 +162,7 @@ export function usePlaylistHeader({
   mark: nameMark,
   displayedCount,
   playable,
+  namedPlay = false,
   playbackFailed = false,
   playbackStarting = false,
   playbackBusy = playbackStarting,
@@ -222,13 +226,18 @@ export function usePlaylistHeader({
    * that cannot be pressed differs from one that is not there. */
   const startingPlay = playbackStarting && startingControl === 'play';
   const startingShuffle = playbackStarting && startingControl === 'shuffle';
+  const playLabel = namedPlay
+    ? t(playing ? 'header.pauseNamed' : 'header.playNamed', {
+        name: playlist.name
+      })
+    : t(playing ? 'header.pause' : 'header.play');
 
   const playControl =
     onPlay === undefined ? null : (
       <button
         type="button"
         className={styles.playlistHeader__play}
-        aria-label={playing ? t('header.pause') : t('header.play')}
+        aria-label={playLabel}
         aria-busy={startingPlay ? true : undefined}
         data-starting={startingPlay ? 'true' : undefined}
         disabled={!playable || pending || playbackBusy}

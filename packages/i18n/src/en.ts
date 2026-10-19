@@ -73,7 +73,18 @@ export const en = {
     retry: 'Retry',
     fetchWhole: 'Fetch whole',
     remove: 'Remove from playlist',
-    fullLength: 'Full length'
+    fullLength: 'Full length',
+    failure: {
+      unavailable: 'This video is no longer available.',
+      private: 'This video is private.',
+      blocked: 'YouTube blocked this download.',
+      network: 'YouTube could not be reached.',
+      unknown: 'The download failed.'
+    },
+    showDetails: 'Show details',
+    hideDetails: 'Hide details',
+    showDetailsFor: 'Show details for {title}',
+    hideDetailsFor: 'Hide details for {title}'
   },
   skipSetting: {
     label: 'Skip non-music parts'
@@ -170,7 +181,9 @@ export const en = {
     syncNow: 'Sync now',
     delete: 'Delete playlist',
     play: 'Play this playlist',
+    playNamed: 'Play {name}',
     pause: 'Pause this playlist',
+    pauseNamed: 'Pause {name}',
     skipBack: 'Skip back',
     trackNext: 'Track next',
     shuffle: 'Shuffle {name}',

@@ -99,6 +99,16 @@ describe('IncompleteBadge', () => {
     ).toBeInTheDocument();
   });
 
+  it('stays out of the tab order while its label still speaks', async () => {
+    renderMark(counts({ [TrackFileStatus.Failed]: 3 }));
+
+    const pill = await screen.findByRole('img', {
+      name: '3 tracks are not stored · Failed 3'
+    });
+
+    expect(pill).not.toHaveAttribute('tabindex');
+  });
+
   it('reads one track in the singular', async () => {
     renderMark(counts({ [TrackFileStatus.Pending]: 1 }));
 

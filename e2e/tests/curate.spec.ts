@@ -154,6 +154,34 @@ test('retrying a failed track re-queues it and it recovers', async ({
   );
 });
 
+test('a failed track leads with a sentence and reveals the raw diagnostic', async ({
+  page
+}) => {
+  await addPlaylist(page, {
+    sourceId: SOURCE,
+    title: TITLE,
+    entries: [FIRST],
+    downloads: { [FIRST.videoId]: 'fail' }
+  });
+  await openPlaylist(page, TITLE);
+
+  const row = page.getByRole('listitem').filter({ hasText: FIRST.title });
+  const details = row.getByRole('button', {
+    name: `Show details for ${FIRST.title}`
+  });
+  await reloadUntil(page, details);
+
+  await expect(row.getByText('The download failed.')).toBeVisible();
+  await expect(row.getByText(/E2E fake/)).toHaveCount(0);
+
+  await details.click();
+
+  await expect(row.getByText(/E2E fake/)).toBeVisible();
+  await expect(
+    row.getByRole('button', { name: `Hide details for ${FIRST.title}` })
+  ).toBeVisible();
+});
+
 test('adding one video to two playlists puts the same track in both', async ({
   page
 }) => {

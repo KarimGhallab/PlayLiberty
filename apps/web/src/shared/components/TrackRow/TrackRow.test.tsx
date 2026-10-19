@@ -115,6 +115,19 @@ describe('TrackRow', () => {
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
 
+  it('reads its play before its lane in the document', () => {
+    renderRow({});
+
+    const play = screen.getByRole('button', { name: 'Play Blue In Green' });
+    const lane = screen.getByRole('button', {
+      name: 'Actions for Blue In Green'
+    });
+
+    expect(
+      play.compareDocumentPosition(lane) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).not.toBe(0);
+  });
+
   it('labels the row as a pause when it is the track playing', () => {
     renderRow({ current: true, playing: true });
 
@@ -329,16 +342,36 @@ describe('TrackRow', () => {
     expect(screen.queryByText('Full length')).not.toBeInTheDocument();
   });
 
-  it('shows the mapped word and holds the raw reason to one line with a title', () => {
+  it('leads a failed row with a mapped sentence and reveals the raw reason', () => {
     renderRow({
       association: association({
         fileStatus: TrackFileStatus.Failed,
-        failureReason: 'Download failed, will retry on the next sync'
+        failureReason:
+          'yt-dlp exited with code 1: ERROR: unable to download video data: HTTP Error 403: Forbidden'
       })
     });
 
-    expect(screen.getByText('Failed')).toBeInTheDocument();
-    screen.getByText('Download failed, will retry on the next sync');
+    expect(screen.getByText('Failed')).toHaveAttribute('data-tone', 'failed');
+    expect(
+      screen.getByText('YouTube blocked this download.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/yt-dlp/)).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Show details for Blue In Green'
+      })
+    );
+
+    expect(screen.getByText(/yt-dlp/)).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Hide details for Blue In Green'
+      })
+    );
+
+    expect(screen.queryByText(/yt-dlp/)).not.toBeInTheDocument();
   });
 
   it('keeps a removed track playable and names the source it left', () => {

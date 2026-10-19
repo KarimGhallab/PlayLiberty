@@ -79,8 +79,7 @@ export default function IncompleteBadge({
       data-tone={tone}
       data-tip={tipEdge}
       role="img"
-      aria-label={label}
-      tabIndex={0}>
+      aria-label={label}>
       <IconDownload
         className={styles.incompleteBadge__icon}
         aria-hidden="true"

@@ -74,6 +74,7 @@ export default function PlaylistTileHeader({
     playing,
     onPlay,
     playable,
+    namedPlay: true,
     onShuffle,
     shuffled,
     playbackStarting,
@@ -91,6 +92,7 @@ export default function PlaylistTileHeader({
       data-state={playing ? 'playing' : 'paused'}
       aria-busy={pending ? true : undefined}
       onClick={pending ? undefined : playlistDoor(onOpen)}>
+      <div className={styles.playlistHeader__tidentity}>{identity}</div>
       <div
         className={styles.playlistHeader__tart}
         data-art={cover === null ? 'no-art' : 'art'}
@@ -113,15 +115,12 @@ export default function PlaylistTileHeader({
           aria-hidden="true"
           tabIndex={-1}
         />
-        {primaryControl}
       </div>
-      <div className={styles.playlistHeader__tunder}>
-        <div className={styles.playlistHeader__tidentity}>{identity}</div>
-        <div className={styles.playlistHeader__tacts}>
-          <span className={styles.playlistHeader__mark}>{mark}</span>
-          {shuffleControl}
-          {menuControl}
-        </div>
+      {primaryControl}
+      <div className={styles.playlistHeader__tacts}>
+        <span className={styles.playlistHeader__mark}>{mark}</span>
+        {shuffleControl}
+        {menuControl}
       </div>
       {/* The tile cannot clip its own playing line, so this box clips it. */}
       <span className={styles.playlistHeader__line} aria-hidden="true" />

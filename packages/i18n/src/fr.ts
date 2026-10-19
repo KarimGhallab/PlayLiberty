@@ -76,7 +76,18 @@ export const fr: Messages = {
     retry: 'Réessayer',
     fetchWhole: 'Récupérer en entier',
     remove: 'Retirer de la playlist',
-    fullLength: 'Version intégrale'
+    fullLength: 'Version intégrale',
+    failure: {
+      unavailable: "Cette vidéo n'est plus disponible.",
+      private: 'Cette vidéo est privée.',
+      blocked: 'YouTube a bloqué le téléchargement.',
+      network: 'Impossible de joindre YouTube.',
+      unknown: 'Le téléchargement a échoué.'
+    },
+    showDetails: 'Afficher les détails',
+    hideDetails: 'Masquer les détails',
+    showDetailsFor: 'Afficher les détails de {title}',
+    hideDetailsFor: 'Masquer les détails de {title}'
   },
   skipSetting: {
     label: 'Ignorer les parties non musicales'
@@ -174,7 +185,9 @@ export const fr: Messages = {
     syncNow: 'Synchroniser',
     delete: 'Supprimer la playlist',
     play: 'Lire cette playlist',
+    playNamed: 'Lire {name}',
     pause: 'Mettre en pause cette playlist',
+    pauseNamed: 'Mettre en pause {name}',
     skipBack: 'Piste précédente',
     trackNext: 'Piste suivante',
     shuffle: 'Lecture aléatoire de {name}',

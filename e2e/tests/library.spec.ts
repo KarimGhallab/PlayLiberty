@@ -107,12 +107,9 @@ test('a playlist’s action menu covers the docked bar', async ({ page }) => {
   await page.reload();
 
   /* The bar docks when a playlist plays, which is what puts it under the menu. */
-  await page
-    .getByRole('button', { name: 'Play this playlist' })
-    .first()
-    .click();
+  await page.getByRole('button', { name: 'Play Evening Jazz' }).first().click();
   await expect(
-    page.getByRole('button', { name: 'Pause this playlist' }).first()
+    page.getByRole('button', { name: 'Pause Evening Jazz' }).first()
   ).toBeVisible();
 
   await page

@@ -15,7 +15,11 @@
     /* The action row's height, spelled out because the scrim's opaque stop has
      * to be at or above it: --space-4, .play's 48px box, --space-4. */
     --mactions: calc(var(--space-4) + 48px + var(--space-4));
-    display: block;
+    display: grid;
+    grid-template-areas:
+      'cover'
+      'identity';
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
     padding: 0;
     background: var(--surface);
@@ -679,9 +683,11 @@
     height: var(--icon-sm);
   }
 
-  /* The card's cover, a block of its own: it carries the scrim and actions. */
+  /* The card's cover, a block of its own: it carries the scrim and actions.
+   * Drawn above the identity while following it in the document. */
   &__mart {
     position: relative;
+    grid-area: cover;
     margin: 0 var(--space-4);
     aspect-ratio: 1;
     overflow: hidden;
@@ -955,6 +961,7 @@
   }
 
   &__munder {
+    grid-area: identity;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -964,8 +971,12 @@
   /* The tile arrangement: the cover above the identity, the mark, the shuffle
    * and the overflow in a row under it, the play on the cover's corner. */
   &[data-arrangement='tile'] {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-areas:
+      'cover'
+      'identity'
+      'actions';
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
     padding: var(--space-2);
     border-radius: var(--radius-card);
@@ -984,14 +995,16 @@
   /* The play in the cover's bottom-left corner, on the picture rather than in
    * the actions row: the link opens the playlist, the play starts it. */
   &[data-arrangement='tile'] &__play {
-    position: absolute;
-    inset-block-end: var(--space-2);
-    inset-inline-start: var(--space-2);
+    grid-area: cover;
+    align-self: end;
+    justify-self: start;
     z-index: var(--z-base);
+    margin: var(--space-2);
   }
 
   &__tart {
     position: relative;
+    grid-area: cover;
     display: block;
     width: 100%;
     aspect-ratio: 1;
@@ -1007,30 +1020,26 @@
     object-fit: cover;
   }
 
-  &__tunder {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    width: 100%;
-    padding: 0 var(--space-2) var(--space-2);
-  }
-
   /* The identity block in a column rather than the row's, so the gap between the
    * name, the sync line, the count and the owner line is the tile's. */
   &__tidentity {
+    grid-area: identity;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
     min-width: 0;
+    padding-inline: var(--space-2);
   }
 
   /* The mark leads and the controls keep the tile's end, so the row reads as the
    * playlist's facts on the left and what may be done to it on the right. */
   &__tacts {
+    grid-area: actions;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: var(--space-2);
+    padding: 0 var(--space-2) var(--space-2);
   }
 }
 

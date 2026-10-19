@@ -6,7 +6,6 @@
 .track-row {
   position: relative;
   display: flex;
-  align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
   border-bottom: 1px solid var(--line);
@@ -124,6 +123,7 @@
     gap: var(--space-1);
     flex: 1;
     min-width: 0;
+    align-self: center;
   }
 
   &__title {
@@ -185,17 +185,61 @@
     white-space: nowrap;
   }
 
-  /* The server's untrusted, unbounded sentence, secondary to the mapped word:
-   * held to one line, ellipsized, full text in `title`. */
-  &__reason {
+  /* The mapped failure, secondary to the state word, allowed two lines so the
+   * sentence is not cut. */
+  &__sentence {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    color: var(--tone-failed);
+    color: var(--muted);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* The disclosure stacks above the row's play layer, so a thumb or a keyboard
+   * can reach the raw diagnostic without opening the row. */
+  &__reveal {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    text-decoration: underline;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ink);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  /* pre-wrap keeps a multi-line diagnostic multi-line; the 120px cap and its
+   * own scroll stop an unbounded string from setting the row's height. */
+  &__raw {
+    position: relative;
+    z-index: 1;
+    max-height: 120px;
+    margin: 0;
+    padding: var(--space-3);
+    overflow: auto;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
   }
 
   &__duration {
