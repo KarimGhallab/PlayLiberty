@@ -1369,8 +1369,9 @@ describe('PlaylistDetailPage sort control', () => {
 });
 
 /*
- * A chip narrows the list and the header's count line from the read's own
- * whole-playlist counts; the chips step aside under the shuffled queue.
+ * A chip narrows the list and the rail; the identity card keeps stating the
+ * playlist's own size, so no filter can make the playlist read as smaller. The
+ * chips step aside under the shuffled queue.
  */
 describe('PlaylistDetailPage filter chips', () => {
   function headerCard(container: HTMLElement): HTMLElement {
@@ -1400,7 +1401,7 @@ describe('PlaylistDetailPage filter chips', () => {
     ).toBeInTheDocument();
   });
 
-  it('narrows the list and the header count line, and All restores both', async () => {
+  it('narrows the list while the card keeps the playlist’s own size, and All restores the list', async () => {
     const { container } = renderDetail();
 
     await screen.findByRole('button', { name: 'Play Blue In Green' });
@@ -1411,8 +1412,13 @@ describe('PlaylistDetailPage filter chips', () => {
       expect(screen.queryByText('Flamenco Sketches')).not.toBeInTheDocument()
     );
     expect(listTitles()).toEqual(['Blue In Green', 'Naima']);
-    expect(within(headerCard(container)).getByText('2')).toBeInTheDocument();
-    /* The counts stay the whole playlist's and do not follow the filter. */
+    /* The card is the playlist's identity, not the filtered view: the rail's
+     * "All 3" and this figure are the same size. */
+    expect(within(headerCard(container)).getByText('3')).toBeInTheDocument();
+    expect(
+      within(headerCard(container)).getByText('tracks')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Pending 1' })
     ).toBeInTheDocument();
@@ -1423,6 +1429,20 @@ describe('PlaylistDetailPage filter chips', () => {
       expect(screen.getByText('Flamenco Sketches')).toBeInTheDocument()
     );
     expect(within(headerCard(container)).getByText('3')).toBeInTheDocument();
+  });
+
+  it('keeps the playlist’s own size under a filter that matches nothing', async () => {
+    const { container } = renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 0' }));
+
+    await screen.findByText('No failed tracks');
+
+    /* An empty filter is not an empty playlist: "0 tracks" would claim it is. */
+    expect(within(headerCard(container)).getByText('3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeInTheDocument();
   });
 
   it('draws the named empty state when a filter matches nothing, and Show all restores', async () => {

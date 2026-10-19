@@ -291,10 +291,12 @@ export default function PlaylistDetailPage() {
     onShuffle: () => transition.shuffle(playlistView),
     shuffled,
     menu: actions.menu,
-    /* The rows on screen once the read has answered, the standing total until
-     * then. */
-    displayedCount: tracks.isSuccess ? tracks.tracks.length : undefined,
-    countTotal: tracks.total ?? playlist.data?.trackCount,
+    /* The window claim is made only while the list is the whole playlist: a
+     * narrowed list owes a denominator the card does not carry. */
+    displayedCount:
+      activeState === null && tracks.isSuccess
+        ? tracks.tracks.length
+        : undefined,
     playbackFailed: transition.retryable,
     playbackStarting: transition.starting,
     onRetryPlayback: transition.retry

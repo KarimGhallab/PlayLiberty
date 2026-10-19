@@ -1,54 +1,20 @@
 # 67: The detail count follows the filter without saying so
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
 **Blocked by:** None. Can start immediately.
 
-## Agent Brief
+## Outcome
 
-**Category:** bug
-**Summary:** On the playlist detail the identity card prints the read's own total, which the state filter has already narrowed, with no qualifier, so a filtered playlist reads as if it lost tracks while the chip rail beside it still carries the whole-playlist counts.
+The identity card states the playlist's own size, and the filtered figure stays on the rail, which is the first shape the ticket allowed. `usePlaylistHeader` takes `total` from `playlist.trackCount` and no longer from the read's filtered total, so `countTotal` is gone from the seam and the detail passes no total at all. The paging window ("{shown} of {total}") is claimed only while no filter is in force: the detail hands `displayedCount` only when `activeState` is null, because a narrowed list owes a denominator the card does not carry.
 
-**Current behavior:**
-`PlaylistDetailPage.tsx:370-371` passes `displayedCount` as the loaded row count and `countTotal` as the read's own total, which the `state` filter has already narrowed. `usePlaylistHeader.tsx:199-202` then takes `total = countTotal` and `shownCount = displayedCount`, so `partial` is false and the `countOf` sentence ("{shown} of {total}") cannot draw; the identity block prints the filtered figure alone. Filtering "Evening Jazz" to `Failed 1` makes the card read "1 track"; filtering to `Pending 0` makes it read "0 tracks", while the chip rail simultaneously reads "All 8".
+Filtering the test playlist to `Stored 2` now leaves the card reading "3 tracks" beside a rail reading "All 3", and `Failed 0` leaves it reading "3 tracks" beside the named empty state rather than "0 tracks". Two unqualified numbers on one screen no longer disagree.
 
-This follows a recorded decision rather than an oversight: `docs/tracker/tasks/12-sort-and-filter-the-track-list/05-the-detail-chip-row.md` states that the read's own total is the filtered total and that "the header's count line follows it". The open question is whether an unqualified count on the playlist's own identity card can carry a filtered meaning without reading as the playlist's size.
+`PlaylistDetailPage.test.tsx` holds it in two cases: a chip narrows the list while the card keeps "3 tracks" and `All` restores the list, and a filter matching nothing keeps the card's own size instead of claiming an empty playlist. Both fail against the previous `countTotal` behavior.
 
-**Desired behavior:**
-Either the identity block keeps the playlist's own total and the filtered figure stays on the rail, or the count is qualified so the filtered meaning is explicit. Two unqualified numbers on one screen must not contradict.
+The chosen shape is the ticket's first option, so the card never states a filtered figure at all: the narrowed count appears only on the chip, which names its own state. The card cannot be misread as the filtered list's size because it does not carry one, and the rail's "All N" and the card always agree.
 
-**Key interfaces:**
+The overturned decision is recorded where it was made: `12-sort-and-filter-the-track-list` gained the revised implementation decision and its requirement, testing decision and case list now say the card keeps the playlist's own count, and tickets `05` and `06` of that set carry the correction. The count unit and the card's own markup are unchanged.
 
-- `usePlaylistHeader` keeps `countTotal`, `displayedCount` and `partial`; the change is which total the identity block is given and how it is phrased.
-- The chip rail keeps the whole-playlist counts it already draws.
-
-**Acceptance criteria:**
-
-- [ ] The count on the identity card cannot be read as the playlist's own size while a filter is on.
-- [ ] The rail's "All N" and the identity count never present two unqualified numbers that disagree.
-- [ ] A test holds the filtered state.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The chip counts, which are already the whole playlist's.
-- The named empty-filter state and its "Show all" action.
-- Pagination's existing "x of y" path.
-
-## Observed
-
-- Filtering "Evening Jazz" to `Failed 1` reads "1 track"; to `Pending 0` reads "0 tracks".
-- The chip rail on the same screen reads "All 8".
-- `countTotal` is the filtered total, so the qualified path cannot trigger.
-
-## Expected
-
-- The identity count and the rail agree, or the count states that it is filtered.
-
-## Evidence
-
-- `apps/web/src/views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage.tsx:370-371`.
-- `apps/web/src/shared/components/PlaylistHeader/usePlaylistHeader.tsx:199-202,353-368`.
-- `docs/tracker/tasks/12-sort-and-filter-the-track-list/05-the-detail-chip-row.md`.
-- Impeccable critique of `apps/web`, 2026-10-16, priority issue P1.
+Verification: `pnpm run build` and `pnpm run lint` clean; the web unit suite passes (479 tests across 47 files).

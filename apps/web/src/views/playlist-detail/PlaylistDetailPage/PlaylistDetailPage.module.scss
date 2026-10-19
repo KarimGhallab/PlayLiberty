@@ -99,6 +99,9 @@
     position: sticky;
     top: var(--space-4);
     max-height: calc(100dvh - 97px);
+    /* A gutter for the ring and the switch's touch target, which reach past their
+     * own edge; without it the scroll box widens and draws a horizontal bar. */
+    padding-right: calc(var(--focus-width) + var(--focus-offset));
     overflow-y: auto;
   }
 

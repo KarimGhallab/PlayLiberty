@@ -70,10 +70,9 @@ export interface PlaylistHeaderSeam {
   /* Whether the count and the sync state share one line: count left, state
    * right. */
   statusLine?: boolean;
+  /* The rows the caller's list has loaded, when that list is the whole
+   * playlist: a narrowed list owes no window claim against this count. */
   displayedCount?: number;
-  /* The total the count line describes: the playlist's own when no filter is
-   * on, the filtered total otherwise, so the line never claims removed rows. */
-  countTotal?: number;
   /* Whether this playlist has anything to play. Required: the seam cannot
    * derive it from `trackCount`, which counts every association. */
   playable: boolean;
@@ -144,7 +143,6 @@ export function usePlaylistHeader({
   statusLine = false,
   mark: nameMark,
   displayedCount,
-  countTotal,
   playable,
   playbackFailed = false,
   playbackStarting = false,
@@ -200,7 +198,9 @@ export function usePlaylistHeader({
     onClose: () => setMenuOpen(false)
   });
 
-  const total = countTotal ?? playlist.trackCount;
+  /* The playlist's own size, never a narrowed read's: a filter changes what is
+   * drawn, not how large the playlist is. */
+  const total = playlist.trackCount;
   const shownCount = displayedCount ?? total;
   const partial = shownCount < total;
   const lastSyncedAt =
