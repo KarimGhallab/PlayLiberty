@@ -2,7 +2,11 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 
 import type { Share, ShareLevel } from '@playliberty/contracts';
 
-import { isPlaylistOwner } from '../../shared/access/playlistAccess.js';
+import {
+  AccessNeed,
+  EntryOutcome,
+  playlistEntry
+} from '../../shared/access/entry.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 
@@ -33,19 +37,25 @@ export function listSharesForAccount(
   playlistId: string,
   accountId: string
 ): Share[] | null {
-  if (!isPlaylistOwner(database, playlistId, accountId)) {
-    return null;
-  }
+  const entry = playlistEntry(
+    database,
+    playlistId,
+    accountId,
+    AccessNeed.Owner,
+    () => {
+      const rows = database.db
+        .select({ share: shares, account: accounts })
+        .from(shares)
+        .innerJoin(accounts, eq(shares.accountId, accounts.id))
+        .where(eq(shares.playlistId, playlistId))
+        .orderBy(asc(accounts.displayName), asc(sql`${accounts}.rowid`))
+        .all();
 
-  const rows = database.db
-    .select({ share: shares, account: accounts })
-    .from(shares)
-    .innerJoin(accounts, eq(shares.accountId, accounts.id))
-    .where(eq(shares.playlistId, playlistId))
-    .orderBy(asc(accounts.displayName), asc(sql`${accounts}.rowid`))
-    .all();
+      return rows.map(row => toShareView(row.share, row.account));
+    }
+  );
 
-  return rows.map(row => toShareView(row.share, row.account));
+  return entry.outcome === EntryOutcome.Granted ? entry.value : null;
 }
 
 export enum GrantShareOutcome {
@@ -75,41 +85,52 @@ export function grantShareForAccount(
   targetAccountId: string,
   level: ShareLevel
 ): GrantShareResult {
-  if (!isPlaylistOwner(context.database, playlistId, accountId)) {
-    return { outcome: GrantShareOutcome.PlaylistNotFound };
-  }
+  const entry = playlistEntry(
+    context.database,
+    playlistId,
+    accountId,
+    AccessNeed.Owner,
+    (): GrantShareResult => {
+      if (targetAccountId === accountId) {
+        return { outcome: GrantShareOutcome.SelfShare };
+      }
 
-  if (targetAccountId === accountId) {
-    return { outcome: GrantShareOutcome.SelfShare };
-  }
+      const target = context.database.db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.id, targetAccountId))
+        .get();
 
-  const target = context.database.db
-    .select()
-    .from(accounts)
-    .where(eq(accounts.id, targetAccountId))
-    .get();
+      if (target === undefined) {
+        return { outcome: GrantShareOutcome.TargetNotFound };
+      }
 
-  if (target === undefined) {
-    return { outcome: GrantShareOutcome.TargetNotFound };
-  }
+      const share = context.database.db
+        .insert(shares)
+        .values({ playlistId, accountId: targetAccountId, level })
+        .onConflictDoUpdate({
+          target: [shares.playlistId, shares.accountId],
+          set: { level }
+        })
+        .returning()
+        .get();
 
-  const share = context.database.db
-    .insert(shares)
-    .values({ playlistId, accountId: targetAccountId, level })
-    .onConflictDoUpdate({
-      target: [shares.playlistId, shares.accountId],
-      set: { level }
-    })
-    .returning()
-    .get();
+      if (share === undefined) {
+        throw new Error('The granted share could not be read back.');
+      }
 
-  if (share === undefined) {
-    throw new Error('The granted share could not be read back.');
-  }
+      announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
 
-  announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
+      return {
+        outcome: GrantShareOutcome.Ok,
+        share: toShareView(share, target)
+      };
+    }
+  );
 
-  return { outcome: GrantShareOutcome.Ok, share: toShareView(share, target) };
+  return entry.outcome === EntryOutcome.Granted
+    ? entry.value
+    : { outcome: GrantShareOutcome.PlaylistNotFound };
 }
 
 /* A collaborator and a stranger get one not-found. The delete is idempotent, so
@@ -120,26 +141,34 @@ export function revokeShareForAccount(
   accountId: string,
   targetAccountId: string
 ): ShareRevokeOutcome {
-  if (!isPlaylistOwner(context.database, playlistId, accountId)) {
-    return ShareRevokeOutcome.PlaylistNotFound;
-  }
-
-  context.database.db
-    .delete(shares)
-    .where(
-      and(
-        eq(shares.playlistId, playlistId),
-        eq(shares.accountId, targetAccountId)
-      )
-    )
-    .run();
-
-  announce(context, {
-    kind: ChangeKind.PlaylistRemoved,
+  const entry = playlistEntry(
+    context.database,
     playlistId,
-    accountIds: [targetAccountId]
-  });
-  announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
+    accountId,
+    AccessNeed.Owner,
+    (): ShareRevokeOutcome => {
+      context.database.db
+        .delete(shares)
+        .where(
+          and(
+            eq(shares.playlistId, playlistId),
+            eq(shares.accountId, targetAccountId)
+          )
+        )
+        .run();
 
-  return ShareRevokeOutcome.Ok;
+      announce(context, {
+        kind: ChangeKind.PlaylistRemoved,
+        playlistId,
+        accountIds: [targetAccountId]
+      });
+      announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
+
+      return ShareRevokeOutcome.Ok;
+    }
+  );
+
+  return entry.outcome === EntryOutcome.Granted
+    ? entry.value
+    : ShareRevokeOutcome.PlaylistNotFound;
 }

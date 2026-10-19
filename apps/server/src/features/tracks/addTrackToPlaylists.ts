@@ -4,7 +4,11 @@ import type { AddTrackResult } from '@playliberty/contracts';
 import { AddTrackOutcome, AssociationOrigin } from '@playliberty/contracts';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
-import { canWritePlaylist } from '../../shared/access/playlistAccess.js';
+import {
+  AccessNeed,
+  EntryOutcome,
+  playlistEntry
+} from '../../shared/access/entry.js';
 import type { AppContext } from '../../shared/context.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 
@@ -31,8 +35,15 @@ export async function addTrackToPlaylists(
   playlistIds: string[]
 ): Promise<AddTrackResult> {
   const database = context.database;
-  const writable = playlistIds.map(playlistId =>
-    canWritePlaylist(database, playlistId, accountId)
+  const writable = playlistIds.map(
+    playlistId =>
+      playlistEntry(
+        database,
+        playlistId,
+        accountId,
+        AccessNeed.Write,
+        () => true
+      ).outcome === EntryOutcome.Granted
   );
 
   /* The source is read before the queue opens, so everything inside is one

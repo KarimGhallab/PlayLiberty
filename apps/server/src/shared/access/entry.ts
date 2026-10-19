@@ -6,8 +6,7 @@ import { canAccountAccessTrack, canAccountWriteTrack } from './trackAccess.js';
 
 /*
  * The entry seam: every playlist- or track-scoped entry goes through it, so the
- * access check is part of the seam, not a line each entry repeats; rules stay
- * in `playlistAccess` and `trackAccess`; a denial is not a status.
+ * need-to-level rule is stated here once and a denial is not a status.
  */
 
 export enum AccessNeed {

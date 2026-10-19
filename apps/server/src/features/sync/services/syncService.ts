@@ -13,7 +13,11 @@ import {
 } from '@playliberty/contracts';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
-import { canWritePlaylist } from '../../../shared/access/playlistAccess.js';
+import {
+  AccessNeed,
+  EntryOutcome,
+  playlistEntry
+} from '../../../shared/access/entry.js';
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 
@@ -135,21 +139,28 @@ export function startSyncForPlaylist(
   playlistId: string,
   accountId: string
 ): StartSyncResult {
-  const writable = canWritePlaylist(context.database, playlistId, accountId);
+  const entry = playlistEntry(
+    context.database,
+    playlistId,
+    accountId,
+    AccessNeed.Write,
+    () =>
+      context.database.db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get() ?? null
+  );
 
   // A read collaborator and a stranger answer not-found alike, so the route
   // confirms nothing. A write collaborator may sync; owner ops stay owner-only.
-  if (!writable) {
+  if (entry.outcome === EntryOutcome.Denied) {
     return { outcome: StartSyncOutcome.PlaylistNotFound };
   }
 
-  const playlist = context.database.db
-    .select()
-    .from(playlists)
-    .where(eq(playlists.id, playlistId))
-    .get();
+  const playlist = entry.value;
 
-  if (playlist === undefined) {
+  if (playlist === null) {
     return { outcome: StartSyncOutcome.PlaylistNotFound };
   }
 

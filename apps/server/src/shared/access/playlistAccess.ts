@@ -112,28 +112,6 @@ export function resolvePlaylistAccessMany(
   return resolved;
 }
 
-/* Ownership only, for rename, delete and shares: a share is a grant of
- * access, so a grantor is an owner wearing a collaborator's label. */
-export function isPlaylistOwner(
-  database: DatabaseHandle,
-  playlistId: string,
-  accountId: string
-): boolean {
-  return resolvePlaylistAccess(database, playlistId, accountId) === 'owner';
-}
-
-/* Owner or write collaborator, not a read one. An unreachable playlist is not
- * writable, so callers answer not-found as for a missing row. */
-export function canWritePlaylist(
-  database: DatabaseHandle,
-  playlistId: string,
-  accountId: string
-): boolean {
-  const access = resolvePlaylistAccess(database, playlistId, accountId);
-
-  return access === 'owner' || access === 'write';
-}
-
 /* The `hasShares` flag, distinct from access on purpose: an owner's 'owner'
  * access tells nothing, and a collaborator must not learn who shares it. */
 export function sharedPlaylistIds(
