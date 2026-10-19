@@ -46,6 +46,23 @@ describe('PlaylistFilterChips', () => {
     expect(screen.getByRole('button', { name: 'Unavailable 0' })).toBeDefined();
   });
 
+  it('offers only the statuses the counts carry when the caller asks', () => {
+    renderChips({ showEmpty: false });
+
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Stored 2' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Pending 1' })).toBeDefined();
+    expect(
+      screen.queryByRole('button', { name: 'Downloading 0' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Failed 0' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Unavailable 0' })
+    ).not.toBeInTheDocument();
+  });
+
   it('marks the chip in force and asks for a state on a press', () => {
     const onChange = vi.fn();
     renderChips({ active: TrackFileStatus.Pending, onChange });

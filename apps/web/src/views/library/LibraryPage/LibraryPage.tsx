@@ -1,7 +1,11 @@
 import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useId, useState } from 'react';
 
-import type { PlaylistWithCounts } from '@playliberty/contracts';
+import { TrackFileStatus } from '@playliberty/contracts';
+import type {
+  PlaylistWithCounts,
+  TrackFileStatusCounts
+} from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import { problemSentence } from '../../../shared/api/problem/problem';
@@ -14,6 +18,7 @@ import {
 import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
 import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
+import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
@@ -37,6 +42,30 @@ import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
 import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';
 
+const TRACK_STATUSES = Object.values(TrackFileStatus);
+
+/* The gallery's status filter reads the whole library: one total per status
+ * over every playlist's counts. */
+function totalStatusCounts(
+  items: readonly PlaylistWithCounts[]
+): TrackFileStatusCounts {
+  const totals: TrackFileStatusCounts = {
+    [TrackFileStatus.Stored]: 0,
+    [TrackFileStatus.Pending]: 0,
+    [TrackFileStatus.Downloading]: 0,
+    [TrackFileStatus.Failed]: 0,
+    [TrackFileStatus.Unavailable]: 0
+  };
+
+  for (const item of items) {
+    for (const status of TRACK_STATUSES) {
+      totals[status] += item.counts[status];
+    }
+  }
+
+  return totals;
+}
+
 /*
  * Four states and no fifth: loading, failure, the empty gallery, the list. Each
  * delete opens its own undo window, so a second one stacks rather than replaces.
@@ -52,6 +81,9 @@ export default function LibraryPage() {
   const docked = usePlayerStore(state => currentTrack(state) !== null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pinRefused, setPinRefused] = useState<Error | null>(null);
+  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
+    null
+  );
   const pinnedHeadingId = useId();
   const restHeadingId = useId();
   const actions = usePlaylistActions({
@@ -69,12 +101,32 @@ export default function LibraryPage() {
   const refused = problemSentence(t, createPlaylist.error);
 
   const items = playlists.isSuccess ? playlists.data.items : [];
+  const statusCounts = totalStatusCounts(items);
+  const hasStatusCounts = TRACK_STATUSES.some(
+    status => statusCounts[status] > 0
+  );
+  const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
+
+  /*
+   * A status the library no longer carries cannot stay in force; a live read
+   * that drops the last track in it returns the gallery to All.
+   */
+  useEffect(() => {
+    if (statusFilter !== null && activeCount === 0) {
+      setStatusFilter(null);
+    }
+  }, [statusFilter, activeCount]);
+
+  const visibleItems =
+    statusFilter === null
+      ? items
+      : items.filter(playlist => playlist.counts[statusFilter] > 0);
 
   /*
    * The page filters and never sorts, so both groups keep the server's order.
    */
-  const pinned = items.filter(playlist => playlist.pinned);
-  const rest = items.filter(playlist => !playlist.pinned);
+  const pinned = visibleItems.filter(playlist => playlist.pinned);
+  const rest = visibleItems.filter(playlist => !playlist.pinned);
 
   const isEmpty = playlists.isSuccess && items.length === 0;
   const grouped = pinned.length > 0 && rest.length > 0;
@@ -149,6 +201,14 @@ export default function LibraryPage() {
           )}
         </div>
       </div>
+      {playlists.isSuccess && items.length > 0 && hasStatusCounts ? (
+        <PlaylistFilterChips
+          counts={statusCounts}
+          active={statusFilter}
+          showEmpty={false}
+          onChange={setStatusFilter}
+        />
+      ) : null}
       {playlists.isPending ? (
         <LibrarySkeleton layout={isMobile ? 'card' : 'tile'} />
       ) : null}

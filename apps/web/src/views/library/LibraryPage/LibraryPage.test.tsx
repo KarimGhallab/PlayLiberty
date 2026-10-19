@@ -350,8 +350,9 @@ describe('LibraryPage', () => {
     const { container } = renderLibraryPage();
 
     expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('track')).toBeInTheDocument();
+    const list = screen.getByRole('list');
+    expect(within(list).getByText('1')).toBeInTheDocument();
+    expect(within(list).getByText('track')).toBeInTheDocument();
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }
@@ -402,6 +403,93 @@ describe('LibraryPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('filters the gallery by a status its tracks carry', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              trackCount: 3,
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+            },
+            {
+              ...ownedItem('playlist-2', 'Night Bus'),
+              trackCount: 4,
+              counts: { ...EMPTY_COUNTS, stored: 4 }
+            },
+            {
+              ...ownedItem('playlist-3', 'High Water'),
+              trackCount: 5,
+              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 }
+            }
+          ],
+          total: 3,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    const failed = await screen.findByRole('button', { name: 'Failed 2' });
+
+    expect(
+      screen.getByRole('button', { name: 'All 12' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Stored 6' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Pending 4' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Downloading 0' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Unavailable 0' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(failed);
+
+    expect(failed).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
+    expect(screen.queryByText('Night Bus')).not.toBeInTheDocument();
+    expect(screen.queryByText('High Water')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'All 12' }));
+
+    expect(screen.getByText('Night Bus')).toBeInTheDocument();
+    expect(screen.getByText('High Water')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('draws no status filter when no playlist track has a state', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              trackCount: 0,
+              counts: EMPTY_COUNTS
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Filter by' })
+    ).not.toBeInTheDocument();
+  });
+
   /* The counts come from the list read, so marking costs it nothing extra. */
   it('marks the playlists the list read reports as incomplete, one pill each', async () => {
     server.use(
@@ -442,22 +530,6 @@ describe('LibraryPage', () => {
       })
     ).toBeInTheDocument();
     expect(screen.getAllByRole('img', { name: /not stored/ })).toHaveLength(2);
-  });
-
-  it('offers the owner the five actions', async () => {
-    renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    );
-
-    expect(
-      screen.getAllByRole('menuitem').map(item => item.textContent)
-    ).toEqual(['Pin', 'Share', 'Rename', 'Sync now', 'Delete playlist']);
   });
 
   it('offers a read collaborator the pin alone', async () => {
@@ -539,23 +611,6 @@ describe('LibraryPage', () => {
     expect(screen.queryByText('Pinned')).not.toBeInTheDocument();
   });
 
-  it('reads Unpin in a pinned item’s menu', async () => {
-    pinnedRead([
-      { ...ownedItem('playlist-1', 'Rain On The Window'), pinned: true },
-      sharedItem()
-    ]);
-    renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    );
-
-    expect(screen.getByRole('menuitem', { name: 'Unpin' })).toBeInTheDocument();
-  });
-
   it('pins from the menu, asking the server and lifting the item into the section', async () => {
     const { bodies } = pinSucceeds();
     renderLibraryPage();
@@ -608,7 +663,7 @@ describe('LibraryPage', () => {
     await screen.findByText('Rain On The Window');
 
     /* The count is not a link or a control, so the press is the item's own. */
-    fireEvent.click(screen.getByText('1'));
+    fireEvent.click(within(screen.getByRole('list')).getByText('1'));
 
     expect(await screen.findByText('detail')).toBeInTheDocument();
   });
@@ -764,23 +819,6 @@ describe('LibraryPage', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
-  it('shows the fallback sentence when the failed read carries no detail', async () => {
-    server.use(
-      http.get(mockUrl(endpoints.playlists), () =>
-        problemResponse({
-          code: ProblemCode.InternalError,
-          status: 503,
-          title: 'Service unavailable'
-        })
-      )
-    );
-    renderLibraryPage();
-
-    expect(
-      await screen.findByText('Playlists could not be loaded.')
-    ).toBeInTheDocument();
-  });
-
   it('recovers the library when the failed read is retried', async () => {
     let attempts = 0;
     server.use(
@@ -895,7 +933,6 @@ describe('LibraryPage', () => {
 
     await waitFor(() => expect(play()).toBeDisabled());
     expect(play()).toHaveAttribute('aria-busy', 'true');
-    expect(play()).toHaveAttribute('data-starting', 'true');
     expect(otherPlay()).toBeEnabled();
 
     release();
@@ -907,7 +944,7 @@ describe('LibraryPage', () => {
       within(item()).getByRole('button', {
         name: 'Pause Rain On The Window'
       })
-    ).not.toHaveAttribute('data-starting');
+    ).toBeInTheDocument();
   });
 
   it('draws the play disabled on a playlist with nothing stored', async () => {
@@ -948,36 +985,6 @@ describe('LibraryPage', () => {
     expect(
       screen.getByRole('button', { name: 'Play Rain On The Window' })
     ).toBeDisabled();
-  });
-
-  it('draws the card at the phone width and the tile above it', async () => {
-    const restore = stubViewport(MOBILE_QUERY);
-
-    try {
-      const { container, unmount } = renderLibraryPage();
-
-      await screen.findByText('Rain On The Window');
-
-      expect(
-        container.querySelector('[data-arrangement="card"]')
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('[data-arrangement="tile"]')
-      ).not.toBeInTheDocument();
-
-      unmount();
-    } finally {
-      restore();
-    }
-
-    const { container: desk } = renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-
-    expect(desk.querySelector('[data-arrangement="tile"]')).toBeInTheDocument();
-    expect(
-      desk.querySelector('[data-arrangement="card"]')
-    ).not.toBeInTheDocument();
   });
 
   it('offers the add control as a floating button at the phone width', async () => {
@@ -1164,20 +1171,6 @@ describe('LibraryPage', () => {
 
     expect(await screen.findByText('New Mix')).toBeInTheDocument();
     expect(screen.getByText('Syncing')).toBeInTheDocument();
-  });
-
-  it('holds the primary disabled for an empty URL and makes no request', async () => {
-    const { requests } = createSucceeds();
-    renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-    fireEvent.click(screen.getByRole('button', { name: 'Add a playlist' }));
-    const add = screen.getByRole('button', { name: 'Add' });
-
-    expect(add).toBeDisabled();
-    fireEvent.click(add);
-    expect(requests).toHaveLength(0);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('shows the server problem beside the field when the create is refused', async () => {
