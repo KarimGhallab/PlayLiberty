@@ -5,6 +5,7 @@ import type { PlaylistWithCounts } from '@playliberty/contracts';
 import PlaylistCardHeader from '../../shared/components/PlaylistHeader/PlaylistCardHeader';
 import PlaylistTileHeader from '../../shared/components/PlaylistHeader/PlaylistTileHeader';
 import type { PendingAction } from '../../shared/components/useDeferredAction/useDeferredAction';
+import { hasPlayableTrack } from '../../shared/player/playerQueue/playerQueue';
 import { usePlayerStore } from '../../shared/player/playerStore/playerStore';
 import { queuePlaylistId } from '../../shared/player/types';
 import { usePlaylistActions } from '../../shared/playlistActions/playlistActions';
@@ -60,6 +61,7 @@ export default function PlaylistItem({
     pending,
     current: isQueue,
     playing: isQueue && isPlaying,
+    playable: hasPlayableTrack(playlist),
     mark: (
       <IncompleteBadge
         counts={playlist.counts}

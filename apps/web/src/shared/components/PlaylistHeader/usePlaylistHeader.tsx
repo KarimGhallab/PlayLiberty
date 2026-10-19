@@ -74,6 +74,9 @@ export interface PlaylistHeaderSeam {
   /* The total the count line describes: the playlist's own when no filter is
    * on, the filtered total otherwise, so the line never claims removed rows. */
   countTotal?: number;
+  /* Whether this playlist has anything to play. Required: the seam cannot
+   * derive it from `trackCount`, which counts every association. */
+  playable: boolean;
   playbackFailed?: boolean;
   playbackStarting?: boolean;
   onRetryPlayback?: () => void;
@@ -142,6 +145,7 @@ export function usePlaylistHeader({
   mark: nameMark,
   displayedCount,
   countTotal,
+  playable,
   playbackFailed = false,
   playbackStarting = false,
   onRetryPlayback
@@ -196,7 +200,6 @@ export function usePlaylistHeader({
     onClose: () => setMenuOpen(false)
   });
 
-  const playable = playlist.trackCount > 0;
   const total = countTotal ?? playlist.trackCount;
   const shownCount = displayedCount ?? total;
   const partial = shownCount < total;

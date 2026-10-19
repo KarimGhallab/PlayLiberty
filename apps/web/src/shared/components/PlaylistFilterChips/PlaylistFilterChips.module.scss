@@ -1,19 +1,65 @@
 /*
- * The filter chips at the lead of the control row. A chip is a border and a
- * word, never a fill: the word carries the state, the tone reinforces it. The
- * rail scrolls sideways on a phone so the row stays one line.
+ * The chips at the lead of the control row: a border and a word, never a fill,
+ * with the tone reinforcing the word. The rail wraps at a desk and scrolls on a
+ * phone, where an edge fade marks the chip hidden behind it.
  */
 .chips {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 
-  &::-webkit-scrollbar {
-    display: none;
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: var(--space-6);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--motion-base) var(--ease-standard);
+  }
+
+  &::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg), transparent);
+  }
+
+  &::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg), transparent);
+  }
+
+  &[data-overflow='start']::before,
+  &[data-overflow='both']::before,
+  &[data-overflow='end']::after,
+  &[data-overflow='both']::after {
+    opacity: 1;
+  }
+
+  /* Wrapped at a desk, so no chip is clipped by the sort; a phone keeps the row
+   * one line and scrolls, which is where the fade speaks. */
+  &__rail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 767px) {
+    &__rail {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
   }
 
   &__chip {

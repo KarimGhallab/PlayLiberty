@@ -448,6 +448,35 @@ describe('PlaylistDetailPage', () => {
     ]);
   });
 
+  it('disables the header play when the playlist holds no stored track', async () => {
+    const associations = [
+      trackJson('track-9', 'Still Downloading', 0, 'pending')
+    ];
+
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+        HttpResponse.json(playlistJson(true))
+      ),
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
+        HttpResponse.json({
+          items: associations,
+          total: 1,
+          limit: 50,
+          offset: 0,
+          counts: { ...EMPTY_COUNTS, pending: 1 }
+        })
+      ),
+      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
+        HttpResponse.json({ items: associations })
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
+  });
+
   it('owns a failed queue read on the header control and recovers on retry', async () => {
     const all = [
       trackJson('recover-1', 'Recover One', 0),

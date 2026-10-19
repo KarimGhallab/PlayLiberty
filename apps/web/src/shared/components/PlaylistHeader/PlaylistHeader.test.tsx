@@ -63,7 +63,12 @@ function renderRow(
   props: Partial<Parameters<typeof PlaylistRowHeader>[0]> = {}
 ) {
   return renderInRouter(
-    <PlaylistRowHeader playlist={playlist} ownerName={ownerName} {...props} />
+    <PlaylistRowHeader
+      playlist={playlist}
+      ownerName={ownerName}
+      playable
+      {...props}
+    />
   );
 }
 
@@ -73,7 +78,12 @@ function renderCard(
   props: Partial<Parameters<typeof PlaylistCardHeader>[0]> = {}
 ) {
   return renderInRouter(
-    <PlaylistCardHeader playlist={playlist} ownerName={ownerName} {...props} />
+    <PlaylistCardHeader
+      playlist={playlist}
+      ownerName={ownerName}
+      playable
+      {...props}
+    />
   );
 }
 
@@ -90,6 +100,7 @@ function renderTile(
       onShuffle={() => undefined}
       menu={menu()}
       onOpen={() => undefined}
+      playable
       {...props}
     />
   );
@@ -329,11 +340,13 @@ describe('PlaylistHeader', () => {
         <PlaylistRowHeader
           playlist={playlist({ id: 'playlist-a', name: 'Rain On The Window' })}
           onShuffle={() => undefined}
+          playable
           menu={menu()}
         />
         <PlaylistRowHeader
           playlist={playlist({ id: 'playlist-b', name: 'A Second Playlist' })}
           onShuffle={() => undefined}
+          playable
           menu={menu()}
         />
       </>
@@ -563,6 +576,30 @@ describe('the tile arrangement', () => {
     expect(
       await screen.findByRole('button', { name: 'Pause this playlist' })
     ).toBeInTheDocument();
+  });
+
+  it('draws the play enabled for a playlist that holds a stored track', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      playable: true
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    ).toBeEnabled();
+  });
+
+  /* The count is every association; the play needs a stored file. A playlist
+   * whose tracks are all pending draws the control, disabled. */
+  it('draws the play disabled for a playlist with nothing stored', async () => {
+    renderRow(playlist({ trackCount: 3 }), null, {
+      onPlay: () => undefined,
+      playable: false
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
   });
 
   it('announces one link per item by hiding the cover’s link', async () => {

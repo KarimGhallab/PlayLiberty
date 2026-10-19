@@ -9,7 +9,11 @@ import {
 import type { PlaylistTrack } from '@playliberty/contracts';
 
 import { usePlayerStore } from '../playerStore/playerStore';
-import { buildQueue, startPlaylistQueue } from './playerQueue';
+import {
+  buildQueue,
+  hasPlayableTrack,
+  startPlaylistQueue
+} from './playerQueue';
 
 const PLAYLIST = { id: 'playlist-1', name: 'Rain On The Window' } as const;
 
@@ -93,6 +97,57 @@ describe('buildQueue', () => {
     );
 
     expect(queue.map(entry => entry.id)).toEqual(['stored-1']);
+  });
+});
+
+describe('hasPlayableTrack', () => {
+  it('answers true for a playlist holding one stored track', () => {
+    expect(
+      hasPlayableTrack({
+        counts: {
+          stored: 1,
+          pending: 0,
+          downloading: 0,
+          failed: 0,
+          unavailable: 0
+        }
+      })
+    ).toBe(true);
+  });
+
+  it('answers false when nothing is stored, whatever else is waiting', () => {
+    expect(
+      hasPlayableTrack({
+        counts: {
+          stored: 0,
+          pending: 2,
+          downloading: 1,
+          failed: 3,
+          unavailable: 4
+        }
+      })
+    ).toBe(false);
+  });
+
+  it('agrees with the queue build about the same playlist', () => {
+    const associations = [
+      association('pending', TrackFileStatus.Pending, 0),
+      association('failed', TrackFileStatus.Failed, 1),
+      association('unavailable', TrackFileStatus.Unavailable, 2)
+    ];
+
+    expect(buildQueue(associations, PLAYLIST)).toHaveLength(0);
+    expect(
+      hasPlayableTrack({
+        counts: {
+          stored: 0,
+          pending: 1,
+          downloading: 0,
+          failed: 1,
+          unavailable: 1
+        }
+      })
+    ).toBe(false);
   });
 });
 

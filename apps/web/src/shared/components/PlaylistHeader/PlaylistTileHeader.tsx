@@ -24,6 +24,8 @@ export interface PlaylistTileHeaderProps {
   playing?: boolean;
   /* The library's own mark, drawn beside the controls. */
   mark?: ReactNode;
+  /* Whether this playlist has anything to play; the count is not that fact. */
+  playable?: boolean;
   /* The one play door, drawn on the cover's own corner. */
   onPlay?: () => void;
   /* Start this playlist, shuffled, or turn its shuffle off. */
@@ -42,6 +44,7 @@ export default function PlaylistTileHeader({
   playing = false,
   mark,
   onPlay,
+  playable = true,
   onShuffle,
   shuffled = false,
   menu,
@@ -62,6 +65,7 @@ export default function PlaylistTileHeader({
     current,
     playing,
     onPlay,
+    playable,
     onShuffle,
     shuffled,
     menu,

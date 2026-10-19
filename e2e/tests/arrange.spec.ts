@@ -55,6 +55,32 @@ async function chooseSort(page: Page, label: string): Promise<void> {
   ).toBeVisible();
 }
 
+/* A chip is whole when the pixel just inside its own right edge still resolves
+ * to it: a pill clipped by the rail or covered by the sort fails there. */
+async function expectChipsWhole(page: Page): Promise<void> {
+  const chips = page
+    .getByRole('group', { name: 'Filter by' })
+    .getByRole('button');
+
+  await expect(chips).toHaveCount(6);
+
+  for (const chip of await chips.all()) {
+    const whole = await chip.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        box.right - 2,
+        box.top + box.height / 2
+      );
+
+      return hit !== null && element.contains(hit);
+    });
+
+    expect(whole, `the whole of ${await chip.getAttribute('aria-label')}`).toBe(
+      true
+    );
+  }
+}
+
 /* Three stored tracks and one that fails, so the list holds two states. Tracks
  * B, C and D arrive one at a time, each with its own added-at. */
 async function seed(page: Page): Promise<void> {
@@ -138,4 +164,44 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
   await expect
     .poll(() => rowTitles(page))
     .toEqual([A.title, B.title, C.title, FAILED.title]);
+});
+
+/* The chips are the whole filter: a width where one is cut mid-pill hides a
+ * state the reader can choose. Both desks draw all six, and a phone, which
+ * cannot, brings the focused one into view. */
+test('every filter chip is whole at a desk and reachable by keyboard on a phone', async ({
+  page
+}) => {
+  await addPlaylist(page, {
+    sourceId: 'E2Earrange02',
+    title: 'Chip Journey',
+    entries: [A]
+  });
+  await openPlaylist(page, 'Chip Journey');
+  await expect(page.getByRole('button', { name: 'All 1' })).toBeVisible();
+
+  for (const width of [1440, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expectChipsWhole(page);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  /* The rail is 209px here, so the last chip starts hidden; focusing it is what
+   * a keyboard reader does, and the rail owes them the sight of it. */
+  const last = page.getByRole('button', { name: 'Unavailable 0' });
+  await last.focus();
+  await expect(last).toBeFocused();
+
+  const reached = await last.evaluate(element => {
+    const box = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(
+      box.right - 2,
+      box.top + box.height / 2
+    );
+
+    return hit !== null && element.contains(hit);
+  });
+
+  expect(reached).toBe(true);
 });

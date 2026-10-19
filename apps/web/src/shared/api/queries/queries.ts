@@ -1,4 +1,8 @@
-import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
+import type {
+  QueryClient,
+  UseMutationResult,
+  UseQueryResult
+} from '@tanstack/react-query';
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -271,6 +275,16 @@ export function usePlaylistQueue(
     queryKey: playlistQueueKey(playlistId),
     queryFn: () => fetchPlaylistQueue(playlistId),
     enabled
+  });
+}
+
+export function readPlaylistQueue(
+  queryClient: QueryClient,
+  playlistId: string
+): Promise<PlaylistTrack[]> {
+  return queryClient.query({
+    queryKey: playlistQueueKey(playlistId),
+    queryFn: () => fetchPlaylistQueue(playlistId)
   });
 }
 

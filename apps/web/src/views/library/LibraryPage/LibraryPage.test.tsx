@@ -840,6 +840,46 @@ describe('LibraryPage', () => {
     );
   });
 
+  it('draws the play disabled on a playlist with nothing stored', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/v1/playlists', () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'playlist-1',
+              ownerAccountId: 'account-1',
+              name: 'Rain On The Window',
+              coverTrackId: null,
+              provider: 'youtube',
+              sourcePlaylistId: 'PL-demo',
+              syncStatus: 'idle',
+              lastSyncedAt: '2026-09-29T12:00:00.000Z',
+              trackCount: 1,
+              skipNonMusic: true,
+              sort: 'playlist',
+              access: 'owner',
+              hasShares: false,
+              pinned: false,
+              counts: { ...EMPTY_COUNTS, pending: 1 },
+              createdAt: '2026-09-01T00:00:00.000Z',
+              updatedAt: '2026-09-29T12:00:00.000Z'
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
+  });
+
   it('draws the card at the phone width and the tile above it', async () => {
     const restore = stubViewport(MOBILE_QUERY);
 

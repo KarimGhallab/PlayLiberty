@@ -25,8 +25,8 @@ import { currentTrack } from '../../../shared/player/types';
 import {
   NOTICE_WINDOW_MS,
   refusalNotice,
-  useStartPlaylist
-} from '../../../shared/player/useStartPlaylist/useStartPlaylist';
+  usePlayTransition
+} from '../../../shared/player/usePlayTransition/usePlayTransition';
 import {
   MOBILE_QUERY,
   useMediaQuery
@@ -66,7 +66,7 @@ export default function LibraryPage() {
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
   const deferred = useDeferredAction();
-  const { playPlaylist, shufflePlaylist, refusal } = useStartPlaylist();
+  const { play, shuffle, refusal } = usePlayTransition();
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const docked = usePlayerStore(state => currentTrack(state) !== null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -110,10 +110,10 @@ export default function LibraryPage() {
         pending={deferred.pending?.id === playlist.id}
         layout={isMobile ? 'card' : 'tile'}
         defer={deferred.defer}
-        onPlay={() => playPlaylist(playlist)}
-        onShuffle={() => shufflePlaylist(playlist)}
+        onPlay={() => play(playlist)}
+        onShuffle={() => shuffle(playlist)}
         onPinRefused={error => setPinRefused(error)}
-      />
+      />{' '}
     </li>
   );
 

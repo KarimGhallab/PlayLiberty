@@ -1,7 +1,6 @@
 import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   PlaylistSort,
@@ -13,9 +12,7 @@ import { useI18n } from '@playliberty/i18n';
 
 import { problemSentence } from '../../../shared/api/problem/problem';
 import {
-  fetchPlaylistQueue,
   ownerNameFrom,
-  playlistQueueKey,
   useAccountDirectory,
   useAddTrack,
   useFetchTrackWhole,
@@ -49,7 +46,7 @@ import {
   UNDO_WINDOW_MS,
   useDeferredAction
 } from '../../../shared/components/useDeferredAction/useDeferredAction';
-import { startPlaylistQueue } from '../../../shared/player/playerQueue/playerQueue';
+import { hasPlayableTrack } from '../../../shared/player/playerQueue/playerQueue';
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
@@ -61,8 +58,8 @@ import {
 import {
   NOTICE_WINDOW_MS,
   refusalNotice,
-  useStartPlaylist
-} from '../../../shared/player/useStartPlaylist/useStartPlaylist';
+  usePlayTransition
+} from '../../../shared/player/usePlayTransition/usePlayTransition';
 import {
   canWritePlaylist,
   usePlaylistActions
@@ -74,15 +71,8 @@ import {
 
 import styles from './PlaylistDetailPage.module.scss';
 
-/*
- * Every association is drawn, playable or not: a vanished track would make
- * "why is this missing" unanswerable. The play control is the server's file
- * status, the same fact the queue build filters on.
- */
-enum PlaybackStart {
-  Play = 'play',
-  Shuffle = 'shuffle'
-}
+/* Every association is drawn, playable or not: a vanished track would make
+ * "why is this missing" unanswerable. */
 
 export default function PlaylistDetailPage() {
   const { t } = useI18n();
@@ -101,10 +91,7 @@ export default function PlaylistDetailPage() {
   const addTrack = useAddTrack();
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
-  const [failedStart, setFailedStart] = useState<PlaybackStart | null>(null);
-  const [starting, setStarting] = useState(false);
   const deferred = useDeferredAction();
-  const queryClient = useQueryClient();
 
   const actions = usePlaylistActions(playlistId, playlist.data, {
     defer: deferred.defer,
@@ -117,14 +104,13 @@ export default function PlaylistDetailPage() {
    * the viewport decides which is drawn rather than CSS. */
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const docked = usePlayerStore(state => currentTrack(state) !== null);
-  const setPlaying = usePlayerStore(state => state.setPlaying);
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
   const currentId = usePlayerStore(state => state.currentId);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const shuffled = usePlayerStore(state => state.shuffle);
   const queue = usePlayerStore(state => state.queue);
-  const { shufflePlaylist, refusal } = useStartPlaylist();
+  const transition = usePlayTransition();
   const playingPlaylistId = usePlayerStore(queuePlaylistId);
   const isQueue = playingPlaylistId === playlistId;
   /* The list draws the shuffled queue's own order while this playlist is the
@@ -155,77 +141,24 @@ export default function PlaylistDetailPage() {
       ? ownerNameFrom(directory.data, playlist.data.ownerAccountId)
       : null;
 
-  const startFrom = useCallback(
-    async (
-      startTrackId: string | null,
-      shuffle: boolean,
-      intent: PlaybackStart
-    ): Promise<void> => {
-      const view = playlist.data;
-
-      if (view === undefined) {
-        return;
-      }
-
-      setStarting(true);
-      setFailedStart(null);
-
-      try {
-        const full = await queryClient.query({
-          queryKey: playlistQueueKey(playlistId),
-          queryFn: () => fetchPlaylistQueue(playlistId)
-        });
-
-        startPlaylistQueue(view, full, startTrackId, shuffle);
-      } catch {
-        setFailedStart(intent);
-      } finally {
-        setStarting(false);
-      }
-    },
-    [playlistId, playlist.data, queryClient]
+  /* The transition's subject, held stable so a row's memo survives a render. No
+   * control is drawn before the read answers, so the empty name is never
+   * spoken. */
+  const playlistView = useMemo(
+    () => ({ id: playlistId, name: playlist.data?.name ?? '' }),
+    [playlistId, playlist.data?.name]
   );
 
   /* A row press moves the playhead inside the queue the listener sees. */
   const playTrack = useCallback(
-    (trackId: string): void => {
-      const player = usePlayerStore.getState();
-
-      if (trackId === player.currentId) {
-        player.setPlaying(!player.isPlaying);
-        return;
-      }
-
-      if (queuePlaylistId(player) === playlistId) {
-        player.play(trackId);
-        return;
-      }
-
-      void startFrom(trackId, false, PlaybackStart.Play);
-    },
-    [playlistId, startFrom]
+    (trackId: string) => transition.playTrack(playlistView, trackId),
+    [transition.playTrack, playlistView]
   );
 
-  const playPlaylist = (): void => {
-    if (playingPlaylistId === playlistId) {
-      setPlaying(!isPlaying);
-      return;
-    }
-
-    void startFrom(null, shuffled, PlaybackStart.Play);
-  };
-
-  /*
-   * Re-run the press that failed, so a failed shuffle retries as a shuffle
-   * rather than silently becoming a plain play.
-   */
-  const retryPlayback = (): void => {
-    void startFrom(
-      null,
-      failedStart === PlaybackStart.Shuffle,
-      failedStart ?? PlaybackStart.Play
-    );
-  };
+  /* The whole playlist's counts, read before the header so its play control
+   * and the queue cannot disagree about whether anything is stored. */
+  const counts = tracks.counts;
+  const playable = counts === undefined || hasPlayableTrack({ counts });
 
   /*
    * Deferred like the playlist delete: the toast's Cancel is the only place a
@@ -311,7 +244,6 @@ export default function PlaylistDetailPage() {
    * The chips are the whole-playlist counts the read folds in, drawn only once
    * it has answered; the row survives an empty filter to keep "Show all".
    */
-  const counts = tracks.counts;
   const hasTracks = (playlist.data?.trackCount ?? 0) > 0;
   /*
    * The empty state waits for the filter's own answer: `keepPreviousData` keeps
@@ -348,30 +280,24 @@ export default function PlaylistDetailPage() {
     ownerName,
     heading: true,
     ground: true,
-    onPlay: playPlaylist,
+    onPlay: () => transition.play(playlistView),
+    playable,
     playing: playingThis,
     current: isQueue,
     pending: playlistPending,
     onSkipBack: skipPrevious,
     onSkipNext: skipNext,
     hasNext: canSkipNext,
-    onShuffle: () =>
-      shufflePlaylist(
-        {
-          id: playlistId,
-          name: playlist.data?.name ?? 'This playlist'
-        },
-        { onUnreachable: () => setFailedStart(PlaybackStart.Shuffle) }
-      ),
+    onShuffle: () => transition.shuffle(playlistView),
     shuffled,
     menu: actions.menu,
     /* The rows on screen once the read has answered, the standing total until
      * then. */
     displayedCount: tracks.isSuccess ? tracks.tracks.length : undefined,
     countTotal: tracks.total ?? playlist.data?.trackCount,
-    playbackFailed: failedStart !== null,
-    playbackStarting: starting,
-    onRetryPlayback: retryPlayback
+    playbackFailed: transition.retryable,
+    playbackStarting: transition.starting,
+    onRetryPlayback: transition.retry
   };
 
   return (
@@ -429,13 +355,13 @@ export default function PlaylistDetailPage() {
                 <PlaylistCardHeader {...headerProps} playlist={playlist.data} />
               )
             ) : null}
-            {failedStart === null ? null : (
+            {transition.retryable ? (
               <p
                 className={styles.playlistDetail__playbackFailed}
                 role="status">
                 {t('detail.playbackFailed')}
               </p>
-            )}
+            ) : null}
           </div>
 
           <div className={styles.playlistDetail__side}>
@@ -614,9 +540,10 @@ export default function PlaylistDetailPage() {
           onDismiss={deferred.cancel}
         />
       ) : null}
-      {refusal === null ? null : (
+      {/* A failure with a retry control is not also announced as a dead end. */}
+      {transition.refusal === null || transition.retryable ? null : (
         <NoticeToast
-          {...refusalNotice(refusal, t)}
+          {...refusalNotice(transition.refusal, t)}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

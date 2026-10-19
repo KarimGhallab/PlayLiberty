@@ -154,12 +154,12 @@
   }
 
   /*
-   * The chips take the room and scroll sideways, keeping the row one line on a
-   * phone; the list's own top border closes the row.
+   * The chips take the room and wrap at a desk; on a phone they keep the row one
+   * line and scroll, and the list's own top border closes the row.
    */
   &__controls {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--space-4);
     padding-bottom: var(--space-3);
   }
