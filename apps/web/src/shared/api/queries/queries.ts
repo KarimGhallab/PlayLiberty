@@ -306,29 +306,35 @@ export function useLatestSyncRun(
  * Start a sync: the `202` run is `running` and completes later, so the playlist
  * is read again to draw the settled state on the next refetch.
  */
-export function useSyncPlaylist(
-  playlistId: string
-): UseMutationResult<SyncRun, Error, void> {
+export function useSyncPlaylist(): UseMutationResult<SyncRun, Error, string> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => commandEndpoint(endpoints.syncPlaylist, { playlistId }),
-    onSuccess: () => {
+    mutationFn: (playlistId: string) =>
+      commandEndpoint(endpoints.syncPlaylist, { playlistId }),
+    onSuccess: (_run, playlistId) => {
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
 }
 
+export interface RenamePlaylistVariables {
+  readonly playlistId: string;
+  readonly name: string;
+}
+
 /** Owner-only at the route; the menu gates it here. */
-export function useRenamePlaylist(
-  playlistId: string
-): UseMutationResult<Playlist, Error, string> {
+export function useRenamePlaylist(): UseMutationResult<
+  Playlist,
+  Error,
+  RenamePlaylistVariables
+> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (name: string) =>
+    mutationFn: ({ playlistId, name }: RenamePlaylistVariables) =>
       patchEndpoint(endpoints.renamePlaylist, { name }, { playlistId }),
-    onSuccess: () => {
+    onSuccess: (_playlist, { playlistId }) => {
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
@@ -408,16 +414,23 @@ export function useUpdateSort(
  * Pin flips the flag on the cached library page, which regroups: grouping is
  * the client's part, the server owns order, and no event carries it.
  */
-export function useUpdatePin(
-  playlistId: string
-): UseMutationResult<Playlist, Error, boolean> {
+export interface PinPlaylistVariables {
+  readonly playlistId: string;
+  readonly pinned: boolean;
+}
+
+export function useUpdatePin(): UseMutationResult<
+  Playlist,
+  Error,
+  PinPlaylistVariables
+> {
   const queryClient = useQueryClient();
   const key = ['playlists'];
 
   return useMutation({
-    mutationFn: (pinned: boolean) =>
+    mutationFn: ({ playlistId, pinned }: PinPlaylistVariables) =>
       patchEndpoint(endpoints.pinPlaylist, { pinned }, { playlistId }),
-    onMutate: async (pinned: boolean) => {
+    onMutate: async ({ playlistId, pinned }: PinPlaylistVariables) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<PlaylistPage>(key);
 
@@ -432,7 +445,7 @@ export function useUpdatePin(
 
       return { previous };
     },
-    onError: (_error, _pinned, context) => {
+    onError: (_error, _variables, context) => {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(key, context.previous);
       }
@@ -445,14 +458,13 @@ export function useUpdatePin(
 
 /* Delete one playlist: `204`, nothing returned. The library is invalidated; the
  * caller owns leaving the route, which a component does not decide. */
-export function useDeletePlaylist(
-  playlistId: string
-): UseMutationResult<void, Error, void> {
+export function useDeletePlaylist(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => deleteEndpoint(endpoints.deletePlaylist, { playlistId }),
-    onSuccess: () => {
+    mutationFn: (playlistId: string) =>
+      deleteEndpoint(endpoints.deletePlaylist, { playlistId }),
+    onSuccess: (_void, playlistId) => {
       cacheEffects.playlistRemoved(queryClient, playlistId);
     }
   });

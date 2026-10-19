@@ -93,7 +93,7 @@ export default function PlaylistDetailPage() {
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
   const deferred = useDeferredAction();
 
-  const actions = usePlaylistActions(playlistId, playlist.data, {
+  const actions = usePlaylistActions({
     defer: deferred.defer,
     deleteMessage: 'detail.deleteDeferred',
     onDeleted: () => {
@@ -193,7 +193,7 @@ export default function PlaylistDetailPage() {
     [fetchWhole.mutate]
   );
 
-  const canWrite = actions.canWrite;
+  const canWrite = canWritePlaylist(playlist.data);
   /* The one track whose row action is in flight, so its menu is not opened onto
    * a second press while the first is still running. */
   const busyTrackId = retry.isPending
@@ -290,7 +290,7 @@ export default function PlaylistDetailPage() {
     hasNext: canSkipNext,
     onShuffle: () => transition.shuffle(playlistView),
     shuffled,
-    menu: actions.menu,
+    menu: actions.menuFor(playlist.data),
     /* The window claim is made only while the list is the whole playlist: a
      * narrowed list owes a denominator the card does not carry. */
     displayedCount:
@@ -389,8 +389,10 @@ export default function PlaylistDetailPage() {
                   trackCount={playlist.data?.trackCount ?? null}
                   provider={playlist.data?.provider ?? Provider.Youtube}
                   rawError={latestRun.data?.error ?? null}
-                  onRetry={canWrite ? actions.syncNow : undefined}
-                  retrying={actions.syncing}
+                  onRetry={
+                    canWrite ? () => actions.syncNow(playlistId) : undefined
+                  }
+                  retrying={actions.syncing(playlistId)}
                 />
               </div>
             ) : null}
@@ -451,8 +453,8 @@ export default function PlaylistDetailPage() {
           ) : null}
           {neverSynced && tracks.isSuccess && !hasTracks ? (
             <EmptyState
-              onSync={canWrite ? actions.syncNow : undefined}
-              syncing={actions.syncing}
+              onSync={canWrite ? () => actions.syncNow(playlistId) : undefined}
+              syncing={actions.syncing(playlistId)}
             />
           ) : null}
           {!neverSynced && tracks.isSuccess && !hasTracks ? (

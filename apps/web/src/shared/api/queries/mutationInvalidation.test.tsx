@@ -74,10 +74,10 @@ describe('the mutation cache facts', () => {
 
   it('starting a sync refreshes the playlist', async () => {
     const { queryClient, facts, wrapper } = setup();
-    const { result } = renderHook(() => useSyncPlaylist(PLAYLIST), { wrapper });
+    const { result } = renderHook(() => useSyncPlaylist(), { wrapper });
 
     await act(async () => {
-      result.current.mutate();
+      result.current.mutate(PLAYLIST);
     });
 
     await waitFor(() => {
@@ -88,12 +88,12 @@ describe('the mutation cache facts', () => {
 
   it('renaming a playlist refreshes the playlist', async () => {
     const { queryClient, facts, wrapper } = setup();
-    const { result } = renderHook(() => useRenamePlaylist(PLAYLIST), {
+    const { result } = renderHook(() => useRenamePlaylist(), {
       wrapper
     });
 
     await act(async () => {
-      result.current.mutate('Morning Jazz');
+      result.current.mutate({ playlistId: PLAYLIST, name: 'Morning Jazz' });
     });
 
     await waitFor(() => {
@@ -120,10 +120,10 @@ describe('the mutation cache facts', () => {
 
   it('pinning a playlist refreshes the library', async () => {
     const { queryClient, facts, wrapper } = setup();
-    const { result } = renderHook(() => useUpdatePin(PLAYLIST), { wrapper });
+    const { result } = renderHook(() => useUpdatePin(), { wrapper });
 
     await act(async () => {
-      result.current.mutate(true);
+      result.current.mutate({ playlistId: PLAYLIST, pinned: true });
     });
 
     await waitFor(() => {
@@ -134,12 +134,12 @@ describe('the mutation cache facts', () => {
 
   it('deleting a playlist removes it through the removal fact', async () => {
     const { queryClient, facts, wrapper } = setup();
-    const { result } = renderHook(() => useDeletePlaylist(PLAYLIST), {
+    const { result } = renderHook(() => useDeletePlaylist(), {
       wrapper
     });
 
     await act(async () => {
-      result.current.mutate();
+      result.current.mutate(PLAYLIST);
     });
 
     await waitFor(() => {

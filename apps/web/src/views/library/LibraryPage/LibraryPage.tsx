@@ -27,6 +27,7 @@ import {
   refusalNotice,
   usePlayTransition
 } from '../../../shared/player/usePlayTransition/usePlayTransition';
+import { usePlaylistActions } from '../../../shared/playlistActions/playlistActions';
 import {
   MOBILE_QUERY,
   useMediaQuery
@@ -72,6 +73,11 @@ export default function LibraryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pinRefused, setPinRefused] = useState<Error | null>(null);
   const pinnedHeadingId = useId();
+  const actions = usePlaylistActions({
+    defer: deferred.defer,
+    deleteMessage: 'library.deleteDeferred',
+    pin: { onRefused: error => setPinRefused(error) }
+  });
 
   /*
    * The directory may be pending, failed, or short of the owner, so the name
@@ -109,10 +115,9 @@ export default function LibraryPage() {
         ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
         pending={deferred.pending?.id === playlist.id}
         layout={isMobile ? 'card' : 'tile'}
-        defer={deferred.defer}
+        menu={actions.menuFor(playlist)}
         onPlay={() => play(playlist)}
         onShuffle={() => shuffle(playlist)}
-        onPinRefused={error => setPinRefused(error)}
       />{' '}
     </li>
   );
@@ -194,6 +199,7 @@ export default function LibraryPage() {
         isWorking={createPlaylist.isPending}
         problem={refused}
       />
+      {actions.dialogs}
       {deferred.pending !== null ? (
         <UndoToast
           message={deferred.pending.message}

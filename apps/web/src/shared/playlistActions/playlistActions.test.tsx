@@ -63,7 +63,7 @@ function control(
   const onPinRefused = vi.fn();
   const rendered = renderHook(
     () =>
-      usePlaylistActions('playlist-1', playlistValue, {
+      usePlaylistActions({
         defer,
         deleteMessage: 'library.deleteDeferred',
         pin: { onRefused: onPinRefused },
@@ -72,46 +72,48 @@ function control(
     { wrapper }
   );
 
-  return { ...rendered, defer };
+  return {
+    ...rendered,
+    menu: rendered.result.current.menuFor(playlistValue),
+    defer
+  };
 }
 
 describe('usePlaylistActions', () => {
   it('offers the owner the five actions, with the pin first and the delete last', () => {
-    const { result } = control(playlist());
+    const { menu } = control(playlist());
 
-    expect(result.current.menu.map(item => item.key)).toEqual([
+    expect(menu.map(item => item.key)).toEqual([
       'pin',
       'share',
       'rename',
       'sync',
       'delete'
     ]);
-    expect(result.current.canWrite).toBe(true);
   });
 
   it('offers a write collaborator the pin and Sync now', () => {
-    const { result } = control(playlist({ access: ShareLevel.Write }));
+    const { menu } = control(playlist({ access: ShareLevel.Write }));
 
-    expect(result.current.menu.map(item => item.key)).toEqual(['pin', 'sync']);
-    expect(result.current.canWrite).toBe(true);
+    expect(menu.map(item => item.key)).toEqual(['pin', 'sync']);
   });
 
   it('reads Pin on an unpinned playlist and Unpin on a pinned one', () => {
     const unpinned = control(playlist({ pinned: false }));
     const pinned = control(playlist({ pinned: true }));
 
-    expect(
-      unpinned.result.current.menu.find(item => item.key === 'pin')?.label
-    ).toBe('header.pin');
-    expect(
-      pinned.result.current.menu.find(item => item.key === 'pin')?.label
-    ).toBe('header.unpin');
+    expect(unpinned.menu.find(item => item.key === 'pin')?.label).toBe(
+      'header.pin'
+    );
+    expect(pinned.menu.find(item => item.key === 'pin')?.label).toBe(
+      'header.unpin'
+    );
   });
 
   it('leaves the pin off a surface that does not offer one', () => {
-    const { result } = control(playlist(), { pin: undefined });
+    const { menu } = control(playlist(), { pin: undefined });
 
-    expect(result.current.menu.map(item => item.key)).toEqual([
+    expect(menu.map(item => item.key)).toEqual([
       'share',
       'rename',
       'sync',
@@ -120,24 +122,22 @@ describe('usePlaylistActions', () => {
   });
 
   it('offers a read collaborator the pin alone', () => {
-    const { result } = control(playlist({ access: ShareLevel.Read }));
+    const { menu } = control(playlist({ access: ShareLevel.Read }));
 
-    expect(result.current.menu.map(item => item.key)).toEqual(['pin']);
-    expect(result.current.canWrite).toBe(false);
+    expect(menu.map(item => item.key)).toEqual(['pin']);
   });
 
   it('offers nothing before the playlist loads', () => {
-    const { result } = control(undefined);
+    const { menu, result } = control(undefined);
 
-    expect(result.current.menu).toEqual([]);
-    expect(result.current.canWrite).toBe(false);
+    expect(menu).toEqual([]);
     expect(result.current.dialogs).toBeNull();
   });
 
   it('defers a delete with the surface sentence and the playlist name', () => {
-    const { result, defer } = control(playlist());
+    const { menu, defer } = control(playlist());
 
-    result.current.menu.find(item => item.key === 'delete')?.onSelect();
+    menu.find(item => item.key === 'delete')?.onSelect();
 
     expect(defer).toHaveBeenCalledTimes(1);
     expect(defer).toHaveBeenCalledWith({
@@ -149,9 +149,9 @@ describe('usePlaylistActions', () => {
   });
 
   it('keeps the delete off a write collaborator’s menu', () => {
-    const { result, defer } = control(playlist({ access: ShareLevel.Write }));
+    const { menu, defer } = control(playlist({ access: ShareLevel.Write }));
 
-    expect(result.current.menu.some(item => item.key === 'delete')).toBe(false);
+    expect(menu.some(item => item.key === 'delete')).toBe(false);
     expect(defer).not.toHaveBeenCalled();
   });
 });
