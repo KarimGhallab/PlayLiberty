@@ -9,7 +9,7 @@ import PlayGlyph from '../../components/PlayGlyph';
 import { usePlayPauseMorph } from '../../components/usePlayPauseMorph/usePlayPauseMorph';
 import VolumeControl from '../VolumeControl/VolumeControl';
 import { usePlayerStore } from '../playerStore/playerStore';
-import { currentTrack, hasNext } from '../types';
+import { SeekDirection, currentTrack, hasNext } from '../types';
 import styles from './PlayerBar.module.scss';
 
 /*
@@ -17,9 +17,6 @@ import styles from './PlayerBar.module.scss';
  * routes, like the music. Its transport is always drawn, unlike the header's,
  * so a control never appears and disappears.
  */
-
-/** How many seconds one press of an arrow key moves the playhead. */
-const KEYBOARD_STEP_SECONDS = 5;
 
 /* Pointer capture keeps a drag alive when the pointer leaves the track. A host
  * without it (jsdom) must not throw, so the call is optional-chained. */
@@ -37,7 +34,9 @@ export default function PlayerBar() {
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
-  const seek = usePlayerStore(state => state.seek);
+  const seekToFraction = usePlayerStore(state => state.seekToFraction);
+  const seekToStart = usePlayerStore(state => state.seekToStart);
+  const seekToEnd = usePlayerStore(state => state.seekToEnd);
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
   const canSkipNext = usePlayerStore(hasNext);
@@ -78,12 +77,11 @@ export default function PlayerBar() {
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault();
 
-        const step =
+        state.seekBy(
           event.key === 'ArrowRight'
-            ? KEYBOARD_STEP_SECONDS
-            : -KEYBOARD_STEP_SECONDS;
-
-        state.seek(state.positionSeconds + step);
+            ? SeekDirection.Forward
+            : SeekDirection.Backward
+        );
       }
     };
 
@@ -104,22 +102,20 @@ export default function PlayerBar() {
       ? null
       : mediaUrl(endpoints.trackThumbnail, { trackId: current.id });
 
-  /* The pointer's x against the track's own box, in seconds: the element is the
-   * truth for the target, not the store's last-written position. */
-  const secondsAt = (clientX: number): number => {
+  /* The pointer's x as a fraction of the track's own box: the store owns the
+   * fraction-to-seconds conversion and its clamp. */
+  const fractionAt = (clientX: number): number => {
     const box = scrubRef.current?.getBoundingClientRect();
 
-    if (box === undefined || box.width === 0 || duration <= 0) {
+    if (box === undefined || box.width === 0) {
       return 0;
     }
 
-    const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-
-    return ratio * duration;
+    return (clientX - box.left) / box.width;
   };
 
   const seekToPointer = (clientX: number): void => {
-    seek(secondsAt(clientX));
+    seekToFraction(fractionAt(clientX));
   };
 
   return (
@@ -219,11 +215,11 @@ export default function PlayerBar() {
           }}
           onKeyDown={event => {
             if (event.key === 'Home') {
-              seek(0);
+              seekToStart();
             }
 
             if (event.key === 'End') {
-              seek(duration);
+              seekToEnd();
             }
           }}>
           <div

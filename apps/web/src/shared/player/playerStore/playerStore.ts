@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
 import {
+  SeekDirection,
   currentIndex,
   currentTrack,
   nextIndex,
@@ -50,6 +51,29 @@ function boundedPosition(state: PlayerState, seconds: number): number | null {
   }
 
   return Math.min(duration, Math.max(0, seconds));
+}
+
+/* A target the element is already standing on is not worth a write. */
+const SEEK_EPSILON_SECONDS = 0.5;
+
+export function shouldApplySeek(currentTime: number, target: number): boolean {
+  return Math.abs(currentTime - target) > SEEK_EPSILON_SECONDS;
+}
+
+/* The one write a step and a jump share: bound the target, then ask the
+ * element to apply it. */
+function seekPatch(state: PlayerState, seconds: number): Partial<PlayerState> {
+  const position = boundedPosition(state, seconds);
+
+  if (position === null) {
+    return state;
+  }
+
+  return { positionSeconds: position, seekTo: position };
+}
+
+function signedStep(direction: SeekDirection, seconds: number): number {
+  return direction === SeekDirection.Forward ? seconds : -seconds;
 }
 
 /* A restored offset only resumes a track it still fits: a vanished track, an
@@ -105,6 +129,11 @@ function shuffledWithLeader(
   /* No leader in the queue to hoist; the scatter is all there is. */
   return leader === undefined ? rest : [leader, ...rest];
 }
+
+/* The keyboard's step and the Media Session's larger one: the caller names the
+ * direction, the store owns the distance. */
+const KEYBOARD_SEEK_SECONDS = 5;
+const MEDIA_SESSION_SEEK_SECONDS = 10;
 
 /* How far into a track a previous press means "step back", not "restart". */
 const SKIP_PREVIOUS_GRACE_SECONDS = 5;
@@ -326,15 +355,40 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         isPlaying: true
       };
     }),
-  seek: (seconds: number) =>
+  seekBy: (direction: SeekDirection) =>
     set(state => {
-      const position = boundedPosition(state, seconds);
+      const step = signedStep(direction, KEYBOARD_SEEK_SECONDS);
 
-      if (position === null) {
+      return seekPatch(state, state.positionSeconds + step);
+    }),
+  seekByPage: (direction: SeekDirection) =>
+    set(state => {
+      const step = signedStep(direction, MEDIA_SESSION_SEEK_SECONDS);
+
+      return seekPatch(state, state.positionSeconds + step);
+    }),
+  seekToFraction: (fraction: number) =>
+    set(state => {
+      const duration = currentTrack(state)?.durationSeconds ?? null;
+
+      if (duration === null || duration <= 0 || !Number.isFinite(fraction)) {
         return state;
       }
 
-      return { positionSeconds: position, seekTo: position };
+      const clamped = Math.min(1, Math.max(0, fraction));
+
+      return seekPatch(state, clamped * duration);
+    }),
+  seekToStart: () => set(state => seekPatch(state, 0)),
+  seekToEnd: () =>
+    set(state => {
+      const duration = currentTrack(state)?.durationSeconds ?? null;
+
+      if (duration === null || duration <= 0) {
+        return state;
+      }
+
+      return seekPatch(state, duration);
     }),
   setShuffle: (shuffle: boolean) =>
     set(state => {

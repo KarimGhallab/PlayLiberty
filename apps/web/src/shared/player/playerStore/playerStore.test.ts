@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  SeekDirection,
   currentIndex,
   currentTrack,
   hasNext,
@@ -659,10 +660,87 @@ describe('dropAndAdvance', () => {
 });
 
 describe('seek', () => {
+  it('moves by the keyboard step in both directions', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBeGreaterThan(0);
+
+    usePlayerStore.getState().seekBy(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('moves by the Media Session step in both directions', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().seekByPage(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBeGreaterThan(0);
+
+    usePlayerStore.getState().seekByPage(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('clamps a step at both ends of the track', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().setPosition(178);
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    usePlayerStore.getState().setPosition(3);
+    usePlayerStore.getState().seekBy(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    usePlayerStore.getState().seekBy(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('moves to a fraction of the track and clamps the fraction', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().seekToFraction(0.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(90);
+
+    usePlayerStore.getState().seekToFraction(-0.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    usePlayerStore.getState().seekToFraction(1.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+  });
+
+  it('moves to the start and the end of the track', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().setPosition(90);
+    usePlayerStore.getState().seekToEnd();
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+    expect(usePlayerStore.getState().seekTo).toBe(180);
+
+    usePlayerStore.getState().seekToStart();
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBe(0);
+  });
+
   it('writes the position, asks the element to move, then hands the ask over once', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
 
-    usePlayerStore.getState().seek(120);
+    usePlayerStore.getState().seekToFraction(2 / 3);
 
     expect(usePlayerStore.getState().positionSeconds).toBe(120);
     expect(usePlayerStore.getState().seekTo).toBe(120);
@@ -671,25 +749,16 @@ describe('seek', () => {
     expect(usePlayerStore.getState().consumeSeek()).toBeNull();
   });
 
-  it('never seeks before zero or past the track duration', () => {
-    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-
-    usePlayerStore.getState().seek(-30);
-
-    expect(usePlayerStore.getState().positionSeconds).toBe(0);
-    expect(usePlayerStore.getState().seekTo).toBe(0);
-
-    usePlayerStore.getState().seek(200);
-
-    expect(usePlayerStore.getState().positionSeconds).toBe(180);
-    expect(usePlayerStore.getState().seekTo).toBe(180);
-  });
-
   it('refuses a seek while the current track has no known duration', () => {
     const unknown = { ...first, durationSeconds: null };
     usePlayerStore.getState().startQueue(PLAYLIST, [unknown], unknown.id);
 
-    usePlayerStore.getState().seek(30);
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+
+    usePlayerStore.getState().seekToFraction(0.5);
 
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
     expect(usePlayerStore.getState().seekTo).toBeNull();

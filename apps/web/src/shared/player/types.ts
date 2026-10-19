@@ -13,6 +13,12 @@ export interface PlayerTrack {
   readonly thumbnailPath: string | null;
 }
 
+/** The direction a seek step takes. */
+export enum SeekDirection {
+  Backward = 'backward',
+  Forward = 'forward'
+}
+
 /*
  * The part of the player that survives a reload. `isPlaying` and `seekTo` are
  * never persisted, so a relaunch never starts audio or jumps the playhead.
@@ -75,9 +81,15 @@ export interface PlayerState {
   readonly skipPrevious: () => void;
   /* A finished track: the same move as `skipNext`, but it stops at the last. */
   readonly advance: () => void;
-  /* Move the playhead to `seconds`, bounded by the current track's duration.
-   * A track with no known duration refuses the request. */
-  readonly seek: (seconds: number) => void;
+  /* The keyboard's step in `direction`, bounded by the current track's
+   * duration. A track with no known duration refuses the request. */
+  readonly seekBy: (direction: SeekDirection) => void;
+  /* The Media Session's larger step in `direction`, with the same bound. */
+  readonly seekByPage: (direction: SeekDirection) => void;
+  /* Move to a fraction of the current track, clamped to its ends. */
+  readonly seekToFraction: (fraction: number) => void;
+  readonly seekToStart: () => void;
+  readonly seekToEnd: () => void;
   readonly setShuffle: (shuffle: boolean) => void;
   /* Take the pending seek request once, clearing it in the same step. */
   readonly consumeSeek: () => number | null;

@@ -7,21 +7,18 @@ import {
   bindSessionHandlers,
   publishMetadata
 } from '../mediaSession/mediaSession';
-import { usePlayerStore } from '../playerStore/playerStore';
+import { shouldApplySeek, usePlayerStore } from '../playerStore/playerStore';
 import {
   StreamFailureKind,
   classifyStreamFailure
 } from '../streamFailure/streamFailure';
-import { currentTrack } from '../types';
+import { SeekDirection, currentTrack } from '../types';
 
 /*
  * The one audio element, in the shell so playback survives a route change, and
  * the only component that touches it. Exactly one track is reachable at a time:
  * a new id replaces the source, nothing is prefetched.
  */
-
-/** How far the element may drift before the store is the truth. */
-const SEEK_EPSILON = 0.5;
 
 export default function PlayerAudio() {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -71,7 +68,7 @@ export default function PlayerAudio() {
    * when the queue changes under them. */
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
-  const seek = usePlayerStore(state => state.seek);
+  const seekByPage = usePlayerStore(state => state.seekByPage);
 
   /*
    * A ref, not state: `positionSeconds` is written on every `timeupdate`, so
@@ -162,7 +159,7 @@ export default function PlayerAudio() {
       return;
     }
 
-    if (Math.abs(audio.currentTime - target) > SEEK_EPSILON) {
+    if (shouldApplySeek(audio.currentTime, target)) {
       audio.currentTime = target;
     }
   }, [seekTo, consumeSeek]);
@@ -191,8 +188,8 @@ export default function PlayerAudio() {
     audio.pause();
   }, [isPlaying, currentId, setPlaying]);
 
-  /* Re-publish metadata and handlers whenever the track changes, so they never
-   * describe a track that is gone. */
+  /* Re-publish metadata whenever the track changes, so it never describes a
+   * track that is gone. */
   useEffect(() => {
     if (current === null) {
       publishMetadata(null);
@@ -219,6 +216,8 @@ export default function PlayerAudio() {
     });
   }, [current]);
 
+  /* The handlers read the store at press time, so they bind once instead of
+   * rebinding as the position moves. */
   useEffect(
     () =>
       bindSessionHandlers({
@@ -226,10 +225,10 @@ export default function PlayerAudio() {
         onPause: () => setPlaying(false),
         onNextTrack: () => skipNext(),
         onPreviousTrack: () => skipPrevious(),
-        onSeekBackward: () => seek(positionSeconds - 10),
-        onSeekForward: () => seek(positionSeconds + 10)
+        onSeekBackward: () => seekByPage(SeekDirection.Backward),
+        onSeekForward: () => seekByPage(SeekDirection.Forward)
       }),
-    [setPlaying, skipNext, skipPrevious, seek, positionSeconds]
+    [setPlaying, skipNext, skipPrevious, seekByPage]
   );
 
   return (

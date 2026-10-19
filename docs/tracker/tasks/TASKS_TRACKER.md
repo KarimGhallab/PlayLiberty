@@ -45,7 +45,7 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`36-one-access-rule-one-module`](36-one-access-rule-one-module.md)                                                         | resolved | none                                       | none                                                      |
 | [`37-one-playable-rule`](37-one-playable-rule.md)                                                                           | open     | none                                       | none                                                      |
 | [`38-playlist-actions-once-per-page`](38-playlist-actions-once-per-page.md)                                                 | open     | none                                       | none                                                      |
-| [`39-one-owner-for-seek`](39-one-owner-for-seek.md)                                                                         | open     | none                                       | none                                                      |
+| [`39-one-owner-for-seek`](39-one-owner-for-seek.md)                                                                         | resolved | none                                       | none                                                      |
 
 Feature-scoped ticket sets live in a folder named for their spec:
 

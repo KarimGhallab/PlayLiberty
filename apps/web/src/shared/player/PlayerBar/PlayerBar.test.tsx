@@ -112,7 +112,7 @@ describe('PlayerBar', () => {
     expect(screen.getByRole('button', { name: 'Next track' })).toBeDisabled();
   });
 
-  it('moves the playhead with the arrow keys and clamps at the ends', () => {
+  it('moves the playhead with the arrow keys and jumps to the ends', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     renderBar();
 
@@ -126,6 +126,9 @@ describe('PlayerBar', () => {
 
     fireEvent.keyDown(slider, { key: 'End' });
     expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    fireEvent.keyDown(slider, { key: 'Home' });
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
   it('toggles playback from the space bar wherever focus sits', () => {

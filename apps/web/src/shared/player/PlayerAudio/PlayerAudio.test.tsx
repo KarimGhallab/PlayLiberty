@@ -204,6 +204,32 @@ describe('PlayerAudio', () => {
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
+  it('binds the Media Session handlers once while the position moves', () => {
+    const setActionHandler = vi.fn();
+
+    Object.defineProperty(navigator, 'mediaSession', {
+      value: {
+        metadata: null,
+        setActionHandler
+      },
+      configurable: true
+    });
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    });
+
+    const bound = setActionHandler.mock.calls.length;
+
+    act(() => {
+      usePlayerStore.getState().setPosition(42);
+    });
+
+    expect(setActionHandler).toHaveBeenCalledTimes(bound);
+  });
+
   it('moves the element immediately when a seek is asked for', () => {
     render(<PlayerAudio />);
 
@@ -212,7 +238,7 @@ describe('PlayerAudio', () => {
     });
 
     act(() => {
-      usePlayerStore.getState().seek(90);
+      usePlayerStore.getState().seekToFraction(0.5);
     });
 
     expect(audio().currentTime).toBe(90);
