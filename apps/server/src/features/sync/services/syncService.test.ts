@@ -43,7 +43,9 @@ import { seedAccount, seedShare } from '../../../app/testing/fixtures.js';
 
 import {
   associations,
+  playlists,
   suppressions,
+  syncRuns,
   tracks
 } from '../../../platform/database/schema.js';
 import { mediaRelativePath } from '../../../platform/media/mediaPaths.js';
@@ -425,6 +427,27 @@ describe('POST /playlists', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+  });
+
+  it('rolls the syncing state back when the run cannot be written', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('a')])) }
+    );
+    context.database.sqlite.exec(`
+      create trigger fail_sync_run_insert
+      before insert on sync_run
+      begin
+        select raise(abort, 'the run could not be written');
+      end;
+    `);
+
+    const response = await post(PLAYLIST_URL, 'owner-1');
+
+    expect(response.statusCode).toBe(500);
+    // The playlist, its syncing state and the run are one unit.
+    expect(context.database.db.select().from(playlists).all()).toEqual([]);
+    expect(context.database.db.select().from(syncRuns).all()).toEqual([]);
   });
 });
 

@@ -102,6 +102,16 @@ function countAssociations(): number {
   );
 }
 
+function playlistTrackCount(playlistId: string): number {
+  return (
+    database()
+      .db.select({ trackCount: playlists.trackCount })
+      .from(playlists)
+      .where(eq(playlists.id, playlistId))
+      .get()?.trackCount ?? -1
+  );
+}
+
 const invalidPayloads: [string, Record<string, unknown>, string][] = [
   [
     'a playlist URL',
@@ -262,6 +272,39 @@ describe('POST /tracks', () => {
         .where(eq(associations.playlistId, readOnly))
         .get()
     ).toBeUndefined();
+  });
+
+  it('rolls the whole batch back when one association cannot be written', async () => {
+    let doomed = '';
+    const fake = createFakeYoutube(testVideo(VIDEO_ID));
+    const youtube = {
+      ...fake,
+      listSource: async () => {
+        /* The access check already passed; the playlist goes before its
+         * association is written, so the batch fails halfway. */
+        database().db.delete(playlists).where(eq(playlists.id, doomed)).run();
+
+        return fake.listSource(VIDEO_URL);
+      }
+    };
+    const kick = vi.fn();
+    context = await createTestContext({}, { youtube, kickDownloads: kick });
+    const owner = seedAccount(database());
+    const writable = seedPlaylist(database(), owner.accountId).playlistId;
+    doomed = seedPlaylist(database(), owner.accountId).playlistId;
+
+    const response = await post('/api/v1/tracks', owner.pangolinUserId, {
+      url: VIDEO_URL,
+      playlistIds: [writable, doomed]
+    });
+
+    expect(response.statusCode).toBe(500);
+    // The track, the first association and its count all roll back together.
+    expect(countTracks()).toBe(0);
+    expect(countAssociations()).toBe(0);
+    expect(playlistTrackCount(writable)).toBe(0);
+    // No work survived, so the worker is not woken.
+    expect(kick).not.toHaveBeenCalled();
   });
 
   it('reports a playlist that already holds the video as already_present and succeeds', async () => {

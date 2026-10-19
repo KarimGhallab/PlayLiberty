@@ -66,26 +66,28 @@ export async function addTrackToPlaylists(
     }
   }
 
-  const result = withDownloadQueue(context, queue => {
-    const trackId = seed === null ? existingTrackId : queue.create(seed);
+  const result = withDownloadQueue(context, queue =>
+    database.unitOfWork(() => {
+      const trackId = seed === null ? existingTrackId : queue.create(seed);
 
-    return {
-      results: playlistIds.map((playlistId, index) => {
-        if (writable[index] !== true || trackId === null) {
-          return { playlistId, outcome: AddTrackOutcome.Refused };
-        }
+      return {
+        results: playlistIds.map((playlistId, index) => {
+          if (writable[index] !== true || trackId === null) {
+            return { playlistId, outcome: AddTrackOutcome.Refused };
+          }
 
-        const outcome = addAssociation(database, {
-          playlistId,
-          trackId,
-          origin: AssociationOrigin.Manual,
-          position: nextPositionFor(database, playlistId)
-        });
+          const outcome = addAssociation(database, {
+            playlistId,
+            trackId,
+            origin: AssociationOrigin.Manual,
+            position: nextPositionFor(database, playlistId)
+          });
 
-        return { playlistId, outcome: toAddTrackOutcome(outcome) };
-      })
-    };
-  });
+          return { playlistId, outcome: toAddTrackOutcome(outcome) };
+        })
+      };
+    })
+  );
 
   const addedPlaylistIds = result.results
     .filter(entry => entry.outcome === AddTrackOutcome.Added)

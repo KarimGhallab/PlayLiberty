@@ -50,7 +50,7 @@ export function addAssociation(
   database: DatabaseHandle,
   options: AddAssociationOptions
 ): AssociationOutcome {
-  return database.sqlite.transaction((): AssociationOutcome => {
+  return database.unitOfWork((): AssociationOutcome => {
     const existing = database.db
       .select({ id: associations.id })
       .from(associations)
@@ -83,14 +83,14 @@ export function addAssociation(
       .run();
 
     return AssociationOutcome.Added;
-  })();
+  });
 }
 
 export function removeAssociation(
   database: DatabaseHandle,
   options: RemoveAssociationOptions
 ): AssociationOutcome {
-  return database.sqlite.transaction((): AssociationOutcome => {
+  return database.unitOfWork((): AssociationOutcome => {
     // The video id comes from the association, so the suppression cannot name
     // an unheld track.
     const existing = database.db
@@ -138,5 +138,5 @@ export function removeAssociation(
       .run();
 
     return AssociationOutcome.Removed;
-  })();
+  });
 }

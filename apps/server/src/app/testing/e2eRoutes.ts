@@ -34,7 +34,7 @@ export function registerE2eRoutes(
   app.post('/__e2e__/reset', async (request, reply) => {
     audit(request.log, { action: 'instance_reset', outcome: 'allowed' });
 
-    context.database.sqlite.transaction(() => {
+    context.database.unitOfWork(() => {
       // Children first, because the foreign keys are enforced.
       context.database.db.delete(associations).run();
       context.database.db.delete(suppressions).run();
@@ -43,7 +43,7 @@ export function registerE2eRoutes(
       context.database.db.delete(playlists).run();
       context.database.db.delete(tracks).run();
       context.database.db.delete(accounts).run();
-    })();
+    });
 
     await rm(context.mediaPaths.mediaDir, { recursive: true, force: true });
     await rm(context.mediaPaths.thumbnailsDir, {

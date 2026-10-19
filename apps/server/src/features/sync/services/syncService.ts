@@ -62,55 +62,72 @@ export function startSyncForSource(
 ): StartOrConflict {
   const database = context.database;
 
-  // Conflict-no-op, not check-then-insert, so two simultaneous pastes of one
-  // source cannot both create a playlist. Source uniqueness is per owner.
-  const inserted = database.db
-    .insert(playlists)
-    .values({
-      id: randomUUID(),
-      ownerAccountId: accountId,
-      name: info.sourceId,
-      provider: Provider.Youtube,
-      sourcePlaylistId: info.sourceId,
-      sourceUrl: info.url,
-      syncStatus: PlaylistSyncStatus.Syncing,
-      skipNonMusic
-    })
-    .onConflictDoNothing()
-    .returning()
-    .get();
+  const begun = database.unitOfWork(
+    (): {
+      started: StartOrConflict;
+      playlist: PlaylistRow;
+    } => {
+      // Conflict-no-op, not check-then-insert, so two simultaneous pastes of one
+      // source cannot both create a playlist. Source uniqueness is per owner.
+      const inserted = database.db
+        .insert(playlists)
+        .values({
+          id: randomUUID(),
+          ownerAccountId: accountId,
+          name: info.sourceId,
+          provider: Provider.Youtube,
+          sourcePlaylistId: info.sourceId,
+          sourceUrl: info.url,
+          syncStatus: PlaylistSyncStatus.Syncing,
+          skipNonMusic
+        })
+        .onConflictDoNothing()
+        .returning()
+        .get();
 
-  // On conflict the row belongs to the earlier paste, so read it, not assume.
+      // On conflict the row belongs to the earlier paste, so read it, not assume.
 
-  const playlist =
-    inserted ??
-    database.db
-      .select()
-      .from(playlists)
-      .where(
-        and(
-          eq(playlists.ownerAccountId, accountId),
-          eq(playlists.provider, Provider.Youtube),
-          eq(playlists.sourcePlaylistId, info.sourceId)
-        )
-      )
-      .get();
+      const playlist =
+        inserted ??
+        database.db
+          .select()
+          .from(playlists)
+          .where(
+            and(
+              eq(playlists.ownerAccountId, accountId),
+              eq(playlists.provider, Provider.Youtube),
+              eq(playlists.sourcePlaylistId, info.sourceId)
+            )
+          )
+          .get();
 
-  if (playlist === undefined) {
-    throw new Error('The playlist could not be created or found.');
+      if (playlist === undefined) {
+        throw new Error('The playlist could not be created or found.');
+      }
+
+      // A playlist whose stored URL differs from what was just pasted is filled
+      // in so the next sync has something to read.
+      if (playlist.sourceUrl !== info.url) {
+        database.db
+          .update(playlists)
+          .set({ sourceUrl: info.url, updatedAt: new Date().toISOString() })
+          .where(eq(playlists.id, playlist.id))
+          .run();
+      }
+
+      return { started: beginRun(database, playlist), playlist };
+    }
+  );
+
+  if (begun.started.outcome === StartSyncOutcome.Started) {
+    announce(context, {
+      kind: ChangeKind.PlaylistChanged,
+      playlistId: begun.playlist.id
+    });
+    void reconcile(context, begun.started.run.id, begun.playlist);
   }
 
-  // A playlist whose stored URL differs from what was just pasted is filled in
-  // so the next sync has something to read.
-  if (playlist.sourceUrl !== info.url) {
-    database.db
-      .update(playlists)
-      .set({ sourceUrl: info.url, updatedAt: new Date().toISOString() })
-      .where(eq(playlists.id, playlist.id))
-      .run();
-  }
-
-  return beginRun(context, playlist);
+  return begun.started;
 }
 
 export function startSyncForPlaylist(
@@ -136,12 +153,27 @@ export function startSyncForPlaylist(
     return { outcome: StartSyncOutcome.PlaylistNotFound };
   }
 
-  return beginRun(context, playlist);
+  const started = context.database.unitOfWork(() =>
+    beginRun(context.database, playlist)
+  );
+
+  if (started.outcome === StartSyncOutcome.Started) {
+    announce(context, {
+      kind: ChangeKind.PlaylistChanged,
+      playlistId: playlist.id
+    });
+    void reconcile(context, started.run.id, playlist);
+  }
+
+  return started;
 }
 
-function beginRun(context: AppContext, playlist: PlaylistRow): StartOrConflict {
-  const database = context.database;
-
+/* The run and the syncing state are one write: a failed insert leaves the
+ * playlist as it was. The caller owns the unit and the announcement. */
+function beginRun(
+  database: DatabaseHandle,
+  playlist: PlaylistRow
+): StartOrConflict {
   const running = database.db
     .select({ id: syncRuns.id })
     .from(syncRuns)
@@ -181,13 +213,6 @@ function beginRun(context: AppContext, playlist: PlaylistRow): StartOrConflict {
 
   database.db.insert(syncRuns).values(run).run();
 
-  announce(context, {
-    kind: ChangeKind.PlaylistChanged,
-    playlistId: playlist.id
-  });
-
-  void reconcile(context, run.id, playlist);
-
   return { outcome: StartSyncOutcome.Started, playlistId: playlist.id, run };
 }
 
@@ -208,60 +233,58 @@ async function reconcile(
     const source = await context.youtube.listSource(playlist.sourceUrl);
     const presentVideoIds = source.entries.map(item => item.videoId);
 
-    // A suppression lasts only while the source still lists the video, so one
-    // that later returns is treated as new rather than staying removed.
-    liftAbsentSuppressions(database, playlist.id, presentVideoIds);
-
     /* One queueing operation for the whole source, so the worker is woken once
-     * at the end. The run is settled and the playlist published first. */
-    withDownloadQueue(context, queue => {
-      let nextPosition = nextPositionFor(database, playlist.id);
-      let added = 0;
+     * after the unit commits. A throw rolls the pass back and skips the wake. */
+    withDownloadQueue(context, queue =>
+      database.unitOfWork(() => {
+        // A suppression lasts only while the source still lists the video, so
+        // one that later returns is treated as new rather than staying removed.
+        liftAbsentSuppressions(database, playlist.id, presentVideoIds);
 
-      for (const item of source.entries) {
-        if (isSuppressed(database, playlist.id, item.videoId)) {
-          continue;
+        let nextPosition = nextPositionFor(database, playlist.id);
+        let added = 0;
+
+        for (const item of source.entries) {
+          if (isSuppressed(database, playlist.id, item.videoId)) {
+            continue;
+          }
+
+          const trackId = ensureTrack(
+            database,
+            queue,
+            item.videoId,
+            item.title,
+            item.durationSeconds,
+            item.thumbnailUrl,
+            playlist.skipNonMusic
+          );
+
+          if (hasAssociation(database, playlist.id, trackId)) {
+            continue;
+          }
+
+          addAssociation(database, {
+            playlistId: playlist.id,
+            trackId,
+            origin: AssociationOrigin.Remote,
+            position: nextPosition
+          });
+          nextPosition += 1;
+          added += 1;
         }
 
-        const trackId = ensureTrack(
+        const retained = retainAbsentTracks(
           database,
-          queue,
-          item.videoId,
-          item.title,
-          item.durationSeconds,
-          item.thumbnailUrl,
-          playlist.skipNonMusic
+          playlist.id,
+          presentVideoIds
         );
 
-        if (hasAssociation(database, playlist.id, trackId)) {
-          continue;
-        }
+        const name =
+          source.title.trim().length > 0
+            ? source.title
+            : playlist.sourcePlaylistId;
+        const finishedAt = new Date().toISOString();
 
-        addAssociation(database, {
-          playlistId: playlist.id,
-          trackId,
-          origin: AssociationOrigin.Remote,
-          position: nextPosition
-        });
-        nextPosition += 1;
-        added += 1;
-      }
-
-      const retained = retainAbsentTracks(
-        database,
-        playlist.id,
-        presentVideoIds
-      );
-
-      const name =
-        source.title.trim().length > 0
-          ? source.title
-          : playlist.sourcePlaylistId;
-      const finishedAt = new Date().toISOString();
-
-      // One transaction, so a client never reads a finished run beside a
-      // syncing playlist.
-      database.sqlite.transaction(() => {
         database.db
           .update(syncRuns)
           .set({
@@ -283,19 +306,19 @@ async function reconcile(
           })
           .where(eq(playlists.id, playlist.id))
           .run();
-      })();
+      })
+    );
 
-      announce(context, {
-        kind: ChangeKind.PlaylistChanged,
-        playlistId: playlist.id
-      });
+    announce(context, {
+      kind: ChangeKind.PlaylistChanged,
+      playlistId: playlist.id
     });
   } catch (error) {
     // Enough to leave no run hanging and no unhandled rejection.
     const finishedAt = new Date().toISOString();
     const message = error instanceof Error ? error.message : 'The sync failed.';
 
-    database.sqlite.transaction(() => {
+    database.unitOfWork(() => {
       database.db
         .update(syncRuns)
         .set({ status: SyncRunStatus.Failed, error: message, finishedAt })
@@ -311,7 +334,7 @@ async function reconcile(
         })
         .where(eq(playlists.id, playlist.id))
         .run();
-    })();
+    });
 
     announce(context, {
       kind: ChangeKind.PlaylistChanged,
