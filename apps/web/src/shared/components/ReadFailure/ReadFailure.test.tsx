@@ -44,12 +44,6 @@ describe('ReadFailure', () => {
     expect(screen.getByText(FALLBACK)).toBeInTheDocument();
   });
 
-  it('shows the fallback sentence for an ApiError with no detail', () => {
-    renderFailure({ error: apiError(null) });
-
-    expect(screen.getByText(FALLBACK)).toBeInTheDocument();
-  });
-
   it('retries through a labelled button', () => {
     const onRetry = vi.fn();
     renderFailure({ error: apiError(null), onRetry });

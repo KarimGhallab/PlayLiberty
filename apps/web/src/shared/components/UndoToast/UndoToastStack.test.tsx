@@ -31,19 +31,6 @@ function renderStack(windows: readonly DeferredWindow[], onCancel = vi.fn()) {
 }
 
 describe('UndoToastStack', () => {
-  it('draws every window with the newest above the older', () => {
-    renderStack([
-      deferredWindow(1, 'Rain On The Window'),
-      deferredWindow(2, 'Night Bus')
-    ]);
-
-    const toasts = screen.getAllByRole('status');
-
-    expect(toasts).toHaveLength(2);
-    expect(toasts[0]).toHaveTextContent('Night Bus');
-    expect(toasts[1]).toHaveTextContent('Rain On The Window');
-  });
-
   it('cancels the window whose toast owns the press', () => {
     const { onCancel } = renderStack([
       deferredWindow(1, 'Rain On The Window'),

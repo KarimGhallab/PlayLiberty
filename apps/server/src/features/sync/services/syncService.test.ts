@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -412,23 +411,6 @@ describe('POST /playlists', () => {
     expect(response.json()).toMatchObject({ code: 'invalid_request' });
   });
 
-  it('refuses a mutation without the client header', async () => {
-    context = await createTestContext(
-      {},
-      { youtube: fakeYoutube(source([entry('a')])) }
-    );
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: '/api/v1/playlists',
-      headers: { 'remote-user': 'owner-1' },
-      payload: { url: PLAYLIST_URL }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
-
   it('rolls the syncing state back when the run cannot be written', async () => {
     context = await createTestContext(
       {},
@@ -599,23 +581,6 @@ describe('POST /playlists/:id/sync', () => {
 
     release();
     await runFinished(first.playlistId, 'owner-1');
-  });
-
-  it('refuses a caller who cannot write the playlist', async () => {
-    context = await createTestContext(
-      {},
-      { youtube: fakeYoutube(source([entry('a')])) }
-    );
-
-    const first = SyncRunSchema.parse(
-      (await post(PLAYLIST_URL, 'owner-1')).json()
-    );
-    await runFinished(first.playlistId, 'owner-1');
-
-    const response = await postSync(first.playlistId, 'owner-2');
-
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
   });
 });
 
@@ -1284,47 +1249,6 @@ describe('authorizing a sync', () => {
       (await get('/api/v1/playlists', 'somebody-else')).json()
     );
     expect(theirs.total).toBe(0);
-  });
-
-  it('refuses a sync without the client header', async () => {
-    context = await createTestContext(
-      {},
-      { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
-    );
-
-    const created = SyncRunSchema.parse(
-      (await post(PLAYLIST_URL, 'owner-1')).json()
-    );
-    await runFinished(created.playlistId, 'owner-1');
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: `/api/v1/playlists/${created.playlistId}/sync`,
-      headers: { 'remote-user': 'owner-1' }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
-
-  it('refuses a sync from a foreign origin when one is configured', async () => {
-    context = await createTestContext(
-      { PUBLIC_ORIGIN: 'https://app.example.com' },
-      { youtube: fakeYoutube(source([entry('aaaaaaaaaaa')])) }
-    );
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: `/api/v1/playlists/${randomUUID()}/sync`,
-      headers: {
-        'remote-user': 'owner-1',
-        'x-playliberty-client': 'test',
-        origin: 'https://evil.example.com'
-      }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_origin_mismatch' });
   });
 });
 

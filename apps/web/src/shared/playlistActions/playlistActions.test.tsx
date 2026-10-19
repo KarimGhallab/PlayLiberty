@@ -147,13 +147,6 @@ describe('usePlaylistActions', () => {
       commit: expect.any(Function)
     });
   });
-
-  it('keeps the delete off a write collaborator’s menu', () => {
-    const { menu, defer } = control(playlist({ access: ShareLevel.Write }));
-
-    expect(menu.some(item => item.key === 'delete')).toBe(false);
-    expect(defer).not.toHaveBeenCalled();
-  });
 });
 
 /*

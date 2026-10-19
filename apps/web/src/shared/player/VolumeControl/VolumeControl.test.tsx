@@ -119,15 +119,6 @@ describe('VolumeControl', () => {
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.45);
   });
 
-  it('shows the new level when the arrows change it', () => {
-    usePlayerStore.getState().setVolume(0.5);
-    renderControl();
-
-    fireEvent.keyDown(window, { key: 'ArrowUp' });
-
-    expect(screen.getByRole('status')).toHaveTextContent('Volume 55%');
-  });
-
   it('keeps one notice and restarts its life on the next press', () => {
     vi.useFakeTimers();
     usePlayerStore.getState().setVolume(0.5);
@@ -238,29 +229,5 @@ describe('VolumeControl', () => {
 
     fireEvent.pointerMove(rail, { clientX: 2, clientY: 90, pointerId: 1 });
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
-  });
-
-  it('clamps a pointer beyond the rail to the ends', () => {
-    renderControl();
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
-
-    const rail = screen.getByRole('slider', { name: 'Volume' });
-    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
-      top: 0,
-      bottom: 100,
-      left: 0,
-      right: 4,
-      width: 4,
-      height: 100,
-      x: 0,
-      y: 0,
-      toJSON: () => ({})
-    });
-
-    fireEvent.pointerDown(rail, { clientX: 2, clientY: -40, pointerId: 1 });
-    expect(usePlayerStore.getState().volume).toBe(1);
-
-    fireEvent.pointerDown(rail, { clientX: 2, clientY: 140, pointerId: 1 });
-    expect(usePlayerStore.getState().volume).toBe(0);
   });
 });

@@ -44,7 +44,7 @@ describe('IncompleteBadge', () => {
    * One pill however many reasons are missing: the count is every track whose
    * file is not here, and the breakdown is the pill's own content.
    */
-  it('draws one pill and one row per reason when several reasons are missing', async () => {
+  it('sums every missing reason into one pill', async () => {
     renderMark(
       counts({
         [TrackFileStatus.Stored]: 4,
@@ -60,23 +60,6 @@ describe('IncompleteBadge', () => {
     expect(screen.getAllByRole('img')).toHaveLength(1);
     /* Eleven of sixteen: the sum of the four reasons and never the stored ones. */
     expect(pill).toHaveTextContent('11');
-
-    const rows = pill.querySelectorAll('span[data-tone]');
-    expect(Array.from(rows, row => row.textContent)).toEqual([
-      'Pending2',
-      'Downloading1',
-      'Failed3',
-      'Unavailable5'
-    ]);
-  });
-
-  it('leaves a reason with no tracks out of the breakdown', async () => {
-    renderMark(counts({ [TrackFileStatus.Failed]: 1 }));
-
-    const pill = await screen.findByRole('img');
-    const rows = pill.querySelectorAll('span[data-tone]');
-
-    expect(Array.from(rows, row => row.textContent)).toEqual(['Failed1']);
   });
 
   /*

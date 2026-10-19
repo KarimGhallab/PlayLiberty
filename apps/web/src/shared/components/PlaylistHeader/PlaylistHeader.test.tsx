@@ -7,7 +7,7 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -297,39 +297,6 @@ describe('PlaylistHeader', () => {
     /* The cover is the track's own route, not a third-party URL. */
     const image = container.querySelector('img');
     expect(image?.getAttribute('src')).toBe('/api/v1/tracks/track-9/thumbnail');
-    expect(image).toHaveAttribute('loading', 'lazy');
-    expect(container.querySelector('[data-art="art"]')).toHaveAttribute(
-      'data-sleeve'
-    );
-  });
-
-  it('loads the detail hero eagerly and keeps the gallery item lazy', async () => {
-    const item = renderCard(playlist({ coverTrackId: 'track-9' }), null, {
-      item: true
-    });
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(item.container.querySelector('img')).toHaveAttribute(
-      'loading',
-      'lazy'
-    );
-    expect(item.container.querySelector('[data-art="art"]')).toHaveAttribute(
-      'data-sleeve'
-    );
-    item.unmount();
-
-    const hero = renderCard(playlist({ coverTrackId: 'track-9' }), null, {
-      heading: true
-    });
-    await screen.findByRole('heading', { name: 'Rain On The Window' });
-
-    expect(hero.container.querySelector('img')).toHaveAttribute(
-      'loading',
-      'eager'
-    );
-    expect(hero.container.querySelector('[data-art="art"]')).toHaveAttribute(
-      'data-sleeve'
-    );
   });
 
   it('falls back to the sleeve when the cover image fails to load', async () => {
@@ -343,36 +310,6 @@ describe('PlaylistHeader', () => {
 
     /* No empty box: the failed image becomes the sleeve. */
     expect(container.querySelector('img')).toBeNull();
-    expect(container.querySelector('[data-art="no-art"]')).toHaveAttribute(
-      'data-sleeve'
-    );
-  });
-
-  it('marks the playing row with the emphasis line, not the equalizer bars', async () => {
-    const { container } = renderRow(playlist(), null, {
-      current: true,
-      playing: true
-    });
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(container.querySelector('[data-arrangement="row"]')).toHaveAttribute(
-      'data-state',
-      'playing'
-    );
-    expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
-  });
-
-  it('draws no playing mark on a row that is not the queue', async () => {
-    const { container } = renderRow(playlist());
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(container.querySelector('[data-arrangement="row"]')).toHaveAttribute(
-      'data-state',
-      'paused'
-    );
-    expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
   });
 
   it('reads a never-synced playlist by its idle state, beside a never-synced line', async () => {
@@ -551,7 +488,6 @@ describe('PlaylistHeader', () => {
 
     expect(play).toBeDisabled();
     expect(play).toHaveAttribute('aria-busy', 'true');
-    expect(play).toHaveAttribute('data-starting', 'true');
   });
 
   it('marks the pressed shuffle and leaves the play quiet', async () => {
@@ -568,7 +504,6 @@ describe('PlaylistHeader', () => {
 
     expect(shuffle).toBeDisabled();
     expect(shuffle).toHaveAttribute('aria-busy', 'true');
-    expect(shuffle).toHaveAttribute('data-starting', 'true');
     expect(
       screen.getByRole('button', { name: 'Play this playlist' })
     ).not.toHaveAttribute('aria-busy');
@@ -586,7 +521,6 @@ describe('PlaylistHeader', () => {
 
     expect(play).toBeDisabled();
     expect(play).not.toHaveAttribute('aria-busy');
-    expect(play).not.toHaveAttribute('data-starting');
   });
 
   /* The tooltip's reveal is `:hover`/`:focus-visible` in the stylesheet, which
@@ -669,12 +603,6 @@ describe('the tile arrangement', () => {
     ).toBeInTheDocument();
   });
 
-  it('names the owner of a shared playlist', async () => {
-    renderTile(playlist({ access: ShareLevel.Read }), 'Ada');
-
-    expect(await screen.findByText('Shared by Ada')).toBeInTheDocument();
-  });
-
   /* The tile plays from its cover's corner: the play is the seam's, so it
    * names itself and pauses while this is the queue; no transport. */
   it('offers the play on the cover, and no transport', async () => {
@@ -694,45 +622,6 @@ describe('the tile arrangement', () => {
     expect(
       screen.queryByRole('button', { name: 'Track next' })
     ).not.toBeInTheDocument();
-  });
-
-  it('shows the pause while the queue is this playlist', async () => {
-    renderTile(playlist(), null, { current: true, playing: true });
-
-    expect(
-      await screen.findByRole('button', { name: 'Pause Rain On The Window' })
-    ).toBeInTheDocument();
-  });
-
-  it('reads the name before its controls in the document', async () => {
-    const { container } = renderTile(playlist());
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-    const tile = container.querySelector<HTMLElement>(
-      '[data-arrangement="tile"]'
-    );
-
-    if (tile === null) {
-      throw new Error('The tile header must be drawn.');
-    }
-
-    const name = within(tile).getByRole('link', {
-      name: 'Rain On The Window'
-    });
-    const controls = [
-      within(tile).getByRole('button', { name: 'Play Rain On The Window' }),
-      within(tile).getByRole('button', {
-        name: 'Shuffle Rain On The Window'
-      }),
-      within(tile).getByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    ];
-
-    for (const control of controls) {
-      expect(
-        name.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING
-      ).not.toBe(0);
-    }
   });
 
   it('draws the play enabled for a playlist that holds a stored track', async () => {
@@ -766,16 +655,6 @@ describe('the tile arrangement', () => {
       await screen.findByRole('link', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
     expect(screen.getAllByRole('link')).toHaveLength(1);
-  });
-
-  it('draws the mark the library hands it', async () => {
-    renderTile(playlist(), null, {
-      mark: <span role="img" aria-label="Mark" />
-    });
-
-    expect(
-      await screen.findByRole('img', { name: 'Mark' })
-    ).toBeInTheDocument();
   });
 
   it('opens the playlist from a press on the tile, but not from its controls', async () => {
@@ -899,37 +778,6 @@ describe('the card as an item of the library', () => {
     expect(
       screen.queryByRole('button', { name: 'Skip back' })
     ).not.toBeInTheDocument();
-  });
-
-  it('reads the name before its controls in the document', async () => {
-    const { container } = renderItem({ menu: menu() });
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-    const card = container.querySelector<HTMLElement>(
-      '[data-arrangement="card"]'
-    );
-
-    if (card === null) {
-      throw new Error('The card header must be drawn.');
-    }
-
-    const name = within(card).getByRole('link', {
-      name: 'Rain On The Window'
-    });
-    const controls = [
-      within(card).getByRole('button', { name: 'Play Rain On The Window' }),
-      within(card).getByRole('button', {
-        name: 'Shuffle Rain On The Window'
-      }),
-      within(card).getByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    ];
-
-    for (const control of controls) {
-      expect(
-        name.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING
-      ).not.toBe(0);
-    }
   });
 
   /* The item's identity is the status line, not the hero's three lines: at

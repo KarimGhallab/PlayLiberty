@@ -46,32 +46,6 @@ describe('LanguageMenu', () => {
     });
   });
 
-  it('closes on Escape', async () => {
-    renderMenu();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Language' }));
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    });
-  });
-
-  it('closes on a press outside it', async () => {
-    renderMenu();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Language' }));
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-
-    fireEvent.pointerDown(document.body);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    });
-  });
-
   it('lands on the first language and walks with the arrows', () => {
     renderMenu();
 

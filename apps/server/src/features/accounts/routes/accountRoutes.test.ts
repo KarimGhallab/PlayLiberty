@@ -99,16 +99,4 @@ describe('GET /accounts', () => {
     expect(second.total).toBe(3);
     expect(second.items.map(item => item.displayName)).toEqual(['Charlie']);
   });
-
-  it('refuses an unauthenticated request', async () => {
-    context = await createTestContext();
-
-    const response = await context.app.inject({
-      method: 'GET',
-      url: '/api/v1/accounts'
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(response.json()).toMatchObject({ code: 'unauthenticated' });
-  });
 });

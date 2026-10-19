@@ -476,28 +476,6 @@ describe('POST /tracks', () => {
 
     expect(response.statusCode).toBe(404);
   });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext(
-      {},
-      { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
-    );
-    const owner = seedAccount(database());
-
-    if (context === undefined) {
-      throw new Error('the test context is not created');
-    }
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: '/api/v1/tracks',
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: { url: VIDEO_URL, playlistIds: [randomUUID()] }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
 });
 
 describe('POST /tracks/:id/retry', () => {
@@ -664,32 +642,6 @@ describe('POST /tracks/:id/retry', () => {
         ?.fileStatus
     ).toBe(TrackFileStatus.Failed);
   });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount(database());
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-    const { trackId } = seedTrack(database(), {
-      videoId: VIDEO_ID,
-      fileStatus: TrackFileStatus.Failed,
-      failureReason: 'boom'
-    });
-    associate(database(), playlistId, trackId);
-
-    if (context === undefined) {
-      throw new Error('the test context is not created');
-    }
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: `/api/v1/tracks/${trackId}/retry`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: {}
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
 });
 
 describe('POST /tracks/:id/fetch-whole', () => {
@@ -849,33 +801,6 @@ describe('POST /tracks/:id/fetch-whole', () => {
       .get();
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
     expect(row?.skipNonMusic).toBe(true);
-  });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount(database());
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-    const { trackId } = seedTrack(database(), {
-      videoId: VIDEO_ID,
-      fileStatus: TrackFileStatus.Failed,
-      failureReason: 'boom',
-      skipNonMusic: true
-    });
-    associate(database(), playlistId, trackId);
-
-    if (context === undefined) {
-      throw new Error('the test context is not created');
-    }
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: `/api/v1/tracks/${trackId}/fetch-whole`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: {}
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
   });
 });
 

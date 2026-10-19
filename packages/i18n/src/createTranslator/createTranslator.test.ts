@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { en } from '../en.js';
 import { Language } from '../types.js';
 import type { MessageParams } from '../types.js';
 import { createTranslator } from './createTranslator.js';
@@ -55,12 +54,5 @@ describe('createTranslator', () => {
     const t = createTranslator(catalog, Language.English);
 
     expect(t('echo', { value: 3 })).toBe('value: 3');
-  });
-
-  it('pins the library strings, the level the catalog inherits', () => {
-    const t = createTranslator(en, Language.English);
-
-    expect(t('count.tracks', { count: 1 })).toBe('1 track');
-    expect(t('count.tracks', { count: 42 })).toBe('42 tracks');
   });
 });

@@ -133,6 +133,11 @@ describe('Dialog', () => {
     expect(screen.getByLabelText('Field')).toHaveFocus();
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Test dialog' })
+    ).toBeInTheDocument();
+
     runExit();
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

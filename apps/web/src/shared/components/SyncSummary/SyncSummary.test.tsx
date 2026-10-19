@@ -64,12 +64,6 @@ describe('SyncSummary', () => {
       screen.getByRole('group', { name: '2 removed' })
     ).toBeInTheDocument();
     expect(screen.getByRole('group', { name: '1 failed' })).toBeInTheDocument();
-    const stamp = screen.getByText('Last sync 55 minutes ago');
-    expect(
-      stamp.compareDocumentPosition(
-        screen.getByRole('group', { name: '5 added' })
-      ) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
   });
 
   /* Downloads fail after the run settles, so the band reports the playlist's

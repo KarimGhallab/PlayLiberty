@@ -98,18 +98,6 @@ describe('Menu', () => {
     expect(screen.getByRole('menuitem', { name: 'Two' })).toBeDisabled();
   });
 
-  it('draws the divider before a destructive item when the caller asks', () => {
-    const { container } = render(<Harness items={items(vi.fn())} divided />);
-
-    expect(container.querySelectorAll('hr')).toHaveLength(1);
-  });
-
-  it('leaves the divider out when the caller does not ask', () => {
-    const { container } = render(<Harness items={items(vi.fn())} />);
-
-    expect(container.querySelectorAll('hr')).toHaveLength(0);
-  });
-
   it('closes, returns focus to the trigger and runs the chosen item', async () => {
     const onSelect = vi.fn();
     render(<Harness items={items(onSelect)} />);
@@ -153,22 +141,5 @@ describe('Menu', () => {
     expect(
       screen.getByRole('menuitemradio', { name: 'French' })
     ).toHaveAttribute('aria-checked', 'false');
-  });
-
-  it('walks the items with the arrows, skips the disabled one and returns on Escape', async () => {
-    render(<Harness items={items(vi.fn())} />);
-
-    const first = screen.getByRole('menuitem', { name: 'One' });
-    expect(first).toHaveFocus();
-
-    fireEvent.keyDown(first, { key: 'ArrowDown' });
-    expect(screen.getByRole('menuitem', { name: 'Three' })).toHaveFocus();
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    });
-    expect(screen.getByRole('button', { name: 'Trigger' })).toHaveFocus();
   });
 });

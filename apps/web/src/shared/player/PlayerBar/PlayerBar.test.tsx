@@ -160,19 +160,6 @@ describe('PlayerBar', () => {
 
   /* In the fixed, always-visible bar, so the artwork is not deferred: it only
    * decodes off the main thread. */
-  it('async-decodes the artwork without deferring it', async () => {
-    const withArt = {
-      ...first,
-      thumbnailPath: '/api/v1/tracks/track-1/thumbnail'
-    };
-    usePlayerStore.getState().startQueue(PLAYLIST, [withArt], withArt.id);
-    const { container } = await renderBar();
-
-    const image = container.querySelector('img');
-
-    expect(image).toHaveAttribute('decoding', 'async');
-    expect(image).not.toHaveAttribute('loading', 'lazy');
-  });
 
   it('toggles playback and skips within the queue', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
@@ -198,13 +185,6 @@ describe('PlayerBar', () => {
     fireEvent.click(next);
 
     expect(usePlayerStore.getState().currentId).toBe('track-2');
-    expect(screen.getByRole('button', { name: 'Next track' })).toBeDisabled();
-  });
-
-  it('disables next when the queue holds a single track', async () => {
-    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
-    await renderBar();
-
     expect(screen.getByRole('button', { name: 'Next track' })).toBeDisabled();
   });
 

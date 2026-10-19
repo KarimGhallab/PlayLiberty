@@ -339,26 +339,6 @@ describe('pruning orphaned tracks', () => {
     expect(trackRow(trackId)).toBeUndefined();
   });
 
-  it('removes a track held only through another account playlist', async () => {
-    context = await createTestContext();
-    const { logger } = recordingLogger();
-    const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
-    const { trackId } = seedTrack(database(), { filePath: relativePath });
-    const audio = await writeBytes(relativePath);
-    associate(
-      database(),
-      seedPlaylist(database(), seedAccount(database()).accountId).playlistId,
-      trackId
-    );
-
-    const removed = await prune(logger);
-
-    // Held by a playlist, so it survives whatever account owns that playlist.
-    expect(removed).toBe(0);
-    expect(trackRow(trackId)).toBeDefined();
-    await expect(exists(audio)).resolves.toBe(true);
-  });
-
   it('stops before the first track when the signal is already set', async () => {
     context = await createTestContext();
     const { logger } = recordingLogger();

@@ -6,12 +6,7 @@ import styles from './Chip.module.scss';
  */
 
 export type ChipTone =
-  | 'accent'
-  | 'stored'
-  | 'pending'
-  | 'downloading'
-  | 'failed'
-  | 'unavailable';
+  'accent' | 'stored' | 'pending' | 'downloading' | 'failed' | 'unavailable';
 
 interface ChipProps {
   readonly label: string;
@@ -44,7 +39,7 @@ export default function Chip({
       {indicator ? (
         <span className={styles.chip__indicator} aria-hidden="true" />
       ) : null}
-      <span className={styles.chip__label}>{label}</span>
+      <span>{label}</span>
       {count === undefined ? null : (
         <span className={styles.chip__count}>{count}</span>
       )}

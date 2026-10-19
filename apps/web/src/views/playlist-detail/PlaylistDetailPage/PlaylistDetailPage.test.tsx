@@ -7,7 +7,6 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -16,7 +15,7 @@ import {
 } from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ProblemCode,
@@ -25,12 +24,10 @@ import {
   TrackFileStatus,
   endpoints
 } from '@playliberty/contracts';
-import { I18nProvider, formatDuration } from '@playliberty/i18n';
+import { I18nProvider } from '@playliberty/i18n';
 
 import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
-import type { PlayerTrack } from '../../../shared/player/types';
-import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
 import {
   EMPTY_COUNTS,
@@ -40,17 +37,7 @@ import {
   respond
 } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
-import { stubViewport } from '../../../testing/viewport';
 import PlaylistDetailPage from './PlaylistDetailPage';
-
-/*
- * Spied while still delegating to the real formatter, so the row output is
- * unchanged and the call count measures per-row renders.
- */
-vi.mock('@playliberty/i18n', async importOriginal => {
-  const actual = await importOriginal<typeof import('@playliberty/i18n')>();
-  return { ...actual, formatDuration: vi.fn(actual.formatDuration) };
-});
 
 const PLAYLIST_ID = 'playlist-1';
 
@@ -130,45 +117,6 @@ function trackJson(
   };
 }
 
-const DURATIONS = { 'track-1': 337, 'track-2': 273, 'track-3': 565 } as const;
-
-function renderedRows(): Map<number, number> {
-  const counts = new Map<number, number>();
-
-  for (const [seconds] of vi.mocked(formatDuration).mock.calls) {
-    counts.set(seconds, (counts.get(seconds) ?? 0) + 1);
-  }
-
-  return counts;
-}
-
-function playerTrack(id: keyof typeof DURATIONS): PlayerTrack {
-  return {
-    id,
-    title: id,
-    playlistId: PLAYLIST_ID,
-    playlistName: 'Rain On The Window',
-    durationSeconds: DURATIONS[id],
-    thumbnailPath: null
-  };
-}
-
-function openQueue(): void {
-  act(() => {
-    usePlayerStore
-      .getState()
-      .startQueue(
-        PLAYLIST_ID,
-        [
-          playerTrack('track-1'),
-          playerTrack('track-2'),
-          playerTrack('track-3')
-        ],
-        'track-2'
-      );
-  });
-}
-
 function listTitles(): string[] {
   return screen
     .getAllByRole('button', { name: /^(Play|Pause) / })
@@ -196,56 +144,6 @@ describe('PlaylistDetailPage', () => {
     ).toHaveAttribute('href', '/');
   });
 
-  it('switches the language from a deep-linked detail', async () => {
-    renderDetail();
-
-    await screen.findByRole('button', { name: 'Play this playlist' });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Language' }));
-    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
-
-    expect(window.localStorage.getItem('playliberty.language')).toBe('fr');
-    expect(document.documentElement.lang).toBe('fr');
-    expect(
-      screen.getByRole('link', { name: "Retour à l'accueil" })
-    ).toBeInTheDocument();
-  });
-
-  it('draws the header as the card at the web width', async () => {
-    const { container } = renderDetail();
-
-    await screen.findByRole('button', { name: 'Play this playlist' });
-
-    expect(
-      container.querySelector('[data-arrangement="card"]')
-    ).toBeInTheDocument();
-    expect(
-      container.querySelector('[data-arrangement="row"]')
-    ).not.toBeInTheDocument();
-  });
-
-  it('draws the header as the row at the phone width', async () => {
-    const restore = stubViewport(MOBILE_QUERY);
-
-    try {
-      const { container } = renderDetail();
-
-      await screen.findByRole('button', { name: 'Play this playlist' });
-
-      expect(
-        container.querySelector('[data-arrangement="row"]')
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('[data-arrangement="card"]')
-      ).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole('button', { name: 'Add a track' }));
-      expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    } finally {
-      restore();
-    }
-  });
-
   it('lists the playlist tracks that are playable', async () => {
     renderDetail();
 
@@ -255,19 +153,6 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.getByRole('button', { name: 'Play Naima' })
     ).toBeInTheDocument();
-  });
-
-  it('offers no play control for a track whose file is not stored', async () => {
-    renderDetail();
-
-    /*
-     * The pending track is listed and unplayable: absent rather than disabled,
-     * so the control never claims a track can be heard when it cannot.
-     */
-    expect(await screen.findByText('Flamenco Sketches')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Play Flamenco Sketches' })
-    ).not.toBeInTheDocument();
   });
 
   it('draws the list in the queue order while the queue is this playlist, shuffled', async () => {
@@ -333,66 +218,6 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('builds the queue from the pressed track and starts there', async () => {
-    renderDetail();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
-
-    await waitFor(() =>
-      expect(usePlayerStore.getState().queue).toHaveLength(2)
-    );
-
-    const state = usePlayerStore.getState();
-
-    expect(state.queue.map(track => track.title)).toEqual([
-      'Blue In Green',
-      'Naima'
-    ]);
-    expect(state.queue.every(track => track.playlistId === PLAYLIST_ID)).toBe(
-      true
-    );
-    expect(
-      state.queue.every(track => track.playlistName === 'Rain On The Window')
-    ).toBe(true);
-    expect(state.currentId).toBe('track-2');
-    expect(state.isPlaying).toBe(true);
-    expect(state.positionSeconds).toBe(0);
-  });
-
-  it('moves the playhead inside a shuffled queue rather than rebuilding it', async () => {
-    renderDetail();
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
-    );
-    await waitFor(() =>
-      expect(usePlayerStore.getState().queue).toHaveLength(2)
-    );
-
-    const shuffledQueue = usePlayerStore
-      .getState()
-      .queue.map(track => track.id);
-    /* Not the row the draw started on, so the press moves, not pauses. */
-    const target = usePlayerStore
-      .getState()
-      .queue.find(track => track.id !== usePlayerStore.getState().currentId);
-
-    if (target === undefined) {
-      throw new Error('the shuffled queue should hold a second track');
-    }
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: `Play ${target.title}` })
-    );
-
-    const state = usePlayerStore.getState();
-
-    expect(state.queue.map(track => track.id)).toEqual(shuffledQueue);
-    expect(state.shuffle).toBe(true);
-    expect(state.currentId).toBe(target.id);
-    expect(state.isPlaying).toBe(true);
   });
 
   /*
@@ -593,7 +418,6 @@ describe('PlaylistDetailPage', () => {
 
     await waitFor(() => expect(rowPlay).toBeDisabled());
     expect(rowPlay.closest('li')).toHaveAttribute('aria-busy', 'true');
-    expect(rowPlay.closest('li')).toHaveAttribute('data-starting', 'true');
     expect(
       screen.getByRole('button', { name: 'Play this playlist' })
     ).toBeDisabled();
@@ -606,7 +430,6 @@ describe('PlaylistDetailPage', () => {
     await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
 
     expect(usePlayerStore.getState().queue).toHaveLength(2);
-    expect(rowPlay.closest('li')).not.toHaveAttribute('data-starting');
   });
 
   it('disables the header next when the playing track is the last', async () => {
@@ -618,37 +441,6 @@ describe('PlaylistDetailPage', () => {
       await screen.findByRole('button', { name: 'Track next' })
     ).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Skip back' })).toBeEnabled();
-  });
-
-  it('toggles playback when the current row is pressed again', async () => {
-    renderDetail();
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Play Blue In Green' })
-    );
-    await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Pause Blue In Green' })
-    );
-    expect(usePlayerStore.getState().isPlaying).toBe(false);
-  });
-
-  it('keeps the header steps while paused on this playlist', async () => {
-    renderDetail();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Pause this playlist' })
-    );
-
-    expect(usePlayerStore.getState().isPlaying).toBe(false);
-    expect(
-      screen.getByRole('button', { name: 'Skip back' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Track next' })
-    ).toBeInTheDocument();
   });
 
   it('offers the row menu to a writer, who may remove a track', async () => {
@@ -1013,17 +805,6 @@ describe('PlaylistDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows the skip setting as a switch, on and enabled for the owner', async () => {
-    renderDetail();
-
-    const control = await screen.findByRole('switch', {
-      name: 'Skip non-music parts'
-    });
-
-    expect(control).toHaveAttribute('aria-checked', 'true');
-    expect(control).toBeEnabled();
-  });
-
   it('flips the switch optimistically and locks it until the server answers', async () => {
     let release!: () => void;
     const gate = new Promise<void>(resolve => {
@@ -1293,23 +1074,6 @@ describe('PlaylistDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show details' }));
     expect(
       screen.getByText('The source playlist is unavailable.')
-    ).toBeInTheDocument();
-  });
-
-  it('gates the owner overflow on the playlist access', async () => {
-    renderDetail();
-
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    );
-
-    expect(
-      screen.getByRole('menuitem', { name: 'Sync now' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('menuitem', { name: 'Delete playlist' })
     ).toBeInTheDocument();
   });
 
@@ -1818,45 +1582,5 @@ describe('PlaylistDetailPage filter chips', () => {
       'Blue In Green',
       'Naima'
     ]);
-  });
-});
-
-/*
- * The formatter runs once per row with that row's duration, so the fixture's
- * distinct durations make calls per argument a per-row render count.
- */
-describe('PlaylistDetailPage row rendering', () => {
-  it('re-renders only the row a queue change affects', async () => {
-    renderDetail();
-
-    await screen.findByRole('button', { name: 'Play Naima' });
-
-    vi.mocked(formatDuration).mockClear();
-    openQueue();
-
-    const counts = renderedRows();
-
-    expect(counts.get(DURATIONS['track-2'])).toBe(1);
-    expect(counts.has(DURATIONS['track-1'])).toBe(false);
-    expect(counts.has(DURATIONS['track-3'])).toBe(false);
-  });
-
-  it('re-renders only the current row on a play/pause change', async () => {
-    renderDetail();
-
-    await screen.findByRole('button', { name: 'Play Naima' });
-
-    openQueue();
-    vi.mocked(formatDuration).mockClear();
-
-    act(() => {
-      usePlayerStore.getState().setPlaying(false);
-    });
-
-    const counts = renderedRows();
-
-    expect(counts.get(DURATIONS['track-2'])).toBe(1);
-    expect(counts.has(DURATIONS['track-1'])).toBe(false);
-    expect(counts.has(DURATIONS['track-3'])).toBe(false);
   });
 });

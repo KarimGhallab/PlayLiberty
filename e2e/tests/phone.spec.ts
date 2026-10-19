@@ -66,6 +66,18 @@ async function measureTarget(
   return { height: measured.height, width: measured.width };
 }
 
+/* The bar rises into the viewport. A raw touchscreen tap reads its box, so the
+ * box must be at rest or the point is measured below the fold. */
+async function settleBar(page: Page): Promise<void> {
+  await page
+    .getByRole('contentinfo', { name: 'Player' })
+    .evaluate(element =>
+      Promise.allSettled(
+        element.getAnimations().map(animation => animation.finished)
+      )
+    );
+}
+
 async function seed(page: Page, request: APIRequestContext): Promise<void> {
   writeScenario({ sources: { [SOURCE]: { title: TITLE, entries: [TRACK] } } });
   await createPlaylist(request, SOURCE);
@@ -182,6 +194,7 @@ test('a tap above the mute silences the player', async ({ page, request }) => {
   await seed(page, request);
 
   await page.getByRole('button', { name: `Play ${TRACK.title}` }).tap();
+  await settleBar(page);
 
   const audio = page.locator('audio');
   const muted = (): Promise<boolean> =>

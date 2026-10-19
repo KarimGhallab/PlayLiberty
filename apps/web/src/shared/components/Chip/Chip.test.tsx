@@ -5,9 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import Chip from './Chip';
 
 function renderChip(props: Partial<Parameters<typeof Chip>[0]> = {}) {
-  return render(
-    <Chip label="Failed" count={3} tone="failed" {...props} />
-  );
+  return render(<Chip label="Failed" count={3} tone="failed" {...props} />);
 }
 
 describe('Chip', () => {

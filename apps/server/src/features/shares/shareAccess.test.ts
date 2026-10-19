@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
 
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -203,6 +204,12 @@ describe('what a read share grants', () => {
     const stream = await get(`/api/v1/tracks/${stored.trackId}/stream`, reader);
     expect(stream.statusCode).toBe(200);
     expect(stream.body).toBe('the-audio');
+
+    const thumbnail = await get(
+      `/api/v1/tracks/${stored.trackId}/thumbnail`,
+      reader
+    );
+    expect(thumbnail.statusCode).toBe(200);
   });
   it('is refused by every mutating route', async () => {
     context = await createTestContext();
@@ -359,6 +366,9 @@ describe('what sharing does not do', () => {
     const { track } = await seedStoredTrack(context, { playlist });
     const trackId = track.trackId;
     const before = countTracks();
+    const beforeFiles = (
+      await readdir(context.mediaPaths.root, { recursive: true })
+    ).sort();
     const beforeAssociations =
       database()
         .db.select({ total: sql<number>`count(*)` })
@@ -377,6 +387,9 @@ describe('what sharing does not do', () => {
         .from(associations)
         .get()?.total
     ).toBe(beforeAssociations);
+    expect(
+      (await readdir(context.mediaPaths.root, { recursive: true })).sort()
+    ).toEqual(beforeFiles);
     // The one file the playlist already had is the only one, and a share copies
     // nothing: the association count is unchanged by the grant above.
     expect(beforeAssociations).toBe(1);

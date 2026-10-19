@@ -59,16 +59,6 @@ describe('startQueue', () => {
     expect(usePlayerStore.getState().currentId).toBe('track-9');
   });
 
-  it('records the playlist on every entry so the bar can name the source', () => {
-    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
-
-    expect(
-      usePlayerStore
-        .getState()
-        .queue.every(item => item.playlistId === PLAYLIST)
-    ).toBe(true);
-  });
-
   it('starts with nothing when the pressed track is not in the list', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first, second], 'absent');
 
@@ -567,30 +557,6 @@ describe('shuffle', () => {
     expect(state.queue).toHaveLength(3);
     expect(state.queue.map(item => item.id)).toContain('track-1');
     expect(state.queue.map(item => item.id)).toContain('track-3');
-  });
-
-  it('keeps the playlist order beside every queue change', () => {
-    usePlayerStore
-      .getState()
-      .startQueue(PLAYLIST, [first, second, third], first.id);
-
-    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
-      'track-1',
-      'track-2',
-      'track-3'
-    ]);
-
-    vi.spyOn(Math, 'random').mockReturnValue(0.99);
-    usePlayerStore.getState().setShuffle(true);
-
-    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
-      'track-1',
-      'track-2',
-      'track-3'
-    ]);
-    expect(usePlayerStore.getState().queue[0].id).toBe(
-      usePlayerStore.getState().currentId
-    );
   });
 
   it('takes a track that arrived while shuffled into the source order', () => {

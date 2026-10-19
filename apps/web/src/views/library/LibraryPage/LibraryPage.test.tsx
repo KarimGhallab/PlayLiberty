@@ -434,9 +434,7 @@ describe('LibraryPage', () => {
 
     const failed = await screen.findByRole('button', { name: 'Failed 2' });
 
-    expect(
-      screen.getByRole('button', { name: 'All 12' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 12' })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Stored 6' })
     ).toBeInTheDocument();

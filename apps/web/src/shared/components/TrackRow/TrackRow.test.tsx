@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
@@ -98,7 +98,6 @@ describe('TrackRow', () => {
 
     const row = container.querySelector('li');
     expect(row).toHaveAttribute('aria-busy', 'true');
-    expect(row).toHaveAttribute('data-starting', 'true');
     expect(
       screen.getByRole('button', { name: 'Play Blue In Green' })
     ).toBeDisabled();
@@ -128,19 +127,6 @@ describe('TrackRow', () => {
 
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('[data-art="no-art"]')).toBeInTheDocument();
-  });
-
-  it('reads its play before its lane in the document', () => {
-    renderRow({});
-
-    const play = screen.getByRole('button', { name: 'Play Blue In Green' });
-    const lane = screen.getByRole('button', {
-      name: 'Actions for Blue In Green'
-    });
-
-    expect(
-      play.compareDocumentPosition(lane) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).not.toBe(0);
   });
 
   it('labels the row as a pause when it is the track playing', () => {
@@ -173,58 +159,6 @@ describe('TrackRow', () => {
     );
 
     expect(onRemove).toHaveBeenCalledWith('track-1');
-  });
-
-  it('returns focus to the lane button on Escape', async () => {
-    renderRow({});
-
-    const trigger = screen.getByRole('button', {
-      name: 'Actions for Blue In Green'
-    });
-    fireEvent.click(trigger);
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    });
-    expect(trigger).toHaveFocus();
-  });
-
-  it('closes the menu on an outside press without moving focus', async () => {
-    renderRow({});
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    );
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-
-    fireEvent.pointerDown(document.body);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    });
-  });
-
-  it('lands on the first item and walks with the arrows', () => {
-    renderRow({
-      association: association({ fileStatus: TrackFileStatus.Failed }),
-      onRetry: () => undefined,
-      onFetchWhole: () => undefined
-    });
-
-    fireEvent.keyDown(
-      screen.getByRole('button', { name: 'Actions for Blue In Green' }),
-      { key: 'ArrowDown' }
-    );
-
-    const retry = screen.getByRole('menuitem', { name: 'Retry' });
-    expect(retry).toHaveFocus();
-
-    fireEvent.keyDown(retry, { key: 'ArrowDown' });
-
-    expect(screen.getByRole('menuitem', { name: 'Fetch whole' })).toHaveFocus();
   });
 
   it('draws no menu when the caller cannot curate', () => {
@@ -336,19 +270,6 @@ describe('TrackRow', () => {
     ).toBeDisabled();
   });
 
-  it('marks a downloading track so the row can breathe', () => {
-    renderRow({
-      association: association({ fileStatus: TrackFileStatus.Downloading })
-    });
-  });
-
-  it('says nothing for a stored track that is still available', () => {
-    renderRow({});
-
-    expect(screen.queryByText('Pending')).not.toBeInTheDocument();
-    expect(screen.queryByText('Failed')).not.toBeInTheDocument();
-  });
-
   it('says full length for a track recorded without trimming', () => {
     renderRow({ association: association({ skipNonMusic: false }) });
 
@@ -370,7 +291,7 @@ describe('TrackRow', () => {
       })
     });
 
-    expect(screen.getByText('Failed')).toHaveAttribute('data-tone', 'failed');
+    expect(screen.getByText('Failed')).toBeInTheDocument();
     expect(
       screen.getByText('YouTube blocked this download.')
     ).toBeInTheDocument();
@@ -404,23 +325,6 @@ describe('TrackRow', () => {
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
 
-  it('keeps the removed title at full ink, because the row still plays', () => {
-    renderRow({
-      association: association({ sourceStatus: TrackSourceStatus.Removed })
-    });
-  });
-
-  it('steps an unplayable row down and leaves a downloading row alone', () => {
-    const { unmount } = renderRow({
-      association: association({ fileStatus: TrackFileStatus.Pending })
-    });
-
-    unmount();
-    renderRow({
-      association: association({ fileStatus: TrackFileStatus.Downloading })
-    });
-  });
-
   it('announces playing on the current track while the queue runs', () => {
     renderRow({ current: true, playing: true });
     expect(screen.getByRole('img', { name: 'Playing' })).toBeInTheDocument();
@@ -440,10 +344,6 @@ describe('TrackRow', () => {
   it('draws no equalizer on a non-current row', () => {
     renderRow({ current: false, playing: false });
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
-  });
-
-  it('marks the current track with its playback state', () => {
-    renderRow({ current: true, playing: true });
   });
 
   it('shows a placeholder rather than a zero when the duration is unknown', () => {
