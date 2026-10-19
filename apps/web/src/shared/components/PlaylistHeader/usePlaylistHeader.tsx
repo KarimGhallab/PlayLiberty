@@ -10,7 +10,7 @@ import {
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
@@ -24,10 +24,13 @@ import { sleeveIndex } from '@playliberty/ui-foundation';
 
 import { API_PREFIX } from '../../api/client/client';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
+import Menu from '../Menu/Menu';
 import PlayGlyph from '../PlayGlyph';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
+import type { PlaylistDoorProps } from './playlistDoor';
+import { playlistDoorProps } from './playlistDoor';
 
 /*
  * The header's shared seam: the cover state, the identity block and the menu
@@ -93,6 +96,8 @@ export interface PlaylistHeaderParts {
   readonly shuffleControl: ReactNode;
   readonly menuControl: ReactNode;
   readonly identity: ReactNode;
+  /* The door props every arrangement spreads on the anchor it places. */
+  readonly door: PlaylistDoorProps;
 }
 
 interface ShareMark {
@@ -183,12 +188,7 @@ export function usePlaylistHeader({
     setCoverFailed(false);
   }, [playlist.coverTrackId]);
 
-  /* A chosen item closes the menu and puts the keyboard back on the control it
-   * opened from; the hook will not, because the item's action runs here. */
-  const closeMenu = (): void => {
-    setMenuOpen(false);
-    menuButtonRef.current?.focus();
-  };
+  const door = playlistDoorProps(pending);
 
   useDismissibleMenu({
     open: menuOpen,
@@ -322,33 +322,27 @@ export function usePlaylistHeader({
           />
         </button>
         {menuOpen ? (
-          <div className={styles.playlistHeader__menu} role="menu">
-            {menu.map((item, index) => (
-              <Fragment key={item.key}>
-                {item.destructive === true && index > 0 ? <hr /> : null}
-                <button
-                  type="button"
-                  role="menuitem"
-                  tabIndex={-1}
-                  className={styles.playlistHeader__menuItem}
-                  data-destructive={
-                    item.destructive === true ? 'true' : undefined
-                  }
-                  disabled={item.disabled === true}
-                  onClick={() => {
-                    closeMenu();
-                    item.onSelect();
-                  }}>
-                  <item.Icon
-                    className={styles.playlistHeader__menuIcon}
-                    aria-hidden="true"
-                    focusable="false"
-                  />
-                  {t(item.label)}
-                </button>
-              </Fragment>
-            ))}
-          </div>
+          <Menu
+            items={menu.map(item => ({
+              key: item.key,
+              label: t(item.label),
+              icon: (
+                <item.Icon
+                  className={styles.playlistHeader__menuIcon}
+                  aria-hidden="true"
+                  focusable="false"
+                />
+              ),
+              destructive: item.destructive === true,
+              disabled: item.disabled === true,
+              onSelect: item.onSelect
+            }))}
+            triggerRef={menuButtonRef}
+            onClose={() => setMenuOpen(false)}
+            className={styles.playlistHeader__menu}
+            itemClassName={styles.playlistHeader__menuItem}
+            divided
+          />
         ) : null}
       </span>
     );
@@ -399,9 +393,7 @@ export function usePlaylistHeader({
             params={{ playlistId: playlist.id }}
             className={styles.playlistHeader__nameText}
             title={playlist.name}
-            aria-disabled={pending ? true : undefined}
-            tabIndex={pending ? -1 : undefined}
-            onClick={pending ? event => event.preventDefault() : undefined}>
+            {...door}>
             {playlist.name}
           </Link>
         )}
@@ -470,6 +462,7 @@ export function usePlaylistHeader({
     primaryControl,
     shuffleControl,
     menuControl,
-    identity
+    identity,
+    door
   };
 }

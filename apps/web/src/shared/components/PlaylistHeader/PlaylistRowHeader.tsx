@@ -35,7 +35,8 @@ export default function PlaylistRowHeader({
     primaryControl,
     shuffleControl,
     menuControl,
-    identity
+    identity,
+    door
   } = usePlaylistHeader({
     ...seam,
     playlist,
@@ -61,13 +62,12 @@ export default function PlaylistRowHeader({
       data-state={playing ? 'playing' : 'paused'}>
       {groundElement}
       <Link
+        {...door}
         to="/playlists/$playlistId"
         params={{ playlistId: playlist.id }}
         className={styles.playlistHeader__cover}
         aria-hidden="true"
         tabIndex={-1}
-        aria-disabled={pending ? true : undefined}
-        onClick={pending ? event => event.preventDefault() : undefined}
         data-art={cover === null ? 'no-art' : 'art'}
         data-sleeve={cover === null ? sleeve : undefined}>
         {cover === null ? null : (

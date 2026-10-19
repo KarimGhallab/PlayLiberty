@@ -1,9 +1,10 @@
 import { IconCheck, IconWorld } from '@tabler/icons-react';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { Language, useI18n } from '@playliberty/i18n';
 
+import Menu, { MenuVariant } from '../../../shared/components/Menu/Menu';
 import { useDismissibleMenu } from '../../../shared/components/useDismissibleMenu/useDismissibleMenu';
 
 import styles from './LanguageMenu.module.scss';
@@ -27,13 +28,6 @@ export default function LanguageMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  /* A choice closes the menu and returns the keyboard to the trigger. Escape is
-   * the hook's. */
-  const close = useCallback((): void => {
-    setOpen(false);
-    triggerRef.current?.focus();
-  }, []);
-
   useDismissibleMenu({
     open,
     containerRef: rootRef,
@@ -55,32 +49,28 @@ export default function LanguageMenu() {
         <IconWorld size={18} aria-hidden="true" />
       </button>
       {open ? (
-        <div
-          className={styles.languageMenu__menu}
-          role="menu"
-          aria-label={t('language.label')}>
-          {OPTIONS.map(option => (
-            <button
-              key={option.value}
-              type="button"
-              role="menuitemradio"
-              tabIndex={-1}
-              aria-checked={language === option.value}
-              className={styles.languageMenu__option}
-              onClick={() => {
-                setLanguage(option.value);
-                close();
-              }}>
+        <Menu
+          items={OPTIONS.map(option => ({
+            key: option.value,
+            label: t(option.label),
+            icon: (
               <IconCheck
                 size={14}
                 aria-hidden="true"
                 className={styles.languageMenu__check}
                 data-visible={language === option.value}
               />
-              {t(option.label)}
-            </button>
-          ))}
-        </div>
+            ),
+            checked: language === option.value,
+            onSelect: () => setLanguage(option.value)
+          }))}
+          variant={MenuVariant.Radio}
+          triggerRef={triggerRef}
+          onClose={() => setOpen(false)}
+          className={styles.languageMenu__menu}
+          itemClassName={styles.languageMenu__option}
+          ariaLabel={t('language.label')}
+        />
       ) : null}
     </div>
   );

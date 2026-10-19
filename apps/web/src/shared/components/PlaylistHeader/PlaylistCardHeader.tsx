@@ -40,7 +40,8 @@ export default function PlaylistCardHeader({
     primaryControl,
     shuffleControl,
     menuControl,
-    identity
+    identity,
+    door
   } = usePlaylistHeader({
     ...seam,
     heading,
@@ -79,13 +80,12 @@ export default function PlaylistCardHeader({
         <div className={styles.playlistHeader__mscrim} aria-hidden="true" />
         {item ? (
           <Link
+            {...door}
             to="/playlists/$playlistId"
             params={{ playlistId: seam.playlist.id }}
             className={styles.playlistHeader__martLink}
             aria-hidden="true"
             tabIndex={-1}
-            aria-disabled={pending ? true : undefined}
-            onClick={pending ? event => event.preventDefault() : undefined}
           />
         ) : null}
         {item ? (

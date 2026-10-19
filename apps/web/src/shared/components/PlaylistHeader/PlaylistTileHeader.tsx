@@ -57,7 +57,8 @@ export default function PlaylistTileHeader({
     primaryControl,
     shuffleControl,
     menuControl,
-    identity
+    identity,
+    door
   } = usePlaylistHeader({
     playlist,
     ownerName,
@@ -96,13 +97,12 @@ export default function PlaylistTileHeader({
           />
         )}
         <Link
+          {...door}
           to="/playlists/$playlistId"
           params={{ playlistId: playlist.id }}
           className={styles.playlistHeader__tartLink}
           aria-hidden="true"
           tabIndex={-1}
-          aria-disabled={pending ? true : undefined}
-          onClick={pending ? event => event.preventDefault() : undefined}
         />
         {primaryControl}
       </div>

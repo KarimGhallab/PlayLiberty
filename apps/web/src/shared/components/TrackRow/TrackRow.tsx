@@ -13,6 +13,7 @@ import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
 import { trackTone } from '@playliberty/ui-foundation';
 
 import { API_PREFIX } from '../../api/client/client';
+import Menu from '../Menu/Menu';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
@@ -84,13 +85,6 @@ function TrackRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-
-  /* A chosen item closes the menu and puts the keyboard back on the control it
-   * opened from; the hook will not, because the item's action runs here. */
-  const closeMenu = (): void => {
-    setMenuOpen(false);
-    menuButtonRef.current?.focus();
-  };
 
   useDismissibleMenu({
     open: menuOpen,
@@ -172,24 +166,19 @@ function TrackRow({
           />
         </button>
         {menuOpen ? (
-          <div className={styles.trackRow__menu} role="menu">
-            {laneItems.map(item => (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                tabIndex={-1}
-                className={styles.trackRow__menuItem}
-                data-destructive={item.destructive ? 'true' : undefined}
-                onClick={() => {
-                  closeMenu();
-                  item.run();
-                }}>
-                {item.icon}
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <Menu
+            items={laneItems.map(item => ({
+              key: item.label,
+              label: item.label,
+              icon: item.icon,
+              destructive: item.destructive === true,
+              onSelect: item.run
+            }))}
+            triggerRef={menuButtonRef}
+            onClose={() => setMenuOpen(false)}
+            className={styles.trackRow__menu}
+            itemClassName={styles.trackRow__menuItem}
+          />
         ) : null}
       </span>
     );
