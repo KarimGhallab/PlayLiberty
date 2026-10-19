@@ -29,7 +29,6 @@ import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type {
   AssociationRow,
-  PlaylistRow,
   TrackRow
 } from '../../platform/database/schema.js';
 import {
@@ -40,6 +39,11 @@ import {
 } from '../../platform/database/schema.js';
 import { toTrackView } from '../tracks/service/trackService.js';
 import { AssociationOutcome, removeAssociation } from './associationService.js';
+import {
+  coverTrackId,
+  coverTrackIds,
+  toPlaylistView
+} from './playlistProjection.js';
 
 export enum PlaylistOutcome {
   Ok = 'ok',
@@ -53,92 +57,6 @@ export type ReadPlaylistResult =
 export interface ListPlaylistsQuery {
   limit: number;
   offset: number;
-}
-
-/* The cover is the first track's id, so the client renders the track's own
- * thumbnail route. */
-function coverTrackId(
-  database: DatabaseHandle,
-  playlistId: string
-): string | null {
-  const row = database.db
-    .select({ trackId: associations.trackId })
-    .from(associations)
-    .where(eq(associations.playlistId, playlistId))
-    .orderBy(asc(associations.position))
-    .limit(1)
-    .get();
-
-  return row?.trackId ?? null;
-}
-
-function coverTrackIds(
-  database: DatabaseHandle,
-  playlistIds: string[]
-): Map<string, string> {
-  const resolved = new Map<string, string>();
-
-  if (playlistIds.length === 0) {
-    return resolved;
-  }
-
-  const firstPositions = database.db
-    .select({
-      playlistId: associations.playlistId,
-      position: sql<number>`min(${associations.position})`.as('first_position')
-    })
-    .from(associations)
-    .where(inArray(associations.playlistId, playlistIds))
-    .groupBy(associations.playlistId)
-    .as('first_positions');
-
-  const rows = database.db
-    .select({
-      playlistId: associations.playlistId,
-      trackId: associations.trackId
-    })
-    .from(associations)
-    .innerJoin(
-      firstPositions,
-      and(
-        eq(associations.playlistId, firstPositions.playlistId),
-        eq(associations.position, firstPositions.position)
-      )
-    )
-    .all();
-
-  for (const row of rows) {
-    resolved.set(row.playlistId, row.trackId);
-  }
-
-  return resolved;
-}
-
-function toPlaylistView(
-  row: PlaylistRow,
-  access: PlaylistAccess,
-  hasShares: boolean,
-  pinned: boolean,
-  coverTrackId: string | null
-): Playlist {
-  return {
-    id: row.id,
-    ownerAccountId: row.ownerAccountId,
-    name: row.name,
-    coverTrackId,
-    provider: row.provider,
-    sourcePlaylistId: row.sourcePlaylistId,
-    syncStatus: row.syncStatus,
-    lastSyncedAt: row.lastSyncedAt,
-    trackCount: row.trackCount,
-    skipNonMusic: row.skipNonMusic,
-    sort: row.sort ?? PlaylistSort.Playlist,
-    access,
-    hasShares,
-    pinned,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt
-  };
 }
 
 /* The pin is the row's existence, so one lookup answers the boolean. */
@@ -251,8 +169,6 @@ export function listPlaylistsForAccount(
 
   const playlistRows = rows.map(row => row.playlist);
 
-  // The `?? 'owner'` fallback is unreachable; it is there because the compiler
-  // cannot see the map is complete.
   const accessById = resolvePlaylistAccessMany(
     database,
     playlistRows.map(row => row.id),
@@ -272,16 +188,28 @@ export function listPlaylistsForAccount(
   );
 
   return {
-    items: rows.map(({ playlist, pinnedAt }) => ({
-      ...toPlaylistView(
-        playlist,
-        accessById.get(playlist.id) ?? 'owner',
-        sharedIds.has(playlist.id),
-        pinnedAt !== null,
-        covers.get(playlist.id) ?? null
-      ),
-      counts: countsByPlaylist.get(playlist.id) ?? noCounts()
-    })),
+    /* A visible row the access resolver did not answer is left out rather than
+     * reported as the account's own, so a projection fault cannot over-share. */
+    items: rows.flatMap(({ playlist, pinnedAt }) => {
+      const access = accessById.get(playlist.id);
+
+      if (access === undefined) {
+        return [];
+      }
+
+      return [
+        {
+          ...toPlaylistView(
+            playlist,
+            access,
+            sharedIds.has(playlist.id),
+            pinnedAt !== null,
+            covers.get(playlist.id) ?? null
+          ),
+          counts: countsByPlaylist.get(playlist.id) ?? noCounts()
+        }
+      ];
+    }),
     total: visibleRows.length,
     limit: query.limit,
     offset: query.offset

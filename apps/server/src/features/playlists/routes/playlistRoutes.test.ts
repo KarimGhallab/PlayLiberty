@@ -926,6 +926,36 @@ describe("the requesting account's access to a playlist", () => {
 
     expect(grouped).toHaveLength(1);
   });
+
+  it('omits a visible playlist whose access did not resolve, rather than reporting it as owned', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    seedPlaylist(context.database, owner.accountId);
+
+    /* The visible query still answers the row; the access resolver is forced to
+     * miss it, the drift the projection must fail closed on. */
+    const sqlite = context.database.sqlite as unknown as {
+      prepare: (sql: string) => unknown;
+    };
+    const original = sqlite.prepare;
+    sqlite.prepare = function (sql: string): unknown {
+      if (sql.includes('as playlist_id')) {
+        return { all: () => [] };
+      }
+
+      return original.call(this, sql);
+    };
+
+    try {
+      const page = PageSchema.parse(
+        (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+      );
+
+      expect(page.items).toEqual([]);
+    } finally {
+      sqlite.prepare = original;
+    }
+  });
 });
 
 describe('the stored track count', () => {
@@ -2074,6 +2104,30 @@ describe('PATCH /playlists/:id', () => {
 
     /* The cover is the first track by position, not the last one added. */
     expect(PlaylistSchema.parse(response.json()).coverTrackId).toBe(first);
+  });
+
+  it('answers the same cover from the detail and the page when two associations share the lowest position', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database);
+    associate(context.database, playlistId, first, { position: 0 });
+    associate(context.database, playlistId, second, { position: 0 });
+
+    const detail = PlaylistSchema.parse(
+      (
+        await get(`/api/v1/playlists/${playlistId}`, owner.pangolinUserId)
+      ).json()
+    );
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+
+    /* The tie resolves by rowid, so the association written first is the cover
+     * and both reads answer the same id. */
+    expect(detail.coverTrackId).toBe(first);
+    expect(page.items[0]?.coverTrackId).toBe(first);
   });
 });
 
