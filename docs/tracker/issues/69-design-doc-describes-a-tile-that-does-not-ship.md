@@ -1,53 +1,16 @@
 # 69: DESIGN.md describes a library tile that does not ship
 
-**State:** `ready-for-agent`
+**State:** `resolved`
 **Category:** `enhancement`
 
 **Blocked by:** None. Can start immediately.
 
-## Agent Brief
+## Outcome
 
-**Category:** enhancement
-**Summary:** `docs/DESIGN.md` claims the web library draws a wide tile with the cover beside the identity; the shipped tile puts a square cover above the identity, and the cover-beside-identity shape ships only as the phone detail header. The document is corrected, not the code.
+`docs/DESIGN.md` now records the shapes the clients draw. The gallery bullet says the library draws a tile on the web and a card on a phone, both with the cover above the identity, in as many columns as the width holds, and adds that an empty gallery offers its own labelled add button instead of the header's or the floating one. The header bullet names all three arrangements by their cover-to-identity relationship and states which surface uses which: the row is the phone detail header, the card is the web detail's hero and the phone's gallery item, and the tile is the web's gallery item.
 
-**Current behavior:**
-`docs/DESIGN.md:59` reads "on the web a wide tile with the cover beside the identity, on a phone a card with the cover above it". Measured at 1440, a gallery item is `data-arrangement="tile"`, 252x396, with a 236x236 square cover above the identity, and `PlaylistTileHeader.tsx:11-15` describes the tile as "the cover above the identity". `PlaylistRowHeader` is the cover-beside-identity shape and is used as the phone detail header, not in the gallery. The claimed web/phone contrast is therefore false, and the file's own preamble exists so that a design record cannot describe a product that no longer exists.
+The same pass checked every other "settled arrangements" bullet against the code and confirmed them: the detail's two columns with the pinned identity column (`PlaylistDetailPage.module.scss:83-103`) and its sticky phone header (`:224-239`); the chips wrapping at a desk and scrolling behind an edge fade on a phone (`PlaylistFilterChips.module.scss:44-63`); the player bar's absence at rest and the padding both pages pay it; the track row's play layer and its lane; and the widths and their single breakpoint. The header bullet also lost a false claim: the arrangement is chosen by the view, not by the component, which is why `LibraryPage` passes `card` or `tile` and `PlaylistDetailPage` passes `row` or `card`.
 
-The decision taken on 2026-10-16 is that the code is right and the document is corrected.
+No literal value was introduced, and no component, stylesheet or layout changed.
 
-**Desired behavior:**
-`docs/DESIGN.md` describes the shapes the clients draw: the three arrangements (row, card, tile), which surface uses which, and the gallery's grid. It keeps naming roles and rules and no literal, as it does today.
-
-**Key interfaces:**
-
-- `docs/DESIGN.md` remains the one design record; this is an edit to its "settled arrangements" section.
-- No layout changes; the tile, the card and the row stay where they are.
-
-**Acceptance criteria:**
-
-- [ ] The gallery bullet matches the shipped tile on the web and the card on a phone.
-- [ ] Every other "settled arrangement" bullet that pairs a surface with an arrangement is checked against the code in the same pass, and corrected or confirmed.
-- [ ] No literal value is introduced, per the file's own rule.
-- [ ] `docs/DESIGN.md` and the header components agree on the arrangement names.
-
-**Out of scope:**
-
-- Changing the gallery layout or moving `PlaylistRowHeader`.
-- `docs/PRODUCT.md` and `docs/ARCHITECTURE.md`.
-
-## Observed
-
-- `docs/DESIGN.md:59` describes a web tile with the cover beside the identity.
-- The shipped tile is 252x396 with a 236x236 square cover above the identity.
-- The cover-beside-identity shape ships only as the phone detail header.
-
-## Expected
-
-- The design record describes the arrangement the client actually draws on each surface.
-
-## Evidence
-
-- `docs/DESIGN.md:55-64`.
-- `apps/web/src/shared/components/PlaylistHeader/PlaylistTileHeader.tsx:11-15`; `PlaylistHeader.module.scss:920-938`.
-- `apps/web/src/views/library/LibraryPage/LibraryPage.tsx:111` (`layout={isMobile ? 'card' : 'tile'}`).
-- Impeccable critique of `apps/web`, 2026-10-16, design-specificity verdict; measured at 1440x900.
+Verification: `pnpm run build` and `pnpm run lint` clean; the web unit suite passes (478 tests).
