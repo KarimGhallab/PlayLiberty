@@ -1,6 +1,10 @@
 import { LiveEventType } from '@playliberty/contracts';
 
-import { playlistAudience, trackAudience } from '../access/playlistAccess.js';
+import {
+  playlistAudience,
+  playlistAudiences,
+  trackAudience
+} from '../access/playlistAccess.js';
 import type { AppContext } from '../context.js';
 import { exhaust } from '../exhaust.js';
 
@@ -70,20 +74,10 @@ export function publishTracksChangedForPlaylists(
   context: LiveEventContext,
   playlistIds: string[]
 ): void {
-  const byAccount = new Map<string, string[]>();
-
-  for (const playlistId of playlistIds) {
-    for (const accountId of playlistAudience(context.database, playlistId)) {
-      const ids = byAccount.get(accountId) ?? [];
-      ids.push(playlistId);
-      byAccount.set(accountId, ids);
-    }
-  }
-
-  for (const [accountId, ids] of byAccount) {
+  for (const audience of playlistAudiences(context.database, playlistIds)) {
     context.events.publish(
-      { type: LiveEventType.TrackChanged, playlistIds: ids },
-      [accountId]
+      { type: LiveEventType.TrackChanged, playlistIds: audience.playlistIds },
+      [audience.accountId]
     );
   }
 }

@@ -131,72 +131,84 @@ export function sharedPlaylistIds(
   return new Set(rows.map(row => row.playlistId));
 }
 
-/* Owner plus collaborators, the audience a live event is published to: the same
- * rule as visibility, not a second list that can drift. */
-export function playlistAudience(
-  database: DatabaseHandle,
-  playlistId: string
-): string[] {
-  const owner = database.db
-    .select({ ownerAccountId: playlists.ownerAccountId })
-    .from(playlists)
-    .where(eq(playlists.id, playlistId))
-    .get();
-
-  if (owner === undefined) {
-    return [];
-  }
-
-  const collaborators = database.db
-    .select({ accountId: shares.accountId })
-    .from(shares)
-    .where(eq(shares.playlistId, playlistId))
-    .all();
-
-  return [owner.ownerAccountId, ...collaborators.map(row => row.accountId)];
-}
-
-/* Per account: an account hears only about the holding playlists it can reach,
- * and one that reaches none is left out. */
+/* An account and the playlists it may hear about. An account that reaches none
+ * of the batch is left out. */
 export interface TrackAudience {
   accountId: string;
   playlistIds: string[];
 }
 
+/* Who may hear about these playlists: one query for the batch, grouped by
+ * account, in the order the caller named the playlists. */
+export function playlistAudiences(
+  database: DatabaseHandle,
+  playlistIds: string[]
+): TrackAudience[] {
+  if (playlistIds.length === 0) {
+    return [];
+  }
+
+  const rows = database.db
+    .select({
+      playlistId: playlists.id,
+      ownerAccountId: playlists.ownerAccountId,
+      sharedAccountId: shares.accountId
+    })
+    .from(playlists)
+    .leftJoin(shares, eq(shares.playlistId, playlists.id))
+    .where(inArray(playlists.id, playlistIds))
+    .all();
+
+  const members = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    const accounts = members.get(row.playlistId) ?? new Set<string>();
+    accounts.add(row.ownerAccountId);
+
+    if (row.sharedAccountId !== null) {
+      accounts.add(row.sharedAccountId);
+    }
+
+    members.set(row.playlistId, accounts);
+  }
+
+  const byAccount = new Map<string, string[]>();
+
+  for (const playlistId of playlistIds) {
+    for (const accountId of members.get(playlistId) ?? []) {
+      const ids = byAccount.get(accountId) ?? [];
+      ids.push(playlistId);
+      byAccount.set(accountId, ids);
+    }
+  }
+
+  return [...byAccount].map(([accountId, ids]) => ({
+    accountId,
+    playlistIds: ids
+  }));
+}
+
+/* The single-playlist projection of the batch resolver. */
+export function playlistAudience(
+  database: DatabaseHandle,
+  playlistId: string
+): string[] {
+  return playlistAudiences(database, [playlistId]).map(
+    audience => audience.accountId
+  );
+}
+
+/* The track projection: its holding playlists, then their audiences. */
 export function trackAudience(
   database: DatabaseHandle,
   trackId: string
 ): TrackAudience[] {
-  const rows = database.db
-    .select({
-      playlistId: associations.playlistId,
-      ownerAccountId: playlists.ownerAccountId,
-      sharedAccountId: shares.accountId
-    })
+  const playlistIds = database.db
+    .selectDistinct({ playlistId: associations.playlistId })
     .from(associations)
-    .innerJoin(playlists, eq(associations.playlistId, playlists.id))
-    .leftJoin(shares, eq(shares.playlistId, associations.playlistId))
     .where(eq(associations.trackId, trackId))
-    .all();
+    .all()
+    .map(row => row.playlistId);
 
-  const byAccount = new Map<string, Set<string>>();
-
-  const add = (accountId: string, playlistId: string): void => {
-    const playlistIds = byAccount.get(accountId) ?? new Set<string>();
-    playlistIds.add(playlistId);
-    byAccount.set(accountId, playlistIds);
-  };
-
-  for (const row of rows) {
-    add(row.ownerAccountId, row.playlistId);
-
-    if (row.sharedAccountId !== null) {
-      add(row.sharedAccountId, row.playlistId);
-    }
-  }
-
-  return [...byAccount].map(([accountId, playlistIds]) => ({
-    accountId,
-    playlistIds: [...playlistIds]
-  }));
+  return playlistAudiences(database, playlistIds);
 }

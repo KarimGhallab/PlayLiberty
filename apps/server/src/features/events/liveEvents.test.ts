@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import {
@@ -6,6 +6,8 @@ import {
   ShareLevel,
   TrackFileStatus
 } from '@playliberty/contracts';
+
+import { publishTracksChangedForPlaylists } from '../../shared/events/liveEvents.js';
 
 import type { TestContext } from '../../app/testing/createTestContext.js';
 import { createTestContext } from '../../app/testing/createTestContext.js';
@@ -28,6 +30,7 @@ const VIDEO_URL = 'https://www.youtube.com/watch?v=bbbbbbbbbbb';
 let context: TestContext | undefined;
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await context?.cleanup();
   context = undefined;
 });
@@ -342,6 +345,23 @@ describe('the playlist and track events', () => {
     expect(collaboratorEvents).toEqual([
       { type: LiveEventType.TrackChanged, playlistIds: [playlistA] }
     ]);
+  });
+
+  it('resolves a batch track change in one query rather than one per playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const playlistIds = [
+      seedPlaylist(context.database, owner.accountId).playlistId,
+      seedPlaylist(context.database, owner.accountId).playlistId,
+      seedPlaylist(context.database, owner.accountId).playlistId
+    ];
+    const select = vi.spyOn(context.database.db, 'select');
+
+    publishTracksChangedForPlaylists(context, playlistIds);
+
+    expect(select).toHaveBeenCalledTimes(1);
   });
 
   it('publishes nothing when a playlist is pinned, because a pin is not the playlist', async () => {
