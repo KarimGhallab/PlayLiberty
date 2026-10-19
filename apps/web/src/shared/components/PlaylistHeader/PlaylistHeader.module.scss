@@ -650,6 +650,7 @@
   }
 
   &__menu {
+    --menu-origin: top right;
     position: absolute;
     top: calc(100% + var(--space-2));
     right: 0;
@@ -837,11 +838,15 @@
    * since their control is at the foot; the card's item opens downward. */
   &[data-arrangement='card'] &__menu,
   &[data-arrangement='tile'] &__menu {
+    --menu-origin: bottom right;
+    --menu-shift: 4px;
     top: auto;
     bottom: calc(100% + var(--space-2));
   }
 
   &[data-arrangement='card'][data-item='true'] &__menu {
+    --menu-origin: top right;
+    --menu-shift: -4px;
     top: calc(100% + var(--space-2));
     bottom: auto;
   }
@@ -974,6 +979,7 @@
   }
 
   &[data-arrangement='row'] &__menu {
+    --menu-origin: top left;
     left: 0;
   }
 

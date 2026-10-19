@@ -116,7 +116,11 @@
     &:disabled {
       color: color-mix(in srgb, var(--accent) 40%, var(--muted));
       background: color-mix(in srgb, var(--accent) 22%, var(--surface-raised));
-      border-color: color-mix(in srgb, var(--accent) 35%, var(--surface-raised));
+      border-color: color-mix(
+        in srgb,
+        var(--accent) 35%,
+        var(--surface-raised)
+      );
     }
   }
 

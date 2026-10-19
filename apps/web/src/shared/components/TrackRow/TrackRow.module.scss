@@ -339,6 +339,8 @@
   /* The header's menu at the row's scale: opens upward, because the lane is at
    * the foot of a short row and a panel below it would run off the list. */
   &__menu {
+    --menu-origin: bottom right;
+    --menu-shift: 4px;
     position: absolute;
     top: auto;
     right: 0;

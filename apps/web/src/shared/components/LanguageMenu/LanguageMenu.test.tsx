@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axe from 'axe-core';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -32,7 +32,7 @@ describe('LanguageMenu', () => {
     ).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('switches the language, remembers it and closes', () => {
+  it('switches the language, remembers it and closes', async () => {
     renderMenu();
 
     fireEvent.click(screen.getByRole('button', { name: 'Language' }));
@@ -41,10 +41,12 @@ describe('LanguageMenu', () => {
     expect(window.localStorage.getItem('playliberty.language')).toBe('fr');
     expect(document.documentElement.lang).toBe('fr');
     expect(screen.getByRole('button', { name: 'Langue' })).toBeInTheDocument();
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
   });
 
-  it('closes on Escape', () => {
+  it('closes on Escape', async () => {
     renderMenu();
 
     fireEvent.click(screen.getByRole('button', { name: 'Language' }));
@@ -52,10 +54,12 @@ describe('LanguageMenu', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
 
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
   });
 
-  it('closes on a press outside it', () => {
+  it('closes on a press outside it', async () => {
     renderMenu();
 
     fireEvent.click(screen.getByRole('button', { name: 'Language' }));
@@ -63,7 +67,9 @@ describe('LanguageMenu', () => {
 
     fireEvent.pointerDown(document.body);
 
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
   });
 
   it('lands on the first language and walks with the arrows', () => {

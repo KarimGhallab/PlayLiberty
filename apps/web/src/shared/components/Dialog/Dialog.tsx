@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
+import { prefersReducedMotion } from '../../useMediaQuery/useMediaQuery';
 import styles from './Dialog.module.scss';
 
 /*
@@ -20,14 +21,6 @@ const scrimStyle = {
  * A reader who asked for no motion gets the state change with no wait, matching
  * the stylesheet's own `prefers-reduced-motion` drop.
  */
-function prefersReducedMotion(): boolean {
-  if (typeof window.matchMedia !== 'function') {
-    return false;
-  }
-
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 /*
  * What a Tab press can land on: a stopped control is not a stop, a hidden input
  * is not tabbable, and `[tabindex="-1"]` is dropped as programmatic-only.

@@ -44,3 +44,11 @@ function readMatch(query: string): boolean {
 /* The mobile line: 768, the corpus's own choice, no breakpoint between 390 and
  * 1056. Not a custom property, so each branching stylesheet restates it. */
 export const MOBILE_QUERY = '(max-width: 767px)';
+
+/** The preference that removes motion without removing the state change. */
+export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+/** A synchronous read for a presence exit, which cannot wait for a render. */
+export function prefersReducedMotion(): boolean {
+  return readMatch(REDUCED_MOTION_QUERY);
+}

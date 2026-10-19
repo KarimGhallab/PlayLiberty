@@ -88,7 +88,9 @@ describe('AddPlaylistDialog', () => {
     fireEvent.change(field, {
       target: { value: 'https://www.youtube.com/playlist?list=PL-demo' }
     });
-    fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
+    fireEvent.mouseDown(
+      screen.getByRole('dialog').parentElement as HTMLElement
+    );
 
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('Discard this link?');
@@ -96,11 +98,11 @@ describe('AddPlaylistDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(field).toHaveValue(
-      'https://www.youtube.com/playlist?list=PL-demo'
-    );
+    expect(field).toHaveValue('https://www.youtube.com/playlist?list=PL-demo');
 
-    fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
+    fireEvent.mouseDown(
+      screen.getByRole('dialog').parentElement as HTMLElement
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);

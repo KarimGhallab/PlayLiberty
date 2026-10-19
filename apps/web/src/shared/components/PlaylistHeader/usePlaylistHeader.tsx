@@ -387,29 +387,28 @@ export function usePlaylistHeader({
             focusable="false"
           />
         </button>
-        {menuOpen ? (
-          <Menu
-            items={menu.map(item => ({
-              key: item.key,
-              label: t(item.label),
-              icon: (
-                <item.Icon
-                  className={styles.playlistHeader__menuIcon}
-                  aria-hidden="true"
-                  focusable="false"
-                />
-              ),
-              destructive: item.destructive === true,
-              disabled: item.disabled === true,
-              onSelect: item.onSelect
-            }))}
-            triggerRef={menuButtonRef}
-            onClose={() => setMenuOpen(false)}
-            className={styles.playlistHeader__menu}
-            itemClassName={styles.playlistHeader__menuItem}
-            divided
-          />
-        ) : null}
+        <Menu
+          open={menuOpen}
+          items={menu.map(item => ({
+            key: item.key,
+            label: t(item.label),
+            icon: (
+              <item.Icon
+                className={styles.playlistHeader__menuIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+            ),
+            destructive: item.destructive === true,
+            disabled: item.disabled === true,
+            onSelect: item.onSelect
+          }))}
+          triggerRef={menuButtonRef}
+          onClose={() => setMenuOpen(false)}
+          className={styles.playlistHeader__menu}
+          itemClassName={styles.playlistHeader__menuItem}
+          divided
+        />
       </span>
     );
 

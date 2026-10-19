@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
@@ -175,7 +175,7 @@ describe('TrackRow', () => {
     expect(onRemove).toHaveBeenCalledWith('track-1');
   });
 
-  it('returns focus to the lane button on Escape', () => {
+  it('returns focus to the lane button on Escape', async () => {
     renderRow({});
 
     const trigger = screen.getByRole('button', {
@@ -186,11 +186,13 @@ describe('TrackRow', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
 
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
     expect(trigger).toHaveFocus();
   });
 
-  it('closes the menu on an outside press without moving focus', () => {
+  it('closes the menu on an outside press without moving focus', async () => {
     renderRow({});
 
     fireEvent.click(
@@ -200,7 +202,9 @@ describe('TrackRow', () => {
 
     fireEvent.pointerDown(document.body);
 
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
   });
 
   it('lands on the first item and walks with the arrows', () => {

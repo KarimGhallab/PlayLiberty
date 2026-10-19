@@ -139,7 +139,9 @@ describe('AddTrackDialog', () => {
     fireEvent.change(field, {
       target: { value: 'https://youtube.com/watch?v=dQw4w9WgXcQ' }
     });
-    fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
+    fireEvent.mouseDown(
+      screen.getByRole('dialog').parentElement as HTMLElement
+    );
 
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('Discard this link?');
@@ -149,7 +151,9 @@ describe('AddTrackDialog', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(field).toHaveValue('https://youtube.com/watch?v=dQw4w9WgXcQ');
 
-    fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
+    fireEvent.mouseDown(
+      screen.getByRole('dialog').parentElement as HTMLElement
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);

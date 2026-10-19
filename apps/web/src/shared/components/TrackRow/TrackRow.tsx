@@ -177,21 +177,20 @@ function TrackRow({
             focusable="false"
           />
         </button>
-        {menuOpen ? (
-          <Menu
-            items={laneItems.map(item => ({
-              key: item.label,
-              label: item.label,
-              icon: item.icon,
-              destructive: item.destructive === true,
-              onSelect: item.run
-            }))}
-            triggerRef={menuButtonRef}
-            onClose={() => setMenuOpen(false)}
-            className={styles.trackRow__menu}
-            itemClassName={styles.trackRow__menuItem}
-          />
-        ) : null}
+        <Menu
+          open={menuOpen}
+          items={laneItems.map(item => ({
+            key: item.label,
+            label: item.label,
+            icon: item.icon,
+            destructive: item.destructive === true,
+            onSelect: item.run
+          }))}
+          triggerRef={menuButtonRef}
+          onClose={() => setMenuOpen(false)}
+          className={styles.trackRow__menu}
+          itemClassName={styles.trackRow__menuItem}
+        />
       </span>
     );
 

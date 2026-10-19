@@ -33,7 +33,7 @@ The scale runs from `xs` to `2xl`, the leadings are tight, normal and relaxed, a
 
 - **Space.** A 4px-based scale, used for padding, gaps and margins alike, so the vertical rhythm of a screen is the same arithmetic everywhere.
 - **Shape.** Four radii: artwork, control, card, and the full pill a chip takes. A radius says what an element is, so artwork, controls and cards never share one.
-- **Motion.** Three durations and exactly one curve. Motion is decoration that reports a state change; every animated thing therefore has a resting form that already says the same thing.
+- **Motion.** Three durations and exactly one curve. Motion is decoration that reports a state change; every animated thing therefore has a resting form that already says the same thing. Menus unfold from the edge they are anchored to and leave faster than they arrive, so an upward menu rises and a downward one drops.
 - **Depth tiers.** Base, sticky, player, overlay. The player bar sits below an overlay so a menu or a dialog can cover it.
 
 ## Theme

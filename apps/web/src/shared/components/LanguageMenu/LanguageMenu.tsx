@@ -48,30 +48,29 @@ export default function LanguageMenu() {
         onClick={() => setOpen(value => !value)}>
         <IconWorld size={18} aria-hidden="true" />
       </button>
-      {open ? (
-        <Menu
-          items={OPTIONS.map(option => ({
-            key: option.value,
-            label: t(option.label),
-            icon: (
-              <IconCheck
-                size={14}
-                aria-hidden="true"
-                className={styles.languageMenu__check}
-                data-visible={language === option.value}
-              />
-            ),
-            checked: language === option.value,
-            onSelect: () => setLanguage(option.value)
-          }))}
-          variant={MenuVariant.Radio}
-          triggerRef={triggerRef}
-          onClose={() => setOpen(false)}
-          className={styles.languageMenu__menu}
-          itemClassName={styles.languageMenu__option}
-          ariaLabel={t('language.label')}
-        />
-      ) : null}
+      <Menu
+        open={open}
+        items={OPTIONS.map(option => ({
+          key: option.value,
+          label: t(option.label),
+          icon: (
+            <IconCheck
+              size={14}
+              aria-hidden="true"
+              className={styles.languageMenu__check}
+              data-visible={language === option.value}
+            />
+          ),
+          checked: language === option.value,
+          onSelect: () => setLanguage(option.value)
+        }))}
+        variant={MenuVariant.Radio}
+        triggerRef={triggerRef}
+        onClose={() => setOpen(false)}
+        className={styles.languageMenu__menu}
+        itemClassName={styles.languageMenu__option}
+        ariaLabel={t('language.label')}
+      />
     </div>
   );
 }
