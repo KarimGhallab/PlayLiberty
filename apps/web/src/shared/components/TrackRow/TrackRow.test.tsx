@@ -115,6 +115,24 @@ describe('TrackRow', () => {
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
 
+  it('falls back to the hatch when the thumbnail fails to load', () => {
+    const { container } = renderRow({
+      association: association({ thumbnailPath: 'thumbnails/track-1.jpg' })
+    });
+
+    expect(container.querySelector('[data-art="art"]')).toBeInTheDocument();
+    const image = container.querySelector('img');
+    expect(image).toHaveAttribute(
+      'src',
+      '/api/v1/tracks/track-1/thumbnail'
+    );
+
+    fireEvent.error(image as HTMLImageElement);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('[data-art="no-art"]')).toBeInTheDocument();
+  });
+
   it('reads its play before its lane in the document', () => {
     renderRow({});
 

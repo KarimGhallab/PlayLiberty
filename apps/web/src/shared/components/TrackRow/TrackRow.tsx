@@ -80,8 +80,14 @@ function TrackRow({
   const playable = isPlayable(track);
   const failed = track.fileStatus === TrackFileStatus.Failed;
   const downloading = track.fileStatus === TrackFileStatus.Downloading;
+  /* A recorded thumbnail can outlive its file; a failed read falls to the hatch,
+   * and the failed path scopes it so a new thumbnail gets its own attempt. */
+  const [failedThumbnailPath, setFailedThumbnailPath] = useState<string | null>(
+    null
+  );
   const artwork =
-    track.thumbnailPath === null
+    track.thumbnailPath === null ||
+    failedThumbnailPath === track.thumbnailPath
       ? null
       : mediaUrl(endpoints.trackThumbnail, { trackId: track.id });
   const label =
@@ -209,6 +215,7 @@ function TrackRow({
             alt=""
             loading="lazy"
             decoding="async"
+            onError={() => setFailedThumbnailPath(track.thumbnailPath)}
           />
         )}
         {starting ? (
