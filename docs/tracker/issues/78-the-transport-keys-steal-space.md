@@ -1,47 +1,16 @@
 # 78: The transport keys steal Space from a focused control
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
 **Blocked by:** None. Can start immediately.
 
-## Agent Brief
+## Outcome
 
-**Category:** bug
-**Summary:** The player's window-level key handler excludes only text-entry targets, so Space on any focused button toggles playback and suppresses that button's own activation, and arrow keys seek while focus is on a control that does not stop propagation.
+The window transport now asks `ownsKey` before doing anything. It stands down for a default another handler already prevented, for text entry and contenteditable, and for focus inside a button, a link, a native field, or a widget with `role` button, link, menu, listbox, slider or dialog, or `aria-haspopup`. A focused control keeps both Space and the arrows.
 
-**Current behavior:**
-`PlayerBar.tsx` adds a window `keydown` listener that returns early only for `input`, `textarea`, `select` and `[contenteditable]`. It does not check `event.defaultPrevented` or the focused element's role. Space calls `preventDefault` and toggles playback, which cancels the browser's activation of a focused button (Enter still activates it). Arrow left/right seeks.
+The player's scrubber now handles Left and Right locally, with the modifier keys left alone, so it still seeks while focused. The window handler stands down on the slider, which also keeps a double seek out. Space on the page body still toggles playback.
 
-**Desired behavior:**
-The transport shortcuts never take a key from a focused control. Guard on `event.defaultPrevented` and on the focused element being a button, a link, or a widget with a role the key belongs to (`menu`, `listbox`, `slider`, `dialog`, `aria-haspopup`). Space stays a transport key when focus is on the page body.
+Tests hold Space on a focused button (not cancelled, no playback toggle, then the button's own click), Space on the body, arrows on a focused menu, listbox and slider, and a key another handler already prevented.
 
-**Key interfaces:**
-
-- `useDismissibleMenu` already stops propagation for the keys a menu owns; the guard covers the rest.
-- The seek step and the store's own guards are unchanged.
-
-**Acceptance criteria:**
-
-- [ ] Space on a focused button activates that button and does not toggle playback.
-- [ ] Space away from a control still toggles playback.
-- [ ] Arrow keys do not seek while a menu, a listbox or a slider has focus.
-- [ ] A test holds the Space-on-a-button case.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The menu's own key contract, which is already implemented.
-
-## Observed
-
-- `PlayerBar.tsx:47-92` guards text entry only.
-
-## Expected
-
-- A focused control keeps its keys; the transport claims them only when nothing else does.
-
-## Evidence
-
-- `apps/web/src/shared/player/PlayerBar/PlayerBar.tsx:47-92`.
-- Impeccable critique of `apps/web`, 2026-10-19, priority issue P2.
+Verification: `pnpm run build` passes; the unit suites pass (tokens 2, i18n 39, youtube 31, ui-foundation 6, server 386, web 533). The touched files lint clean. The repo-wide `pnpm run lint` is currently blocked by the untracked `PrototypeSwitcher` prototype, whose hardcoded copy is unrelated to this issue.

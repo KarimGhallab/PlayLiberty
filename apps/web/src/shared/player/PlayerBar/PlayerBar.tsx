@@ -18,6 +18,39 @@ import styles from './PlayerBar.module.scss';
  * so a control never appears and disappears.
  */
 
+/* The controls whose activation and navigation keys the transport must not
+ * claim. */
+const CONTROL_KEY_SELECTOR = [
+  'button',
+  'a[href]',
+  'input',
+  'textarea',
+  'select',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="menu"]',
+  '[role="listbox"]',
+  '[role="slider"]',
+  '[role="dialog"]',
+  '[aria-haspopup]:not([aria-haspopup="false"])'
+].join(',');
+
+/* A control owns its keys, whether Space activates it or an arrow navigates it;
+ * a default already prevented is somebody else's too. */
+function ownsKey(event: KeyboardEvent): boolean {
+  if (event.defaultPrevented) {
+    return true;
+  }
+
+  const target =
+    event.target instanceof HTMLElement ? event.target : document.activeElement;
+
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest(CONTROL_KEY_SELECTOR) !== null)
+  );
+}
+
 /* Pointer capture keeps a drag alive when the pointer leaves the track. A host
  * without it (jsdom) must not throw, so the call is optional-chained. */
 function capturePointer(element: HTMLElement, pointerId: number): void {
@@ -35,6 +68,7 @@ export default function PlayerBar() {
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const seekToFraction = usePlayerStore(state => state.seekToFraction);
+  const seekBy = usePlayerStore(state => state.seekBy);
   const seekToStart = usePlayerStore(state => state.seekToStart);
   const seekToEnd = usePlayerStore(state => state.seekToEnd);
   const skipNext = usePlayerStore(state => state.skipNext);
@@ -45,16 +79,10 @@ export default function PlayerBar() {
   const { run, endRun } = usePlayPauseMorph(isPlaying);
 
   /* The keyboard transport, on the window so a press reaches it wherever focus
-   * sits. Text entry keeps its keys; the store is read at press time. */
+   * sits. A focused control keeps its keys; the store is read at press time. */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target;
-
-      if (
-        target instanceof HTMLElement &&
-        (target.isContentEditable ||
-          target.closest('input, textarea, select') !== null)
-      ) {
+      if (ownsKey(event)) {
         return;
       }
 
@@ -214,6 +242,21 @@ export default function PlayerBar() {
             releasePointer(event.currentTarget, event.pointerId);
           }}
           onKeyDown={event => {
+            if (
+              (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.altKey
+            ) {
+              event.preventDefault();
+              seekBy(
+                event.key === 'ArrowRight'
+                  ? SeekDirection.Forward
+                  : SeekDirection.Backward
+              );
+              return;
+            }
+
             if (event.key === 'Home') {
               seekToStart();
             }

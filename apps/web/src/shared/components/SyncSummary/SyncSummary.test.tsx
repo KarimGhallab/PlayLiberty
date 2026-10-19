@@ -63,9 +63,7 @@ describe('SyncSummary', () => {
     expect(
       screen.getByRole('group', { name: '2 removed' })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('group', { name: '1 still failed' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '1 failed' })).toBeInTheDocument();
     const stamp = screen.getByText('Last sync 55 minutes ago');
     expect(
       stamp.compareDocumentPosition(
@@ -84,9 +82,7 @@ describe('SyncSummary', () => {
     );
 
     expect(screen.getByRole('group', { name: '4 added' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('group', { name: '4 still failed' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '4 failed' })).toBeInTheDocument();
     expect(
       screen.queryByRole('group', { name: '0 kept' })
     ).not.toBeInTheDocument();

@@ -131,7 +131,7 @@ describe('PlayerBar', () => {
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
-  it('toggles playback from the space bar wherever focus sits', () => {
+  it('toggles playback from the space bar when focus is on the page body', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     renderBar();
 
@@ -140,6 +140,53 @@ describe('PlayerBar', () => {
 
     fireEvent.keyDown(document.body, { key: ' ' });
     expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('leaves Space to a focused button', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    renderBar();
+    const play = screen.getByRole('button', { name: 'Pause' });
+    play.focus();
+
+    const notCancelled = fireEvent.keyDown(play, { key: ' ' });
+
+    expect(notCancelled).toBe(true);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+
+    fireEvent.click(play);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('leaves the arrows to a focused menu, listbox or slider', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    usePlayerStore.getState().setPosition(20);
+    renderBar();
+
+    for (const role of ['menu', 'listbox', 'slider']) {
+      const widget = document.createElement('div');
+      widget.setAttribute('role', role);
+      widget.tabIndex = 0;
+      document.body.append(widget);
+      widget.focus();
+
+      fireEvent.keyDown(widget, { key: 'ArrowRight' });
+
+      expect(usePlayerStore.getState().positionSeconds).toBe(20);
+      widget.remove();
+    }
+  });
+
+  it('does not take a key another handler already prevented', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    renderBar();
+    const other = document.createElement('div');
+    other.addEventListener('keydown', event => event.preventDefault());
+    document.body.append(other);
+
+    fireEvent.keyDown(other, { key: ' ' });
+
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    other.remove();
   });
 
   it('moves the playhead by five seconds with the arrows off the seeker', () => {
