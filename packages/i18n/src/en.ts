@@ -16,7 +16,10 @@ export const en = {
     french: 'Français'
   },
   common: {
-    cancel: 'Cancel'
+    cancel: 'Cancel',
+    discardPrompt: 'Discard this link? The link you pasted will be lost.',
+    keepEditing: 'Keep editing',
+    discard: 'Discard'
   },
   library: {
     add: 'Add a playlist',

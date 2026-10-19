@@ -18,7 +18,10 @@ export const fr: Messages = {
     french: 'Français'
   },
   common: {
-    cancel: 'Annuler'
+    cancel: 'Annuler',
+    discardPrompt: 'Abandonner ce lien ? Le lien collé sera perdu.',
+    keepEditing: 'Continuer la saisie',
+    discard: 'Abandonner'
   },
   library: {
     add: 'Ajouter une playlist',

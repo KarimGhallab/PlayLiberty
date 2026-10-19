@@ -1166,15 +1166,16 @@ describe('LibraryPage', () => {
     expect(screen.getByText('Syncing')).toBeInTheDocument();
   });
 
-  it('makes no request for an empty URL and shows the schema refusal', async () => {
+  it('holds the primary disabled for an empty URL and makes no request', async () => {
     const { requests } = createSucceeds();
     renderLibraryPage();
 
     await screen.findByText('Rain On The Window');
     fireEvent.click(screen.getByRole('button', { name: 'Add a playlist' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    const add = screen.getByRole('button', { name: 'Add' });
 
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(add).toBeDisabled();
+    fireEvent.click(add);
     expect(requests).toHaveLength(0);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });

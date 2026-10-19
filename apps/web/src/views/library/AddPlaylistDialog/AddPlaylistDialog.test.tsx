@@ -63,16 +63,47 @@ describe('AddPlaylistDialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('refuses an empty URL with the schema and makes no request', () => {
+  it('holds the primary disabled until the field has a value', () => {
     const onSubmit = vi.fn();
     renderDialog({ onSubmit });
+    const add = screen.getByRole('button', { name: 'Add' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-
+    expect(add).toBeDisabled();
+    fireEvent.click(add);
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Playlist link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PL-demo' }
+    });
+
+    expect(add).toBeEnabled();
+  });
+
+  it('asks before a dirty scrim click discards the link', () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+    const field = screen.getByLabelText('Playlist link');
+
+    fireEvent.change(field, {
+      target: { value: 'https://www.youtube.com/playlist?list=PL-demo' }
+    });
+    fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Discard this link?');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(field).toHaveValue(
+      'https://www.youtube.com/playlist?list=PL-demo'
     );
+
+    fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a malformed URL with the schema and makes no request', () => {

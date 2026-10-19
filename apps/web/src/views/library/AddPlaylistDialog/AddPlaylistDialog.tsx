@@ -39,6 +39,7 @@ export default function AddPlaylistDialog({
   const [url, setUrl] = useState('');
   const [skipNonMusic, setSkipNonMusic] = useState(true);
   const [invalid, setInvalid] = useState<string | null>(null);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
 
   /*
@@ -52,6 +53,7 @@ export default function AddPlaylistDialog({
       setUrl('');
       setSkipNonMusic(true);
       setInvalid(null);
+      setConfirmingDiscard(false);
     }
   }
 
@@ -64,6 +66,22 @@ export default function AddPlaylistDialog({
   useEffect(() => {
     setInvalid(null);
   }, [problem]);
+
+  const dirty = url.trim().length > 0;
+
+  function requestClose(): void {
+    if (confirmingDiscard) {
+      setConfirmingDiscard(false);
+      return;
+    }
+
+    if (!dirty) {
+      onClose();
+      return;
+    }
+
+    setConfirmingDiscard(true);
+  }
 
   function submit(): void {
     if (isWorking) {
@@ -88,33 +106,56 @@ export default function AddPlaylistDialog({
       title={t('addPlaylistDialog.title')}
       description={t('addPlaylistDialog.description')}
       initialFocus={field}
-      onRequestClose={onClose}
+      onRequestClose={requestClose}
       actions={
-        <>
-          <button
-            className={dialogStyles.dialog__secondary}
-            type="button"
-            disabled={isWorking}
-            onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            className={dialogStyles.dialog__primary}
-            type="button"
-            data-loading={isWorking ? 'true' : undefined}
-            aria-busy={isWorking}
-            onClick={submit}>
-            {isWorking ? (
-              <>
-                <Spinner />
-                {t('addPlaylistDialog.adding')}
-              </>
-            ) : (
-              t('addPlaylistDialog.add')
-            )}
-          </button>
-        </>
+        confirmingDiscard ? (
+          <>
+            <button
+              className={dialogStyles.dialog__secondary}
+              type="button"
+              onClick={() => setConfirmingDiscard(false)}>
+              {t('common.keepEditing')}
+            </button>
+            <button
+              className={dialogStyles.dialog__primary}
+              type="button"
+              onClick={onClose}>
+              {t('common.discard')}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className={dialogStyles.dialog__secondary}
+              type="button"
+              disabled={isWorking}
+              onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              className={dialogStyles.dialog__primary}
+              type="button"
+              data-loading={isWorking ? 'true' : undefined}
+              aria-busy={isWorking}
+              disabled={isWorking || !dirty}
+              onClick={submit}>
+              {isWorking ? (
+                <>
+                  <Spinner />
+                  {t('addPlaylistDialog.adding')}
+                </>
+              ) : (
+                t('addPlaylistDialog.add')
+              )}
+            </button>
+          </>
+        )
       }>
+      {confirmingDiscard ? (
+        <p className={dialogStyles.dialog__discard} role="alert">
+          {t('common.discardPrompt')}
+        </p>
+      ) : null}
       <div
         className={dialogStyles.field}
         data-invalid={message === null ? undefined : 'true'}

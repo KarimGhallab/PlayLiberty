@@ -59,6 +59,14 @@
     line-height: var(--leading-normal);
   }
 
+  &__discard {
+    margin: 0 0 var(--space-4);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-normal);
+  }
+
   &__actions {
     display: flex;
     justify-content: flex-end;
@@ -101,6 +109,14 @@
     &:hover {
       background: var(--accent-hover);
       border-color: var(--accent-hover);
+    }
+
+    /* The disabled accent drains toward the surface but keeps its family, so it
+     * reads as stopped rather than as another secondary. */
+    &:disabled {
+      color: color-mix(in srgb, var(--accent) 40%, var(--muted));
+      background: color-mix(in srgb, var(--accent) 22%, var(--surface-raised));
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--surface-raised));
     }
   }
 

@@ -47,6 +47,7 @@ export default function AddTrackDialog({
   const [url, setUrl] = useState('');
   const [invalid, setInvalid] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string[]>([currentPlaylistId]);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
 
   /* A fresh open resets the field and the selection, so a cancelled paste and
@@ -58,6 +59,7 @@ export default function AddTrackDialog({
       setUrl('');
       setInvalid(null);
       setChosen([currentPlaylistId]);
+      setConfirmingDiscard(false);
     }
   }
 
@@ -85,6 +87,22 @@ export default function AddTrackDialog({
 
   const nameOf = (playlistId: string): string =>
     playlists.find(playlist => playlist.id === playlistId)?.name ?? playlistId;
+
+  const dirty = url.trim().length > 0;
+
+  function requestClose(): void {
+    if (confirmingDiscard) {
+      setConfirmingDiscard(false);
+      return;
+    }
+
+    if (!dirty) {
+      onClose();
+      return;
+    }
+
+    setConfirmingDiscard(true);
+  }
 
   const toggle = (playlistId: string): void => {
     setChosen(current =>
@@ -125,33 +143,56 @@ export default function AddTrackDialog({
       title={t('addTrackDialog.title')}
       description={t('addTrackDialog.description')}
       initialFocus={field}
-      onRequestClose={onClose}
+      onRequestClose={requestClose}
       actions={
-        <>
-          <button
-            className={dialogStyles.dialog__secondary}
-            type="button"
-            disabled={isWorking}
-            onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            className={dialogStyles.dialog__primary}
-            type="button"
-            data-loading={isWorking ? 'true' : undefined}
-            aria-busy={isWorking}
-            onClick={submit}>
-            {isWorking ? (
-              <>
-                <Spinner />
-                {t('addTrackDialog.adding')}
-              </>
-            ) : (
-              t('addTrackDialog.add')
-            )}
-          </button>
-        </>
+        confirmingDiscard ? (
+          <>
+            <button
+              className={dialogStyles.dialog__secondary}
+              type="button"
+              onClick={() => setConfirmingDiscard(false)}>
+              {t('common.keepEditing')}
+            </button>
+            <button
+              className={dialogStyles.dialog__primary}
+              type="button"
+              onClick={onClose}>
+              {t('common.discard')}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className={dialogStyles.dialog__secondary}
+              type="button"
+              disabled={isWorking}
+              onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              className={dialogStyles.dialog__primary}
+              type="button"
+              data-loading={isWorking ? 'true' : undefined}
+              aria-busy={isWorking}
+              disabled={isWorking || !dirty || chosen.length === 0}
+              onClick={submit}>
+              {isWorking ? (
+                <>
+                  <Spinner />
+                  {t('addTrackDialog.adding')}
+                </>
+              ) : (
+                t('addTrackDialog.add')
+              )}
+            </button>
+          </>
+        )
       }>
+      {confirmingDiscard ? (
+        <p className={dialogStyles.dialog__discard} role="alert">
+          {t('common.discardPrompt')}
+        </p>
+      ) : null}
       {refusedIds.length > 0 ? (
         <div className={styles.addTrack__refused}>
           <p className={styles.addTrack__refusedLead}>
