@@ -13,6 +13,7 @@ import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
 import { trackTone } from '@playliberty/ui-foundation';
 
 import { mediaUrl } from '../../api/endpoints/endpoints';
+import { isPlayable } from '../../player/playable';
 import Menu from '../Menu/Menu';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
@@ -71,7 +72,7 @@ function TrackRow({
     track.provider
   );
   const tone = trackTone(track.fileStatus, track.sourceStatus);
-  const playable = track.fileStatus === TrackFileStatus.Stored;
+  const playable = isPlayable(track);
   const failed = track.fileStatus === TrackFileStatus.Failed;
   const downloading = track.fileStatus === TrackFileStatus.Downloading;
   const artwork =

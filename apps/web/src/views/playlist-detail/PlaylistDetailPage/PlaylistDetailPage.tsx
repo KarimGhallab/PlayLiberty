@@ -46,7 +46,7 @@ import {
   UNDO_WINDOW_MS,
   useDeferredAction
 } from '../../../shared/components/useDeferredAction/useDeferredAction';
-import { hasPlayableTrack } from '../../../shared/player/playerQueue/playerQueue';
+import { hasPlayableTrack } from '../../../shared/player/playable';
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';

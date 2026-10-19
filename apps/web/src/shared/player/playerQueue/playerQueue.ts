@@ -1,6 +1,6 @@
 import type { Playlist, PlaylistTrack } from '@playliberty/contracts';
-import { TrackFileStatus } from '@playliberty/contracts';
 
+import { isPlayable } from '../playable';
 import { randomTrack, usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 
@@ -10,35 +10,20 @@ import type { PlayerTrack } from '../types';
  * stored files enter; the name is carried because the queue persists.
  */
 
-/* Whether a track can enter the queue. The filter and every control that asks
- * "is there anything to play" read this one rule. */
-function isPlayable({ track }: PlaylistTrack): boolean {
-  return track.fileStatus === TrackFileStatus.Stored;
-}
-
 export function buildQueue(
   tracks: readonly PlaylistTrack[],
   playlist: Pick<Playlist, 'id' | 'name'>
 ): PlayerTrack[] {
-  return tracks.filter(isPlayable).map(({ track }) => ({
-    id: track.id,
-    title: track.title,
-    playlistId: playlist.id,
-    playlistName: playlist.name,
-    durationSeconds: track.durationSeconds,
-    thumbnailPath: track.thumbnailPath
-  }));
-}
-
-/*
- * Whether a playlist has anything to play, answered from the counts a read
- * already carries rather than by reading the queue. A control that offers a
- * play reads this, so it cannot promise a queue the build would refuse.
- */
-export function hasPlayableTrack(playlist: {
-  readonly counts: Readonly<Record<TrackFileStatus, number>>;
-}): boolean {
-  return playlist.counts[TrackFileStatus.Stored] > 0;
+  return tracks
+    .filter(({ track }) => isPlayable(track))
+    .map(({ track }) => ({
+      id: track.id,
+      title: track.title,
+      playlistId: playlist.id,
+      playlistName: playlist.name,
+      durationSeconds: track.durationSeconds,
+      thumbnailPath: track.thumbnailPath
+    }));
 }
 
 /* Build and start one playlist's queue. `startTrackId` null begins on the first
