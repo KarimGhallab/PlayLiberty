@@ -187,6 +187,7 @@ export const en = {
     pin: 'Pin',
     unpin: 'Unpin',
     syncNow: 'Sync now',
+    syncing: 'Syncing',
     delete: 'Delete playlist',
     play: 'Play this playlist',
     playNamed: 'Play {name}',
@@ -303,6 +304,7 @@ export const en = {
       other: 'failed'
     },
     lastSync: 'Last sync {time}',
+    noChanges: 'Nothing changed',
     downloading: '{count} downloading',
     syncing: 'Syncing'
   },

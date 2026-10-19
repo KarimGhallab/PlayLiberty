@@ -217,7 +217,7 @@ describe('the chosen language', () => {
   const fr = createTranslator(catalogs[Language.French], Language.French);
 
   it('reads a sync line and a track count in French', () => {
-    expect(formatLastSynced(fr, before(2 * DAY), now)).toBe('Il y a 2 jours');
+    expect(formatLastSynced(fr, before(2 * DAY), now)).toBe('il y a 2 jours');
     expect(formatTrackCount(fr, 3)).toBe('3 pistes');
   });
 });

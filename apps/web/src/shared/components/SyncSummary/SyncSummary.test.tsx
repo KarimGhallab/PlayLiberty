@@ -63,19 +63,58 @@ describe('SyncSummary', () => {
     expect(
       screen.getByRole('group', { name: '2 removed' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: '1 failed' })).toBeInTheDocument();
-    expect(screen.getByText('Last sync 55 minutes ago')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: '1 still failed' })
+    ).toBeInTheDocument();
+    const stamp = screen.getByText('Last sync 55 minutes ago');
+    expect(
+      stamp.compareDocumentPosition(
+        screen.getByRole('group', { name: '5 added' })
+      ) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   /* Downloads fail after the run settles, so the band reports the playlist's
-   * live failures rather than the figure the run recorded. */
-  it("draws the tracks failed rather than the run's settled figure", () => {
-    renderSummary(run({ addedCount: 4, failedCount: 0 }), 4);
+   * live failures rather than the figure the run recorded; zero cells are not
+   * drawn at all. */
+  it("draws the live failures and hides the run's zeroes", () => {
+    renderSummary(
+      run({ retainedCount: 0, addedCount: 4, removedCount: 0, failedCount: 0 }),
+      4
+    );
 
-    expect(screen.getByRole('group', { name: '4 failed' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '4 added' })).toBeInTheDocument();
     expect(
-      screen.queryByRole('group', { name: '0 failed' })
+      screen.getByRole('group', { name: '4 still failed' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: '0 kept' })
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: '0 removed' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('says nothing changed rather than drawing four zeroes', () => {
+    renderSummary(
+      run({ retainedCount: 0, addedCount: 0, removedCount: 0, failedCount: 0 }),
+      0
+    );
+
+    expect(screen.getByText('Nothing changed')).toBeInTheDocument();
+    expect(screen.queryAllByRole('group')).toHaveLength(0);
+  });
+
+  it('writes the French stamp as one sentence', () => {
+    render(
+      <I18nProvider preferred={['fr']}>
+        <SyncSummary run={run()} now={NOW} failedCount={1} />
+      </I18nProvider>
+    );
+
+    expect(
+      screen.getByText('Dernière synchronisation : il y a 55 minutes')
+    ).toBeInTheDocument();
   });
 
   it('offers one counted retry for the failed set', () => {

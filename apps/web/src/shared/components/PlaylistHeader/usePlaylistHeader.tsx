@@ -6,6 +6,7 @@ import {
   IconLockShare,
   IconPlayerSkipBack,
   IconPlayerTrackNext,
+  IconRotate,
   IconUserShare
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -13,7 +14,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import { endpoints } from '@playliberty/contracts';
+import { PlaylistSyncStatus, endpoints } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import {
   formatLastSynced,
@@ -67,6 +68,11 @@ export interface PlaylistHeaderSeam {
   hasNext?: boolean;
   onShuffle?: () => void;
   shuffled?: boolean;
+  /* The named sync beside the state; absent for a reader. Only the detail's
+   * stacked identity draws it, where the state has a line of its own. */
+  onSync?: () => void;
+  /* Whether a sync is in flight: the state and its control both say so. */
+  syncing?: boolean;
   menu?: readonly PlaylistAction[];
   /* The cover as a blurred ground behind the header. */
   ground?: boolean;
@@ -154,6 +160,8 @@ export function usePlaylistHeader({
   hasNext = true,
   onShuffle,
   shuffled = false,
+  onSync,
+  syncing = false,
   menu = [],
   ground = false,
   showSyncTime = false,
@@ -340,6 +348,27 @@ export function usePlaylistHeader({
       </button>
     );
 
+  const syncControl =
+    onSync === undefined ? null : (
+      <button
+        type="button"
+        className={styles.playlistHeader__sync}
+        aria-busy={syncing ? true : undefined}
+        disabled={pending || syncing}
+        onClick={onSync}>
+        {syncing ? (
+          <Spinner />
+        ) : (
+          <IconRotate
+            className={styles.playlistHeader__syncIcon}
+            aria-hidden="true"
+            focusable="false"
+          />
+        )}
+        {syncing ? t('header.syncing') : t('header.syncNow')}
+      </button>
+    );
+
   const menuControl =
     menu.length === 0 ? null : (
       <span className={styles.playlistHeader__menuAnchor} ref={menuAnchorRef}>
@@ -409,12 +438,12 @@ export function usePlaylistHeader({
   );
 
   /* The one state element; the status line holds it beside the count, the
-   * stacked identity on its own line. */
+   * stacked identity on its own line. A press that has not reached the server
+   * yet already reads as syncing. */
+  const syncState = syncing ? PlaylistSyncStatus.Syncing : playlist.syncStatus;
   const stateNode = (
-    <span
-      className={styles.playlistHeader__state}
-      data-state={playlist.syncStatus}>
-      {syncStateLabel(t, playlist.syncStatus)}
+    <span className={styles.playlistHeader__state} data-state={syncState}>
+      {syncStateLabel(t, syncState)}
     </span>
   );
 
@@ -481,6 +510,7 @@ export function usePlaylistHeader({
                 </span>
               </>
             ) : null}
+            {syncControl}
           </div>
           {countNode}
         </>

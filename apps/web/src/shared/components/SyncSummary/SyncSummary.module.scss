@@ -1,7 +1,7 @@
 /*
- * The sync summary: four equal columns, one figure and one word each. `1fr`
- * rather than a fixed width, because the four words differ in length. The band
- * sits on --bg, since a panel would buy nothing.
+ * The sync summary: one content-width column per count that is drawn, packed
+ * from the start; each figure centers over its word. The band sits on --bg,
+ * since a panel would buy nothing.
  */
 .sync-summary {
   display: flex;
@@ -9,13 +9,14 @@
   gap: var(--space-2);
 
   &__band {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
+    justify-content: flex-start;
     gap: var(--space-3);
   }
 
   &__cell {
     display: flex;
+    flex: 0 1 auto;
     flex-direction: column;
     align-items: center;
     gap: 2px;
@@ -53,11 +54,17 @@
 
   &__stamp {
     margin: 0;
-    padding-top: var(--space-2);
     color: var(--muted);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
     font-variant-numeric: tabular-nums;
+  }
+
+  &__no-changes {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
   }
 
   &__flight {

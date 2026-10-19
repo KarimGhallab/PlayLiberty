@@ -6,9 +6,9 @@ import RetryFailedControl from '../RetryFailedControl/RetryFailedControl';
 import styles from './SyncSummary.module.scss';
 
 /*
- * The summary is never drawn beside the sync error, which replaces it, and a
- * playlist with no run renders nothing rather than four zeroes. The failure
- * figure is the playlist's live count, since downloads settle after the run.
+ * The summary is never drawn beside the sync error, which replaces it. The
+ * stamp frames the run's counts; the failed figure is live and says so. Zero
+ * cells are hidden, and a run that changed nothing says so.
  */
 
 interface SyncSummaryProps {
@@ -25,6 +25,13 @@ interface SyncSummaryProps {
   retryingFailed?: boolean;
 }
 
+interface SummaryCell {
+  readonly key: string;
+  readonly count: number;
+  readonly word: string;
+  readonly tone?: string;
+}
+
 export default function SyncSummary({
   run,
   now,
@@ -36,57 +43,53 @@ export default function SyncSummary({
   const { t } = useI18n();
   const finishedAt = run.finishedAt === null ? null : new Date(run.finishedAt);
   const running = run.status === SyncRunStatus.Running;
-  const toneOf = (count: number, tone: string): string | undefined =>
-    count === 0 ? undefined : tone;
   const keptWord = t('syncSummary.kept', { count: run.retainedCount });
   const addedWord = t('syncSummary.added', { count: run.addedCount });
   const removedWord = t('syncSummary.removed', { count: run.removedCount });
   const failedWord = t('syncSummary.failed', { count: failedCount });
+  const cells: SummaryCell[] = [
+    { key: 'kept', count: run.retainedCount, word: keptWord },
+    { key: 'added', count: run.addedCount, word: addedWord, tone: 'added' },
+    {
+      key: 'removed',
+      count: run.removedCount,
+      word: removedWord,
+      tone: 'removed'
+    },
+    { key: 'failed', count: failedCount, word: failedWord, tone: 'failed' }
+  ].filter(cell => cell.count > 0);
 
   return (
     <div className={styles.syncSummary}>
-      <div className={styles.syncSummary__band}>
-        <div
-          className={styles.syncSummary__cell}
-          role="group"
-          aria-label={`${run.retainedCount} ${keptWord}`}>
-          <span className={styles.syncSummary__n}>{run.retainedCount}</span>
-          <span className={styles.syncSummary__word}>{keptWord}</span>
+      <p className={styles.syncSummary__stamp}>
+        {running
+          ? t('syncSummary.syncing')
+          : t('syncSummary.lastSync', {
+              time: formatRelativeTime(t, finishedAt ?? now, now)
+            })}
+      </p>
+      {cells.length === 0 ? (
+        running ? null : (
+          <p className={styles.syncSummary__noChanges}>
+            {t('syncSummary.noChanges')}
+          </p>
+        )
+      ) : (
+        <div className={styles.syncSummary__band}>
+          {cells.map(cell => (
+            <div
+              key={cell.key}
+              className={styles.syncSummary__cell}
+              role="group"
+              aria-label={`${cell.count} ${cell.word}`}>
+              <span className={styles.syncSummary__n} data-tone={cell.tone}>
+                {cell.count}
+              </span>
+              <span className={styles.syncSummary__word}>{cell.word}</span>
+            </div>
+          ))}
         </div>
-        <div
-          className={styles.syncSummary__cell}
-          role="group"
-          aria-label={`${run.addedCount} ${addedWord}`}>
-          <span
-            className={styles.syncSummary__n}
-            data-tone={toneOf(run.addedCount, 'added')}>
-            {run.addedCount}
-          </span>
-          <span className={styles.syncSummary__word}>{addedWord}</span>
-        </div>
-        <div
-          className={styles.syncSummary__cell}
-          role="group"
-          aria-label={`${run.removedCount} ${removedWord}`}>
-          <span
-            className={styles.syncSummary__n}
-            data-tone={toneOf(run.removedCount, 'removed')}>
-            {run.removedCount}
-          </span>
-          <span className={styles.syncSummary__word}>{removedWord}</span>
-        </div>
-        <div
-          className={styles.syncSummary__cell}
-          role="group"
-          aria-label={`${failedCount} ${failedWord}`}>
-          <span
-            className={styles.syncSummary__n}
-            data-tone={toneOf(failedCount, 'failed')}>
-            {failedCount}
-          </span>
-          <span className={styles.syncSummary__word}>{failedWord}</span>
-        </div>
-      </div>
+      )}
       {failedCount > 0 && onRetryFailed !== undefined ? (
         <RetryFailedControl
           count={failedCount}
@@ -99,13 +102,6 @@ export default function SyncSummary({
           {t('syncSummary.downloading', { count: downloadingCount })}
         </p>
       ) : null}
-      <p className={styles.syncSummary__stamp}>
-        {running
-          ? t('syncSummary.syncing')
-          : t('syncSummary.lastSync', {
-              time: formatRelativeTime(t, finishedAt ?? now, now)
-            })}
-      </p>
     </div>
   );
 }

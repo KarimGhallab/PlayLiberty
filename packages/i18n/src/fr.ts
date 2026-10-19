@@ -191,6 +191,7 @@ export const fr: Messages = {
     pin: 'Épingler',
     unpin: 'Désépingler',
     syncNow: 'Synchroniser',
+    syncing: 'Synchronisation',
     delete: 'Supprimer la playlist',
     play: 'Lire cette playlist',
     playNamed: 'Lire {name}',
@@ -232,31 +233,31 @@ export const fr: Messages = {
     validationFailed: 'La requête contient une valeur invalide.'
   },
   relative: {
-    justNow: "À l'instant",
-    yesterday: 'Hier',
+    justNow: "à l'instant",
+    yesterday: 'hier',
     minute: {
-      one: 'Il y a {count} minute',
-      other: 'Il y a {count} minutes'
+      one: 'il y a {count} minute',
+      other: 'il y a {count} minutes'
     },
     hour: {
-      one: 'Il y a {count} heure',
-      other: 'Il y a {count} heures'
+      one: 'il y a {count} heure',
+      other: 'il y a {count} heures'
     },
     day: {
-      one: 'Il y a {count} jour',
-      other: 'Il y a {count} jours'
+      one: 'il y a {count} jour',
+      other: 'il y a {count} jours'
     },
     week: {
-      one: 'Il y a {count} semaine',
-      other: 'Il y a {count} semaines'
+      one: 'il y a {count} semaine',
+      other: 'il y a {count} semaines'
     },
     month: {
-      one: 'Il y a {count} mois',
-      other: 'Il y a {count} mois'
+      one: 'il y a {count} mois',
+      other: 'il y a {count} mois'
     },
     year: {
-      one: 'Il y a {count} an',
-      other: 'Il y a {count} ans'
+      one: 'il y a {count} an',
+      other: 'il y a {count} ans'
     }
   },
   lastSynced: {
@@ -303,10 +304,11 @@ export const fr: Messages = {
       other: 'retirées'
     },
     failed: {
-      one: 'échouée',
-      other: 'échouées'
+      one: 'en échec',
+      other: 'en échec'
     },
-    lastSync: 'Dernière synchronisation {time}',
+    lastSync: 'Dernière synchronisation : {time}',
+    noChanges: 'Aucun changement',
     downloading: '{count} en téléchargement.',
     syncing: 'Synchronisation'
   },

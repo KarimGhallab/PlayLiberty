@@ -21,6 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ProblemCode,
   SortPlaylistInputSchema,
+  SyncRunStatus,
   TrackFileStatus,
   endpoints
 } from '@playliberty/contracts';
@@ -35,7 +36,8 @@ import {
   EMPTY_COUNTS,
   countsOf,
   mockUrl,
-  problemResponse
+  problemResponse,
+  respond
 } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import { stubViewport } from '../../../testing/viewport';
@@ -1256,10 +1258,67 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Add a track' })
     ).not.toBeInTheDocument();
+    /* So is the named sync: a reader cannot start a run. */
+    expect(
+      screen.queryByRole('button', { name: 'Sync now' })
+    ).not.toBeInTheDocument();
     /* The setting is still theirs to read, so the switch is drawn disabled. */
     expect(
       screen.getByRole('switch', { name: 'Skip non-music parts' })
     ).toBeDisabled();
+  });
+
+  it('starts a sync from the header without opening the overflow', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const posts: string[] = [];
+    server.use(
+      http.post(
+        mockUrl(endpoints.syncPlaylist, { playlistId: PLAYLIST_ID }),
+        async () => {
+          posts.push('sync');
+          await gate;
+
+          return respond(
+            endpoints.syncPlaylist,
+            {
+              id: 'run-header',
+              playlistId: PLAYLIST_ID,
+              status: SyncRunStatus.Running,
+              addedCount: 0,
+              retainedCount: 0,
+              removedCount: 0,
+              failedCount: 0,
+              startedAt: '2026-09-29T12:00:00.000Z',
+              finishedAt: null,
+              error: null
+            },
+            202
+          );
+        }
+      )
+    );
+    renderDetail();
+
+    const control = await screen.findByRole('button', { name: 'Sync now' });
+    fireEvent.click(control);
+
+    await waitFor(() => {
+      expect(posts).toHaveLength(1);
+      expect(control).toHaveAccessibleName('Syncing');
+    });
+    expect(control).toBeDisabled();
+
+    /* A second press on the busy control cannot start another run. */
+    fireEvent.click(control);
+    expect(posts).toHaveLength(1);
+
+    release();
+    await waitFor(() => {
+      expect(control).toHaveAccessibleName('Sync now');
+    });
   });
 
   it('draws the add control for the owner and opens the dialog', async () => {

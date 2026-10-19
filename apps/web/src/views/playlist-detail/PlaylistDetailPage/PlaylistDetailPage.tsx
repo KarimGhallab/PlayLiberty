@@ -207,7 +207,11 @@ export default function PlaylistDetailPage() {
     [fetchWhole.mutate]
   );
 
+  const neverSynced = playlist.data?.lastSyncedAt === null;
   const canWrite = canWritePlaylist(playlist.data);
+  const syncInFlight =
+    playlist.data?.syncStatus === PlaylistSyncStatus.Syncing ||
+    actions.syncing(playlistId);
   /* The one track whose row action is in flight, so its menu is not opened onto
    * a second press while the first is still running. */
   const busyTrackId = retry.isPending
@@ -215,7 +219,6 @@ export default function PlaylistDetailPage() {
     : fetchWhole.isPending
       ? fetchWhole.variables
       : undefined;
-  const neverSynced = playlist.data?.lastSyncedAt === null;
 
   /*
    * The account's own playlists and any it can write, never a read one: an
@@ -251,6 +254,8 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [settingRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
+  /* The failed band owns the retry, so the header does not draw a second one. */
+  const syncErrorShown = failed && latestRun.isSuccess;
   const playlistPending = deferred.windows.some(
     entry => entry.id === playlistId
   );
@@ -261,6 +266,9 @@ export default function PlaylistDetailPage() {
    * it has answered; the row survives an empty filter to keep "Show all".
    */
   const hasTracks = (playlist.data?.trackCount ?? 0) > 0;
+  /* One control owns the start where the list is empty: the empty state's own
+   * button, not a second one in the header. */
+  const emptyStateSync = neverSynced && tracks.isSuccess && !hasTracks;
   /*
    * The empty state waits for the filter's own answer: `keepPreviousData` keeps
    * the previous total on hand while the next state loads.
@@ -307,6 +315,11 @@ export default function PlaylistDetailPage() {
     hasNext: canSkipNext,
     onShuffle: () => transition.shuffle(playlistView),
     shuffled,
+    onSync:
+      canWrite && !emptyStateSync && !syncErrorShown
+        ? () => actions.syncNow(playlistId)
+        : undefined,
+    syncing: syncInFlight,
     menu: actions.menuFor(playlist.data),
     /* The window claim is made only while the list is the whole playlist: a
      * narrowed list owes a denominator the card does not carry. */
@@ -408,7 +421,7 @@ export default function PlaylistDetailPage() {
               />
             ) : null}
 
-            {failed && latestRun.isSuccess ? (
+            {syncErrorShown ? (
               <div className={styles.playlistDetail__state}>
                 <SyncError
                   trackCount={playlist.data?.trackCount ?? null}
@@ -417,7 +430,7 @@ export default function PlaylistDetailPage() {
                   onRetry={
                     canWrite ? () => actions.syncNow(playlistId) : undefined
                   }
-                  retrying={actions.syncing(playlistId)}
+                  retrying={syncInFlight}
                 />
               </div>
             ) : null}
@@ -494,10 +507,10 @@ export default function PlaylistDetailPage() {
               />
             </div>
           ) : null}
-          {neverSynced && tracks.isSuccess && !hasTracks ? (
+          {emptyStateSync ? (
             <EmptyState
               onSync={canWrite ? () => actions.syncNow(playlistId) : undefined}
-              syncing={actions.syncing(playlistId)}
+              syncing={syncInFlight}
             />
           ) : null}
           {!neverSynced && tracks.isSuccess && !hasTracks ? (
