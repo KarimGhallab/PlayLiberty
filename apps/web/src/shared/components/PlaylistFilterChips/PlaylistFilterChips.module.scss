@@ -55,6 +55,10 @@
     &__rail {
       overflow-x: auto;
       scrollbar-width: none;
+      /* The chip's 44px target reaches four pixels past its drawn box; the
+       * rail's padding keeps that box inside the scroll container. */
+      padding-block: var(--space-1);
+      margin-block: calc(-1 * var(--space-1));
 
       &::-webkit-scrollbar {
         display: none;
@@ -63,6 +67,7 @@
   }
 
   &__chip {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -91,6 +96,17 @@
       border-radius: var(--radius-chip);
       background: currentColor;
       transform: scale(0);
+    }
+
+    /* The target a thumb is owed, centred on the chip; it paints nothing. */
+    &::after {
+      content: '';
+      position: absolute;
+      width: var(--control-touch);
+      height: var(--control-touch);
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
     }
 
     /* The six tones, one per chip, read from the state tokens. */

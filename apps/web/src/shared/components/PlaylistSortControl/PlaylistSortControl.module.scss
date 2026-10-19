@@ -28,6 +28,17 @@
     border: none;
     cursor: pointer;
 
+    /* The target a thumb is owed, centred on the control; it paints nothing. */
+    &::before {
+      content: '';
+      position: absolute;
+      width: var(--control-touch);
+      height: var(--control-touch);
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+    }
+
     /* The system's own selection language: the 2px accent rule the segmented
      * control marks its choice with, shown only while the menu is open. */
     &::after {
