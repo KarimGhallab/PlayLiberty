@@ -167,9 +167,9 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
 });
 
 /* The chips are the whole filter: a width where one is cut mid-pill hides a
- * state the reader can choose. Both desks draw all six, and a phone, which
- * cannot, brings the focused one into view. */
-test('every filter chip is whole at a desk and reachable by keyboard on a phone', async ({
+ * state the reader can choose. The rail wraps at every width, so all six are
+ * whole; a phone still owes the keyboard reader the focused chip. */
+test('every filter chip is whole at a desk and on a phone, and the last is reachable by keyboard', async ({
   page
 }) => {
   await addPlaylist(page, {
@@ -187,8 +187,10 @@ test('every filter chip is whole at a desk and reachable by keyboard on a phone'
 
   await page.setViewportSize({ width: 390, height: 844 });
 
-  /* The rail is 209px here, so the last chip starts hidden; focusing it is what
-   * a keyboard reader does, and the rail owes them the sight of it. */
+  /* The phone wraps beside the sort rather than clipping, so every chip is
+   * whole without a scroll; the last still takes focus and stays hittable. */
+  await expectChipsWhole(page);
+
   const last = page.getByRole('button', { name: 'Unavailable 0' });
   await last.focus();
   await expect(last).toBeFocused();

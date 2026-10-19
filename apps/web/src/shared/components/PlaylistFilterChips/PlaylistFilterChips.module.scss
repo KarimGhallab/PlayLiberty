@@ -1,7 +1,7 @@
 /*
  * The chips at the lead of the control row: a border and a word, never a fill,
- * with the tone reinforcing the word. The rail wraps at a desk and scrolls on a
- * phone, where an edge fade marks the chip hidden behind it.
+ * with the tone reinforcing the word. The rail wraps at every width; a single
+ * chip wider than the rail still scrolls, and an edge fade marks that edge.
  */
 .chips {
   position: relative;
@@ -39,8 +39,9 @@
     opacity: 1;
   }
 
-  /* Wrapped at a desk, so no chip is clipped by the sort; a phone keeps the row
-   * one line and scrolls, which is where the fade speaks. */
+  /* Wrapped at every width, so no chip is clipped by the sort; the phone keeps
+   * the scroll only for a chip wider than the rail, which is where the fade
+   * speaks. */
   &__rail {
     display: flex;
     flex-wrap: wrap;
@@ -52,7 +53,6 @@
 
   @media (max-width: 767px) {
     &__rail {
-      flex-wrap: nowrap;
       overflow-x: auto;
       scrollbar-width: none;
 

@@ -387,11 +387,15 @@
     width: 48px;
     height: 48px;
     flex-shrink: 0;
+    color: var(--bg);
     background: var(--accent);
     border: 1px solid var(--accent);
     border-radius: var(--radius-chip);
     cursor: pointer;
-    transition: background-color var(--motion-slow) var(--ease-standard);
+    transition:
+      background-color var(--motion-slow) var(--ease-standard),
+      border-color var(--motion-slow) var(--ease-standard),
+      color var(--motion-slow) var(--ease-standard);
 
     &:hover:not(:disabled) {
       background: var(--accent-hover);
@@ -407,6 +411,37 @@
       outline: var(--focus-width) solid var(--accent);
       outline-offset: var(--focus-offset);
     }
+  }
+
+  /*
+   * The gallery's per-item play is quiet at rest: the accent marks the playing
+   * queue, not every item. The detail hero and the player bar keep the filled
+   * control.
+   */
+  &[data-arrangement='tile'] &__play,
+  &[data-arrangement='card'][data-item='true'] &__play {
+    color: var(--ink);
+    background: var(--surface-raised);
+    border-color: var(--control-border);
+
+    &:hover:not(:disabled) {
+      color: var(--bg);
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    &:focus-visible {
+      color: var(--bg);
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+  }
+
+  &[data-arrangement='tile'][data-state='playing'] &__play,
+  &[data-arrangement='card'][data-item='true'][data-state='playing'] &__play {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
   }
 
   &__retry {
@@ -453,7 +488,7 @@
     overflow: hidden;
     width: var(--icon-lg);
     height: var(--icon-lg);
-    color: var(--bg);
+    fill: currentColor;
   }
 
   &__strip {
