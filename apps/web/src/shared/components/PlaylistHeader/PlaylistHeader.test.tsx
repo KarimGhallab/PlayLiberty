@@ -347,7 +347,7 @@ describe('PlaylistHeader', () => {
     );
   });
 
-  it('marks the playing row with the equalizer bars', async () => {
+  it('marks the playing row with the emphasis line, not the equalizer bars', async () => {
     const { container } = renderRow(playlist(), null, {
       current: true,
       playing: true
@@ -355,7 +355,11 @@ describe('PlaylistHeader', () => {
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
-    expect(container.querySelector('[aria-label="Playing"]')).not.toBeNull();
+    expect(container.querySelector('[data-arrangement="row"]')).toHaveAttribute(
+      'data-state',
+      'playing'
+    );
+    expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
   });
 
   it('draws no playing mark on a row that is not the queue', async () => {
@@ -363,6 +367,10 @@ describe('PlaylistHeader', () => {
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
+    expect(container.querySelector('[data-arrangement="row"]')).toHaveAttribute(
+      'data-state',
+      'paused'
+    );
     expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
   });
 

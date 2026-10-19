@@ -27,8 +27,8 @@
     position: relative;
   }
 
-  /* The playing queue's mark on the card and the tile: the system's "this is
-   * happening" amber, since the accent is already spent on the play control. */
+  /* The playing queue's mark on the card, the tile and the row: the system's
+   * "this is happening" amber, since the accent is already spent on play. */
   &[data-arrangement='card']::after,
   &__line::after {
     content: '';
@@ -44,10 +44,12 @@
   }
 
   &[data-arrangement='card'][data-state='playing']::after,
+  &[data-arrangement='row'][data-state='playing'] &__line::after,
   &[data-arrangement='tile'][data-state='playing'] &__line::after {
     transform: scaleX(1);
   }
 
+  /* The tile and the row clip their line in this box. */
   &__line {
     position: absolute;
     inset: 0;
@@ -106,8 +108,11 @@
     --sleeve: var(--sleeve-6);
   }
 
-  &[data-arrangement='row'][data-ground='true'] {
+  &[data-arrangement='row'] {
     position: relative;
+  }
+
+  &[data-arrangement='row'][data-ground='true'] {
     isolation: isolate;
     /* No `overflow: hidden`: the menu opens downward past the row and the share
      * tip upward, so a clip here crops both. */
@@ -143,36 +148,6 @@
 
   &[data-arrangement='card'][data-ground='true'] &__ground {
     opacity: 0.2;
-  }
-
-  /* The playing mark: the same TrackBars equalizer a playing track row draws, on
-   * the cover, with the same scrim so the accent bars land on a known ground. */
-  &__bars-scrim {
-    position: absolute;
-    inset: 0;
-    background: rgb(0 0 0 / 0.42);
-  }
-
-  &__bars {
-    position: absolute;
-    inset-inline: var(--space-3);
-    bottom: 0px;
-    height: 48%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--space-1);
-  }
-
-  &__bar {
-    display: block;
-    width: 3px;
-    height: 100%;
-    border-radius: 1px;
-    background: var(--accent);
-    transform-origin: bottom;
-    animation: pl-equalize 1400ms linear infinite;
-    transform: scaleY(var(--rest, 1));
   }
 
   &[data-pending='true'] {
@@ -1145,26 +1120,3 @@
   }
 }
 
-/* The shape is redeclared because a CSS module scopes a keyframe name; the phase
- * table stays TrackBars'. */
-@keyframes pl-equalize {
-  0% {
-    transform: scaleY(0.3);
-  }
-
-  22% {
-    transform: scaleY(1);
-  }
-
-  48% {
-    transform: scaleY(0.5);
-  }
-
-  72% {
-    transform: scaleY(0.78);
-  }
-
-  100% {
-    transform: scaleY(0.3);
-  }
-}

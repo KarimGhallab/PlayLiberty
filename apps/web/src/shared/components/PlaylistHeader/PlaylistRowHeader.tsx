@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router';
 
-import TrackBars from '../TrackBars';
 import styles from './PlaylistHeader.module.scss';
 import { playlistDoor } from './playlistDoor';
 import type { PlaylistHeaderSeam } from './usePlaylistHeader';
@@ -80,19 +79,6 @@ export default function PlaylistRowHeader({
             onError={onCoverError}
           />
         )}
-        {current && playing ? (
-          <>
-            <span
-              className={styles.playlistHeader__barsScrim}
-              aria-hidden="true"
-            />
-            <TrackBars
-              className={styles.playlistHeader__bars}
-              barClassName={styles.playlistHeader__bar}
-              playing={playing}
-            />
-          </>
-        ) : null}
       </Link>
       <div className={styles.playlistHeader__body}>{identity}</div>
       <div className={styles.playlistHeader__actions}>
@@ -104,6 +90,7 @@ export default function PlaylistRowHeader({
           </div>
         )}
       </div>
+      <span className={styles.playlistHeader__line} aria-hidden="true" />
     </div>
   );
 }
