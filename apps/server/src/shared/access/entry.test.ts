@@ -67,110 +67,56 @@ function seedCast(): {
 }
 
 describe('the playlist entry seam', () => {
-  it('runs a read handler for each account that reaches the playlist, handing it the level', async () => {
-    context = await createTestContext();
-    const cast = seedCast();
-    const handler = vi.fn((access: PlaylistAccess) => `read as ${access}`);
+  /* The one rule as a table: each resolved level against read, write and owner.
+   * A stranger resolves to no level, so it satisfies nothing. */
+  const MATRIX = [
+    { level: 'owner', read: true, write: true, own: true },
+    { level: 'write', read: true, write: true, own: false },
+    { level: 'read', read: true, write: false, own: false },
+    { level: 'stranger', read: false, write: false, own: false }
+  ] as const;
 
-    for (const [accountId, level] of [
-      [cast.owner, 'owner'],
-      [cast.reader, 'read'],
-      [cast.writer, 'write']
-    ] as const) {
-      const entry = playlistEntry(
-        database(),
-        cast.playlistId,
-        accountId,
-        AccessNeed.Read,
-        handler
-      );
+  it.each(MATRIX)(
+    'answers $level for read, write and owner',
+    async ({ level, read, write, own }) => {
+      context = await createTestContext();
+      const cast = seedCast();
+      const accountId =
+        level === 'owner'
+          ? cast.owner
+          : level === 'write'
+            ? cast.writer
+            : level === 'read'
+              ? cast.reader
+              : cast.stranger;
 
-      expect(entry).toEqual({
-        outcome: EntryOutcome.Granted,
-        value: `read as ${level}`
-      });
-    }
-
-    expect(handler).toHaveBeenCalledTimes(3);
-  });
-
-  it('does not run a read handler for a stranger', async () => {
-    context = await createTestContext();
-    const cast = seedCast();
-    const handler = vi.fn(() => 'never');
-
-    const entry = playlistEntry(
-      database(),
-      cast.playlistId,
-      cast.stranger,
-      AccessNeed.Read,
-      handler
-    );
-
-    expect(entry.outcome).toBe(EntryOutcome.Denied);
-    expect(handler).not.toHaveBeenCalled();
-  });
-
-  it('runs a write handler for the owner and a write collaborator and no one else', async () => {
-    context = await createTestContext();
-    const cast = seedCast();
-    const handler = vi.fn(() => 'wrote');
-
-    for (const accountId of [cast.owner, cast.writer]) {
-      expect(
-        playlistEntry(
+      for (const [need, granted] of [
+        [AccessNeed.Read, read],
+        [AccessNeed.Write, write],
+        [AccessNeed.Owner, own]
+      ] as const) {
+        const handler = vi.fn((access: PlaylistAccess) => access);
+        const entry = playlistEntry(
           database(),
           cast.playlistId,
           accountId,
-          AccessNeed.Write,
+          need,
           handler
-        ).outcome
-      ).toBe(EntryOutcome.Granted);
+        );
+
+        if (granted) {
+          expect(entry).toEqual({
+            outcome: EntryOutcome.Granted,
+            value: level
+          });
+          expect(handler).toHaveBeenCalledTimes(1);
+        } else {
+          expect(entry).toEqual({ outcome: EntryOutcome.Denied });
+          expect(handler).not.toHaveBeenCalled();
+        }
+      }
     }
-
-    for (const accountId of [cast.reader, cast.stranger]) {
-      expect(
-        playlistEntry(
-          database(),
-          cast.playlistId,
-          accountId,
-          AccessNeed.Write,
-          handler
-        ).outcome
-      ).toBe(EntryOutcome.Denied);
-    }
-
-    expect(handler).toHaveBeenCalledTimes(2);
-  });
-
-  it('runs an owner handler for the owner alone', async () => {
-    context = await createTestContext();
-    const cast = seedCast();
-    const handler = vi.fn(() => 'managed');
-
-    for (const accountId of [cast.reader, cast.writer, cast.stranger]) {
-      expect(
-        playlistEntry(
-          database(),
-          cast.playlistId,
-          accountId,
-          AccessNeed.Owner,
-          handler
-        ).outcome
-      ).toBe(EntryOutcome.Denied);
-    }
-
-    expect(
-      playlistEntry(
-        database(),
-        cast.playlistId,
-        cast.owner,
-        AccessNeed.Owner,
-        handler
-      ).outcome
-    ).toBe(EntryOutcome.Granted);
-    expect(handler).toHaveBeenCalledTimes(1);
-  });
+  );
 });
 
 describe('the track entry seam', () => {

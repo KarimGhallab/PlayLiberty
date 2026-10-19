@@ -1,63 +1,48 @@
-import { ShareLevel } from '@playliberty/contracts';
+import { and, eq, sql } from 'drizzle-orm';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
+import { associations, playlists } from '../../platform/database/schema.js';
+import { playlistReaches } from './playlistAccess.js';
+import { AccessNeed } from './rule.js';
 
 /*
  * A track is instance-wide, keyed by video id: access through a playlist that
- * associates it. Its module because an unreachable track reads as a 403, not
- * a deleted one, where an unreachable playlist reads as a 404.
+ * associates it. Its module because an unreachable track reads as a 403, not a
+ * deleted one, where an unreachable playlist reads as a 404.
  */
-const TRACK_ACCESS_SQL = `
-  select 1 as allowed
-  from association a
-  join playlist p on p.id = a.playlist_id
-  where a.track_id = ?
-    and (
-      p.owner_account_id = ?
-      or exists (select 1 from share s where s.playlist_id = p.id and s.account_id = ?)
-    )
-  limit 1
-`;
+
+function trackAllowed(
+  database: DatabaseHandle,
+  trackId: string,
+  accountId: string,
+  need: AccessNeed
+): boolean {
+  return (
+    database.db
+      .select({ allowed: sql<number>`1` })
+      .from(associations)
+      .innerJoin(playlists, eq(playlists.id, associations.playlistId))
+      .where(
+        and(eq(associations.trackId, trackId), playlistReaches(accountId, need))
+      )
+      .limit(1)
+      .get() !== undefined
+  );
+}
 
 export function canAccountAccessTrack(
   database: DatabaseHandle,
   trackId: string,
   accountId: string
 ): boolean {
-  return (
-    database.sqlite
-      .prepare(TRACK_ACCESS_SQL)
-      .get(trackId, accountId, accountId) !== undefined
-  );
+  return trackAllowed(database, trackId, accountId, AccessNeed.Read);
 }
 
-/* Owner of a holding playlist or a write collaborator, not a read one. The
- * level is a parameter, so a new share level cannot drift out of the SQL. */
-const TRACK_WRITE_ACCESS_SQL = `
-  select 1 as allowed
-  from association a
-  join playlist p on p.id = a.playlist_id
-  where a.track_id = ?
-    and (
-      p.owner_account_id = ?
-      or exists (
-        select 1 from share s
-        where s.playlist_id = p.id
-          and s.account_id = ?
-          and s.level = ?
-      )
-    )
-  limit 1
-`;
-
+/* Owner of a holding playlist or a write collaborator, not a read one. */
 export function canAccountWriteTrack(
   database: DatabaseHandle,
   trackId: string,
   accountId: string
 ): boolean {
-  return (
-    database.sqlite
-      .prepare(TRACK_WRITE_ACCESS_SQL)
-      .get(trackId, accountId, accountId, ShareLevel.Write) !== undefined
-  );
+  return trackAllowed(database, trackId, accountId, AccessNeed.Write);
 }

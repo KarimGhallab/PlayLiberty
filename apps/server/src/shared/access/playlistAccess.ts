@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 
 import type { PlaylistAccess } from '@playliberty/contracts';
@@ -10,6 +10,7 @@ import {
   playlists,
   shares
 } from '../../platform/database/schema.js';
+import { AccessNeed, ownerGrants, shareLevelsFor } from './rule.js';
 
 /*
  * An account reaches a playlist it owns or holds a share on; no global library,
@@ -54,19 +55,34 @@ function toAccess(
   return row.level;
 }
 
+/*
+ * The one access condition: ownership, or a share at a level the need accepts.
+ * The page fragment and both track queries call it, so the rule is written once.
+ */
+export function playlistReaches(accountId: string, need: AccessNeed): SQL {
+  const owner = ownerGrants(need)
+    ? sql`${playlists.ownerAccountId} = ${accountId}`
+    : sql`0 = 1`;
+  const levels = shareLevelsFor(need);
+  const share =
+    levels.length === 0
+      ? sql`0 = 1`
+      : sql`exists (
+          select 1 from ${shares}
+          where ${shares.playlistId} = ${playlists.id}
+            and ${shares.accountId} = ${accountId}
+            and ${inArray(shares.level, [...levels])}
+        )`;
+
+  return sql`(${owner} or ${share})`;
+}
+
 /* A SQL fragment, so "the playlists I can see" composes into Drizzle. */
 export function playlistVisibleTo(
   database: DatabaseHandle,
   accountId: string
 ): SQL {
-  return sql`(
-    ${playlists.ownerAccountId} = ${accountId}
-    or exists (
-      select 1 from ${shares}
-      where ${shares.playlistId} = ${playlists.id}
-        and ${shares.accountId} = ${accountId}
-    )
-  )`;
+  return playlistReaches(accountId, AccessNeed.Read);
 }
 
 export function resolvePlaylistAccess(
@@ -148,6 +164,7 @@ export function playlistAudiences(
     return [];
   }
 
+  const levels = shareLevelsFor(AccessNeed.Read);
   const rows = database.db
     .select({
       playlistId: playlists.id,
@@ -155,7 +172,13 @@ export function playlistAudiences(
       sharedAccountId: shares.accountId
     })
     .from(playlists)
-    .leftJoin(shares, eq(shares.playlistId, playlists.id))
+    .leftJoin(
+      shares,
+      and(
+        eq(shares.playlistId, playlists.id),
+        inArray(shares.level, [...levels])
+      )
+    )
     .where(inArray(playlists.id, playlistIds))
     .all();
 
@@ -163,7 +186,10 @@ export function playlistAudiences(
 
   for (const row of rows) {
     const accounts = members.get(row.playlistId) ?? new Set<string>();
-    accounts.add(row.ownerAccountId);
+
+    if (ownerGrants(AccessNeed.Read)) {
+      accounts.add(row.ownerAccountId);
+    }
 
     if (row.sharedAccountId !== null) {
       accounts.add(row.sharedAccountId);

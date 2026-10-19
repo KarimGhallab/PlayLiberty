@@ -2,18 +2,15 @@ import type { PlaylistAccess } from '@playliberty/contracts';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import { resolvePlaylistAccess } from './playlistAccess.js';
+import { AccessNeed, satisfies } from './rule.js';
 import { canAccountAccessTrack, canAccountWriteTrack } from './trackAccess.js';
 
-/*
- * The entry seam: every playlist- or track-scoped entry goes through it, so the
- * need-to-level rule is stated here once and a denial is not a status.
- */
+export { AccessNeed };
 
-export enum AccessNeed {
-  Read = 'read',
-  Write = 'write',
-  Owner = 'owner'
-}
+/*
+ * The entry seam: every playlist- or track-scoped entry goes through it, so a
+ * denial is structural. The rule it asks lives in `rule.ts`.
+ */
 
 export enum EntryOutcome {
   Granted = 'granted',
@@ -23,18 +20,6 @@ export enum EntryOutcome {
 export type Entry<Result> =
   | { readonly outcome: EntryOutcome.Granted; readonly value: Result }
   | { readonly outcome: EntryOutcome.Denied };
-
-function satisfies(access: PlaylistAccess, need: AccessNeed): boolean {
-  if (need === AccessNeed.Read) {
-    return true;
-  }
-
-  if (need === AccessNeed.Write) {
-    return access === 'owner' || access === 'write';
-  }
-
-  return access === 'owner';
-}
 
 /* The handler gets the resolved level, so a view it builds cannot disagree with
  * the check. */
