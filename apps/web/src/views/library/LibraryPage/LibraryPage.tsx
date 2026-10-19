@@ -2,7 +2,6 @@ import { IconPlus } from '@tabler/icons-react';
 import { useEffect, useId, useState } from 'react';
 
 import type { PlaylistWithCounts } from '@playliberty/contracts';
-import type { Messages, Translator } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
 import { problemSentence } from '../../../shared/api/problem/problem';
@@ -16,11 +15,7 @@ import FloatingAction from '../../../shared/components/FloatingAction/FloatingAc
 import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
-import UndoToast from '../../../shared/components/UndoToast/UndoToast';
-import {
-  UNDO_WINDOW_MS,
-  useDeferredAction
-} from '../../../shared/components/useDeferredAction/useDeferredAction';
+import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { currentTrack } from '../../../shared/player/types';
 import {
@@ -41,25 +36,8 @@ import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';
 
 /*
- * The displaced delete never reached the server, so naming the playlist it
- * dropped is the honest correction rather than a count.
- */
-function replacedSentence(
-  replaced: { detail: string | null } | null,
-  t: Translator<Messages>
-) {
-  if (replaced === null) {
-    return null;
-  }
-  if (replaced.detail === null) {
-    return t('library.replaced');
-  }
-  return t('library.willNotDelete', { name: replaced.detail });
-}
-
-/*
- * Four states and no fifth: loading, failure, the empty gallery, the list. The
- * page owns the one undo window, so a second delete replaces the first.
+ * Four states and no fifth: loading, failure, the empty gallery, the list. Each
+ * delete opens its own undo window, so a second one stacks rather than replaces.
  */
 export default function LibraryPage() {
   const { t } = useI18n();
@@ -115,7 +93,7 @@ export default function LibraryPage() {
       <PlaylistItem
         playlist={playlist}
         ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
-        pending={deferred.pending?.id === playlist.id}
+        pending={deferred.windows.some(entry => entry.id === playlist.id)}
         layout={isMobile ? 'card' : 'tile'}
         menu={actions.menuFor(playlist)}
         onPlay={() => play(playlist)}
@@ -215,18 +193,6 @@ export default function LibraryPage() {
         problem={refused}
       />
       {actions.dialogs}
-      {deferred.pending !== null ? (
-        <UndoToast
-          message={deferred.pending.message}
-          detail={deferred.pending.detail}
-          replacedLabel={replacedSentence(deferred.replaced, t)}
-          windowKey={deferred.windowId}
-          durationMs={UNDO_WINDOW_MS}
-          actionLabel={t('common.cancel')}
-          onAction={deferred.cancel}
-          onDismiss={deferred.cancel}
-        />
-      ) : null}
       {refusal === null ? null : (
         <NoticeToast
           {...refusalNotice(refusal, t)}

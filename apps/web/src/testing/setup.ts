@@ -2,6 +2,8 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 
+import { resetDeferredActions } from '../shared/components/useDeferredAction/deferredActionStore';
+
 import { server } from './mocks/server';
 
 /*
@@ -30,6 +32,7 @@ afterEach(() => {
   document.body.innerHTML = '';
   window.localStorage.clear();
   window.sessionStorage.clear();
+  resetDeferredActions();
 });
 
 afterAll(() => server.close());

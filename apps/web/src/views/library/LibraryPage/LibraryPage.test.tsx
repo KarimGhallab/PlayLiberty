@@ -24,6 +24,7 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
+import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
@@ -333,6 +334,7 @@ function renderLibraryPage() {
     <QueryClientProvider client={queryClient}>
       <I18nProvider preferred={['en']}>
         <RouterProvider router={router} />
+        <DeferredToasts />
       </I18nProvider>
     </QueryClientProvider>
   );
@@ -1125,7 +1127,7 @@ describe('LibraryPage', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('names the playlist a second delete replaces', async () => {
+  it('keeps both deleted playlists on their own stacked toasts', async () => {
     server.use(
       http.get(mockUrl(endpoints.playlists), () =>
         HttpResponse.json({
@@ -1150,16 +1152,19 @@ describe('LibraryPage', () => {
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Rain On The Window');
-
     fireEvent.click(
       screen.getByRole('button', { name: 'More actions for Night Bus' })
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
 
-    const toast = screen.getByRole('status');
-    expect(toast).toHaveTextContent('Night Bus');
-    expect(toast).toHaveTextContent('“Rain On The Window” will not be deleted');
+    const toasts = screen.getAllByRole('status');
+
+    expect(toasts).toHaveLength(2);
+    expect(toasts[0]).toHaveTextContent('Night Bus');
+    expect(toasts[1]).toHaveTextContent('Rain On The Window');
+    expect(
+      screen.queryByText('“Rain On The Window” will not be deleted')
+    ).not.toBeInTheDocument();
   });
 
   it('marks a playlist pending while its delete waits, and lifts it on Cancel', async () => {

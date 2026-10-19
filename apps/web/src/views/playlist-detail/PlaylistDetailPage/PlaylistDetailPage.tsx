@@ -42,11 +42,7 @@ import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
-import UndoToast from '../../../shared/components/UndoToast/UndoToast';
-import {
-  UNDO_WINDOW_MS,
-  useDeferredAction
-} from '../../../shared/components/useDeferredAction/useDeferredAction';
+import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
 import { hasPlayableTrack } from '../../../shared/player/playable';
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
@@ -238,7 +234,9 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [settingRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
-  const playlistPending = deferred.pending?.id === playlistId;
+  const playlistPending = deferred.windows.some(
+    entry => entry.id === playlistId
+  );
   const playingThis = isPlaying && isQueue;
 
   /*
@@ -502,7 +500,9 @@ export default function PlaylistDetailPage() {
                     playing={isCurrent && isPlaying}
                     pending={
                       playlistPending ||
-                      deferred.pending?.id === association.track.id
+                      deferred.windows.some(
+                        entry => entry.id === association.track.id
+                      )
                     }
                     onPlay={playTrack}
                     onRetry={canWrite ? retryTrack : undefined}
@@ -540,16 +540,6 @@ export default function PlaylistDetailPage() {
         }}
       />
 
-      {deferred.pending !== null ? (
-        <UndoToast
-          message={deferred.pending.message}
-          detail={deferred.pending.detail}
-          durationMs={UNDO_WINDOW_MS}
-          actionLabel={t('common.cancel')}
-          onAction={deferred.cancel}
-          onDismiss={deferred.cancel}
-        />
-      ) : null}
       {/* A failure with a retry control is not also announced as a dead end. */}
       {transition.refusal === null || transition.retryable ? null : (
         <NoticeToast

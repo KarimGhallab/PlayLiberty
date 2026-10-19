@@ -7,6 +7,7 @@ import { I18nProvider } from '@playliberty/i18n';
 import '@playliberty/tokens/tokens.css';
 
 import { ApiError } from './shared/api/client/client';
+import DeferredToasts from './shared/components/UndoToast/DeferredToasts';
 import { attachPlayerPersistence } from './shared/player/playerPersistence/playerPersistence';
 import { usePlayerStore } from './shared/player/playerStore/playerStore';
 import './shared/styles/base.scss';
@@ -43,6 +44,7 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <RouterProvider router={router} />
+        <DeferredToasts />
       </I18nProvider>
     </QueryClientProvider>
   </StrictMode>

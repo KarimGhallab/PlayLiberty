@@ -37,6 +37,7 @@ import {
   problemResponse
 } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
+import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { stubViewport } from '../../../testing/viewport';
 import PlaylistDetailPage from './PlaylistDetailPage';
 
@@ -72,6 +73,7 @@ function renderDetail(playlistId = PLAYLIST_ID) {
     <QueryClientProvider client={queryClient}>
       <I18nProvider preferred={['en']}>
         <RouterProvider router={router} />
+        <DeferredToasts />
       </I18nProvider>
     </QueryClientProvider>
   );

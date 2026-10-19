@@ -22,7 +22,7 @@ import {
 } from '../api/queries/queries';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
-import type { PendingAction } from '../components/useDeferredAction/useDeferredAction';
+import type { PendingAction } from '../components/useDeferredAction/types';
 
 /*
  * One module owns a surface's playlist actions: the four mutations, the menu

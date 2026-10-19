@@ -30,8 +30,6 @@ export const en = {
       other: '{count} tracks are not stored'
     },
     deleteDeferred: 'Deleting playlist',
-    replaced: 'The earlier action was replaced.',
-    willNotDelete: '“{name}” will not be deleted.',
     empty: {
       heading: 'No playlists yet',
       promise:

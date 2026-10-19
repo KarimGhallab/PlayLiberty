@@ -1,167 +1,118 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetDeferredActions } from './deferredActionStore';
+import type { PendingAction } from './types';
 import { useDeferredAction } from './useDeferredAction';
 
+function action(id: string, commit: () => void, detail = id): PendingAction {
+  return { id, message: 'Deleting playlist', detail, commit };
+}
+
 describe('useDeferredAction', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
   afterEach(() => {
+    resetDeferredActions();
     vi.useRealTimers();
   });
 
-  it('runs the commit only when the window closes', () => {
-    vi.useFakeTimers();
+  it('commits an action when its own window closes', () => {
     const commit = vi.fn();
     const { result } = renderHook(() => useDeferredAction(1000));
 
-    act(() =>
-      result.current.defer({
-        id: 'x',
-        message: 'Removed track',
-        detail: 'x',
-        commit
-      })
-    );
+    act(() => result.current.defer(action('x', commit)));
 
     expect(commit).not.toHaveBeenCalled();
-    expect(result.current.pending?.message).toBe('Removed track');
+    expect(result.current.windows.map(window => window.id)).toEqual(['x']);
 
     act(() => vi.advanceTimersByTime(1000));
 
     expect(commit).toHaveBeenCalledTimes(1);
-    expect(result.current.pending).toBeNull();
+    expect(result.current.windows).toEqual([]);
   });
 
-  it('cancels so the commit never runs', () => {
-    vi.useFakeTimers();
+  it('commits both windows when neither is cancelled', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { result } = renderHook(() => useDeferredAction(1000));
+
+    act(() => result.current.defer(action('a', first)));
+    act(() => result.current.defer(action('b', second)));
+
+    expect(result.current.windows.map(window => window.id)).toEqual(['a', 'b']);
+
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(result.current.windows).toEqual([]);
+  });
+
+  it('cancels only the window it names', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { result } = renderHook(() => useDeferredAction(1000));
+
+    act(() => result.current.defer(action('a', first)));
+    act(() => result.current.defer(action('b', second)));
+
+    const [firstWindow] = result.current.windows;
+    act(() => result.current.cancel(firstWindow.key));
+
+    expect(result.current.windows.map(window => window.id)).toEqual(['b']);
+
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  it('commits a window when its surface unmounts', () => {
     const commit = vi.fn();
-    const { result } = renderHook(() => useDeferredAction(1000));
+    const { result, unmount } = renderHook(() => useDeferredAction(1000));
 
-    act(() =>
-      result.current.defer({
-        id: 'x',
-        message: 'Removed track',
-        detail: 'x',
-        commit
-      })
-    );
-    act(() => result.current.cancel());
-    act(() => vi.advanceTimersByTime(5000));
+    act(() => result.current.defer(action('x', commit)));
+    unmount();
 
-    expect(commit).not.toHaveBeenCalled();
-    expect(result.current.pending).toBeNull();
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(commit).toHaveBeenCalledTimes(1);
   });
 
-  it('replaces a pending window rather than firing it', () => {
-    vi.useFakeTimers();
+  it('keeps the open windows across a remount', () => {
+    const commit = vi.fn();
+    const first = renderHook(() => useDeferredAction(1000));
+
+    act(() => first.result.current.defer(action('x', commit)));
+    first.unmount();
+
+    const second = renderHook(() => useDeferredAction(1000));
+
+    expect(second.result.current.windows.map(window => window.id)).toEqual([
+      'x'
+    ]);
+
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes one window for a repeated press of the same action', () => {
     const first = vi.fn();
     const second = vi.fn();
     const { result } = renderHook(() => useDeferredAction(1000));
 
-    act(() =>
-      result.current.defer({
-        id: 'first',
-        message: 'first',
-        detail: null,
-        commit: first
-      })
-    );
-    act(() =>
-      result.current.defer({
-        id: 'second',
-        message: 'second',
-        detail: null,
-        commit: second
-      })
-    );
+    act(() => result.current.defer(action('a', first)));
+    act(() => result.current.defer(action('a', second)));
+
+    expect(result.current.windows).toHaveLength(1);
+
     act(() => vi.advanceTimersByTime(1000));
 
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
-  });
-
-  it('reports the action a window displaced, and clears it when the window ends', () => {
-    vi.useFakeTimers();
-    const first = vi.fn();
-    const second = vi.fn();
-    const { result } = renderHook(() => useDeferredAction(1000));
-
-    act(() =>
-      result.current.defer({
-        id: 'a',
-        message: 'Deleting playlist',
-        detail: 'A',
-        commit: first
-      })
-    );
-    const firstWindow = result.current.windowId;
-    expect(result.current.replaced).toBeNull();
-
-    act(() =>
-      result.current.defer({
-        id: 'b',
-        message: 'Deleting playlist',
-        detail: 'B',
-        commit: second
-      })
-    );
-
-    expect(result.current.replaced?.detail).toBe('A');
-    expect(result.current.pending?.detail).toBe('B');
-    expect(result.current.windowId).toBeGreaterThan(firstWindow);
-
-    act(() => vi.advanceTimersByTime(1000));
-
-    expect(result.current.replaced).toBeNull();
-    expect(first).not.toHaveBeenCalled();
-    expect(second).toHaveBeenCalledTimes(1);
-  });
-
-  it('reads a repeated press of the same action as one intent', () => {
-    vi.useFakeTimers();
-    const { result } = renderHook(() => useDeferredAction(1000));
-
-    act(() =>
-      result.current.defer({
-        id: 'a',
-        message: 'Deleting playlist',
-        detail: 'A',
-        commit: vi.fn()
-      })
-    );
-    act(() =>
-      result.current.defer({
-        id: 'a',
-        message: 'Deleting playlist',
-        detail: 'A',
-        commit: vi.fn()
-      })
-    );
-
-    expect(result.current.replaced).toBeNull();
-  });
-
-  it('treats the same name on a different subject as a replacement', () => {
-    vi.useFakeTimers();
-    const { result } = renderHook(() => useDeferredAction(1000));
-
-    act(() =>
-      result.current.defer({
-        id: 'playlist-a',
-        message: 'Deleting playlist',
-        detail: 'Same Name',
-        commit: vi.fn()
-      })
-    );
-    act(() =>
-      result.current.defer({
-        id: 'playlist-b',
-        message: 'Deleting playlist',
-        detail: 'Same Name',
-        commit: vi.fn()
-      })
-    );
-
-    expect(result.current.replaced?.id).toBe('playlist-a');
-    expect(result.current.pending?.id).toBe('playlist-b');
   });
 });

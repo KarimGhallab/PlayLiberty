@@ -366,7 +366,10 @@ export function usePlaylistHeader({
   );
 
   const countNode = (
-    <div className={styles.playlistHeader__count}>{countLine}</div>
+    <div className={styles.playlistHeader__count}>
+      {countLine}
+      {nameMark}
+    </div>
   );
 
   /* The one state element; the status line holds it beside the count, the

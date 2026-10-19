@@ -32,8 +32,6 @@ export const fr: Messages = {
       other: '{count} pistes ne sont pas enregistrées'
     },
     deleteDeferred: 'Suppression de la playlist',
-    replaced: "L'action précédente a été remplacée.",
-    willNotDelete: '« {name} » ne sera pas supprimée.',
     empty: {
       heading: 'Aucune playlist',
       promise:

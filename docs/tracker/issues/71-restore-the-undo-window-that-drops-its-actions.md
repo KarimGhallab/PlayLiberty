@@ -1,53 +1,12 @@
 # 71: The undo window commits one action and drops the rest
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
-**Blocked by:** None. Can start immediately.
+## Outcome
 
-## Agent Brief
+The deferred-action store is module-level and owns one timer per window. `useDeferredAction` reads the open windows, `defer` adds one (a repeated press of the same intent refreshes it), and `cancel(key)` removes only that window. Leaving a surface no longer clears anything: each timer commits on its own, and the windows survive a remount or a route change.
 
-**Category:** bug
-**Summary:** The deferred-action window holds one pending action in one slot. A second deferral replaces the first without committing it, unmounting the surface cancels the only timer, and the toast replaces its predecessor instead of stacking.
+`UndoToastStack` renders one `UndoToast` per window, newest first, so every window is visible and each Cancel removes only its own. The app renders the stack once above the routes, in `main.tsx`, so a route change keeps the toast surface alive; the library and detail pages read the same windows for their pending marks. The displaced copy (`replaced`, `windowId`, `replacedLabel`, `library.replaced`, `library.willNotDelete`) is gone.
 
-**Current behavior:**
-`useDeferredAction.ts` keeps `{ pending, replaced, windowId }`. `defer` clears the running timer and overwrites `pending`; the displaced action is kept only as `replaced` for the toast copy, and `close` drops it without committing. `useEffect(() => clear, [clear])` (line 96) clears the timer on unmount. So deleting playlist A and then playlist B inside the 6s window never commits A and replaces A's toast, and deleting A then navigating away never commits A while the toast unmounts silently.
-
-**Desired behavior:**
-Every deferral owns its own window and commits unless it is cancelled; a new deferral does not cancel an older one. The toasts stack, the newer pushing the older up, and each keeps its own Cancel for its own remaining time. A window that is open when its surface unmounts still commits.
-
-**Key interfaces:**
-
-- `useDeferredAction` returns the open windows, not one `pending`.
-- `UndoToast` renders one toast per window; the existing class and copy stay.
-- The window list survives a route change (a module-level store or a provider above the routes).
-
-**Acceptance criteria:**
-
-- [ ] Deleting two items inside the window commits both when neither is cancelled.
-- [ ] Cancelling one toast leaves the other open and its commit running.
-- [ ] Navigating away inside the window still commits the action.
-- [ ] Both toasts are visible at once, the newer above the older.
-- [ ] A test holds the two-deletions case and the unmount case.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The mutation payloads and the server side of delete and remove.
-- The toast's visual design beyond stacking.
-
-## Observed
-
-- Delete a playlist, delete a second one within 6s: only the second commits; the first is silently kept.
-- Delete a playlist, open another one within 6s: the toast disappears and the delete never commits.
-- The second toast replaces the first instead of appearing beside it.
-
-## Expected
-
-- Each deferred action commits on its own window, and every open window is visible until it ends.
-
-## Evidence
-
-- `apps/web/src/shared/components/useDeferredAction/useDeferredAction.ts:74-96`.
-- `apps/web/src/shared/components/UndoToast/UndoToast.tsx`.
-- Impeccable critique of `apps/web`, 2026-10-19, priority issue P1; second scenario reported by the maintainer during triage.
+Verification: `pnpm run build` and `pnpm run lint` pass; the web suite is 504 passed across 51 files; `pnpm test:e2e` is 35 passed. `useDeferredAction.test.ts` holds the two-window commit, the single-window cancel, the unmount commit and the remount case; `UndoToastStack.test.tsx` holds the stack order and the per-toast cancel; `LibraryPage.test.tsx` holds the two toasts.
