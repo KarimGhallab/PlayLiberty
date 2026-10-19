@@ -397,11 +397,13 @@ export default function PlaylistDetailPage() {
 
             {!failed &&
             latestRun.data !== null &&
-            latestRun.data !== undefined ? (
+            latestRun.data !== undefined &&
+            counts !== undefined ? (
               <div className={styles.playlistDetail__state}>
                 <SyncSummary
                   run={latestRun.data}
                   now={new Date()}
+                  failedCount={counts[TrackFileStatus.Failed]}
                   downloadingCount={downloadingCount}
                 />
               </div>

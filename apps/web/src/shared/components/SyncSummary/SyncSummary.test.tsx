@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { SyncRunStatus } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
+import { SyncRunStatus } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import SyncSummary from './SyncSummary';
@@ -30,12 +30,17 @@ function run(overrides: Partial<SyncRun> = {}): SyncRun {
   };
 }
 
-function renderSummary(summary: SyncRun, downloadingCount?: number) {
+function renderSummary(
+  summary: SyncRun,
+  failedCount: number,
+  downloadingCount?: number
+) {
   return render(
     <I18nProvider preferred={['en']}>
       <SyncSummary
         run={summary}
         now={NOW}
+        failedCount={failedCount}
         downloadingCount={downloadingCount}
       />
     </I18nProvider>
@@ -43,28 +48,42 @@ function renderSummary(summary: SyncRun, downloadingCount?: number) {
 }
 
 describe('SyncSummary', () => {
-  it('draws the four figures a finished run produced', () => {
-    renderSummary(run());
+  it('draws the four figures the last sync produced', () => {
+    renderSummary(run(), 1);
 
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('kept')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('added')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
-    expect(screen.getByText('removed')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('failed')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '3 kept' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '5 added' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: '2 removed' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '1 failed' })).toBeInTheDocument();
+    expect(screen.getByText('Last sync 55 minutes ago')).toBeInTheDocument();
+  });
+
+  /* Downloads fail after the run settles, so the band reports the playlist's
+   * live failures rather than the figure the run recorded. */
+  it("draws the tracks failed rather than the run's settled figure", () => {
+    renderSummary(run({ addedCount: 4, failedCount: 0 }), 4);
+
+    expect(screen.getByRole('group', { name: '4 failed' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: '0 failed' })
+    ).not.toBeInTheDocument();
   });
 
   it('draws the downloading line and its own stamp while a run is active', () => {
-    renderSummary(run({ status: SyncRunStatus.Running, finishedAt: null }), 4);
+    renderSummary(
+      run({ status: SyncRunStatus.Running, finishedAt: null }),
+      0,
+      4
+    );
 
     expect(screen.getByText('4 downloading')).toBeInTheDocument();
     expect(screen.getByText('Syncing')).toBeInTheDocument();
   });
 
   it('draws no downloading line once the run has finished', () => {
-    renderSummary(run(), 4);
+    renderSummary(run(), 1, 4);
 
     expect(screen.queryByText('4 downloading')).not.toBeInTheDocument();
   });

@@ -1040,6 +1040,57 @@ describe('PlaylistDetailPage', () => {
     expect(await screen.findByText('kept')).toBeInTheDocument();
   });
 
+  /* The run settled with nothing failed; the downloads failed afterwards, so
+   * the band must read the same failure figure as the chips and the rows. */
+  it('draws the tracks failed when the run settled cleanly', async () => {
+    const all = [
+      trackJson('failed-1', 'Failed One', 0, TrackFileStatus.Failed),
+      trackJson('failed-2', 'Failed Two', 1, TrackFileStatus.Failed),
+      trackJson('failed-3', 'Failed Three', 2, TrackFileStatus.Failed),
+      trackJson('failed-4', 'Failed Four', 3, TrackFileStatus.Failed)
+    ];
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-1',
+            playlistId: 'playlist-1',
+            status: 'completed',
+            addedCount: 4,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T11:59:00.000Z',
+            finishedAt: '2026-09-29T12:00:00.000Z',
+            error: null
+          })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: all,
+            total: all.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all)
+          })
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('group', { name: '4 failed' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Failed 4' })
+    ).toBeInTheDocument();
+  });
+
   /*
    * The page pairs the status with the run's reason, which the component test
    * alone cannot prove.

@@ -282,9 +282,9 @@ export const en = {
       one: 'failed',
       other: 'failed'
     },
+    lastSync: 'Last sync {time}',
     downloading: '{count} downloading',
-    syncing: 'Syncing',
-    syncedJustNow: 'Synced just now'
+    syncing: 'Syncing'
   },
   syncError: {
     reach: 'Could not reach {provider}, the playlist may not be up to date.',

@@ -286,9 +286,9 @@ export const fr: Messages = {
       one: 'échouée',
       other: 'échouées'
     },
+    lastSync: 'Dernière synchronisation {time}',
     downloading: '{count} en téléchargement.',
-    syncing: 'Synchronisation',
-    syncedJustNow: "Synchronisée à l'instant"
+    syncing: 'Synchronisation'
   },
   syncError: {
     reach:
