@@ -186,7 +186,7 @@
     display: block;
     flex-shrink: 0;
     overflow: hidden;
-    background-color: var(--surface-raised);
+    background-color: var(--sleeve, var(--surface-raised));
     border: 1px solid var(--line);
     border-radius: var(--radius-card);
   }
@@ -293,6 +293,7 @@
 
   &__meta {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: var(--space-3);
@@ -347,15 +348,15 @@
     white-space: nowrap;
   }
 
-  /* The detail's named sync beside its state: the accent on the word alone,
-   * because the hero play owns the screen's one fill. */
+  /* The detail's named sync beside its state: its own surface keeps the accent
+   * legible over the cover, whose ground can be any colour. */
   &__sync {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    min-height: 24px;
+    min-height: 28px;
     margin-inline-start: auto;
-    padding: 0;
+    padding: 0 var(--space-3);
     flex-shrink: 0;
     color: var(--accent);
     font-family: inherit;
@@ -363,20 +364,23 @@
     font-weight: var(--weight-medium);
     line-height: var(--leading-normal);
     white-space: nowrap;
-    background: none;
-    border: 0;
+    background: var(--surface-raised);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
     cursor: pointer;
 
     &:hover:not(:disabled) {
-      text-decoration: underline;
+      background: var(--surface);
     }
 
     &:disabled {
-      color: var(--control-disabled-fg);
       cursor: default;
     }
 
-    /* The run in flight keeps its colour, as the empty state's button does. */
+    &:disabled:not([aria-busy='true']) {
+      color: var(--control-disabled-fg);
+    }
+
     &[aria-busy='true'] {
       color: var(--emphasis);
       cursor: progress;
@@ -741,7 +745,7 @@
     overflow: hidden;
     /* background-color, not the shorthand: the shorthand resets
      * background-image, which is how the no-art texture is drawn. */
-    background-color: var(--surface-raised);
+    background-color: var(--sleeve, var(--surface-raised));
     border: 1px solid var(--line);
     border-radius: var(--radius-card);
   }
@@ -790,7 +794,6 @@
   &__mart[data-art='no-art'],
   &__tart[data-art='no-art'] {
     --hatch: 12px;
-    background-color: var(--sleeve, var(--surface-raised));
     background-image: repeating-linear-gradient(
       45deg,
       transparent 0,
@@ -1057,7 +1060,7 @@
     width: 100%;
     aspect-ratio: 1;
     overflow: hidden;
-    background-color: var(--surface-raised);
+    background-color: var(--sleeve, var(--surface-raised));
     border: 1px solid var(--line);
     border-radius: var(--radius-card);
   }

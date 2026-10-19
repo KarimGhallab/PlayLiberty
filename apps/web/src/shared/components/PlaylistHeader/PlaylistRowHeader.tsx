@@ -69,7 +69,7 @@ export default function PlaylistRowHeader({
         aria-hidden="true"
         tabIndex={-1}
         data-art={cover === null ? 'no-art' : 'art'}
-        data-sleeve={cover === null ? sleeve : undefined}>
+        data-sleeve={sleeve}>
         {cover === null ? null : (
           <img
             className={styles.playlistHeader__art}

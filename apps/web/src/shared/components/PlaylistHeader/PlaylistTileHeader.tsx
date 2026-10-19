@@ -96,7 +96,7 @@ export default function PlaylistTileHeader({
       <div
         className={styles.playlistHeader__tart}
         data-art={cover === null ? 'no-art' : 'art'}
-        data-sleeve={cover === null ? sleeve : undefined}>
+        data-sleeve={sleeve}>
         {cover === null ? null : (
           <img
             className={styles.playlistHeader__tartArt}

@@ -68,13 +68,13 @@ export default function PlaylistCardHeader({
       <div
         className={styles.playlistHeader__mart}
         data-art={cover === null ? 'no-art' : 'art'}
-        data-sleeve={cover === null ? sleeve : undefined}>
+        data-sleeve={sleeve}>
         {cover === null ? null : (
           <img
             className={styles.playlistHeader__martArt}
             src={cover}
             alt=""
-            loading="lazy"
+            loading={item ? 'lazy' : 'eager'}
             decoding="async"
             onError={onCoverError}
           />

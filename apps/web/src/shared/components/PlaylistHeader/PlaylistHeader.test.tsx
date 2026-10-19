@@ -294,8 +294,40 @@ describe('PlaylistHeader', () => {
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
     /* The cover is the track's own route, not a third-party URL. */
-    expect(container.querySelector('img')?.getAttribute('src')).toBe(
-      '/api/v1/tracks/track-9/thumbnail'
+    const image = container.querySelector('img');
+    expect(image?.getAttribute('src')).toBe('/api/v1/tracks/track-9/thumbnail');
+    expect(image).toHaveAttribute('loading', 'lazy');
+    expect(container.querySelector('[data-art="art"]')).toHaveAttribute(
+      'data-sleeve'
+    );
+  });
+
+  it('loads the detail hero eagerly and keeps the gallery item lazy', async () => {
+    const item = renderCard(playlist({ coverTrackId: 'track-9' }), null, {
+      item: true
+    });
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(item.container.querySelector('img')).toHaveAttribute(
+      'loading',
+      'lazy'
+    );
+    expect(item.container.querySelector('[data-art="art"]')).toHaveAttribute(
+      'data-sleeve'
+    );
+    item.unmount();
+
+    const hero = renderCard(playlist({ coverTrackId: 'track-9' }), null, {
+      heading: true
+    });
+    await screen.findByRole('heading', { name: 'Rain On The Window' });
+
+    expect(hero.container.querySelector('img')).toHaveAttribute(
+      'loading',
+      'eager'
+    );
+    expect(hero.container.querySelector('[data-art="art"]')).toHaveAttribute(
+      'data-sleeve'
     );
   });
 
@@ -310,6 +342,9 @@ describe('PlaylistHeader', () => {
 
     /* No empty box: the failed image becomes the sleeve. */
     expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('[data-art="no-art"]')).toHaveAttribute(
+      'data-sleeve'
+    );
   });
 
   it('marks the playing row with the equalizer bars', async () => {

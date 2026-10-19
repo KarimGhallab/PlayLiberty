@@ -103,6 +103,7 @@ export default function PlaylistDetailPage() {
       void navigate({ to: '/' });
     }
   });
+
   /* The card and the row are different modules rather than two stylesheets, so
    * the viewport decides which is drawn rather than CSS. */
   const isMobile = useMediaQuery(MOBILE_QUERY);
