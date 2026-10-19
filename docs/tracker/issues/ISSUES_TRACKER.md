@@ -80,7 +80,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`67-the-detail-count-follows-the-filter-unannounced`](67-the-detail-count-follows-the-filter-unannounced.md)                                             | `resolved` | `bug`         | The identity card keeps the playlist's own size under a filter; the filtered figure stays on the rail.                      |
 | [`68-the-sync-band-excludes-download-failures-from-its-failure-count`](68-the-sync-band-excludes-download-failures-from-its-failure-count.md)             | `resolved` | `bug`         | The sync band counts the last run, so "failed 0" can stand beside four failed rows.                                         |
 | [`69-design-doc-describes-a-tile-that-does-not-ship`](69-design-doc-describes-a-tile-that-does-not-ship.md)                                               | `resolved` | `enhancement` | DESIGN.md claims a web tile with the cover beside the identity; the shipped tile puts the cover above it.                   |
-| [`70-demote-the-filled-add-on-the-detail`](70-demote-the-filled-add-on-the-detail.md)                                                                     | `triaged`  | `enhancement` | The detail fills both the hero play and Add a track, so the add is the louder primary.                                      |
+| [`70-demote-the-filled-add-on-the-detail`](70-demote-the-filled-add-on-the-detail.md)                                                                     | `resolved` | `enhancement` | The detail fills both the hero play and Add a track, so the add is the louder primary.                                      |
 
 ## Conventions
 
