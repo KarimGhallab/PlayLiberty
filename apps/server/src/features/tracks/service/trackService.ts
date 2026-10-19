@@ -8,12 +8,13 @@ import {
   EntryOutcome,
   trackEntry
 } from '../../../shared/access/entry.js';
+import type { AppContext } from '../../../shared/context.js';
+import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { tracks } from '../../../platform/database/schema.js';
 import { withDownloadQueue } from '../downloadQueue/downloadQueue.js';
-import type { DownloadQueueContext } from '../downloadQueue/downloadQueue.js';
 import { TrackTransitionOutcome } from '../trackLifecycle/trackLifecycle.js';
 import type {
   FetchWholeResult,
@@ -27,6 +28,11 @@ import {
   TrackStreamOutcome,
   TrackThumbnailOutcome
 } from '../types.js';
+
+type TrackWriteContext = Pick<
+  AppContext,
+  'database' | 'kickDownloads' | 'events'
+>;
 
 function loadTrack(
   database: DatabaseHandle,
@@ -140,7 +146,7 @@ export function toTrackView(row: TrackRow): Track {
 /* Retry a failed track without a sync. The right follows the track, so write
  * access to a holding playlist may retry it; absent reads as not-found. */
 export function retryTrackForAccount(
-  context: DownloadQueueContext,
+  context: TrackWriteContext,
   trackId: string,
   accountId: string
 ): RetryTrackResult {
@@ -178,13 +184,17 @@ export function retryTrackForAccount(
     return { outcome: RetryTrackOutcome.NotFound };
   }
 
+  if (entry.value.outcome === RetryTrackOutcome.Ok) {
+    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+  }
+
   return entry.value;
 }
 
 /* Fetch a track whole, only when no stored file exists: the file is shared
  * across every association, so overwriting it would change every playlist. */
 export function fetchTrackWholeForAccount(
-  context: DownloadQueueContext,
+  context: TrackWriteContext,
   trackId: string,
   accountId: string
 ): FetchWholeResult {
@@ -222,6 +232,10 @@ export function fetchTrackWholeForAccount(
 
   if (entry.outcome === EntryOutcome.Denied) {
     return { outcome: FetchWholeOutcome.NotFound };
+  }
+
+  if (entry.value.outcome === FetchWholeOutcome.Ok) {
+    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
   }
 
   return entry.value;

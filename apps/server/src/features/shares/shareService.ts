@@ -3,6 +3,8 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Share, ShareLevel } from '@playliberty/contracts';
 
 import { isPlaylistOwner } from '../../shared/access/playlistAccess.js';
+import type { LiveEventContext } from '../../shared/events/liveEvents.js';
+import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type { AccountRow, ShareRow } from '../../platform/database/schema.js';
@@ -67,13 +69,13 @@ export enum ShareRevokeOutcome {
 /* An upsert on the (playlist, account) index: a regrant changes the level; the
  * first created time stays. Every other refusal is the same not-found. */
 export function grantShareForAccount(
-  database: DatabaseHandle,
+  context: LiveEventContext,
   playlistId: string,
   accountId: string,
   targetAccountId: string,
   level: ShareLevel
 ): GrantShareResult {
-  if (!isPlaylistOwner(database, playlistId, accountId)) {
+  if (!isPlaylistOwner(context.database, playlistId, accountId)) {
     return { outcome: GrantShareOutcome.PlaylistNotFound };
   }
 
@@ -81,7 +83,7 @@ export function grantShareForAccount(
     return { outcome: GrantShareOutcome.SelfShare };
   }
 
-  const target = database.db
+  const target = context.database.db
     .select()
     .from(accounts)
     .where(eq(accounts.id, targetAccountId))
@@ -91,7 +93,7 @@ export function grantShareForAccount(
     return { outcome: GrantShareOutcome.TargetNotFound };
   }
 
-  const share = database.db
+  const share = context.database.db
     .insert(shares)
     .values({ playlistId, accountId: targetAccountId, level })
     .onConflictDoUpdate({
@@ -105,22 +107,24 @@ export function grantShareForAccount(
     throw new Error('The granted share could not be read back.');
   }
 
+  announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
+
   return { outcome: GrantShareOutcome.Ok, share: toShareView(share, target) };
 }
 
 /* A collaborator and a stranger get one not-found. The delete is idempotent, so
  * an absent share, even for an unknown account, still succeeds. */
 export function revokeShareForAccount(
-  database: DatabaseHandle,
+  context: LiveEventContext,
   playlistId: string,
   accountId: string,
   targetAccountId: string
 ): ShareRevokeOutcome {
-  if (!isPlaylistOwner(database, playlistId, accountId)) {
+  if (!isPlaylistOwner(context.database, playlistId, accountId)) {
     return ShareRevokeOutcome.PlaylistNotFound;
   }
 
-  database.db
+  context.database.db
     .delete(shares)
     .where(
       and(
@@ -129,6 +133,13 @@ export function revokeShareForAccount(
       )
     )
     .run();
+
+  announce(context, {
+    kind: ChangeKind.PlaylistRemoved,
+    playlistId,
+    accountIds: [targetAccountId]
+  });
+  announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
 
   return ShareRevokeOutcome.Ok;
 }

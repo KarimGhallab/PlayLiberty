@@ -15,7 +15,7 @@ import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
 import { canWritePlaylist } from '../../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../../shared/context.js';
-import { publishPlaylistChanged } from '../../../shared/events/liveEvents.js';
+import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { PlaylistRow } from '../../../platform/database/schema.js';
@@ -181,7 +181,10 @@ function beginRun(context: AppContext, playlist: PlaylistRow): StartOrConflict {
 
   database.db.insert(syncRuns).values(run).run();
 
-  publishPlaylistChanged(context, playlist.id);
+  announce(context, {
+    kind: ChangeKind.PlaylistChanged,
+    playlistId: playlist.id
+  });
 
   void reconcile(context, run.id, playlist);
 
@@ -282,7 +285,10 @@ async function reconcile(
           .run();
       })();
 
-      publishPlaylistChanged(context, playlist.id);
+      announce(context, {
+        kind: ChangeKind.PlaylistChanged,
+        playlistId: playlist.id
+      });
     });
   } catch (error) {
     // Enough to leave no run hanging and no unhandled rejection.
@@ -307,7 +313,10 @@ async function reconcile(
         .run();
     })();
 
-    publishPlaylistChanged(context, playlist.id);
+    announce(context, {
+      kind: ChangeKind.PlaylistChanged,
+      playlistId: playlist.id
+    });
   }
 }
 

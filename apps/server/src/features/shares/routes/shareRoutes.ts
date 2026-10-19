@@ -8,10 +8,6 @@ import {
 
 import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
-import {
-  publishPlaylistChanged,
-  publishPlaylistRemoved
-} from '../../../shared/events/liveEvents.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
@@ -59,7 +55,7 @@ export function registerShareRoutes(
       }
 
       const result = grantShareForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id,
         parsed.data.accountId,
@@ -97,7 +93,6 @@ export function registerShareRoutes(
           account: parsed.data.accountId,
           level: parsed.data.level
         });
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.share);
       }
 
@@ -109,7 +104,7 @@ export function registerShareRoutes(
     '/playlists/:id/shares/:accountId',
     async (request, reply) => {
       const outcome = revokeShareForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id,
         request.params.accountId
@@ -128,11 +123,6 @@ export function registerShareRoutes(
         playlist: request.params.id,
         account: request.params.accountId
       });
-      publishPlaylistRemoved(context, request.params.id, [
-        request.params.accountId
-      ]);
-      publishPlaylistChanged(context, request.params.id);
-
       return reply.code(204).send();
     }
   );

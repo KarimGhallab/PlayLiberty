@@ -12,14 +12,8 @@ import {
   SortPlaylistInputSchema
 } from '@playliberty/contracts';
 
-import { playlistAudience } from '../../../shared/access/playlistAccess.js';
 import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
-import {
-  publishPlaylistChanged,
-  publishPlaylistRemoved,
-  publishTracksChangedForPlaylists
-} from '../../../shared/events/liveEvents.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
@@ -186,7 +180,7 @@ export function registerPlaylistRoutes(
       }
 
       const result = renamePlaylistForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id,
         parsed.data.name
@@ -197,7 +191,6 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -217,7 +210,7 @@ export function registerPlaylistRoutes(
       }
 
       const result = updateSkipNonMusicForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id,
         parsed.data.skipNonMusic
@@ -228,7 +221,6 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -248,7 +240,7 @@ export function registerPlaylistRoutes(
       }
 
       const result = updateSortForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id,
         parsed.data.sort
@@ -259,7 +251,6 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -300,9 +291,8 @@ export function registerPlaylistRoutes(
   app.delete<{ Params: { id: string } }>(
     '/playlists/:id',
     async (request, reply) => {
-      const audience = playlistAudience(context.database, request.params.id);
       const outcome = deletePlaylistForAccount(
-        context.database,
+        context,
         request.params.id,
         request.account.id
       );
@@ -318,7 +308,6 @@ export function registerPlaylistRoutes(
           actor: request.account.id,
           playlist: request.params.id
         });
-        publishPlaylistRemoved(context, request.params.id, audience);
         return reply.code(204).send();
       }
 
@@ -356,7 +345,7 @@ export function registerPlaylistRoutes(
     '/playlists/:id/tracks/:trackId',
     async (request, reply) => {
       const outcome = removeTrackForAccount(
-        context.database,
+        context,
         request.params.id,
         request.params.trackId,
         request.account.id
@@ -367,7 +356,6 @@ export function registerPlaylistRoutes(
       }
 
       if (outcome === PlaylistOutcome.Ok) {
-        publishTracksChangedForPlaylists(context, [request.params.id]);
         return reply.code(204).send();
       }
 

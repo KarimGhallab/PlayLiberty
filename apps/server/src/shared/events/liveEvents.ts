@@ -2,6 +2,7 @@ import { LiveEventType } from '@playliberty/contracts';
 
 import { playlistAudience, trackAudience } from '../access/playlistAccess.js';
 import type { AppContext } from '../context.js';
+import { exhaust } from '../exhaust.js';
 
 /*
  * The live events this server emits, in one place: an event names what changed
@@ -9,7 +10,25 @@ import type { AppContext } from '../context.js';
  * who may see the playlist. The context is narrowed to what a publisher needs.
  */
 
-type LiveEventContext = Pick<AppContext, 'database' | 'events'>;
+export type LiveEventContext = Pick<AppContext, 'database' | 'events'>;
+
+/* What a commit changed, stated by the module that wrote it. */
+export enum ChangeKind {
+  PlaylistChanged = 'playlist_changed',
+  PlaylistRemoved = 'playlist_removed',
+  TrackChanged = 'track_changed',
+  TracksChangedForPlaylists = 'tracks_changed_for_playlists'
+}
+
+export type Change =
+  | { kind: ChangeKind.PlaylistChanged; playlistId: string }
+  | {
+      kind: ChangeKind.PlaylistRemoved;
+      playlistId: string;
+      accountIds: string[];
+    }
+  | { kind: ChangeKind.TrackChanged; trackId: string }
+  | { kind: ChangeKind.TracksChangedForPlaylists; playlistIds: string[] };
 
 export function publishPlaylistChanged(
   context: LiveEventContext,
@@ -66,5 +85,21 @@ export function publishTracksChangedForPlaylists(
       { type: LiveEventType.TrackChanged, playlistIds: ids },
       [accountId]
     );
+  }
+}
+
+/* The one seam from a committed change to its event: the committing module
+ * names what changed, this names who hears it. */
+export function announce(context: LiveEventContext, change: Change): void {
+  if (change.kind === ChangeKind.PlaylistChanged) {
+    publishPlaylistChanged(context, change.playlistId);
+  } else if (change.kind === ChangeKind.PlaylistRemoved) {
+    publishPlaylistRemoved(context, change.playlistId, change.accountIds);
+  } else if (change.kind === ChangeKind.TrackChanged) {
+    publishTrackChanged(context, change.trackId);
+  } else if (change.kind === ChangeKind.TracksChangedForPlaylists) {
+    publishTracksChangedForPlaylists(context, change.playlistIds);
+  } else {
+    exhaust(change);
   }
 }

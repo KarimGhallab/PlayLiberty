@@ -18,10 +18,13 @@ import {
   playlistEntry
 } from '../../shared/access/entry.js';
 import {
+  playlistAudience,
   playlistVisibleTo,
   resolvePlaylistAccessMany,
   sharedPlaylistIds
 } from '../../shared/access/playlistAccess.js';
+import type { LiveEventContext } from '../../shared/events/liveEvents.js';
+import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type {
@@ -299,71 +302,109 @@ export function readPlaylistForAccount(
   );
 }
 
+/* A write and its announcement share one interior: a refused write announces
+ * nothing because the caller only announces an Ok outcome. */
+function announcePlaylistChanged(
+  context: LiveEventContext,
+  result: ReadPlaylistResult,
+  playlistId: string
+): ReadPlaylistResult {
+  if (result.outcome === PlaylistOutcome.Ok) {
+    announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
+  }
+
+  return result;
+}
+
 /*
  * Owner alone: a write collaborator answers the same not-found a stranger does.
  * Only name and timestamp are updated; the rest are the source's facts.
  */
 export function renamePlaylistForAccount(
-  database: DatabaseHandle,
+  context: LiveEventContext,
   playlistId: string,
   accountId: string,
   name: string
 ): ReadPlaylistResult {
-  return toReadPlaylistResult(
-    playlistEntry(database, playlistId, accountId, AccessNeed.Owner, access => {
-      database.db
-        .update(playlists)
-        .set({ name, updatedAt: new Date().toISOString() })
-        .where(eq(playlists.id, playlistId))
-        .run();
+  const result = toReadPlaylistResult(
+    playlistEntry(
+      context.database,
+      playlistId,
+      accountId,
+      AccessNeed.Owner,
+      access => {
+        context.database.db
+          .update(playlists)
+          .set({ name, updatedAt: new Date().toISOString() })
+          .where(eq(playlists.id, playlistId))
+          .run();
 
-      return readPlaylist(database, playlistId, accountId, access);
-    })
+        return readPlaylist(context.database, playlistId, accountId, access);
+      }
+    )
   );
+
+  return announcePlaylistChanged(context, result, playlistId);
 }
 
 /* Not retroactive: a track snapshots the setting at creation, so this only sets
  * the default from now on. */
 export function updateSkipNonMusicForAccount(
-  database: DatabaseHandle,
+  context: LiveEventContext,
   playlistId: string,
   accountId: string,
   skipNonMusic: boolean
 ): ReadPlaylistResult {
-  return toReadPlaylistResult(
-    playlistEntry(database, playlistId, accountId, AccessNeed.Write, access => {
-      database.db
-        .update(playlists)
-        .set({ skipNonMusic, updatedAt: new Date().toISOString() })
-        .where(eq(playlists.id, playlistId))
-        .run();
+  const result = toReadPlaylistResult(
+    playlistEntry(
+      context.database,
+      playlistId,
+      accountId,
+      AccessNeed.Write,
+      access => {
+        context.database.db
+          .update(playlists)
+          .set({ skipNonMusic, updatedAt: new Date().toISOString() })
+          .where(eq(playlists.id, playlistId))
+          .run();
 
-      return readPlaylist(database, playlistId, accountId, access);
-    })
+        return readPlaylist(context.database, playlistId, accountId, access);
+      }
+    )
   );
+
+  return announcePlaylistChanged(context, result, playlistId);
 }
 
 /* Own order is stored as the absence of a value. */
 export function updateSortForAccount(
-  database: DatabaseHandle,
+  context: LiveEventContext,
   playlistId: string,
   accountId: string,
   sort: PlaylistSort
 ): ReadPlaylistResult {
-  return toReadPlaylistResult(
-    playlistEntry(database, playlistId, accountId, AccessNeed.Write, access => {
-      database.db
-        .update(playlists)
-        .set({
-          sort: sort === PlaylistSort.Playlist ? null : sort,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(playlists.id, playlistId))
-        .run();
+  const result = toReadPlaylistResult(
+    playlistEntry(
+      context.database,
+      playlistId,
+      accountId,
+      AccessNeed.Write,
+      access => {
+        context.database.db
+          .update(playlists)
+          .set({
+            sort: sort === PlaylistSort.Playlist ? null : sort,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(playlists.id, playlistId))
+          .run();
 
-      return readPlaylist(database, playlistId, accountId, access);
-    })
+        return readPlaylist(context.database, playlistId, accountId, access);
+      }
+    )
   );
+
+  return announcePlaylistChanged(context, result, playlistId);
 }
 
 /* Existence is the pin, so pinning upserts. Access is the read need: the
@@ -405,19 +446,32 @@ export function updatePinForAccount(
 /*
  * The cascade bypasses the association service's write rule, safe because the
  * only count is this row's and it is going. Media is left to the weekly prune.
+ * The audience is read before the row goes, because it cannot be read after.
  */
 export function deletePlaylistForAccount(
-  database: DatabaseHandle,
+  context: LiveEventContext,
   playlistId: string,
   accountId: string
 ): PlaylistOutcome {
   const entry = playlistEntry(
-    database,
+    context.database,
     playlistId,
     accountId,
     AccessNeed.Owner,
     () => {
-      database.db.delete(playlists).where(eq(playlists.id, playlistId)).run();
+      const accountIds = playlistAudience(context.database, playlistId);
+
+      context.database.db
+        .delete(playlists)
+        .where(eq(playlists.id, playlistId))
+        .run();
+
+      announce(context, {
+        kind: ChangeKind.PlaylistRemoved,
+        playlistId,
+        accountIds
+      });
+
       return PlaylistOutcome.Ok;
     }
   );
@@ -432,23 +486,33 @@ export function deletePlaylistForAccount(
  * the playlist nor the membership. Suppression shares the delete's transaction.
  */
 export function removeTrackForAccount(
-  database: DatabaseHandle,
+  context: LiveEventContext,
   playlistId: string,
   trackId: string,
   accountId: string
 ): PlaylistOutcome {
   const entry = playlistEntry(
-    database,
+    context.database,
     playlistId,
     accountId,
     AccessNeed.Write,
     () => {
-      const outcome = removeAssociation(database, { playlistId, trackId });
+      const outcome = removeAssociation(context.database, {
+        playlistId,
+        trackId
+      });
 
       // Only Absent is not a successful removal.
-      return outcome === AssociationOutcome.Absent
-        ? PlaylistOutcome.NotFound
-        : PlaylistOutcome.Ok;
+      if (outcome === AssociationOutcome.Absent) {
+        return PlaylistOutcome.NotFound;
+      }
+
+      announce(context, {
+        kind: ChangeKind.TracksChangedForPlaylists,
+        playlistIds: [playlistId]
+      });
+
+      return PlaylistOutcome.Ok;
     }
   );
 

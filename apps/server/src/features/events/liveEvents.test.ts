@@ -368,4 +368,83 @@ describe('the playlist and track events', () => {
     expect(ownerEvents).toEqual([]);
     expect(collaboratorEvents).toEqual([]);
   });
+
+  it('publishes nothing when a rename is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database, {
+      pangolinUserId: 'stranger-1'
+    });
+    const ownerEvents = collect(owner.accountId);
+    const strangerEvents = collect(stranger.accountId);
+
+    const response = await request(
+      'PATCH',
+      `/api/v1/playlists/${playlistId}`,
+      'stranger-1',
+      { name: 'Not Mine' }
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(ownerEvents).toEqual([]);
+    expect(strangerEvents).toEqual([]);
+  });
+
+  it('publishes nothing when a track removal is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
+    const received = collect(owner.accountId);
+
+    const response = await request(
+      'DELETE',
+      `/api/v1/playlists/${playlistId}/tracks/${trackId}`,
+      'owner-1'
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(received).toEqual([]);
+  });
+
+  it('publishes nothing when a share grant is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database, {
+      pangolinUserId: 'stranger-1'
+    });
+    const ownerEvents = collect(owner.accountId);
+    const strangerEvents = collect(stranger.accountId);
+
+    const response = await request(
+      'POST',
+      `/api/v1/playlists/${playlistId}/shares`,
+      'stranger-1',
+      { accountId: owner.accountId, level: ShareLevel.Read }
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(ownerEvents).toEqual([]);
+    expect(strangerEvents).toEqual([]);
+  });
+
+  it('publishes nothing when a retry is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
+    associate(context.database, playlistId, trackId);
+    const received = collect(owner.accountId);
+
+    const response = await request(
+      'POST',
+      `/api/v1/tracks/${trackId}/retry`,
+      'owner-1'
+    );
+
+    expect(response.statusCode).toBe(409);
+    expect(received).toEqual([]);
+  });
 });

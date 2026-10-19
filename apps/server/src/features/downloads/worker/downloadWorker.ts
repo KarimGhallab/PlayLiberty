@@ -6,7 +6,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
-import { publishTrackChanged } from '../../../shared/events/liveEvents.js';
+import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { startIntervalJob } from '../../../platform/jobs/intervalJob.js';
@@ -100,7 +100,7 @@ export async function processPendingTracks(
   const claimed = claimPendingTracks(context.database, concurrency);
 
   for (const track of claimed) {
-    publishTrackChanged(context, track.id);
+    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
   }
 
   await Promise.all(
@@ -145,7 +145,7 @@ async function processClaimedTrack(
     // retried, the same values the sync's retention pass produces.
     if (error instanceof YoutubeVideoUnavailableError) {
       markTrackSourceRemoved(context.database, track.id);
-      publishTrackChanged(context, track.id);
+      announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
       logger.info(
         { trackId: track.id, videoId: track.videoId },
         'track source is gone'
@@ -157,7 +157,7 @@ async function processClaimedTrack(
     // raw output, since the row carries it; the next sync retries the track.
     failTrack(context.database, track.id, summarizeFailure(error));
 
-    publishTrackChanged(context, track.id);
+    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
 
     logger.warn(
       { trackId: track.id, videoId: track.videoId, err: error },
@@ -167,7 +167,7 @@ async function processClaimedTrack(
   }
 
   await fetchThumbnail(context, logger, track);
-  publishTrackChanged(context, track.id);
+  announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
 }
 
 /* A failed thumbnail leaves the path null and the track stored: cosmetic, not

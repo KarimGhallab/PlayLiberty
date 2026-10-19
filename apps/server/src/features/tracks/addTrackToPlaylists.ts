@@ -6,7 +6,7 @@ import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
 import { canWritePlaylist } from '../../shared/access/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
-import { publishTracksChangedForPlaylists } from '../../shared/events/liveEvents.js';
+import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import { playlists } from '../../platform/database/schema.js';
@@ -66,31 +66,39 @@ export async function addTrackToPlaylists(
     }
   }
 
-  return withDownloadQueue(context, queue => {
+  const result = withDownloadQueue(context, queue => {
     const trackId = seed === null ? existingTrackId : queue.create(seed);
 
-    const results = playlistIds.map((playlistId, index) => {
-      if (writable[index] !== true || trackId === null) {
-        return { playlistId, outcome: AddTrackOutcome.Refused };
-      }
+    return {
+      results: playlistIds.map((playlistId, index) => {
+        if (writable[index] !== true || trackId === null) {
+          return { playlistId, outcome: AddTrackOutcome.Refused };
+        }
 
-      const outcome = addAssociation(database, {
-        playlistId,
-        trackId,
-        origin: AssociationOrigin.Manual,
-        position: nextPositionFor(database, playlistId)
-      });
+        const outcome = addAssociation(database, {
+          playlistId,
+          trackId,
+          origin: AssociationOrigin.Manual,
+          position: nextPositionFor(database, playlistId)
+        });
 
-      return { playlistId, outcome: toAddTrackOutcome(outcome) };
-    });
-
-    const addedPlaylistIds = results
-      .filter(entry => entry.outcome === AddTrackOutcome.Added)
-      .map(entry => entry.playlistId);
-    publishTracksChangedForPlaylists(context, addedPlaylistIds);
-
-    return { results };
+        return { playlistId, outcome: toAddTrackOutcome(outcome) };
+      })
+    };
   });
+
+  const addedPlaylistIds = result.results
+    .filter(entry => entry.outcome === AddTrackOutcome.Added)
+    .map(entry => entry.playlistId);
+
+  if (addedPlaylistIds.length > 0) {
+    announce(context, {
+      kind: ChangeKind.TracksChangedForPlaylists,
+      playlistIds: addedPlaylistIds
+    });
+  }
+
+  return result;
 }
 
 /* The first writable playlist's value, in request order. The fallback is
