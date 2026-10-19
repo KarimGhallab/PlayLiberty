@@ -272,6 +272,45 @@ describe('hydrate', () => {
     expect(usePlayerStore.getState().volume).toBe(0.5);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
   });
+
+  it('starts at zero when the stored position does not fit the track', () => {
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [first],
+      currentId: first.id,
+      positionSeconds: 180,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().currentId).toBe(first.id);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('drops a current track the restored queue no longer holds', () => {
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [second],
+      currentId: first.id,
+      positionSeconds: 42,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().queue).toEqual([second]);
+    expect(usePlayerStore.getState().currentId).toBeNull();
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('starts at zero when the restored track has no duration', () => {
+    const unknown = { ...first, durationSeconds: null };
+
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [unknown],
+      currentId: unknown.id,
+      positionSeconds: 42,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().currentId).toBe(unknown.id);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
 });
 
 describe('transport', () => {
@@ -620,25 +659,50 @@ describe('dropAndAdvance', () => {
 });
 
 describe('seek', () => {
-  it('writes the position and asks the element to move, then clears the ask', () => {
+  it('writes the position, asks the element to move, then hands the ask over once', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
 
     usePlayerStore.getState().seek(120);
 
     expect(usePlayerStore.getState().positionSeconds).toBe(120);
     expect(usePlayerStore.getState().seekTo).toBe(120);
-
-    usePlayerStore.getState().clearSeek();
+    expect(usePlayerStore.getState().consumeSeek()).toBe(120);
     expect(usePlayerStore.getState().seekTo).toBeNull();
+    expect(usePlayerStore.getState().consumeSeek()).toBeNull();
   });
 
-  it('never seeks before zero', () => {
+  it('never seeks before zero or past the track duration', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
 
     usePlayerStore.getState().seek(-30);
 
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
     expect(usePlayerStore.getState().seekTo).toBe(0);
+
+    usePlayerStore.getState().seek(200);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+    expect(usePlayerStore.getState().seekTo).toBe(180);
+  });
+
+  it('refuses a seek while the current track has no known duration', () => {
+    const unknown = { ...first, durationSeconds: null };
+    usePlayerStore.getState().startQueue(PLAYLIST, [unknown], unknown.id);
+
+    usePlayerStore.getState().seek(30);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+  });
+
+  it('clamps a reported position to the track duration', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().setPosition(200);
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    usePlayerStore.getState().setPosition(-5);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
   it('does not raise a seek request when the position is reported back', () => {

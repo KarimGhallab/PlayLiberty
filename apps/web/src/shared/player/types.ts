@@ -75,9 +75,12 @@ export interface PlayerState {
   readonly skipPrevious: () => void;
   /* A finished track: the same move as `skipNext`, but it stops at the last. */
   readonly advance: () => void;
+  /* Move the playhead to `seconds`, bounded by the current track's duration.
+   * A track with no known duration refuses the request. */
   readonly seek: (seconds: number) => void;
   readonly setShuffle: (shuffle: boolean) => void;
-  readonly clearSeek: () => void;
+  /* Take the pending seek request once, clearing it in the same step. */
+  readonly consumeSeek: () => number | null;
   readonly setPosition: (seconds: number) => void;
   readonly setPlaying: (playing: boolean) => void;
   readonly setVolume: (volume: number) => void;

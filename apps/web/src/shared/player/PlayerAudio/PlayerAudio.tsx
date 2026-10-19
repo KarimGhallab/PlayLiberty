@@ -32,7 +32,7 @@ export default function PlayerAudio() {
   const muted = usePlayerStore(state => state.muted);
   const setPosition = usePlayerStore(state => state.setPosition);
   const setPlaying = usePlayerStore(state => state.setPlaying);
-  const clearSeek = usePlayerStore(state => state.clearSeek);
+  const consumeSeek = usePlayerStore(state => state.consumeSeek);
   const advance = usePlayerStore(state => state.advance);
   const dropAndAdvance = usePlayerStore(state => state.dropAndAdvance);
 
@@ -144,8 +144,8 @@ export default function PlayerAudio() {
   }, [volume, muted]);
 
   /*
-   * A seek request applies once and clears, which is how an immediate jump is
-   * told from the element reporting its own progress.
+   * A seek request applies once: the store hands it over and clears it, so an
+   * immediate jump is told from the element reporting its own progress.
    */
   useEffect(() => {
     const audio = audioRef.current;
@@ -154,12 +154,16 @@ export default function PlayerAudio() {
       return;
     }
 
-    if (Math.abs(audio.currentTime - seekTo) > SEEK_EPSILON) {
-      audio.currentTime = seekTo;
+    const target = consumeSeek();
+
+    if (target === null) {
+      return;
     }
 
-    clearSeek();
-  }, [seekTo, clearSeek]);
+    if (Math.abs(audio.currentTime - target) > SEEK_EPSILON) {
+      audio.currentTime = target;
+    }
+  }, [seekTo, consumeSeek]);
 
   /*
    * `load()` leaves the element paused, so a skip while playing must start the
@@ -220,7 +224,7 @@ export default function PlayerAudio() {
         onPause: () => setPlaying(false),
         onNextTrack: () => skipNext(),
         onPreviousTrack: () => skipPrevious(),
-        onSeekBackward: () => seek(Math.max(0, positionSeconds - 10)),
+        onSeekBackward: () => seek(positionSeconds - 10),
         onSeekForward: () => seek(positionSeconds + 10)
       }),
     [setPlaying, skipNext, skipPrevious, seek, positionSeconds]

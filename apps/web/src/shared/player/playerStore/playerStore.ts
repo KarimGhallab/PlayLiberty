@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
-import { currentIndex, nextIndex, queuePlaylistId } from '../types';
+import {
+  currentIndex,
+  currentTrack,
+  nextIndex,
+  queuePlaylistId
+} from '../types';
 
 /* Merge a refetch by id: known ids keep their sequence in a shuffled queue, new
  * ids append, a dropped track is gone, and the current id survives. */
@@ -33,6 +38,39 @@ function clampVolume(volume: number): number {
   }
 
   return Math.min(1, Math.max(0, volume));
+}
+
+/* The store's one position bound: the current track's declared duration, or
+ * null while there is no duration to measure against. */
+function boundedPosition(state: PlayerState, seconds: number): number | null {
+  const duration = currentTrack(state)?.durationSeconds ?? null;
+
+  if (duration === null || duration <= 0 || !Number.isFinite(seconds)) {
+    return null;
+  }
+
+  return Math.min(duration, Math.max(0, seconds));
+}
+
+/* A restored offset only resumes a track it still fits: a vanished track, an
+ * unknown duration, or a position outside the track starts at zero. */
+function restoredPosition(
+  track: PlayerTrack | undefined,
+  positionSeconds: number
+): number {
+  if (track === undefined || track.durationSeconds === null) {
+    return 0;
+  }
+
+  if (
+    !Number.isFinite(positionSeconds) ||
+    positionSeconds <= 0 ||
+    positionSeconds >= track.durationSeconds
+  ) {
+    return 0;
+  }
+
+  return positionSeconds;
 }
 
 /* A random entry, or undefined when empty. Shuffle draws a new leader rather
@@ -71,7 +109,7 @@ function shuffledWithLeader(
 /* How far into a track a previous press means "step back", not "restart". */
 const SKIP_PREVIOUS_GRACE_SECONDS = 5;
 
-export const usePlayerStore = create<PlayerState>()(set => ({
+export const usePlayerStore = create<PlayerState>()((set, get) => ({
   queue: [],
   sourceQueue: [],
   currentId: null,
@@ -82,13 +120,19 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   shuffle: false,
   muted: false,
   hydrate: (state: PersistedPlayerState) =>
-    set({
-      queue: [...state.sourceQueue],
-      sourceQueue: [...state.sourceQueue],
-      currentId: state.currentId,
-      positionSeconds: state.positionSeconds,
-      volume: clampVolume(state.volume),
-      shuffle: false
+    set(() => {
+      const queue = [...state.sourceQueue];
+      const current = queue.find(track => track.id === state.currentId);
+
+      return {
+        queue,
+        sourceQueue: [...state.sourceQueue],
+        currentId: current === undefined ? null : state.currentId,
+        positionSeconds: restoredPosition(current, state.positionSeconds),
+        seekTo: null,
+        volume: clampVolume(state.volume),
+        shuffle: false
+      };
     }),
   startQueue: (
     playlistId: string,
@@ -283,9 +327,14 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       };
     }),
   seek: (seconds: number) =>
-    set(() => {
-      const clamped = Math.max(0, seconds);
-      return { positionSeconds: clamped, seekTo: clamped };
+    set(state => {
+      const position = boundedPosition(state, seconds);
+
+      if (position === null) {
+        return state;
+      }
+
+      return { positionSeconds: position, seekTo: position };
     }),
   setShuffle: (shuffle: boolean) =>
     set(state => {
@@ -314,8 +363,27 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         isPlaying: true
       };
     }),
-  clearSeek: () => set({ seekTo: null }),
-  setPosition: (seconds: number) => set({ positionSeconds: seconds }),
+  consumeSeek: () => {
+    const target = get().seekTo;
+
+    if (target !== null) {
+      set({ seekTo: null });
+    }
+
+    return target;
+  },
+  setPosition: (seconds: number) =>
+    set(state => {
+      const position = boundedPosition(state, seconds);
+
+      if (position !== null) {
+        return { positionSeconds: position };
+      }
+
+      return Number.isFinite(seconds)
+        ? { positionSeconds: Math.max(0, seconds) }
+        : state;
+    }),
   setPlaying: (playing: boolean) => set({ isPlaying: playing }),
   setVolume: (volume: number) => set({ volume: clampVolume(volume) }),
   setMuted: (muted: boolean) => set({ muted }),

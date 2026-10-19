@@ -77,15 +77,12 @@ export default function PlayerBar() {
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault();
 
-        const duration = currentTrack(state)?.durationSeconds ?? 0;
         const step =
           event.key === 'ArrowRight'
             ? KEYBOARD_STEP_SECONDS
             : -KEYBOARD_STEP_SECONDS;
 
-        state.seek(
-          Math.max(0, Math.min(duration, state.positionSeconds + step))
-        );
+        state.seek(state.positionSeconds + step);
       }
     };
 

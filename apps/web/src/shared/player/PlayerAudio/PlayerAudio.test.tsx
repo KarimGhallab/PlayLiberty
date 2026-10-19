@@ -139,6 +139,71 @@ describe('PlayerAudio', () => {
     expect(audio().currentTime).toBe(42);
   });
 
+  it('applies the persisted offset only once', () => {
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().hydrate({
+        sourceQueue: [first],
+        currentId: first.id,
+        positionSeconds: 42,
+        volume: 1
+      });
+    });
+
+    act(() => {
+      audio().dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(audio().currentTime).toBe(42);
+
+    audio().currentTime = 10;
+
+    act(() => {
+      audio().dispatchEvent(new Event('loadedmetadata'));
+    });
+
+    expect(audio().currentTime).toBe(10);
+  });
+
+  it('stops the Media Session seek controls at the track ends', () => {
+    const handlers = new Map<string, () => void>();
+
+    Object.defineProperty(navigator, 'mediaSession', {
+      value: {
+        metadata: null,
+        setActionHandler: (action: string, handler: (() => void) | null) => {
+          if (handler !== null) {
+            handlers.set(action, handler);
+          }
+        }
+      },
+      configurable: true
+    });
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    });
+    act(() => {
+      usePlayerStore.getState().setPosition(175);
+    });
+    act(() => {
+      handlers.get('seekforward')?.();
+    });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    act(() => {
+      usePlayerStore.getState().setPosition(5);
+    });
+    act(() => {
+      handlers.get('seekbackward')?.();
+    });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
   it('moves the element immediately when a seek is asked for', () => {
     render(<PlayerAudio />);
 
