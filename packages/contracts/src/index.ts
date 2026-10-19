@@ -1,8 +1,10 @@
 export * from './enums.js';
+export * from './endpoints.js';
 export * from './schemas.js';
 export type {
   Account,
   AccountSummary,
+  AccountSummaryPage,
   AddTrackInput,
   AddTrackResult,
   CreatePlaylistInput,
@@ -12,7 +14,9 @@ export type {
   PinPlaylistInput,
   Playlist,
   PlaylistAccess,
+  PlaylistPage,
   PlaylistTrack,
+  PlaylistTrackList,
   PlaylistTracksPage,
   PlaylistTracksQuery,
   PlaylistWithCounts,

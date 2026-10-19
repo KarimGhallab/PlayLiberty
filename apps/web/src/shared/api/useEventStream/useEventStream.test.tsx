@@ -3,10 +3,11 @@ import { act, render } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LiveEventType } from '@playliberty/contracts';
+import { LiveEventType, endpoints } from '@playliberty/contracts';
 
 import { createFakeEventStream } from '../../../testing/fakeEventStream';
 import { restoreLocation, stubLocationAssign } from '../../../testing/location';
+import { mockUrl } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import { cacheEffects } from '../cacheEffects/cacheEffects';
 import {
@@ -171,7 +172,7 @@ describe('useEventStream recovery', () => {
     stubLocationAssign();
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/me',
+        mockUrl(endpoints.currentAccount),
         () => new HttpResponse(null, { status: 401 })
       )
     );

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { ProblemCode } from '@playliberty/contracts';
 import { Language, catalogs, createTranslator } from '@playliberty/i18n';
 
 import { ApiError } from '../client/client';
@@ -27,7 +28,7 @@ describe('problemSentence', () => {
       type: 'about:blank',
       title: 'Service Unavailable',
       status: 503,
-      code: 'service_unavailable',
+      code: ProblemCode.InternalError,
       detail: 'Try again later.'
     });
 

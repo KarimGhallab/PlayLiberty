@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ProblemCode } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import { ApiError } from '../../api/client/client';
@@ -18,7 +19,7 @@ function apiError(detail: string | null): ApiError {
     type: 'about:blank',
     title: 'Service unavailable',
     status: 503,
-    code: 'service_unavailable',
+    code: ProblemCode.InternalError,
     detail: detail ?? undefined
   });
 }

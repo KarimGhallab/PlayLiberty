@@ -16,57 +16,34 @@ import type {
   AccountSummary,
   AddTrackResult,
   Playlist,
+  PlaylistPage,
   PlaylistTrack,
   PlaylistTracksPage,
-  PlaylistWithCounts,
   Share,
   ShareLevel,
   SyncRun,
-  Track,
-  TrackFileStatusCounts
+  Track
 } from '@playliberty/contracts';
 import {
-  AccountSummarySchema,
-  AddTrackResultSchema,
-  PlaylistSchema,
   PlaylistSort,
-  PlaylistTrackListSchema,
-  PlaylistTracksPageSchema,
-  PlaylistWithCountsSchema,
-  ShareListSchema,
-  ShareSchema,
-  SyncRunSchema,
   TrackFileStatus,
-  TrackSchema,
-  createPageSchema
+  endpoints
 } from '@playliberty/contracts';
 
 import { cacheEffects } from '../cacheEffects/cacheEffects';
+import { ApiError } from '../client/client';
 import {
-  ApiError,
-  apiCommand,
-  apiDelete,
-  apiGet,
-  apiPatch,
-  apiPost
-} from '../client/client';
-
-const PlaylistPageSchema = createPageSchema(PlaylistWithCountsSchema);
-const AccountSummaryPageSchema = createPageSchema(AccountSummarySchema);
-
-/* The library's list carries each playlist its own file-status counts, and the
- * mark on a tile is read from them rather than from a read per playlist. */
-export interface PlaylistPage {
-  items: PlaylistWithCounts[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+  commandEndpoint,
+  deleteEndpoint,
+  patchEndpoint,
+  postEndpoint,
+  readEndpoint
+} from '../endpoints/endpoints';
 
 export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
   return useQuery({
     queryKey: ['playlists'],
-    queryFn: () => apiGet('/playlists', PlaylistPageSchema)
+    queryFn: () => readEndpoint(endpoints.playlists)
   });
 }
 
@@ -75,7 +52,7 @@ export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
 export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
   return useQuery({
     queryKey: ['accounts'],
-    queryFn: () => apiGet('/accounts', AccountSummaryPageSchema),
+    queryFn: () => readEndpoint(endpoints.accounts),
     select: page => page.items
   });
 }
@@ -85,7 +62,7 @@ export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
 export function useCurrentAccount(): UseQueryResult<AccountSummary, Error> {
   return useQuery({
     queryKey: ['me'],
-    queryFn: () => apiGet('/me', AccountSummarySchema)
+    queryFn: () => readEndpoint(endpoints.currentAccount)
   });
 }
 
@@ -116,7 +93,7 @@ export function useCreatePlaylist(): UseMutationResult<
 
   return useMutation({
     mutationFn: (input: { url: string; skipNonMusic: boolean }) =>
-      apiPost('/playlists', input, SyncRunSchema),
+      postEndpoint(endpoints.createPlaylist, input),
     onSuccess: () => {
       cacheEffects.libraryChanged(queryClient);
     }
@@ -136,7 +113,7 @@ export function useAddTrack(): UseMutationResult<
 
   return useMutation({
     mutationFn: (input: { url: string; playlistIds: string[] }) =>
-      apiPost('/tracks', input, AddTrackResultSchema),
+      postEndpoint(endpoints.addTrack, input),
     onSuccess: () => {
       cacheEffects.everyPlaylistChanged(queryClient);
     }
@@ -175,10 +152,7 @@ async function fetchPlaylistTrackPage(
     query.set('state', state);
   }
 
-  return apiGet(
-    `/playlists/${playlistId}/tracks?${query.toString()}`,
-    PlaylistTracksPageSchema
-  );
+  return readEndpoint(endpoints.playlistTracks, { playlistId }, query);
 }
 
 function nextTracksPageParam(lastPage: PlaylistTracksPage): number | undefined {
@@ -188,9 +162,9 @@ function nextTracksPageParam(lastPage: PlaylistTracksPage): number | undefined {
 }
 
 export interface PlaylistTracksRead {
-  readonly tracks: readonly PlaylistTrack[];
-  readonly counts: TrackFileStatusCounts | undefined;
-  readonly total: number | undefined;
+  readonly tracks: PlaylistTracksPage['items'];
+  readonly counts: PlaylistTracksPage['counts'] | undefined;
+  readonly total: PlaylistTracksPage['total'] | undefined;
   readonly isPlaceholderData: boolean;
   readonly isPending: boolean;
   readonly isError: boolean;
@@ -259,10 +233,7 @@ export function usePlaylistTracks(
 export async function fetchPlaylistQueue(
   playlistId: string
 ): Promise<PlaylistTrack[]> {
-  const list = await apiGet(
-    `/playlists/${playlistId}/queue`,
-    PlaylistTrackListSchema
-  );
+  const list = await readEndpoint(endpoints.playlistQueue, { playlistId });
 
   return list.items;
 }
@@ -297,7 +268,13 @@ export function usePlaylist(
 ): UseQueryResult<Playlist, Error> {
   return useQuery({
     queryKey: ['playlist', playlistId],
-    queryFn: () => apiGet(`/playlists/${playlistId}`, PlaylistSchema),
+    queryFn: () => {
+      if (playlistId === null) {
+        throw new Error('A playlist read needs an id.');
+      }
+
+      return readEndpoint(endpoints.playlist, { playlistId });
+    },
     enabled: playlistId !== null
   });
 }
@@ -313,10 +290,7 @@ export function useLatestSyncRun(
     queryKey: ['playlist', playlistId, 'sync-runs', 'latest'],
     queryFn: async () => {
       try {
-        return await apiGet(
-          `/playlists/${playlistId}/sync-runs/latest`,
-          SyncRunSchema
-        );
+        return await readEndpoint(endpoints.latestSyncRun, { playlistId });
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
           return null;
@@ -338,8 +312,7 @@ export function useSyncPlaylist(
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () =>
-      apiCommand(`/playlists/${playlistId}/sync`, SyncRunSchema),
+    mutationFn: () => commandEndpoint(endpoints.syncPlaylist, { playlistId }),
     onSuccess: () => {
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
@@ -354,7 +327,7 @@ export function useRenamePlaylist(
 
   return useMutation({
     mutationFn: (name: string) =>
-      apiPatch(`/playlists/${playlistId}`, { name }, PlaylistSchema),
+      patchEndpoint(endpoints.renamePlaylist, { name }, { playlistId }),
     onSuccess: () => {
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
@@ -373,11 +346,7 @@ export function useUpdateSkipNonMusic(
 
   return useMutation({
     mutationFn: (skipNonMusic: boolean) =>
-      apiPatch(
-        `/playlists/${playlistId}/skip-non-music`,
-        { skipNonMusic },
-        PlaylistSchema
-      ),
+      patchEndpoint(endpoints.skipNonMusic, { skipNonMusic }, { playlistId }),
     onMutate: async (skipNonMusic: boolean) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<Playlist>(key);
@@ -412,7 +381,7 @@ export function useUpdateSort(
 
   return useMutation({
     mutationFn: (sort: PlaylistSort) =>
-      apiPatch(`/playlists/${playlistId}/sort`, { sort }, PlaylistSchema),
+      patchEndpoint(endpoints.sortPlaylist, { sort }, { playlistId }),
     onMutate: async (sort: PlaylistSort) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<Playlist>(key);
@@ -447,7 +416,7 @@ export function useUpdatePin(
 
   return useMutation({
     mutationFn: (pinned: boolean) =>
-      apiPatch(`/playlists/${playlistId}/pin`, { pinned }, PlaylistSchema),
+      patchEndpoint(endpoints.pinPlaylist, { pinned }, { playlistId }),
     onMutate: async (pinned: boolean) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<PlaylistPage>(key);
@@ -482,7 +451,7 @@ export function useDeletePlaylist(
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => apiDelete(`/playlists/${playlistId}`),
+    mutationFn: () => deleteEndpoint(endpoints.deletePlaylist, { playlistId }),
     onSuccess: () => {
       cacheEffects.playlistRemoved(queryClient, playlistId);
     }
@@ -500,7 +469,7 @@ export function useRetryTrack(
 
   return useMutation({
     mutationFn: (trackId: string) =>
-      apiCommand(`/tracks/${trackId}/retry`, TrackSchema),
+      commandEndpoint(endpoints.retryTrack, { trackId }),
     onSuccess: () => {
       cacheEffects.trackChanged(queryClient, [playlistId]);
     }
@@ -518,7 +487,7 @@ export function useFetchTrackWhole(
 
   return useMutation({
     mutationFn: (trackId: string) =>
-      apiCommand(`/tracks/${trackId}/fetch-whole`, TrackSchema),
+      commandEndpoint(endpoints.fetchTrackWhole, { trackId }),
     onSuccess: () => {
       cacheEffects.trackChanged(queryClient, [playlistId]);
     }
@@ -536,7 +505,7 @@ export function useRemoveTrack(
 
   return useMutation({
     mutationFn: (trackId: string) =>
-      apiDelete(`/playlists/${playlistId}/tracks/${trackId}`),
+      deleteEndpoint(endpoints.removeTrack, { playlistId, trackId }),
     onSuccess: () => {
       cacheEffects.trackChanged(queryClient, [playlistId]);
     }
@@ -553,7 +522,7 @@ export function usePlaylistShares(
 ): UseQueryResult<Share[], Error> {
   return useQuery({
     queryKey: ['playlist', playlistId, 'shares'],
-    queryFn: () => apiGet(`/playlists/${playlistId}/shares`, ShareListSchema),
+    queryFn: () => readEndpoint(endpoints.playlistShares, { playlistId }),
     enabled
   });
 }
@@ -569,7 +538,7 @@ export function useGrantShare(
 
   return useMutation({
     mutationFn: (input: { accountId: string; level: ShareLevel }) =>
-      apiPost(`/playlists/${playlistId}/shares`, input, ShareSchema),
+      postEndpoint(endpoints.grantShare, input, { playlistId }),
     onSuccess: () => {
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
@@ -584,7 +553,7 @@ export function useRevokeShare(
 
   return useMutation({
     mutationFn: (accountId: string) =>
-      apiDelete(`/playlists/${playlistId}/shares/${accountId}`),
+      deleteEndpoint(endpoints.revokeShare, { playlistId, accountId }),
     onSuccess: () => {
       cacheEffects.playlistChanged(queryClient, playlistId);
     }

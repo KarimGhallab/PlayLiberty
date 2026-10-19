@@ -17,19 +17,28 @@ import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import {
+  PinPlaylistInputSchema,
+  ProblemCode,
+  endpoints
+} from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
-import { EMPTY_COUNTS } from '../../../testing/mocks/handlers';
+import {
+  EMPTY_COUNTS,
+  mockUrl,
+  problemResponse
+} from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import { stubViewport } from '../../../testing/viewport';
 import LibraryPage from './LibraryPage';
 
 function emptyPage() {
   server.use(
-    http.get('http://localhost:3000/api/v1/playlists', () =>
+    http.get(mockUrl(endpoints.playlists), () =>
       HttpResponse.json({ items: [], total: 0, limit: 50, offset: 0 })
     )
   );
@@ -37,17 +46,13 @@ function emptyPage() {
 
 function failedPage() {
   server.use(
-    http.get('http://localhost:3000/api/v1/playlists', () =>
-      HttpResponse.json(
-        {
-          type: 'about:blank',
-          title: 'Service unavailable',
-          status: 503,
-          detail: 'The library is unavailable.',
-          code: 'service_unavailable'
-        },
-        { status: 503 }
-      )
+    http.get(mockUrl(endpoints.playlists), () =>
+      problemResponse({
+        code: ProblemCode.InternalError,
+        status: 503,
+        title: 'Service unavailable',
+        detail: 'The library is unavailable.'
+      })
     )
   );
 }
@@ -168,12 +173,12 @@ function createSucceeds(): { requests: Request[] } {
   const requests: Request[] = [];
   let created = false;
   server.use(
-    http.post('http://localhost:3000/api/v1/playlists', async ({ request }) => {
+    http.post(mockUrl(endpoints.createPlaylist), async ({ request }) => {
       requests.push(request);
       created = true;
       return HttpResponse.json(syncRun, { status: 202 });
     }),
-    http.get('http://localhost:3000/api/v1/playlists', () => {
+    http.get(mockUrl(endpoints.playlists), () => {
       const items = created ? [newPlaylist] : baseItems;
       return HttpResponse.json({
         items,
@@ -193,7 +198,7 @@ function createSucceeds(): { requests: Request[] } {
  */
 function directoryOf(ownerId: string): void {
   server.use(
-    http.get('http://localhost:3000/api/v1/accounts', () =>
+    http.get(mockUrl(endpoints.accounts), () =>
       HttpResponse.json({
         items: [{ id: ownerId, displayName: 'Ada', avatarUrl: null }],
         total: 1,
@@ -217,19 +222,15 @@ async function waitForDialogExit(): Promise<void> {
 function createRefused(): { requests: Request[] } {
   const requests: Request[] = [];
   server.use(
-    http.post('http://localhost:3000/api/v1/playlists', async ({ request }) => {
+    http.post(mockUrl(endpoints.createPlaylist), async ({ request }) => {
       requests.push(request);
-      return HttpResponse.json(
-        {
-          type: 'about:blank',
-          title: 'Invalid Request',
-          status: 400,
-          detail:
-            'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...',
-          code: 'invalid_request'
-        },
-        { status: 400 }
-      );
+      return problemResponse({
+        code: ProblemCode.InvalidRequest,
+        status: 400,
+        title: 'Invalid Request',
+        detail:
+          'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
+      });
     })
   );
 
@@ -239,7 +240,7 @@ function createRefused(): { requests: Request[] } {
 /* A list read whose items are exactly what the test hands in. */
 function pinnedRead(items: ReturnType<typeof ownedItem>[]): void {
   server.use(
-    http.get('http://localhost:3000/api/v1/playlists', () =>
+    http.get(mockUrl(endpoints.playlists), () =>
       HttpResponse.json({
         items,
         total: items.length,
@@ -260,9 +261,9 @@ function pinSucceeds(): { bodies: { pinned: boolean }[] } {
 
   server.use(
     http.patch(
-      'http://localhost:3000/api/v1/playlists/playlist-1/pin',
+      mockUrl(endpoints.pinPlaylist, { playlistId: 'playlist-1' }),
       async ({ request }) => {
-        const body = (await request.json()) as { pinned: boolean };
+        const body = PinPlaylistInputSchema.parse(await request.json());
         bodies.push(body);
         pinned = body.pinned;
 
@@ -272,7 +273,7 @@ function pinSucceeds(): { bodies: { pinned: boolean }[] } {
         });
       }
     ),
-    http.get('http://localhost:3000/api/v1/playlists', () =>
+    http.get(mockUrl(endpoints.playlists), () =>
       HttpResponse.json({
         items: [
           { ...ownedItem('playlist-1', 'Rain On The Window'), pinned },
@@ -291,17 +292,15 @@ function pinSucceeds(): { bodies: { pinned: boolean }[] } {
 /* A pin write the route refuses, so the optimistic lift must be undone. */
 function pinFails(): void {
   server.use(
-    http.patch('http://localhost:3000/api/v1/playlists/playlist-1/pin', () =>
-      HttpResponse.json(
-        {
-          type: 'about:blank',
-          title: 'Internal Server Error',
+    http.patch(
+      mockUrl(endpoints.pinPlaylist, { playlistId: 'playlist-1' }),
+      () =>
+        problemResponse({
+          code: ProblemCode.InternalError,
           status: 500,
-          code: 'internal_error',
+          title: 'Internal Server Error',
           detail: 'The pin could not be written.'
-        },
-        { status: 500 }
-      )
+        })
     )
   );
 }
@@ -404,7 +403,7 @@ describe('LibraryPage', () => {
   /* The counts come from the list read, so marking costs it nothing extra. */
   it('marks the playlists the list read reports as incomplete, one pill each', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
+      http.get(mockUrl(endpoints.playlists), () =>
         HttpResponse.json({
           items: [
             {
@@ -632,10 +631,10 @@ describe('LibraryPage', () => {
      */
     let read = 0;
     server.use(
-      http.post('http://localhost:3000/api/v1/playlists', () =>
+      http.post(mockUrl(endpoints.createPlaylist), () =>
         HttpResponse.json(syncRun, { status: 202 })
       ),
-      http.get('http://localhost:3000/api/v1/playlists', () => {
+      http.get(mockUrl(endpoints.playlists), () => {
         read += 1;
         if (read === 1) {
           return HttpResponse.json({
@@ -757,16 +756,12 @@ describe('LibraryPage', () => {
 
   it('shows the fallback sentence when the failed read carries no detail', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
-        HttpResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Service unavailable',
-            status: 503,
-            code: 'service_unavailable'
-          },
-          { status: 503 }
-        )
+      http.get(mockUrl(endpoints.playlists), () =>
+        problemResponse({
+          code: ProblemCode.InternalError,
+          status: 503,
+          title: 'Service unavailable'
+        })
       )
     );
     renderLibraryPage();
@@ -779,20 +774,16 @@ describe('LibraryPage', () => {
   it('recovers the library when the failed read is retried', async () => {
     let attempts = 0;
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () => {
+      http.get(mockUrl(endpoints.playlists), () => {
         attempts += 1;
 
         if (attempts === 1) {
-          return HttpResponse.json(
-            {
-              type: 'about:blank',
-              title: 'Service unavailable',
-              status: 503,
-              detail: 'The library is unavailable.',
-              code: 'service_unavailable'
-            },
-            { status: 503 }
-          );
+          return problemResponse({
+            code: ProblemCode.InternalError,
+            status: 503,
+            title: 'Service unavailable',
+            detail: 'The library is unavailable.'
+          });
         }
 
         return HttpResponse.json({
@@ -842,7 +833,7 @@ describe('LibraryPage', () => {
 
   it('draws the play disabled on a playlist with nothing stored', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
+      http.get(mockUrl(endpoints.playlists), () =>
         HttpResponse.json({
           items: [
             {
@@ -974,32 +965,35 @@ describe('LibraryPage', () => {
     }));
 
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
-        HttpResponse.json({ items: tracks })
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: 'playlist-1' }),
+        () => HttpResponse.json({ items: tracks })
       ),
-      http.get('http://localhost:3000/api/v1/playlists/playlist-2/queue', () =>
-        HttpResponse.json({
-          items: [
-            {
-              track: {
-                id: 'track-8',
-                provider: 'youtube',
-                videoId: 'video-8',
-                title: 'Still Downloading',
-                durationSeconds: 200,
-                skipNonMusic: true,
-                thumbnailPath: null,
-                fileStatus: 'pending',
-                sourceStatus: 'available',
-                failureReason: null,
-                createdAt: '2026-09-01T00:00:00.000Z',
-                updatedAt: '2026-09-29T12:00:00.000Z'
-              },
-              origin: 'remote',
-              position: 0
-            }
-          ]
-        })
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: 'playlist-2' }),
+        () =>
+          HttpResponse.json({
+            items: [
+              {
+                track: {
+                  id: 'track-8',
+                  provider: 'youtube',
+                  videoId: 'video-8',
+                  title: 'Still Downloading',
+                  durationSeconds: 200,
+                  skipNonMusic: true,
+                  thumbnailPath: null,
+                  fileStatus: 'pending',
+                  sourceStatus: 'available',
+                  failureReason: null,
+                  createdAt: '2026-09-01T00:00:00.000Z',
+                  updatedAt: '2026-09-29T12:00:00.000Z'
+                },
+                origin: 'remote',
+                position: 0
+              }
+            ]
+          })
       )
     );
 
@@ -1125,7 +1119,7 @@ describe('LibraryPage', () => {
 
   it('names the playlist a second delete replaces', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
+      http.get(mockUrl(endpoints.playlists), () =>
         HttpResponse.json({
           items: [
             ownedItem('playlist-1', 'Rain On The Window'),

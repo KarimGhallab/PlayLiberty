@@ -18,13 +18,24 @@ import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  ProblemCode,
+  SortPlaylistInputSchema,
+  TrackFileStatus,
+  endpoints
+} from '@playliberty/contracts';
 import { I18nProvider, formatDuration } from '@playliberty/i18n';
 
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import type { PlayerTrack } from '../../../shared/player/types';
 import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
-import { EMPTY_COUNTS, countsOf } from '../../../testing/mocks/handlers';
+import {
+  EMPTY_COUNTS,
+  countsOf,
+  mockUrl,
+  problemResponse
+} from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import { stubViewport } from '../../../testing/viewport';
 import PlaylistDetailPage from './PlaylistDetailPage';
@@ -93,7 +104,7 @@ function trackJson(
   id: string,
   title: string,
   position: number,
-  fileStatus = 'stored'
+  fileStatus: TrackFileStatus = TrackFileStatus.Stored
 ) {
   return {
     track: {
@@ -373,7 +384,7 @@ describe('PlaylistDetailPage', () => {
     ];
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
         ({ request }) => {
           const offset = Number(
             new URL(request.url).searchParams.get('offset') ?? '0'
@@ -420,17 +431,20 @@ describe('PlaylistDetailPage', () => {
       trackJson('whole-2', 'Whole Two', 1)
     ];
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json({
-          items: all.slice(0, 1),
-          total: all.length,
-          limit: 1,
-          offset: 0,
-          counts: countsOf(all)
-        })
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: all.slice(0, 1),
+            total: all.length,
+            limit: 1,
+            offset: 0,
+            counts: countsOf(all)
+          })
       ),
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
-        HttpResponse.json({ items: all })
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: all })
       )
     );
     renderDetail();
@@ -450,24 +464,27 @@ describe('PlaylistDetailPage', () => {
 
   it('disables the header play when the playlist holds no stored track', async () => {
     const associations = [
-      trackJson('track-9', 'Still Downloading', 0, 'pending')
+      trackJson('track-9', 'Still Downloading', 0, TrackFileStatus.Pending)
     ];
 
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
         HttpResponse.json(playlistJson(true))
       ),
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json({
-          items: associations,
-          total: 1,
-          limit: 50,
-          offset: 0,
-          counts: { ...EMPTY_COUNTS, pending: 1 }
-        })
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: associations,
+            total: 1,
+            limit: 50,
+            offset: 0,
+            counts: { ...EMPTY_COUNTS, pending: 1 }
+          })
       ),
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
-        HttpResponse.json({ items: associations })
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: associations })
       )
     );
     renderDetail();
@@ -485,21 +502,17 @@ describe('PlaylistDetailPage', () => {
     let attempts = 0;
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/queue',
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
         () => {
           attempts += 1;
 
           if (attempts === 1) {
-            return HttpResponse.json(
-              {
-                type: 'about:blank',
-                title: 'Service unavailable',
-                status: 503,
-                detail: 'The queue is unavailable.',
-                code: 'service_unavailable'
-              },
-              { status: 503 }
-            );
+            return problemResponse({
+              code: ProblemCode.InternalError,
+              status: 503,
+              title: 'Service unavailable',
+              detail: 'The queue is unavailable.'
+            });
           }
 
           return HttpResponse.json({ items: all });
@@ -586,37 +599,39 @@ describe('PlaylistDetailPage', () => {
   it('forces a failed track to be fetched whole from its row menu', async () => {
     const posted: string[] = [];
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json({
-          items: [
-            {
-              track: {
-                id: 'track-9',
-                provider: 'youtube',
-                videoId: 'video-9',
-                title: 'The Great Below',
-                durationSeconds: 337,
-                skipNonMusic: false,
-                thumbnailPath: null,
-                fileStatus: 'failed',
-                sourceStatus: 'available',
-                failureReason:
-                  'SponsorBlock lookup failed, will retry on the next sync',
-                createdAt: '2026-09-01T00:00:00.000Z',
-                updatedAt: '2026-09-29T12:00:00.000Z'
-              },
-              origin: 'remote',
-              position: 0
-            }
-          ],
-          total: 1,
-          limit: 50,
-          offset: 0,
-          counts: { ...EMPTY_COUNTS, failed: 1 }
-        })
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: [
+              {
+                track: {
+                  id: 'track-9',
+                  provider: 'youtube',
+                  videoId: 'video-9',
+                  title: 'The Great Below',
+                  durationSeconds: 337,
+                  skipNonMusic: false,
+                  thumbnailPath: null,
+                  fileStatus: 'failed',
+                  sourceStatus: 'available',
+                  failureReason:
+                    'SponsorBlock lookup failed, will retry on the next sync',
+                  createdAt: '2026-09-01T00:00:00.000Z',
+                  updatedAt: '2026-09-29T12:00:00.000Z'
+                },
+                origin: 'remote',
+                position: 0
+              }
+            ],
+            total: 1,
+            limit: 50,
+            offset: 0,
+            counts: { ...EMPTY_COUNTS, failed: 1 }
+          })
       ),
       http.post(
-        'http://localhost:3000/api/v1/tracks/track-9/fetch-whole',
+        mockUrl(endpoints.fetchTrackWhole, { trackId: 'track-9' }),
         () => {
           posted.push('fetch-whole');
 
@@ -802,21 +817,17 @@ describe('PlaylistDetailPage', () => {
     let attempts = 0;
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/shares',
+        mockUrl(endpoints.playlistShares, { playlistId: PLAYLIST_ID }),
         () => {
           attempts += 1;
 
           if (attempts === 1) {
-            return HttpResponse.json(
-              {
-                type: 'about:blank',
-                title: 'Service unavailable',
-                status: 503,
-                detail: 'The shares are unavailable.',
-                code: 'service_unavailable'
-              },
-              { status: 503 }
-            );
+            return problemResponse({
+              code: ProblemCode.InternalError,
+              status: 503,
+              title: 'Service unavailable',
+              detail: 'The shares are unavailable.'
+            });
           }
 
           return HttpResponse.json([]);
@@ -863,7 +874,7 @@ describe('PlaylistDetailPage', () => {
     const bodies: unknown[] = [];
     server.use(
       http.patch(
-        'http://localhost:3000/api/v1/playlists/playlist-1/skip-non-music',
+        mockUrl(endpoints.skipNonMusic, { playlistId: PLAYLIST_ID }),
         async ({ request }) => {
           bodies.push(await request.json());
           await gate;
@@ -893,18 +904,14 @@ describe('PlaylistDetailPage', () => {
   it('puts the switch back and says why when the change is refused', async () => {
     server.use(
       http.patch(
-        'http://localhost:3000/api/v1/playlists/playlist-1/skip-non-music',
+        mockUrl(endpoints.skipNonMusic, { playlistId: PLAYLIST_ID }),
         () =>
-          HttpResponse.json(
-            {
-              type: 'about:blank',
-              title: 'Forbidden',
-              status: 403,
-              code: 'forbidden',
-              detail: 'You cannot change this playlist.'
-            },
-            { status: 403 }
-          )
+          problemResponse({
+            code: ProblemCode.Forbidden,
+            status: 403,
+            title: 'Forbidden',
+            detail: 'You cannot change this playlist.'
+          })
       )
     );
     renderDetail();
@@ -924,17 +931,15 @@ describe('PlaylistDetailPage', () => {
 
   it('shows a read failure rather than an empty list', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Service unavailable',
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.InternalError,
             status: 503,
-            detail: 'The tracks are unavailable.',
-            code: 'service_unavailable'
-          },
-          { status: 503 }
-        )
+            title: 'Service unavailable',
+            detail: 'The tracks are unavailable.'
+          })
       )
     );
     renderDetail();
@@ -952,21 +957,17 @@ describe('PlaylistDetailPage', () => {
     let attempts = 0;
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
         () => {
           attempts += 1;
 
           if (attempts === 1) {
-            return HttpResponse.json(
-              {
-                type: 'about:blank',
-                title: 'Service unavailable',
-                status: 503,
-                detail: 'The tracks are unavailable.',
-                code: 'service_unavailable'
-              },
-              { status: 503 }
-            );
+            return problemResponse({
+              code: ProblemCode.InternalError,
+              status: 503,
+              title: 'Service unavailable',
+              detail: 'The tracks are unavailable.'
+            });
           }
 
           return HttpResponse.json({
@@ -1013,17 +1014,13 @@ describe('PlaylistDetailPage', () => {
 
   it('shows the not-found state and no header when the playlist 404s', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
-        HttpResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Not found',
-            status: 404,
-            detail: 'No playlist with that id.',
-            code: 'not_found'
-          },
-          { status: 404 }
-        )
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        problemResponse({
+          code: ProblemCode.NotFound,
+          status: 404,
+          title: 'Not found',
+          detail: 'No playlist with that id.'
+        })
       )
     );
     renderDetail();
@@ -1049,11 +1046,11 @@ describe('PlaylistDetailPage', () => {
    */
   it('draws the run reason instead of the summary when the sync failed', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
         HttpResponse.json({ ...playlistJson(true), syncStatus: 'error' })
       ),
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/sync-runs/latest',
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
         () =>
           HttpResponse.json({
             id: 'run-1',
@@ -1109,7 +1106,7 @@ describe('PlaylistDetailPage', () => {
 
   it('draws no overflow at all for a read collaborator', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
         HttpResponse.json({
           id: 'playlist-1',
           ownerAccountId: 'account-1',
@@ -1166,7 +1163,7 @@ describe('PlaylistDetailPage', () => {
   it('adds one video to the chosen playlists in one request', async () => {
     const posted: unknown[] = [];
     server.use(
-      http.post('http://localhost:3000/api/v1/tracks', async ({ request }) => {
+      http.post(mockUrl(endpoints.addTrack), async ({ request }) => {
         posted.push(await request.json());
 
         return HttpResponse.json({
@@ -1194,7 +1191,7 @@ describe('PlaylistDetailPage', () => {
 
   it('keeps the dialog open and names the playlists that refused', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
+      http.get(mockUrl(endpoints.playlists), () =>
         HttpResponse.json({
           items: [
             {
@@ -1241,7 +1238,7 @@ describe('PlaylistDetailPage', () => {
           offset: 0
         })
       ),
-      http.post('http://localhost:3000/api/v1/tracks', () =>
+      http.post(mockUrl(endpoints.addTrack), () =>
         HttpResponse.json({
           results: [
             { playlistId: 'playlist-1', outcome: 'added' },
@@ -1268,7 +1265,7 @@ describe('PlaylistDetailPage', () => {
 
   it('closes the dialog when every playlist took the video', async () => {
     server.use(
-      http.post('http://localhost:3000/api/v1/tracks', () =>
+      http.post(mockUrl(endpoints.addTrack), () =>
         HttpResponse.json({
           results: [
             { playlistId: 'playlist-1', outcome: 'added' },
@@ -1322,9 +1319,9 @@ describe('PlaylistDetailPage sort control', () => {
 
     server.use(
       http.patch(
-        'http://localhost:3000/api/v1/playlists/playlist-1/sort',
+        mockUrl(endpoints.sortPlaylist, { playlistId: PLAYLIST_ID }),
         async ({ request }) => {
-          const body = (await request.json()) as { sort: string };
+          const body = SortPlaylistInputSchema.parse(await request.json());
           bodies.push(body);
           order = ['track-3', 'track-2', 'track-1'];
 
@@ -1332,7 +1329,7 @@ describe('PlaylistDetailPage sort control', () => {
         }
       ),
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
         () => {
           const items = order.map((id, index) =>
             trackJson(id, TITLES[id] ?? id, index)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { ProblemCode } from '@playliberty/contracts';
 import type { Problem } from '@playliberty/contracts';
 
 import { catalogs } from '../catalogs.js';
@@ -66,11 +67,11 @@ describe('problemDetail', () => {
     expect(
       problemDetail(
         t,
-        problem({ code: 'service_unavailable', detail: 'Later.' })
+        problem({ code: ProblemCode.InternalError, detail: 'Later.' })
       )
     ).toBe('Later.');
     expect(
-      problemDetail(t, problem({ code: 'service_unavailable' }))
+      problemDetail(t, problem({ code: ProblemCode.InternalError }))
     ).toBeNull();
   });
 

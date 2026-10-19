@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   AccountSchema,
+  AccountSummaryPageSchema,
   AccountSummarySchema,
   AddTrackInputSchema,
   AddTrackResultSchema,
@@ -10,7 +11,9 @@ import {
   PageQuerySchema,
   PinPlaylistInputSchema,
   PlaylistAccessSchema,
+  PlaylistPageSchema,
   PlaylistSchema,
+  PlaylistTrackListSchema,
   PlaylistTrackSchema,
   PlaylistTracksPageSchema,
   PlaylistTracksQuerySchema,
@@ -28,12 +31,15 @@ import {
 
 export type Account = z.infer<typeof AccountSchema>;
 export type AccountSummary = z.infer<typeof AccountSummarySchema>;
+export type AccountSummaryPage = z.infer<typeof AccountSummaryPageSchema>;
 export type Track = z.infer<typeof TrackSchema>;
 export type Playlist = z.infer<typeof PlaylistSchema>;
 export type PlaylistWithCounts = z.infer<typeof PlaylistWithCountsSchema>;
 export type PlaylistAccess = z.infer<typeof PlaylistAccessSchema>;
 export type PlaylistTrack = z.infer<typeof PlaylistTrackSchema>;
+export type PlaylistTrackList = z.infer<typeof PlaylistTrackListSchema>;
 export type PlaylistTracksPage = z.infer<typeof PlaylistTracksPageSchema>;
+export type PlaylistPage = z.infer<typeof PlaylistPageSchema>;
 export type PlaylistTracksQuery = z.infer<typeof PlaylistTracksQuerySchema>;
 export type TrackFileStatusCounts = z.infer<typeof TrackFileStatusCountsSchema>;
 export type Share = z.infer<typeof ShareSchema>;

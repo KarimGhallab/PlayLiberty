@@ -99,6 +99,10 @@ export const PlaylistWithCountsSchema = PlaylistSchema.extend({
   counts: TrackFileStatusCountsSchema
 });
 
+export const PlaylistPageSchema = createPageSchema(PlaylistWithCountsSchema);
+
+export const AccountSummaryPageSchema = createPageSchema(AccountSummarySchema);
+
 export const PlaylistTracksPageSchema = z.object({
   items: z.array(PlaylistTrackSchema),
   total: z.number().int().nonnegative(),

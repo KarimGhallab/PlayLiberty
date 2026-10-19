@@ -1,11 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect } from 'react';
 
-import { AccountSummarySchema, LiveEventSchema } from '@playliberty/contracts';
+import { LiveEventSchema, endpoints } from '@playliberty/contracts';
 import type { LiveEvent } from '@playliberty/contracts';
 
 import { cacheEffects } from '../cacheEffects/cacheEffects';
-import { API_PREFIX, ApiError, apiGet } from '../client/client';
+import { API_PREFIX, ApiError } from '../client/client';
+import { readEndpoint } from '../endpoints/endpoints';
 import { invalidateForLiveEvent } from '../liveEvents/liveEvents';
 
 /*
@@ -104,7 +105,7 @@ export function useEventStream(): void {
      */
     async function recover(): Promise<void> {
       try {
-        await apiGet('/me', AccountSummarySchema);
+        await readEndpoint(endpoints.currentAccount);
         reconnect();
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {

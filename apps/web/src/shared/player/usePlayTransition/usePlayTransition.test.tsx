@@ -4,8 +4,10 @@ import { HttpResponse, http } from 'msw';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { ProblemCode, endpoints } from '@playliberty/contracts';
 import { Language, catalogs, createTranslator } from '@playliberty/i18n';
 
+import { mockUrl, problemResponse } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import { usePlayerStore } from '../playerStore/playerStore';
 import {
@@ -15,7 +17,9 @@ import {
 } from './usePlayTransition';
 
 const PLAYLIST = { id: 'playlist-1', name: 'Rain On The Window' } as const;
-const QUEUE_URL = 'http://localhost:3000/api/v1/playlists/playlist-1/queue';
+const QUEUE_URL = mockUrl(endpoints.playlistQueue, {
+  playlistId: 'playlist-1'
+});
 
 function track(id: string, fileStatus = 'stored') {
   return {
@@ -43,16 +47,12 @@ function queueList(items: unknown[]) {
 }
 
 function unavailable() {
-  return HttpResponse.json(
-    {
-      type: 'about:blank',
-      title: 'Service unavailable',
-      status: 503,
-      detail: 'The tracks are unavailable.',
-      code: 'service_unavailable'
-    },
-    { status: 503 }
-  );
+  return problemResponse({
+    code: ProblemCode.InternalError,
+    status: 503,
+    title: 'Service unavailable',
+    detail: 'The tracks are unavailable.'
+  });
 }
 
 function wrapper({ children }: { children: ReactNode }) {

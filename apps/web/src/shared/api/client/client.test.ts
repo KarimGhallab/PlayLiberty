@@ -1,9 +1,10 @@
 import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { AccountSummarySchema } from '@playliberty/contracts';
+import { AccountSummarySchema, endpoints } from '@playliberty/contracts';
 
 import { restoreLocation, stubLocationAssign } from '../../../testing/location';
+import { mockUrl } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import { ApiError, apiGet } from './client';
 
@@ -14,7 +15,7 @@ import { ApiError, apiGet } from './client';
  */
 
 const RE_AUTH_ATTEMPT_KEY = 'playliberty.re-auth-attempt';
-const ME = 'http://localhost:3000/api/v1/me';
+const ME = mockUrl(endpoints.currentAccount);
 
 afterEach(() => {
   restoreLocation();
