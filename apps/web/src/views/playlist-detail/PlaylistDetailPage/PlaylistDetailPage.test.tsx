@@ -1400,6 +1400,7 @@ describe('PlaylistDetailPage', () => {
       expect(posts).toHaveLength(1);
       expect(control).toHaveAccessibleName('Syncing');
     });
+    expect(screen.getAllByText('Syncing')).toHaveLength(1);
     expect(control).toBeDisabled();
 
     /* A second press on the busy control cannot start another run. */

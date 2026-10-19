@@ -71,7 +71,7 @@ export interface PlaylistHeaderSeam {
   /* The named sync beside the state; absent for a reader. Only the detail's
    * stacked identity draws it, where the state has a line of its own. */
   onSync?: () => void;
-  /* Whether a sync is in flight: the state and its control both say so. */
+  /* Whether a sync is in flight: the control carries the word. */
   syncing?: boolean;
   menu?: readonly PlaylistAction[];
   /* The cover as a blurred ground behind the header. */
@@ -348,6 +348,10 @@ export function usePlaylistHeader({
       </button>
     );
 
+  /* The action owns the in-flight word beside a named sync control; a reader
+   * keeps the state line, since no control can name it. */
+  const actionOwnsSync = syncing && onSync !== undefined;
+
   const syncControl =
     onSync === undefined ? null : (
       <button
@@ -440,7 +444,7 @@ export function usePlaylistHeader({
    * stacked identity on its own line. A press that has not reached the server
    * yet already reads as syncing. */
   const syncState = syncing ? PlaylistSyncStatus.Syncing : playlist.syncStatus;
-  const stateNode = (
+  const stateNode = actionOwnsSync ? null : (
     <span className={styles.playlistHeader__state} data-state={syncState}>
       {syncStateLabel(t, syncState)}
     </span>
@@ -501,9 +505,13 @@ export function usePlaylistHeader({
             {stateNode}
             {showSyncTime ? (
               <>
-                <span className={styles.playlistHeader__sep} aria-hidden="true">
-                  &middot;
-                </span>
+                {stateNode === null ? null : (
+                  <span
+                    className={styles.playlistHeader__sep}
+                    aria-hidden="true">
+                    &middot;
+                  </span>
+                )}
                 <span className={styles.playlistHeader__time}>
                   {formatLastSynced(t, lastSyncedAt, now)}
                 </span>

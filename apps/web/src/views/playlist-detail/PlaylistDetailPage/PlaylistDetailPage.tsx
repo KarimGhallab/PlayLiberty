@@ -452,6 +452,7 @@ export default function PlaylistDetailPage() {
                       : undefined
                   }
                   retryingFailed={retryAllFailed.isPending}
+                  showRunningStamp={!syncInFlight}
                 />
               </div>
             ) : null}

@@ -23,6 +23,9 @@ interface SyncSummaryProps {
    * already carries the control. */
   onRetryFailed?: () => void;
   retryingFailed?: boolean;
+  /* Whether a running run draws its own stamp; the caller may hide it when a
+   * control above already names the sync. */
+  showRunningStamp?: boolean;
 }
 
 interface SummaryCell {
@@ -38,7 +41,8 @@ export default function SyncSummary({
   failedCount,
   downloadingCount = 0,
   onRetryFailed,
-  retryingFailed = false
+  retryingFailed = false,
+  showRunningStamp = true
 }: SyncSummaryProps) {
   const { t } = useI18n();
   const finishedAt = run.finishedAt === null ? null : new Date(run.finishedAt);
@@ -61,13 +65,15 @@ export default function SyncSummary({
 
   return (
     <div className={styles.syncSummary}>
-      <p className={styles.syncSummary__stamp}>
-        {running
-          ? t('syncSummary.syncing')
-          : t('syncSummary.lastSync', {
-              time: formatRelativeTime(t, finishedAt ?? now, now)
-            })}
-      </p>
+      {running && !showRunningStamp ? null : (
+        <p className={styles.syncSummary__stamp}>
+          {running
+            ? t('syncSummary.syncing')
+            : t('syncSummary.lastSync', {
+                time: formatRelativeTime(t, finishedAt ?? now, now)
+              })}
+        </p>
+      )}
       {cells.length === 0 ? (
         running ? null : (
           <p className={styles.syncSummary__noChanges}>

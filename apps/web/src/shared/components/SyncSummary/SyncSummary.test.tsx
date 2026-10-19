@@ -33,7 +33,7 @@ function run(overrides: Partial<SyncRun> = {}): SyncRun {
 type SummaryExtras = Partial<
   Pick<
     Parameters<typeof SyncSummary>[0],
-    'downloadingCount' | 'onRetryFailed' | 'retryingFailed'
+    'downloadingCount' | 'onRetryFailed' | 'retryingFailed' | 'showRunningStamp'
   >
 >;
 
@@ -144,6 +144,16 @@ describe('SyncSummary', () => {
 
     expect(screen.getByText('4 downloading')).toBeInTheDocument();
     expect(screen.getByText('Syncing')).toBeInTheDocument();
+  });
+
+  it('leaves the running word to the caller when it already names the sync', () => {
+    renderSummary(run({ status: SyncRunStatus.Running, finishedAt: null }), 0, {
+      downloadingCount: 4,
+      showRunningStamp: false
+    });
+
+    expect(screen.getByText('4 downloading')).toBeInTheDocument();
+    expect(screen.queryByText('Syncing')).not.toBeInTheDocument();
   });
 
   it('draws no downloading line once the run has finished', () => {

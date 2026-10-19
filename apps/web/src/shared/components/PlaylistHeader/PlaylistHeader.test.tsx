@@ -265,6 +265,7 @@ describe('PlaylistHeader', () => {
 
     const control = await screen.findByRole('button', { name: 'Syncing' });
 
+    expect(screen.getAllByText('Syncing')).toHaveLength(1);
     expect(control).toBeDisabled();
     expect(control).toHaveAttribute('aria-busy', 'true');
 
