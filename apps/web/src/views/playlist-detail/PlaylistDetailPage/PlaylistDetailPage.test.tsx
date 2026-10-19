@@ -26,6 +26,7 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, formatDuration } from '@playliberty/i18n';
 
+import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import type { PlayerTrack } from '../../../shared/player/types';
 import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
@@ -37,7 +38,6 @@ import {
   problemResponse
 } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
-import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { stubViewport } from '../../../testing/viewport';
 import PlaylistDetailPage from './PlaylistDetailPage';
 

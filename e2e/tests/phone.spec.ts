@@ -1,7 +1,8 @@
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
-import { writeScenario } from '../support/instance';
+import { drainDownloads, writeScenario } from '../support/instance';
 import {
+  addPlaylist,
   createPlaylist,
   openPlaylist,
   reloadUntil
@@ -115,6 +116,29 @@ test('the gallery draws the phone grid', async ({ page, request }) => {
    * could fit one column in 390, so this fails on a desk layout. */
   expect(second.x).toBeGreaterThan(first.x);
   expect(Math.abs(second.y - first.y)).toBeLessThan(1);
+});
+
+test('the card keeps the name clear of the failed mark', async ({ page }) => {
+  await addPlaylist(page, {
+    sourceId: 'E2EphoneName',
+    title: 'Etoiles',
+    entries: [{ videoId: 'e2ephonename1', title: 'Blue In Green' }],
+    downloads: { e2ephonename1: 'fail' }
+  });
+  await drainDownloads(page);
+  await page.reload();
+
+  /* The failed count is the badge's reason to be drawn. */
+  await expect(
+    page.getByRole('img', { name: '1 track is not stored · Failed 1' })
+  ).toBeVisible();
+
+  const name = page.getByRole('link', { name: 'Etoiles' });
+  const clipped = await name.evaluate(
+    element => element.scrollWidth > element.clientWidth
+  );
+
+  expect(clipped).toBe(false);
 });
 
 test('a tap above the seeker moves the playhead', async ({ page, request }) => {

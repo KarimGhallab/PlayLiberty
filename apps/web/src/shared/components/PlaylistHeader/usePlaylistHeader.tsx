@@ -68,8 +68,7 @@ export interface PlaylistHeaderSeam {
   /* The elapsed sync time beside the state. */
   showSyncTime?: boolean;
   now?: Date;
-  /* The library's own mark, drawn at the end of the name row beside the
-   * share indicator. */
+  /* The library's own mark, which the card item draws beside the count. */
   mark?: ReactNode;
   /* Whether the count and the sync state share one line: count left, state
    * right. */
@@ -425,7 +424,6 @@ export function usePlaylistHeader({
             {t(mark.label)}
           </span>
         </span>
-        {nameMark}
       </div>
       {statusLine ? (
         <div className={styles.playlistHeader__mstat}>

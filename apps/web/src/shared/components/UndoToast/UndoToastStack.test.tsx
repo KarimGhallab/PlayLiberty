@@ -16,10 +16,7 @@ function deferredWindow(key: number, detail: string): DeferredWindow {
   };
 }
 
-function renderStack(
-  windows: readonly DeferredWindow[],
-  onCancel = vi.fn()
-) {
+function renderStack(windows: readonly DeferredWindow[], onCancel = vi.fn()) {
   render(
     <I18nProvider preferred={['en']}>
       <UndoToastStack

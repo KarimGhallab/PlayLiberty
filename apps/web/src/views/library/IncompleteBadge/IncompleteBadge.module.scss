@@ -1,7 +1,7 @@
 /*
  * A pill with no fill, only a hairline, so it reads on the tile's ground and on
  * the raised ground under the pointer. Where it sits is the header's: the tile
- * leads its actions row with it, the card's band keeps it at the end.
+ * leads its actions row with it, the card item draws it beside the count.
  */
 .incomplete-badge {
   position: relative;

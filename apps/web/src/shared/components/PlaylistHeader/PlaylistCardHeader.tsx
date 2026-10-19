@@ -18,8 +18,8 @@ export type PlaylistCardHeaderProps = Omit<
   /* Whether the card is one item of the library's grid rather than the detail's
    * hero. */
   item?: boolean;
-  /* The library's own mark, drawn at the end of the name row. It is the item's,
-   * because its counts come from the list the gallery holds. */
+  /* The library's own mark, drawn beside the count. It is the item's, because
+   * its counts come from the list the gallery holds. */
   mark?: ReactNode;
 };
 
