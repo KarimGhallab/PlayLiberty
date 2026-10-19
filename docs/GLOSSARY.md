@@ -51,6 +51,8 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | `Association.origin`  | `remote`, `manual`                                          |
 | `Playlist.syncStatus` | `idle`, `syncing`, `error`                                  |
 
+The user-facing word for `fileStatus: stored` is **stored** in English and **stockée** in French, wherever the state appears: the filter chip, the incomplete badge, the empty promise and the row.
+
 ## Playback and delivery
 
 | Term          | Meaning                                                                                     |

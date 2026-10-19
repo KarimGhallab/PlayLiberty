@@ -489,6 +489,47 @@ export function useRetryTrack(
 }
 
 /*
+ * Retry every failed track. The set can span pages, so the ids are gathered
+ * before the loop; one invalidation follows, even after a refused press.
+ */
+export function useRetryFailedTracks(
+  playlistId: string
+): UseMutationResult<number, Error, void> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const trackIds: string[] = [];
+      let offset = 0;
+
+      for (;;) {
+        const page = await fetchPlaylistTrackPage(
+          playlistId,
+          offset,
+          TrackFileStatus.Failed
+        );
+
+        trackIds.push(...page.items.map(association => association.track.id));
+        offset += page.items.length;
+
+        if (page.items.length === 0 || offset >= page.total) {
+          break;
+        }
+      }
+
+      for (const trackId of trackIds) {
+        await commandEndpoint(endpoints.retryTrack, { trackId });
+      }
+
+      return trackIds.length;
+    },
+    onSettled: () => {
+      cacheEffects.trackChanged(queryClient, [playlistId]);
+    }
+  });
+}
+
+/*
  * Re-fetch a fileless track whole: the route flips its recorded policy to full
  * length, returning it to `pending`, so the tracks and failed count are reread.
  */

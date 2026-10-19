@@ -28,14 +28,14 @@ export const fr: Messages = {
     rest: 'Autres',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
     notDownloaded: {
-      one: "{count} piste n'est pas enregistrée",
-      other: '{count} pistes ne sont pas enregistrées'
+      one: "{count} piste n'est pas stockée",
+      other: '{count} pistes ne sont pas stockées'
     },
     deleteDeferred: 'Suppression de la playlist',
     empty: {
       heading: 'Aucune playlist',
       promise:
-        "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste téléchargée vous appartient ensuite, même si la vidéo est retirée plus tard."
+        "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste stockée vous appartient ensuite, même si la vidéo est retirée plus tard."
     }
   },
   detail: {
@@ -61,6 +61,14 @@ export const fr: Messages = {
     filterBy: 'Filtrer par',
     filterAll: 'Toutes',
     filterShowAll: 'Tout afficher',
+    retryFailed: {
+      one: 'Réessayer la piste en échec',
+      other: 'Réessayer les {count} pistes en échec'
+    },
+    retryingFailed: {
+      one: 'Nouvel essai de la piste en échec...',
+      other: 'Nouvel essai des {count} pistes en échec...'
+    },
     filterEmpty: {
       stored: 'Aucune piste stockée',
       pending: 'Aucune piste en attente',
@@ -157,7 +165,7 @@ export const fr: Messages = {
     prose:
       "Cette playlist n'a jamais été synchronisée. La synchronisation va sur YouTube et télécharge l'audio de chaque piste qu'elle contient.",
     promise:
-      'Une synchronisation prend quelques minutes, mais une fois une piste téléchargée, une vidéo retirée de YouTube ne la supprimera pas de cette playlist.',
+      'Une synchronisation prend quelques minutes, mais une fois une piste stockée, une vidéo retirée de YouTube ne la supprimera pas de cette playlist.',
     sync: 'Synchroniser',
     syncing: 'Synchronisation'
   },

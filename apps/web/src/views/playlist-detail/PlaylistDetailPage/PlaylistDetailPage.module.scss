@@ -181,6 +181,12 @@
     padding-bottom: var(--space-3);
   }
 
+  /* The failed set's action, between the chips and the rows it retries. */
+  &__bulk-retry {
+    display: flex;
+    padding-bottom: var(--space-3);
+  }
+
   /* A filter that matched nothing, under the chip row with one way back. */
   &__filter-empty {
     display: flex;

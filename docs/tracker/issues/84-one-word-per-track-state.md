@@ -1,46 +1,12 @@
 # 84: One word per track state
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
-**Blocked by:** None. Can start immediately.
+## Outcome
 
-## Agent Brief
+The stored state is **stockée** in French and **stored** in English wherever it appears. The chip and row already said `trackState.stored`; the incomplete badge now says `n'est pas stockée` / `ne sont pas stockées`, and both empty promises say `piste stockée` / `stored track`. The download operation keeps its own words (`téléchargement`, `download`) because the glossary separates the operation from the state.
 
-**Category:** bug
-**Summary:** The stored state is named three ways: `Stockee` on the filter chip, "pistes ne sont pas enregistrees" in the incomplete badge's tip, and "telechargee" in the empty gallery's promise.
+`docs/GLOSSARY.md` records the user-facing term under Track states: `stored` in English and `stockée` in French, used by the chip, the badge, the empty promise and the row. Both catalogs moved together.
 
-**Current behavior:**
-`packages/i18n` carries `trackState.stored: 'Stockee'`, `library.notDownloaded: '{count} pistes ne sont pas enregistrees'` and `library.empty.promise: "Chaque piste telechargee vous appartient..."`. A user learning the vocabulary from the gallery meets a different word for the same fact on the detail.
-
-**Desired behavior:**
-One word for the stored state, used by the chip, the badge, the promise and the row's state word. The word is the user's ("enregistree", "telechargee" or "stockee"), chosen once in `docs/GLOSSARY.md` and applied.
-
-**Key interfaces:**
-
-- The i18n catalogs are the single source; both languages move together.
-- The glossary records the decision.
-
-**Acceptance criteria:**
-
-- [ ] The chip, the badge, the promise and the row use one word for the stored state.
-- [ ] The English catalog matches.
-- [ ] The glossary names the term.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The other state words, which are already distinct.
-
-## Observed
-
-- `fr.ts:66,253` (`Aucune piste stockee`, `Stockee`), `fr.ts:30-32` (`ne sont pas enregistrees`), `fr.ts:36-39` (`telechargee`).
-
-## Expected
-
-- One fact, one word, everywhere.
-
-## Evidence
-
-- `packages/i18n/src/fr.ts`, `packages/i18n/src/en.ts`, `docs/GLOSSARY.md`.
-- Impeccable critique of `apps/web`, 2026-10-19, minor observations.
+Verification: `pnpm run build` and `pnpm run lint` pass; `pnpm test:unit` passes (web 524 tests across 52 files, plus the server and package suites).

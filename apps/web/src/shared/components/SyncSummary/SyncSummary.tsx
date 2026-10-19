@@ -2,6 +2,7 @@ import { SyncRunStatus } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
 import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 
+import RetryFailedControl from '../RetryFailedControl/RetryFailedControl';
 import styles from './SyncSummary.module.scss';
 
 /*
@@ -18,13 +19,19 @@ interface SyncSummaryProps {
   /* How many of the tracks this client holds are downloading. Passed only while
    * a run is active, because that is the only time the line is drawn. */
   downloadingCount?: number;
+  /* Retry every failed track. Absent for a reader, or when the failed view
+   * already carries the control. */
+  onRetryFailed?: () => void;
+  retryingFailed?: boolean;
 }
 
 export default function SyncSummary({
   run,
   now,
   failedCount,
-  downloadingCount = 0
+  downloadingCount = 0,
+  onRetryFailed,
+  retryingFailed = false
 }: SyncSummaryProps) {
   const { t } = useI18n();
   const finishedAt = run.finishedAt === null ? null : new Date(run.finishedAt);
@@ -80,6 +87,13 @@ export default function SyncSummary({
           <span className={styles.syncSummary__word}>{failedWord}</span>
         </div>
       </div>
+      {failedCount > 0 && onRetryFailed !== undefined ? (
+        <RetryFailedControl
+          count={failedCount}
+          retrying={retryingFailed}
+          onRetry={onRetryFailed}
+        />
+      ) : null}
       {running && downloadingCount > 0 ? (
         <p className={styles.syncSummary__flight}>
           {t('syncSummary.downloading', { count: downloadingCount })}

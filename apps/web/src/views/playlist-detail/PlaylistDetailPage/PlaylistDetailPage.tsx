@@ -22,6 +22,7 @@ import {
   usePlaylistTracks,
   usePlaylists,
   useRemoveTrack,
+  useRetryFailedTracks,
   useRetryTrack,
   useUpdateSkipNonMusic,
   useUpdateSort
@@ -40,6 +41,7 @@ import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/Playli
 import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/PlaylistSkipSetting';
 import PlaylistSortControl from '../../../shared/components/PlaylistSortControl/PlaylistSortControl';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import RetryFailedControl from '../../../shared/components/RetryFailedControl/RetryFailedControl';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
@@ -84,6 +86,7 @@ export default function PlaylistDetailPage() {
   /* The library read: the add dialog's writable playlists come from here. */
   const playlists = usePlaylists();
   const retry = useRetryTrack(playlistId);
+  const retryAllFailed = useRetryFailedTracks(playlistId);
   const fetchWhole = useFetchTrackWhole(playlistId);
   const removeTrack = useRemoveTrack(playlistId);
   const updateSkip = useUpdateSkipNonMusic(playlistId);
@@ -195,6 +198,10 @@ export default function PlaylistDetailPage() {
     (trackId: string): void => retry.mutate(trackId),
     [retry.mutate]
   );
+  const retryFailedTracks = useCallback(
+    (): void => retryAllFailed.mutate(),
+    [retryAllFailed.mutate]
+  );
   const fetchWholeTrack = useCallback(
     (trackId: string): void => fetchWhole.mutate(trackId),
     [fetchWhole.mutate]
@@ -268,6 +275,7 @@ export default function PlaylistDetailPage() {
    * it does not follow the filter.
    */
   const downloadingCount = counts?.[TrackFileStatus.Downloading] ?? 0;
+  const failedCount = counts?.[TrackFileStatus.Failed] ?? 0;
 
   /*
    * A 404, whether the playlist is gone or no longer visible, is the not-found
@@ -422,8 +430,14 @@ export default function PlaylistDetailPage() {
                 <SyncSummary
                   run={latestRun.data}
                   now={new Date()}
-                  failedCount={counts[TrackFileStatus.Failed]}
+                  failedCount={failedCount}
                   downloadingCount={downloadingCount}
+                  onRetryFailed={
+                    canWrite && activeState !== TrackFileStatus.Failed
+                      ? retryFailedTracks
+                      : undefined
+                  }
+                  retryingFailed={retryAllFailed.isPending}
                 />
               </div>
             ) : null}
@@ -465,6 +479,18 @@ export default function PlaylistDetailPage() {
                 active={activeState}
                 disabled={listShuffled}
                 onChange={setTrackState}
+              />
+            </div>
+          ) : null}
+          {activeState === TrackFileStatus.Failed &&
+          tracks.isSuccess &&
+          canWrite &&
+          failedCount > 0 ? (
+            <div className={styles.playlistDetail__bulkRetry}>
+              <RetryFailedControl
+                count={failedCount}
+                retrying={retryAllFailed.isPending}
+                onRetry={retryFailedTracks}
               />
             </div>
           ) : null}

@@ -33,7 +33,7 @@ export const en = {
     empty: {
       heading: 'No playlists yet',
       promise:
-        'Paste a YouTube playlist link, then sync it. Every track you download is yours from then on, even if the video is taken down later.'
+        'Paste a YouTube playlist link, then sync it. Every stored track is yours from then on, even if the video is taken down later.'
     }
   },
   detail: {
@@ -58,6 +58,14 @@ export const en = {
     filterBy: 'Filter by',
     filterAll: 'All',
     filterShowAll: 'Show all',
+    retryFailed: {
+      one: 'Retry 1 failed track',
+      other: 'Retry all {count} failed tracks'
+    },
+    retryingFailed: {
+      one: 'Retrying 1 failed track...',
+      other: 'Retrying all {count} failed tracks...'
+    },
     filterEmpty: {
       stored: 'No stored tracks',
       pending: 'No pending tracks',
@@ -153,7 +161,7 @@ export const en = {
     prose:
       'This playlist has never been synced. Syncing goes to YouTube and downloads the audio of every track in it.',
     promise:
-      'A sync takes a few minutes, but once a track is downloaded, a video removed from YouTube will not drop it from this playlist.',
+      'A sync takes a few minutes, but once a track is stored, a video removed from YouTube will not drop it from this playlist.',
     sync: 'Sync now',
     syncing: 'Syncing'
   },

@@ -1575,6 +1575,76 @@ describe('PlaylistDetailPage filter chips', () => {
     expect(screen.queryByText('No failed tracks')).not.toBeInTheDocument();
   });
 
+  it('retries every failed track from one counted control on the failed view', async () => {
+    const all = [
+      trackJson('failed-1', 'Failed One', 0, TrackFileStatus.Failed),
+      trackJson('failed-2', 'Failed Two', 1, TrackFileStatus.Failed),
+      trackJson('failed-3', 'Failed Three', 2, TrackFileStatus.Failed)
+    ];
+    const retried: string[] = [];
+    let release = (): void => {};
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: all,
+            total: all.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all)
+          })
+      ),
+      http.post(mockUrl(endpoints.retryTrack), async ({ request }) => {
+        const parts = new URL(request.url).pathname.split('/');
+        retried.push(parts[parts.length - 2] ?? '');
+        await gate;
+
+        return HttpResponse.json({
+          ...all[0].track,
+          fileStatus: TrackFileStatus.Downloading
+        });
+      })
+    );
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Failed 3' });
+    /* The state block carries the action until the failed view has its own. */
+    expect(
+      screen.getByRole('button', { name: 'Retry all 3 failed tracks' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 3' }));
+
+    await screen.findByText('Failed One');
+    const controls = screen.getAllByRole('button', {
+      name: 'Retry all 3 failed tracks'
+    });
+    expect(controls).toHaveLength(1);
+
+    fireEvent.click(controls[0]);
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Retrying all 3 failed tracks...'
+      })
+    ).toBeDisabled();
+
+    release();
+
+    await waitFor(() => expect(retried).toHaveLength(3));
+    expect(new Set(retried)).toEqual(
+      new Set(all.map(association => association.track.id))
+    );
+  });
+
   /*
    * A filter changes what is seen, not what plays: the queue comes from the
    * whole-playlist read.
