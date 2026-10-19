@@ -1,4 +1,5 @@
 import { IconPlayerSkipBack, IconPlayerSkipForward } from '@tabler/icons-react';
+import { Link, useMatchRoute } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
 
 import { endpoints } from '@playliberty/contracts';
@@ -64,6 +65,13 @@ function releasePointer(element: HTMLElement, pointerId: number): void {
 export default function PlayerBar() {
   const { t } = useI18n();
   const current = usePlayerStore(currentTrack);
+  const matchRoute = useMatchRoute();
+  const onCurrentPlaylist =
+    current !== null &&
+    matchRoute({
+      to: '/playlists/$playlistId',
+      params: { playlistId: current.playlistId }
+    }) !== false;
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
@@ -151,9 +159,14 @@ export default function PlayerBar() {
       className={styles.playerBar}
       aria-label={t('playerBar.label')}
       data-state={isPlaying ? 'playing' : 'paused'}>
-      <span
+      <Link
+        to="/playlists/$playlistId"
+        params={{ playlistId: current.playlistId }}
         className={styles.playerBar__art}
-        data-art={artwork === null ? 'no-art' : 'art'}>
+        data-art={artwork === null ? 'no-art' : 'art'}
+        aria-hidden="true"
+        tabIndex={-1}
+        disabled={onCurrentPlaylist}>
         {artwork === null ? null : (
           <img
             className={styles.playerBar__image}
@@ -162,14 +175,18 @@ export default function PlayerBar() {
             decoding="async"
           />
         )}
-      </span>
+      </Link>
       <div className={styles.playerBar__top}>
         <div className={styles.playerBar__id}>
           <span className={styles.playerBar__name}>
             <span className={styles.playerBar__title}>{current.title}</span>
-            <span className={styles.playerBar__source}>
+            <Link
+              to="/playlists/$playlistId"
+              params={{ playlistId: current.playlistId }}
+              className={styles.playerBar__source}
+              disabled={onCurrentPlaylist}>
               {current.playlistName}
-            </span>
+            </Link>
           </span>
         </div>
         <div className={styles.playerBar__transport}>

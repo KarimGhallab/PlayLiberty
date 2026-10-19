@@ -102,7 +102,22 @@
     line-height: var(--leading-normal);
     white-space: nowrap;
     overflow: hidden;
+    text-decoration: none;
     text-overflow: ellipsis;
+    border-radius: var(--radius-control);
+
+    &:hover:not([aria-disabled='true']) {
+      text-decoration: underline;
+    }
+
+    &[aria-disabled='true'] {
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
   }
 
   &__transport {
