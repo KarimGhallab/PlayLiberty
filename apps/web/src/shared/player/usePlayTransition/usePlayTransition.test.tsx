@@ -65,8 +65,8 @@ function wrapper({ children }: { children: ReactNode }) {
   );
 }
 
-function control() {
-  return renderHook(() => usePlayTransition(), { wrapper });
+function control(options?: { readonly timeoutMs?: number }) {
+  return renderHook(() => usePlayTransition(options), { wrapper });
 }
 
 function queueOf(playlistId: string, ids: string[], shuffle = false): void {
@@ -245,6 +245,49 @@ describe('usePlayTransition', () => {
     );
 
     expect(usePlayerStore.getState().shuffle).toBe(true);
+    expect(result.current.retryable).toBe(false);
+  });
+
+  it('bounds a read that never answers and offers the press back', async () => {
+    let attempts = 0;
+
+    server.use(
+      http.get(QUEUE_URL, () => {
+        attempts += 1;
+
+        return attempts === 1
+          ? new Promise<Response>(() => {})
+          : queueList([track('track-1')]);
+      })
+    );
+
+    const { result } = control({ timeoutMs: 20 });
+
+    act(() => result.current.play(PLAYLIST));
+
+    expect(result.current.starting).toBe(true);
+    expect(result.current.startingPress).toEqual({
+      playlist: PLAYLIST,
+      intent: 'play',
+      startTrackId: null
+    });
+
+    await waitFor(() => expect(result.current.retryable).toBe(true));
+
+    expect(result.current.starting).toBe(false);
+    expect(result.current.startingPress).toBeNull();
+    expect(result.current.refusal).toEqual({
+      name: 'Rain On The Window',
+      reason: StartFailure.Unreachable
+    });
+    expect(usePlayerStore.getState().queue).toHaveLength(0);
+
+    act(() => result.current.retry());
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().queue).toHaveLength(1)
+    );
+
     expect(result.current.retryable).toBe(false);
   });
 

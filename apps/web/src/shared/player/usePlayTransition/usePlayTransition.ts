@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Playlist } from '@playliberty/contracts';
 import type { Messages, Translator } from '@playliberty/i18n';
 
-import { readPlaylistQueue } from '../../api/queries/queries';
+import { playlistQueueKey, readPlaylistQueue } from '../../api/queries/queries';
 import { startPlaylistQueue } from '../playerQueue/playerQueue';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { queuePlaylistId } from '../types';
@@ -17,6 +17,9 @@ import { queuePlaylistId } from '../types';
 
 /** How long a refusal stands before it withdraws itself. */
 export const NOTICE_WINDOW_MS = 4000;
+
+/** How long a queue read may stay unanswered before the press is a failure. */
+export const QUEUE_READ_TIMEOUT_MS = 10_000;
 
 export enum StartIntent {
   Play = 'play',
@@ -35,7 +38,8 @@ export interface PlayTransitionRefusal {
 
 type PlaylistIdentity = Pick<Playlist, 'id' | 'name'>;
 
-interface Press {
+/* One press: which playlist, with which intent, and the track it names. */
+export interface PlayPress {
   readonly playlist: PlaylistIdentity;
   readonly intent: StartIntent;
   readonly startTrackId: string | null;
@@ -54,27 +58,68 @@ export interface PlayTransition {
   readonly retry: () => void;
   /* Whether a press is waiting on its read. */
   readonly starting: boolean;
+  /* The press waiting on its read, so the control that was pressed can say so. */
+  readonly startingPress: PlayPress | null;
   /* Whether the last press failed in a way a retry can answer. */
   readonly retryable: boolean;
   readonly refusal: PlayTransitionRefusal | null;
 }
 
-export function usePlayTransition(): PlayTransition {
+export interface PlayTransitionOptions {
+  /** The read's deadline; the default is the production one. */
+  readonly timeoutMs?: number;
+}
+
+/** The press when it names this playlist; null for another playlist or none. */
+export function pressForPlaylist(
+  press: PlayPress | null,
+  playlistId: string
+): PlayPress | null {
+  return press !== null && press.playlist.id === playlistId ? press : null;
+}
+
+/* A read that never answers is a failed start after the deadline, not a
+ * control that stays dimmed forever. */
+function readWithin<T>(read: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('The queue read timed out.')),
+      timeoutMs
+    );
+
+    read.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+export function usePlayTransition({
+  timeoutMs = QUEUE_READ_TIMEOUT_MS
+}: PlayTransitionOptions = {}): PlayTransition {
   const queryClient = useQueryClient();
   const [refusal, setRefusal] = useState<PlayTransitionRefusal | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [failed, setFailed] = useState<Press | null>(null);
+  const [pressInFlight, setPressInFlight] = useState<PlayPress | null>(null);
+  const [failed, setFailed] = useState<PlayPress | null>(null);
 
   const load = useCallback(
-    (press: Press) => {
-      setStarting(true);
-      setFailed(null);
+    (press: PlayPress, retrying = false) => {
+      setPressInFlight(press);
+      if (!retrying) {
+        setFailed(null);
+      }
 
       void (async () => {
         try {
-          const tracks = await readPlaylistQueue(
-            queryClient,
-            press.playlist.id
+          const tracks = await readWithin(
+            readPlaylistQueue(queryClient, press.playlist.id),
+            timeoutMs
           );
 
           const started = startPlaylistQueue(
@@ -84,6 +129,10 @@ export function usePlayTransition(): PlayTransition {
             press.intent === StartIntent.Shuffle
           );
 
+          /* A read that answered is no longer a failure, whether it found a
+           * queue or an empty playlist. */
+          setFailed(null);
+
           if (!started) {
             setRefusal({
               name: press.playlist.name,
@@ -91,17 +140,24 @@ export function usePlayTransition(): PlayTransition {
             });
           }
         } catch {
+          /* A timed-out read is still the query's in-flight one; cancel it so
+           * the retry asks the queue again rather than joining the hung read. */
+          await queryClient.cancelQueries({
+            queryKey: playlistQueueKey(press.playlist.id),
+            exact: true
+          });
+
           setRefusal({
             name: press.playlist.name,
             reason: StartFailure.Unreachable
           });
           setFailed(press);
         } finally {
-          setStarting(false);
+          setPressInFlight(null);
         }
       })();
     },
-    [queryClient]
+    [queryClient, timeoutMs]
   );
 
   const start = useCallback(
@@ -150,7 +206,10 @@ export function usePlayTransition(): PlayTransition {
   );
   const retry = useCallback(() => {
     if (failed !== null) {
-      load(failed);
+      /* The failure stays drawn while the retry is read, so the control says
+       * "Retrying..." rather than vanishing. */
+      setRefusal(null);
+      load(failed, true);
     }
   }, [failed, load]);
 
@@ -171,7 +230,8 @@ export function usePlayTransition(): PlayTransition {
     shuffle,
     playTrack,
     retry,
-    starting,
+    starting: pressInFlight !== null,
+    startingPress: pressInFlight,
     retryable: failed !== null,
     refusal
   };

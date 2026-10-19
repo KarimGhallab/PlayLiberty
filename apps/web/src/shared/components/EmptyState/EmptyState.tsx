@@ -2,6 +2,7 @@ import { IconRotateClockwise } from '@tabler/icons-react';
 
 import { useI18n } from '@playliberty/i18n';
 
+import Spinner from '../Spinner/Spinner';
 import styles from './EmptyState.module.scss';
 
 /*
@@ -37,7 +38,7 @@ export default function EmptyState({
           onClick={onSync}
           disabled={syncing}>
           {syncing ? (
-            <span className={styles.emptyState__spinner} aria-hidden="true" />
+            <Spinner />
           ) : (
             <IconRotateClockwise
               className={styles.emptyState__buttonIcon}

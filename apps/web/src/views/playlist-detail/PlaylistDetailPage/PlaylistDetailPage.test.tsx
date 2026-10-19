@@ -563,6 +563,50 @@ describe('PlaylistDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('acknowledges a row press while its queue read is in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        async () => {
+          await gate;
+          return HttpResponse.json({
+            items: [
+              trackJson('track-1', 'Naima', 0),
+              trackJson('track-2', 'Blue In Green', 1)
+            ]
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    const rowPlay = await screen.findByRole('button', {
+      name: 'Play Blue In Green'
+    });
+    fireEvent.click(rowPlay);
+
+    await waitFor(() => expect(rowPlay).toBeDisabled());
+    expect(rowPlay.closest('li')).toHaveAttribute('aria-busy', 'true');
+    expect(rowPlay.closest('li')).toHaveAttribute('data-starting', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).not.toHaveAttribute('aria-busy');
+
+    release();
+
+    await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
+
+    expect(usePlayerStore.getState().queue).toHaveLength(2);
+    expect(rowPlay.closest('li')).not.toHaveAttribute('data-starting');
+  });
+
   it('disables the header next when the playing track is the last', async () => {
     renderDetail();
 

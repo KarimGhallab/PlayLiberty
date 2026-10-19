@@ -6,6 +6,7 @@ import type { Playlist } from '@playliberty/contracts';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import styles from './PlaylistHeader.module.scss';
 import { playlistDoor } from './playlistDoor';
+import type { PlaybackStartControl } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 
 /*
@@ -34,6 +35,10 @@ export interface PlaylistTileHeaderProps {
   /* The overflow's items, already gated by access. Empty for a reader. */
   menu: readonly PlaylistAction[];
   onOpen: () => void;
+  /* Whether this item's start control is waiting on its queue read. */
+  playbackStarting?: boolean;
+  /* Which of the two start controls was pressed. */
+  startingControl?: PlaybackStartControl;
 }
 
 export default function PlaylistTileHeader({
@@ -48,7 +53,9 @@ export default function PlaylistTileHeader({
   onShuffle,
   shuffled = false,
   menu,
-  onOpen
+  onOpen,
+  playbackStarting = false,
+  startingControl = 'play'
 }: PlaylistTileHeaderProps) {
   const {
     sleeve,
@@ -69,6 +76,8 @@ export default function PlaylistTileHeader({
     playable,
     onShuffle,
     shuffled,
+    playbackStarting,
+    startingControl,
     menu,
     showSyncTime: true
   });

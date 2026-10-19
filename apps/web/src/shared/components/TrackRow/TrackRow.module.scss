@@ -29,6 +29,10 @@
     opacity: var(--opacity-disabled);
   }
 
+  &[data-starting='true'] {
+    cursor: progress;
+  }
+
   /* In-flight: the artwork, text, duration and lane dim and restore together,
    * so nothing travels. "Downloading" carries the state if motion stops. */
   &[data-downloading='true'] &__art,
@@ -62,6 +66,13 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  &__spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    color: var(--ink);
   }
 
   /* The scrim under the current track's bars, playing or paused, so the accent

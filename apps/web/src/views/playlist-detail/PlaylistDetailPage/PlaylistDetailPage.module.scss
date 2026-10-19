@@ -170,13 +170,14 @@
   }
 
   /*
-   * The chips take the room and wrap at a desk; on a phone they keep the row one
-   * line and scroll, and the list's own top border closes the row.
+   * The sort on its own line above the chips; the chips take the full width and
+   * wrap, so a chip is never clipped by the sort.
    */
   &__controls {
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
     padding-bottom: var(--space-3);
   }
 

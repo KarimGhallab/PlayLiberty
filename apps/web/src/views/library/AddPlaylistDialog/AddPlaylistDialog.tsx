@@ -5,6 +5,7 @@ import { useI18n } from '@playliberty/i18n';
 
 import Dialog from '../../../shared/components/Dialog/Dialog';
 import dialogStyles from '../../../shared/components/Dialog/Dialog.module.scss';
+import Spinner from '../../../shared/components/Spinner/Spinner';
 
 import styles from './AddPlaylistDialog.module.scss';
 
@@ -105,10 +106,7 @@ export default function AddPlaylistDialog({
             onClick={submit}>
             {isWorking ? (
               <>
-                <span
-                  className={dialogStyles.dialog__spinner}
-                  aria-hidden="true"
-                />
+                <Spinner />
                 {t('addPlaylistDialog.adding')}
               </>
             ) : (

@@ -27,6 +27,7 @@ import { mediaUrl } from '../../api/endpoints/endpoints';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import Menu from '../Menu/Menu';
 import PlayGlyph from '../PlayGlyph';
+import Spinner from '../Spinner/Spinner';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
@@ -38,6 +39,10 @@ import { playlistDoorProps } from './playlistDoor';
  * model, built once so the arrangements cannot drift. Each control is drawn
  * only when the caller offers its callback.
  */
+
+/* Which start control a press belongs to, so only it shows the in-flight
+ * state while the others wait. */
+export type PlaybackStartControl = 'play' | 'shuffle';
 
 export interface PlaylistHeaderSeam {
   playlist: Playlist;
@@ -80,7 +85,12 @@ export interface PlaylistHeaderSeam {
    * derive it from `trackCount`, which counts every association. */
   playable: boolean;
   playbackFailed?: boolean;
+  /* Whether this header's play or shuffle is the press waiting on its read. */
   playbackStarting?: boolean;
+  /* Whether any start for this playlist is waiting: every start control waits. */
+  playbackBusy?: boolean;
+  /* Which start control the in-flight press belongs to. */
+  startingControl?: PlaybackStartControl;
   onRetryPlayback?: () => void;
 }
 
@@ -151,6 +161,8 @@ export function usePlaylistHeader({
   playable,
   playbackFailed = false,
   playbackStarting = false,
+  playbackBusy = playbackStarting,
+  startingControl = 'play',
   onRetryPlayback
 }: PlaylistHeaderSeam): PlaylistHeaderParts {
   const { t } = useI18n();
@@ -208,20 +220,29 @@ export function usePlaylistHeader({
 
   /* Disabled rather than absent on a playlist with nothing to play: a control
    * that cannot be pressed differs from one that is not there. */
+  const startingPlay = playbackStarting && startingControl === 'play';
+  const startingShuffle = playbackStarting && startingControl === 'shuffle';
+
   const playControl =
     onPlay === undefined ? null : (
       <button
         type="button"
         className={styles.playlistHeader__play}
         aria-label={playing ? t('header.pause') : t('header.play')}
-        disabled={!playable || pending || playbackStarting}
+        aria-busy={startingPlay ? true : undefined}
+        data-starting={startingPlay ? 'true' : undefined}
+        disabled={!playable || pending || playbackBusy}
         data-run={run}
         onAnimationEnd={endRun}
         onClick={onPlay}>
-        <PlayGlyph
-          className={styles.playlistHeader__glyph}
-          stripClassName={styles.playlistHeader__strip}
-        />
+        {startingPlay ? (
+          <Spinner />
+        ) : (
+          <PlayGlyph
+            className={styles.playlistHeader__glyph}
+            stripClassName={styles.playlistHeader__strip}
+          />
+        )}
       </button>
     );
 
@@ -269,14 +290,15 @@ export function usePlaylistHeader({
       <button
         type="button"
         className={styles.playlistHeader__retry}
-        disabled={playbackStarting}
+        aria-busy={playbackBusy ? true : undefined}
+        disabled={playbackBusy}
         onClick={onRetryPlayback}>
         <IconAlertTriangle
           className={styles.playlistHeader__retryIcon}
           aria-hidden="true"
           focusable="false"
         />
-        {playbackStarting
+        {playbackBusy
           ? t('header.retryingPlayback')
           : t('header.retryPlayback')}
       </button>
@@ -293,13 +315,19 @@ export function usePlaylistHeader({
         className={styles.playlistHeader__iconBtn}
         aria-pressed={shuffled && current}
         aria-label={t('header.shuffle', { name: playlist.name })}
-        disabled={pending || playbackStarting}
+        aria-busy={startingShuffle ? true : undefined}
+        data-starting={startingShuffle ? 'true' : undefined}
+        disabled={pending || playbackBusy}
         onClick={onShuffle}>
-        <IconArrowsShuffle
-          className={styles.playlistHeader__icon}
-          aria-hidden="true"
-          focusable="false"
-        />
+        {startingShuffle ? (
+          <Spinner />
+        ) : (
+          <IconArrowsShuffle
+            className={styles.playlistHeader__icon}
+            aria-hidden="true"
+            focusable="false"
+          />
+        )}
       </button>
     );
 

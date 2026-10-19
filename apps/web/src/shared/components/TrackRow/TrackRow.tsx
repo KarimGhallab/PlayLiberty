@@ -15,6 +15,7 @@ import { trackTone } from '@playliberty/ui-foundation';
 import { mediaUrl } from '../../api/endpoints/endpoints';
 import { isPlayable } from '../../player/playable';
 import Menu from '../Menu/Menu';
+import Spinner from '../Spinner/Spinner';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
@@ -42,6 +43,8 @@ interface TrackRowProps {
   readonly onRemove?: (trackId: string) => void;
   /** Whether a row action is in flight, so the menu is not opened onto a no-op. */
   readonly busy?: boolean;
+  /** Whether this row's press is waiting on its queue read. */
+  readonly starting?: boolean;
   readonly pending?: boolean;
 }
 
@@ -61,6 +64,7 @@ function TrackRow({
   onFetchWhole,
   onRemove,
   busy = false,
+  starting = false,
   pending = false
 }: TrackRowProps) {
   const { t } = useI18n();
@@ -158,7 +162,7 @@ function TrackRow({
           aria-label={t('trackRow.actions', { title: track.title })}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          disabled={downloading || busy || pending}
+          disabled={downloading || busy || pending || starting}
           onClick={() => setMenuOpen(open => !open)}>
           <IconDotsVertical
             className={styles.trackRow__actionIcon}
@@ -191,7 +195,8 @@ function TrackRow({
       data-playable={playable ? 'true' : undefined}
       data-downloading={downloading ? 'true' : undefined}
       data-pending={pending ? 'true' : undefined}
-      aria-busy={pending ? true : undefined}>
+      data-starting={starting ? 'true' : undefined}
+      aria-busy={pending || starting ? true : undefined}>
       <span
         className={styles.trackRow__art}
         data-art={artwork === null ? 'no-art' : 'art'}>
@@ -204,6 +209,12 @@ function TrackRow({
             decoding="async"
           />
         )}
+        {starting ? (
+          <>
+            <span className={styles.trackRow__scrim} aria-hidden="true" />
+            <Spinner className={styles.trackRow__spinner} />
+          </>
+        ) : null}
         {current ? (
           <span className={styles.trackRow__scrim} aria-hidden="true" />
         ) : null}
@@ -254,7 +265,8 @@ function TrackRow({
           type="button"
           className={styles.trackRow__hit}
           aria-label={label}
-          disabled={pending}
+          aria-busy={starting ? true : undefined}
+          disabled={pending || starting}
           onClick={() => onPlay(track.id)}
         />
       ) : null}

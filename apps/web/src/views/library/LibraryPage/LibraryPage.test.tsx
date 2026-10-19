@@ -841,6 +841,73 @@ describe('LibraryPage', () => {
     );
   });
 
+  it('marks the pressed tile while its queue read is in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const tracks = ['track-1', 'track-2'].map((id, index) => ({
+      track: {
+        id,
+        provider: 'youtube',
+        videoId: `video-${index + 1}`,
+        title: `Track ${index + 1}`,
+        durationSeconds: 200,
+        skipNonMusic: true,
+        thumbnailPath: null,
+        fileStatus: 'stored',
+        sourceStatus: 'available',
+        failureReason: null,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        updatedAt: '2026-09-29T12:00:00.000Z'
+      },
+      origin: 'remote',
+      position: index
+    }));
+
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: 'playlist-1' }),
+        async () => {
+          await gate;
+          return HttpResponse.json({ items: tracks });
+        }
+      )
+    );
+    renderLibraryPage();
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const item = () =>
+      screen
+        .getByRole('link', { name: 'Rain On The Window' })
+        .closest('[data-arrangement]') as HTMLElement;
+    const play = () =>
+      within(item()).getByRole('button', { name: 'Play this playlist' });
+    const otherPlay = () =>
+      within(
+        screen
+          .getByRole('link', { name: 'Shared Mix' })
+          .closest('[data-arrangement]') as HTMLElement
+      ).getByRole('button', { name: 'Play this playlist' });
+
+    fireEvent.click(play());
+
+    await waitFor(() => expect(play()).toBeDisabled());
+    expect(play()).toHaveAttribute('aria-busy', 'true');
+    expect(play()).toHaveAttribute('data-starting', 'true');
+    expect(otherPlay()).toBeEnabled();
+
+    release();
+
+    await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
+
+    expect(usePlayerStore.getState().queue).toHaveLength(2);
+    expect(
+      within(item()).getByRole('button', { name: 'Pause this playlist' })
+    ).not.toHaveAttribute('data-starting');
+  });
+
   it('draws the play disabled on a playlist with nothing stored', async () => {
     server.use(
       http.get(mockUrl(endpoints.playlists), () =>

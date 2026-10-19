@@ -4,6 +4,7 @@ import type { PlaylistWithCounts } from '@playliberty/contracts';
 
 import PlaylistCardHeader from '../../shared/components/PlaylistHeader/PlaylistCardHeader';
 import PlaylistTileHeader from '../../shared/components/PlaylistHeader/PlaylistTileHeader';
+import type { PlaybackStartControl } from '../../shared/components/PlaylistHeader/usePlaylistHeader';
 import { hasPlayableTrack } from '../../shared/player/playable';
 import { usePlayerStore } from '../../shared/player/playerStore/playerStore';
 import { queuePlaylistId } from '../../shared/player/types';
@@ -28,6 +29,10 @@ interface PlaylistItemProps {
   onPlay: () => void;
   /* Start this playlist, shuffled, or turn its shuffle off. */
   onShuffle: () => void;
+  /* Whether this item's start control is waiting on its queue read. */
+  playbackStarting: boolean;
+  /* Which of the two start controls was pressed. */
+  startingControl: PlaybackStartControl;
 }
 
 export default function PlaylistItem({
@@ -37,7 +42,9 @@ export default function PlaylistItem({
   layout,
   menu,
   onPlay,
-  onShuffle
+  onShuffle,
+  playbackStarting,
+  startingControl
 }: PlaylistItemProps) {
   const navigate = useNavigate();
   const shuffled = usePlayerStore(state => state.shuffle);
@@ -59,7 +66,9 @@ export default function PlaylistItem({
       />
     ),
     onShuffle,
-    shuffled
+    shuffled,
+    playbackStarting,
+    startingControl
   };
 
   if (isCard) {

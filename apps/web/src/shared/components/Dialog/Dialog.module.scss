@@ -118,22 +118,6 @@
     outline: var(--focus-width) solid var(--accent);
     outline-offset: var(--focus-offset);
   }
-
-  &__spinner {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    border: 2px solid currentColor;
-    border-top-color: transparent;
-    border-radius: var(--radius-chip);
-    animation: pl-spin 900ms linear infinite;
-  }
-}
-
-@keyframes pl-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /*
@@ -189,13 +173,6 @@
   to {
     opacity: 0;
     transform: scale(0.98);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dialog__spinner {
-    border-top-color: currentColor;
-    opacity: 0.6;
   }
 }
 

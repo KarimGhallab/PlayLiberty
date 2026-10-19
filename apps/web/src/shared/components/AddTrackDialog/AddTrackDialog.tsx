@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { AddTrackInputSchema, AddTrackOutcome } from '@playliberty/contracts';
 import type { AddTrackResult, Playlist } from '@playliberty/contracts';
+import { AddTrackInputSchema, AddTrackOutcome } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import Dialog from '../Dialog/Dialog';
 import dialogStyles from '../Dialog/Dialog.module.scss';
+import Spinner from '../Spinner/Spinner';
 import styles from './AddTrackDialog.module.scss';
 
 /*
@@ -142,10 +143,7 @@ export default function AddTrackDialog({
             onClick={submit}>
             {isWorking ? (
               <>
-                <span
-                  className={dialogStyles.dialog__spinner}
-                  aria-hidden="true"
-                />
+                <Spinner />
                 {t('addTrackDialog.adding')}
               </>
             ) : (

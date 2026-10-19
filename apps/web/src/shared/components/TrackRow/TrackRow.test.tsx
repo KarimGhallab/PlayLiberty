@@ -44,6 +44,7 @@ function renderRow(options: {
   readonly onFetchWhole?: (trackId: string) => void;
   readonly onRemove?: ((trackId: string) => void) | null;
   readonly busy?: boolean;
+  readonly starting?: boolean;
   readonly pending?: boolean;
 }): {
   onPlay: ReturnType<typeof vi.fn>;
@@ -68,6 +69,7 @@ function renderRow(options: {
           onFetchWhole={options.onFetchWhole}
           onRemove={resolvedRemove}
           busy={options.busy ?? false}
+          starting={options.starting ?? false}
           pending={options.pending ?? false}
         />
       </ul>
@@ -83,6 +85,20 @@ describe('TrackRow', () => {
 
     const row = container.querySelector('li');
     expect(row).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Play Blue In Green' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    ).toBeDisabled();
+  });
+
+  it('marks the pressed row while its queue read is in flight', () => {
+    const { container } = renderRow({ starting: true, onRemove: vi.fn() });
+
+    const row = container.querySelector('li');
+    expect(row).toHaveAttribute('aria-busy', 'true');
+    expect(row).toHaveAttribute('data-starting', 'true');
     expect(
       screen.getByRole('button', { name: 'Play Blue In Green' })
     ).toBeDisabled();

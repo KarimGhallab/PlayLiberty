@@ -407,6 +407,11 @@
       opacity: var(--opacity-disabled);
     }
 
+    &[data-starting='true']:disabled {
+      cursor: progress;
+      opacity: 1;
+    }
+
     &:focus-visible {
       outline: var(--focus-width) solid var(--accent);
       outline-offset: var(--focus-offset);
@@ -596,6 +601,10 @@
       color: var(--accent);
       background: var(--surface);
       border-color: var(--accent);
+    }
+
+    &[data-starting='true'] {
+      cursor: progress;
     }
   }
 

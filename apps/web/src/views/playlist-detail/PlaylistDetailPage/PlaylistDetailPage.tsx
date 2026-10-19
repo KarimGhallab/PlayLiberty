@@ -35,6 +35,7 @@ import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
 import PlaylistCardHeader from '../../../shared/components/PlaylistHeader/PlaylistCardHeader';
 import PlaylistRowHeader from '../../../shared/components/PlaylistHeader/PlaylistRowHeader';
+import type { PlaylistHeaderSeam } from '../../../shared/components/PlaylistHeader/usePlaylistHeader';
 import PlaylistNotFound from '../../../shared/components/PlaylistNotFound/PlaylistNotFound';
 import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/PlaylistSkipSetting';
 import PlaylistSortControl from '../../../shared/components/PlaylistSortControl/PlaylistSortControl';
@@ -54,6 +55,8 @@ import {
 } from '../../../shared/player/types';
 import {
   NOTICE_WINDOW_MS,
+  StartIntent,
+  pressForPlaylist,
   refusalNotice,
   usePlayTransition
 } from '../../../shared/player/usePlayTransition/usePlayTransition';
@@ -144,6 +147,13 @@ export default function PlaylistDetailPage() {
   const playlistView = useMemo(
     () => ({ id: playlistId, name: playlist.data?.name ?? '' }),
     [playlistId, playlist.data?.name]
+  );
+
+  /* The press this screen made, if any: a start on another playlist is not
+   * this header's to claim. */
+  const startingThisPlaylist = pressForPlaylist(
+    transition.startingPress,
+    playlistId
   );
 
   /* A row press moves the playhead inside the queue the listener sees. */
@@ -275,7 +285,7 @@ export default function PlaylistDetailPage() {
    * Every prop here is honoured by both header arrangements, the card above
    * 768px and the row below it, so the set is named once.
    */
-  const headerProps = {
+  const headerProps: Omit<PlaylistHeaderSeam, 'playlist'> = {
     ownerName,
     heading: true,
     ground: true,
@@ -297,7 +307,12 @@ export default function PlaylistDetailPage() {
         ? tracks.tracks.length
         : undefined,
     playbackFailed: transition.retryable,
-    playbackStarting: transition.starting,
+    playbackStarting:
+      startingThisPlaylist !== null &&
+      startingThisPlaylist.startTrackId === null,
+    playbackBusy: startingThisPlaylist !== null,
+    startingControl:
+      startingThisPlaylist?.intent === StartIntent.Shuffle ? 'shuffle' : 'play',
     onRetryPlayback: transition.retry
   };
 
@@ -431,12 +446,6 @@ export default function PlaylistDetailPage() {
           ) : null}
           {tracks.isSuccess && counts !== undefined && hasTracks ? (
             <div className={styles.playlistDetail__controls}>
-              <PlaylistFilterChips
-                counts={counts}
-                active={activeState}
-                disabled={listShuffled}
-                onChange={setTrackState}
-              />
               <PlaylistSortControl
                 sort={playlist.data?.sort ?? PlaylistSort.Playlist}
                 canEdit={canWrite}
@@ -450,6 +459,12 @@ export default function PlaylistDetailPage() {
                       )
                   })
                 }
+              />
+              <PlaylistFilterChips
+                counts={counts}
+                active={activeState}
+                disabled={listShuffled}
+                onChange={setTrackState}
               />
             </div>
           ) : null}
@@ -509,6 +524,10 @@ export default function PlaylistDetailPage() {
                     onFetchWhole={canWrite ? fetchWholeTrack : undefined}
                     onRemove={canWrite ? removeTrackDeferred : undefined}
                     busy={busyTrackId === association.track.id}
+                    starting={
+                      startingThisPlaylist?.startTrackId ===
+                      association.track.id
+                    }
                   />
                 );
               })}

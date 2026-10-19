@@ -87,31 +87,4 @@
     height: var(--icon-sm);
     flex-shrink: 0;
   }
-
-  /* currentColor, not a token: the spinner sits on whatever fill the button
-   * has. */
-  &__spinner {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    border-radius: var(--radius-chip);
-    border: 2px solid currentColor;
-    border-top-color: transparent;
-    animation: empty-state-spin 900ms linear infinite;
-  }
-}
-
-@keyframes empty-state-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* With the motion gone a ring with a cut top reads as a broken ring, so the cap
- * comes back and the word on the button carries the state. */
-@media (prefers-reduced-motion: reduce) {
-  .empty-state__spinner {
-    border-top-color: currentColor;
-    opacity: 0.6;
-  }
 }

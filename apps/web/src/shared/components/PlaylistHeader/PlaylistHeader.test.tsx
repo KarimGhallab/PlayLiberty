@@ -463,6 +463,56 @@ describe('PlaylistHeader', () => {
     ).toBeDisabled();
   });
 
+  it('marks the pressed play while its queue read is in flight', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      playbackStarting: true
+    });
+
+    const play = await screen.findByRole('button', {
+      name: 'Play this playlist'
+    });
+
+    expect(play).toBeDisabled();
+    expect(play).toHaveAttribute('aria-busy', 'true');
+    expect(play).toHaveAttribute('data-starting', 'true');
+  });
+
+  it('marks the pressed shuffle and leaves the play quiet', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      onShuffle: () => undefined,
+      playbackStarting: true,
+      startingControl: 'shuffle'
+    });
+
+    const shuffle = await screen.findByRole('button', {
+      name: 'Shuffle Rain On The Window'
+    });
+
+    expect(shuffle).toBeDisabled();
+    expect(shuffle).toHaveAttribute('aria-busy', 'true');
+    expect(shuffle).toHaveAttribute('data-starting', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).not.toHaveAttribute('aria-busy');
+  });
+
+  it('waits the header without claiming a row press', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      playbackBusy: true
+    });
+
+    const play = await screen.findByRole('button', {
+      name: 'Play this playlist'
+    });
+
+    expect(play).toBeDisabled();
+    expect(play).not.toHaveAttribute('aria-busy');
+    expect(play).not.toHaveAttribute('data-starting');
+  });
+
   /* The tooltip's reveal is `:hover`/`:focus-visible` in the stylesheet, which
    * jsdom does not compute; these cover the tab stop and Escape's flag. */
   it('puts the share indicator in the tab order', async () => {

@@ -20,6 +20,8 @@ import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { currentTrack } from '../../../shared/player/types';
 import {
   NOTICE_WINDOW_MS,
+  StartIntent,
+  pressForPlaylist,
   refusalNotice,
   usePlayTransition
 } from '../../../shared/player/usePlayTransition/usePlayTransition';
@@ -45,7 +47,7 @@ export default function LibraryPage() {
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
   const deferred = useDeferredAction();
-  const { play, shuffle, refusal } = usePlayTransition();
+  const { play, shuffle, refusal, startingPress } = usePlayTransition();
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const docked = usePlayerStore(state => currentTrack(state) !== null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -88,19 +90,29 @@ export default function LibraryPage() {
     return () => clearTimeout(timer);
   }, [pinRefused]);
 
-  const renderItem = (playlist: PlaylistWithCounts) => (
-    <li key={playlist.id} className={styles.library__cell}>
-      <PlaylistItem
-        playlist={playlist}
-        ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
-        pending={deferred.windows.some(entry => entry.id === playlist.id)}
-        layout={isMobile ? 'card' : 'tile'}
-        menu={actions.menuFor(playlist)}
-        onPlay={() => play(playlist)}
-        onShuffle={() => shuffle(playlist)}
-      />{' '}
-    </li>
-  );
+  const renderItem = (playlist: PlaylistWithCounts) => {
+    const startingThisPlaylist = pressForPlaylist(startingPress, playlist.id);
+
+    return (
+      <li key={playlist.id} className={styles.library__cell}>
+        <PlaylistItem
+          playlist={playlist}
+          ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
+          pending={deferred.windows.some(entry => entry.id === playlist.id)}
+          layout={isMobile ? 'card' : 'tile'}
+          menu={actions.menuFor(playlist)}
+          onPlay={() => play(playlist)}
+          onShuffle={() => shuffle(playlist)}
+          playbackStarting={startingThisPlaylist !== null}
+          startingControl={
+            startingThisPlaylist?.intent === StartIntent.Shuffle
+              ? 'shuffle'
+              : 'play'
+          }
+        />{' '}
+      </li>
+    );
+  };
 
   const renderList = (list: readonly PlaylistWithCounts[]) => (
     <ul className={styles.library__grid}>{list.map(renderItem)}</ul>

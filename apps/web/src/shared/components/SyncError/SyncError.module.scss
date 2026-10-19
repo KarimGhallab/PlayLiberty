@@ -81,16 +81,6 @@
     flex-shrink: 0;
   }
 
-  &__spinner {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    border-radius: var(--radius-chip);
-    border: 2px solid currentColor;
-    border-top-color: transparent;
-    animation: sync-error-spin 900ms linear infinite;
-  }
-
   /* A word and a rule rather than a button, because it opens something rather
    * than doing something; the retry above is the only action here. */
   &__reveal {
@@ -129,20 +119,5 @@
     background: var(--surface-raised);
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
-  }
-}
-
-@keyframes sync-error-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* With the motion gone a ring with a cut top reads as a broken ring, so the cap
- * comes back and the word on the button carries the state. */
-@media (prefers-reduced-motion: reduce) {
-  .sync-error__spinner {
-    border-top-color: currentColor;
-    opacity: 0.6;
   }
 }

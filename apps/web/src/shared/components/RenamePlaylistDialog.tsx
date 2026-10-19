@@ -5,6 +5,7 @@ import { useI18n } from '@playliberty/i18n';
 
 import Dialog from './Dialog/Dialog';
 import styles from './Dialog/Dialog.module.scss';
+import Spinner from './Spinner/Spinner';
 
 /*
  * `RenamePlaylistInputSchema` is the client's own half of the check: an empty or
@@ -92,7 +93,7 @@ export default function RenamePlaylistDialog({
             onClick={submit}>
             {isWorking ? (
               <>
-                <span className={styles.dialog__spinner} aria-hidden="true" />
+                <Spinner />
                 {t('renameDialog.saving')}
               </>
             ) : (

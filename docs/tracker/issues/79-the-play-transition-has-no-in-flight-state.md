@@ -1,49 +1,14 @@
 # 79: The play transition has no in-flight state
 
-**State:** `needs-triage`
+**State:** `resolved`
 **Category:** `bug`
 
 **Blocked by:** None. Can start immediately.
 
-## Agent Brief
+## Outcome
 
-**Category:** bug
-**Summary:** Starting playback reads the playlist's queue with no timeout and no visible in-flight cue beyond a dimmed, disabled control, so a slow or hung read leaves the screen looking like the press did nothing.
+The transition now records which press is waiting, not only that one is. The header's play and shuffle replace their glyph with a spinner on the control that was pressed, the pressed track row shows a spinner over its artwork, and the other start controls for that playlist wait disabled without claiming the press. The pressed controls carry `aria-busy`.
 
-**Current behavior:**
-`usePlayTransition` exposes `starting`; the detail passes it as `playbackStarting` and the header disables the play while it is true. `readPlaylistQueue` has no timeout, so a request that never settles leaves `starting` true indefinitely: the play stays dimmed, no bar docks, no message appears. A row press gives no per-row feedback at all until the queue answers. During review, a stuck `/queue` read produced exactly a dead press.
+A queue read is bounded by `QUEUE_READ_TIMEOUT_MS`. A read that does not answer becomes the existing unreachable start: the detail's `detail.playbackFailed` and its retry control, the library's notice. The stuck query is cancelled before the retry, and the failure stays drawn while a retry runs, so the control reads "Retrying..." rather than vanishing.
 
-**Desired behavior:**
-The pressed control shows an in-flight state, and the read is bounded: on timeout it lands on the existing `detail.playbackFailed` with "Relancer la lecture" rather than hanging.
-
-**Key interfaces:**
-
-- `PlayTransition.starting` and `retryable` stay the seam; the timeout joins them.
-- `ReadFailure`'s retry pattern is the model for the failure state.
-
-**Acceptance criteria:**
-
-- [ ] Pressing play shows a state on the control that was pressed.
-- [ ] A queue read that does not settle within a bounded time surfaces the retry path.
-- [ ] The player bar docks once the queue answers, as it does today.
-- [ ] A test holds the timeout path with a scripted non-settling request.
-- [ ] `pnpm run build`, `pnpm run lint` and the unit suites pass.
-
-**Out of scope:**
-
-- The queue endpoint and its pagination.
-
-## Observed
-
-- With `/playlists/:id/queue` pending, the play stayed disabled and silent; no toast, no error, no console message.
-- With the endpoint answering, the bar docks and plays normally (verified at desktop and phone).
-
-## Expected
-
-- A press is always acknowledged, and a stalled read resolves to something the user can retry.
-
-## Evidence
-
-- `apps/web/src/shared/player/usePlayTransition/usePlayTransition.ts:78-100`.
-- `apps/web/src/views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage.tsx:300-302,362`.
-- Impeccable critique of `apps/web`, 2026-10-19, priority issue P2.
+Verification: `pnpm run build` and `pnpm run lint` pass; the unit suites pass (tokens 2, i18n 39, youtube 31, ui-foundation 6, server 386, web 511); `pnpm test:e2e` is 36 passed.

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { Provider } from '@playliberty/contracts';
 import { providerLabel, useI18n } from '@playliberty/i18n';
 
+import Spinner from '../Spinner/Spinner';
 import styles from './SyncError.module.scss';
 
 /*
@@ -58,10 +59,7 @@ export default function SyncError({
               onClick={onRetry}
               disabled={retrying}>
               {retrying ? (
-                <span
-                  className={styles.syncError__spinner}
-                  aria-hidden="true"
-                />
+                <Spinner />
               ) : (
                 <IconRotateClockwise
                   className={styles.syncError__retryIcon}
