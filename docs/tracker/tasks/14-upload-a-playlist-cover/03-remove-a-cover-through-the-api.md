@@ -1,27 +1,13 @@
 # 03: Remove a cover through the API
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-## What to build
+## Outcome
 
-An owner or write collaborator can remove a playlist's custom cover. The delete clears the stored path and the
-cover version, removes the stored file, and answers no content. A delete with no custom cover is an idempotent
-no-op. A read collaborator, a stranger and a missing playlist get the same not-found answer as an upload
-refusal. A successful delete publishes the existing playlist-changed event after commit, so the playlist falls
-back to its first track's cover, and then to the sleeve.
+`DELETE /playlists/:playlistId/cover` is declared in the contract table and served by `removePlaylistCoverForAccount`. The entry seam resolves the playlist at the write need, so the owner and a write collaborator succeed while a read collaborator, a stranger and a missing playlist all answer the same `playlist_not_found`. The delete clears `coverPath` and `coverUpdatedAt` in one update, removes the stored file after the row commits as a best effort, and announces one `playlist.changed` to the read audience. A playlist with no cover answers 204 without writing or announcing, and a failed file unlink leaves the file for the weekly sweep without failing the request.
 
-## Blocked by
+Route tests cover the owner and write success with the first track returned by the next read, the read/stranger/missing refusals leaving the cover and publishing nothing, the idempotent double delete, the event after the row is cleared, and a read-only covers directory still answering 204 while leaving the file.
 
-[`02`](02-set-and-read-a-cover-through-the-api.md).
-
-## Acceptance criteria
-
-- [ ] Only the owner and a write collaborator can remove a cover; read collaborators, strangers and missing playlists get the same not-found answer.
-- [ ] A successful delete clears `coverUpdatedAt` and the stored path, removes the cover file and answers no content.
-- [ ] A delete with no custom cover succeeds as a no-op.
-- [ ] The playlist read returns the first-track fallback after removal.
-- [ ] A successful delete publishes the playlist-changed event; a refusal publishes none.
-- [ ] A failed file delete does not fail the user action and leaves the file for the prune.
-- [ ] Route tests cover the access matrix, the idempotent delete, the cleared version and the event.
+Verification: `pnpm run build` passes, `pnpm run lint` is clean apart from the existing `phone.spec.ts` warning, the 381 server tests and all 37 e2e journeys pass.
 
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

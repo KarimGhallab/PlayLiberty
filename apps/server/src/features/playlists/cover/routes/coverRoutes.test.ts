@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { stat } from 'node:fs/promises';
+import { chmod, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { eq } from 'drizzle-orm';
@@ -16,9 +16,11 @@ import {
 import type { TestContext } from '../../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../../app/testing/createTestContext.js';
 import {
+  associate,
   seedAccount,
   seedPlaylist,
-  seedShare
+  seedShare,
+  seedTrack
 } from '../../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../../platform/database/client.js';
@@ -70,6 +72,21 @@ function get(url: string, pangolinUserId: string) {
     method: 'GET',
     url,
     headers: { 'remote-user': pangolinUserId }
+  });
+}
+
+function del(url: string, pangolinUserId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.app.inject({
+    method: 'DELETE',
+    url,
+    headers: {
+      'remote-user': pangolinUserId,
+      'x-playliberty-client': 'test'
+    }
   });
 }
 
@@ -586,5 +603,170 @@ describe('setting a playlist cover', () => {
 
     expect(response.statusCode).toBe(404);
     expect(events).toEqual([]);
+  });
+
+  it('removes the cover as the owner or a write collaborator and returns the first track', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const writer = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+    seedShare(database(), playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
+    const { trackId } = seedTrack(database());
+    associate(database(), playlistId, trackId);
+
+    const uploaded = await upload(
+      playlistId,
+      owner.pangolinUserId,
+      await image('jpeg')
+    );
+    expect(uploaded.statusCode).toBe(200);
+    const file = join(mediaRoot(), coverRow(playlistId)?.coverPath ?? '');
+    expect(await fileExists(file)).toBe(true);
+
+    const response = await del(
+      `/api/v1/playlists/${playlistId}/cover`,
+      writer.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(coverRow(playlistId)?.coverPath).toBeNull();
+    expect(coverRow(playlistId)?.coverUpdatedAt).toBeNull();
+    expect(await fileExists(file)).toBe(false);
+
+    const detail = PlaylistSchema.parse(
+      (
+        await get(`/api/v1/playlists/${playlistId}`, owner.pangolinUserId)
+      ).json()
+    );
+    expect(detail.coverUpdatedAt).toBeNull();
+    expect(detail.coverTrackId).toBe(trackId);
+  });
+
+  it('refuses a read collaborator, a stranger and a missing playlist without an event', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const reader = seedAccount(database());
+    const stranger = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+    seedShare(database(), playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    await upload(playlistId, owner.pangolinUserId, await image('jpeg'));
+    const before = coverRow(playlistId);
+    const file = join(mediaRoot(), before?.coverPath ?? '');
+    const events: unknown[] = [];
+    context.events.subscribe(owner.accountId, event => events.push(event));
+
+    const attempts: [string, string][] = [
+      [playlistId, reader.pangolinUserId],
+      [playlistId, stranger.pangolinUserId],
+      ['missing', owner.pangolinUserId]
+    ];
+
+    for (const [id, userId] of attempts) {
+      const response = await del(`/api/v1/playlists/${id}/cover`, userId);
+
+      expect(response.statusCode).toBe(404);
+      expect(ProblemSchema.parse(response.json()).code).toBe(
+        'playlist_not_found'
+      );
+    }
+
+    expect(coverRow(playlistId)).toEqual(before);
+    expect(await fileExists(file)).toBe(true);
+    expect(events).toEqual([]);
+  });
+
+  it('deletes idempotently when the playlist has no cover', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+    const events: unknown[] = [];
+    context.events.subscribe(owner.accountId, event => events.push(event));
+
+    const first = await del(
+      `/api/v1/playlists/${playlistId}/cover`,
+      owner.pangolinUserId
+    );
+    const second = await del(
+      `/api/v1/playlists/${playlistId}/cover`,
+      owner.pangolinUserId
+    );
+
+    expect(first.statusCode).toBe(204);
+    expect(second.statusCode).toBe(204);
+    expect(coverRow(playlistId)?.coverPath).toBeNull();
+    expect(coverRow(playlistId)?.coverUpdatedAt).toBeNull();
+    expect(events).toEqual([]);
+  });
+
+  it('publishes one playlist change after the row is cleared', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const reader = seedAccount(database());
+    const stranger = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+    seedShare(database(), playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    await upload(playlistId, owner.pangolinUserId, await image('jpeg'));
+
+    const ownerEvents: unknown[] = [];
+    const readerEvents: unknown[] = [];
+    const strangerEvents: unknown[] = [];
+    const pathsAtEvent: (string | null)[] = [];
+    context.events.subscribe(owner.accountId, event => {
+      ownerEvents.push(event);
+      pathsAtEvent.push(coverRow(playlistId)?.coverPath ?? null);
+    });
+    context.events.subscribe(reader.accountId, event =>
+      readerEvents.push(event)
+    );
+    context.events.subscribe(stranger.accountId, event =>
+      strangerEvents.push(event)
+    );
+
+    const response = await del(
+      `/api/v1/playlists/${playlistId}/cover`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(ownerEvents).toEqual([
+      { type: LiveEventType.PlaylistChanged, playlistId }
+    ]);
+    expect(readerEvents).toEqual([
+      { type: LiveEventType.PlaylistChanged, playlistId }
+    ]);
+    expect(strangerEvents).toEqual([]);
+    expect(pathsAtEvent).toEqual([null]);
+  });
+
+  it('keeps its answer when the file cannot be removed and leaves it to the prune', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+
+    await upload(playlistId, owner.pangolinUserId, await image('jpeg'));
+    const file = join(mediaRoot(), coverRow(playlistId)?.coverPath ?? '');
+    await chmod(context.mediaPaths.coversDir, 0o500);
+
+    try {
+      const response = await del(
+        `/api/v1/playlists/${playlistId}/cover`,
+        owner.pangolinUserId
+      );
+
+      expect(response.statusCode).toBe(204);
+      expect(coverRow(playlistId)?.coverPath).toBeNull();
+      expect(coverRow(playlistId)?.coverUpdatedAt).toBeNull();
+      expect(await fileExists(file)).toBe(true);
+    } finally {
+      await chmod(context.mediaPaths.coversDir, 0o700);
+    }
   });
 });

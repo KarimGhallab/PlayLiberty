@@ -16,3 +16,7 @@ export type ReadPlaylistCoverResult =
   | { outcome: PlaylistCoverOutcome.Ok; coverPath: string }
   | { outcome: PlaylistCoverOutcome.PlaylistNotFound }
   | { outcome: PlaylistCoverOutcome.CoverNotFound };
+
+export type RemovePlaylistCoverResult =
+  | { outcome: PlaylistCoverOutcome.Ok }
+  | { outcome: PlaylistCoverOutcome.PlaylistNotFound };

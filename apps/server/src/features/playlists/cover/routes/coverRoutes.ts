@@ -17,6 +17,7 @@ import { registerEndpoint } from '../../../../shared/registerEndpoint.js';
 
 import {
   readPlaylistCoverForAccount,
+  removePlaylistCoverForAccount,
   setPlaylistCoverForAccount
 } from '../coverService.js';
 import { MAX_COVER_BYTES } from '../normalizeCoverImage.js';
@@ -120,6 +121,28 @@ export function registerCoverRoutes(
             contentType: false,
             cacheControl: false
           });
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.removePlaylistCover,
+    async (request, reply) => {
+      const result = await removePlaylistCoverForAccount(
+        context,
+        request.params.playlistId,
+        request.account.id
+      );
+
+      if (result.outcome === PlaylistCoverOutcome.PlaylistNotFound) {
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+      }
+
+      if (result.outcome === PlaylistCoverOutcome.Ok) {
+        return reply.code(204).send();
       }
 
       return exhaust(result);

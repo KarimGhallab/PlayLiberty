@@ -21,6 +21,7 @@ import {
 } from './normalizeCoverImage.js';
 import type {
   ReadPlaylistCoverResult,
+  RemovePlaylistCoverResult,
   SetPlaylistCoverResult
 } from './types.js';
 import { PlaylistCoverOutcome } from './types.js';
@@ -117,6 +118,53 @@ export async function setPlaylistCoverForAccount(
   announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
 
   return { outcome: PlaylistCoverOutcome.Ok, playlist: playlist.playlist };
+}
+
+export async function removePlaylistCoverForAccount(
+  context: AppContext,
+  playlistId: string,
+  accountId: string
+): Promise<RemovePlaylistCoverResult> {
+  const entry = playlistEntry(
+    context.database,
+    playlistId,
+    accountId,
+    AccessNeed.Write,
+    () =>
+      context.database.db
+        .select({ coverPath: playlists.coverPath })
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .get() ?? null
+  );
+
+  if (entry.outcome === EntryOutcome.Denied || entry.value === null) {
+    return { outcome: PlaylistCoverOutcome.PlaylistNotFound };
+  }
+
+  const coverPath = entry.value.coverPath;
+
+  /* No cover is the state the caller asked for, so the delete is a no-op and
+   * publishes nothing. */
+  if (coverPath === null) {
+    return { outcome: PlaylistCoverOutcome.Ok };
+  }
+
+  context.database.db
+    .update(playlists)
+    .set({ coverPath: null, coverUpdatedAt: null })
+    .where(eq(playlists.id, playlistId))
+    .run();
+
+  /* The row is cleared first, so a file that survives is unreferenced and the
+   * weekly sweep reclaims it. */
+  await rm(join(context.mediaPaths.root, coverPath), {
+    force: true
+  }).catch(() => undefined);
+
+  announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
+
+  return { outcome: PlaylistCoverOutcome.Ok };
 }
 
 export async function readPlaylistCoverForAccount(

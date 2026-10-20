@@ -194,6 +194,11 @@ export const endpoints = {
       ...READ_ERRORS
     ]
   }),
+  removePlaylistCover: defineCommandEndpoint({
+    method: HttpMethod.Delete,
+    path: '/playlists/:playlistId/cover',
+    errors: [ProblemCode.PlaylistNotFound, ...WRITE_ERRORS]
+  }),
   latestSyncRun: defineEndpoint({
     method: HttpMethod.Get,
     path: '/playlists/:playlistId/sync-runs/latest',
