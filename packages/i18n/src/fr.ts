@@ -28,7 +28,7 @@ export const fr: Messages = {
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
     pinned: 'Épinglées',
-    rest: 'Autres',
+    syncing: 'Synchronisation en cours',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
     notDownloaded: {
       one: "{count} piste n'est pas stockée",

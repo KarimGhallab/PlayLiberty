@@ -88,6 +88,13 @@ export default function AddTrackDialog({
   const nameOf = (playlistId: string): string =>
     playlists.find(playlist => playlist.id === playlistId)?.name ?? playlistId;
 
+  /* The playlist the dialog was opened from leads, so the preselection the
+   * batch starts with is never buried under a long account's list. */
+  const orderedPlaylists = [
+    ...playlists.filter(playlist => playlist.id === currentPlaylistId),
+    ...playlists.filter(playlist => playlist.id !== currentPlaylistId)
+  ];
+
   const dirty = url.trim().length > 0;
 
   function requestClose(): void {
@@ -244,7 +251,7 @@ export default function AddTrackDialog({
         )}
       </div>
       <ul className={styles.addTrack__pick}>
-        {playlists.map(playlist => (
+        {orderedPlaylists.map(playlist => (
           <li key={playlist.id}>
             <label
               className={styles.addTrack__row}

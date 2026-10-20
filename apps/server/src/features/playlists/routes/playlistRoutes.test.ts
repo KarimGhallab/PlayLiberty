@@ -479,6 +479,44 @@ describe('GET /playlists', () => {
     expect(page.total).toBe(4);
   });
 
+  it('leads the rest with a playlist whose first sync is still running', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const pinned = seedPlaylist(context.database, owner.accountId, {
+      name: 'Pinned',
+      createdAt: '2026-09-04T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Alpha',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    /* The first sync names the row after its source id; 'PL...' would sort in
+     * the middle without the processing rank. */
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'PLstillrunning',
+      syncStatus: PlaylistSyncStatus.Syncing,
+      createdAt: '2026-09-03T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Zebra',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    seedPin(context.database, owner.accountId, pinned.playlistId, {
+      pinnedAt: '2026-10-01T10:00:00.000Z'
+    });
+
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+
+    expect(page.items.map(item => item.name)).toEqual([
+      'Pinned',
+      'PLstillrunning',
+      'Alpha',
+      'Zebra'
+    ]);
+  });
+
   it('pages across the pins and the rest in the same order', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);

@@ -9,7 +9,11 @@ import type {
   PlaylistWithCounts,
   TrackFileStatusCounts
 } from '@playliberty/contracts';
-import { PlaylistSort, TrackFileStatus } from '@playliberty/contracts';
+import {
+  PlaylistSort,
+  PlaylistSyncStatus,
+  TrackFileStatus
+} from '@playliberty/contracts';
 
 import type { Entry } from '../../shared/access/entry.js';
 import {
@@ -127,9 +131,18 @@ function toReadPlaylistResult(
  */
 const byName = new Intl.Collator('en', { sensitivity: 'base' });
 
-/* The pinned group is a rank, so the sort reads in the order a reader sees. */
-function pinnedRank(pinnedAt: string | null): number {
-  return pinnedAt === null ? 1 : 0;
+/* Pins lead, then a playlist whose first sync is still running, then the rest;
+ * each group keeps name order. A starting playlist is named by its source id,
+ * so without the middle group it would land wherever that id sorts. */
+function groupRank(
+  pinnedAt: string | null,
+  syncStatus: PlaylistSyncStatus
+): number {
+  if (pinnedAt !== null) {
+    return 0;
+  }
+
+  return syncStatus === PlaylistSyncStatus.Syncing ? 1 : 2;
 }
 
 export function listPlaylistsForAccount(
@@ -161,7 +174,8 @@ export function listPlaylistsForAccount(
    * "Zebra". The whole list is sorted; that comparison cannot be a LIMIT. */
   const ordered = [...visibleRows].sort(
     (left, right) =>
-      pinnedRank(left.pinnedAt) - pinnedRank(right.pinnedAt) ||
+      groupRank(left.pinnedAt, left.playlist.syncStatus) -
+        groupRank(right.pinnedAt, right.playlist.syncStatus) ||
       byName.compare(left.playlist.name, right.playlist.name)
   );
 

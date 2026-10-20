@@ -1,7 +1,7 @@
 import { IconPlus } from '@tabler/icons-react';
-import { useEffect, useId, useState } from 'react';
+import { Fragment, useEffect, useId, useState } from 'react';
 
-import { TrackFileStatus } from '@playliberty/contracts';
+import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
 import type {
   PlaylistWithCounts,
   TrackFileStatusCounts
@@ -85,7 +85,7 @@ export default function LibraryPage() {
     null
   );
   const pinnedHeadingId = useId();
-  const restHeadingId = useId();
+  const syncingHeadingId = useId();
   const actions = usePlaylistActions({
     defer: deferred.defer,
     deleteMessage: 'library.deleteDeferred',
@@ -123,13 +123,42 @@ export default function LibraryPage() {
       : items.filter(playlist => playlist.counts[statusFilter] > 0);
 
   /*
-   * The page filters and never sorts, so both groups keep the server's order.
+   * The page filters and never sorts, so every group keeps the server's order.
+   * A pin outranks a running first sync, so the transient group holds the
+   * unpinned rows only.
    */
   const pinned = visibleItems.filter(playlist => playlist.pinned);
-  const rest = visibleItems.filter(playlist => !playlist.pinned);
+  const unpinned = visibleItems.filter(playlist => !playlist.pinned);
+  const syncing = unpinned.filter(
+    playlist => playlist.syncStatus === PlaylistSyncStatus.Syncing
+  );
+  const rest = unpinned.filter(
+    playlist => playlist.syncStatus !== PlaylistSyncStatus.Syncing
+  );
+
+  const groups: readonly {
+    readonly key: string;
+    readonly heading: string | null;
+    readonly headingId: string | null;
+    readonly items: readonly PlaylistWithCounts[];
+  }[] = [
+    {
+      key: 'pinned',
+      heading: t('library.pinned'),
+      headingId: pinnedHeadingId,
+      items: pinned
+    },
+    {
+      key: 'syncing',
+      heading: t('library.syncing'),
+      headingId: syncingHeadingId,
+      items: syncing
+    },
+    { key: 'rest', heading: null, headingId: null, items: rest }
+  ];
+  const drawnGroups = groups.filter(group => group.items.length > 0);
 
   const isEmpty = playlists.isSuccess && items.length === 0;
-  const grouped = pinned.length > 0 && rest.length > 0;
 
   /* The refusal withdraws on the window the other notices use. */
   useEffect(() => {
@@ -221,31 +250,26 @@ export default function LibraryPage() {
         />
       ) : null}
       {isEmpty ? <EmptyGallery onAdd={() => setDialogOpen(true)} /> : null}
-      {playlists.isSuccess && pinned.length > 0 ? (
-        <section aria-labelledby={pinnedHeadingId}>
-          <h2 id={pinnedHeadingId} className={styles.library__sectionTitle}>
-            {t('library.pinned')}
-          </h2>
-          {renderList(pinned)}
-        </section>
-      ) : null}
-      {/* A boundary needs two sides: an account that has pinned nothing, or one that
-       * has pinned everything, sees the one list it has always seen. */}
-      {playlists.isSuccess && grouped ? (
-        <hr className={styles.library__rule} />
-      ) : null}
-      {playlists.isSuccess && rest.length > 0 ? (
-        grouped ? (
-          <section aria-labelledby={restHeadingId}>
-            <h2 id={restHeadingId} className={styles.library__restTitle}>
-              {t('library.rest')}
-            </h2>
-            {renderList(rest)}
-          </section>
-        ) : (
-          renderList(rest)
-        )
-      ) : null}
+      {playlists.isSuccess
+        ? drawnGroups.map((group, index) => (
+            <Fragment key={group.key}>
+              {/* A boundary needs two sides, so a lone group sees no rule. */}
+              {index > 0 ? <hr className={styles.library__rule} /> : null}
+              {group.heading === null || group.headingId === null ? (
+                renderList(group.items)
+              ) : (
+                <section aria-labelledby={group.headingId}>
+                  <h2
+                    id={group.headingId}
+                    className={styles.library__sectionTitle}>
+                    {group.heading}
+                  </h2>
+                  {renderList(group.items)}
+                </section>
+              )}
+            </Fragment>
+          ))
+        : null}
       {isEmpty || !isMobile ? null : (
         <FloatingAction
           label={t('library.add')}

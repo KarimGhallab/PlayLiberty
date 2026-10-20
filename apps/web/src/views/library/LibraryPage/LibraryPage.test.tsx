@@ -568,12 +568,41 @@ describe('LibraryPage', () => {
       within(lists[1]!).getByRole('link', { name: 'Shared Mix' })
     ).toBeInTheDocument();
 
-    const restSection = screen.getByRole('region', { name: 'Others' });
     expect(
-      within(restSection).getByRole('link', { name: 'Shared Mix' })
+      screen.queryByRole('region', { name: 'Others' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('draws the running first sync between the pins and the unlabelled rest', async () => {
+    pinnedRead([
+      { ...ownedItem('playlist-1', 'Pinned one'), pinned: true },
+      { ...ownedItem('playlist-2', 'PLstarting'), syncStatus: 'syncing' },
+      ownedItem('playlist-3', 'Rest one')
+    ]);
+    renderLibraryPage();
+
+    const pinnedSection = await screen.findByRole('region', {
+      name: 'Pinned'
+    });
+    const syncingSection = screen.getByRole('region', { name: 'Syncing' });
+
+    expect(
+      within(pinnedSection).getByRole('link', { name: 'Pinned one' })
     ).toBeInTheDocument();
     expect(
-      within(restSection).queryByRole('link', { name: 'Rain On The Window' })
+      within(syncingSection).getByRole('link', { name: 'PLstarting' })
+    ).toBeInTheDocument();
+
+    /* DOM order is the reading order: the pins, the running row, the rest. */
+    const lists = screen.getAllByRole('list');
+    const nameOf = (list: HTMLElement) =>
+      within(list).getByRole('link').textContent;
+
+    expect(nameOf(lists[0]!)).toBe('Pinned one');
+    expect(nameOf(lists[1]!)).toBe('PLstarting');
+    expect(nameOf(lists[2]!)).toBe('Rest one');
+    expect(
+      screen.queryByRole('region', { name: 'Others' })
     ).not.toBeInTheDocument();
   });
 
@@ -605,6 +634,9 @@ describe('LibraryPage', () => {
 
     expect(
       screen.queryByRole('region', { name: 'Pinned' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Syncing' })
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Pinned')).not.toBeInTheDocument();
   });
@@ -1168,7 +1200,11 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('New Mix')).toBeInTheDocument();
-    expect(screen.getByText('Syncing')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Syncing' })).getByText(
+        'New Mix'
+      )
+    ).toBeInTheDocument();
   });
 
   it('shows the server problem beside the field when the create is refused', async () => {

@@ -4,33 +4,52 @@
  * reads the same whichever one it is.
  */
 
-/* The row is a label over a checkbox, so the tick is the checkbox's own; a
- * hand-drawn mark beside the name is forbidden by the form controls record. */
+/* The picker scrolls itself, not the dialog: the link field and the action row
+ * stay put however many playlists the account holds. Its own ground and border
+ * give the clipped edge a frame the way a field has one. */
 .add-track__pick {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  max-height: min(calc(var(--control-touch) * 7 + var(--space-2)), 38dvh);
   margin: var(--space-4) 0 0;
-  padding: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
 }
 
+/* The row is a label over a checkbox, so the tick is the checkbox's own; a
+ * hand-drawn mark beside the name is forbidden by the form controls record. */
 .add-track__row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2);
+  min-height: var(--control-touch);
+  padding: 0 var(--space-3);
   border-radius: var(--radius-control);
   cursor: pointer;
 
-  &:hover {
+  &:hover,
+  &:focus-within {
     background: var(--surface);
+  }
+
+  /* A stopped batch is not a row to press, so it does not answer the pointer. */
+  &:has(.add-track__box:disabled) {
+    cursor: not-allowed;
+
+    &:hover {
+      background: transparent;
+    }
   }
 }
 
 .add-track__box {
-  width: 16px;
-  height: 16px;
+  width: var(--control-size-check);
+  height: var(--control-size-check);
   margin: 0;
   flex-shrink: 0;
   accent-color: var(--accent);

@@ -98,14 +98,6 @@
     border: 0;
     background: var(--control-border);
   }
-
-  /* A step down from the pinned heading, so it labels rather than titles. */
-  &__rest-title {
-    margin: 0 0 var(--space-4);
-    font-size: var(--text-md);
-    font-weight: var(--weight-semibold);
-    color: var(--muted);
-  }
 }
 
 /*
