@@ -22,9 +22,9 @@ PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspa
 
 One SQLite database and one media root, both owned by the server.
 
-- The database holds accounts, playlists, tracks, associations, suppressions, shares, and sync runs, in one SQLite file opened with `better-sqlite3` and Drizzle. A playlist carries its provider and source playlist id; a track carries its provider and video id. Only the server process writes it, under WAL with a busy timeout.
-- The media root holds `media/<ab>/<videoId>.<ext>` and `thumbnails/<ab>/<videoId>.jpg`, sharded by the first two characters of the video id. Files are keyed by video id only and are opaque to the app. Stored audio is faststart, so a browser can seek without fetching the file tail.
-- Deduplication is server-wide: one file per video id, referenced by every association, across every account.
+- The database holds accounts, playlists, tracks, associations, suppressions, shares, and sync runs, in one SQLite file opened with `better-sqlite3` and Drizzle. A playlist carries its provider, its source playlist id, an optional server-only cover path, and the cover version the contract exposes (`coverUpdatedAt`); a track carries its provider and video id. Only the server process writes it, under WAL with a busy timeout.
+- The media root holds `media/<ab>/<videoId>.<ext>`, `thumbnails/<ab>/<videoId>.jpg` and `covers/<playlistId>-<token>.webp`. Audio and thumbnails are sharded by the first two characters of the video id; a cover is named by its playlist and a random token. Stored audio is faststart, so a browser can seek without fetching the file tail.
+- Audio deduplication is server-wide: one file per video id, referenced by every association, across every account. Covers are not deduplicated: a playlist holds one custom cover file per version.
 - There is no global library view in v1, so playlists are the only entry point, but the store is server-wide so a track survives as long as any association references it.
 
 ### YouTube
@@ -51,14 +51,14 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 3. The adapter reads the source membership in one `--flat-playlist` pass, falling back to a single video's details only when a field is missing.
 4. The sync reconciles it: a new video id becomes a track with `fileStatus: pending`; a known id is left alone; a video missing from the source marks its track `sourceStatus: removed` (retention); suppressed videos are skipped.
 5. The in-process worker downloads pending tracks through yt-dlp with a configurable concurrency cap, into a temp file that is atomically renamed on success, moving each track from `pending` to `downloading` to `stored`, or to `failed` (retried on the next sync). The `track` rows are the queue; there is no jobs table.
-6. The sync run records its counts; the playlist's `lastSyncedAt` and counts update.
-7. A weekly job prunes tracks with zero associations.
+6. The sync run records its counts; the playlist's `lastSyncedAt` and counts update. A sync never writes, replaces or clears the custom cover path or version.
+7. A weekly job prunes tracks with zero associations and sweeps unreferenced cover files older than an hour.
 
 ## Stream, end to end
 
 1. The web player or the mobile player requests `GET /api/v1/tracks/{id}/stream`, which nginx proxies to the server. The mobile request carries the Pangolin token and the audio source's auth headers.
 2. The server authorizes it: the account must own, collaborate on, or hold a share on a playlist that associates the track.
-3. The server serves the stored file through `@fastify/static`, which provides `Range`, `ETag`, conditional GET, and `Content-Type: audio/mp4`. There is no transcoding and no download endpoint.
+3. The server serves the stored file through `@fastify/static`, which provides `Range`, `ETag`, conditional GET, and `Content-Type: audio/mp4`. There is no audio transcoding and no download endpoint.
 
 ## Layer boundaries (normative)
 
@@ -107,6 +107,10 @@ Production is private, behind the Pangolin authenticating edge. The origin never
 ### Audio is stored as-is, never transcoded
 
 Downloads prefer the AAC stream, stored in an M4A container at about 128 kbps and seekable from the first byte, and it is served verbatim as `Content-Type: audio/mp4`. A video with no AAC stream is stored as the Opus stream YouTube does offer rather than refused, because the alternative to a playable file in the wrong container is no file at all; the caveat is that Safari and some mobile players cannot be relied on to play Opus. The server runs no encoder and keeps no transcode cache, so the stored stream is effectively the playback contract.
+
+### Images are normalised once, on the server
+
+Audio is served verbatim; images are the one kind of media the server re-encodes. A custom playlist cover must decode as JPEG, PNG or WebP, be at most 5 MB, and stay within the 64-megapixel decompression bound; `sharp` auto-orients it, caps its long edge at 1600px without enlarging, strips metadata, and writes WebP under `covers/`. The file is immutable and versioned: an upload writes the new file before the row commits, and the previous file is deleted only after the new row commits. The playlist row keeps the server-only path and the `coverUpdatedAt` version; the contract carries the version and never the path, so a replacement is a new URL and a new cache key. The cover media route resolves the playlist at the read need and serves the file with the private media cache. The browser validates the type and size and previews the selection, but sends the original bytes, because a direct API call can bypass every client check. This is an image pipeline beside the audio rule above, which still forbids audio transcoding.
 
 ### Identity comes from Pangolin's forwarded headers
 

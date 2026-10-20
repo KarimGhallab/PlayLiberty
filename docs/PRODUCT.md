@@ -33,12 +33,14 @@ Capabilities in v1:
 - Add one pasted video to several write-accessible playlists at once.
 - Pin playlists to the top of the account's own gallery, as a per-account placement and not a rating or a
   favorites list.
+- Set or remove a custom cover for a playlist, shared with everyone who can read it; without one the playlist
+  draws its first track's thumbnail, and then its sleeve.
 - Manual sync, retention, and weekly orphan pruning.
 
 Hard constraints:
 
 - Audio only. No video storage or playback.
-- No transcoding, ever. The stored format must play natively everywhere, which fixes it to AAC/M4A. See [audio is stored as-is, never transcoded](ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded).
+- No audio transcoding, ever. The stored audio format must play natively everywhere, which fixes it to AAC/M4A. See [audio is stored as-is, never transcoded](ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded).
 - The stored media, not YouTube, is the source of truth for playback.
 - A sync must never delete a track because a source video disappeared.
 - No global library view: playlists are the only entry point to content.
@@ -46,7 +48,7 @@ Hard constraints:
 
 ## Non-Goals
 
-Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
+Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, audio transcoding, video, file export or download endpoints, ratings, play counts, and search.
 
 ## Brand Commitments
 
