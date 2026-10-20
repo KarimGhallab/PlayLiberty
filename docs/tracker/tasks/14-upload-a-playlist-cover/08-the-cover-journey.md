@@ -1,30 +1,18 @@
 # 08: The cover journey
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-## What to build
+## Outcome
 
-One end-to-end journey proves the assembled feature against the real server, database and media root. It seeds
-an owned playlist, a playlist shared with the browser account at the read level and a playlist shared at the
-write level. It opens the cover dialog from the detail and from the gallery, selects a fixture image through the
-real file input, and saves. It asserts the cover appears in both surfaces and survives a reload. The read
-collaborator sees the cover and has no Cover item; the write collaborator can replace it. Removing the cover
-returns the first-track cover, and a playlist with no track cover returns the sleeve.
+`e2e/tests/cover.spec.ts` assembles the feature against the real server, database and media root, with no stubbed upload. Four tests tell the story:
 
-The journey runs at the desk and at the web client's 390px arrangement. It does not use a stubbed upload.
+- An owned playlist uploads a PNG from the detail through the real file input, and the custom cover appears in the detail and the gallery, survives a reload, and opens the same dialog from the gallery. Removing it returns the first track's stored thumbnail, and an empty playlist draws the sleeve.
+- A playlist owned by a partner and shared read reaches the browser with its custom cover and no **Update the cover** item; the reader's gallery menu carries Pin alone.
+- A playlist shared write lets the browser replace the partner's cover from the gallery; the versioned URL changes, so a cached image cannot hide it, and both surfaces show the replacement after a reload.
+- At 390px the row arrangement opens the dialog from the detail, saves, and draws the cover in the detail and the gallery card.
 
-## Blocked by
+The partner identities and their shares are created through the API so the access levels are the server's facts; the browser stays the dev account. The fixture images are in-memory PNG buffers passed to the real file input.
 
-[`05`](05-set-a-cover-from-the-playlist-actions.md), [`06`](06-remove-a-cover-from-the-dialog.md).
-
-## Acceptance criteria
-
-- [ ] The journey uploads a real fixture image from the detail and sees it after reload.
-- [ ] The same cover is drawn in the gallery and the detail.
-- [ ] The read collaborator sees the custom cover and has no Cover item.
-- [ ] The write collaborator can replace the cover.
-- [ ] Removing the cover returns the first-track cover, and an empty playlist returns the sleeve.
-- [ ] The journey covers both the desk and the 390px web arrangement.
-- [ ] The journey uses the real file input and the real server, with no stubbed upload.
+Verification: `pnpm --filter @playliberty/e2e run typecheck` and `pnpm run build` pass, lint is clean apart from the existing `phone.spec.ts` warning, and the full suite passes at 41 e2e journeys.
 
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).
