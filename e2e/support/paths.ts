@@ -1,9 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
-/*
- * The paths the config and the tests both need, in one place so the server is
- * started on the file the tests write and there is one number for each port.
- */
+/* The paths the config and the tests both need, so the server starts on the
+ * file the tests write and each port has one number. */
 
 export const SERVER_PORT = 8081;
 export const WEB_PORT = 5273;

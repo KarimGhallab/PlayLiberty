@@ -1,15 +1,16 @@
 import type { Messages } from './en.js';
 
 /*
- * Typed as `Messages`, so every English key is required here and a missing one
- * fails the build.
- *
- * The language names are endonyms: `English` and `Français` read the same in
- * both catalogs, because a language is named in itself.
+ * Typed as `Messages`, so a missing English key fails the build. Language names
+ * are endonyms: the same word in both catalogs.
  */
 export const fr: Messages = {
   app: {
-    name: 'PlayLiberty'
+    name: 'PlayLiberté',
+    title: {
+      playlist: '{app} - {name}',
+      track: '{app} - {playlist} ({track})'
+    }
   },
   language: {
     label: 'Langue',
@@ -17,19 +18,27 @@ export const fr: Messages = {
     french: 'Français'
   },
   common: {
-    cancel: 'Annuler'
+    cancel: 'Annuler',
+    discardPrompt: 'Abandonner ce lien ? Le lien collé sera perdu.',
+    keepEditing: 'Continuer la saisie',
+    discard: 'Abandonner'
   },
   library: {
     add: 'Ajouter une playlist',
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
+    pinned: 'Épinglées',
+    rest: 'Autres',
+    pinFailed: "L'épingle n'a pas pu être modifiée.",
+    notDownloaded: {
+      one: "{count} piste n'est pas stockée",
+      other: '{count} pistes ne sont pas stockées'
+    },
     deleteDeferred: 'Suppression de la playlist',
-    replaced: "L'action précédente a été remplacée.",
-    willNotDelete: '« {name} » ne sera pas supprimée.',
     empty: {
       heading: 'Aucune playlist',
       promise:
-        "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste téléchargée vous appartient ensuite, même si la vidéo est retirée plus tard."
+        "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste stockée vous appartient ensuite, même si la vidéo est retirée plus tard."
     }
   },
   detail: {
@@ -55,6 +64,14 @@ export const fr: Messages = {
     filterBy: 'Filtrer par',
     filterAll: 'Toutes',
     filterShowAll: 'Tout afficher',
+    retryFailed: {
+      one: 'Réessayer la piste en échec',
+      other: 'Réessayer les {count} pistes en échec'
+    },
+    retryingFailed: {
+      one: 'Nouvel essai de la piste en échec...',
+      other: 'Nouvel essai des {count} pistes en échec...'
+    },
     filterEmpty: {
       stored: 'Aucune piste stockée',
       pending: 'Aucune piste en attente',
@@ -70,7 +87,18 @@ export const fr: Messages = {
     retry: 'Réessayer',
     fetchWhole: 'Récupérer en entier',
     remove: 'Retirer de la playlist',
-    fullLength: 'Version intégrale'
+    fullLength: 'Version intégrale',
+    failure: {
+      unavailable: "Cette vidéo n'est plus disponible.",
+      private: 'Cette vidéo est privée.',
+      blocked: 'YouTube a bloqué le téléchargement.',
+      network: 'Impossible de joindre YouTube.',
+      unknown: 'Le téléchargement a échoué.'
+    },
+    showDetails: 'Afficher les détails',
+    hideDetails: 'Masquer les détails',
+    showDetailsFor: 'Afficher les détails de {title}',
+    hideDetailsFor: 'Masquer les détails de {title}'
   },
   skipSetting: {
     label: 'Ignorer les parties non musicales'
@@ -92,7 +120,9 @@ export const fr: Messages = {
     readFailed: 'Impossible de charger les comptes.',
     empty: "Il n'y a encore personne avec qui partager.",
     listen: 'Peut écouter',
-    edit: 'Peut modifier'
+    edit: 'Peut modifier',
+    grantFailed: 'Le partage de la playlist avec {name} a échoué.',
+    revokeFailed: 'Le retrait du partage de la playlist avec {name} a échoué.'
   },
   addTrackDialog: {
     title: 'Ajouter une piste',
@@ -140,7 +170,7 @@ export const fr: Messages = {
     prose:
       "Cette playlist n'a jamais été synchronisée. La synchronisation va sur YouTube et télécharge l'audio de chaque piste qu'elle contient.",
     promise:
-      'Une synchronisation prend quelques minutes, mais une fois une piste téléchargée, une vidéo retirée de YouTube ne la supprimera pas de cette playlist.',
+      'Une synchronisation prend quelques minutes, mais une fois une piste stockée, une vidéo retirée de YouTube ne la supprimera pas de cette playlist.',
     sync: 'Synchroniser',
     syncing: 'Synchronisation'
   },
@@ -163,10 +193,15 @@ export const fr: Messages = {
     private: 'Playlist privée',
     share: 'Partager',
     rename: 'Renommer',
+    pin: 'Épingler',
+    unpin: 'Désépingler',
     syncNow: 'Synchroniser',
+    syncing: 'Synchronisation',
     delete: 'Supprimer la playlist',
     play: 'Lire cette playlist',
+    playNamed: 'Lire {name}',
     pause: 'Mettre en pause cette playlist',
+    pauseNamed: 'Mettre en pause {name}',
     skipBack: 'Piste précédente',
     trackNext: 'Piste suivante',
     shuffle: 'Lecture aléatoire de {name}',
@@ -183,7 +218,7 @@ export const fr: Messages = {
     playing: 'En lecture',
     paused: 'En pause'
   },
-  shuffle: {
+  start: {
     empty: 'Rien à lire dans « {name} ».',
     emptyDetail: "Aucune piste n'a fini de se télécharger.",
     unreachable: "« {name} » n'a pas pu être lue.",
@@ -232,7 +267,7 @@ export const fr: Messages = {
   },
   lastSynced: {
     never: 'Jamais synchronisée',
-    synced: 'Synchronisée {time}'
+    synced: '{time}'
   },
   syncState: {
     upToDate: 'À jour',
@@ -274,12 +309,13 @@ export const fr: Messages = {
       other: 'retirées'
     },
     failed: {
-      one: 'échouée',
-      other: 'échouées'
+      one: 'en échec',
+      other: 'en échec'
     },
+    lastSync: 'Dernière synchronisation : {time}',
+    noChanges: 'Aucun changement',
     downloading: '{count} en téléchargement.',
-    syncing: 'Synchronisation',
-    syncedJustNow: "Synchronisée à l'instant"
+    syncing: 'Synchronisation'
   },
   syncError: {
     reach:

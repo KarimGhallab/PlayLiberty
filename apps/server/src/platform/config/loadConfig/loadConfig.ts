@@ -61,11 +61,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const value = parsed.data;
   const edgeAssertion = value.EDGE_ASSERTION ?? null;
 
-  /*
-   * A production origin is reachable by the edge and may be reachable directly,
-   * so without the assertion it would believe whatever `Remote-*` a direct caller
-   * sent. Running open is a boot failure rather than a silent choice.
-   */
+  /* Without the assertion a directly reachable origin trusts whatever
+   * `Remote-*` a caller sent; running open is a boot failure, not a choice. */
   if (value.NODE_ENV === 'production' && edgeAssertion === null) {
     throw new Error(
       'Invalid environment configuration: EDGE_ASSERTION is required in production so the origin can tell the edge apart from a direct caller.'

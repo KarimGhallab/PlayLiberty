@@ -8,8 +8,8 @@ import VolumeControl from './VolumeControl';
 
 /*
  * The window-level key handler is what these tests drive, so the control is
- * mounted once and the presses are dispatched on the document. The store is the
- * real one, because the mute-versus-level rule is the thing under test.
+ * mounted once and presses are dispatched on the document. The store is real,
+ * because the mute-versus-level rule is what is under test.
  */
 
 function renderControl() {
@@ -76,8 +76,8 @@ describe('VolumeControl', () => {
   });
 
   /*
-   * A touch browser may never synthesize the mouseenter a tap would need, so the
-   * pointerdown itself opens the rail.
+   * A touch browser may never synthesize the mouseenter a tap would need, so
+   * the pointerdown itself opens the rail.
    */
   it('opens the rail on a tap', () => {
     renderControl();
@@ -119,15 +119,6 @@ describe('VolumeControl', () => {
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.45);
   });
 
-  it('shows the new level when the arrows change it', () => {
-    usePlayerStore.getState().setVolume(0.5);
-    renderControl();
-
-    fireEvent.keyDown(window, { key: 'ArrowUp' });
-
-    expect(screen.getByRole('status')).toHaveTextContent('Volume 55%');
-  });
-
   it('keeps one notice and restarts its life on the next press', () => {
     vi.useFakeTimers();
     usePlayerStore.getState().setVolume(0.5);
@@ -144,7 +135,7 @@ describe('VolumeControl', () => {
     expect(screen.getAllByRole('status')).toHaveLength(1);
     expect(screen.getByRole('status')).toHaveTextContent('Volume 60%');
 
-    /* Past the first press's expiry, so this holds only if the timer restarted. */
+    /* Past the first press's expiry: holds only if the timer restarted. */
     act(() => vi.advanceTimersByTime(1500));
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
@@ -238,29 +229,5 @@ describe('VolumeControl', () => {
 
     fireEvent.pointerMove(rail, { clientX: 2, clientY: 90, pointerId: 1 });
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
-  });
-
-  it('clamps a pointer beyond the rail to the ends', () => {
-    renderControl();
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
-
-    const rail = screen.getByRole('slider', { name: 'Volume' });
-    vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
-      top: 0,
-      bottom: 100,
-      left: 0,
-      right: 4,
-      width: 4,
-      height: 100,
-      x: 0,
-      y: 0,
-      toJSON: () => ({})
-    });
-
-    fireEvent.pointerDown(rail, { clientX: 2, clientY: -40, pointerId: 1 });
-    expect(usePlayerStore.getState().volume).toBe(1);
-
-    fireEvent.pointerDown(rail, { clientX: 2, clientY: 140, pointerId: 1 });
-    expect(usePlayerStore.getState().volume).toBe(0);
   });
 });

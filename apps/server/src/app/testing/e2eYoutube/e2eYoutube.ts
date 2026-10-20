@@ -16,32 +16,16 @@ import {
 } from '@playliberty/youtube';
 
 /*
- * The adapter an end-to-end run drives, and the only seam an E2E test fakes.
- * YouTube is external, non-deterministic and network dependent, so a browser
- * cannot sync against it; this answers instead, from a scenario file the test
- * writes and this reads on every call.
- *
- * It is loaded by `main.ts` only when `NODE_ENV` is `test`, through a dynamic
- * import, so a production process never carries the code and never reads the
- * file. The scenario path arrives in `E2E_FAKE_SCRIPT`.
- *
- * The downloads are real: `downloadTrack` copies a committed silent M4A to the
- * path the worker asked for, so the stream route serves real bytes and a future
- * playback test can actually play. `fetchThumbnail` copies a committed JPEG.
- * The scenarios decide whether a video is present, absent, or fails, and those
- * are the shapes the product has to answer: a song, a removed video, a fault.
+ * The E2E adapter, the only seam an E2E test fakes: YouTube is external and
+ * non-deterministic, so a browser cannot sync against it. A test loads it
+ * only under `NODE_ENV=test`, and downloads copy committed media.
  */
 
 interface ScenarioEntry {
   videoId: string;
   title: string;
-  /*
-   * The length the source reports. It defaults to the real length of the
-   * committed audio fixture, because the seeker draws its track from this number
-   * and a number that disagrees with the file makes a real seek unmeasurable:
-   * the element clamps `currentTime` to the file and the UI would claim a jump
-   * the browser never made.
-   */
+  /* The fixture's real length: a number that disagrees makes a real seek
+   * unmeasurable, since the element clamps `currentTime` to the file. */
   durationSeconds?: number;
 }
 
@@ -52,17 +36,11 @@ interface ScenarioSource {
 
 interface Scenario {
   sources: Record<string, ScenarioSource>;
-  /*
-   * The outcome of a download, per video id. Missing means `ok`. `gone` is the
-   * terminal case, `fail` the transient one.
-   */
+  /* A download's outcome per video id; missing means `ok`, `gone` terminal,
+   * `fail` transient. */
   downloads?: Record<string, 'ok' | 'fail' | 'gone'>;
-  /*
-   * How long a successful download takes. Zero or missing is immediate. A test
-   * that watches a row move from downloading to playable sets it, so the
-   * intermediate state is observable rather than gone before the browser reads
-   * it.
-   */
+  /* A per-download delay; zero or missing is immediate. A test watching a row
+   * move to playable sets it so the intermediate state stays observable. */
   downloadDelayMs?: number;
 }
 
@@ -70,12 +48,8 @@ const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const AUDIO_FIXTURE = join(FIXTURES_DIR, 'test-audio.m4a');
 const THUMBNAIL_FIXTURE = join(FIXTURES_DIR, 'test-thumbnail.jpg');
 
-/*
- * The committed audio fixture is two seconds long, and the fake reports that as
- * every entry's duration unless the scenario overrides it. It is pinned rather
- * than probed: the file is committed and re-reading it on every call would only
- * move the cost, not the fact.
- */
+/* The fixture's length, pinned rather than probed: the file is committed, so
+ * re-reading it would only move the cost. */
 const AUDIO_FIXTURE_SECONDS = 2;
 
 function readScenario(scriptPath: string): Scenario {
@@ -103,12 +77,8 @@ function entryOf(entry: ScenarioEntry): YoutubeSourceEntry {
   };
 }
 
-/*
- * The source a URL names. `validateYoutubeUrl` is the same validator the product
- * uses, so the fake cannot accept a URL the real path would refuse; the scenario
- * is keyed by the playlist or video id the validator extracts, which is how a
- * test chooses what a given URL returns without any extra control surface.
- */
+/* The source a URL names. `validateYoutubeUrl` is the product's validator, so a
+ * fake cannot take a URL the real path refuses, keyed by the extracted id. */
 function sourceFor(scenario: Scenario, url: string): YoutubeSource {
   const info = validateYoutubeUrl(url);
   const scripted = scenario.sources[info.sourceId];

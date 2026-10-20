@@ -1,0 +1,38 @@
+/*
+ * The shared overlay entrance: a menu unfolds from the edge it is anchored to,
+ * then leaves faster than it arrived. Consumers set `--menu-origin` and
+ * `--menu-shift` when it opens upward or from its start edge.
+ */
+.menu {
+  transform-origin: var(--menu-origin, top right);
+  animation: menu-arrive var(--motion-base) var(--ease-standard);
+}
+
+.menu[data-state='closing'] {
+  pointer-events: none;
+  animation: menu-leave var(--motion-fast) var(--ease-standard) forwards;
+}
+
+@keyframes menu-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(var(--menu-shift, -4px)) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes menu-leave {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(var(--menu-shift, -4px)) scale(0.98);
+  }
+}

@@ -8,16 +8,9 @@ import { LiveEventType } from '@playliberty/contracts';
 import type { AppContext } from '../../../shared/context.js';
 
 /*
- * The live stream, one connection per tab. The route hijacks the reply and holds
- * it open as `text/event-stream`: it sends `ready` when the connection opens, then
- * one frame per event the bus delivers to this account's channel, and a comment
- * frame on a heartbeat so an idle connection is not closed by a proxy that would
- * otherwise time it out.
- *
- * It is a `GET`, so the client header the architecture requires does not apply and the identity hook
- * has already refused the request if the edge did not vouch for the caller. The
- * audience is decided by the publisher, not here: a connection subscribes on the
- * account the edge identified and receives only that account's events.
+ * The live stream, one connection per tab. The route hijacks the reply as
+ * `text/event-stream`: `ready`, then a frame per event the bus delivers, with a
+ * heartbeat comment so a proxy does not time it out.
  */
 
 export interface EventRouteOptions {
@@ -59,12 +52,8 @@ export function registerEventRoutes(
       }
     }, options.heartbeatMs);
 
-    /*
-     * A client that goes away closes the socket, and a write that raced the close
-     * surfaces as an error on the response. Both are the same event to us: stop
-     * the heartbeat, leave the bus, and never write again. The flag is what keeps
-     * a publish that lands in the same tick from writing to a dead socket.
-     */
+    /* Close and error are one event: stop the heartbeat, leave the bus.
+     * The flag keeps a same-tick publish off a dead socket. */
     const close = (): void => {
       if (!open) {
         return;

@@ -11,11 +11,8 @@ import {
 } from './platform/media/mediaPaths.js';
 
 /*
- * The one seam an end-to-end run fakes. It is a dynamic import behind two
- * conditions so a production process neither carries the module nor reaches it:
- * `NODE_ENV` must be `test`, and a scenario path must be set. Both are absent in
- * any real deployment, and the import is the only reference to the fake anywhere
- * in the shipped code.
+ * The one seam an end-to-end run fakes: a dynamic import behind `NODE_ENV=test`
+ * and a scenario path, so production never carries or reaches the fake.
  */
 async function createYoutubeOverride(
   nodeEnv: string,

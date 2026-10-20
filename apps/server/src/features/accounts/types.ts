@@ -1,14 +1,7 @@
 import type { UserRole } from '@playliberty/contracts';
 
-/*
- * An account as the instance holds it. It lives in the accounts feature rather than
- * in the request pipeline, because the pipeline does not own the account: it reads
- * the identity the edge forwarded and hands it here, and everything that later
- * says "this account" is talking about this row.
- *
- * There is no `I` prefix because this is a plain data shape, not a contract
- * something implements.
- */
+/* An account as the instance holds it; it lives here, not in the pipeline,
+ * which only reads the edge's identity and hands it over. */
 export interface AuthAccount {
   id: string;
   pangolinUserId: string;
@@ -18,12 +11,8 @@ export interface AuthAccount {
   role: UserRole;
 }
 
-/*
- * What the edge forwards, which is not the same thing as an account: there may be
- * no account row yet, and the display name is whatever the identity provider
- * happened to send, including null. Converting one into the other is the accounts
- * feature's job, not the hook's.
- */
+/* What the edge forwards, not an account: there may be no row yet, and the name
+ * is whatever the provider sent, including null. */
 export interface ForwardedIdentity {
   pangolinUserId: string;
   name: string | null;

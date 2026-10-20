@@ -14,26 +14,15 @@ export interface ResolveAccountOptions {
   adminPangolinUserIds: string[];
 }
 
-/*
- * The account a request resolved to, and whether the request changed an existing
- * account's role. The caller owns the line, so the service stays logger-free.
- */
+/* The resolved account and whether its role changed; the caller owns the log
+ * line. */
 export interface ResolvedAccount {
   account: AuthAccount;
   roleChanged: boolean;
 }
 
-/*
- * Turning a forwarded identity into the account row the rest of the app uses.
- * This is the accounts feature's work, not the request pipeline's, and it is why
- * this file exists in features/accounts: the hook reads three headers and calls
- * this, and nothing about the account table leaks up into the pipeline.
- *
- * The edge has already authenticated the caller. The first request from a Pangolin
- * user creates the account; later requests refresh the display fields and the role.
- * The role always comes from the configured admin list, never from the request, so
- * a client cannot promote itself.
- */
+/* Turns a forwarded identity into the account row, creating it on first sight,
+ * refreshing later. The role only ever comes from the configured admin list. */
 export function resolveAccount(
   options: ResolveAccountOptions,
   identity: ForwardedIdentity
@@ -52,11 +41,7 @@ export function resolveAccount(
     .get();
 
   if (existing !== undefined) {
-    /*
-     * A role that moved because the configured admin list changed is an
-     * access-control event worth its own line; the caller logs it. A refresh
-     * that leaves the role alone is not.
-     */
+    /* The caller logs a role change as an access-control event. */
     const roleChanged = existing.role !== role;
 
     options.database.db
@@ -106,12 +91,8 @@ export function resolveAccount(
   };
 }
 
-/*
- * The caller's own account, as the wider contract's `Account` describes it. This
- * is the one route that may return an email address and a role, because it is
- * returning them to their owner. The directory that lists other accounts is a
- * different question with a narrower answer, and it is not this function.
- */
+/* The caller's own account: the one view with an email and a role, because
+ * it returns them to their owner. */
 export function toAccountView(account: AuthAccount): Account {
   return {
     id: account.id,
@@ -122,13 +103,8 @@ export function toAccountView(account: AuthAccount): Account {
   };
 }
 
-/*
- * The narrow counterpart of `toAccountView`, for a view that names another
- * account rather than the caller: a share. It carries who the account is and
- * nothing about how to reach it or what it may do, the same rule the directory
- * follows. Its input is the minimal shape both an `AuthAccount` and an
- * `AccountRow` satisfy, so a share passes a row without widening it.
- */
+/* The narrow counterpart for a view that names another account: who it is, not
+ * how to reach it or what it may do. Its input is the minimal shared shape. */
 export interface AccountSummarySource {
   id: string;
   displayName: string;
@@ -150,14 +126,8 @@ export interface ListAccountsQuery {
   offset: number;
 }
 
-/*
- * The directory a picker is drawn from. Ordered by display name, because a picker
- * is read in order and a list ordered by creation is a list ordered by who
- * happened to sign in first; the rowid tiebreak keeps two accounts that share a
- * display name from swapping between pages, the same reason the playlist list
- * route carries one. Only the three columns a summary has are read, so an email
- * address cannot leak into the answer by accident.
- */
+/* Ordered by display name, with a rowid tiebreak so equal names never swap
+ * pages. Only the summary's three columns are read, so email cannot leak. */
 export function listAccountSummaries(
   database: DatabaseHandle,
   query: ListAccountsQuery

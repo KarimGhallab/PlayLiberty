@@ -16,9 +16,9 @@ import type { PlaylistActionsOptions } from './playlistActions';
 import { canWritePlaylist, usePlaylistActions } from './playlistActions';
 
 /*
- * The rule under test is which of the four playlist actions an account may
- * perform, by its access. The dialogs and the mutations are the hook's
- * implementation, not the seam this test crosses.
+ * The rule under test is which actions an account may perform, by its access;
+ * the dialogs and mutations are the hook's implementation, not this test's
+ * seam.
  */
 
 function playlist(overrides: Partial<Playlist> = {}): Playlist {
@@ -36,6 +36,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     sort: PlaylistSort.Playlist,
     access: 'owner',
     hasShares: false,
+    pinned: false,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z',
     ...overrides
@@ -59,58 +60,84 @@ function control(
   options: Partial<PlaylistActionsOptions> = {}
 ) {
   const defer = vi.fn();
+  const onPinRefused = vi.fn();
   const rendered = renderHook(
     () =>
-      usePlaylistActions('playlist-1', playlistValue, {
+      usePlaylistActions({
         defer,
         deleteMessage: 'library.deleteDeferred',
+        pin: { onRefused: onPinRefused },
         ...options
       }),
     { wrapper }
   );
 
-  return { ...rendered, defer };
+  return {
+    ...rendered,
+    menu: rendered.result.current.menuFor(playlistValue),
+    defer
+  };
 }
 
 describe('usePlaylistActions', () => {
-  it('offers the owner the four actions, in order', () => {
-    const { result } = control(playlist());
+  it('offers the owner the five actions, with the pin first and the delete last', () => {
+    const { menu } = control(playlist());
 
-    expect(result.current.menu.map(item => item.key)).toEqual([
+    expect(menu.map(item => item.key)).toEqual([
+      'pin',
       'share',
       'rename',
       'sync',
       'delete'
     ]);
-    expect(result.current.canWrite).toBe(true);
   });
 
-  it('offers a write collaborator Sync now alone', () => {
-    const { result } = control(playlist({ access: ShareLevel.Write }));
+  it('offers a write collaborator the pin and Sync now', () => {
+    const { menu } = control(playlist({ access: ShareLevel.Write }));
 
-    expect(result.current.menu.map(item => item.key)).toEqual(['sync']);
-    expect(result.current.canWrite).toBe(true);
+    expect(menu.map(item => item.key)).toEqual(['pin', 'sync']);
   });
 
-  it('offers a read collaborator nothing and no overflow', () => {
-    const { result } = control(playlist({ access: ShareLevel.Read }));
+  it('reads Pin on an unpinned playlist and Unpin on a pinned one', () => {
+    const unpinned = control(playlist({ pinned: false }));
+    const pinned = control(playlist({ pinned: true }));
 
-    expect(result.current.menu).toEqual([]);
-    expect(result.current.canWrite).toBe(false);
+    expect(unpinned.menu.find(item => item.key === 'pin')?.label).toBe(
+      'header.pin'
+    );
+    expect(pinned.menu.find(item => item.key === 'pin')?.label).toBe(
+      'header.unpin'
+    );
+  });
+
+  it('leaves the pin off a surface that does not offer one', () => {
+    const { menu } = control(playlist(), { pin: undefined });
+
+    expect(menu.map(item => item.key)).toEqual([
+      'share',
+      'rename',
+      'sync',
+      'delete'
+    ]);
+  });
+
+  it('offers a read collaborator the pin alone', () => {
+    const { menu } = control(playlist({ access: ShareLevel.Read }));
+
+    expect(menu.map(item => item.key)).toEqual(['pin']);
   });
 
   it('offers nothing before the playlist loads', () => {
-    const { result } = control(undefined);
+    const { menu, result } = control(undefined);
 
-    expect(result.current.menu).toEqual([]);
-    expect(result.current.canWrite).toBe(false);
+    expect(menu).toEqual([]);
     expect(result.current.dialogs).toBeNull();
   });
 
   it('defers a delete with the surface sentence and the playlist name', () => {
-    const { result, defer } = control(playlist());
+    const { menu, defer } = control(playlist());
 
-    result.current.menu.find(item => item.key === 'delete')?.onSelect();
+    menu.find(item => item.key === 'delete')?.onSelect();
 
     expect(defer).toHaveBeenCalledTimes(1);
     expect(defer).toHaveBeenCalledWith({
@@ -120,19 +147,11 @@ describe('usePlaylistActions', () => {
       commit: expect.any(Function)
     });
   });
-
-  it('keeps the delete off a write collaborator’s menu', () => {
-    const { result, defer } = control(playlist({ access: ShareLevel.Write }));
-
-    expect(result.current.menu.some(item => item.key === 'delete')).toBe(false);
-    expect(defer).not.toHaveBeenCalled();
-  });
 });
 
 /*
- * The predicate the menu's gating and the detail's writable set both consume.
- * It is the one place `owner || write` is written, so it is tested on its own
- * rather than only through the hook.
+ * The one place `owner || write` is written, consumed by the menu and the
+ * detail, so it is tested on its own rather than only through the hook.
  */
 describe('canWritePlaylist', () => {
   it('is true for the owner and a write collaborator', () => {

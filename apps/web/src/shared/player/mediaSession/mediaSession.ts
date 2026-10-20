@@ -1,10 +1,7 @@
 /*
- * The browser's media controls, driven from the player state.
- *
- * The Media Session API is absent in some engines and throws on a handler the
- * engine does not know, so every call here is feature-detected and swallowed:
- * the guarantee this module makes is that a browser without the controls loses
- * the controls and nothing else. Nothing in it may throw past the player.
+ * Browser media controls, from the player state. The API is absent or throws in
+ * some engines, so each call is feature-detected, swallowed: a browser without
+ * the controls loses them and nothing else.
  */
 
 export interface SessionMetadata {
@@ -14,7 +11,7 @@ export interface SessionMetadata {
   readonly artwork: readonly { readonly src: string }[];
 }
 
-/** The actions the player answers, wired to the same store as the rest of it. */
+/** The actions the player answers, wired to the same store as the rest. */
 export interface SessionHandlers {
   readonly onPlay: () => void;
   readonly onPause: () => void;
@@ -44,10 +41,8 @@ function getSession(): MediaSessionLike | null {
   }
 
   /*
-   * Presence is not enough: a stub or a partial implementation can carry the key
-   * with nothing under it, and `setActionHandler` is what this module actually
-   * needs. Checking the shape rather than the key is what makes the absent case
-   * one code path instead of two.
+   * Presence is not enough: a stub can carry the key with nothing under it, so
+   * check the shape (`setActionHandler`), which makes the absent case one path.
    */
   const session = (navigator as { mediaSession?: MediaSessionLike })
     .mediaSession;
@@ -63,10 +58,7 @@ function getSession(): MediaSessionLike | null {
   return session;
 }
 
-/**
- * Publish the current track to the controls. A null clears them, which is what
- * the end of the queue looks like from the outside.
- */
+/** Publish the track to the controls; null clears them (end of queue). */
 export function publishMetadata(metadata: SessionMetadata | null): void {
   const session = getSession();
 
@@ -91,10 +83,9 @@ export function publishMetadata(metadata: SessionMetadata | null): void {
   }
 }
 
-/**
- * Route the controls into the player and return the teardown. Each handler is
- * registered inside its own try, because an engine that rejects one action must
- * still get the others rather than losing the whole session to a single throw.
+/*
+ * Route the controls into the player and return the teardown. Each handler has
+ * its own try, so an engine rejecting one action still gets the others.
  */
 export function bindSessionHandlers(handlers: SessionHandlers): () => void {
   const session = getSession();

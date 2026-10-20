@@ -4,10 +4,8 @@
   gap: var(--space-4);
   max-width: calc(1056px + var(--space-4) * 2);
   margin: 0 auto;
-  /* 97px is the docked player bar, which is an overlay and so has to be paid
-   * for here, and --space-5 is the gap the page keeps under its last row, the
-   * same step the header uses above the list. */
-  padding: 0 var(--space-4) calc(97px + var(--space-5));
+  /* The docked player bar is an overlay, so its height is paid for here. */
+  padding: 0 var(--space-4) calc(var(--player-bar-height) + var(--space-5));
 
   &__head {
     display: flex;
@@ -23,7 +21,6 @@
     font-weight: var(--weight-semibold);
   }
 
-  /* The header's right side: the language control and the add, one row. */
   &__actions {
     display: inline-flex;
     align-items: center;
@@ -57,32 +54,88 @@
     flex-shrink: 0;
   }
 
-  /* The list's end edge. The page header names the screen and holds the add
-   * control, so the first row needs no rule above it; nothing follows the last
-   * row, so one hairline closes the list rather than the row's surface running
-   * into the page's own ground. */
-  &__list {
+  /*
+   * `auto-fill` rather than a fixed count, so narrower widths need no second
+   * rule; no closing hairline, a grid having no per-item rule.
+   */
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
-    border-block-end: 1px solid var(--line);
+
+    /*
+     * 160 and not the card's own 172.2: at a 390 window the scrollbar and the
+     * page padding leave 348, less than two 172 columns plus the gap.
+     */
+    @media (max-width: 767px) {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-3);
+    }
   }
 
-  &__item + &__item {
-    border-block-start: 1px solid var(--line);
+  /* A grid item's automatic minimum is its min-content width, so a long name
+   * would widen the track it sits in rather than truncate inside it. */
+  &__cell {
+    min-width: 0;
+  }
+
+  &__section-title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+  }
+
+  /*
+   * `--control-border`, not `--line`: `--line` is 1.28:1 and a boundary drawn
+   * with it cannot be seen, and the set has no third boundary token.
+   */
+  &__rule {
+    height: 1px;
+    margin: 5px 0px;
+    border: 0;
+    background: var(--control-border);
+  }
+
+  /* A step down from the pinned heading, so it labels rather than titles. */
+  &__rest-title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    color: var(--muted);
   }
 }
 
 /*
- * On the desk the playlists are separated by a gap as well as the hairline, so
- * each one reads as its own object rather than a row of one continuous table.
- * The phone keeps the tight list: a gap there would only push rows off the
- * screen, and the hairline already does the separating.
+ * The header spends its height on the title and the language control: the add
+ * control is the floating button now, and its height goes to the gallery.
  */
-@media (min-width: 768px) {
+@media (max-width: 767px) {
   .library {
-    &__item + &__item {
-      margin-block-start: var(--space-4);
+    &__head {
+      padding: var(--space-3) 0;
+    }
+
+    &__title {
+      font-size: var(--text-lg);
+    }
+
+    /* One step under the page title, which is --text-lg at this width, so the
+     * section does not read as a second screen title. */
+    &__section-title {
+      font-size: var(--text-md);
+    }
+
+    /*
+     * Hold the docked bar and the 56px floating button, or the last row scrolls
+     * up under a control that cannot move.
+     */
+    &[data-player='true'] {
+      padding-block-end: calc(
+        var(--player-bar-height) + var(--space-4) + 56px + var(--space-4)
+      );
     }
   }
 }

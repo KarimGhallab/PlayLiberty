@@ -1,28 +1,26 @@
+import { useRef } from 'react';
+
 import { TrackFileStatus } from '@playliberty/contracts';
 import type { TrackFileStatusCounts } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
+import Chip from '../Chip/Chip';
 import styles from './PlaylistFilterChips.module.scss';
+import { useRailOverflow } from './useRailOverflow';
 
 /*
- * Every chip is always drawn, a zero included, because the count is the reason
- * the chip exists: the choice is made knowing what the list will hold.
- *
- * The counts are the whole-playlist aggregate folded into the list read, so they
- * never follow the filter. The chips are disabled while the list draws the
- * shuffled queue's order, because the filter is the unshuffled list's view and
- * the shuffled list is not narrowed.
- *
- * The component is presentational: the page owns the read and the filter state,
- * `active` is the one chip in force (null is "All"), and `onChange` asks for the
- * state's rows. Pressing the chip already in force asks for nothing.
+ * Counts are the whole-playlist aggregate, so they never follow the filter.
+ * The detail draws a zero as evidence; the library hides a status no track
+ * carries. The chips are disabled while the detail's shuffled queue is on.
  */
 
 interface PlaylistFilterChipsProps {
   counts: TrackFileStatusCounts;
   active: TrackFileStatus | null;
   disabled?: boolean;
+  /* Whether a status with no tracks is drawn. */
+  showEmpty?: boolean;
   onChange: (state: TrackFileStatus | null) => void;
 }
 
@@ -54,40 +52,46 @@ export default function PlaylistFilterChips({
   counts,
   active,
   disabled = false,
+  showEmpty = true,
   onChange
 }: PlaylistFilterChipsProps) {
   const { t } = useI18n();
   const total = totalOf(counts);
+  const railRef = useRef<HTMLDivElement>(null);
+  const overflow = useRailOverflow(railRef);
+  const chips = showEmpty
+    ? CHIPS
+    : CHIPS.filter(chip => chip.value === null || counts[chip.value] > 0);
 
   return (
     <div
       className={styles.chips}
+      data-overflow={overflow}
       role="group"
       aria-label={t('detail.filterBy')}>
-      {CHIPS.map(chip => {
-        const pressed = active === chip.value;
-        const count = chip.value === null ? total : counts[chip.value];
-        const label = t(chip.labelKey);
+      <div ref={railRef} className={styles.chips__rail}>
+        {chips.map(chip => {
+          const pressed = active === chip.value;
+          const count = chip.value === null ? total : counts[chip.value];
+          const label = t(chip.labelKey);
 
-        return (
-          <button
-            key={chip.value ?? 'all'}
-            type="button"
-            className={styles.chips__chip}
-            data-tone={chip.value ?? 'all'}
-            aria-pressed={pressed}
-            aria-label={`${label} ${count}`}
-            disabled={disabled}
-            onClick={() => {
-              if (!pressed) {
-                onChange(chip.value);
-              }
-            }}>
-            <span className={styles.chips__label}>{label}</span>
-            <span className={styles.chips__count}>{count}</span>
-          </button>
-        );
-      })}
+          return (
+            <Chip
+              key={chip.value ?? 'all'}
+              label={label}
+              count={count}
+              tone={chip.value ?? 'accent'}
+              selected={pressed}
+              disabled={disabled}
+              onClick={() => {
+                if (!pressed) {
+                  onChange(chip.value);
+                }
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

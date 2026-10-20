@@ -31,9 +31,8 @@ describe('csrf guard', () => {
   });
 
   it('accepts a mutating request that carries the client header', async () => {
-    // The adapter is faked so the request the guard lets through never reaches
-    // yt-dlp; this test asserts the guard, and the route's own behaviour is the
-    // sync slice's to prove.
+    // The adapter is faked so a request the guard passes never reaches yt-dlp:
+    // this test asserts the guard; the route's behaviour is the sync slice's.
     context = await createTestContext(
       {},
       { youtube: createFakeYoutube(testSource([])) }

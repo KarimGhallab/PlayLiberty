@@ -1,9 +1,7 @@
 /*
- * The add-playlist dialog's own control: the skip-non-music choice. The field and
- * the verbs are the shared shell's, so only this row lives here. It mirrors the
- * add-a-track dialog's checkbox rows: the tick is the checkbox's own and the
- * label carries the name, so a hand-drawn mark beside the name would be a mark
- * that costs a rule, which the form controls record forbids.
+ * Only this choice row lives here; the field and the verbs are the shared
+ * shell's. The tick is the checkbox's own and the label carries the name, a
+ * hand-drawn mark beside the name being a mark that costs a rule.
  */
 .check {
   display: flex;
@@ -32,8 +30,7 @@
     line-height: var(--leading-normal);
   }
 
-  /* The hint is secondary copy and does not carry the control's name, so it sits
-   * outside the label and is reached through `aria-describedby`. */
+  /* Secondary copy outside the label, reached through `aria-describedby`. */
   &__hint {
     color: var(--muted);
     font-size: var(--text-xs);

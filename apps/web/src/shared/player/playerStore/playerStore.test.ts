@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  SeekDirection,
   currentIndex,
   currentTrack,
   hasNext,
@@ -56,16 +57,6 @@ describe('startQueue', () => {
     expect(usePlayerStore.getState().queue).toEqual([elsewhere]);
     expect(usePlayerStore.getState().queue[0].playlistId).toBe(OTHER);
     expect(usePlayerStore.getState().currentId).toBe('track-9');
-  });
-
-  it('records the playlist on every entry so the bar can name the source', () => {
-    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
-
-    expect(
-      usePlayerStore
-        .getState()
-        .queue.every(item => item.playlistId === PLAYLIST)
-    ).toBe(true);
   });
 
   it('starts with nothing when the pressed track is not in the list', () => {
@@ -272,6 +263,45 @@ describe('hydrate', () => {
     expect(usePlayerStore.getState().volume).toBe(0.5);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
   });
+
+  it('starts at zero when the stored position does not fit the track', () => {
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [first],
+      currentId: first.id,
+      positionSeconds: 180,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().currentId).toBe(first.id);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('drops a current track the restored queue no longer holds', () => {
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [second],
+      currentId: first.id,
+      positionSeconds: 42,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().queue).toEqual([second]);
+    expect(usePlayerStore.getState().currentId).toBeNull();
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('starts at zero when the restored track has no duration', () => {
+    const unknown = { ...first, durationSeconds: null };
+
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [unknown],
+      currentId: unknown.id,
+      positionSeconds: 42,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().currentId).toBe(unknown.id);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
 });
 
 describe('transport', () => {
@@ -407,8 +437,10 @@ describe('shuffle', () => {
     usePlayerStore
       .getState()
       .startQueue(PLAYLIST, [first, second, third], second.id);
-    /* The draw picks the third entry, so the leader is a fresh track rather than
-     * the one already playing. */
+    /*
+     * The draw picks the third entry, so the leader is a fresh track rather
+     * than the one already playing.
+     */
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     usePlayerStore.getState().setShuffle(true);
@@ -423,6 +455,11 @@ describe('shuffle', () => {
     expect(new Set(state.queue.map(track => track.id))).toEqual(
       new Set(['track-1', 'track-2', 'track-3'])
     );
+    /* The leader is one entry, not a repeat: the drawn track is not scattered
+     * behind itself. */
+    expect(state.queue.slice(1).map(track => track.id)).not.toContain(
+      'track-3'
+    );
   });
 
   it('walks a shuffled queue in its own order and stops at its end', () => {
@@ -432,8 +469,10 @@ describe('shuffle', () => {
     const d = track('d');
     const e = track('e');
 
-    /* A fixed order, set directly so the walk is asserted rather than sampled:
-     * the shuffle under test is the queue's order, not the draw that made it. */
+    /*
+     * A fixed order, set directly so the walk is asserted rather than sampled:
+     * the shuffle under test is the queue's order, not the draw that made it.
+     */
     usePlayerStore.setState({
       queue: [d, c, a, e, b],
       sourceQueue: [a, b, c, d, e],
@@ -483,39 +522,6 @@ describe('shuffle', () => {
     expect(usePlayerStore.getState().shuffle).toBe(false);
   });
 
-  it('scatters the whole playlist behind the drawn leader', () => {
-    const a = track('a');
-    const b = track('b');
-    const c = track('c');
-    const d = track('d');
-    const e = track('e');
-
-    /* Playing D, in the order A B C D E; the draw picks E, so the leader is a
-     * track other than the one already playing. */
-    usePlayerStore.getState().startQueue(PLAYLIST, [a, b, c, d, e], d.id);
-    vi.spyOn(Math, 'random').mockReturnValue(0.99);
-
-    usePlayerStore.getState().setShuffle(true);
-
-    const state = usePlayerStore.getState();
-
-    expect(state.currentId).toBe('e');
-    expect(state.queue[0].id).toBe('e');
-    expect(state.queue).toHaveLength(5);
-    expect(new Set(state.queue.map(item => item.id))).toEqual(
-      new Set(['a', 'b', 'c', 'd', 'e'])
-    );
-
-    expect(state.queue.slice(1).map(item => item.id)).not.toContain('e');
-    expect(state.sourceQueue.map(item => item.id)).toEqual([
-      'a',
-      'b',
-      'c',
-      'd',
-      'e'
-    ]);
-  });
-
   it('puts the queue back in the playlist order and keeps the drawn playhead when the shuffle is turned off', () => {
     usePlayerStore
       .getState()
@@ -551,30 +557,6 @@ describe('shuffle', () => {
     expect(state.queue).toHaveLength(3);
     expect(state.queue.map(item => item.id)).toContain('track-1');
     expect(state.queue.map(item => item.id)).toContain('track-3');
-  });
-
-  it('keeps the playlist order beside every queue change', () => {
-    usePlayerStore
-      .getState()
-      .startQueue(PLAYLIST, [first, second, third], first.id);
-
-    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
-      'track-1',
-      'track-2',
-      'track-3'
-    ]);
-
-    vi.spyOn(Math, 'random').mockReturnValue(0.99);
-    usePlayerStore.getState().setShuffle(true);
-
-    expect(usePlayerStore.getState().sourceQueue.map(item => item.id)).toEqual([
-      'track-1',
-      'track-2',
-      'track-3'
-    ]);
-    expect(usePlayerStore.getState().queue[0].id).toBe(
-      usePlayerStore.getState().currentId
-    );
   });
 
   it('takes a track that arrived while shuffled into the source order', () => {
@@ -644,25 +626,118 @@ describe('dropAndAdvance', () => {
 });
 
 describe('seek', () => {
-  it('writes the position and asks the element to move, then clears the ask', () => {
+  it('moves by the keyboard step in both directions', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
 
-    usePlayerStore.getState().seek(120);
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
 
-    expect(usePlayerStore.getState().positionSeconds).toBe(120);
-    expect(usePlayerStore.getState().seekTo).toBe(120);
+    expect(usePlayerStore.getState().positionSeconds).toBeGreaterThan(0);
 
-    usePlayerStore.getState().clearSeek();
-    expect(usePlayerStore.getState().seekTo).toBeNull();
+    usePlayerStore.getState().seekBy(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
-  it('never seeks before zero', () => {
+  it('moves by the Media Session step in both directions', () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
 
-    usePlayerStore.getState().seek(-30);
+    usePlayerStore.getState().seekByPage(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBeGreaterThan(0);
+
+    usePlayerStore.getState().seekByPage(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('clamps a step at both ends of the track', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().setPosition(178);
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    usePlayerStore.getState().setPosition(3);
+    usePlayerStore.getState().seekBy(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    usePlayerStore.getState().seekBy(SeekDirection.Backward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('moves to a fraction of the track and clamps the fraction', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().seekToFraction(0.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(90);
+
+    usePlayerStore.getState().seekToFraction(-0.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    usePlayerStore.getState().seekToFraction(1.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+  });
+
+  it('moves to the start and the end of the track', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().setPosition(90);
+    usePlayerStore.getState().seekToEnd();
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+    expect(usePlayerStore.getState().seekTo).toBe(180);
+
+    usePlayerStore.getState().seekToStart();
 
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
     expect(usePlayerStore.getState().seekTo).toBe(0);
+  });
+
+  it('writes the position, asks the element to move, then hands the ask over once', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().seekToFraction(2 / 3);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(120);
+    expect(usePlayerStore.getState().seekTo).toBe(120);
+    expect(usePlayerStore.getState().consumeSeek()).toBe(120);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+    expect(usePlayerStore.getState().consumeSeek()).toBeNull();
+  });
+
+  it('refuses a seek while the current track has no known duration', () => {
+    const unknown = { ...first, durationSeconds: null };
+    usePlayerStore.getState().startQueue(PLAYLIST, [unknown], unknown.id);
+
+    usePlayerStore.getState().seekBy(SeekDirection.Forward);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+
+    usePlayerStore.getState().seekToFraction(0.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+  });
+
+  it('clamps a reported position to the track duration', () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+
+    usePlayerStore.getState().setPosition(200);
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    usePlayerStore.getState().setPosition(-5);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
   it('does not raise a seek request when the position is reported back', () => {

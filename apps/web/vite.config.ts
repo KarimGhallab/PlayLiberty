@@ -2,23 +2,12 @@ import babel from '@rolldown/plugin-babel';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-/*
- * The dev server proxies the API to the running server so the browser sees one
- * origin, the same shape nginx serves in the container. `VITE_API_TARGET`
- * overrides it when the server is not on the default loopback port.
- */
+/* The dev server proxies the API so the browser sees one origin, the shape
+ * nginx serves in the container. `VITE_API_TARGET` overrides the target. */
 const apiTarget = process.env.VITE_API_TARGET ?? 'http://127.0.0.1:8080';
 
-/*
- * The dev server stands in for the Pangolin edge, which is the only thing that
- * injects these headers. Without them the server fails closed with a 401 and the
- * client has nothing to authenticate against. A request that supplies its own
- * identity keeps it, so an end-to-end test can drive a second account from a
- * second browser context; anything else becomes the local user. This lives under
- * `server`, which `vite build` ignores and nginx never reads, so the fail-closed
- * path is still the one production runs. The dev server is a local one: anyone
- * who can reach it becomes this user, so do not expose it.
- */
+/* The dev server stands in for the Pangolin edge, the only injector of the
+ * Remote-* headers. It is local and unauthenticated: never expose it. */
 const devIdentity: Readonly<Record<string, string>> = {
   'Remote-User': 'dev-user',
   'Remote-Name': 'Dev User',
@@ -56,7 +45,7 @@ export default defineConfig({
   },
   css: {
     // BEM class names stay kebab-case in the .module.scss files and read as
-    // camelCase with the underscores kept, so `styles.playerBar__title` resolves.
+    // camelCase with underscores kept, so `styles.playerBar__title` resolves.
     modules: { localsConvention: 'dashes' }
   }
 });

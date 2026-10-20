@@ -7,9 +7,7 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import PlaylistSortControl from './PlaylistSortControl';
 
-/*
- * The colour, the rule and the menu's motion are the stylesheet's business.
- */
+/* The colour, the rule and the menu's motion are the stylesheet's business. */
 
 function renderControl(
   props: Partial<Parameters<typeof PlaylistSortControl>[0]> = {}
@@ -74,6 +72,24 @@ describe('PlaylistSortControl', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Playlist order' }));
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('lands on the first order and walks with the arrows', () => {
+    renderControl();
+
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Sort by: Playlist order' }),
+      { key: 'ArrowDown' }
+    );
+
+    const playlistOrder = screen.getByRole('option', {
+      name: 'Playlist order'
+    });
+    expect(playlistOrder).toHaveFocus();
+
+    fireEvent.keyDown(playlistOrder, { key: 'ArrowDown' });
+
+    expect(screen.getByRole('option', { name: 'Newest first' })).toHaveFocus();
   });
 
   it('disables the control while the shuffled list is the one on screen', () => {

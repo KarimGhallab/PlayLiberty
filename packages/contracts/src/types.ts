@@ -2,17 +2,22 @@ import { z } from 'zod';
 
 import {
   AccountSchema,
+  AccountSummaryPageSchema,
   AccountSummarySchema,
   AddTrackInputSchema,
   AddTrackResultSchema,
   CreatePlaylistInputSchema,
   LiveEventSchema,
   PageQuerySchema,
+  PinPlaylistInputSchema,
   PlaylistAccessSchema,
+  PlaylistPageSchema,
   PlaylistSchema,
+  PlaylistTrackListSchema,
   PlaylistTrackSchema,
   PlaylistTracksPageSchema,
   PlaylistTracksQuerySchema,
+  PlaylistWithCountsSchema,
   ProblemSchema,
   RenamePlaylistInputSchema,
   SharePlaylistInputSchema,
@@ -26,11 +31,15 @@ import {
 
 export type Account = z.infer<typeof AccountSchema>;
 export type AccountSummary = z.infer<typeof AccountSummarySchema>;
+export type AccountSummaryPage = z.infer<typeof AccountSummaryPageSchema>;
 export type Track = z.infer<typeof TrackSchema>;
 export type Playlist = z.infer<typeof PlaylistSchema>;
+export type PlaylistWithCounts = z.infer<typeof PlaylistWithCountsSchema>;
 export type PlaylistAccess = z.infer<typeof PlaylistAccessSchema>;
 export type PlaylistTrack = z.infer<typeof PlaylistTrackSchema>;
+export type PlaylistTrackList = z.infer<typeof PlaylistTrackListSchema>;
 export type PlaylistTracksPage = z.infer<typeof PlaylistTracksPageSchema>;
+export type PlaylistPage = z.infer<typeof PlaylistPageSchema>;
 export type PlaylistTracksQuery = z.infer<typeof PlaylistTracksQuerySchema>;
 export type TrackFileStatusCounts = z.infer<typeof TrackFileStatusCountsSchema>;
 export type Share = z.infer<typeof ShareSchema>;
@@ -44,6 +53,7 @@ export type RenamePlaylistInput = z.infer<typeof RenamePlaylistInputSchema>;
 export type SharePlaylistInput = z.infer<typeof SharePlaylistInputSchema>;
 export type SkipNonMusicInput = z.infer<typeof SkipNonMusicInputSchema>;
 export type SortPlaylistInput = z.infer<typeof SortPlaylistInputSchema>;
+export type PinPlaylistInput = z.infer<typeof PinPlaylistInputSchema>;
 export type PageQuery = z.infer<typeof PageQuerySchema>;
 
 export interface Page<T> {

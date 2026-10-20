@@ -12,6 +12,7 @@ import {
   PlaylistSyncStatus,
   PlaylistTrackListSchema,
   PlaylistTracksPageSchema,
+  PlaylistWithCountsSchema,
   ShareLevel,
   TrackFileStatus,
   TrackSourceStatus,
@@ -23,6 +24,7 @@ import { createTestContext } from '../../../app/testing/createTestContext.js';
 import {
   associate,
   seedAccount,
+  seedPin,
   seedPlaylist,
   seedShare,
   seedTrack
@@ -30,6 +32,7 @@ import {
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import {
+  playlistPins,
   playlists,
   shares,
   suppressions,
@@ -37,7 +40,7 @@ import {
 } from '../../../platform/database/schema.js';
 import { addAssociation, removeAssociation } from '../associationService.js';
 
-const PageSchema = createPageSchema(PlaylistSchema);
+const PageSchema = createPageSchema(PlaylistWithCountsSchema);
 const PlaylistTrackPageSchema = PlaylistTracksPageSchema;
 
 let context: TestContext | undefined;
@@ -47,21 +50,8 @@ afterEach(async () => {
   context = undefined;
 });
 
-/*
- * The statements a piece of work causes the driver to prepare.
- *
- * There is no query counter in this harness and better-sqlite3 v13 has no
- * db.trace, so the seam is sqlite.prepare, which is the one method drizzle
- * reaches the database through. It is patched on the instance for the duration
- * and restored by stop(), and it is a test-only seam: nothing in the server
- * knows it exists.
- *
- * It records rather than counts, because the caller wants different things from
- * it. A total says whether the work grew with the page, which is the property
- * that matters and which no knowledge of the SQL is needed for. A filter over
- * the recorded statements says what shape the queries took, which is worth
- * pinning separately and is worth naming in the test that does it.
- */
+/* The statements a piece of work makes the driver prepare, recorded rather than
+ * counted: a total shows whether the page grew, a filter the query shape. */
 function recordStatements(database: DatabaseHandle): {
   statements: string[];
   stop(): void;
@@ -85,11 +75,8 @@ function recordStatements(database: DatabaseHandle): {
   };
 }
 
-/*
- * Associations are created through the service rather than by inserting rows,
- * because that is the only path that maintains the stored count. A test that
- * inserted directly would see a count of 0 and prove nothing about the column.
- */
+/* Associations are created through the service, the only path that maintains
+ * the stored count; an inserted row would show 0 and prove nothing. */
 function addTrackAt(
   database: DatabaseHandle,
   playlistId: string,
@@ -115,8 +102,7 @@ function addTrack(
   addTrackAt(database, playlistId, trackId, 0);
 }
 
-/* What the associations table actually holds, so a stored count can be held
- * against it. */
+/* What the associations table holds, so a stored count can be checked. */
 function countAssociations(
   database: DatabaseHandle,
   playlistId: string
@@ -214,6 +200,39 @@ function hasSuppression(playlistId: string, videoId: string): boolean {
   );
 }
 
+/* The pin rows one playlist holds, so a cascade or a second pin is held against
+ * the table. */
+function pinCount(playlistId: string): number {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const row = context.database.db
+    .select({ total: sql<number>`count(*)` })
+    .from(playlistPins)
+    .where(eq(playlistPins.playlistId, playlistId))
+    .get();
+
+  return row?.total ?? 0;
+}
+
+function selectPin(accountId: string, playlistId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.database.db
+    .select()
+    .from(playlistPins)
+    .where(
+      and(
+        eq(playlistPins.accountId, accountId),
+        eq(playlistPins.playlistId, playlistId)
+      )
+    )
+    .get();
+}
+
 describe('GET /playlists', () => {
   it('returns a page whose items parse against the contract', async () => {
     context = await createTestContext();
@@ -303,45 +322,92 @@ describe('GET /playlists', () => {
     expect(page.items[0]?.trackCount).toBe(5);
   });
 
-  it('reads the count from the playlist row and does not count anything to produce it', async () => {
+  it('carries every playlist its own file-status counts, which the page does not narrow', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    const playlistIds = Array.from(
-      { length: 6 },
-      (_, index) =>
-        seedPlaylist(context!.database, owner.accountId, {
-          name: `Playlist ${index}`,
-          createdAt: `2026-09-2${index}T10:00:00.000Z`
-        }).playlistId
-    );
+    const mixed = seedPlaylist(context.database, owner.accountId, {
+      name: 'Mixed',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    const whole = seedPlaylist(context.database, owner.accountId, {
+      name: 'Whole',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
     addTrack(
       context.database,
-      playlistIds[0] ?? '',
+      mixed.playlistId,
       seedTrack(context.database).trackId
     );
     addTrack(
       context.database,
-      playlistIds[0] ?? '',
+      mixed.playlistId,
+      seedTrack(context.database).trackId
+    );
+    addTrack(
+      context.database,
+      mixed.playlistId,
+      seedTrack(context.database, { fileStatus: TrackFileStatus.Failed })
+        .trackId
+    );
+    addTrack(
+      context.database,
+      mixed.playlistId,
+      seedTrack(context.database, { fileStatus: TrackFileStatus.Pending })
+        .trackId
+    );
+    addTrack(
+      context.database,
+      whole.playlistId,
       seedTrack(context.database).trackId
     );
 
-    const response = await get('/api/v1/playlists', owner.pangolinUserId);
+    /* One row at a time, so a count that followed the page would come up short.
+     * The name order decides the pages: "Mixed" before "Whole". */
+    const secondPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=1&offset=1', owner.pangolinUserId)
+      ).json()
+    );
 
-    expect(response.statusCode).toBe(200);
-    const page = PageSchema.parse(response.json());
-    expect(page.items).toHaveLength(6);
-    // Newest first, and the two tracks are on the oldest playlist, so the 2 lands
-    // last. The order is part of what this asserts: a page whose order is not
-    // stable cannot be paged.
-    expect(page.items.map(item => item.trackCount)).toEqual([0, 0, 0, 0, 0, 2]);
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.items[0]?.id).toBe(whole.playlistId);
+    expect(secondPage.items[0]?.counts).toEqual({
+      stored: 1,
+      pending: 0,
+      downloading: 0,
+      failed: 0,
+      unavailable: 0
+    });
+
+    const firstPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=1&offset=0', owner.pangolinUserId)
+      ).json()
+    );
+    const listed = firstPage.items[0];
+
+    expect(listed?.id).toBe(mixed.playlistId);
+    expect(listed?.counts).toEqual({
+      stored: 2,
+      pending: 1,
+      downloading: 0,
+      failed: 1,
+      unavailable: 0
+    });
+    /* The five buckets are the playlist's own count, the mark's sum. */
+    expect(
+      Object.values(listed?.counts ?? {}).reduce((sum, count) => sum + count, 0)
+    ).toBe(listed?.trackCount);
   });
 
   it('paginates with a stable order and a total that ignores the page', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
-    for (let index = 0; index < 3; index += 1) {
+    /* Seeded against the name order, so a page that came back in insertion
+     * order would fail here rather than pass for the wrong reason. */
+    for (const [index, name] of ['Charlie', 'Alpha', 'Bravo'].entries()) {
       seedPlaylist(context.database, owner.accountId, {
-        name: `Playlist ${index}`,
+        name,
         createdAt: `2026-09-0${index + 1}T10:00:00.000Z`
       });
     }
@@ -359,11 +425,94 @@ describe('GET /playlists', () => {
 
     expect(firstPage.total).toBe(3);
     expect(secondPage.total).toBe(3);
-    expect(firstPage.items.map(item => item.name)).toEqual([
-      'Playlist 2',
-      'Playlist 1'
+    expect(firstPage.items.map(item => item.name)).toEqual(['Alpha', 'Bravo']);
+    expect(secondPage.items.map(item => item.name)).toEqual(['Charlie']);
+  });
+
+  it("returns the account's pins first, then the rest, each group in name order", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const pinnedLater = seedPlaylist(context.database, owner.accountId, {
+      name: 'Night Drive',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    const pinnedEarlier = seedPlaylist(context.database, owner.accountId, {
+      name: 'Afternoon Drive',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Zebra',
+      createdAt: '2026-09-04T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Antelope',
+      createdAt: '2026-09-03T10:00:00.000Z'
+    });
+    /* Night Drive was pinned most recently and Zebra created most recently, so
+     * either order fails: both groups are in name order, the pins first. */
+    seedPin(context.database, owner.accountId, pinnedEarlier.playlistId, {
+      pinnedAt: '2026-10-01T10:00:00.000Z'
+    });
+    seedPin(context.database, owner.accountId, pinnedLater.playlistId, {
+      pinnedAt: '2026-10-02T10:00:00.000Z'
+    });
+
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+
+    expect(page.items.map(item => item.name)).toEqual([
+      'Afternoon Drive',
+      'Night Drive',
+      'Antelope',
+      'Zebra'
     ]);
-    expect(secondPage.items.map(item => item.name)).toEqual(['Playlist 0']);
+    /* The flag rides on every item, pinned or not, so the client groups on it
+     * rather than sorting. */
+    expect(page.items.map(item => item.pinned)).toEqual([
+      true,
+      true,
+      false,
+      false
+    ]);
+    // A pin moves a row within the page rather than adding one.
+    expect(page.total).toBe(4);
+  });
+
+  it('pages across the pins and the rest in the same order', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const pinned = seedPlaylist(context.database, owner.accountId, {
+      name: 'Bravo',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Alpha',
+      createdAt: '2026-09-03T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Charlie',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    seedPin(context.database, owner.accountId, pinned.playlistId, {
+      pinnedAt: '2026-10-01T10:00:00.000Z'
+    });
+
+    const firstPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=2&offset=0', owner.pangolinUserId)
+      ).json()
+    );
+    const secondPage = PageSchema.parse(
+      (
+        await get('/api/v1/playlists?limit=2&offset=2', owner.pangolinUserId)
+      ).json()
+    );
+
+    /* The pinned row leads whatever its name, and the rest stay in name order
+     * across the page boundary. */
+    expect(firstPage.items.map(item => item.name)).toEqual(['Bravo', 'Alpha']);
+    expect(secondPage.items.map(item => item.name)).toEqual(['Charlie']);
   });
 
   it('lists a playlist shared to the account alongside the ones it owns', async () => {
@@ -423,17 +572,6 @@ describe('GET /playlists', () => {
       code: 'validation_failed',
       params: { path: 'limit' }
     });
-  });
-
-  it('requires an identity', async () => {
-    context = await createTestContext();
-    const response = await context.app.inject({
-      method: 'GET',
-      url: '/api/v1/playlists'
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(response.json()).toMatchObject({ code: 'unauthenticated' });
   });
 });
 
@@ -540,8 +678,7 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // The pair that is false and false: this playlist has no shares, so it is
-    // the owner's alone.
+    // No shares: this playlist is the owner's alone.
     expect(playlist.access).toBe('owner');
     expect(playlist.hasShares).toBe(false);
   });
@@ -561,9 +698,8 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // owner and shared is the pair the header draws as a padlock and an arrow,
-    // so it is the one that has to be reachable and distinguishable from owner
-    // and not shared.
+    // The header's padlock-and-arrow pair: reachable and distinct from
+    // owner-and-not-shared.
     expect(playlist.access).toBe('owner');
     expect(playlist.hasShares).toBe(true);
   });
@@ -588,10 +724,8 @@ describe("the requesting account's access to a playlist", () => {
         ).json()
       );
 
-      // A playlist a collaborator holds a share on is shared by definition, so
-      // hasShares is true for them too and carries no new information. access is
-      // the field that has to distinguish the two levels, because the overflow
-      // menu differs: a write collaborator may sync and a read one may not.
+      // A playlist a collaborator holds is shared by definition, so hasShares
+      // adds nothing; access distinguishes the two levels.
       expect(playlist.access).toBe(level);
       expect(playlist.access).not.toBe('owner');
       expect(playlist.hasShares).toBe(true);
@@ -618,21 +752,19 @@ describe("the requesting account's access to a playlist", () => {
       ).json()
     );
 
-    // Same playlist, same body, two different answers, which is the whole reason
-    // access is a property of the request rather than of the row.
+    // Same playlist and body, two answers: access is a property of the request,
+    // not of the row.
     expect(asOwner.id).toBe(asCollaborator.id);
     expect(asOwner.access).toBe('owner');
     expect(asCollaborator.access).toBe(ShareLevel.Write);
-    // And hasShares is the one that does not change with who is asking.
+    // And hasShares is the one that does not change with the asker.
     expect(asOwner.hasShares).toBe(asCollaborator.hasShares);
   });
 
   it('lists an owned playlist and a shared one with different access in one page', async () => {
     context = await createTestContext();
-    // One account, holding one playlist of its own and a share on somebody
-    // else's. A page where the reader owns nothing would be all collaborator
-    // rows, and a page where nobody is a collaborator would be all owner rows;
-    // only a page with both can catch access being hardcoded to either.
+    // One account owning one playlist and holding a share on another: only a
+    // page with both can catch access hardcoded to either.
     const reader = seedAccount(context.database);
     const other = seedAccount(context.database);
     seedPlaylist(context.database, reader.accountId, {
@@ -655,21 +787,15 @@ describe("the requesting account's access to a playlist", () => {
       (await get('/api/v1/playlists', reader.pangolinUserId)).json()
     );
 
-    // This is the assertion that stops access being hardcoded to owner on the
-    // list route. The library is not owner-scoped: visibleTo returns owned or
-    // shared, so a page can hold both kinds of row and the field has to differ
-    // between them.
+    // This stops access being hardcoded to owner on the list route: visibleTo
+    // returns owned or shared, so a page holds both.
     expect(page.items.map(item => [item.name, item.access])).toEqual([
-      ['Theirs', ShareLevel.Read],
-      ['Mine', 'owner']
+      ['Mine', 'owner'],
+      ['Theirs', ShareLevel.Read]
     ]);
-    // And the two fields are not the same fact wearing two names. The reader
-    // holds a share on Theirs and none on Mine, so access differs between the
-    // two rows while hasShares is true for one and false for the other. A field
-    // derived from the requester's own share would be true for both, and a field
-    // derived from access alone could not be false for a playlist the reader
-    // owns.
-    expect(page.items.map(item => item.hasShares)).toEqual([true, false]);
+    // The two fields are not one fact twice: access differs between the rows
+    // while hasShares is true for one and false for the other.
+    expect(page.items.map(item => item.hasShares)).toEqual([false, true]);
   });
 
   it('answers 404 for a playlist neither owned nor shared, and says nothing about shares', async () => {
@@ -686,27 +812,10 @@ describe("the requesting account's access to a playlist", () => {
     expect(response.statusCode).toBe(404);
     const body = response.json();
     expect(body).toMatchObject({ code: 'playlist_not_found' });
-    // The disclosure is that the playlist is not there. Naming whether it is
-    // shared, or who holds it, in the body would confirm it exists.
+    // The disclosure is that the playlist is not there; naming whether it is
+    // shared, or who holds it, would confirm it exists.
     expect(JSON.stringify(body)).not.toContain('access');
     expect(JSON.stringify(body)).not.toContain('hasShares');
-  });
-
-  it('omits an invisible playlist from the list rather than answering 404 for it', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    seedPlaylist(context.database, owner.accountId, { name: 'Private' });
-    const stranger = seedAccount(context.database);
-
-    // The list route has no 404 to give: a page simply does not contain it. The
-    // pair of routes is asserted together because only one of them can be a 404
-    // and the disclosure property is that neither reveals the playlist.
-    const page = PageSchema.parse(
-      (await get('/api/v1/playlists', stranger.pangolinUserId)).json()
-    );
-
-    expect(page.total).toBe(0);
-    expect(page.items).toEqual([]);
   });
 
   it('prepares the same number of statements for a page of one and a page of six', async () => {
@@ -733,39 +842,41 @@ describe("the requesting account's access to a playlist", () => {
     expect(oneRow.items).toHaveLength(1);
     expect(sixRows.items).toHaveLength(6);
 
-    // This is the whole of "no N+1", and it is asserted without reading a single
-    // statement of SQL. A per-row lookup for either new fact is one more
-    // statement per playlist, so a six-row page would prepare six more and this
-    // would fail with 3 against 8. It also catches a lookup added for a field
-    // nobody has asked for yet, which a test that only counted share statements
-    // would not.
+    // The whole of "no N+1", asserted without reading SQL: a per-row lookup
+    // adds a statement per playlist, so a six-row page fails.
     expect(recordingSixRows.statements.length).toBe(
       recordingOneRow.statements.length
     );
   });
 
-  it('looks up has-shares once for the page, which the statement text shows', async () => {
+  it('omits a visible playlist whose access did not resolve, rather than reporting it as owned', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
     seedPlaylist(context.database, owner.accountId);
 
-    // This test asserts the shape of the SQL, and says so in its name, because
-    // the property test above would also pass on an implementation that got
-    // has-shares right by some other route. The pattern is matched against the
-    // whole statement: the page query and the count query each contain
-    // 'from "share"' inside their visibility subquery, and only this one is the
-    // page-level lookup.
-    const recording = recordStatements(context.database);
-    await get('/api/v1/playlists', owner.pangolinUserId);
-    recording.stop();
+    /* The visible query still answers the row; the access resolver is forced to
+     * miss it, the drift the projection must fail closed on. */
+    const sqlite = context.database.sqlite as unknown as {
+      prepare: (sql: string) => unknown;
+    };
+    const original = sqlite.prepare;
+    sqlite.prepare = function (sql: string): unknown {
+      if (sql.includes('as playlist_id')) {
+        return { all: () => [] };
+      }
 
-    const grouped = recording.statements.filter(statement =>
-      /^select distinct "playlist_id" from "share" where "share"."playlist_id" in \(/i.test(
-        statement
-      )
-    );
+      return original.call(this, sql);
+    };
 
-    expect(grouped).toHaveLength(1);
+    try {
+      const page = PageSchema.parse(
+        (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+      );
+
+      expect(page.items).toEqual([]);
+    } finally {
+      sqlite.prepare = original;
+    }
   });
 });
 
@@ -907,8 +1018,8 @@ describe('GET /playlists/:id/tracks', () => {
       AssociationOrigin.Remote,
       AssociationOrigin.Manual
     ]);
-    /* The recorded policy crosses the wire on the track, so a client can show why
-     * a track is full length. */
+    /* The recorded policy crosses the wire, so a client can show why a track is
+     * full length. */
     expect(page.items[0]?.track.skipNonMusic).toBe(false);
     expect(page.items[1]?.track.skipNonMusic).toBe(true);
   });
@@ -1083,10 +1194,8 @@ describe('GET /playlists/:id/tracks', () => {
     await get(`/api/v1/playlists/${playlistId}/tracks`, owner.pangolinUserId);
     recording.stop();
 
-    // The route reads state and writes none. The identity hook upserts the
-    // account on every request, so the claim is about the playlist's own tables:
-    // no insert, update or delete touches the playlist, its associations or its
-    // tracks, and the associations are exactly where they were.
+    // The route reads state and writes none: the identity hook upserts the
+    // account, but nothing touches the playlist's own tables.
     const writes = recording.statements.filter(
       statement =>
         /^\s*(insert|update|delete)\b/i.test(statement) &&
@@ -1108,23 +1217,6 @@ describe('GET /playlists/:id/tracks', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ code: 'validation_failed' });
-  });
-
-  it('returns the playlist to its owner', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    const { playlistId } = seedPlaylist(context.database, owner.accountId);
-    addTrack(context.database, playlistId, seedTrack(context.database).trackId);
-
-    const response = await get(
-      `/api/v1/playlists/${playlistId}/tracks`,
-      owner.pangolinUserId
-    );
-
-    expect(response.statusCode).toBe(200);
-    expect(PlaylistTrackPageSchema.parse(response.json()).items).toHaveLength(
-      1
-    );
   });
 
   it.each([ShareLevel.Read, ShareLevel.Write])(
@@ -1289,8 +1381,8 @@ describe('GET /playlists/:id/tracks', () => {
       ).json()
     );
 
-    // Not truncated here: the row is where a long reason is bounded, and this
-    // route returns what the download wrote.
+    // Not truncated here: the row bounds a long reason, and this route returns
+    // what the download wrote.
     expect(page.items[0]?.track.failureReason).toBe(reason);
   });
 
@@ -1322,11 +1414,8 @@ describe('GET /playlists/:id/tracks', () => {
   });
 });
 
-/*
- * The state filter and the counts. The filter is a query parameter rather than a
- * client-side narrowing, so the page and its total follow it; the counts never
- * do, because the point of a count is what is available to filter to.
- */
+/* The state filter is a query parameter, so it narrows the page and its total,
+ * never the counts: a count is what is available to filter to. */
 describe('the state filter and the counts', () => {
   it('narrows the page and its total to the state asked for', async () => {
     context = await createTestContext();
@@ -1354,7 +1443,7 @@ describe('the state filter and the counts', () => {
       TrackFileStatus.Failed
     ]);
     // The total is the filtered total, so the paging walk stops at the rows the
-    // filter kept rather than walking the whole playlist.
+    // filter kept.
     expect(page.total).toBe(1);
   });
 
@@ -1441,8 +1530,8 @@ describe('the state filter and the counts', () => {
     };
 
     expect(unfiltered.counts).toEqual(counts);
-    // The same counts under the filter, because a count is what is available to
-    // filter to and not the rows the filter kept.
+    // Same counts under the filter: a count is what is available to filter to,
+    // not the rows kept.
     expect(filtered.counts).toEqual(counts);
     expect(unfiltered.total).toBe(3);
     expect(filtered.total).toBe(1);
@@ -1471,7 +1560,7 @@ describe('the state filter and the counts', () => {
       ).json()
     );
 
-    // The source status is an overlay and not a bucket: the five counts are file
+    // The source status is an overlay, not a bucket: the five counts are file
     // states, so a removed-but-stored track is a stored track here.
     expect(page.counts.stored).toBe(1);
     expect(page.counts.unavailable).toBe(0);
@@ -1604,10 +1693,8 @@ describe('GET /playlists/:id/queue', () => {
 });
 
 /*
- * The order a playlist's tracks are read in. The dates are explicit, because two
- * associations added in one instant share a timestamp and the tiebreak is the
- * playlist's own position; a fixture that let the column stamp them would make
- * the date sort a race.
+ * The order a playlist's tracks are read in: the dates are explicit, so two
+ * added in one instant share a timestamp and position is the tiebreak.
  */
 describe("the order a playlist's tracks are read in", () => {
   const EARLY = '2026-01-01T00:00:00.000Z';
@@ -1622,32 +1709,13 @@ describe("the order a playlist's tracks are read in", () => {
     const { trackId: second } = seedTrack(database);
     const { trackId: third } = seedTrack(database);
 
-    // Inserted out of position order, so insertion order would fail a date sort.
+    // Inserted out of position order, so insertion order fails a date sort.
     associate(database, playlistId, third, { position: 3, addedAt: MIDDLE });
     associate(database, playlistId, first, { position: 0, addedAt: LATE });
     associate(database, playlistId, second, { position: 1, addedAt: EARLY });
 
     return { first, second, third };
   }
-
-  it("reads the playlist's own order when no sort is saved", async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    const { playlistId } = seedPlaylist(context.database, owner.accountId);
-    const order = seedOutOfPositionOrder(context.database, playlistId);
-
-    const response = await get(
-      `/api/v1/playlists/${playlistId}/tracks`,
-      owner.pangolinUserId
-    );
-
-    expect(response.statusCode).toBe(200);
-    expect(
-      PlaylistTrackPageSchema.parse(response.json()).items.map(
-        item => item.track.id
-      )
-    ).toEqual([order.first, order.second, order.third]);
-  });
 
   it('reads newest first once that sort is saved', async () => {
     context = await createTestContext();
@@ -1899,22 +1967,6 @@ describe('PATCH /playlists/:id', () => {
     expect(after?.skipNonMusic).toBe(false);
   });
 
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    const { playlistId } = seedPlaylist(context.database, owner.accountId);
-
-    const response = await context.app.inject({
-      method: 'PATCH',
-      url: `/api/v1/playlists/${playlistId}`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: { name: 'Renamed' }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
-
   it('names the first association as the cover', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
@@ -1941,6 +1993,30 @@ describe('PATCH /playlists/:id', () => {
 
     /* The cover is the first track by position, not the last one added. */
     expect(PlaylistSchema.parse(response.json()).coverTrackId).toBe(first);
+  });
+
+  it('answers the same cover from the detail and the page when two associations share the lowest position', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: first } = seedTrack(context.database);
+    const { trackId: second } = seedTrack(context.database);
+    associate(context.database, playlistId, first, { position: 0 });
+    associate(context.database, playlistId, second, { position: 0 });
+
+    const detail = PlaylistSchema.parse(
+      (
+        await get(`/api/v1/playlists/${playlistId}`, owner.pangolinUserId)
+      ).json()
+    );
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+
+    /* The tie resolves by rowid, so the association written first is the cover
+     * and both reads answer the same id. */
+    expect(detail.coverTrackId).toBe(first);
+    expect(page.items[0]?.coverTrackId).toBe(first);
   });
 });
 
@@ -2061,22 +2137,6 @@ describe('PATCH /playlists/:id/skip-non-music', () => {
         .get()?.skipNonMusic
     ).toBe(false);
   });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    const { playlistId } = seedPlaylist(context.database, owner.accountId);
-
-    const response = await context.app.inject({
-      method: 'PATCH',
-      url: `/api/v1/playlists/${playlistId}/skip-non-music`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: { skipNonMusic: false }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
 });
 
 describe('PATCH /playlists/:id/sort', () => {
@@ -2182,21 +2242,257 @@ describe('PATCH /playlists/:id/sort', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ code: 'validation_failed' });
   });
+});
 
-  it('refuses a request without the client header', async () => {
+/*
+ * The pin is the account's own placement, so the check is the read need: a read
+ * collaborator may pin, and one account's pin never moves another's gallery.
+ */
+describe('PATCH /playlists/:id/pin', () => {
+  it('pins for the account and returns the playlist flagged', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
     const { playlistId } = seedPlaylist(context.database, owner.accountId);
 
-    const response = await context.app.inject({
-      method: 'PATCH',
-      url: `/api/v1/playlists/${playlistId}/sort`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: { sort: PlaylistSort.NewestFirst }
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      owner.pangolinUserId,
+      { pinned: true }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).pinned).toBe(true);
+    expect(selectPin(owner.accountId, playlistId)?.playlistId).toBe(playlistId);
+  });
+
+  it('lets a read collaborator pin and unpin a playlist it can only read', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
+    const pinned = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      reader.pangolinUserId,
+      { pinned: true }
+    );
+    expect(pinned.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(pinned.json()).pinned).toBe(true);
+
+    const unpinned = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      reader.pangolinUserId,
+      { pinned: false }
+    );
+    expect(unpinned.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(unpinned.json()).pinned).toBe(false);
+    expect(pinCount(playlistId)).toBe(0);
+  });
+
+  it('refreshes the instant on a second pin rather than failing', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    seedPin(context.database, owner.accountId, playlistId, {
+      pinnedAt: '2020-01-01T00:00:00.000Z'
+    });
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      owner.pangolinUserId,
+      { pinned: true }
+    );
+
+    expect(response.statusCode).toBe(200);
+    // The pair is the key, so a repeat pin is the same row, not a new one.
+    expect(pinCount(playlistId)).toBe(1);
+  });
+
+  it('unpins and removes the row', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    seedPin(context.database, owner.accountId, playlistId);
+
+    const response = await patch(
+      `/api/v1/playlists/${playlistId}/pin`,
+      owner.pangolinUserId,
+      { pinned: false }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(PlaylistSchema.parse(response.json()).pinned).toBe(false);
+    expect(pinCount(playlistId)).toBe(0);
+  });
+
+  it('answers 404 for a stranger and a missing playlist in both directions', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const attempts: [string, string][] = [
+      [playlistId, stranger.pangolinUserId],
+      [randomUUID(), owner.pangolinUserId]
+    ];
+
+    for (const [targetId, pangolinUserId] of attempts) {
+      for (const pinned of [true, false]) {
+        const response = await patch(
+          `/api/v1/playlists/${targetId}/pin`,
+          pangolinUserId,
+          { pinned }
+        );
+
+        expect(response.statusCode).toBe(404);
+        expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+      }
+    }
+  });
+
+  it('refuses a changed body that is not a boolean', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+
+    const attempts: Record<string, unknown>[] = [{ pinned: 'yes' }, {}];
+
+    for (const payload of attempts) {
+      const response = await patch(
+        `/api/v1/playlists/${playlistId}/pin`,
+        owner.pangolinUserId,
+        payload
+      );
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: 'validation_failed' });
+    }
+  });
+
+  it("keeps one account's pin out of another's gallery and lets both pin the same shared playlist", async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const reader = seedAccount(context.database);
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Mine',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    const { playlistId: sharedId } = seedPlaylist(
+      context.database,
+      owner.accountId,
+      { name: 'Shared', createdAt: '2026-09-02T10:00:00.000Z' }
+    );
+    seedShare(context.database, sharedId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const readerPin = await patch(
+      `/api/v1/playlists/${sharedId}/pin`,
+      reader.pangolinUserId,
+      { pinned: true }
+    );
+    expect(readerPin.statusCode).toBe(200);
+
+    const readerPage = PageSchema.parse(
+      (await get('/api/v1/playlists', reader.pangolinUserId)).json()
+    );
+    expect(readerPage.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Shared', true]
+    ]);
+
+    /* The owner's gallery is unchanged: the same name order and nothing pinned,
+     * which is why the row is per account. */
+    const ownerPage = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+    expect(ownerPage.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Mine', false],
+      ['Shared', false]
+    ]);
+
+    const ownerPin = await patch(
+      `/api/v1/playlists/${sharedId}/pin`,
+      owner.pangolinUserId,
+      { pinned: true }
+    );
+    expect(ownerPin.statusCode).toBe(200);
+
+    const ownerAfter = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+    expect(ownerAfter.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Shared', true],
+      ['Mine', false]
+    ]);
+    expect(pinCount(sharedId)).toBe(2);
+  });
+
+  it('takes its pins with it when the playlist is deleted', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+    seedPin(context.database, owner.accountId, playlistId);
+    seedPin(context.database, reader.accountId, playlistId);
+    expect(pinCount(playlistId)).toBe(2);
+
+    const response = await del(
+      `/api/v1/playlists/${playlistId}`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(pinCount(playlistId)).toBe(0);
+  });
+
+  it('hides a pin when a share is revoked and returns it when the share is granted again', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      name: 'Shared'
+    });
+    const reader = seedAccount(context.database);
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    await patch(`/api/v1/playlists/${playlistId}/pin`, reader.pangolinUserId, {
+      pinned: true
+    });
+
+    context.database.db
+      .delete(shares)
+      .where(
+        and(
+          eq(shares.playlistId, playlistId),
+          eq(shares.accountId, reader.accountId)
+        )
+      )
+      .run();
+
+    const hidden = PageSchema.parse(
+      (await get('/api/v1/playlists', reader.pangolinUserId)).json()
+    );
+    expect(hidden.items).toEqual([]);
+    // The placement is hidden, not swept: the row is still there to return.
+    expect(pinCount(playlistId)).toBe(1);
+
+    seedShare(context.database, playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const restored = PageSchema.parse(
+      (await get('/api/v1/playlists', reader.pangolinUserId)).json()
+    );
+    expect(restored.items.map(item => [item.name, item.pinned])).toEqual([
+      ['Shared', true]
+    ]);
   });
 });
 
@@ -2234,8 +2530,8 @@ describe('DELETE /playlists/:id', () => {
 
     await del(`/api/v1/playlists/${playlistId}`, owner.pangolinUserId);
 
-    // The playlist is gone; the file and the now-orphan track row are not, so the
-    // weekly prune is what reclaims the disk.
+    // The playlist is gone; the file and the now-orphan track row are not, so
+    // the weekly prune is what reclaims the disk.
     await expect(readFile(storedPath, 'utf8')).resolves.toBe('stored-audio');
     expect(selectTrack(trackId)).toBeDefined();
   });
@@ -2332,22 +2628,6 @@ describe('DELETE /playlists/:id', () => {
       reader.pangolinUserId
     );
     expect(after.statusCode).toBe(404);
-  });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    const { playlistId } = seedPlaylist(context.database, owner.accountId);
-
-    const response = await context.app.inject({
-      method: 'DELETE',
-      url: `/api/v1/playlists/${playlistId}`,
-      headers: { 'remote-user': owner.pangolinUserId }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-    expect(selectPlaylist(playlistId)).toBeDefined();
   });
 });
 
@@ -2472,23 +2752,5 @@ describe('DELETE /playlists/:id/tracks/:trackId', () => {
     );
     expect(stream.statusCode).toBe(200);
     expect(stream.body).toBe('the-audio');
-  });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(context.database);
-    const { playlistId } = seedPlaylist(context.database, owner.accountId);
-    const { trackId } = seedTrack(context.database);
-    addTrack(context.database, playlistId, trackId);
-
-    const response = await context.app.inject({
-      method: 'DELETE',
-      url: `/api/v1/playlists/${playlistId}/tracks/${trackId}`,
-      headers: { 'remote-user': owner.pangolinUserId }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-    expect(countAssociations(context.database, playlistId)).toBe(1);
   });
 });

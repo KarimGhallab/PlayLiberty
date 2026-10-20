@@ -15,7 +15,7 @@ export function writeLanguage(storage: Storage, language: Language): void {
   try {
     storage.setItem(LANGUAGE_STORAGE_KEY, language);
   } catch {
-    // A storage that refuses the write (private mode, a quota) is not worth
-    // breaking the interface over.
+    // A storage refusing the write (private mode, quota) is not worth breaking
+    // the interface over.
   }
 }

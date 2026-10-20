@@ -4,28 +4,18 @@ import { useState } from 'react';
 import type { Provider } from '@playliberty/contracts';
 import { providerLabel, useI18n } from '@playliberty/i18n';
 
+import Spinner from '../Spinner/Spinner';
 import styles from './SyncError.module.scss';
 
 /*
- * The sync error replaces the sync summary rather than joining it, which is the
- * component's own three-way split: the header owns the state and the time, the
- * summary owns the counts, and this owns the words and the action.
- *
- * Two decisions inside it are forced by the contract. `SyncRun.error` is a
- * non-null string with no length bound, so it is shown behind a control rather
- * than as the message, in a box that keeps its line breaks and caps its height
- * so an unbounded diagnostic cannot become the tallest thing on the screen.
- * And `PlaylistSyncStatus.Error` is reachable with no run at all, so every part
- * of this is optional and the smallest form is still a sentence and an action.
- *
- * The sentence is a mapped phrase and never the server's own words, which are
- * available one control below for the case where a user is reporting it.
+ * The sync error replaces the summary rather than joining it. The server's
+ * diagnostic is an unbounded string, so it sits behind a reveal control; the
+ * sentence is a mapped phrase and never the server's own words.
  */
 
 interface SyncErrorProps {
-  /* How many tracks are still here, for the reassurance. Null when the count is
-   * not known, in which case the reassurance is absent: "your tracks are safe"
-   * about nothing is a promise about nothing. */
+  /* How many tracks are still here, for the reassurance; null when the count is
+   * not known, in which case the reassurance is absent. */
   trackCount: number | null;
   provider: Provider;
   /* The server's own diagnostic, behind the reveal control. Null when there is
@@ -69,10 +59,7 @@ export default function SyncError({
               onClick={onRetry}
               disabled={retrying}>
               {retrying ? (
-                <span
-                  className={styles.syncError__spinner}
-                  aria-hidden="true"
-                />
+                <Spinner />
               ) : (
                 <IconRotateClockwise
                   className={styles.syncError__retryIcon}

@@ -73,8 +73,8 @@ describe('the emitted stylesheet', () => {
       access(path.join(distPath, 'index.js'))
     ).resolves.toBeUndefined();
 
-    // Self-referencing by name walks the export map the way a consumer does,
-    // without importing a `.css` file that Node cannot load.
+    // Self-referencing by name walks the export map as a consumer does, without
+    // importing a `.css` file Node cannot load.
     const require = createRequire(import.meta.url);
 
     expect(require.resolve('@playliberty/tokens')).toBe(

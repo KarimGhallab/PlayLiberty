@@ -12,9 +12,8 @@ import { seedAccount, seedPlaylist } from './testing/fixtures.js';
 type Line = Record<string, unknown>;
 
 /*
- * A logger that records what the app writes, injected as Fastify's logger so the
- * hooks and routes that log on `request.log` land here. It only needs the surface
- * Fastify requires; the audit fields are read back by name.
+ * A logger recording app output, injected as Fastify's logger so hooks
+ * and routes logging on `request.log` land here.
  */
 function recordingLogger(): {
   logger: FastifyBaseLogger;

@@ -1,18 +1,7 @@
 /*
- * The designed values, the single source of truth.
- *
- * Transcribed from `docs/design/tokens.css`; the design records in
- * `docs/DESIGN.md` and `docs/design-system/` carry the reasoning behind each one.
- * Lengths and durations are unitless numbers here, and the emitter in
- * `emitTokens.ts` is the only place a unit is ever added.
- *
- * Two tokens hold the same literal on purpose, and the design's validator keeps
- * them honest: `tone-downloading` and `emphasis` are both the amber. They are
+ * Lengths and durations are unitless here; the emitter is the only place a unit
+ * is added. `tone-downloading` and `emphasis` hold the same amber on purpose:
  * two names for two decisions, not one token aliasing another.
- *
- * A font token is the family name alone. The fallback stack is the client's,
- * because React Native takes one family name and cannot parse a CSS stack; the
- * emitter quotes it for the stylesheet.
  */
 import { TokenKind } from './types.js';
 import type {
@@ -46,16 +35,8 @@ export const colors = {
   'control-disabled-bg': { kind: TokenKind.Color, value: '#1e2229' },
   scrim: { kind: TokenKind.Color, value: 'rgb(0 0 0 / 0.6)' },
 
-  /*
-   * The six sleeve hues. A playlist with no `coverUrl` draws its identity as a
-   * sleeve instead of the anonymous grey hatch, and the hue is one of these
-   * rather than one computed at run time: every value is drawn at OKLCH L 0.34,
-   * C 0.055, so the six read as one family of dark tinted sleeves rather than a
-   * second accent. The arc runs teal to plum and deliberately skips the accent's
-   * green and the amber and red the states own, so a sleeve is never read as a
-   * state. `sleeveIndex` in `@playliberty/ui-foundation` picks one from the
-   * playlist id.
-   */
+  /* The six sleeve tints, all at OKLCH L 0.34 C 0.055, so they read as one
+   * family. The arc skips the accent and state hues, so a sleeve is not one. */
   'sleeve-1': { kind: TokenKind.Color, value: '#08413e' },
   'sleeve-2': { kind: TokenKind.Color, value: '#0d3e4c' },
   'sleeve-3': { kind: TokenKind.Color, value: '#213a53' },
@@ -88,6 +69,7 @@ export const lengths = {
   'control-touch': { kind: TokenKind.Length, value: 44 },
   'control-size-check': { kind: TokenKind.Length, value: 18 },
   'control-size-inline': { kind: TokenKind.Length, value: 28 },
+  'player-bar-height': { kind: TokenKind.Length, value: 98 },
   'icon-sm': { kind: TokenKind.Length, value: 16 },
   'icon-md': { kind: TokenKind.Length, value: 20 },
   'icon-lg': { kind: TokenKind.Length, value: 28 },
@@ -112,24 +94,22 @@ export const numbers = {
   'opacity-disabled': { kind: TokenKind.Number, value: 0.45 },
   'z-base': { kind: TokenKind.Number, value: 0 },
   'z-sticky': { kind: TokenKind.Number, value: 10 },
-  'z-overlay': { kind: TokenKind.Number, value: 20 },
-  'z-player': { kind: TokenKind.Number, value: 30 }
+  'z-player': { kind: TokenKind.Number, value: 20 },
+  'z-overlay': { kind: TokenKind.Number, value: 30 }
 } as const satisfies Record<string, NumberToken>;
 
-/** The emitter quotes the family for the stylesheet. */
+/** The family name alone: the fallback stack is the client's. */
 export const families = {
   'font-ui': { kind: TokenKind.Family, value: 'IBM Plex Sans' }
 } as const satisfies Record<string, FamilyToken>;
 
-/** The only curve in the system. It sits outside the `motion-*` family. */
+/** Outside the `motion-*` family: a curve is not a duration. */
 export const curves = {
   'ease-standard': { kind: TokenKind.Curve, value: [0.4, 0, 0.2, 1] }
 } as const satisfies Record<string, CurveToken>;
 
-/**
- * Every group the emitter writes into the stylesheet, in output order. The
- * morph is not here: it is geometry a client draws, not a custom property.
- */
+/* Every group the emitter writes, in output order. The morph is not here: it is
+ * geometry a client draws, not a custom property. */
 export const tokenGroups: readonly TokenGroup[] = [
   ['colors', colors],
   ['lengths', lengths],

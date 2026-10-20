@@ -108,8 +108,8 @@ the same sentences and figures from one place. `ui-foundation` keeps only the pr
   checked, and nothing else. It is on the library only. _Decided here,_ from the prototype: the account-menu
   framing was dropped because there is no account surface, no settings and no sign out.
 - **The page's `lang` attribute follows the resolved language.** The document declares the language the
-  reader is in, so a screen reader and the browser's own typography agree. The app's own name stays
-  `PlayLiberty` in both languages.
+  reader is in, so a screen reader and the browser's own typography agree. The app's own name is localized
+  with the interface: `PlayLiberty` in English and `PlayLiberté` in French.
 - **The formatters move into the package; `ui-foundation` keeps only what language cannot touch.**
   `formatRelativeTime`, `formatLastSynced`, `syncStateLabel`, `trackStateLabel`, `providerLabel`,
   `trackCountUnit`, `formatTrackCount` and `formatDuration` live in `@playliberty/i18n` as catalog entries or
@@ -129,10 +129,9 @@ the same sentences and figures from one place. `ui-foundation` keeps only the pr
 - **A lint rule flags a hardcoded user-facing string.** JSX text and the known label props are checked, with
   an allowlist for non-copy strings, so new copy cannot bypass the catalog. _Decided here:_ the rule is
   required, not optional, and its selector follows the runtime chosen above.
-- **The change owes documentation, and the documentation is part of the work.** [The client owns user-facing copy](../../DESIGN.md#the-client-owns-user-facing-copy) records the
+- **The change owes documentation, and the documentation is part of the work.** The documentation records the
   client-owns-copy decision, the shared package and the hand-rolled runtime; the glossary gains `Language`
-  and `Locale`; the design system gains a record for the language button and its menu; the specs tracker
-  gains this spec's row. _Decided here._
+  and `Locale`; the specs tracker gains this spec's row. _Decided here._
 - **The mobile client consumes the package, and no mobile behavior is specified here.** The package is
   client-neutral by construction; wiring the future mobile client is a later spec. See Further Notes for the
   corpus-convention tension this raises.

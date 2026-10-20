@@ -25,36 +25,19 @@ import {
   validateYoutubeUrl
 } from '../validateYoutubeUrl/validateYoutubeUrl.js';
 
-/*
- * The extractors this instance is willing to run. yt-dlp's `--use-extractors`
- * matches an extractor name exactly, and a YouTube URL does not always land on the
- * extractor called `youtube`: a watch URL is `youtube`, a playlist or channel tab
- * is `youtube:tab`. The wildcard `youtube*` is not the answer either: it matches
- * nothing, because the option compares the leading name and not a glob.
- *
- * Both names are listed, and both are YouTube, which is the point of the flag:
- * a URL can never route extraction to some other site. A third YouTube extractor
- * added by a future yt-dlp would have to be named here, and `ytdlpArgs.test.ts`
- * is what makes that a decision rather than an omission.
- */
+/* `--use-extractors` matches exactly and `youtube*` matches nothing, so both
+ * names are listed; both are YouTube, so a URL cannot route to another site. */
 const YOUTUBE_EXTRACTORS = 'youtube,youtube:tab';
 
-/*
- * The SponsorBlock categories the app cuts. `music_offtopic` is the only one that
- * literally means the music stopped; `sponsor` and `selfpromo` cover the spoken
- * breaks in long uploads. Fixed in code, because this is one behaviour and not a
- * configuration surface.
- */
+/* `music_offtopic` is the music stopping; `sponsor` and `selfpromo` cover the
+ * spoken breaks. Fixed in code: one behaviour, not a configuration surface. */
 const SPONSORBLOCK_CATEGORIES = 'music_offtopic,sponsor,selfpromo';
 
 const THUMBNAIL_HOSTS = new Set(['ytimg.com', 'img.youtube.com']);
 const THUMBNAIL_HOST_SUFFIX = '.ytimg.com';
 
-/*
- * The fetch's own bounds. A thumbnail is small and fast, so a slow or oversized
- * response is a fault rather than something to wait out. A redirect is followed
- * only while it stays on an allowed host, and only a bounded number of times.
- */
+/* A thumbnail is small and fast, so a slow or oversized response is a fault,
+ * not something to wait out. A redirect is followed only on an allowed host. */
 const DEFAULT_THUMBNAIL_TIMEOUT_MS = 15_000;
 const DEFAULT_THUMBNAIL_MAX_BYTES = 5 * 1024 * 1024;
 const THUMBNAIL_MAX_REDIRECTS = 3;
@@ -137,12 +120,8 @@ export function buildFaststartArgs(
   ];
 }
 
-/*
- * The probe the adapter reads the finished file's own duration with. ffprobe is
- * the companion binary to ffmpeg and the one tool that reports the container's
- * duration as a bare number; parsing ffmpeg's human-readable banner instead would
- * break on a version or a locale.
- */
+/* ffprobe reports the container duration as a bare number; ffmpeg's
+ * human-readable banner would break on a version or a locale. */
 export function buildProbeArgs(filePath: string): string[] {
   return [
     '-v',
@@ -230,12 +209,8 @@ function parseSourceJson(stdout: string, info: YoutubeUrlInfo): YoutubeSource {
   };
 }
 
-/*
- * The finished file's own duration, as a whole number of seconds. ffprobe prints
- * the container's duration as a bare float; anything that is not a number is a
- * failed probe, and a failed probe fails the download rather than storing a track
- * with a duration nobody can trust.
- */
+/* A non-numeric probe fails the download rather than storing a track with a
+ * duration nobody can trust. */
 async function probeDuration(
   binary: string,
   filePath: string,
@@ -313,11 +288,8 @@ function isAllowedThumbnailHost(host: string): boolean {
   return THUMBNAIL_HOSTS.has(host) || host.endsWith(THUMBNAIL_HOST_SUFFIX);
 }
 
-/*
- * A thumbnail URL pinned to https and to the image hosts. A redirect is resolved
- * against the current URL so a relative location is honoured, then re-checked, so
- * one that leaves the allowlist is refused rather than followed.
- */
+/* Pinned to https and the image hosts. A redirect is resolved against the
+ * current URL, then re-checked, so one leaving the allowlist is refused. */
 function resolveThumbnailUrl(raw: string, base?: string): string {
   let parsed: URL;
 
@@ -342,11 +314,8 @@ function resolveThumbnailUrl(raw: string, base?: string): string {
   return parsed.toString();
 }
 
-/*
- * The body read through the cap rather than buffered whole, so an oversized
- * response is refused without being held in memory. A declared length over the
- * cap is refused before the body is read at all.
- */
+/* Read through the cap, not buffered whole, so an oversized response is refused
+ * without being held in memory. */
 async function readBoundedThumbnail(
   response: Response,
   maxBytes: number
@@ -461,10 +430,8 @@ export class YtdlpClient implements IYoutubeClient {
         throw new YoutubeVideoUnavailableError(request.videoId);
       }
 
-      // A SponsorBlock failure is checked after the gone-video patterns, and the
-      // two do not overlap: yt-dlp's SponsorBlock phrases never match the
-      // unavailable ones. This one is transient, so it becomes a typed error the
-      // worker records as `failed` rather than as a terminal `unavailable`.
+      // Checked after the gone-video patterns, which never overlap: this one is
+      // transient, so it is recorded `failed`, not terminal `unavailable`.
       if (isSponsorBlockFailureMessage(message)) {
         throw new YoutubeSponsorBlockError(request.videoId);
       }
@@ -480,9 +447,8 @@ export class YtdlpClient implements IYoutubeClient {
     );
     await rm(downloadedPath, { force: true });
 
-    // The file is the truth. A trimmed file is shorter than its source, so the
-    // duration is read back from what was written, for every download, trimmed or
-    // not; the source metadata is only what the row carried before this.
+    // The file is the truth: a trimmed file is shorter than its source, so the
+    // duration is read back from what was written, trimmed or not.
     const durationSeconds = await probeDuration(
       this._options.ffprobeBinary,
       request.outputPath,
@@ -497,11 +463,8 @@ export class YtdlpClient implements IYoutubeClient {
   }
 
   public async fetchThumbnail(url: string, outputPath: string): Promise<void> {
-    /*
-     * The URL is the source's own, not yt-dlp's business, but it is still source
-     * access, so it lives behind this seam with the rest, pinned to the image
-     * hosts and bounded.
-     */
+    /* Still source access, though not yt-dlp's, so it lives behind this seam
+     * with the rest: pinned to the image hosts and bounded. */
     const image = await fetchThumbnailImage(
       url,
       this._options.thumbnailTimeoutMs ?? DEFAULT_THUMBNAIL_TIMEOUT_MS,

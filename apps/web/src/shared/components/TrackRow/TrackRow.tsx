@@ -8,43 +8,27 @@ import type { ReactNode } from 'react';
 import { memo, useRef, useState } from 'react';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
-import { TrackFileStatus } from '@playliberty/contracts';
+import { TrackFileStatus, endpoints } from '@playliberty/contracts';
 import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
 import { trackTone } from '@playliberty/ui-foundation';
 
-import { API_PREFIX } from '../../api/client/client';
+import { mediaUrl } from '../../api/endpoints/endpoints';
+import { failureSentence } from '../../api/problem/problem';
+import { isPlayable } from '../../player/playable';
+import Menu from '../Menu/Menu';
+import Spinner from '../Spinner/Spinner';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
 
 /*
- * The row's body is a hit layer that plays the track, and toggles back to pause
- * when it is already the row playing. The lane at the end is the row's own
- * control and sits above that layer, so a press on it opens the menu rather than
- * starting the track. A track with no stored file has no play layer, but its lane
- * is still there: a failed download has something to be done about.
- *
- * The lane is one overflow menu. A track the caller can curate gets the menu; a
- * track it cannot gets an inert lane, because a control that cannot be pressed is
- * worse than no control. For a failed fileless track it offers Retry, Fetch whole
- * and Remove, and for every other track Remove alone. Fetch whole re-fetches the
- * one fileless track without trimming, so it is offered only where the route
- * accepts it, which is a failed track.
- *
- * Two rules from the design record hold here and not one more:
- *
- *   Stored says nothing. The default state draws no word, because a row with
- *   nothing wrong should not announce that it is fine. The one exception is the
- *   policy: a track recorded as full length carries the word, because a
- *   full-length track when a trimmed one was expected must read as deliberate.
- *
- *   A state is never carried by colour alone. Every other state has a word, and
- *   a failed or unavailable row also carries the server's own reason.
+ * The row's body is a hit layer that plays the track; the lane at its end sits
+ * above it, so a press there opens the menu. A stored track draws no word, the
+ * lane is inert without curate rights, and no state is carried by colour alone.
  */
 
 interface TrackRowProps {
   readonly association: PlaylistTrack;
-  /** Whether this row is the queue's current track. */
   readonly current: boolean;
   /** Whether the queue is actually playing, which decides play against pause. */
   readonly playing: boolean;
@@ -60,6 +44,8 @@ interface TrackRowProps {
   readonly onRemove?: (trackId: string) => void;
   /** Whether a row action is in flight, so the menu is not opened onto a no-op. */
   readonly busy?: boolean;
+  /** Whether this row's press is waiting on its queue read. */
+  readonly starting?: boolean;
   readonly pending?: boolean;
 }
 
@@ -79,6 +65,7 @@ function TrackRow({
   onFetchWhole,
   onRemove,
   busy = false,
+  starting = false,
   pending = false
 }: TrackRowProps) {
   const { t } = useI18n();
@@ -90,36 +77,37 @@ function TrackRow({
     track.provider
   );
   const tone = trackTone(track.fileStatus, track.sourceStatus);
-  const playable = track.fileStatus === TrackFileStatus.Stored;
+  const playable = isPlayable(track);
   const failed = track.fileStatus === TrackFileStatus.Failed;
   const downloading = track.fileStatus === TrackFileStatus.Downloading;
+  /* A recorded thumbnail can outlive its file; a failed read falls to the hatch,
+   * and the failed path scopes it so a new thumbnail gets its own attempt. */
+  const [failedThumbnailPath, setFailedThumbnailPath] = useState<string | null>(
+    null
+  );
   const artwork =
-    track.thumbnailPath === null
+    track.thumbnailPath === null || failedThumbnailPath === track.thumbnailPath
       ? null
-      : `${API_PREFIX}/tracks/${track.id}/thumbnail`;
+      : mediaUrl(endpoints.trackThumbnail, { trackId: track.id });
   const label =
     current && playing
       ? t('trackRow.pause', { title: track.title })
       : t('trackRow.play', { title: track.title });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useDismissibleMenu({
     open: menuOpen,
     containerRef: menuAnchorRef,
-    onClose: () => setMenuOpen(false),
-    returnFocusTo: menuButtonRef
+    triggerRef: menuButtonRef,
+    onOpen: () => setMenuOpen(true),
+    onClose: () => setMenuOpen(false)
   });
 
-  /*
-   * The lane's one control, and the row's rule is what its menu holds. A failed
-   * fileless track the caller can act on gets Retry and Fetch whole beside the
-   * remove; every other curatable row gets the remove alone. A row with nothing
-   * to do keeps a reserved, inert lane so the duration column never moves. A
-   * downloading row keeps the menu but disables it: the download owns the track
-   * while it runs, and a remove or retry would race it.
-   */
+  /* The lane's items: a failed fileless track gets Retry and Fetch whole beside
+   * the remove; a downloading row keeps the menu but disables it. */
   const laneItems: LaneItem[] = [
     ...(failed && onRetry !== undefined
       ? [
@@ -181,7 +169,7 @@ function TrackRow({
           aria-label={t('trackRow.actions', { title: track.title })}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          disabled={downloading || busy || pending}
+          disabled={downloading || busy || pending || starting}
           onClick={() => setMenuOpen(open => !open)}>
           <IconDotsVertical
             className={styles.trackRow__actionIcon}
@@ -189,25 +177,20 @@ function TrackRow({
             focusable="false"
           />
         </button>
-        {menuOpen ? (
-          <div className={styles.trackRow__menu} role="menu">
-            {laneItems.map(item => (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                className={styles.trackRow__menuItem}
-                data-destructive={item.destructive ? 'true' : undefined}
-                onClick={() => {
-                  setMenuOpen(false);
-                  item.run();
-                }}>
-                {item.icon}
-                {item.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <Menu
+          open={menuOpen}
+          items={laneItems.map(item => ({
+            key: item.label,
+            label: item.label,
+            icon: item.icon,
+            destructive: item.destructive === true,
+            onSelect: item.run
+          }))}
+          triggerRef={menuButtonRef}
+          onClose={() => setMenuOpen(false)}
+          className={styles.trackRow__menu}
+          itemClassName={styles.trackRow__menuItem}
+        />
       </span>
     );
 
@@ -218,7 +201,8 @@ function TrackRow({
       data-playable={playable ? 'true' : undefined}
       data-downloading={downloading ? 'true' : undefined}
       data-pending={pending ? 'true' : undefined}
-      aria-busy={pending ? true : undefined}>
+      data-starting={starting ? 'true' : undefined}
+      aria-busy={pending || starting ? true : undefined}>
       <span
         className={styles.trackRow__art}
         data-art={artwork === null ? 'no-art' : 'art'}>
@@ -229,8 +213,15 @@ function TrackRow({
             alt=""
             loading="lazy"
             decoding="async"
+            onError={() => setFailedThumbnailPath(track.thumbnailPath)}
           />
         )}
+        {starting ? (
+          <>
+            <span className={styles.trackRow__scrim} aria-hidden="true" />
+            <Spinner className={styles.trackRow__spinner} />
+          </>
+        ) : null}
         {current ? (
           <span className={styles.trackRow__scrim} aria-hidden="true" />
         ) : null}
@@ -250,26 +241,40 @@ function TrackRow({
               {stateLabel}
             </span>
           )}
-          {/* The recorded policy, and only when it is the non-default one: a
-           * track fetched whole reads as deliberate rather than as a trim that
-           * silently failed. The default, trimmed, says nothing. */}
+          {/* The recorded policy, drawn only when it is the non-default one: a
+           * track fetched whole must read as deliberate. */}
           {track.skipNonMusic ? null : (
             <span className={styles.trackRow__policy}>
               {t('trackRow.fullLength')}
             </span>
           )}
-          {/* The server's own reason, kept as secondary copy: the mapped word is
-           * primary, and the sentence is bounded to one ellipsized line with the
-           * full text in `title`, so an untrusted, unbounded string cannot set
-           * the row's geometry or overflow toward the duration column. */}
+          {/* The mapped failure leads; the vendor's diagnostic waits behind the
+           * disclosure, reachable by touch and keyboard. */}
           {track.failureReason === null ? null : (
-            <span
-              className={styles.trackRow__reason}
-              title={track.failureReason}>
-              {track.failureReason}
-            </span>
+            <>
+              <span className={styles.trackRow__sentence}>
+                {failureSentence(t, track.failureReason)}
+              </span>
+              <button
+                type="button"
+                className={styles.trackRow__reveal}
+                aria-label={
+                  revealed
+                    ? t('trackRow.hideDetailsFor', { title: track.title })
+                    : t('trackRow.showDetailsFor', { title: track.title })
+                }
+                aria-expanded={revealed}
+                onClick={() => setRevealed(current => !current)}>
+                {revealed
+                  ? t('trackRow.hideDetails')
+                  : t('trackRow.showDetails')}
+              </button>
+            </>
           )}
         </span>
+        {revealed && track.failureReason !== null ? (
+          <pre className={styles.trackRow__raw}>{track.failureReason}</pre>
+        ) : null}
       </div>
       <span
         className={styles.trackRow__duration}
@@ -278,24 +283,23 @@ function TrackRow({
           ? '--:--'
           : formatDuration(track.durationSeconds)}
       </span>
-      <span className={styles.trackRow__laneSlot}>{lane}</span>
       {playable ? (
         <button
           type="button"
           className={styles.trackRow__hit}
           aria-label={label}
-          disabled={pending}
+          aria-busy={starting ? true : undefined}
+          disabled={pending || starting}
           onClick={() => onPlay(track.id)}
         />
       ) : null}
+      <span className={styles.trackRow__laneSlot}>{lane}</span>
     </li>
   );
 }
 
 /*
- * Memoized so a parent render skips a row whose own props did not change. The
- * detail page holds the callbacks it passes stable, which is what makes the
- * comparison meaningful: without both halves a queue change re-renders every
- * row, which is the long-list cost this guards.
+ * Memoized so a parent render skips a row whose props did not change; the
+ * detail page keeps its callbacks stable, which makes that meaningful.
  */
 export default memo(TrackRow);

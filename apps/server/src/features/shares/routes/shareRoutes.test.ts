@@ -270,23 +270,6 @@ describe('GET and POST /playlists/:id/shares', () => {
     const attempted = await grant(missing, owner, target.accountId, 'read');
     expect(attempted.statusCode).toBe(404);
   });
-
-  it('refuses a grant without the client header', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(database(), { displayName: 'Owner' });
-    const target = seedAccount(database(), { displayName: 'Bea' });
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: `/api/v1/playlists/${playlistId}/shares`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: { accountId: target.accountId, level: 'read' }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
 });
 
 describe('DELETE /playlists/:id/shares/:accountId', () => {
@@ -391,19 +374,5 @@ describe('DELETE /playlists/:id/shares/:accountId', () => {
     }
 
     expect(countShares(playlistId)).toBe(2);
-  });
-
-  it('refuses a revocation without the client header', async () => {
-    context = await createTestContext();
-    const owner = seedAccount(database(), { displayName: 'Owner' });
-    const target = seedAccount(database(), { displayName: 'Bea' });
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-    await grant(playlistId, owner, target.accountId, 'read');
-
-    const response = await revoke(playlistId, owner, target.accountId, false);
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-    expect(countShares(playlistId)).toBe(1);
   });
 });

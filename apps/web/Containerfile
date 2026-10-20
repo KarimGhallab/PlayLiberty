@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# The build context is the repository root, so paths below are workspace-relative.
+# The build context is the repository root, so paths below are
+# workspace-relative.
 
 FROM docker.io/library/node:26-bookworm-slim AS build
 ENV CI=true
@@ -20,8 +21,6 @@ COPY packages/youtube/package.json packages/youtube/package.json
 # modules (and their toolchain) never enter this image.
 RUN pnpm install --frozen-lockfile --filter "@playliberty/web..."
 
-# The web build needs the contracts, the localization, the token stylesheet and
-# the shared UI decisions, and each in its dependency order.
 COPY . .
 RUN pnpm --filter @playliberty/contracts run build \
  && pnpm --filter @playliberty/i18n run build \
@@ -30,9 +29,8 @@ RUN pnpm --filter @playliberty/contracts run build \
  && pnpm --filter @playliberty/web run build
 
 FROM docker.io/nginxinc/nginx-unprivileged:1.31-alpine AS runtime
-# The origin config is a template; the entrypoint substitutes EDGE_ASSERTION into
-# it at container start. An empty default keeps the image runnable on its own; a
-# real deployment supplies the same secret the server carries.
+# The entrypoint substitutes EDGE_ASSERTION into the config template at start.
+# Empty so the image runs standalone; a deployment supplies the server's secret.
 ENV EDGE_ASSERTION=
 # Where nginx proxies the API. The dev stack's separate Compose service by
 # default; the production pod overrides it to the pod-local server.

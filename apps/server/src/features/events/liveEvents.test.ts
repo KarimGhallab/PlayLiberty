@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import {
@@ -6,6 +6,8 @@ import {
   ShareLevel,
   TrackFileStatus
 } from '@playliberty/contracts';
+
+import { publishTracksChangedForPlaylists } from '../../shared/events/liveEvents.js';
 
 import type { TestContext } from '../../app/testing/createTestContext.js';
 import { createTestContext } from '../../app/testing/createTestContext.js';
@@ -19,10 +21,8 @@ import {
 } from '../../app/testing/fixtures.js';
 
 /*
- * The events the playlist and track features publish, observed on the bus the
- * test context builds. The routes are driven through `inject`, so what is under
- * test is the real handler deciding to publish and the audience it chose, not a
- * publisher called by hand.
+ * Events the playlist and track features publish, observed on the context's
+ * bus. Routes run through `inject`, so the real audience is what is tested.
  */
 
 const VIDEO_URL = 'https://www.youtube.com/watch?v=bbbbbbbbbbb';
@@ -30,6 +30,7 @@ const VIDEO_URL = 'https://www.youtube.com/watch?v=bbbbbbbbbbb';
 let context: TestContext | undefined;
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await context?.cleanup();
   context = undefined;
 });
@@ -344,5 +345,126 @@ describe('the playlist and track events', () => {
     expect(collaboratorEvents).toEqual([
       { type: LiveEventType.TrackChanged, playlistIds: [playlistA] }
     ]);
+  });
+
+  it('resolves a batch track change in one query rather than one per playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const playlistIds = [
+      seedPlaylist(context.database, owner.accountId).playlistId,
+      seedPlaylist(context.database, owner.accountId).playlistId,
+      seedPlaylist(context.database, owner.accountId).playlistId
+    ];
+    const select = vi.spyOn(context.database.db, 'select');
+
+    publishTracksChangedForPlaylists(context, playlistIds);
+
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it('publishes nothing when a playlist is pinned, because a pin is not the playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const collaborator = seedAccount(context.database, {
+      pangolinUserId: 'collaborator-1'
+    });
+    seedShare(context.database, playlistId, collaborator.accountId);
+    const ownerEvents = collect(owner.accountId);
+    const collaboratorEvents = collect(collaborator.accountId);
+
+    const response = await request(
+      'PATCH',
+      `/api/v1/playlists/${playlistId}/pin`,
+      'owner-1',
+      { pinned: true }
+    );
+
+    expect(response.statusCode).toBe(200);
+    // Pin is the account's own placement: the playlist did not change, so no
+    // refetch happens, and the acting client invalidates its own gallery.
+    expect(ownerEvents).toEqual([]);
+    expect(collaboratorEvents).toEqual([]);
+  });
+
+  it('publishes nothing when a rename is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database, {
+      pangolinUserId: 'stranger-1'
+    });
+    const ownerEvents = collect(owner.accountId);
+    const strangerEvents = collect(stranger.accountId);
+
+    const response = await request(
+      'PATCH',
+      `/api/v1/playlists/${playlistId}`,
+      'stranger-1',
+      { name: 'Not Mine' }
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(ownerEvents).toEqual([]);
+    expect(strangerEvents).toEqual([]);
+  });
+
+  it('publishes nothing when a track removal is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
+    const received = collect(owner.accountId);
+
+    const response = await request(
+      'DELETE',
+      `/api/v1/playlists/${playlistId}/tracks/${trackId}`,
+      'owner-1'
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(received).toEqual([]);
+  });
+
+  it('publishes nothing when a share grant is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database, {
+      pangolinUserId: 'stranger-1'
+    });
+    const ownerEvents = collect(owner.accountId);
+    const strangerEvents = collect(stranger.accountId);
+
+    const response = await request(
+      'POST',
+      `/api/v1/playlists/${playlistId}/shares`,
+      'stranger-1',
+      { accountId: owner.accountId, level: ShareLevel.Read }
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(ownerEvents).toEqual([]);
+    expect(strangerEvents).toEqual([]);
+  });
+
+  it('publishes nothing when a retry is refused', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, { pangolinUserId: 'owner-1' });
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId } = seedTrack(context.database);
+    associate(context.database, playlistId, trackId);
+    const received = collect(owner.accountId);
+
+    const response = await request(
+      'POST',
+      `/api/v1/tracks/${trackId}/retry`,
+      'owner-1'
+    );
+
+    expect(response.statusCode).toBe(409);
+    expect(received).toEqual([]);
   });
 });

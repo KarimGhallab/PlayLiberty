@@ -1,19 +1,38 @@
 import { LiveEventType } from '@playliberty/contracts';
 
-import { playlistAudience, trackAudience } from '../access/playlistAccess.js';
+import {
+  playlistAudience,
+  playlistAudiences,
+  trackAudience
+} from '../access/playlistAccess.js';
 import type { AppContext } from '../context.js';
+import { exhaust } from '../exhaust.js';
 
 /*
- * The live events this server emits, in one place, so a feature says what changed
- * rather than restating the audience rule. An event names what changed and the
- * client refetches; the audience is the same access rule that decides who may see
- * the playlist, so a listener and a publisher cannot disagree about who is told.
- *
- * The context is narrowed to the two things a publisher needs, so the download
- * worker can publish without carrying the whole app.
+ * The live events this server emits, in one place: an event names what changed
+ * and the client refetches. The audience is the same access rule that decides
+ * who may see the playlist. The context is narrowed to what a publisher needs.
  */
 
-type LiveEventContext = Pick<AppContext, 'database' | 'events'>;
+export type LiveEventContext = Pick<AppContext, 'database' | 'events'>;
+
+/* What a commit changed, stated by the module that wrote it. */
+export enum ChangeKind {
+  PlaylistChanged = 'playlist_changed',
+  PlaylistRemoved = 'playlist_removed',
+  TrackChanged = 'track_changed',
+  TracksChangedForPlaylists = 'tracks_changed_for_playlists'
+}
+
+export type Change =
+  | { kind: ChangeKind.PlaylistChanged; playlistId: string }
+  | {
+      kind: ChangeKind.PlaylistRemoved;
+      playlistId: string;
+      accountIds: string[];
+    }
+  | { kind: ChangeKind.TrackChanged; trackId: string }
+  | { kind: ChangeKind.TracksChangedForPlaylists; playlistIds: string[] };
 
 export function publishPlaylistChanged(
   context: LiveEventContext,
@@ -25,10 +44,7 @@ export function publishPlaylistChanged(
   );
 }
 
-/*
- * A playlist was deleted. The audience is passed in because it has to be read
- * before the row is gone; the route captures it, deletes, then publishes.
- */
+/* The audience is passed in: it must be read before the row is gone. */
 export function publishPlaylistRemoved(
   context: LiveEventContext,
   playlistId: string,
@@ -52,33 +68,32 @@ export function publishTrackChanged(
   }
 }
 
-/*
- * A track's association changed, so the named playlists hear whether or not the
- * track is still in them. This is the removal's shape: the track outlives the
- * association, and the playlist it left is exactly the one whose list and count
- * moved.
- *
- * The event is built per recipient, so an account hears only the named playlists
- * it can reach and a playlist another account owns is never named to it.
- */
+/* A track's association changed, so the named playlists hear whether or not the
+ * track is still in them. Per recipient, only what it can reach is named. */
 export function publishTracksChangedForPlaylists(
   context: LiveEventContext,
   playlistIds: string[]
 ): void {
-  const byAccount = new Map<string, string[]>();
-
-  for (const playlistId of playlistIds) {
-    for (const accountId of playlistAudience(context.database, playlistId)) {
-      const ids = byAccount.get(accountId) ?? [];
-      ids.push(playlistId);
-      byAccount.set(accountId, ids);
-    }
-  }
-
-  for (const [accountId, ids] of byAccount) {
+  for (const audience of playlistAudiences(context.database, playlistIds)) {
     context.events.publish(
-      { type: LiveEventType.TrackChanged, playlistIds: ids },
-      [accountId]
+      { type: LiveEventType.TrackChanged, playlistIds: audience.playlistIds },
+      [audience.accountId]
     );
+  }
+}
+
+/* The one seam from a committed change to its event: the committing module
+ * names what changed, this names who hears it. */
+export function announce(context: LiveEventContext, change: Change): void {
+  if (change.kind === ChangeKind.PlaylistChanged) {
+    publishPlaylistChanged(context, change.playlistId);
+  } else if (change.kind === ChangeKind.PlaylistRemoved) {
+    publishPlaylistRemoved(context, change.playlistId, change.accountIds);
+  } else if (change.kind === ChangeKind.TrackChanged) {
+    publishTrackChanged(context, change.trackId);
+  } else if (change.kind === ChangeKind.TracksChangedForPlaylists) {
+    publishTracksChangedForPlaylists(context, change.playlistIds);
+  } else {
+    exhaust(change);
   }
 }

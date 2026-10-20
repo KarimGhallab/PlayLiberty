@@ -29,13 +29,8 @@ export interface RemoveAssociationOptions {
   trackId: string;
 }
 
-/*
- * Where the next association goes. Adding a video means appending it, so the
- * position is the one past the highest already in the playlist, and an empty
- * playlist starts at zero. A caller adding several associations in one run reads
- * this once and increments, rather than asking again per row, which is why it is
- * a number rather than an "append" that recomputes.
- */
+/* The next position: one past the highest, zero when empty. Returning a number
+ * lets a caller adding several read once and increment. */
 export function nextPositionFor(
   database: DatabaseHandle,
   playlistId: string
@@ -49,24 +44,13 @@ export function nextPositionFor(
   return (row?.value ?? -1) + 1;
 }
 
-/*
- * `playlist.track_count` is a stored total, so it is only as trustworthy as the
- * number of places that can change it. These two functions are the whole of that
- * surface: an association is created here or deleted here, never by writing to
- * the association table directly, and the count moves in the same transaction as
- * the row it counts. A writer that inserted an association without them would
- * leave the library claiming a number the list does not contain, which is the one
- * failure the design record says is worse than having no count at all.
- *
- * The transaction matters as much as the arithmetic. A crash between the insert
- * and the increment would leave the count permanently low with no way to notice,
- * because nothing recomputes it.
- */
+/* These two functions are the whole surface that changes `track_count`; it
+ * moves in the same transaction as its row, because nothing recomputes it. */
 export function addAssociation(
   database: DatabaseHandle,
   options: AddAssociationOptions
 ): AssociationOutcome {
-  return database.sqlite.transaction((): AssociationOutcome => {
+  return database.unitOfWork((): AssociationOutcome => {
     const existing = database.db
       .select({ id: associations.id })
       .from(associations)
@@ -99,16 +83,16 @@ export function addAssociation(
       .run();
 
     return AssociationOutcome.Added;
-  })();
+  });
 }
 
 export function removeAssociation(
   database: DatabaseHandle,
   options: RemoveAssociationOptions
 ): AssociationOutcome {
-  return database.sqlite.transaction((): AssociationOutcome => {
-    // The video id is read with the association it belongs to, so the suppression
-    // below cannot be written for a track the playlist never held.
+  return database.unitOfWork((): AssociationOutcome => {
+    // The video id comes from the association, so the suppression cannot name
+    // an unheld track.
     const existing = database.db
       .select({ videoId: tracks.videoId })
       .from(associations)
@@ -135,10 +119,7 @@ export function removeAssociation(
       )
       .run();
 
-    // The decrement is bounded by the existing value, so a count can never go
-    // negative even if something else removed rows behind these functions. A
-    // negative count would be a lie the schema forbids rather than a number a
-    // user could act on.
+    // The decrement is bounded at zero, so the count can never go negative.
     database.db
       .update(playlists)
       .set({
@@ -148,9 +129,8 @@ export function removeAssociation(
       .where(eq(playlists.id, options.playlistId))
       .run();
 
-    // Removal always suppresses: the next sync must not put back what the listener
-    // took out. The insert is a conflict-no-op, so removing a track that is
-    // already suppressed cannot fail.
+    // Removal always suppresses, so the next sync cannot restore the track.
+    // The insert is a conflict-no-op, so it cannot fail.
     database.db
       .insert(suppressions)
       .values({ playlistId: options.playlistId, videoId: existing.videoId })
@@ -158,5 +138,5 @@ export function removeAssociation(
       .run();
 
     return AssociationOutcome.Removed;
-  })();
+  });
 }

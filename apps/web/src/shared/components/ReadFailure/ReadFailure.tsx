@@ -6,15 +6,14 @@ import styles from './ReadFailure.module.scss';
 /*
  * A blocking read that failed, and the one way back: the sentence the problem
  * maps to (the server's own `detail` for a code this client does not know), and a
- * retry that refetches the read that failed. It is one manual press and never a
- * page reload, so a transient fault is a press away from the content it hid.
+ * retry that refetches the read that failed, never a reload.
  */
 
 interface ReadFailureProps {
   /** The fallback sentence, shown when the error maps to no problem sentence. */
   readonly message: string;
   /**
-   * The failed read's error. Its problem is what the sentence is read from when
+   * The failed read's error; its problem is what the sentence is read from when
    * it is an `ApiError`.
    */
   readonly error: unknown;

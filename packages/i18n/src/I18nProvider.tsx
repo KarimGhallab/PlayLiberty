@@ -19,10 +19,8 @@ import {
 import { resolveLanguage } from './resolveLanguage/resolveLanguage.js';
 import type { Language } from './types.js';
 
-/*
- * The React binding. The page's `lang` attribute follows the language, so a
- * screen reader and the browser's own typography agree.
- */
+/* The React binding. The page's `lang` attribute follows the language, so a
+ * screen reader and the browser's typography agree. */
 
 export interface I18nValue {
   readonly language: Language;

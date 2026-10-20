@@ -6,9 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import Dialog from './Dialog';
 
 /*
- * The exit is a real 180ms wait and the dialog unmounts itself when it elapses.
- * Fake timers make that deterministic, so the closing tests advance the clock
- * rather than waiting on it.
+ * The exit is a real 180ms wait and the dialog unmounts itself when it elapses;
+ * fake timers make the closing tests advance the clock rather than wait.
  */
 function runExit(): void {
   act(() => {
@@ -134,6 +133,11 @@ describe('Dialog', () => {
     expect(screen.getByLabelText('Field')).toHaveFocus();
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Test dialog' })
+    ).toBeInTheDocument();
+
     runExit();
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

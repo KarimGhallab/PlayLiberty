@@ -1,26 +1,16 @@
 # 03: Treat a video that is gone as terminal
 
-**Blocked by:** 01.
 **Status:** resolved
 
 ## Outcome
 
-Implemented and verified. The adapter now tells a gone video from a transient failure: `packages/youtube`
-gains a `YoutubeVideoUnavailableError` and a message classifier, and the download throws the typed error when
-yt-dlp reports the video unavailable rather than a rate limit or a dropped connection. The classifier and the
-error are covered by the adapter's own tests, and the phrases stay behind the adapter so the worker never
-matches tool output.
+The adapter now tells a gone video from a transient failure: `packages/youtube` gains a
+`YoutubeVideoUnavailableError` and a message classifier, and the download throws the typed error when yt-dlp
+reports the video unavailable rather than a rate limit or a dropped connection. The phrases stay behind the
+adapter so the worker never matches tool output. Both paths that meet a gone video now share one rule,
+`markTrackSourceRemoved`: it sets `sourceStatus: removed` and, for a track with no stored file,
+`fileStatus: unavailable`, while a stored track keeps its file and only its source status moves. A gone track is
+terminal: `unavailable` is not `pending`, so a later pass never claims it, and the sync's retry only returns
+`failed` tracks to `pending`, so a sync leaves it alone.
 
-Both paths that meet a gone video now share one rule, `markTrackSourceRemoved`: it sets `sourceStatus: removed`
-and, for a track with no stored file, `fileStatus: unavailable`, while a stored track keeps its file and only
-its source status moves. The sync's retention pass was refactored onto it and the download worker calls it, so
-a video that disappears between syncs and a download that finds it already gone produce the same pair of
-values.
-
-A gone track is terminal. `unavailable` is not `pending`, so a later pass never claims it, and the sync's retry
-only returns `failed` tracks to `pending`, so a sync leaves it alone; both halves are tested.
-
-Verification: `pnpm run test` (100 server tests, 3 new; 20 youtube tests, one new file), `pnpm run build`,
-`pnpm run lint`, `npx depcruise .`, `npx syncpack lint`, `node ./scripts/validate-tsconfig-paths.cjs` and
-`pnpm run design:check` pass. `pnpm run script:unused-code` still reports its pre-existing unused exports in
-files this ticket does not touch.
+See [`02-store-a-track.md`](../../specs/02-store-a-track.md).

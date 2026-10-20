@@ -13,9 +13,9 @@ is dead.
 The product also promises something the current routes cannot express. A listener pastes one video and wants
 it in several of their playlists at once, because that is how the music they already listen to gets into the
 library. The route that exists is nested under a single playlist, so the only way to honour the promise with
-it is to send one request per chosen playlist, which is the shape the add-a-video dialog's design record
-currently specifies. That record is wrong about the capability and right about the reason, and this spec
-replaces the route rather than the promise.
+it is to send one request per chosen playlist, which is what the add-a-video dialog assumed. That
+assumption is wrong about the capability and right about the reason, and this spec replaces the route rather
+than the promise.
 
 The third problem is the one that decides the rest. A playlist is owner-owned and can be shared, so every one
 of these routes has two callers with different rights, and the difference is invisible in the route itself.
@@ -92,8 +92,8 @@ suppresses it, so the next sync does not put it back.
   path nested under a playlist cannot express a choice of playlists, because the path already names one, and a
   route nested under a video cannot either, because the client does not know the video id until the server has
   resolved the URL. The resource being created is a manual association, and the request names the one video and
-  the several playlists. _Decided here:_ this contradicts the add-a-video dialog's design record, which says
-  the dialog fires one request per chosen playlist because no multi-playlist route exists. The capability in
+  the several playlists. _Decided here:_ this contradicts the dialog's earlier assumption that it
+  fires one request per chosen playlist because no multi-playlist route exists. The capability in
   the product document is the objective and the route is built to serve it. The route shape is the one
   decision here that wants a written record when the ticket is cut, because it changes the contract three consumers
   read.

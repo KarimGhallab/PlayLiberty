@@ -7,9 +7,8 @@ import { I18nProvider } from '@playliberty/i18n';
 import SyncError from './SyncError';
 
 /*
- * The band's contract, asserted at its public interface: the sentence that names
- * the fault, the reassurance that says what was not lost, the one action, and the
- * server's own words one control away.
+ * The band's contract at its public interface: the sentence, the
+ * reassurance, the action, and the server's words one control away.
  */
 
 const SENTENCE = 'Could not reach YouTube, the playlist may not be up to date.';

@@ -53,8 +53,8 @@ it will show. The filter is a view for the visit; the sort is a property of the 
 14. As a listener, I want an "All" that clears the filter, so that I get back to the whole list in one action.
 15. As a listener, I want the counts to cover the whole playlist rather than the rows loaded so far, so that
     the number is the truth and not a window.
-16. As a listener, I want the header's count line to describe the filtered list, so that it does not claim rows
-    the filter removed.
+16. As a listener, I want the identity card's count to stay the playlist's own size while a filter is on, so that a
+    narrowed list never reads as a smaller playlist.
 17. As a listener, I want a named empty state when a filter matches nothing, so that I am not staring at a
     blank list.
 18. As a listener, I want the filter to clear when I leave the screen, so that I do not come back to a
@@ -113,6 +113,11 @@ it will show. The filter is a view for the visit; the sort is a property of the 
   the five file states, so the chips and the rows arrive from one read and one invalidation. The page's own
   total stays the filtered total; the counts never follow the filter, because the point of the count is what is
   available to filter to. _Decided here._
+- **The identity card states the playlist's own size, and the filter's total stays on the rail.** The card names
+  the playlist, so a figure on it is read as the playlist's size; an unqualified "1 track" beside a rail reading
+  "All 8" makes a filtered playlist look smaller than it is. The list's paging window is claimed on that card
+  only while the list is the whole playlist, because a narrowed list owes a denominator the card does not carry.
+  _Revised by [`67`](../issues/67-the-detail-count-follows-the-filter-unannounced.md)._
 - **The filter is the five file states, single-select, with an "All".** The states are the ones the row already
   labels: stored, pending, downloading, failed and unavailable. The `sourceStatus: removed` overlay is not a
   bucket, so a stored-but-removed track counts as stored. _Decided here._
@@ -162,8 +167,8 @@ it will show. The filter is a view for the visit; the sort is a property of the 
   several stored tracks and one that fails to download, so the list holds two states at once, and it asserts:
   the chips carry the whole-playlist counts before any press; choosing newest first re-orders the list and the
   choice survives a reload; oldest first reverses it; the playlist's own order is reachable again; a chip
-  narrows the list and the header's count line, and "All" restores both; a state with no rows draws the named
-  empty state; the controls are disabled while shuffled and the list draws the shuffled order; and the saved
+  narrows the list while the identity card keeps the playlist's own count, and "All" restores the list; a state
+  with no rows draws the named empty state; the controls are disabled while shuffled and the list draws the shuffled order; and the saved
   sort is the order the transport walks while unshuffled. The browser is the owner, so the read-collaborator
   gating stays in the route and component tests, exactly as the skip-non-music journey leaves it.
 - **What makes a good test here** is the order and the set of rows a reader gets, never the query or the
@@ -180,7 +185,8 @@ it will show. The filter is a view for the visit; the sort is a property of the 
   - an unknown sort value is a validation failure;
   - the control row draws the saved order and the chips with the whole-playlist counts;
   - choosing a sort saves it and re-orders the list, keeping the track that was playing;
-  - a chip narrows the list and the header's count line, and "All" restores both;
+  - a chip narrows the list while the identity card keeps the playlist's own count, and "All" restores the
+    list;
   - a filter that matches nothing draws the named empty state and its action;
   - the controls are disabled while shuffled, and the list draws the shuffled queue's order;
   - a read collaborator sees the controls disabled;

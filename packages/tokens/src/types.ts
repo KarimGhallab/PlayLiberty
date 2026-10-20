@@ -1,8 +1,6 @@
 /*
- * The contracts for the design values.
- *
- * Consumers import types from here and never from the implementation files, so
- * importing a type does not drag the runtime module into the dependency graph.
+ * The contracts for the design values. Consumers import types from here, never
+ * from the implementation, so a type import does not drag a runtime module in.
  */
 
 /** The kind of CSS value a token holds, which decides how the emitter renders it. */
@@ -75,9 +73,8 @@ export interface MorphEndpoints {
 }
 
 /**
- * The computed play to pause geometry, transcribed from
- * `docs/design/generated/play-pause-morph.json`. Both clients draw one frame at
- * a time from this table; only the table and the frame count are shared.
+ * Both clients draw one frame at a time from this table, so only the table and
+ * the frame count are shared.
  */
 export interface Morph {
   readonly name: string;

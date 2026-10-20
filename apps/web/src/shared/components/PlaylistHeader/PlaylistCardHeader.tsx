@@ -1,33 +1,35 @@
+import { Link } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
+
 import styles from './PlaylistHeader.module.scss';
 import type { PlaylistHeaderSeam } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 
 /*
- * The card arrangement of the playlist header: the cover as a square block above
- * the identity, the actions on the cover's scrim. The playlist detail draws it
- * in its 320px left column above 768px, where the page is the playlist and the
- * header is its hero.
- *
- * The card is not a door: it is already the page it would open, so it carries no
- * `onOpen`, and it does not draw the elapsed sync line, which the gallery's row
- * is the surface for. Both are the row's own props, kept out of this interface
- * so a caller cannot pass a prop this arrangement never honours.
- *
- * The shuffle and the menu sit as siblings in the card's action band, so the
- * shuffle is immediately left of the overflow, and the cover loads eagerly
- * because it is the hero rather than one item of many.
+ * The card arrangement: the cover as a square block above the identity, the
+ * actions on the cover's scrim. The detail draws it as its hero, the library as
+ * one item of its grid, and `item` is the whole of the difference.
  */
 
 export type PlaylistCardHeaderProps = Omit<
   PlaylistHeaderSeam,
-  'showSyncTime' | 'now'
->;
+  'showSyncTime' | 'now' | 'statusLine'
+> & {
+  /* Whether the card is one item of the library's grid rather than the detail's
+   * hero. */
+  item?: boolean;
+  /* The library's own mark, drawn beside the count. It is the item's, because
+   * its counts come from the list the gallery holds. */
+  mark?: ReactNode;
+};
 
 export default function PlaylistCardHeader({
   heading = false,
   ground = false,
   playing = false,
   pending = false,
+  item = false,
+  mark,
   ...seam
 }: PlaylistCardHeaderProps) {
   const {
@@ -38,42 +40,74 @@ export default function PlaylistCardHeader({
     primaryControl,
     shuffleControl,
     menuControl,
-    identity
-  } = usePlaylistHeader({ ...seam, heading, ground, playing, pending });
+    identity,
+    door
+  } = usePlaylistHeader({
+    ...seam,
+    heading,
+    ground,
+    playing,
+    pending,
+    namedPlay: item,
+    statusLine: item,
+    mark: item ? mark : undefined
+  });
 
   return (
     <div
       className={styles.playlistHeader}
       data-arrangement="card"
+      data-item={item ? 'true' : undefined}
       data-heading={heading ? 'true' : undefined}
       data-ground={ground ? 'true' : undefined}
       data-pending={pending ? 'true' : undefined}
       aria-busy={pending ? true : undefined}
       data-state={playing ? 'playing' : 'paused'}>
       {groundElement}
+      <div className={styles.playlistHeader__munder}>{identity}</div>
       <div
         className={styles.playlistHeader__mart}
         data-art={cover === null ? 'no-art' : 'art'}
-        data-sleeve={cover === null ? sleeve : undefined}>
+        data-sleeve={sleeve}>
         {cover === null ? null : (
           <img
             className={styles.playlistHeader__martArt}
             src={cover}
             alt=""
+            loading={item ? 'lazy' : 'eager'}
             decoding="async"
             onError={onCoverError}
           />
         )}
         <div className={styles.playlistHeader__mscrim} aria-hidden="true" />
+        {item ? (
+          <Link
+            {...door}
+            to="/playlists/$playlistId"
+            params={{ playlistId: seam.playlist.id }}
+            className={styles.playlistHeader__martLink}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        ) : null}
+        {item ? (
+          <span className={styles.playlistHeader__mshuffle}>
+            {shuffleControl}
+          </span>
+        ) : null}
         <div className={styles.playlistHeader__macts}>
           {primaryControl}
-          <div className={styles.playlistHeader__mactsRight}>
-            {shuffleControl}
-            {menuControl}
-          </div>
+          {item ? null : (
+            <div className={styles.playlistHeader__mactsRight}>
+              {shuffleControl}
+              {menuControl}
+            </div>
+          )}
         </div>
       </div>
-      <div className={styles.playlistHeader__munder}>{identity}</div>
+      {/* The item's overflow is outside the picture: it clips, so a panel
+       * hanging from a chip on the cover would be cut off. */}
+      {item ? menuControl : null}
     </div>
   );
 }

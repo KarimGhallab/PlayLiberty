@@ -12,23 +12,23 @@ import axe from 'axe-core';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { Playlist } from '@playliberty/contracts';
 import {
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   ShareLevel
 } from '@playliberty/contracts';
-import type { Playlist } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import PlaylistCardHeader from './PlaylistCardHeader';
 import PlaylistRowHeader from './PlaylistRowHeader';
+import PlaylistTileHeader from './PlaylistTileHeader';
 
 /*
  * The header under test sits inside a real router so its two links resolve the
- * way they do in the app. The route is a throwaway `/playlists/$playlistId` with
- * a stub component, because nothing here asserts what the destination draws.
+ * way they do in the app; the route is a throwaway stub.
  */
 function renderInRouter(element: ReactNode) {
   const rootRoute = createRootRoute();
@@ -63,7 +63,12 @@ function renderRow(
   props: Partial<Parameters<typeof PlaylistRowHeader>[0]> = {}
 ) {
   return renderInRouter(
-    <PlaylistRowHeader playlist={playlist} ownerName={ownerName} {...props} />
+    <PlaylistRowHeader
+      playlist={playlist}
+      ownerName={ownerName}
+      playable
+      {...props}
+    />
   );
 }
 
@@ -73,7 +78,31 @@ function renderCard(
   props: Partial<Parameters<typeof PlaylistCardHeader>[0]> = {}
 ) {
   return renderInRouter(
-    <PlaylistCardHeader playlist={playlist} ownerName={ownerName} {...props} />
+    <PlaylistCardHeader
+      playlist={playlist}
+      ownerName={ownerName}
+      playable
+      {...props}
+    />
+  );
+}
+
+function renderTile(
+  playlist: Playlist,
+  ownerName: string | null = null,
+  props: Partial<Parameters<typeof PlaylistTileHeader>[0]> = {}
+) {
+  return renderInRouter(
+    <PlaylistTileHeader
+      playlist={playlist}
+      ownerName={ownerName}
+      onPlay={() => undefined}
+      onShuffle={() => undefined}
+      menu={menu()}
+      onOpen={() => undefined}
+      playable
+      {...props}
+    />
   );
 }
 
@@ -92,6 +121,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     sort: PlaylistSort.Playlist,
     access: 'owner',
     hasShares: false,
+    pinned: false,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z',
     ...overrides
@@ -100,8 +130,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
 
 /*
  * The header draws the menu it is given; the access rule and the wiring live in
- * the actions module, which has its own test. One Sync now item is enough to draw
- * the overflow, so a rendering test hands the header a model directly.
+ * the actions module's own test. One item is enough to draw the overflow.
  */
 function menu(): PlaylistAction[] {
   return [
@@ -163,22 +192,6 @@ describe('PlaylistHeader', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('carries the full name when the line is cut to fit its column', async () => {
-    const name =
-      'A playlist name long enough that the gallery column cannot show it in one line';
-    renderRow(playlist({ name }));
-
-    await screen.findByRole('link', { name });
-  });
-
-  it('carries the full name on the heading arrangement too', async () => {
-    const name =
-      'Another playlist name too long for the detail column it is drawn in';
-    renderRow(playlist({ name }), null, { heading: true });
-
-    await screen.findByRole('heading', { name });
-  });
-
   it('names a private owned playlist', async () => {
     renderRow(playlist());
 
@@ -237,16 +250,43 @@ describe('PlaylistHeader', () => {
     expect(await screen.findByText('Syncing')).toBeInTheDocument();
   });
 
+  it('offers the named sync beside the state and starts it in one press', async () => {
+    const onSync = vi.fn();
+    renderRow(playlist(), null, { onSync });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync now' }));
+
+    expect(onSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the sync control busy and refuses a second press in flight', async () => {
+    const onSync = vi.fn();
+    renderRow(playlist(), null, { onSync, syncing: true });
+
+    const control = await screen.findByRole('button', { name: 'Syncing' });
+
+    expect(screen.getAllByText('Syncing')).toHaveLength(1);
+    expect(control).toBeDisabled();
+    expect(control).toHaveAttribute('aria-busy', 'true');
+
+    fireEvent.click(control);
+    expect(onSync).not.toHaveBeenCalled();
+  });
+
+  it('draws no sync control when the caller cannot start one', async () => {
+    renderRow(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    expect(
+      screen.queryByRole('button', { name: /^Sync/ })
+    ).not.toBeInTheDocument();
+  });
+
   it('renders a failed playlist as failed', async () => {
     renderRow(playlist({ syncStatus: PlaylistSyncStatus.Error }));
 
     expect(await screen.findByText('Sync failed')).toBeInTheDocument();
-  });
-
-  it('gives a no-artwork cover its derived sleeve', async () => {
-    renderRow(playlist({ id: 'playlist-1' }));
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
   });
 
   it('draws the cover from the first track thumbnail when the playlist has one', async () => {
@@ -255,9 +295,8 @@ describe('PlaylistHeader', () => {
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
     /* The cover is the track's own route, not a third-party URL. */
-    expect(container.querySelector('img')?.getAttribute('src')).toBe(
-      '/api/v1/tracks/track-9/thumbnail'
-    );
+    const image = container.querySelector('img');
+    expect(image?.getAttribute('src')).toBe('/api/v1/tracks/track-9/thumbnail');
   });
 
   it('falls back to the sleeve when the cover image fails to load', async () => {
@@ -271,31 +310,6 @@ describe('PlaylistHeader', () => {
 
     /* No empty box: the failed image becomes the sleeve. */
     expect(container.querySelector('img')).toBeNull();
-  });
-
-  it('marks the playing row with the equalizer bars', async () => {
-    const { container } = renderRow(playlist(), null, {
-      current: true,
-      playing: true
-    });
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(container.querySelector('[aria-label="Playing"]')).not.toBeNull();
-  });
-
-  it('draws no playing mark on a row that is not the queue', async () => {
-    const { container } = renderRow(playlist());
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(container.querySelector('[aria-label="Playing"]')).toBeNull();
-  });
-
-  it('marks the sync state on the item so the cover can carry its tone', async () => {
-    renderRow(playlist({ syncStatus: PlaylistSyncStatus.Error }));
-
-    await screen.findByText('Sync failed');
   });
 
   it('reads a never-synced playlist by its idle state, beside a never-synced line', async () => {
@@ -339,11 +353,13 @@ describe('PlaylistHeader', () => {
         <PlaylistRowHeader
           playlist={playlist({ id: 'playlist-a', name: 'Rain On The Window' })}
           onShuffle={() => undefined}
+          playable
           menu={menu()}
         />
         <PlaylistRowHeader
           playlist={playlist({ id: 'playlist-b', name: 'A Second Playlist' })}
           onShuffle={() => undefined}
+          playable
           menu={menu()}
         />
       </>
@@ -405,11 +421,8 @@ describe('PlaylistHeader', () => {
     ).toBeInTheDocument();
   });
 
-  /*
-   * The pressed state is the player's shuffle AND this playlist being the queue.
-   * A row that is not the queue reports unpressed even while the player is
-   * shuffled, so a reader can tell which playlist the shuffle belongs to.
-   */
+  /* The pressed state is the player's shuffle AND this playlist being the
+   * queue, so a reader can tell which playlist the shuffle belongs to. */
   it('leaves a row unpressed while the player is shuffled on another playlist', async () => {
     renderRow(playlist(), null, {
       onShuffle: () => undefined,
@@ -433,11 +446,8 @@ describe('PlaylistHeader', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
-  /*
-   * A deferred removal marks the row: dimmed through `data-pending`, `aria-busy`,
-   * and every door and control disabled, so the thing the toast says is going
-   * cannot still be opened, played, shuffled or acted on.
-   */
+  /* A deferred removal marks the row: dimmed, `aria-busy`, and every door and
+   * control disabled. */
   it('marks a pending row and disables every door and control', async () => {
     const { container } = renderRow(playlist(), null, {
       onOpen: () => undefined,
@@ -466,14 +476,55 @@ describe('PlaylistHeader', () => {
     ).toBeDisabled();
   });
 
-  /*
-   * The share tooltip is WCAG 1.4.13 content: the glyph's meaning has to be
-   * available to a keyboard or touch user, not only a pointer. The reveal itself
-   * is `:hover` and `:focus-visible` in the stylesheet, which jsdom does not
-   * compute, so these hold the two things the component owns: the mark is a tab
-   * stop, and Escape's dismissal flag outranks the reveal and lifts on the next
-   * focus or hover.
-   */
+  it('marks the pressed play while its queue read is in flight', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      playbackStarting: true
+    });
+
+    const play = await screen.findByRole('button', {
+      name: 'Play this playlist'
+    });
+
+    expect(play).toBeDisabled();
+    expect(play).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('marks the pressed shuffle and leaves the play quiet', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      onShuffle: () => undefined,
+      playbackStarting: true,
+      startingControl: 'shuffle'
+    });
+
+    const shuffle = await screen.findByRole('button', {
+      name: 'Shuffle Rain On The Window'
+    });
+
+    expect(shuffle).toBeDisabled();
+    expect(shuffle).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).not.toHaveAttribute('aria-busy');
+  });
+
+  it('waits the header without claiming a row press', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      playbackBusy: true
+    });
+
+    const play = await screen.findByRole('button', {
+      name: 'Play this playlist'
+    });
+
+    expect(play).toBeDisabled();
+    expect(play).not.toHaveAttribute('aria-busy');
+  });
+
+  /* The tooltip's reveal is `:hover`/`:focus-visible` in the stylesheet, which
+   * jsdom does not compute; these cover the tab stop and Escape's flag. */
   it('puts the share indicator in the tab order', async () => {
     renderRow(playlist());
 
@@ -522,6 +573,249 @@ describe('PlaylistHeader', () => {
 
   it('has no axe violations', async () => {
     const { container } = renderRow(playlist());
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const results = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } }
+    });
+    expect(results.violations).toEqual([]);
+  });
+});
+
+/*
+ * The tile, the library's arrangement: the same facts as the row plus the
+ * library's mark, with no transport to press.
+ */
+describe('the tile arrangement', () => {
+  it('draws the name, the share mark, the sync line with its time and the count', async () => {
+    renderTile(playlist({ lastSyncedAt: null, trackCount: 128 }));
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Up to date')).toBeInTheDocument();
+    expect(screen.getByText('Never synced')).toBeInTheDocument();
+    expect(screen.getByText('128')).toBeInTheDocument();
+    expect(screen.getByText('tracks')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Private playlist' })
+    ).toBeInTheDocument();
+  });
+
+  /* The tile plays from its cover's corner: the play is the seam's, so it
+   * names itself and pauses while this is the queue; no transport. */
+  it('offers the play on the cover, and no transport', async () => {
+    const onPlay = vi.fn();
+
+    renderTile(playlist(), null, { onPlay });
+
+    const play = await screen.findByRole('button', {
+      name: 'Play Rain On The Window'
+    });
+
+    fireEvent.click(play);
+    expect(onPlay).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole('button', { name: 'Skip back' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Track next' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('draws the play enabled for a playlist that holds a stored track', async () => {
+    renderRow(playlist(), null, {
+      onPlay: () => undefined,
+      playable: true
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    ).toBeEnabled();
+  });
+
+  /* The count is every association; the play needs a stored file. A playlist
+   * whose tracks are all pending draws the control, disabled. */
+  it('draws the play disabled for a playlist with nothing stored', async () => {
+    renderRow(playlist({ trackCount: 3 }), null, {
+      onPlay: () => undefined,
+      playable: false
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
+  });
+
+  it('announces one link per item by hiding the cover’s link', async () => {
+    renderTile(playlist());
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('opens the playlist from a press on the tile, but not from its controls', async () => {
+    const onOpen = vi.fn();
+    renderTile(playlist(), null, { onOpen });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    fireEvent.click(screen.getByText('Up to date'));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks a pending tile, and disables every door and control', async () => {
+    const { container } = renderTile(playlist(), null, { pending: true });
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    const tile = container.querySelector<HTMLElement>(
+      '[data-arrangement="tile"]'
+    );
+    expect(tile).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    ).toBeDisabled();
+  });
+
+  it('has no axe violations', async () => {
+    const { container } = renderTile(playlist(), null, {
+      mark: <span role="img" aria-label="3 tracks are not stored" />
+    });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const results = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } }
+    });
+    expect(results.violations).toEqual([]);
+  });
+});
+
+/*
+ * The card at phone width: the library's item below the breakpoint, where the
+ * gallery is two columns and a tile per row would be a playlist per screen.
+ */
+describe('the card as an item of the library', () => {
+  function renderItem(
+    props: Partial<Parameters<typeof PlaylistCardHeader>[0]> = {}
+  ) {
+    return renderCard(playlist(), null, {
+      item: true,
+      mark: <span role="img" aria-label="3 tracks are not stored" />,
+      onPlay: () => undefined,
+      onShuffle: () => undefined,
+      ...props
+    });
+  }
+
+  it('announces one link per item by hiding the picture’s link', async () => {
+    const { container } = renderItem();
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+
+    /* Two anchors and one announcement: the picture's is the door for the
+     * pointers that land on the artwork. */
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+
+    const picture = container.querySelector('a[aria-hidden="true"]');
+    expect(picture).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('holds the play in the band and both controls on the picture’s corners', async () => {
+    renderItem({ menu: menu() });
+
+    expect(
+      await screen.findByRole('button', { name: 'Play Rain On The Window' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: '3 tracks are not stored' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeInTheDocument();
+
+    /* The overflow is the shuffle's mirror on the cover, and its items are the
+     * ones the actions module gated by access. */
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    expect(
+      screen.getByRole('menuitem', { name: 'Sync now' })
+    ).toBeInTheDocument();
+  });
+
+  it('becomes the pause while it is the queue that is playing', async () => {
+    renderItem({ current: true, playing: true });
+
+    expect(
+      await screen.findByRole('button', { name: 'Pause Rain On The Window' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Skip back' })
+    ).not.toBeInTheDocument();
+  });
+
+  /* The item's identity is the status line, not the hero's three lines: at
+   * 172px the count and the state share one line and the elapsed time drops. */
+  it('draws the count and the state with no elapsed time', async () => {
+    renderItem();
+
+    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+    expect(screen.getByText('128')).toBeInTheDocument();
+    expect(screen.getByText('tracks')).toBeInTheDocument();
+    expect(screen.queryByText(/Synced/)).not.toBeInTheDocument();
+  });
+
+  it('marks a pending item and blocks the picture, the name and the controls', async () => {
+    const { container } = renderItem({ pending: true });
+
+    expect(
+      await screen.findByRole('link', { name: 'Rain On The Window' })
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    const card = container.querySelector<HTMLElement>(
+      '[data-arrangement="card"]'
+    );
+    expect(card).toHaveAttribute('aria-busy', 'true');
+
+    const picture = container.querySelectorAll('a')[0];
+    expect(picture).toHaveAttribute('aria-disabled', 'true');
+
+    expect(
+      screen.getByRole('button', { name: 'Play Rain On The Window' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeDisabled();
+  });
+
+  it('has no axe violations', async () => {
+    const { container } = renderItem();
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 

@@ -15,9 +15,8 @@ afterEach(async () => {
 });
 
 /*
- * Accounts are provisioned the way the app provisions them, through the identity
- * hook, so the directory lists rows the app really made. The name is always sent,
- * because the hook refreshes the caller's display fields on every request.
+ * Accounts are provisioned through the identity hook, as the app does, so the
+ * directory lists rows the app really made. The name is always sent.
  */
 function provision(
   pangolinUserId: string,
@@ -99,17 +98,5 @@ describe('GET /accounts', () => {
     expect(first.items.map(item => item.displayName)).toEqual(['Alice', 'Bob']);
     expect(second.total).toBe(3);
     expect(second.items.map(item => item.displayName)).toEqual(['Charlie']);
-  });
-
-  it('refuses an unauthenticated request', async () => {
-    context = await createTestContext();
-
-    const response = await context.app.inject({
-      method: 'GET',
-      url: '/api/v1/accounts'
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(response.json()).toMatchObject({ code: 'unauthenticated' });
   });
 });

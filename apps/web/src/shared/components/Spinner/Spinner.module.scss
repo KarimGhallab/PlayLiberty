@@ -1,0 +1,24 @@
+.spinner {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--radius-chip);
+  animation: pl-spinner 900ms linear infinite;
+}
+
+@keyframes pl-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Without the rotation a cut ring reads as broken, so the cap returns and the
+ * word beside it carries the state. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    border-top-color: currentColor;
+    opacity: 0.6;
+  }
+}

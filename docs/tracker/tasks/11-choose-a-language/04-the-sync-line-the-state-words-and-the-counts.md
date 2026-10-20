@@ -1,25 +1,9 @@
 # 04: The sync line, the state words and the counts
 
-**Blocked by:** [`01`](01-the-package-the-provider-and-the-language-switch.md).
 **Status:** resolved
 
 ## Outcome
 
-Done. The locale-aware formatters moved into the package and the sync line, the state words and the counts read
-through the catalog.
+The locale-aware formatters moved into `@playliberty/i18n`, which gained `formatters/`: `formatRelativeTime`, `formatLastSynced`, `syncStateLabel`, `trackStateLabel`, `providerLabel`, `trackCountUnit` and `formatTrackCount`, each taking the translator so the sentence and its plural come from the active catalog; `formatDuration` moved there too, so every formatter the clients call is in one place, and the package now depends on `@playliberty/contracts` for the status and provider enums. `ui-foundation` exports only the language-free primitives (`trackTone`, `sleeveIndex`, `standardEasingBezier`), and its formatter tests are now the duration ones. `PlaylistHeader` (state word, sync time, count unit), `TrackRow` (state word), `SyncSummary` (the four count words, the in-flight line, the stamp) and `SyncError` (the sentence, the reassurance, the retry and the reveal) read through the catalog. `SyncError` gained a `provider` prop, because its sentence and its reassurance name the provider.
 
-- `@playliberty/i18n` gained `formatters/`: `formatRelativeTime`, `formatLastSynced`, `syncStateLabel`,
-  `trackStateLabel`, `providerLabel`, `trackCountUnit` and `formatTrackCount`, each taking the translator so the
-  sentence and its plural come from the active catalog. The package now depends on `@playliberty/contracts` for
-  the status and provider enums.
-- `ui-foundation` exports only the language-free primitives (`trackTone`, `sleeveIndex`,
-  `standardEasingBezier`); its formatter tests are now the duration ones, and the moved tests live in the
-  package. `formatDuration` moved into the package too, so every formatter the clients call is in one place.
-- `PlaylistHeader` (state word, sync time, count unit), `TrackRow` (state word), `SyncSummary` (the four count
-  words, the in-flight line, the stamp) and `SyncError` (the sentence, the reassurance, the retry and the reveal)
-  read through the catalog. `SyncError` gained a `provider` prop, because its sentence and its reassurance name
-  the provider.
-
-Verification: `pnpm run build`, `pnpm run lint`, and the unit suites (i18n 30, ui-foundation 9, server 275, web
-365). The formatter tests pin the English strings and one sync line and one count in French, the two the ticket
-names. Not committed.
+See [`11-choose-a-language`](../../specs/11-choose-a-language.md).

@@ -24,12 +24,8 @@ export interface Config {
   mediaRoot: string;
   databasePath: string;
   publicOrigin: string | null;
-  /*
-   * The secret the edge injects on every request it proxies. The origin requires
-   * it so a request that reaches the port directly cannot pretend to be the edge
-   * and forge the identity headers. Required in production; null in a local or
-   * test run, where the origin is reached without an edge and the check is off.
-   */
+  /* The secret the edge injects, required so a request at the port directly
+   * cannot forge the identity headers. Required in production, else null. */
   edgeAssertion: string | null;
   adminPangolinUserIds: string[];
   pruneCron: string;
@@ -39,10 +35,7 @@ export interface Config {
   downloadTimeoutMs: number;
   download: DownloadConfig;
   pangolin: PangolinConfig;
-  /*
-   * The E2E fake adapter's scenario file, read only when `NODE_ENV` is `test`.
-   * Null in every other environment, and the fake is not even imported unless the
-   * entry point sees `test`, so this never names a file in production.
-   */
+  /* The E2E fake adapter's scenario file, read only under `NODE_ENV=test`.
+   * The fake is not even imported otherwise. */
   e2eFakeScript: string | null;
 }

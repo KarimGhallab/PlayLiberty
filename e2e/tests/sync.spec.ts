@@ -2,17 +2,9 @@ import { playlistUrl, writeScenario } from '../support/instance';
 import { expect, test } from '../support/test';
 
 /*
- * Journey 2: the sync a create starts, seen from the browser.
- *
- * The create route answers before the reconcile finishes, so the item reads
- * `Syncing` for a moment and then settles. Because the fake adapter answers at
- * once, the settled state is what the browser reliably observes; the transient
- * `Syncing` is asserted only as "not the settled state", which is what the run
- * actually guarantees while it works.
- *
- * A second sync, and so the idempotence the spec promises, is driven from the
- * library's overflow: the failure case creates a playlist, settles it, removes
- * its source and resyncs, so the detail's band has something to keep and explain.
+ * Journey 2: the sync a create starts. The create answers before the reconcile
+ * finishes, but the fake settles at once, so `Syncing` is asserted only as "not
+ * the settled state".
  */
 
 const PLAYLIST_ID = 'E2Esyncplaylist';
@@ -52,8 +44,8 @@ test('a created playlist syncs through the adapter and settles with its source t
 test('a failed sync leaves the playlist marked as failed rather than silent', async ({
   page
 }) => {
-  // A source with two tracks, so the playlist has something to keep when the
-  // next reconcile fails.
+  // Two tracks, so the playlist has something to keep when the next reconcile
+  // fails.
   writeScenario({
     sources: {
       [PLAYLIST_ID]: {
@@ -76,7 +68,7 @@ test('a failed sync leaves the playlist marked as failed rather than silent', as
 
   await expect(page.getByText('Up to date')).toBeVisible({ timeout: 15_000 });
 
-  // The source is gone now, so the next reconcile throws.
+  // No source now, so the reconcile throws.
   writeScenario({ sources: {} });
 
   await page
@@ -84,15 +76,13 @@ test('a failed sync leaves the playlist marked as failed rather than silent', as
     .click();
   await page.getByRole('menuitem', { name: 'Sync now' }).click();
 
-  // The row says the sync failed rather than going quiet.
   await expect(page.getByText('Sync failed')).toBeVisible({
     timeout: 15_000
   });
 
   await page.getByRole('link', { name: 'Evening Jazz' }).click();
 
-  // The server's own words are one control away, which only the real server
-  // can produce.
+  // The server's own words, which only the real server can produce.
   await page.getByRole('button', { name: 'Show details' }).click();
   await expect(page.getByText(/no source for/)).toBeVisible();
 });

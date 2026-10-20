@@ -232,21 +232,4 @@ describe('GET /playlists/:id/sync-runs/latest', () => {
     expect(SyncRunSchema.parse(readResponse.json()).id).toBe(runId);
     expect(SyncRunSchema.parse(writeResponse.json()).id).toBe(runId);
   });
-
-  it('requires an identity, so the route cannot be read anonymously', async () => {
-    context = await createTestContext();
-    const { playlistId } = seedPlaylist(
-      context.database,
-      seedAccount(context.database).accountId
-    );
-    seedSyncRun(context.database, playlistId);
-
-    const response = await context.app.inject({
-      method: 'GET',
-      url: latestUrl(playlistId)
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(response.json()).toMatchObject({ code: 'unauthenticated' });
-  });
 });

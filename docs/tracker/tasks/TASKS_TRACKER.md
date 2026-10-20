@@ -36,8 +36,32 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`27-choose-a-language`](11-choose-a-language/TICKETS.md)                                                                   | resolved | none                                       | none                                                      |
 | [`28-guard-the-sync-failure-reason`](28-guard-the-sync-failure-reason.md)                                                   | resolved | none                                       | none                                                      |
 | [`29-sort-and-filter-the-track-list`](12-sort-and-filter-the-track-list/TICKETS.md)                                         | resolved | none                                       | none                                                      |
+| [`30-the-library-as-a-gallery-of-tiles`](30-the-library-as-a-gallery-of-tiles.md)                                           | resolved | none                                       | none                                                      |
+| [`31-the-library-at-phone-width-is-a-card-grid`](31-the-library-at-phone-width-is-a-card-grid.md)                           | resolved | none                                       | none                                                      |
+| [`32-pin-a-playlist`](13-pin-a-playlist/TICKETS.md)                                                                         | resolved | none                                       | none                                                      |
+| [`33-the-touch-targets-and-the-phone-width`](33-the-touch-targets-and-the-phone-width.md)                                   | resolved | none                                       | none                                                      |
+| [`34-one-playlist-read-projection`](34-one-playlist-read-projection.md)                                                     | resolved | none                                       | none                                                      |
+| [`35-one-endpoint-table-both-sides-read`](35-one-endpoint-table-both-sides-read.md)                                         | resolved | none                                       | none                                                      |
+| [`36-one-access-rule-one-module`](36-one-access-rule-one-module.md)                                                         | resolved | none                                       | none                                                      |
+| [`37-one-playable-rule`](37-one-playable-rule.md)                                                                           | resolved | none                                       | none                                                      |
+| [`38-playlist-actions-once-per-page`](38-playlist-actions-once-per-page.md)                                                 | resolved | none                                       | none                                                      |
+| [`39-one-owner-for-seek`](39-one-owner-for-seek.md)                                                                         | resolved | none                                       | none                                                      |
 
-Feature-scoped ticket sets live in a folder named for their spec: [`01-sync-a-playlist/TICKETS.md`](01-sync-a-playlist/TICKETS.md), [`02-store-a-track/TICKETS.md`](02-store-a-track/TICKETS.md), [`03-read-a-playlist/TICKETS.md`](03-read-a-playlist/TICKETS.md), [`04-curate-a-playlist/TICKETS.md`](04-curate-a-playlist/TICKETS.md) with its web half in [`04-curate-a-playlist/WEB_TICKETS.md`](04-curate-a-playlist/WEB_TICKETS.md), [`05-share-a-playlist/TICKETS.md`](05-share-a-playlist/TICKETS.md), [`06-prune-orphans/TICKETS.md`](06-prune-orphans/TICKETS.md), [`07-play-stored-audio/TICKETS.md`](07-play-stored-audio/TICKETS.md), [`08-see-the-library/TICKETS.md`](08-see-the-library/TICKETS.md) and [`10-skip-non-music-parts/TICKETS.md`](10-skip-non-music-parts/TICKETS.md), [`09-keep-the-screens-current/TICKETS.md`](09-keep-the-screens-current/TICKETS.md) and [`11-choose-a-language/TICKETS.md`](11-choose-a-language/TICKETS.md), and [`12-sort-and-filter-the-track-list/TICKETS.md`](12-sort-and-filter-the-track-list/TICKETS.md).
+Feature-scoped ticket sets live in a folder named for their spec:
+
+- [`01-sync-a-playlist/TICKETS.md`](01-sync-a-playlist/TICKETS.md)
+- [`02-store-a-track/TICKETS.md`](02-store-a-track/TICKETS.md)
+- [`03-read-a-playlist/TICKETS.md`](03-read-a-playlist/TICKETS.md)
+- [`04-curate-a-playlist/TICKETS.md`](04-curate-a-playlist/TICKETS.md) with its web half in [`04-curate-a-playlist/WEB_TICKETS.md`](04-curate-a-playlist/WEB_TICKETS.md)
+- [`05-share-a-playlist/TICKETS.md`](05-share-a-playlist/TICKETS.md)
+- [`06-prune-orphans/TICKETS.md`](06-prune-orphans/TICKETS.md)
+- [`07-play-stored-audio/TICKETS.md`](07-play-stored-audio/TICKETS.md)
+- [`08-see-the-library/TICKETS.md`](08-see-the-library/TICKETS.md)
+- [`10-skip-non-music-parts/TICKETS.md`](10-skip-non-music-parts/TICKETS.md)
+- [`09-keep-the-screens-current/TICKETS.md`](09-keep-the-screens-current/TICKETS.md)
+- [`11-choose-a-language/TICKETS.md`](11-choose-a-language/TICKETS.md)
+- [`12-sort-and-filter-the-track-list/TICKETS.md`](12-sort-and-filter-the-track-list/TICKETS.md)
+- [`13-pin-a-playlist/TICKETS.md`](13-pin-a-playlist/TICKETS.md).
 
 ## Conventions
 

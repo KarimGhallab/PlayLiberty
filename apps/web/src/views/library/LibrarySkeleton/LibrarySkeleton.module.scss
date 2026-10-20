@@ -1,15 +1,13 @@
 /*
- * The library's loading state, the item's own geometry held open: the header's
- * --space-5 padding and 96px body, a 96px cover and the two lines the header
- * draws, so the real list resolves into the space rather than pushing the page
- * down. The two bars stand where the name and the sync line go.
+ * The tile's own geometry held open, so the real gallery resolves into the
+ * space rather than pushing the page down.
  */
 .library-skeleton {
   position: relative;
   display: flex;
   flex-direction: column;
 
-  /* The sentence the status region announces, off screen. The drawn rows are
+  /* The sentence the status region announces, off screen. The drawn tiles are
    * `aria-hidden`, so a reader hears one line and not a wall of boxes. */
   &__spoken {
     position: absolute;
@@ -23,30 +21,70 @@
     clip-path: inset(50%);
   }
 
-  /* The list's closing hairline, so the shape the skeleton holds is the list's
-   * own end edge and the swap to the real rows adds nothing. */
-  &__rows {
-    display: flex;
-    flex-direction: column;
-    border-block-end: 1px solid var(--line);
-  }
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: var(--space-4);
 
-  &__row {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-5);
-    padding: var(--space-5) 0;
-
-    /* The separator the real list draws between two items. */
-    & + & {
-      border-block-start: 1px solid var(--line);
+    /* The gallery's own card track and gaps, so both fit the same columns. */
+    @media (max-width: 767px) {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-3);
     }
   }
 
+  /* The tile's own padding, so the cover box lands where the real one does. */
+  &__tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-2);
+    min-width: 0;
+  }
+
+  /*
+   * The card's own geometry: its own surface, the picture inset by --space-4.
+   * The picture states its width because an empty box would collapse.
+   */
+  &__card {
+    display: flex;
+    flex-direction: column;
+    padding: 0 var(--space-4);
+    background: var(--surface);
+    min-width: 0;
+  }
+
+  &__picture {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  &__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+  }
+
+  &__status {
+    width: 55%;
+    height: 12px;
+    background: var(--surface-raised);
+    border-radius: var(--radius-control);
+  }
+
+  /* The name line is the tile's on the page's own ground and the card's on the
+   * card's surface, so it takes one step up inside the card. */
+  &__card-body &__name {
+    background: var(--surface-raised);
+  }
+
   &__cover {
-    flex-shrink: 0;
-    width: 96px;
-    height: 96px;
+    width: 100%;
+    aspect-ratio: 1;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-card);
@@ -54,23 +92,27 @@
 
   &__body {
     display: flex;
-    flex: 1;
     flex-direction: column;
-    justify-content: center;
     gap: var(--space-2);
-    min-width: 0;
-    min-height: 96px;
+    padding: 0 var(--space-2) var(--space-2);
   }
 
   &__name {
-    width: 45%;
+    width: 70%;
     height: 16px;
     background: var(--surface);
     border-radius: var(--radius-control);
   }
 
   &__meta {
-    width: 24%;
+    width: 45%;
+    height: 12px;
+    background: var(--surface);
+    border-radius: var(--radius-control);
+  }
+
+  &__count {
+    width: 30%;
     height: 12px;
     background: var(--surface);
     border-radius: var(--radius-control);
@@ -80,7 +122,8 @@
    * motion drops it and leaves a still placeholder. */
   &__cover,
   &__name,
-  &__meta {
+  &__meta,
+  &__count {
     animation: pl-library-skeleton 1.6s ease-in-out infinite;
   }
 }

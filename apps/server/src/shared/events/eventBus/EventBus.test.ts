@@ -3,10 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { EventBus } from './EventBus.js';
 
 /*
- * The bus is the transport's fan-out: a connection subscribes on an account and a
- * publisher names the accounts that should hear the event. These are the four
- * properties the route relies on, driven with a string payload so the test is
- * about the bus and not about a domain event.
+ * The bus is the transport's fan-out: a connection subscribes on an account
+ * and a publisher names who hears it. Four properties, driven with a string.
  */
 
 describe('EventBus', () => {

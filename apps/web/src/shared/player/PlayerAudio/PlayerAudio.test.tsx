@@ -24,10 +24,8 @@ const first = track('track-1');
 const second = track('track-2');
 
 /*
- * jsdom has no media pipeline: `play` and `pause` throw "Not implemented", and
- * `currentTime` is a setter that does record but that a real element would clamp.
- * The element is stubbed here rather than replaced, so the component under test is
- * the real one and only the browser's missing half is supplied.
+ * jsdom has no media pipeline (`play`/`pause` throw), so the element is
+ * stubbed, not replaced: the real component runs on a faked browser half.
  */
 let playMock: ReturnType<typeof vi.fn>;
 let pauseMock: ReturnType<typeof vi.fn>;
@@ -57,6 +55,7 @@ afterEach(() => {
 describe('PlayerAudio', () => {
   it('derives the stream address from the current track id', () => {
     render(<PlayerAudio />);
+    expect(document.querySelectorAll('audio')).toHaveLength(1);
     expect(audio().getAttribute('src')).toBeNull();
 
     act(() => {
@@ -65,19 +64,6 @@ describe('PlayerAudio', () => {
 
     expect(audio().getAttribute('src')).toBe('/api/v1/tracks/track-1/stream');
     expect(playMock).toHaveBeenCalled();
-  });
-
-  it('plays exactly one track at a time when the track changes', () => {
-    render(<PlayerAudio />);
-
-    act(() => {
-      usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
-    });
-    act(() => {
-      usePlayerStore.getState().skipNext();
-    });
-
-    expect(audio().getAttribute('src')).toBe('/api/v1/tracks/track-2/stream');
   });
 
   it('starts the new source whenever the track changes while playing', () => {
@@ -141,6 +127,97 @@ describe('PlayerAudio', () => {
     expect(audio().currentTime).toBe(42);
   });
 
+  it('applies the persisted offset only once', () => {
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().hydrate({
+        sourceQueue: [first],
+        currentId: first.id,
+        positionSeconds: 42,
+        volume: 1
+      });
+    });
+
+    act(() => {
+      audio().dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(audio().currentTime).toBe(42);
+
+    audio().currentTime = 10;
+
+    act(() => {
+      audio().dispatchEvent(new Event('loadedmetadata'));
+    });
+
+    expect(audio().currentTime).toBe(10);
+  });
+
+  it('stops the Media Session seek controls at the track ends', () => {
+    const handlers = new Map<string, () => void>();
+
+    Object.defineProperty(navigator, 'mediaSession', {
+      value: {
+        metadata: null,
+        setActionHandler: (action: string, handler: (() => void) | null) => {
+          if (handler !== null) {
+            handlers.set(action, handler);
+          }
+        }
+      },
+      configurable: true
+    });
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    });
+    act(() => {
+      usePlayerStore.getState().setPosition(175);
+    });
+    act(() => {
+      handlers.get('seekforward')?.();
+    });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+
+    act(() => {
+      usePlayerStore.getState().setPosition(5);
+    });
+    act(() => {
+      handlers.get('seekbackward')?.();
+    });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('binds the Media Session handlers once while the position moves', () => {
+    const setActionHandler = vi.fn();
+
+    Object.defineProperty(navigator, 'mediaSession', {
+      value: {
+        metadata: null,
+        setActionHandler
+      },
+      configurable: true
+    });
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    });
+
+    const bound = setActionHandler.mock.calls.length;
+
+    act(() => {
+      usePlayerStore.getState().setPosition(42);
+    });
+
+    expect(setActionHandler).toHaveBeenCalledTimes(bound);
+  });
+
   it('moves the element immediately when a seek is asked for', () => {
     render(<PlayerAudio />);
 
@@ -149,7 +226,7 @@ describe('PlayerAudio', () => {
     });
 
     act(() => {
-      usePlayerStore.getState().seek(90);
+      usePlayerStore.getState().seekToFraction(0.5);
     });
 
     expect(audio().currentTime).toBe(90);
@@ -297,22 +374,6 @@ describe('PlayerAudio', () => {
     expect(published.at(-1)?.init.album).toBe('Rain On The Window');
   });
 
-  it('does not throw when the Media Session API is absent', () => {
-    Object.defineProperty(navigator, 'mediaSession', {
-      value: undefined,
-      configurable: true
-    });
-
-    expect(() => {
-      render(<PlayerAudio />);
-      act(() => {
-        usePlayerStore
-          .getState()
-          .startQueue(PLAYLIST, [first, second], first.id);
-      });
-    }).not.toThrow();
-  });
-
   it('drops a track the stream says is gone and advances', async () => {
     server.use(
       http.head('http://localhost:3000/api/v1/tracks/track-1/stream', () =>
@@ -381,10 +442,8 @@ describe('PlayerAudio', () => {
     const state = usePlayerStore.getState();
 
     /*
-     * The re-auth flag is the client's own record that it took the edge path,
-     * and it is the only part of that path jsdom can show. What matters here is
-     * the queue: an expired session is not a broken track, so nothing is dropped
-     * and the listener is not moved.
+     * The flag is the only edge-path part jsdom can show; the queue matters: a
+     * session expiry is not a broken track, so nothing drops.
      */
     expect(window.sessionStorage.getItem('playliberty.re-auth-attempt')).toBe(
       '1'

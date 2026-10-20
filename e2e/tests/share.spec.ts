@@ -7,12 +7,9 @@ import {
 import { expect, test } from '../support/test';
 
 /*
- * Journey 5: share a playlist, and take the share back.
- *
- * The dev proxy fixes one browser identity, so the person a playlist is shared
- * with is arranged over the API: one read of their own account with the edge's
- * headers creates them, exactly as the first request from any account would. The
- * browser then stays the owner and drives the dialog it owns.
+ * Journey 5: share a playlist and take it back. The dev proxy fixes one
+ * browser identity, so the partner exists by reading their own account over the
+ * API with the edge headers, exactly as a first request would create them.
  */
 
 const SOURCE = 'E2Eshare01';
@@ -43,8 +40,8 @@ test('an owner grants and revokes a share with another account', async ({
   );
   expect(created.ok()).toBe(true);
 
-  // The account directory is read on mount, so the reload is what brings the
-  // second account into the dialog's list.
+  // The directory is read on mount, so the reload brings the partner into the
+  // dialog's list.
   await page.reload();
   await openHeaderMenu(page);
   await page.getByRole('menuitem', { name: 'Share' }).click();
@@ -60,7 +57,6 @@ test('an owner grants and revokes a share with another account', async ({
   await canEdit.click();
   await expect(canEdit).toHaveAttribute('aria-pressed', 'true');
 
-  // The header marks the playlist shared, because the grant moves `hasShares`.
   await dialog.getByRole('button', { name: 'Done' }).click();
   await expect(
     page.getByRole('img', { name: 'Shared playlist' })

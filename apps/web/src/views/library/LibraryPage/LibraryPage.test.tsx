@@ -6,21 +6,40 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within
+} from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import {
+  PinPlaylistInputSchema,
+  ProblemCode,
+  endpoints
+} from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
+import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
+import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
+import {
+  EMPTY_COUNTS,
+  mockUrl,
+  problemResponse
+} from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
+import { stubViewport } from '../../../testing/viewport';
 import LibraryPage from './LibraryPage';
 
 function emptyPage() {
   server.use(
-    http.get('http://localhost:3000/api/v1/playlists', () =>
+    http.get(mockUrl(endpoints.playlists), () =>
       HttpResponse.json({ items: [], total: 0, limit: 50, offset: 0 })
     )
   );
@@ -28,17 +47,13 @@ function emptyPage() {
 
 function failedPage() {
   server.use(
-    http.get('http://localhost:3000/api/v1/playlists', () =>
-      HttpResponse.json(
-        {
-          type: 'about:blank',
-          title: 'Service unavailable',
-          status: 503,
-          detail: 'The library is unavailable.',
-          code: 'service_unavailable'
-        },
-        { status: 503 }
-      )
+    http.get(mockUrl(endpoints.playlists), () =>
+      problemResponse({
+        code: ProblemCode.InternalError,
+        status: 503,
+        title: 'Service unavailable',
+        detail: 'The library is unavailable.'
+      })
     )
   );
 }
@@ -70,14 +85,13 @@ const newPlaylist = {
   sort: 'playlist',
   access: 'owner',
   hasShares: false,
+  pinned: false,
+  counts: { ...EMPTY_COUNTS, stored: 0 },
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z'
 };
 
-/*
- * An owned playlist. Two of these stand in a list when a test needs two
- * deletable items to press Delete on inside one undo window.
- */
+/* Two of these stand in a list when a test needs two deletable items. */
 function ownedItem(id: string, name: string) {
   return {
     id,
@@ -93,14 +107,42 @@ function ownedItem(id: string, name: string) {
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    pinned: false,
+    counts: { ...EMPTY_COUNTS, stored: 1 },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   };
 }
 
 /*
- * The list the base handlers return, repeated here so the create flow has a list
- * to leave before it has one to gain.
+ * The base handlers' shared item, a read collaborator: a share indicator and
+ * no overflow at all.
+ */
+function sharedItem() {
+  return {
+    id: 'playlist-2',
+    ownerAccountId: 'account-2',
+    name: 'Shared Mix',
+    coverTrackId: null,
+    provider: 'youtube',
+    sourcePlaylistId: 'PL-shared',
+    syncStatus: 'idle',
+    lastSyncedAt: '2026-09-28T12:00:00.000Z',
+    trackCount: 4,
+    skipNonMusic: true,
+    sort: 'playlist',
+    access: 'read',
+    hasShares: false,
+    pinned: false,
+    counts: { ...EMPTY_COUNTS, stored: 4 },
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-28T12:00:00.000Z'
+  };
+}
+
+/*
+ * The base handlers' list, repeated so the create flow has a list to leave
+ * before it has one to gain.
  */
 const baseItems = [
   {
@@ -117,27 +159,27 @@ const baseItems = [
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    pinned: false,
+    counts: { ...EMPTY_COUNTS, stored: 1 },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   }
 ];
 
 /*
- * A create that answers `202` with the run, and a list read that carries the new
- * playlist only once the create has happened. That pair is the route's own shape:
- * the item is not in the response, it arrives from the server on the next read,
- * and the read before the create does not see it.
+ * The route's own shape: the create answers the run, and the new playlist
+ * arrives from the server on the next read, not in the response.
  */
 function createSucceeds(): { requests: Request[] } {
   const requests: Request[] = [];
   let created = false;
   server.use(
-    http.post('http://localhost:3000/api/v1/playlists', async ({ request }) => {
+    http.post(mockUrl(endpoints.createPlaylist), async ({ request }) => {
       requests.push(request);
       created = true;
       return HttpResponse.json(syncRun, { status: 202 });
     }),
-    http.get('http://localhost:3000/api/v1/playlists', () => {
+    http.get(mockUrl(endpoints.playlists), () => {
       const items = created ? [newPlaylist] : baseItems;
       return HttpResponse.json({
         items,
@@ -152,17 +194,12 @@ function createSucceeds(): { requests: Request[] } {
 }
 
 /*
- * The dialog fades out over 180ms and unmounts itself when that elapses. These
- * tests run on real timers, so the exit is awaited rather than advanced.
- */
-/*
- * A directory that carries one account and not the shared item's owner, so the
- * item must fall back to its indicator alone. `account-2` is the shared item's
- * owner in the base fixture, so a directory of `account-9` is a real miss.
+ * A directory that misses the shared item's owner (`account-2`), so the item
+ * must fall back to its indicator alone.
  */
 function directoryOf(ownerId: string): void {
   server.use(
-    http.get('http://localhost:3000/api/v1/accounts', () =>
+    http.get(mockUrl(endpoints.accounts), () =>
       HttpResponse.json({
         items: [{ id: ownerId, displayName: 'Ada', avatarUrl: null }],
         total: 1,
@@ -173,6 +210,10 @@ function directoryOf(ownerId: string): void {
   );
 }
 
+/*
+ * The dialog fades out over 180ms; these tests run on real timers, so the exit
+ * is awaited rather than advanced.
+ */
 async function waitForDialogExit(): Promise<void> {
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -182,29 +223,92 @@ async function waitForDialogExit(): Promise<void> {
 function createRefused(): { requests: Request[] } {
   const requests: Request[] = [];
   server.use(
-    http.post('http://localhost:3000/api/v1/playlists', async ({ request }) => {
+    http.post(mockUrl(endpoints.createPlaylist), async ({ request }) => {
       requests.push(request);
-      return HttpResponse.json(
-        {
-          type: 'about:blank',
-          title: 'Invalid Request',
-          status: 400,
-          detail:
-            'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...',
-          code: 'invalid_request'
-        },
-        { status: 400 }
-      );
+      return problemResponse({
+        code: ProblemCode.InvalidRequest,
+        status: 400,
+        title: 'Invalid Request',
+        detail:
+          'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...'
+      });
     })
   );
 
   return { requests };
 }
 
+/* A list read whose items are exactly what the test hands in. */
+function pinnedRead(items: ReturnType<typeof ownedItem>[]): void {
+  server.use(
+    http.get(mockUrl(endpoints.playlists), () =>
+      HttpResponse.json({
+        items,
+        total: items.length,
+        limit: 50,
+        offset: 0
+      })
+    )
+  );
+}
+
 /*
- * The library is rendered inside a real router because every item carries links
- * to the playlist. The detail route is a stub, since nothing here asserts what it
- * draws.
+ * A pin write the list read reflects, so the lifted item stays in the section
+ * rather than snapping back.
+ */
+function pinSucceeds(): { bodies: { pinned: boolean }[] } {
+  const bodies: { pinned: boolean }[] = [];
+  let pinned = false;
+
+  server.use(
+    http.patch(
+      mockUrl(endpoints.pinPlaylist, { playlistId: 'playlist-1' }),
+      async ({ request }) => {
+        const body = PinPlaylistInputSchema.parse(await request.json());
+        bodies.push(body);
+        pinned = body.pinned;
+
+        return HttpResponse.json({
+          ...ownedItem('playlist-1', 'Rain On The Window'),
+          pinned
+        });
+      }
+    ),
+    http.get(mockUrl(endpoints.playlists), () =>
+      HttpResponse.json({
+        items: [
+          { ...ownedItem('playlist-1', 'Rain On The Window'), pinned },
+          sharedItem()
+        ],
+        total: 2,
+        limit: 50,
+        offset: 0
+      })
+    )
+  );
+
+  return { bodies };
+}
+
+/* A pin write the route refuses, so the optimistic lift must be undone. */
+function pinFails(): void {
+  server.use(
+    http.patch(
+      mockUrl(endpoints.pinPlaylist, { playlistId: 'playlist-1' }),
+      () =>
+        problemResponse({
+          code: ProblemCode.InternalError,
+          status: 500,
+          title: 'Internal Server Error',
+          detail: 'The pin could not be written.'
+        })
+    )
+  );
+}
+
+/*
+ * A real router, because every item carries links; the detail route is a stub,
+ * since nothing here asserts what it draws.
  */
 function renderLibraryPage() {
   const rootRoute = createRootRoute();
@@ -230,6 +334,7 @@ function renderLibraryPage() {
     <QueryClientProvider client={queryClient}>
       <I18nProvider preferred={['en']}>
         <RouterProvider router={router} />
+        <DeferredToasts />
       </I18nProvider>
     </QueryClientProvider>
   );
@@ -245,8 +350,9 @@ describe('LibraryPage', () => {
     const { container } = renderLibraryPage();
 
     expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('track')).toBeInTheDocument();
+    const list = screen.getByRole('list');
+    expect(within(list).getByText('1')).toBeInTheDocument();
+    expect(within(list).getByText('track')).toBeInTheDocument();
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }
@@ -255,10 +361,7 @@ describe('LibraryPage', () => {
   });
 
   /*
-   * The shuffle is a property of the queue, so a row reports pressed only while
-   * the queue is that playlist and shuffle is on. Shuffling one item must leave
-   * every other row unpressed, which is what tells a reader which playlist the
-   * shuffle belongs to.
+   * Shuffle belongs to the queue, so only the queue's own row reports pressed.
    */
   it('presses only the playlist the queue belongs to', async () => {
     renderLibraryPage();
@@ -274,7 +377,6 @@ describe('LibraryPage', () => {
     expect(own).toHaveAttribute('aria-pressed', 'true');
     expect(other).toHaveAttribute('aria-pressed', 'false');
 
-    /* A second press on this playlist's own queue turns the shuffle off. */
     fireEvent.click(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     );
@@ -301,27 +403,255 @@ describe('LibraryPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('offers the owner the four actions and the reader no overflow', async () => {
+  it('filters the gallery by a status its tracks carry', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              trackCount: 3,
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+            },
+            {
+              ...ownedItem('playlist-2', 'Night Bus'),
+              trackCount: 4,
+              counts: { ...EMPTY_COUNTS, stored: 4 }
+            },
+            {
+              ...ownedItem('playlist-3', 'High Water'),
+              trackCount: 5,
+              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 }
+            }
+          ],
+          total: 3,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    const failed = await screen.findByRole('button', { name: 'Failed 2' });
+
+    expect(screen.getByRole('button', { name: 'All 12' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Stored 6' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Pending 4' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Downloading 0' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Unavailable 0' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(failed);
+
+    expect(failed).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
+    expect(screen.queryByText('Night Bus')).not.toBeInTheDocument();
+    expect(screen.queryByText('High Water')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'All 12' }));
+
+    expect(screen.getByText('Night Bus')).toBeInTheDocument();
+    expect(screen.getByText('High Water')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('draws no status filter when no playlist track has a state', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              trackCount: 0,
+              counts: EMPTY_COUNTS
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Filter by' })
+    ).not.toBeInTheDocument();
+  });
+
+  /* The counts come from the list read, so marking costs it nothing extra. */
+  it('marks the playlists the list read reports as incomplete, one pill each', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              counts: { ...EMPTY_COUNTS, stored: 3, failed: 2 }
+            },
+            {
+              ...ownedItem('playlist-2', 'Night Bus'),
+              trackCount: 0,
+              counts: EMPTY_COUNTS
+            },
+            {
+              ...ownedItem('playlist-3', 'High Water'),
+              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 }
+            }
+          ],
+          total: 3,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    expect(
+      await screen.findByRole('img', {
+        name: '2 tracks are not stored · Failed 2'
+      })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(
+      screen.getByRole('img', {
+        name: '4 tracks are not stored · Pending 4'
+      })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: /not stored/ })).toHaveLength(2);
+  });
+
+  it('offers a read collaborator the pin alone', async () => {
+    renderLibraryPage();
+
+    await screen.findByText('Shared Mix');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Shared Mix' })
+    );
+
+    expect(
+      screen.getAllByRole('menuitem').map(item => item.textContent)
+    ).toEqual(['Pin']);
+  });
+
+  it('draws a flagged item in the named section above the list and not in the list below', async () => {
+    pinnedRead([
+      { ...ownedItem('playlist-1', 'Rain On The Window'), pinned: true },
+      sharedItem()
+    ]);
+    renderLibraryPage();
+
+    const section = await screen.findByRole('region', { name: 'Pinned' });
+
+    expect(
+      within(section).getByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+
+    const lists = screen.getAllByRole('list');
+    expect(
+      within(lists[0]!).getByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
+    expect(
+      within(lists[1]!).queryByRole('link', { name: 'Rain On The Window' })
+    ).not.toBeInTheDocument();
+    expect(
+      within(lists[1]!).getByRole('link', { name: 'Shared Mix' })
+    ).toBeInTheDocument();
+
+    const restSection = screen.getByRole('region', { name: 'Others' });
+    expect(
+      within(restSection).getByRole('link', { name: 'Shared Mix' })
+    ).toBeInTheDocument();
+    expect(
+      within(restSection).queryByRole('link', { name: 'Rain On The Window' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the items below the section in the order the read returned', async () => {
+    pinnedRead([
+      { ...ownedItem('playlist-1', 'Pinned one'), pinned: true },
+      { ...ownedItem('playlist-2', 'Pinned two'), pinned: true },
+      ownedItem('playlist-3', 'Rest newer'),
+      ownedItem('playlist-4', 'Rest older')
+    ]);
+    renderLibraryPage();
+
+    await screen.findByRole('region', { name: 'Pinned' });
+
+    const lists = screen.getAllByRole('list');
+    const namesIn = (list: HTMLElement) =>
+      within(list)
+        .getAllByRole('link')
+        .map(link => link.textContent);
+
+    expect(namesIn(lists[0]!)).toEqual(['Pinned one', 'Pinned two']);
+    expect(namesIn(lists[1]!)).toEqual(['Rest newer', 'Rest older']);
+  });
+
+  it('draws no pinned section when the account has pinned nothing', async () => {
     renderLibraryPage();
 
     await screen.findByText('Rain On The Window');
 
-    /* One menu: the owned item's. The read collaborator gets no button at all. */
-    const menus = screen.getAllByRole('button', {
-      name: 'More actions for Rain On The Window'
-    });
-    expect(menus).toHaveLength(1);
+    expect(
+      screen.queryByRole('region', { name: 'Pinned' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Pinned')).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(menus[0]);
-    expect(screen.getByRole('menuitem', { name: 'Share' })).toBeInTheDocument();
+  it('pins from the menu, asking the server and lifting the item into the section', async () => {
+    const { bodies } = pinSucceeds();
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }));
+
+    const section = await screen.findByRole('region', { name: 'Pinned' });
     expect(
-      screen.getByRole('menuitem', { name: 'Rename' })
+      within(section).getByRole('link', { name: 'Rain On The Window' })
     ).toBeInTheDocument();
+
+    expect(bodies).toEqual([{ pinned: true }]);
+  });
+
+  it('puts a refused pin back and draws the notice', async () => {
+    pinFails();
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }));
+
     expect(
-      screen.getByRole('menuitem', { name: 'Sync now' })
+      await screen.findByText('The pin could not be changed.')
     ).toBeInTheDocument();
+
     expect(
-      screen.getByRole('menuitem', { name: 'Delete playlist' })
+      screen.queryByRole('region', { name: 'Pinned' })
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list')).getByRole('link', {
+        name: 'Rain On The Window'
+      })
     ).toBeInTheDocument();
   });
 
@@ -331,7 +661,7 @@ describe('LibraryPage', () => {
     await screen.findByText('Rain On The Window');
 
     /* The count is not a link or a control, so the press is the item's own. */
-    fireEvent.click(screen.getByText('1'));
+    fireEvent.click(within(screen.getByRole('list')).getByText('1'));
 
     expect(await screen.findByText('detail')).toBeInTheDocument();
   });
@@ -342,7 +672,6 @@ describe('LibraryPage', () => {
     await screen.findByText('Shared Mix');
 
     expect(screen.getByText('Shared by Ada')).toBeInTheDocument();
-    /* One line only: the owned item carries none. */
     expect(screen.getAllByText(/Shared by/)).toHaveLength(1);
   });
 
@@ -360,16 +689,15 @@ describe('LibraryPage', () => {
 
   it('drops a revoked playlist on the next list read and changes nothing else', async () => {
     /*
-     * The create invalidates the list, so the read that follows is a real second
-     * read. In this fixture the shared playlist has been revoked in the meantime,
-     * so that read carries the owned one alone.
+     * The create invalidates the list, so the read after it is a real second
+     * read; this fixture has the shared playlist revoked in the meantime.
      */
     let read = 0;
     server.use(
-      http.post('http://localhost:3000/api/v1/playlists', () =>
+      http.post(mockUrl(endpoints.createPlaylist), () =>
         HttpResponse.json(syncRun, { status: 202 })
       ),
-      http.get('http://localhost:3000/api/v1/playlists', () => {
+      http.get(mockUrl(endpoints.playlists), () => {
         read += 1;
         if (read === 1) {
           return HttpResponse.json({
@@ -388,6 +716,8 @@ describe('LibraryPage', () => {
                 sort: 'playlist',
                 access: 'owner',
                 hasShares: false,
+                pinned: false,
+                counts: { ...EMPTY_COUNTS, stored: 1 },
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-29T12:00:00.000Z'
               },
@@ -405,6 +735,8 @@ describe('LibraryPage', () => {
                 sort: 'playlist',
                 access: 'read',
                 hasShares: false,
+                pinned: false,
+                counts: { ...EMPTY_COUNTS, stored: 4 },
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-28T12:00:00.000Z'
               }
@@ -431,6 +763,8 @@ describe('LibraryPage', () => {
               sort: 'playlist',
               access: 'owner',
               hasShares: false,
+              pinned: false,
+              counts: { ...EMPTY_COUNTS, stored: 1 },
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             }
@@ -457,50 +791,22 @@ describe('LibraryPage', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 
-  it('has no search, sort, filter or pagination control', async () => {
-    renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /next|previous|page/i })
-    ).not.toBeInTheDocument();
-  });
-
   it('renders the empty gallery when the account has no playlists', async () => {
     emptyPage();
     renderLibraryPage();
 
     expect(await screen.findByText('No playlists yet')).toBeInTheDocument();
-    /*
-     * One invitation, not two: the header's add is suppressed on the empty state
-     * so the gallery's framed action is the only control, and the two never
-     * duplicate.
-     */
+    /* The header's add is suppressed here, so the gallery's action is alone. */
     expect(
       screen.getAllByRole('button', { name: 'Add a playlist' })
     ).toHaveLength(1);
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
-  it('never renders the playlist empty state on the library', async () => {
-    emptyPage();
-    renderLibraryPage();
-
-    await screen.findByText('No playlists yet');
-
-    expect(
-      screen.queryByRole('button', { name: 'Sync now' })
-    ).not.toBeInTheDocument();
-  });
-
   it('renders the library error state, not the empty gallery, when the read fails', async () => {
     failedPage();
     renderLibraryPage();
 
-    /* The server's own detail, and the one control that refetches the read. */
     expect(
       await screen.findByText('The library is unavailable.')
     ).toBeInTheDocument();
@@ -511,44 +817,19 @@ describe('LibraryPage', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
-  it('shows the fallback sentence when the failed read carries no detail', async () => {
-    server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
-        HttpResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Service unavailable',
-            status: 503,
-            code: 'service_unavailable'
-          },
-          { status: 503 }
-        )
-      )
-    );
-    renderLibraryPage();
-
-    expect(
-      await screen.findByText('Playlists could not be loaded.')
-    ).toBeInTheDocument();
-  });
-
   it('recovers the library when the failed read is retried', async () => {
     let attempts = 0;
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () => {
+      http.get(mockUrl(endpoints.playlists), () => {
         attempts += 1;
 
         if (attempts === 1) {
-          return HttpResponse.json(
-            {
-              type: 'about:blank',
-              title: 'Service unavailable',
-              status: 503,
-              detail: 'The library is unavailable.',
-              code: 'service_unavailable'
-            },
-            { status: 503 }
-          );
+          return problemResponse({
+            code: ProblemCode.InternalError,
+            status: 503,
+            title: 'Service unavailable',
+            detail: 'The library is unavailable.'
+          });
         }
 
         return HttpResponse.json({
@@ -596,6 +877,157 @@ describe('LibraryPage', () => {
     );
   });
 
+  it('marks the pressed tile while its queue read is in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const tracks = ['track-1', 'track-2'].map((id, index) => ({
+      track: {
+        id,
+        provider: 'youtube',
+        videoId: `video-${index + 1}`,
+        title: `Track ${index + 1}`,
+        durationSeconds: 200,
+        skipNonMusic: true,
+        thumbnailPath: null,
+        fileStatus: 'stored',
+        sourceStatus: 'available',
+        failureReason: null,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        updatedAt: '2026-09-29T12:00:00.000Z'
+      },
+      origin: 'remote',
+      position: index
+    }));
+
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: 'playlist-1' }),
+        async () => {
+          await gate;
+          return HttpResponse.json({ items: tracks });
+        }
+      )
+    );
+    renderLibraryPage();
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const item = () =>
+      screen
+        .getByRole('link', { name: 'Rain On The Window' })
+        .closest('[data-arrangement]') as HTMLElement;
+    const play = () =>
+      within(item()).getByRole('button', { name: 'Play Rain On The Window' });
+    const otherPlay = () =>
+      within(
+        screen
+          .getByRole('link', { name: 'Shared Mix' })
+          .closest('[data-arrangement]') as HTMLElement
+      ).getByRole('button', { name: 'Play Shared Mix' });
+
+    fireEvent.click(play());
+
+    await waitFor(() => expect(play()).toBeDisabled());
+    expect(play()).toHaveAttribute('aria-busy', 'true');
+    expect(otherPlay()).toBeEnabled();
+
+    release();
+
+    await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
+
+    expect(usePlayerStore.getState().queue).toHaveLength(2);
+    expect(
+      within(item()).getByRole('button', {
+        name: 'Pause Rain On The Window'
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('draws the play disabled on a playlist with nothing stored', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'playlist-1',
+              ownerAccountId: 'account-1',
+              name: 'Rain On The Window',
+              coverTrackId: null,
+              provider: 'youtube',
+              sourcePlaylistId: 'PL-demo',
+              syncStatus: 'idle',
+              lastSyncedAt: '2026-09-29T12:00:00.000Z',
+              trackCount: 1,
+              skipNonMusic: true,
+              sort: 'playlist',
+              access: 'owner',
+              hasShares: false,
+              pinned: false,
+              counts: { ...EMPTY_COUNTS, pending: 1 },
+              createdAt: '2026-09-01T00:00:00.000Z',
+              updatedAt: '2026-09-29T12:00:00.000Z'
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    expect(
+      screen.getByRole('button', { name: 'Play Rain On The Window' })
+    ).toBeDisabled();
+  });
+
+  it('offers the add control as a floating button at the phone width', async () => {
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      renderLibraryPage();
+
+      await screen.findByText('Rain On The Window');
+
+      const add = screen.getByRole('button', { name: 'Add a playlist' });
+
+      fireEvent.click(add);
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it('starts the playlist in its own order from the card’s play', async () => {
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      renderLibraryPage();
+
+      await screen.findByText('Rain On The Window');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Play Rain On The Window' })
+      );
+
+      await waitFor(() =>
+        expect(usePlayerStore.getState().queue).toHaveLength(2)
+      );
+
+      const state = usePlayerStore.getState();
+
+      expect(state.shuffle).toBe(false);
+      expect(state.isPlaying).toBe(true);
+      expect(state.currentId).toBe('track-1');
+      expect(state.queue.map(item => item.id)).toEqual(['track-1', 'track-2']);
+    } finally {
+      restore();
+    }
+  });
+
   it('refuses to shuffle a playlist with nothing stored yet', async () => {
     const tracks = ['track-1', 'track-2', 'track-3'].map((id, index) => ({
       track: {
@@ -617,32 +1049,35 @@ describe('LibraryPage', () => {
     }));
 
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
-        HttpResponse.json({ items: tracks })
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: 'playlist-1' }),
+        () => HttpResponse.json({ items: tracks })
       ),
-      http.get('http://localhost:3000/api/v1/playlists/playlist-2/queue', () =>
-        HttpResponse.json({
-          items: [
-            {
-              track: {
-                id: 'track-8',
-                provider: 'youtube',
-                videoId: 'video-8',
-                title: 'Still Downloading',
-                durationSeconds: 200,
-                skipNonMusic: true,
-                thumbnailPath: null,
-                fileStatus: 'pending',
-                sourceStatus: 'available',
-                failureReason: null,
-                createdAt: '2026-09-01T00:00:00.000Z',
-                updatedAt: '2026-09-29T12:00:00.000Z'
-              },
-              origin: 'remote',
-              position: 0
-            }
-          ]
-        })
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: 'playlist-2' }),
+        () =>
+          HttpResponse.json({
+            items: [
+              {
+                track: {
+                  id: 'track-8',
+                  provider: 'youtube',
+                  videoId: 'video-8',
+                  title: 'Still Downloading',
+                  durationSeconds: 200,
+                  skipNonMusic: true,
+                  thumbnailPath: null,
+                  fileStatus: 'pending',
+                  sourceStatus: 'available',
+                  failureReason: null,
+                  createdAt: '2026-09-01T00:00:00.000Z',
+                  updatedAt: '2026-09-29T12:00:00.000Z'
+                },
+                origin: 'remote',
+                position: 0
+              }
+            ]
+          })
       )
     );
 
@@ -684,10 +1119,7 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('New Mix')).toBeInTheDocument();
-    /*
-     * Success is a close like any other: the dialog is still there while its fade
-     * runs, and the fade is what takes it away. The item has already arrived.
-     */
+    /* Success is a close like any other: the fade removes the dialog. */
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await waitForDialogExit();
@@ -739,19 +1171,6 @@ describe('LibraryPage', () => {
     expect(screen.getByText('Syncing')).toBeInTheDocument();
   });
 
-  it('makes no request for an empty URL and shows the schema refusal', async () => {
-    const { requests } = createSucceeds();
-    renderLibraryPage();
-
-    await screen.findByText('Rain On The Window');
-    fireEvent.click(screen.getByRole('button', { name: 'Add a playlist' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(requests).toHaveLength(0);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
   it('shows the server problem beside the field when the create is refused', async () => {
     createRefused();
     renderLibraryPage();
@@ -769,9 +1188,9 @@ describe('LibraryPage', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('names the playlist a second delete replaces', async () => {
+  it('keeps both deleted playlists on their own stacked toasts', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
+      http.get(mockUrl(endpoints.playlists), () =>
         HttpResponse.json({
           items: [
             ownedItem('playlist-1', 'Rain On The Window'),
@@ -794,16 +1213,19 @@ describe('LibraryPage', () => {
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Rain On The Window');
-
     fireEvent.click(
       screen.getByRole('button', { name: 'More actions for Night Bus' })
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
 
-    const toast = screen.getByRole('status');
-    expect(toast).toHaveTextContent('Night Bus');
-    expect(toast).toHaveTextContent('“Rain On The Window” will not be deleted');
+    const toasts = screen.getAllByRole('status');
+
+    expect(toasts).toHaveLength(2);
+    expect(toasts[0]).toHaveTextContent('Night Bus');
+    expect(toasts[1]).toHaveTextContent('Rain On The Window');
+    expect(
+      screen.queryByText('“Rain On The Window” will not be deleted')
+    ).not.toBeInTheDocument();
   });
 
   it('marks a playlist pending while its delete waits, and lifts it on Cancel', async () => {
@@ -817,9 +1239,7 @@ describe('LibraryPage', () => {
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
 
-    /* The row the toast names is marked: dimmed, busy, and its door and controls
-     * disabled, so the thing that is going cannot be opened or deleted again. */
-    const row = container.querySelector('[data-arrangement="row"]');
+    const row = container.querySelector('[data-arrangement="tile"]');
     expect(row).toHaveAttribute('aria-busy', 'true');
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })

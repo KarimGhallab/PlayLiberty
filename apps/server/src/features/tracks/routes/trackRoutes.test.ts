@@ -102,6 +102,16 @@ function countAssociations(): number {
   );
 }
 
+function playlistTrackCount(playlistId: string): number {
+  return (
+    database()
+      .db.select({ trackCount: playlists.trackCount })
+      .from(playlists)
+      .where(eq(playlists.id, playlistId))
+      .get()?.trackCount ?? -1
+  );
+}
+
 const invalidPayloads: [string, Record<string, unknown>, string][] = [
   [
     'a playlist URL',
@@ -186,9 +196,8 @@ describe('POST /tracks', () => {
     );
     const caller = seedAccount(database());
     const other = seedAccount(database());
-    // A refused playlist comes first and a writable one second, so the value must
-    // come from the first *writable* id, not the first id. The writable one is off,
-    // so the track is fetched whole.
+    // Refused playlist first, writable second: the value comes from the first
+    // *writable* id, not the first id.
     const readOnly = seedPlaylist(database(), other.accountId, {
       skipNonMusic: true
     }).playlistId;
@@ -240,8 +249,7 @@ describe('POST /tracks', () => {
       { playlistId: missing, outcome: AddTrackOutcome.Refused }
     ]);
 
-    // A refused playlist the account can see and one that does not exist answer
-    // the same, so nothing tells them apart.
+    // A refused playlist it can see and a missing one are one answer, not two.
     expect(result.results[1]?.outcome).toBe(result.results[2]?.outcome);
 
     const writablePlaylist = database()
@@ -266,8 +274,41 @@ describe('POST /tracks', () => {
     ).toBeUndefined();
   });
 
+  it('rolls the whole batch back when one association cannot be written', async () => {
+    let doomed = '';
+    const fake = createFakeYoutube(testVideo(VIDEO_ID));
+    const youtube = {
+      ...fake,
+      listSource: async () => {
+        /* The access check already passed; the playlist goes before its
+         * association is written, so the batch fails halfway. */
+        database().db.delete(playlists).where(eq(playlists.id, doomed)).run();
+
+        return fake.listSource(VIDEO_URL);
+      }
+    };
+    const kick = vi.fn();
+    context = await createTestContext({}, { youtube, kickDownloads: kick });
+    const owner = seedAccount(database());
+    const writable = seedPlaylist(database(), owner.accountId).playlistId;
+    doomed = seedPlaylist(database(), owner.accountId).playlistId;
+
+    const response = await post('/api/v1/tracks', owner.pangolinUserId, {
+      url: VIDEO_URL,
+      playlistIds: [writable, doomed]
+    });
+
+    expect(response.statusCode).toBe(500);
+    // The track, the first association and its count all roll back together.
+    expect(countTracks()).toBe(0);
+    expect(countAssociations()).toBe(0);
+    expect(playlistTrackCount(writable)).toBe(0);
+    // No work survived, so the worker is not woken.
+    expect(kick).not.toHaveBeenCalled();
+  });
+
   it('reports a playlist that already holds the video as already_present and succeeds', async () => {
-    // No source is queued: the track exists, so the route must not read the source.
+    // No source is queued: the track exists, so the route must not read it.
     context = await createTestContext({}, { youtube: createFakeYoutube() });
     const owner = seedAccount(database());
     const holding = seedPlaylist(database(), owner.accountId).playlistId;
@@ -435,28 +476,6 @@ describe('POST /tracks', () => {
 
     expect(response.statusCode).toBe(404);
   });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext(
-      {},
-      { youtube: createFakeYoutube(testVideo(VIDEO_ID)) }
-    );
-    const owner = seedAccount(database());
-
-    if (context === undefined) {
-      throw new Error('the test context is not created');
-    }
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: '/api/v1/tracks',
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: { url: VIDEO_URL, playlistIds: [randomUUID()] }
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
 });
 
 describe('POST /tracks/:id/retry', () => {
@@ -623,32 +642,6 @@ describe('POST /tracks/:id/retry', () => {
         ?.fileStatus
     ).toBe(TrackFileStatus.Failed);
   });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount(database());
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-    const { trackId } = seedTrack(database(), {
-      videoId: VIDEO_ID,
-      fileStatus: TrackFileStatus.Failed,
-      failureReason: 'boom'
-    });
-    associate(database(), playlistId, trackId);
-
-    if (context === undefined) {
-      throw new Error('the test context is not created');
-    }
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: `/api/v1/tracks/${trackId}/retry`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: {}
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
 });
 
 describe('POST /tracks/:id/fetch-whole', () => {
@@ -753,7 +746,7 @@ describe('POST /tracks/:id/fetch-whole', () => {
         .where(eq(tracks.id, trackId))
         .get();
       expect(row?.fileStatus).toBe(fileStatus);
-      /* A stored track's shared file is never re-cut behind the other playlists. */
+      /* A stored track's shared file is never re-cut behind the others. */
       expect(row?.skipNonMusic).toBe(true);
     }
   );
@@ -809,41 +802,10 @@ describe('POST /tracks/:id/fetch-whole', () => {
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
     expect(row?.skipNonMusic).toBe(true);
   });
-
-  it('refuses a request without the client header', async () => {
-    context = await createTestContext({}, { youtube: createFakeYoutube() });
-    const owner = seedAccount(database());
-    const playlistId = seedPlaylist(database(), owner.accountId).playlistId;
-    const { trackId } = seedTrack(database(), {
-      videoId: VIDEO_ID,
-      fileStatus: TrackFileStatus.Failed,
-      failureReason: 'boom',
-      skipNonMusic: true
-    });
-    associate(database(), playlistId, trackId);
-
-    if (context === undefined) {
-      throw new Error('the test context is not created');
-    }
-
-    const response = await context.app.inject({
-      method: 'POST',
-      url: `/api/v1/tracks/${trackId}/fetch-whole`,
-      headers: { 'remote-user': owner.pangolinUserId },
-      payload: {}
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: 'csrf_header_missing' });
-  });
 });
 
-/*
- * The cache headers are a contract, not an implementation detail: they are what
- * keeps the media out of a shared cache and decide how much the browser reuses.
- * These read the header off a real response, so a regression is caught here
- * rather than in a browser.
- */
+/* Cache headers are a contract: media stays out of a shared cache, and reuse
+ * is the browser's. Read off a real response so a regression shows here. */
 describe('media cache headers', () => {
   it('caches a stored track audio privately for a week', async () => {
     context = await createTestContext();

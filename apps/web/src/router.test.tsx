@@ -4,7 +4,7 @@ import {
   createMemoryHistory,
   createRouter
 } from '@tanstack/react-router';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '@playliberty/i18n';
@@ -15,11 +15,6 @@ import type { PlayerTrack } from './shared/player/types';
 
 import { routeTree } from './router';
 import { createFakeEventStream } from './testing/fakeEventStream';
-
-/*
- * The claim under test is that a route change does not restart the track: the
- * audio element is not remounted, so its source is loaded and played once.
- */
 
 const PLAYLIST = 'playlist-1';
 
@@ -62,9 +57,8 @@ beforeEach(() => {
   usePlayerStore.getState().clear();
   playMock.mockClear();
   /*
-   * jsdom's `play` returns undefined, so the element's `.catch` on the playback
-   * promise would throw. The shell mounts the real audio element, so the browser
-   * half it lacks is supplied here.
+   * jsdom's `play` returns undefined, so the element's `.catch` would throw.
+   * The shell mounts the real audio element, so its browser half is supplied.
    */
   HTMLMediaElement.prototype.play = playMock as unknown as () => Promise<void>;
   HTMLMediaElement.prototype.pause = vi.fn() as unknown as () => void;
@@ -88,5 +82,33 @@ describe('AppShell', () => {
     expect(screen.getByLabelText('Player')).toBeInTheDocument();
     expect(screen.getByText('Blue In Green')).toBeInTheDocument();
     expect(playMock).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * Only the assembled shell proves the route and the player feed one writer;
+   * the owner's own branches are unit-tested.
+   */
+  it('names the tab after the open playlist, then after the playing track', async () => {
+    const { router } = renderShell('/');
+    await waitFor(() => {
+      expect(document.title).toBe('PlayLiberty');
+    });
+
+    await router.navigate({
+      to: '/playlists/$playlistId',
+      params: { playlistId: PLAYLIST }
+    });
+    await waitFor(() => {
+      expect(document.title).toBe('PlayLiberty - Rain On The Window');
+    });
+
+    act(() => {
+      usePlayerStore.getState().startQueue(PLAYLIST, [TRACK], TRACK.id);
+    });
+    await waitFor(() => {
+      expect(document.title).toBe(
+        'PlayLiberty - Rain On The Window (Blue In Green)'
+      );
+    });
   });
 });

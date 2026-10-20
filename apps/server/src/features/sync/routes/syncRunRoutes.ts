@@ -1,10 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 
-import { PlaylistNotFoundReason, ProblemCode } from '@playliberty/contracts';
+import {
+  PlaylistNotFoundReason,
+  ProblemCode,
+  endpoints
+} from '@playliberty/contracts';
 
 import type { AppContext } from '../../../shared/context.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import { sendPlaylistNotFound, sendProblem } from '../../../shared/problem.js';
+import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
 import { resolveLatestSyncRun } from '../syncRunService.js';
 import { SyncRunOutcome } from '../types.js';
@@ -13,12 +18,13 @@ export function registerSyncRunRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id/sync-runs/latest',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.latestSyncRun,
     async (request, reply) => {
       const result = resolveLatestSyncRun(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -26,11 +32,8 @@ export function registerSyncRunRoutes(
         return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
       }
 
-      // A playlist that has never synced is not an error and this status is
-      // shared with the case above, so the code is what separates them. The
-      // design record depends on the difference: the empty state is a
-      // lastSyncedAt of null with a run present as a reachable combination, so
-      // "no run" and "a run that failed" have to be tellable apart by a client.
+      // Same 404 as above; the code is what tells them apart. "no run" and a
+      // "failed run" must stay distinguishable.
       if (result.outcome === SyncRunOutcome.RunAbsent) {
         return sendProblem(reply, {
           status: 404,

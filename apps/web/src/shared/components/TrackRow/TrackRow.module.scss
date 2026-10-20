@@ -6,19 +6,13 @@
 .track-row {
   position: relative;
   display: flex;
-  align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
   border-bottom: 1px solid var(--line);
   border-radius: var(--radius-artwork);
 
   /* Only a row with a stored file is a control, so only it is offered a press:
-   * the surface lifts one step and the pointer says so. The lift is quick and
-   * eased rather than instant, so running the pointer down a list does not
-   * flicker, and it names only background-color so nothing else on the row
-   * moves. A row with nothing to play keeps its plain surface and the default
-   * pointer, because a hover that promises a play a row cannot give is worse
-   * than no hover at all. */
+   * the surface lifts a step, and a hover that promises a play is worse. */
   &[data-playable='true'] {
     cursor: pointer;
     transition: background-color var(--motion-fast) var(--ease-standard);
@@ -34,12 +28,12 @@
     opacity: var(--opacity-disabled);
   }
 
-  /* In-flight state: the row breathes. The artwork, the text, the duration and
-   * the lane dim and restore together, so nothing travels and no glyph run is
-   * redrawn, which is the property the whole row is built around. It is slow and
-   * shallow on purpose: three lanes move at once, so a deeper dip would cost the
-   * reader the row rather than announce it. The word "Downloading" is always
-   * present, which is what carries the state when reduced motion stops this. */
+  &[data-starting='true'] {
+    cursor: progress;
+  }
+
+  /* In-flight: the artwork, text, duration and lane dim and restore together,
+   * so nothing travels. "Downloading" carries the state if motion stops. */
   &[data-downloading='true'] &__art,
   &[data-downloading='true'] &__body,
   &[data-downloading='true'] &__duration,
@@ -73,22 +67,23 @@
     object-fit: cover;
   }
 
-  /* The scrim over the current track's tile, whether it is playing or paused, so
-   * the accent bars land on a known dark ground rather than on an arbitrary
-   * image, and so the tile that is the queue's current track reads as marked even
-   * when the queue is stopped. It is the one place in the row where ink lands on
-   * a surface whose contrast cannot be computed, so a semi-opaque dark wash is
-   * what buys the bars their readability back. It sits below the strip in the
-   * document and the strip is positioned, so the scrim never covers it. */
+  &__spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    color: var(--ink);
+  }
+
+  /* The scrim under the current track's bars, playing or paused, so the accent
+   * lands on a known dark ground; it sits below the positioned strip. */
   &__scrim {
     position: absolute;
     inset: 0;
     background: rgb(0 0 0 / 0.45);
   }
 
-  /* The equalizer on the current row's artwork. It is absolutely positioned
-   * against the art box, which clips it, so the outermost bars never square off
-   * the two bottom corners that --radius-artwork rounds. */
+  /* Absolutely positioned against the art box, which clips it, so the outermost
+   * bars never square off the rounded bottom corners. */
   &__bars {
     position: absolute;
     inset-inline: 0;
@@ -116,10 +111,8 @@
     transform: scaleY(var(--rest, 1));
   }
 
-  /* Stopping does not remove the animation, it freezes it: `paused` holds each
-   * bar on the frame it had when the queue stopped, and resuming continues from
-   * that frame rather than restarting the loop. So the bars keep their shape and
-   * their phase across a pause, which is what "carry on where we were" means. */
+  /* Stopping freezes the animation rather than removing it: `paused` holds each
+   * bar on its frame, and resuming continues from there. */
   &[data-state='paused'] &__bar {
     animation-play-state: paused;
   }
@@ -130,6 +123,7 @@
     gap: var(--space-1);
     flex: 1;
     min-width: 0;
+    align-self: center;
   }
 
   &__title {
@@ -141,12 +135,8 @@
     text-overflow: ellipsis;
   }
 
-  /* A row that cannot be played steps its title down to the meta colour, so the
-   * list reads at a glance: playable rows carry full ink, unplayable ones are
-   * quieter. Downloading is the exception: its row already breathes, and a title
-   * dimming under a running animation would fight it. A removed-from-source
-   * track whose file is stored is playable, so it keeps full ink; the file is
-   * still here and still plays, and the state line says the source dropped it. */
+  /* A row that cannot be played steps its title down to meta; downloading keeps
+   * full ink, since it already breathes. */
   &:not([data-playable='true']):not([data-downloading='true']) &__title {
     color: var(--muted);
   }
@@ -185,9 +175,8 @@
     }
   }
 
-  /* The recorded policy, when it is the non-default one. A fact, not a state: it
-   * stays muted and never takes a tone, because it says what the track is rather
-   * than what went wrong. */
+  /* The recorded policy when non-default: a fact, not a state, so it stays
+   * muted and never takes a tone. */
   &__policy {
     flex-shrink: 0;
     color: var(--muted);
@@ -196,19 +185,61 @@
     white-space: nowrap;
   }
 
-  /* The server's failure sentence, secondary to the mapped word. It is untrusted
-   * and unbounded, so it is held to one line and ellipsized; the full sentence
-   * lives in the element's `title`, because a raw diagnostic that wraps would
-   * set the row's height and push the duration column. */
-  &__reason {
+  /* The mapped failure, secondary to the state word, allowed two lines so the
+   * sentence is not cut. */
+  &__sentence {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    color: var(--tone-failed);
+    color: var(--muted);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* The disclosure stacks above the row's play layer, so a thumb or a keyboard
+   * can reach the raw diagnostic without opening the row. */
+  &__reveal {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    text-decoration: underline;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ink);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  /* pre-wrap keeps a multi-line diagnostic multi-line; the 120px cap and its
+   * own scroll stop an unbounded string from setting the row's height. */
+  &__raw {
+    position: relative;
+    z-index: 1;
+    max-height: 120px;
+    margin: 0;
+    padding: var(--space-3);
+    overflow: auto;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
   }
 
   &__duration {
@@ -224,14 +255,8 @@
     }
   }
 
-  /* The hit layer: an empty button spanning the row, so the whole row is one
-   * target and one tab stop and the label it carries is the only thing that
-   * turns the row into a control for assistive technology. It is inset from the
-   * border by the row's own box, which is why the focus ring draws inside.
-   *
-   * The action lane sits after it in the document and carries its own stacking
-   * context, so a press on the lane reaches the lane and not the layer beneath
-   * it. */
+  /* An empty button spanning the row, so the row is one target and one tab stop
+   * and its label is the only control AT sees; the lane stacks after it. */
   &__hit {
     position: absolute;
     inset: 0;
@@ -263,10 +288,10 @@
     display: inline-flex;
   }
 
-  /* The row's action, one control on every curatable row: the overflow, whose
-   * items are the row's own. A control boundary rather than a hairline, because
-   * the lane is a target and not a rule. */
+  /* The overflow, one control on every curatable row; a control boundary rather
+   * than a hairline, because the lane is a target and not a rule. */
   &__action {
+    position: relative;
     display: grid;
     place-items: center;
     width: var(--control-size-inline);
@@ -277,6 +302,18 @@
     border: 1px solid var(--control-border);
     border-radius: var(--radius-control);
     cursor: pointer;
+
+    /* The target a thumb is owed, centred on the control. The lane stacks above
+     * the row's own play layer, so it takes the presses at its own edges. */
+    &::before {
+      content: '';
+      position: absolute;
+      width: var(--control-touch);
+      height: var(--control-touch);
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+    }
 
     &:hover:not(:disabled) {
       color: var(--ink);
@@ -299,10 +336,11 @@
     height: var(--icon-sm);
   }
 
-  /* The row's menu, the header's menu at the row's own scale: opens from the
-   * lane, upward because the lane is at the foot of a short row and a panel
-   * below it would run off the list. */
+  /* The header's menu at the row's scale: opens upward, because the lane is at
+   * the foot of a short row and a panel below it would run off the list. */
   &__menu {
+    --menu-origin: bottom right;
+    --menu-shift: 4px;
     position: absolute;
     top: auto;
     right: 0;
@@ -325,6 +363,7 @@
     height: 34px;
     padding: 0 var(--space-3);
     color: var(--ink);
+    font-family: inherit;
     font-size: var(--text-sm);
     text-align: left;
     white-space: nowrap;
@@ -366,11 +405,8 @@
   }
 }
 
-/* The equalizer's shape. No `alternate`, deliberately: it would double the
- * visible cycle and a palindromic shape shared by every bar reads as a metronome.
- * Ending on the value it started on makes the seam invisible with no extra
- * keyframe. The floor is 0.3 and never 0, because a bar at zero is a gap and the
- * strip would momentarily read as carrying fewer bars. */
+/* No `alternate`, deliberately: a palindromic shape shared by every bar reads
+ * as a metronome. The floor is 0.3, never 0, because a bar at zero is a gap. */
 @keyframes pl-equalize {
   0% {
     transform: scaleY(0.3);
@@ -396,20 +432,5 @@
 @media (max-width: 767px) {
   .track-row {
     padding: var(--space-3) 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .track-row[data-downloading='true'] .track-row__art,
-  .track-row[data-downloading='true'] .track-row__body,
-  .track-row[data-downloading='true'] .track-row__duration,
-  .track-row[data-downloading='true'] .track-row__lane-slot {
-    animation: none;
-  }
-
-  /* The bars rest at their --rest scales: a reader who asked for no motion loses
-   * the movement and keeps the mark. */
-  .track-row__bar {
-    animation: none;
   }
 }

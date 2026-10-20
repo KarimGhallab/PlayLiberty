@@ -1,9 +1,17 @@
 # 33: One audience resolver
 
-**State:** `ready-for-agent`
+**State:** `resolved`
 **Category:** `enhancement`
 
 **Blocked by:** None. Can start immediately.
+
+## Outcome
+
+`playlistAudiences(database, playlistIds)` in `playlistAccess.ts` is the one account-to-playlists grouping: one query for the whole batch, grouped by account, in the order the caller named the playlists, with the owner first. A missing playlist and an empty batch add nobody.
+
+`playlistAudience` is now a single-playlist projection of it, and `trackAudience` reads the track's holding playlists once and projects them through the same resolver. `publishTracksChangedForPlaylists` calls the batch resolver once instead of calling `playlistAudience` per id, while `publishPlaylistChanged` and `publishTrackChanged` reach the resolver through their projections. The events each listener receives are unchanged.
+
+`playlistAccess.test.ts` covers the batch grouping, the missing and empty cases, both projections, and one query for a three-playlist batch. `liveEvents.test.ts` checks the batch publisher reads that resolver in one query, and the existing event tests pass unchanged. `pnpm run build`, `pnpm run lint`, the unit suites (499 web, 384 server, 39 i18n, 31 youtube, 2 tokens, 6 ui-foundation) and `pnpm test:e2e` (35 journeys) pass.
 
 ## Agent Brief
 

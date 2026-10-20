@@ -211,17 +211,13 @@ describe('trackStateLabel', () => {
   });
 });
 
-/*
- * The switch, at the package seam: the formatters read the translator, so the
- * same inputs read in the chosen language.
- */
+/* At the package seam: the formatters read the translator, so the same inputs
+ * read in the chosen language. */
 describe('the chosen language', () => {
   const fr = createTranslator(catalogs[Language.French], Language.French);
 
   it('reads a sync line and a track count in French', () => {
-    expect(formatLastSynced(fr, before(2 * DAY), now)).toBe(
-      'Synchronisée il y a 2 jours'
-    );
+    expect(formatLastSynced(fr, before(2 * DAY), now)).toBe('il y a 2 jours');
     expect(formatTrackCount(fr, 3)).toBe('3 pistes');
   });
 });

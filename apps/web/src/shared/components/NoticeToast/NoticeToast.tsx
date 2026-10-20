@@ -1,11 +1,9 @@
 import styles from './NoticeToast.module.scss';
 
 /*
- * A transient notice with nothing to press. It is the shuffle refusal's surface:
- * the control was pressed and did nothing, and this says why, in the slot the
- * volume notice already uses, centred above the player bar. It never blocks, and
- * it withdraws itself, so a refusal does not grow a control for the notice to be
- * dismissed with.
+ * A transient notice with nothing to press: the shuffle refusal's surface. It
+ * never blocks and withdraws itself, so a refusal does not grow a control to
+ * dismiss it.
  */
 
 interface NoticeToastProps {

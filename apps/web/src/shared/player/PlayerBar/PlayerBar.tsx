@@ -1,44 +1,59 @@
 import { IconPlayerSkipBack, IconPlayerSkipForward } from '@tabler/icons-react';
+import { Link, useMatchRoute } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
 
+import { endpoints } from '@playliberty/contracts';
 import { formatDuration, useI18n } from '@playliberty/i18n';
 
-import { API_PREFIX } from '../../api/client/client';
+import { mediaUrl } from '../../api/endpoints/endpoints';
 import PlayGlyph from '../../components/PlayGlyph';
 import { usePlayPauseMorph } from '../../components/usePlayPauseMorph/usePlayPauseMorph';
 import VolumeControl from '../VolumeControl/VolumeControl';
 import { usePlayerStore } from '../playerStore/playerStore';
-import { currentTrack, hasNext } from '../types';
+import { SeekDirection, currentTrack, hasNext } from '../types';
 import styles from './PlayerBar.module.scss';
 
 /*
- * The player bar, the shell's only persistent chrome and the one component whose
- * height is paid for by the list it covers. The middle column of the grid is the
- * transport, so the transport posts 0px of offset and the title has equal room
- * either side.
- *
- * The bar is absent at rest and appears on the first track, because 98px on the
- * landing screen would be spent on a play that cannot act. Once playback exists
- * the bar persists across both routes, because music keeps playing while the
- * listener browses elsewhere.
- *
- * The transport is always drawn once the bar exists, unlike the header's, which
- * is absent unless the playlist is playing: the bar is the one place a listener
- * goes looking for the steps, and a control that appears and disappears there is
- * worse than one that is always present.
+ * The player bar: absent at rest; once playback exists it persists across both
+ * routes, like the music. Its transport is always drawn, unlike the header's,
+ * so a control never appears and disappears.
  */
 
-/** How many seconds one press of an arrow key moves the playhead. */
-const KEYBOARD_STEP_SECONDS = 5;
+/* The controls whose activation and navigation keys the transport must not
+ * claim. */
+const CONTROL_KEY_SELECTOR = [
+  'button',
+  'a[href]',
+  'input',
+  'textarea',
+  'select',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="menu"]',
+  '[role="listbox"]',
+  '[role="slider"]',
+  '[role="dialog"]',
+  '[aria-haspopup]:not([aria-haspopup="false"])'
+].join(',');
 
-/*
- * Pointer capture keeps the drag alive when the pointer leaves the track, which
- * is the difference between a scrub that survives an impatient hand and one that
- * stops at the track's edge. It is a nicety rather than the seek itself, so a
- * host that does not implement it loses the drag-outside behaviour and nothing
- * else; jsdom is one such host, and an unguarded call would take the whole
- * handler down with it.
- */
+/* A control owns its keys, whether Space activates it or an arrow navigates it;
+ * a default already prevented is somebody else's too. */
+function ownsKey(event: KeyboardEvent): boolean {
+  if (event.defaultPrevented) {
+    return true;
+  }
+
+  const target =
+    event.target instanceof HTMLElement ? event.target : document.activeElement;
+
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest(CONTROL_KEY_SELECTOR) !== null)
+  );
+}
+
+/* Pointer capture keeps a drag alive when the pointer leaves the track. A host
+ * without it (jsdom) must not throw, so the call is optional-chained. */
 function capturePointer(element: HTMLElement, pointerId: number): void {
   element.setPointerCapture?.(pointerId);
 }
@@ -50,10 +65,20 @@ function releasePointer(element: HTMLElement, pointerId: number): void {
 export default function PlayerBar() {
   const { t } = useI18n();
   const current = usePlayerStore(currentTrack);
+  const matchRoute = useMatchRoute();
+  const onCurrentPlaylist =
+    current !== null &&
+    matchRoute({
+      to: '/playlists/$playlistId',
+      params: { playlistId: current.playlistId }
+    }) !== false;
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
-  const seek = usePlayerStore(state => state.seek);
+  const seekToFraction = usePlayerStore(state => state.seekToFraction);
+  const seekBy = usePlayerStore(state => state.seekBy);
+  const seekToStart = usePlayerStore(state => state.seekToStart);
+  const seekToEnd = usePlayerStore(state => state.seekToEnd);
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
   const canSkipNext = usePlayerStore(hasNext);
@@ -61,24 +86,11 @@ export default function PlayerBar() {
   const draggingRef = useRef(false);
   const { run, endRun } = usePlayPauseMorph(isPlaying);
 
-  /*
-   * The keyboard transport, bound to the window so a press reaches the player
-   * wherever focus sits. Space toggles playback; the arrows move the playhead by
-   * the same step the focused seeker uses. Text entry keeps its keys: an input, a
-   * textarea or any editable region is left alone, which is the one place a
-   * shortcut for a letterless key would cost the listener something. The store is
-   * read at press time rather than closed over, so a shortcut never acts on a
-   * track the listener has already left.
-   */
+  /* The keyboard transport, on the window so a press reaches it wherever focus
+   * sits. A focused control keeps its keys; the store is read at press time. */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target;
-
-      if (
-        target instanceof HTMLElement &&
-        (target.isContentEditable ||
-          target.closest('input, textarea, select') !== null)
-      ) {
+      if (ownsKey(event)) {
         return;
       }
 
@@ -101,14 +113,10 @@ export default function PlayerBar() {
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault();
 
-        const duration = currentTrack(state)?.durationSeconds ?? 0;
-        const step =
+        state.seekBy(
           event.key === 'ArrowRight'
-            ? KEYBOARD_STEP_SECONDS
-            : -KEYBOARD_STEP_SECONDS;
-
-        state.seek(
-          Math.max(0, Math.min(duration, state.positionSeconds + step))
+            ? SeekDirection.Forward
+            : SeekDirection.Backward
         );
       }
     };
@@ -128,25 +136,22 @@ export default function PlayerBar() {
   const artwork =
     current.thumbnailPath === null
       ? null
-      : `${API_PREFIX}/tracks/${current.id}/thumbnail`;
+      : mediaUrl(endpoints.trackThumbnail, { trackId: current.id });
 
-  /* The pointer's x against the track's own box, in seconds. The element is the
-   * truth for the target, not the store, because the store's position is
-   * whatever the last interaction wrote. */
-  const secondsAt = (clientX: number): number => {
+  /* The pointer's x as a fraction of the track's own box: the store owns the
+   * fraction-to-seconds conversion and its clamp. */
+  const fractionAt = (clientX: number): number => {
     const box = scrubRef.current?.getBoundingClientRect();
 
-    if (box === undefined || box.width === 0 || duration <= 0) {
+    if (box === undefined || box.width === 0) {
       return 0;
     }
 
-    const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-
-    return ratio * duration;
+    return (clientX - box.left) / box.width;
   };
 
   const seekToPointer = (clientX: number): void => {
-    seek(secondsAt(clientX));
+    seekToFraction(fractionAt(clientX));
   };
 
   return (
@@ -154,9 +159,14 @@ export default function PlayerBar() {
       className={styles.playerBar}
       aria-label={t('playerBar.label')}
       data-state={isPlaying ? 'playing' : 'paused'}>
-      <span
+      <Link
+        to="/playlists/$playlistId"
+        params={{ playlistId: current.playlistId }}
         className={styles.playerBar__art}
-        data-art={artwork === null ? 'no-art' : 'art'}>
+        data-art={artwork === null ? 'no-art' : 'art'}
+        aria-hidden="true"
+        tabIndex={-1}
+        disabled={onCurrentPlaylist}>
         {artwork === null ? null : (
           <img
             className={styles.playerBar__image}
@@ -165,14 +175,18 @@ export default function PlayerBar() {
             decoding="async"
           />
         )}
-      </span>
+      </Link>
       <div className={styles.playerBar__top}>
         <div className={styles.playerBar__id}>
           <span className={styles.playerBar__name}>
             <span className={styles.playerBar__title}>{current.title}</span>
-            <span className={styles.playerBar__source}>
+            <Link
+              to="/playlists/$playlistId"
+              params={{ playlistId: current.playlistId }}
+              className={styles.playerBar__source}
+              disabled={onCurrentPlaylist}>
               {current.playlistName}
-            </span>
+            </Link>
           </span>
         </div>
         <div className={styles.playerBar__transport}>
@@ -245,12 +259,27 @@ export default function PlayerBar() {
             releasePointer(event.currentTarget, event.pointerId);
           }}
           onKeyDown={event => {
+            if (
+              (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.altKey
+            ) {
+              event.preventDefault();
+              seekBy(
+                event.key === 'ArrowRight'
+                  ? SeekDirection.Forward
+                  : SeekDirection.Backward
+              );
+              return;
+            }
+
             if (event.key === 'Home') {
-              seek(0);
+              seekToStart();
             }
 
             if (event.key === 'End') {
-              seek(duration);
+              seekToEnd();
             }
           }}>
           <div

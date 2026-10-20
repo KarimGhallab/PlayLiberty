@@ -66,8 +66,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=32m
-      # The nginx entrypoint renders the templated config here at container start,
-      # so it has to be writable under the read-only root filesystem.
+      # The nginx entrypoint renders the templated config here at container
+      # start, so it must be writable under the read-only root filesystem.
       - /etc/nginx/conf.d:size=8m
       - /var/cache/nginx:size=32m
     cap_drop:

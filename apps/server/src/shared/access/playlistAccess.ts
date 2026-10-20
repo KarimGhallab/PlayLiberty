@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 
 import type { PlaylistAccess } from '@playliberty/contracts';
@@ -10,28 +10,16 @@ import {
   playlists,
   shares
 } from '../../platform/database/schema.js';
+import { AccessNeed, ownerGrants, shareLevelsFor } from './rule.js';
 
 /*
- * Who may see and who may write, for a playlist. An account reaches a playlist it
- * owns, or one it holds a share on. There is no global library and an admin role
- * carries no override, so there is no `isAdmin` branch here, and adding one would
- * be a decision rather than an omission.
- *
- * Every function returns `null`, or omits the playlist from a map or a set, for an
- * account that cannot reach it. None of them returns a forbidden: a client
- * rendering a playlist screen has no state for "you may not see this", and a
- * revoked share has to read as gone. A caller sends 404 on null without having to
- * know why.
+ * An account reaches a playlist it owns or holds a share on; no global library,
+ * no admin override. An unreachable one is null or absent, never forbidden, so
+ * revoked share reads as gone and the caller answers 404.
  */
 
-// Raw SQL for the two reads, and the query builder does not express these cleanly.
-// Both answers depend on a correlated lookup into share that may or may not
-// match, and a left join that yields a null level is a worse thing to read than a
-// nullable column. Every other read in the app goes through Drizzle.
-//
-// The account id binds first in both statements, matching the join predicate's
-// order rather than the where clause's, so the binding list reads in one order and
-// not two.
+// Raw SQL: the builder cannot express the correlated share lookup cleanly.
+// The account id binds first in both, matching the join predicate's order.
 const SINGLE_ACCESS_SQL = `
   select p.owner_account_id as owner, s.level as level
   from playlist p
@@ -68,21 +56,33 @@ function toAccess(
 }
 
 /*
- * A fragment for a list query, so "the playlists I can see" composes into Drizzle
- * instead of being fetched and filtered in memory.
+ * The one access condition: ownership, or a share at a level the need accepts.
+ * The page fragment and both track queries call it, so the rule is written once.
  */
+export function playlistReaches(accountId: string, need: AccessNeed): SQL {
+  const owner = ownerGrants(need)
+    ? sql`${playlists.ownerAccountId} = ${accountId}`
+    : sql`0 = 1`;
+  const levels = shareLevelsFor(need);
+  const share =
+    levels.length === 0
+      ? sql`0 = 1`
+      : sql`exists (
+          select 1 from ${shares}
+          where ${shares.playlistId} = ${playlists.id}
+            and ${shares.accountId} = ${accountId}
+            and ${inArray(shares.level, [...levels])}
+        )`;
+
+  return sql`(${owner} or ${share})`;
+}
+
+/* A SQL fragment, so "the playlists I can see" composes into Drizzle. */
 export function playlistVisibleTo(
   database: DatabaseHandle,
   accountId: string
 ): SQL {
-  return sql`(
-    ${playlists.ownerAccountId} = ${accountId}
-    or exists (
-      select 1 from ${shares}
-      where ${shares.playlistId} = ${playlists.id}
-        and ${shares.accountId} = ${accountId}
-    )
-  )`;
+  return playlistReaches(accountId, AccessNeed.Read);
 }
 
 export function resolvePlaylistAccess(
@@ -97,12 +97,8 @@ export function resolvePlaylistAccess(
   return toAccess(row, accountId);
 }
 
-/*
- * One statement rather than one per playlist, so the request costs a single round
- * trip whatever the user checked. A playlist missing from the map is one this
- * account cannot reach, and the caller reports it exactly as it reports one that
- * does not exist.
- */
+/* One statement, so a single round trip whatever the user checked. A playlist
+ * missing from the map is unreachable, reported like a nonexistent one. */
 export function resolvePlaylistAccessMany(
   database: DatabaseHandle,
   playlistIds: string[],
@@ -132,41 +128,8 @@ export function resolvePlaylistAccessMany(
   return resolved;
 }
 
-/*
- * Ownership, and only ownership, for the three actions no collaborator has:
- * rename, delete and managing shares. A share is a grant of access, so an account
- * that could grant access would be an owner wearing a collaborator's label.
- */
-export function isPlaylistOwner(
-  database: DatabaseHandle,
-  playlistId: string,
-  accountId: string
-): boolean {
-  return resolvePlaylistAccess(database, playlistId, accountId) === 'owner';
-}
-
-/*
- * Write access is the owner or a write collaborator, and not a read one. A
- * playlist the account cannot reach resolves to no access and is not writable, so
- * its callers answer not-found exactly as they do for a missing row.
- */
-export function canWritePlaylist(
-  database: DatabaseHandle,
-  playlistId: string,
-  accountId: string
-): boolean {
-  const access = resolvePlaylistAccess(database, playlistId, accountId);
-
-  return access === 'owner' || access === 'write';
-}
-
-/*
- * Which of these playlists are shared with anybody at all, for the `hasShares` flag
- * the playlist view carries. Distinct from the access level on purpose: an owner
- * needs to know a playlist is shared out even though their own access is 'owner'
- * and tells them nothing, and a collaborator needs the same flag without learning
- * who else holds a share.
- */
+/* The `hasShares` flag, distinct from access on purpose: an owner's 'owner'
+ * access tells nothing, and a collaborator must not learn who shares it. */
 export function sharedPlaylistIds(
   database: DatabaseHandle,
   playlistIds: string[]
@@ -184,84 +147,94 @@ export function sharedPlaylistIds(
   return new Set(rows.map(row => row.playlistId));
 }
 
-/*
- * Every account that can see a playlist: the owner and each collaborator. It is
- * the audience a live event about the playlist is published to, so the rule for
- * who may see a playlist and the rule for who is told it changed are the same
- * rule read two ways rather than two lists that can drift. A playlist that does
- * not exist has no audience, and a publisher of nothing is a no-op.
- */
-export function playlistAudience(
-  database: DatabaseHandle,
-  playlistId: string
-): string[] {
-  const owner = database.db
-    .select({ ownerAccountId: playlists.ownerAccountId })
-    .from(playlists)
-    .where(eq(playlists.id, playlistId))
-    .get();
-
-  if (owner === undefined) {
-    return [];
-  }
-
-  const collaborators = database.db
-    .select({ accountId: shares.accountId })
-    .from(shares)
-    .where(eq(shares.playlistId, playlistId))
-    .all();
-
-  return [owner.ownerAccountId, ...collaborators.map(row => row.accountId)];
-}
-
-/*
- * Who hears a change to a track, and which playlists each of them may be told
- * about. A track is shared across playlists and one file is fetched once, so a
- * change to it is a change to every playlist that associates it; but the event
- * carries the playlist ids, so the answer is per account: an account hears only
- * about the holding playlists it can reach, and one that can reach none is left
- * out entirely. A track no playlist holds has no audience, so a publisher of
- * nothing is a no-op.
- */
+/* An account and the playlists it may hear about. An account that reaches none
+ * of the batch is left out. */
 export interface TrackAudience {
   accountId: string;
   playlistIds: string[];
 }
 
+/* Who may hear about these playlists: one query for the batch, grouped by
+ * account, in the order the caller named the playlists. */
+export function playlistAudiences(
+  database: DatabaseHandle,
+  playlistIds: string[]
+): TrackAudience[] {
+  if (playlistIds.length === 0) {
+    return [];
+  }
+
+  const levels = shareLevelsFor(AccessNeed.Read);
+  const rows = database.db
+    .select({
+      playlistId: playlists.id,
+      ownerAccountId: playlists.ownerAccountId,
+      sharedAccountId: shares.accountId
+    })
+    .from(playlists)
+    .leftJoin(
+      shares,
+      and(
+        eq(shares.playlistId, playlists.id),
+        inArray(shares.level, [...levels])
+      )
+    )
+    .where(inArray(playlists.id, playlistIds))
+    .all();
+
+  const members = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    const accounts = members.get(row.playlistId) ?? new Set<string>();
+
+    if (ownerGrants(AccessNeed.Read)) {
+      accounts.add(row.ownerAccountId);
+    }
+
+    if (row.sharedAccountId !== null) {
+      accounts.add(row.sharedAccountId);
+    }
+
+    members.set(row.playlistId, accounts);
+  }
+
+  const byAccount = new Map<string, string[]>();
+
+  for (const playlistId of playlistIds) {
+    for (const accountId of members.get(playlistId) ?? []) {
+      const ids = byAccount.get(accountId) ?? [];
+      ids.push(playlistId);
+      byAccount.set(accountId, ids);
+    }
+  }
+
+  return [...byAccount].map(([accountId, ids]) => ({
+    accountId,
+    playlistIds: ids
+  }));
+}
+
+/* The single-playlist projection of the batch resolver. */
+export function playlistAudience(
+  database: DatabaseHandle,
+  playlistId: string
+): string[] {
+  return playlistAudiences(database, [playlistId]).map(
+    audience => audience.accountId
+  );
+}
+
+/* The track projection: its holding playlists, then their audiences. */
 export function trackAudience(
   database: DatabaseHandle,
   trackId: string
 ): TrackAudience[] {
-  const rows = database.db
-    .select({
-      playlistId: associations.playlistId,
-      ownerAccountId: playlists.ownerAccountId,
-      sharedAccountId: shares.accountId
-    })
+  const playlistIds = database.db
+    .selectDistinct({ playlistId: associations.playlistId })
     .from(associations)
-    .innerJoin(playlists, eq(associations.playlistId, playlists.id))
-    .leftJoin(shares, eq(shares.playlistId, associations.playlistId))
     .where(eq(associations.trackId, trackId))
-    .all();
+    .all()
+    .map(row => row.playlistId);
 
-  const byAccount = new Map<string, Set<string>>();
-
-  const add = (accountId: string, playlistId: string): void => {
-    const playlistIds = byAccount.get(accountId) ?? new Set<string>();
-    playlistIds.add(playlistId);
-    byAccount.set(accountId, playlistIds);
-  };
-
-  for (const row of rows) {
-    add(row.ownerAccountId, row.playlistId);
-
-    if (row.sharedAccountId !== null) {
-      add(row.sharedAccountId, row.playlistId);
-    }
-  }
-
-  return [...byAccount].map(([accountId, playlistIds]) => ({
-    accountId,
-    playlistIds: [...playlistIds]
-  }));
+  return playlistAudiences(database, playlistIds);
 }

@@ -29,6 +29,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     sort: PlaylistSort.Playlist,
     access: 'owner',
     hasShares: false,
+    pinned: false,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z',
     ...overrides
@@ -105,6 +106,57 @@ describe('AddTrackDialog', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('holds Add until a link and a playlist are present', () => {
+    const onSubmit = vi.fn();
+    renderDialog({ onSubmit });
+    const add = screen.getByRole('button', { name: 'Add' });
+
+    expect(add).toBeDisabled();
+    fireEvent.click(add);
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Video link'), {
+      target: { value: 'https://youtube.com/watch?v=dQw4w9WgXcQ' }
+    });
+    expect(add).toBeEnabled();
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Rain On The Window' })
+    );
+    expect(add).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Late Night Jazz' }));
+    expect(add).toBeEnabled();
+  });
+
+  it('asks before a dirty scrim click discards the link', () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+    const field = screen.getByLabelText('Video link');
+
+    fireEvent.change(field, {
+      target: { value: 'https://youtube.com/watch?v=dQw4w9WgXcQ' }
+    });
+    fireEvent.mouseDown(
+      screen.getByRole('dialog').parentElement as HTMLElement
+    );
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Discard this link?');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(field).toHaveValue('https://youtube.com/watch?v=dQw4w9WgXcQ');
+
+    fireEvent.mouseDown(
+      screen.getByRole('dialog').parentElement as HTMLElement
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('names the refused playlists and claims no cause', async () => {

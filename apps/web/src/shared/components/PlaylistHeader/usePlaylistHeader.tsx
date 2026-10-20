@@ -6,13 +6,15 @@ import {
   IconLockShare,
   IconPlayerSkipBack,
   IconPlayerTrackNext,
+  IconRotate,
   IconUserShare
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
+import { PlaylistSyncStatus, endpoints } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import {
   formatLastSynced,
@@ -22,91 +24,82 @@ import {
 } from '@playliberty/i18n';
 import { sleeveIndex } from '@playliberty/ui-foundation';
 
-import { API_PREFIX } from '../../api/client/client';
+import { mediaUrl } from '../../api/endpoints/endpoints';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
+import Menu from '../Menu/Menu';
 import PlayGlyph from '../PlayGlyph';
+import Spinner from '../Spinner/Spinner';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
+import type { PlaylistDoorProps } from './playlistDoor';
+import { playlistDoorProps } from './playlistDoor';
 
 /*
- * The playlist header's shared seam: what the row and the card both draw, built
- * once. The cover's state, the identity block and the menu model live here, and
- * each arrangement composes them into its own markup, so the two cannot drift
- * on the name, the share mark, the count, the sync line or the overflow.
- *
- * The actions column is the play, the transport that replaces it while the queue
- * is this playlist, the shuffle and the overflow, each absent when the caller
- * offers no callback: the header is gated by what the caller can do rather than
- * by a level string it would have to learn. The overflow's items are not the
- * header's to decide: the actions module builds them by access and hands them in
- * as `menu`, so an owner gets the four it can act on, a writer the one it can, and
- * a reader an empty menu and no overflow.
- *
- * `ownerName` is the resolved display name of a playlist that is not the
- * account's, and null when the directory does not carry the owner. It is drawn
- * only for a shared playlist: on the account's own playlist `access` is `owner`,
- * which already says the item is theirs, so a "shared by" line there would be a
- * sentence about the person reading it. A null name draws nothing at all rather
- * than a placeholder, because a placeholder reads as a decision about who owns
- * the playlist, and the share indicator beside the name is the honest fallback.
+ * The header's shared seam: the cover state, the identity block and the menu
+ * model, built once so the arrangements cannot drift. Each control is drawn
+ * only when the caller offers its callback.
  */
+
+/* Which start control a press belongs to, so only it shows the in-flight
+ * state while the others wait. */
+export type PlaybackStartControl = 'play' | 'shuffle';
 
 export interface PlaylistHeaderSeam {
   playlist: Playlist;
   ownerName?: string | null;
-  /*
-   * Whether the name is the page heading rather than a self-link. The detail's
-   * header owns the route it names, so its name is a heading; the library's item
-   * is a door and its name is the link beside the cover's own.
-   */
+  /* Whether the name is the page heading rather than a self-link. The detail's
+   * header owns the route it names. */
   heading?: boolean;
-  /*
-   * Whether a deferred action is about to remove this playlist. It dims the
-   * header, sets `aria-busy`, and disables every control and door it offers, so
-   * the thing the toast says is going cannot still be opened, renamed, shuffled
-   * or deleted again.
-   */
+  /* Whether a deferred action is about to remove this playlist: it dims the
+   * header and disables every control and door it offers. */
   pending?: boolean;
-  /* The one play door. Optional, so a consumer that cannot start playback
-   * simply does not draw it. */
+  /* The play door; absent when the caller cannot start playback. */
   onPlay?: () => void;
   playing?: boolean;
-  /*
-   * Whether this playlist is the one the queue is on, paused or playing. The
-   * transport's steps act on the queue, so they stay whenever the header is the
-   * queue's own and the caller offers both, and a playlist the queue is not on
-   * keeps the single play that starts it.
-   */
+  /* Whether this playlist is the one the queue is on, paused or playing. */
   current?: boolean;
-  /* The transport's steps. The pair and `current` together decide whether the
-   * transport replaces the standalone play; an absent pair keeps the standalone
-   * play, so a consumer that cannot skip does not lose its door. */
+  /* The transport's steps; absent keeps the standalone play, so a consumer that
+   * cannot skip does not lose its door. */
   onSkipBack?: () => void;
   onSkipNext?: () => void;
-  /*
-   * Whether the queue has a track after the current one. The transport is drawn
-   * while playing, and a last track's next has nowhere to go, so the control
-   * disables rather than offering a press that does nothing.
-   */
+  /* Whether the queue has a track after the current one: the last track's next
+   * disables. */
   hasNext?: boolean;
   onShuffle?: () => void;
   shuffled?: boolean;
+  /* The named sync beside the state; absent for a reader. Only the detail's
+   * stacked identity draws it, where the state has a line of its own. */
+  onSync?: () => void;
+  /* Whether a sync is in flight: the control carries the word. */
+  syncing?: boolean;
   menu?: readonly PlaylistAction[];
   /* The cover as a blurred ground behind the header. */
   ground?: boolean;
-  /* The elapsed sync time beside the state, which only the row asks for. */
+  /* The elapsed sync time beside the state. */
   showSyncTime?: boolean;
   now?: Date;
+  /* The library's own mark, which the card item draws beside the count. */
+  mark?: ReactNode;
+  /* Whether the count and the sync state share one line: count left, state
+   * right. */
+  statusLine?: boolean;
+  /* The rows the caller's list has loaded, when that list is the whole
+   * playlist: a narrowed list owes no window claim against this count. */
   displayedCount?: number;
-  /*
-   * The total the count line describes. It is the playlist's own count when no
-   * filter is on, and the filtered total when the detail has narrowed the list:
-   * the line must not claim rows the filter removed.
-   */
-  countTotal?: number;
+  /* Whether this playlist has anything to play. Required: the seam cannot
+   * derive it from `trackCount`, which counts every association. */
+  playable: boolean;
+  /* Whether the play names its playlist: true where several cards stand
+   * together, false where the page heading already names it. */
+  namedPlay?: boolean;
   playbackFailed?: boolean;
+  /* Whether this header's play or shuffle is the press waiting on its read. */
   playbackStarting?: boolean;
+  /* Whether any start for this playlist is waiting: every start control waits. */
+  playbackBusy?: boolean;
+  /* Which start control the in-flight press belongs to. */
+  startingControl?: PlaybackStartControl;
   onRetryPlayback?: () => void;
 }
 
@@ -122,6 +115,8 @@ export interface PlaylistHeaderParts {
   readonly shuffleControl: ReactNode;
   readonly menuControl: ReactNode;
   readonly identity: ReactNode;
+  /* The door props every arrangement spreads on the anchor it places. */
+  readonly door: PlaylistDoorProps;
 }
 
 interface ShareMark {
@@ -130,12 +125,8 @@ interface ShareMark {
   readonly Icon: typeof IconLock;
 }
 
-/*
- * Three share states and one glyph each. The indicator is coarser than the
- * permission model on purpose: one glyph says you are not the owner and nothing
- * about what you may do, because the level is shown where it acts, in the
- * overflow.
- */
+/* The indicator is deliberately coarser than the permission model: one glyph
+ * says you are not the owner, not what you may do. */
 function shareMark(playlist: Playlist): ShareMark {
   if (playlist.access !== 'owner') {
     return {
@@ -169,14 +160,21 @@ export function usePlaylistHeader({
   hasNext = true,
   onShuffle,
   shuffled = false,
+  onSync,
+  syncing = false,
   menu = [],
   ground = false,
   showSyncTime = false,
   now = new Date(),
+  statusLine = false,
+  mark: nameMark,
   displayedCount,
-  countTotal,
+  playable,
+  namedPlay = false,
   playbackFailed = false,
   playbackStarting = false,
+  playbackBusy = playbackStarting,
+  startingControl = 'play',
   onRetryPlayback
 }: PlaylistHeaderSeam): PlaylistHeaderParts {
   const { t } = useI18n();
@@ -189,7 +187,7 @@ export function usePlaylistHeader({
   const coverSrc =
     playlist.coverTrackId === null
       ? null
-      : `${API_PREFIX}/tracks/${playlist.coverTrackId}/thumbnail`;
+      : mediaUrl(endpoints.trackThumbnail, { trackId: playlist.coverTrackId });
   const [coverFailed, setCoverFailed] = useState(false);
   const cover = coverFailed ? null : coverSrc;
 
@@ -207,143 +205,66 @@ export function usePlaylistHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLSpanElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  /* Whether the next open should land on the last item (ArrowUp) or the first. */
-  const menuFocusLastRef = useRef(false);
   const [shareTipDismissed, setShareTipDismissed] = useState(false);
   const { run, endRun } = usePlayPauseMorph(playing);
 
-  /* The cover's failure flag resets when the playlist points at a new track. */
   useEffect(() => {
     setCoverFailed(false);
   }, [playlist.coverTrackId]);
 
-  /*
-   * The enabled items of the open panel, read from the DOM on each use rather
-   * than captured: Sync stops while a run is in flight, so the wrap and the ends
-   * must count only what can be pressed now.
-   */
-  const enabledMenuItems = (): HTMLButtonElement[] => {
-    const menu = menuRef.current;
-
-    if (menu === null) {
-      return [];
-    }
-
-    return Array.from(
-      menu.querySelectorAll<HTMLButtonElement>(
-        '[role="menuitem"]:not([disabled])'
-      )
-    );
-  };
-
-  const focusMenuItem = (index: number): void => {
-    const items = enabledMenuItems();
-
-    if (items.length === 0) {
-      return;
-    }
-
-    const wrapped = ((index % items.length) + items.length) % items.length;
-    items[wrapped]?.focus();
-  };
-
-  const closeMenu = (): void => {
-    setMenuOpen(false);
-    menuButtonRef.current?.focus();
-  };
+  const door = playlistDoorProps(pending);
 
   useDismissibleMenu({
     open: menuOpen,
     containerRef: menuAnchorRef,
-    onClose: () => setMenuOpen(false),
-    returnFocusTo: menuButtonRef
+    triggerRef: menuButtonRef,
+    onOpen: () => setMenuOpen(true),
+    onClose: () => setMenuOpen(false)
   });
 
-  /*
-   * Opening moves focus onto an item, which is where a menu button leaves it and
-   * what `role="menu"` promises; ArrowUp on the button opens onto the last item
-   * and every other way opens onto the first. The arrows, Home and End walk the
-   * panel and Tab leaves it. The handler is on the panel, so it answers only keys
-   * that arrive while the menu owns focus.
-   */
-  useEffect(() => {
-    if (menuOpen) {
-      focusMenuItem(
-        menuFocusLastRef.current ? enabledMenuItems().length - 1 : 0
-      );
-    }
-  }, [menuOpen]);
-
-  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
-    const items = enabledMenuItems();
-    const activeIndex = items.findIndex(
-      item => item === document.activeElement
-    );
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      focusMenuItem(activeIndex + 1);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      focusMenuItem(activeIndex - 1);
-      return;
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      focusMenuItem(0);
-      return;
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      focusMenuItem(items.length - 1);
-      return;
-    }
-
-    /* Tab closes the panel and lets the browser walk on from the button focus is
-     * returned to, which is the menu button's own tab stop. */
-    if (event.key === 'Tab') {
-      closeMenu();
-    }
-  };
-
-  const playable = playlist.trackCount > 0;
-  const total = countTotal ?? playlist.trackCount;
+  /* The playlist's own size, never a narrowed read's: a filter changes what is
+   * drawn, not how large the playlist is. */
+  const total = playlist.trackCount;
   const shownCount = displayedCount ?? total;
   const partial = shownCount < total;
   const lastSyncedAt =
     playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
 
-  /* The one door. It is a pause while the queue is this playlist, which is the
-   * header's own swap, and it is disabled rather than absent on a playlist with
-   * nothing to play: a control that is there and cannot be pressed is a
-   * different thing from a control that is not there. */
+  /* Disabled rather than absent on a playlist with nothing to play: a control
+   * that cannot be pressed differs from one that is not there. */
+  const startingPlay = playbackStarting && startingControl === 'play';
+  const startingShuffle = playbackStarting && startingControl === 'shuffle';
+  const playLabel = namedPlay
+    ? t(playing ? 'header.pauseNamed' : 'header.playNamed', {
+        name: playlist.name
+      })
+    : t(playing ? 'header.pause' : 'header.play');
+
   const playControl =
     onPlay === undefined ? null : (
       <button
         type="button"
         className={styles.playlistHeader__play}
-        aria-label={playing ? t('header.pause') : t('header.play')}
-        disabled={!playable || pending || playbackStarting}
+        aria-label={playLabel}
+        aria-busy={startingPlay ? true : undefined}
+        data-starting={startingPlay ? 'true' : undefined}
+        disabled={!playable || pending || playbackBusy}
         data-run={run}
         onAnimationEnd={endRun}
         onClick={onPlay}>
-        <PlayGlyph
-          className={styles.playlistHeader__glyph}
-          stripClassName={styles.playlistHeader__strip}
-        />
+        {startingPlay ? (
+          <Spinner />
+        ) : (
+          <PlayGlyph
+            className={styles.playlistHeader__glyph}
+            stripClassName={styles.playlistHeader__strip}
+          />
+        )}
       </button>
     );
 
-  /* The transport is the queue's own control, so it is drawn while this card is
-   * the queue, paused or playing, and it needs both steps and the play to be one
-   * control. A playlist the queue is not on has nowhere to step, so it keeps the
-   * single play. */
+  /* Drawn while this card is the queue, paused or playing, with both steps: a
+   * playlist the queue is not on keeps the single play. */
   const showTransport =
     current &&
     onPlay !== undefined &&
@@ -386,14 +307,15 @@ export function usePlaylistHeader({
       <button
         type="button"
         className={styles.playlistHeader__retry}
-        disabled={playbackStarting}
+        aria-busy={playbackBusy ? true : undefined}
+        disabled={playbackBusy}
         onClick={onRetryPlayback}>
         <IconAlertTriangle
           className={styles.playlistHeader__retryIcon}
           aria-hidden="true"
           focusable="false"
         />
-        {playbackStarting
+        {playbackBusy
           ? t('header.retryingPlayback')
           : t('header.retryPlayback')}
       </button>
@@ -410,13 +332,44 @@ export function usePlaylistHeader({
         className={styles.playlistHeader__iconBtn}
         aria-pressed={shuffled && current}
         aria-label={t('header.shuffle', { name: playlist.name })}
-        disabled={pending || playbackStarting}
+        aria-busy={startingShuffle ? true : undefined}
+        data-starting={startingShuffle ? 'true' : undefined}
+        disabled={pending || playbackBusy}
         onClick={onShuffle}>
-        <IconArrowsShuffle
-          className={styles.playlistHeader__icon}
-          aria-hidden="true"
-          focusable="false"
-        />
+        {startingShuffle ? (
+          <Spinner />
+        ) : (
+          <IconArrowsShuffle
+            className={styles.playlistHeader__icon}
+            aria-hidden="true"
+            focusable="false"
+          />
+        )}
+      </button>
+    );
+
+  /* The action owns the in-flight word beside a named sync control; a reader
+   * keeps the state line, since no control can name it. */
+  const actionOwnsSync = syncing && onSync !== undefined;
+
+  const syncControl =
+    onSync === undefined ? null : (
+      <button
+        type="button"
+        className={styles.playlistHeader__sync}
+        aria-busy={syncing ? true : undefined}
+        disabled={pending || syncing}
+        onClick={onSync}>
+        {syncing ? (
+          <Spinner />
+        ) : (
+          <IconRotate
+            className={styles.playlistHeader__syncIcon}
+            aria-hidden="true"
+            focusable="false"
+          />
+        )}
+        {syncing ? t('header.syncing') : t('header.syncNow')}
       </button>
     );
 
@@ -431,64 +384,76 @@ export function usePlaylistHeader({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           disabled={pending}
-          onClick={() => {
-            menuFocusLastRef.current = false;
-            setMenuOpen(open => !open);
-          }}
-          onKeyDown={event => {
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-              event.preventDefault();
-              menuFocusLastRef.current = event.key === 'ArrowUp';
-              setMenuOpen(true);
-            }
-          }}>
+          onClick={() => setMenuOpen(open => !open)}>
           <IconDots
             className={styles.playlistHeader__icon}
             aria-hidden="true"
             focusable="false"
           />
         </button>
-        {menuOpen ? (
-          <div
-            className={styles.playlistHeader__menu}
-            role="menu"
-            ref={menuRef}
-            onKeyDown={onMenuKeyDown}>
-            {menu.map((item, index) => (
-              <Fragment key={item.key}>
-                {item.destructive === true && index > 0 ? <hr /> : null}
-                <button
-                  type="button"
-                  role="menuitem"
-                  tabIndex={-1}
-                  className={styles.playlistHeader__menuItem}
-                  data-destructive={
-                    item.destructive === true ? 'true' : undefined
-                  }
-                  disabled={item.disabled === true}
-                  onClick={() => {
-                    closeMenu();
-                    item.onSelect();
-                  }}>
-                  <item.Icon
-                    className={styles.playlistHeader__menuIcon}
-                    aria-hidden="true"
-                    focusable="false"
-                  />
-                  {t(item.label)}
-                </button>
-              </Fragment>
-            ))}
-          </div>
-        ) : null}
+        <Menu
+          open={menuOpen}
+          items={menu.map(item => ({
+            key: item.key,
+            label: t(item.label),
+            icon: (
+              <item.Icon
+                className={styles.playlistHeader__menuIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+            ),
+            destructive: item.destructive === true,
+            disabled: item.disabled === true,
+            onSelect: item.onSelect
+          }))}
+          triggerRef={menuButtonRef}
+          onClose={() => setMenuOpen(false)}
+          className={styles.playlistHeader__menu}
+          itemClassName={styles.playlistHeader__menuItem}
+          divided
+        />
       </span>
     );
+
+  const countLine = partial ? (
+    <span>
+      {t('header.countOf', {
+        count: total,
+        shown: shownCount,
+        total
+      })}
+    </span>
+  ) : (
+    <>
+      <span>{total}</span>
+      <span className={styles.playlistHeader__countUnit}>
+        {trackCountUnit(t, total)}
+      </span>
+    </>
+  );
+
+  const countNode = (
+    <div className={styles.playlistHeader__count}>
+      {countLine}
+      {nameMark}
+    </div>
+  );
+
+  /* The one state element; the status line holds it beside the count, the
+   * stacked identity on its own line. A press that has not reached the server
+   * yet already reads as syncing. */
+  const syncState = syncing ? PlaylistSyncStatus.Syncing : playlist.syncStatus;
+  const stateNode = actionOwnsSync ? null : (
+    <span className={styles.playlistHeader__state} data-state={syncState}>
+      {syncStateLabel(t, syncState)}
+    </span>
+  );
 
   const identity = (
     <>
       <div className={styles.playlistHeader__name}>
-        {/* The line truncates to fit its column, so the full name rides in
-         * `title`: a name cut by the gallery's own width must still be
+        {/* The line truncates, so the full name rides in `title` to stay
          * recoverable without opening the playlist. */}
         {heading ? (
           <h1 className={styles.playlistHeader__nameText} title={playlist.name}>
@@ -500,9 +465,7 @@ export function usePlaylistHeader({
             params={{ playlistId: playlist.id }}
             className={styles.playlistHeader__nameText}
             title={playlist.name}
-            aria-disabled={pending ? true : undefined}
-            tabIndex={pending ? -1 : undefined}
-            onClick={pending ? event => event.preventDefault() : undefined}>
+            {...door}>
             {playlist.name}
           </Link>
         )}
@@ -531,41 +494,34 @@ export function usePlaylistHeader({
           </span>
         </span>
       </div>
-      <div className={styles.playlistHeader__meta}>
-        <span
-          className={styles.playlistHeader__state}
-          data-state={playlist.syncStatus}>
-          {syncStateLabel(t, playlist.syncStatus)}
-        </span>
-        {showSyncTime ? (
-          <>
-            <span className={styles.playlistHeader__sep} aria-hidden="true">
-              &middot;
-            </span>
-            <span className={styles.playlistHeader__time}>
-              {formatLastSynced(t, lastSyncedAt, now)}
-            </span>
-          </>
-        ) : null}
-      </div>
-      <div className={styles.playlistHeader__count}>
-        {partial ? (
-          <span>
-            {t('header.countOf', {
-              count: total,
-              shown: shownCount,
-              total
-            })}
-          </span>
-        ) : (
-          <>
-            <span>{total}</span>
-            <span className={styles.playlistHeader__countUnit}>
-              {trackCountUnit(t, total)}
-            </span>
-          </>
-        )}
-      </div>
+      {statusLine ? (
+        <div className={styles.playlistHeader__mstat}>
+          {countNode}
+          {stateNode}
+        </div>
+      ) : (
+        <>
+          <div className={styles.playlistHeader__meta}>
+            {stateNode}
+            {showSyncTime ? (
+              <>
+                {stateNode === null ? null : (
+                  <span
+                    className={styles.playlistHeader__sep}
+                    aria-hidden="true">
+                    &middot;
+                  </span>
+                )}
+                <span className={styles.playlistHeader__time}>
+                  {formatLastSynced(t, lastSyncedAt, now)}
+                </span>
+              </>
+            ) : null}
+            {syncControl}
+          </div>
+          {countNode}
+        </>
+      )}
       {sharedBy === null ? null : (
         <p className={styles.playlistHeader__owner}>
           {t('header.sharedBy', { name: sharedBy })}
@@ -582,6 +538,7 @@ export function usePlaylistHeader({
     primaryControl,
     shuffleControl,
     menuControl,
-    identity
+    identity,
+    door
   };
 }

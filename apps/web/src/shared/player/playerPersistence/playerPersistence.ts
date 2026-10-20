@@ -2,7 +2,7 @@ import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
 
 export const PLAYER_STORAGE_KEY = 'playliberty.player';
 
-/** The slice of the store the persistence writes, without `isPlaying` or `seekTo`. */
+/** The store slice persisted, without `isPlaying` or `seekTo`. */
 function persistedSlice(state: PlayerState): PersistedPlayerState {
   return {
     sourceQueue: state.sourceQueue,
@@ -44,12 +44,8 @@ function isPlayerTrack(value: unknown): value is PlayerTrack {
 }
 
 /*
- * The stored payload as a real state, or null when it is not one. Two fields are
- * newer than the rest and normalized rather than discarded, because both a
- * preference and an order have an obvious answer when absent: `volume` defaults,
- * and an order written before `sourceQueue` existed is read as the source order,
- * which is what the queue was then. Everything else must be exactly right, so
- * the leniency is about two absent fields and not about types.
+ * The payload as a real state, or null. `volume` defaults, and a payload from
+ * before `sourceQueue` reads its `queue` as the source order.
  */
 function parsePersistedPlayerState(
   value: unknown
@@ -139,10 +135,8 @@ export interface PlayerPersistenceOptions {
 }
 
 /*
- * Hydrate once, then write the queue and position on a throttle, and flush on
- * `pagehide` and when the tab is hidden, because a throttled write that is still
- * pending when the page goes away is a queue the user loses. `isPlaying` is not
- * persisted, so a reload never starts audio on its own.
+ * Hydrate once, then write on a throttle and flush on `pagehide`/tab-hidden: a
+ * pending write when the page goes is a queue lost. No autoplay.
  */
 export function attachPlayerPersistence(
   options: PlayerPersistenceOptions

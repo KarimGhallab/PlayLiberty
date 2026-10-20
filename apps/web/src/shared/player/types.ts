@@ -1,11 +1,9 @@
 /*
- * The player state, shared by the store, the persistence and the components. The
- * queue is client state that never reaches the database, and it names the
- * playlist it was built from so the surface can say where the music is coming
- * from.
+ * The player state, shared by the store, the persistence and the components.
+ * The queue is client state that never reaches the database and names the
+ * playlist it was built from.
  */
 
-/** One entry in the play queue, as the bar and the audio element need it. */
 export interface PlayerTrack {
   readonly id: string;
   readonly title: string;
@@ -15,37 +13,32 @@ export interface PlayerTrack {
   readonly thumbnailPath: string | null;
 }
 
+/** The direction a seek step takes. */
+export enum SeekDirection {
+  Backward = 'backward',
+  Forward = 'forward'
+}
+
 /*
  * The part of the player that survives a reload. `isPlaying` and `seekTo` are
- * never persisted, so a relaunch never starts audio on its own and never jumps
- * the playhead on the first frame.
- *
- * The stored order is the playlist's own and not the order the listener last
- * heard. The playback order is derived from it on hydrate, so a relaunch starts
- * on the source order, and the order a shuffle replaced is kept, which is what
- * turning shuffle off restores.
- *
- * The current track is held as an id and not as an index. The queue is re-ordered
- * by a refetch merging by id, and a drop shifts every index after it; an index
- * that survived a reload would point at the wrong track the moment the queue
- * changed, while an id points at the same track or at nothing. The index a caller
- * wants is derived from the id against the queue.
+ * never persisted, so a relaunch never starts audio or jumps the playhead.
  */
 export interface PersistedPlayerState {
+  /* The playlist's own order, not the order last heard; the playback order is
+   * derived from it on hydrate, so turning shuffle off restores it. */
   readonly sourceQueue: readonly PlayerTrack[];
+  /* Held as an id, not an index: a refetch merges by id and a drop shifts every
+   * index after it, so an index would point at the wrong track. */
   readonly currentId: string | null;
   readonly positionSeconds: number;
   readonly volume: number;
 }
 
 export interface PlayerState {
-  /** The playback order: what the transport steps through and the list draws. */
+  /** Playback order: what the transport steps through and the list draws. */
   readonly queue: readonly PlayerTrack[];
-  /*
-   * The playlist's own order, the order the queue was built in. Kept in step
-   * with every change to `queue`, so turning shuffle off restores an order
-   * somebody chose rather than the order the shuffle happened to leave.
-   */
+  /* The playlist's own order, kept in step with every `queue` change so turning
+   * shuffle off restores an order somebody chose. */
   readonly sourceQueue: readonly PlayerTrack[];
   readonly currentId: string | null;
   readonly positionSeconds: number;
@@ -53,18 +46,15 @@ export interface PlayerState {
   readonly isPlaying: boolean;
   readonly seekTo: number | null;
   /*
-   * Whether the queue is shuffled. It is a client fact like the queue itself and
-   * never persisted: a relaunch starts on the source order, and turning it off
-   * puts the queue back in that order.
+   * Whether the queue is shuffled: a client fact like the queue, never
+   * persisted, so a relaunch starts on the source order.
    */
   readonly shuffle: boolean;
   readonly muted: boolean;
   readonly hydrate: (state: PersistedPlayerState) => void;
   /*
-   * Build the queue from one playlist and start on `startTrackId`. `shuffle` is
-   * the mode the new queue is drawn in and is spent on its order at once: a
-   * shuffled queue is a new arrangement that then plays front to back, so it is
-   * the caller's current mode being carried over and not a per-step coin toss.
+   * Build the queue and start on `startTrackId`. `shuffle` is spent on the
+   * order at once: a shuffled queue plays front to back, not per-step.
    */
   readonly startQueue: (
     playlistId: string,
@@ -79,28 +69,30 @@ export interface PlayerState {
   readonly play: (id: string) => void;
   readonly remove: (id: string) => void;
   /*
-   * A track that cannot be played, removed from the queue. When it is the
-   * current track, the one that follows it becomes current and playback
-   * continues; at the end there is nothing to continue to, so the queue stops.
-   * When it is not current, it is only removed.
+   * Remove a track that cannot be played. A current track continues on the one
+   * after it, or stops at the end; a track that is not current is only removed.
    */
   readonly dropAndAdvance: (id: string) => void;
-  /*
-   * Transport. `skipNext` moves one place and does nothing at the end rather
-   * than wrapping, over the queue as it stands: a shuffled queue is walked like
-   * any other, and this is not a second shuffle. `skipPrevious` steps back only
-   * inside a small grace window; after it, the press restarts the current track,
-   * and the first track restarts because there is nowhere to step back to. Both
-   * are play gestures and resume a paused queue rather than moving the cursor on
-   * a stopped one. `advance` is what a finished track does, which is the same
-   * move as `skipNext` and a different answer at the last track, where it stops.
-   */
+  /* Step one place forward over the queue as it stands, or nothing at the end
+   * rather than wrapping; a shuffled queue is walked like any other. */
   readonly skipNext: () => void;
+  /* Step back inside the grace window; past it or on the first track, restart
+   * where it stands. Either way it resumes a paused queue. */
   readonly skipPrevious: () => void;
+  /* A finished track: the same move as `skipNext`, but it stops at the last. */
   readonly advance: () => void;
-  readonly seek: (seconds: number) => void;
+  /* The keyboard's step in `direction`, bounded by the current track's
+   * duration. A track with no known duration refuses the request. */
+  readonly seekBy: (direction: SeekDirection) => void;
+  /* The Media Session's larger step in `direction`, with the same bound. */
+  readonly seekByPage: (direction: SeekDirection) => void;
+  /* Move to a fraction of the current track, clamped to its ends. */
+  readonly seekToFraction: (fraction: number) => void;
+  readonly seekToStart: () => void;
+  readonly seekToEnd: () => void;
   readonly setShuffle: (shuffle: boolean) => void;
-  readonly clearSeek: () => void;
+  /* Take the pending seek request once, clearing it in the same step. */
+  readonly consumeSeek: () => number | null;
   readonly setPosition: (seconds: number) => void;
   readonly setPlaying: (playing: boolean) => void;
   readonly setVolume: (volume: number) => void;
@@ -118,13 +110,8 @@ export function currentIndex(state: PlayerState): number {
 }
 
 /*
- * The index the queue moves to after the current track, or -1 when there is
- * none: the next place, and absent at the end. The randomness of a shuffle is
- * spent on the queue's order rather than on this answer, so a shuffled queue is
- * walked front to back like any other and stops at its last entry, the queue the
- * listener can already see being the one that plays. This is the one place "what
- * comes next" is decided, so the forward step and the end of a track cannot
- * disagree about the end of the queue.
+ * The index after the current track, or -1 at the end: a shuffled queue is
+ * walked front to back and stops at its last entry. Owns "what comes next".
  */
 export function nextIndex(state: PlayerState): number {
   const index = currentIndex(state);
@@ -136,12 +123,8 @@ export function nextIndex(state: PlayerState): number {
   return index + 1 < state.queue.length ? index + 1 : -1;
 }
 
-/*
- * The playlist the queue is playing. The queue is built from one playlist, so the
- * first entry names it and an empty queue names none. The store's refetch guard
- * and every surface's "is this the queue?" ask this one question, so they cannot
- * disagree about which playlist is playing.
- */
+/* The playlist the queue plays: the first entry names it, an empty queue names
+ * none. Single owner, so the refetch guard and every surface agree. */
 export function queuePlaylistId(state: PlayerState): string | null {
   return state.queue[0]?.playlistId ?? null;
 }
@@ -152,11 +135,8 @@ export function currentTrack(state: PlayerState): PlayerTrack | null {
   return index < 0 ? null : state.queue[index];
 }
 
-/*
- * Whether the queue holds a track after the current one. The end-of-queue rule is
- * `nextIndex`'s, so the forward control of the bar and of the header cannot
- * disagree about the last track.
- */
+/* Whether a track follows the current one. The rule is `nextIndex`'s, so the
+ * bar's and the header's forward controls agree about the last track. */
 export function hasNext(state: PlayerState): boolean {
   return nextIndex(state) >= 0;
 }

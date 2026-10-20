@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
 
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -110,16 +111,8 @@ function countShares(playlistId: string): number {
   );
 }
 
-/*
- * Every route a collaborator must not use on someone else's playlist. The read
- * level must be refused by all of them, the write level by the owner-only ones. A
- * route is given the id it needs, so the assertion is about the refusal and not
- * about a missing parameter.
- *
- * The batch add is the exception in shape: it answers `200` with a per-playlist
- * outcome, so a refusal is an outcome of `refused` rather than a status code. It is
- * normalised to a status here so the matrix reads as one table.
- */
+/* Every route a collaborator must not use on someone else's playlist: read by
+ * all refused, write by the owner-only ones. The batch add is a status. */
 async function mutatingRoutes(
   playlistId: string,
   trackId: string,
@@ -206,12 +199,17 @@ describe('what a read share grants', () => {
       (await get(`/api/v1/playlists/${playlistId}/tracks`, reader)).statusCode
     ).toBe(200);
 
-    // The stream refuses with track_not_stored because no bytes are on disk in this
-    // isolated context; that the answer is neither track_not_found nor forbidden is
-    // what shows the read share reached the track.
+    // Stream refuses track_not_stored because no bytes are on disk here. Being
+    // neither track_not_found nor forbidden shows the read share reached it.
     const stream = await get(`/api/v1/tracks/${stored.trackId}/stream`, reader);
     expect(stream.statusCode).toBe(200);
     expect(stream.body).toBe('the-audio');
+
+    const thumbnail = await get(
+      `/api/v1/tracks/${stored.trackId}/thumbnail`,
+      reader
+    );
+    expect(thumbnail.statusCode).toBe(200);
   });
   it('is refused by every mutating route', async () => {
     context = await createTestContext();
@@ -368,6 +366,9 @@ describe('what sharing does not do', () => {
     const { track } = await seedStoredTrack(context, { playlist });
     const trackId = track.trackId;
     const before = countTracks();
+    const beforeFiles = (
+      await readdir(context.mediaPaths.root, { recursive: true })
+    ).sort();
     const beforeAssociations =
       database()
         .db.select({ total: sql<number>`count(*)` })
@@ -386,6 +387,9 @@ describe('what sharing does not do', () => {
         .from(associations)
         .get()?.total
     ).toBe(beforeAssociations);
+    expect(
+      (await readdir(context.mediaPaths.root, { recursive: true })).sort()
+    ).toEqual(beforeFiles);
     // The one file the playlist already had is the only one, and a share copies
     // nothing: the association count is unchanged by the grant above.
     expect(beforeAssociations).toBe(1);

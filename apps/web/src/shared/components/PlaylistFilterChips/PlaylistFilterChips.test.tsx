@@ -8,9 +8,7 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import PlaylistFilterChips from './PlaylistFilterChips';
 
-/*
- * The colours and the sideways scroll are the stylesheet's business.
- */
+/* The colours and the sideways scroll are the stylesheet's business. */
 
 const COUNTS: TrackFileStatusCounts = {
   stored: 2,
@@ -46,6 +44,23 @@ describe('PlaylistFilterChips', () => {
     expect(screen.getByRole('button', { name: 'Downloading 0' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Failed 0' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Unavailable 0' })).toBeDefined();
+  });
+
+  it('offers only the statuses the counts carry when the caller asks', () => {
+    renderChips({ showEmpty: false });
+
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Stored 2' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Pending 1' })).toBeDefined();
+    expect(
+      screen.queryByRole('button', { name: 'Downloading 0' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Failed 0' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Unavailable 0' })
+    ).not.toBeInTheDocument();
   });
 
   it('marks the chip in force and asks for a state on a press', () => {

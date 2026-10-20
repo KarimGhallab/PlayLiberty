@@ -1,22 +1,26 @@
 /*
- * The undo toast. Anchored bottom-left and stacked above the player bar, so a
- * deferred delete stays reachable while music plays.
- *
- * The ring is a sweep rather than a number: the window is finite and the sweep
- * shows it without asking anyone to read a countdown. It is one animation over
- * the duration handed in, so the ring and the timer that ends the window cannot
- * drift.
+ * The undo toasts, anchored bottom-left above the player bar. The ring is a
+ * sweep, not a number, and one animation over the duration handed in, so the
+ * ring and the window's timer cannot drift.
  */
-.toast {
+.toasts {
   position: fixed;
   left: var(--space-4);
-  bottom: calc(var(--space-4) + 98px);
-  z-index: calc(var(--z-player) + 1);
+  bottom: calc(var(--space-4) + var(--player-bar-height));
+  z-index: calc(var(--z-overlay) + 1);
+  display: flex;
+  /* Newest first in the DOM, so the newest sits at the top of the stack. */
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: min(420px, calc(100vw - var(--space-4) * 2));
+}
+
+.toast {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-width: 280px;
-  max-width: min(420px, calc(100vw - var(--space-4) * 2));
+  max-width: 100%;
   padding: var(--space-3);
   color: var(--ink);
   background: var(--surface-raised);
@@ -54,15 +58,6 @@
   }
 
   &__detail {
-    color: var(--muted);
-    font-size: var(--text-xs);
-    line-height: var(--leading-normal);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &__replaced {
     color: var(--muted);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
@@ -139,13 +134,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toast {
-    animation: none;
-  }
-
   .toast__ring {
     /* The sweep is decoration; the window itself is the host's timer. */
-    animation: none;
     border-top-color: var(--accent);
     opacity: 0.6;
   }

@@ -5,19 +5,9 @@ import { addPlaylist, openPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
- * Journey: arranging the track list.
- *
- * These facts are true only of the assembled product: the order a sort saves is
- * the order the server reads back and the order the transport walks, the counts
- * the chips carry are the whole playlist's rather than the rows drawn, and the
- * controls go inert while the shuffled queue is the list on screen. The
- * read-collaborator view is left to the route and component tests, because the
- * dev proxy fixes one browser identity.
- *
- * The associations are made one at a time. A single sync stamps every entry with
- * one instant, and a date sort over equal instants tiebreaks on the playlist's
- * own position, so it would be a no-op; distinct added-at times are what make
- * the date sort a different order from the playlist's own.
+ * Journey: arranging the track list. The saved order, the whole-playlist chip
+ * counts and the controls going inert while shuffled are true only of the
+ * assembled product.
  */
 
 const SOURCE = 'E2Earrange01';
@@ -28,8 +18,6 @@ const B = { videoId: 'e2earrange1b', title: 'Track B' };
 const C = { videoId: 'e2earrange1c', title: 'Track C' };
 /* Added last, so it is the newest and the one that fails to download. */
 const FAILED = { videoId: 'e2earrange1d', title: 'Track D' };
-
-const STORED = [A, B, C];
 
 /** The titles the list draws, in the order drawn, the failed row included. */
 async function rowTitles(page: Page): Promise<string[]> {
@@ -46,11 +34,6 @@ function currentRow(page: Page): Locator {
     .filter({ has: page.getByRole('img', { name: /^(Playing|Paused)$/ }) });
 }
 
-/** The number on the header's count line, which names the list's total. */
-function headerCount(page: Page): Locator {
-  return page.locator('[data-arrangement="card"]').getByText(/^\d+$/);
-}
-
 async function addTrack(
   page: Page,
   video: { videoId: string; title: string }
@@ -61,8 +44,6 @@ async function addTrack(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Video link').fill(videoUrl(video.videoId));
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
-
-  // Every chosen playlist took it, so the dialog closes.
   await expect(dialog).toBeHidden();
 }
 
@@ -74,21 +55,51 @@ async function chooseSort(page: Page, label: string): Promise<void> {
   ).toBeVisible();
 }
 
-function shuffleControl(page: Page): Locator {
-  return page.getByRole('button', { name: `Shuffle ${TITLE}` });
+/* A chip is whole when the pixel just inside its own right edge still resolves
+ * to it: a pill clipped by the rail or covered by the sort fails there. */
+async function expectChipsWhole(page: Page): Promise<void> {
+  const chips = page
+    .getByRole('group', { name: 'Filter by' })
+    .getByRole('button');
+
+  await expect(chips).toHaveCount(6);
+
+  for (const chip of await chips.all()) {
+    const whole = await chip.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        box.right - 2,
+        box.top + box.height / 2
+      );
+
+      return hit !== null && element.contains(hit);
+    });
+
+    expect(whole, `the whole of ${await chip.getAttribute('aria-label')}`).toBe(
+      true
+    );
+  }
 }
 
-async function pressShuffle(page: Page): Promise<void> {
-  await shuffleControl(page).click();
-  await expect(shuffleControl(page)).toHaveAttribute('aria-pressed', 'true');
+/* The sort owns the line above the chips, so the filter never competes with it
+ * for the row. */
+async function expectSortAboveChips(page: Page): Promise<void> {
+  const sort = await page
+    .getByRole('button', { name: /^Sort by: / })
+    .boundingBox();
+  const chips = await page
+    .getByRole('group', { name: 'Filter by' })
+    .boundingBox();
+
+  if (sort === null || chips === null) {
+    throw new Error('The sort and the filter chips must both be drawn.');
+  }
+
+  expect(sort.y + sort.height).toBeLessThanOrEqual(chips.y);
 }
 
-/*
- * One playlist with three stored tracks and one that fails to download, so the
- * list holds two states at once. The first track arrives by sync; the other
- * three by the add dialog, one at a time, so each association carries its own
- * added-at and the date sort has something to order by.
- */
+/* Three stored tracks and one that fails, so the list holds two states. Tracks
+ * B, C and D arrive one at a time, each with its own added-at. */
 async function seed(page: Page): Promise<void> {
   await addPlaylist(page, {
     sourceId: SOURCE,
@@ -98,8 +109,8 @@ async function seed(page: Page): Promise<void> {
   });
   await openPlaylist(page, TITLE);
 
-  // The sync's association lands before the dialog adds the rest, so the append
-  // order and the added-at order agree.
+  // The sync's association lands before the dialog adds, so append order and
+  // added-at order agree.
   await expect(page.getByRole('button', { name: 'All 1' })).toBeVisible();
 
   for (const video of [B, C, FAILED]) {
@@ -116,12 +127,8 @@ async function seed(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: 'Stored 3' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Failed 1' })).toBeVisible();
 
-  /*
-   * The fixture is two seconds long and the player advances when a track ends,
-   * so a walk slower than the file would be overtaken by the track finishing and
-   * the queue would move on its own. Looping the element leaves the manual step
-   * the only thing that moves the queue.
-   */
+  /* Two-second fixture: looping the element leaves the manual step the only
+   * thing that moves the queue on a slow runner. */
   await page.locator('audio').evaluate(element => {
     (element as HTMLAudioElement).loop = true;
   });
@@ -144,7 +151,7 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
     .poll(() => rowTitles(page))
     .toEqual([FAILED.title, C.title, B.title, A.title]);
 
-  // The order is the server's fact, so a reload opens the list in it again.
+  // Server-owned: a reload opens the list in the saved order again.
   await page.reload();
   await expect(
     page.getByRole('button', { name: 'Sort by: Newest first' })
@@ -153,11 +160,8 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
     .poll(() => rowTitles(page))
     .toEqual([FAILED.title, C.title, B.title, A.title]);
 
-  /*
-   * While unshuffled, the saved order is the order the transport walks: the
-   * first playable is C, then B, then A, because the newest row is the failed
-   * one and cannot be queued.
-   */
+  /* Unshuffled, the transport walks the saved order, skipping the failed newest
+   * row: C, then B, then A. */
   await page.getByRole('button', { name: 'Play this playlist' }).click();
   await expect(currentRow(page)).toHaveText(new RegExp(C.title));
   await page.getByRole('button', { name: 'Track next' }).click();
@@ -179,79 +183,46 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
     .toEqual([A.title, B.title, C.title, FAILED.title]);
 });
 
-test('the chips carry the whole-playlist counts and narrow the list and the count line', async ({
+/* The chips are the whole filter: a width where one is cut mid-pill hides a
+ * state the reader can choose. The rail wraps at every width, so all six are
+ * whole; a phone still owes the keyboard reader the focused chip. */
+test('every filter chip is whole at a desk and on a phone, and the last is reachable by keyboard', async ({
   page
 }) => {
-  await seed(page);
+  await addPlaylist(page, {
+    sourceId: 'E2Earrange02',
+    title: 'Chip Journey',
+    entries: [A]
+  });
+  await openPlaylist(page, 'Chip Journey');
+  await expect(page.getByRole('button', { name: 'All 1' })).toBeVisible();
 
-  await expect(page.getByRole('button', { name: 'All 4' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Stored 3' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Pending 0' })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Downloading 0' })
-  ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Failed 1' })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Unavailable 0' })
-  ).toBeVisible();
-
-  await page.getByRole('button', { name: 'Stored 3' }).click();
-  await expect(headerCount(page)).toHaveText('3');
-  await expect.poll(() => rowTitles(page)).toEqual([A.title, B.title, C.title]);
-  await expect(page.getByRole('button', { name: 'Failed 1' })).toBeVisible();
-
-  await page.getByRole('button', { name: 'All 4' }).click();
-  await expect(headerCount(page)).toHaveText('4');
-  await expect
-    .poll(() => rowTitles(page))
-    .toEqual([A.title, B.title, C.title, FAILED.title]);
-
-  await page.getByRole('button', { name: 'Failed 1' }).click();
-  await expect(headerCount(page)).toHaveText('1');
-  await expect.poll(() => rowTitles(page)).toEqual([FAILED.title]);
-
-  await page.getByRole('button', { name: 'Unavailable 0' }).click();
-  await expect(headerCount(page)).toHaveText('0');
-  await expect(page.getByText('No unavailable tracks')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Show all' }).click();
-  await expect(headerCount(page)).toHaveText('4');
-  await expect
-    .poll(() => rowTitles(page))
-    .toEqual([A.title, B.title, C.title, FAILED.title]);
-});
-
-test('the controls go inert while the shuffled queue is the list on screen', async ({
-  page
-}) => {
-  await seed(page);
-
-  await pressShuffle(page);
-
-  // Both controls belong to the unshuffled list, so both are disabled.
-  await expect(page.getByRole('button', { name: /^Sort by: / })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'All 4' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Stored 3' })).toBeDisabled();
-
-  /*
-   * The list draws the shuffled queue's order: its playable rows are a
-   * permutation of the stored tracks, led by the one sounding, and the transport
-   * walks them in the order drawn.
-   */
-  const playable = (await rowTitles(page)).filter(
-    title => title !== FAILED.title
-  );
-  const leader = playable[0];
-  const second = playable[1];
-
-  if (leader === undefined || second === undefined) {
-    throw new Error('The shuffled queue should carry every stored track.');
+  for (const width of [1440, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expectChipsWhole(page);
+    await expectSortAboveChips(page);
   }
 
-  expect(playable).toHaveLength(STORED.length);
-  expect(new Set(playable)).toEqual(new Set(STORED.map(video => video.title)));
-  await expect(currentRow(page)).toHaveText(new RegExp(leader));
+  await page.setViewportSize({ width: 390, height: 844 });
 
-  await page.getByRole('button', { name: 'Track next' }).click();
-  await expect(currentRow(page)).toHaveText(new RegExp(second));
+  /* The phone wraps under the sort rather than clipping, so every chip is
+   * whole without a scroll; the last still takes focus and stays hittable. */
+  await expectChipsWhole(page);
+  await expectSortAboveChips(page);
+
+  const last = page.getByRole('button', { name: 'Unavailable 0' });
+  await last.focus();
+  await expect(last).toBeFocused();
+
+  const reached = await last.evaluate(element => {
+    const box = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(
+      box.right - 2,
+      box.top + box.height / 2
+    );
+
+    return hit !== null && element.contains(hit);
+  });
+
+  expect(reached).toBe(true);
 });

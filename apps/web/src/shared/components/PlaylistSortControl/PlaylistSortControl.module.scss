@@ -1,16 +1,16 @@
 /*
- * The sort control at the end of the control row above the list, which the
- * screen owns; the row's lead is the filter chips.
- *
- * The control is quiet on purpose: no box at rest, so the button is the order
- * and its two marks rather than a chrome object. Hover steps the marks up a
- * little and nothing else; the accent is spent only while the menu is open,
- * which is the one thing the press earns.
+ * The sort control on its own line above the filter chips. It is quiet on
+ * purpose: no box at rest, so the button is the order and its marks; the accent
+ * is spent only while the menu is open.
  */
 .sort {
   position: relative;
-  margin-left: auto;
+  align-self: flex-end;
   flex-shrink: 0;
+
+  @media (max-width: 767px) {
+    align-self: flex-start;
+  }
 
   &__button {
     position: relative;
@@ -28,9 +28,19 @@
     border: none;
     cursor: pointer;
 
+    /* The target a thumb is owed, centred on the control; it paints nothing. */
+    &::before {
+      content: '';
+      position: absolute;
+      width: var(--control-touch);
+      height: var(--control-touch);
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+    }
+
     /* The system's own selection language: the 2px accent rule the segmented
-     * control marks its choice with, here drawn under the button and shown only
-     * while the menu is open. */
+     * control marks its choice with, shown only while the menu is open. */
     &::after {
       content: '';
       position: absolute;
@@ -69,8 +79,9 @@
     transition: color var(--motion-base) var(--ease-standard);
   }
 
-  /* The order reads as quiet as the two marks at rest, and comes up to normal on
-   * hover or while the menu is open, so the control has one resting voice. */
+  /* The purpose and the order read as quiet as the two marks at rest, and come
+   * up to normal on hover or while the menu is open. */
+  &__prefix,
   &__value {
     color: var(--muted);
     transition: color var(--motion-base) var(--ease-standard);
@@ -92,9 +103,11 @@
 
   &__button:hover:not(:disabled) &__glyph,
   &__button:hover:not(:disabled) &__chevron,
+  &__button:hover:not(:disabled) &__prefix,
   &__button:hover:not(:disabled) &__value,
   &__button[data-open] &__glyph,
   &__button[data-open] &__chevron,
+  &__button[data-open] &__prefix,
   &__button[data-open] &__value {
     color: var(--ink);
   }
@@ -144,7 +157,7 @@
 
     &:hover {
       color: var(--ink);
-      background: rgb(255 255 255 / 0.06);
+      background: var(--surface);
     }
 
     &[aria-selected='true'] {
@@ -195,22 +208,5 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sort {
-    &__menu,
-    &__entry {
-      animation: none;
-    }
-
-    &__chevron,
-    &__glyph,
-    &__value,
-    &__button::after,
-    &__check {
-      transition: none;
-    }
   }
 }

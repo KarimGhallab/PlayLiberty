@@ -17,11 +17,8 @@ import {
 } from '../../../app/testing/fakeYoutube.js';
 
 /*
- * The live stream over a real socket, because a hijacked response that never ends
- * is not something `inject` can read: the test listens, opens the stream with
- * `fetch`, and parses the frames a browser's `EventSource` would receive. The
- * fake adapter resolves at once, so a sync's background run finishes rather than
- * reaching for yt-dlp.
+ * The live stream over a real socket: a hijacked, never-ending response is not
+ * something `inject` can read, so `fetch` opens it and frames are read.
  */
 
 const PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PL1234567890abcdef';
@@ -37,8 +34,8 @@ afterEach(async () => {
 
   openControllers.length = 0;
 
-  // Give the abort a tick to reach the server, so `close` is not waiting on a
-  // connection the test has already given up.
+  // Give the abort a tick to reach the server, so `close` is not waiting on
+  // a connection the test has already given up.
   await new Promise(resolve => setTimeout(resolve, 10));
 
   await context?.cleanup();
@@ -46,9 +43,8 @@ afterEach(async () => {
 });
 
 /*
- * A reader for the frames of an event stream. A frame is separated by a blank
- * line; a comment frame is the heartbeat and has no data line, so `nextEvent`
- * skips it while `nextFrame` returns it.
+ * A reader for an event stream's frames: a blank line separates them, and a
+ * comment frame the heartbeat: `nextEvent` skips it, `nextFrame` returns it.
  */
 class SseReader {
   private _buffer = '';

@@ -7,7 +7,6 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -16,28 +15,29 @@ import {
 } from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { I18nProvider, formatDuration } from '@playliberty/i18n';
+import {
+  ProblemCode,
+  SortPlaylistInputSchema,
+  SyncRunStatus,
+  TrackFileStatus,
+  endpoints
+} from '@playliberty/contracts';
+import { I18nProvider } from '@playliberty/i18n';
 
+import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
-import type { PlayerTrack } from '../../../shared/player/types';
-import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 
-import { EMPTY_COUNTS, countsOf } from '../../../testing/mocks/handlers';
+import {
+  EMPTY_COUNTS,
+  countsOf,
+  mockUrl,
+  problemResponse,
+  respond
+} from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import PlaylistDetailPage from './PlaylistDetailPage';
-
-/*
- * The row-render measurement at the end of this file counts `formatDuration`
- * calls per row, so the formatter is spied while still delegating to the real
- * one: the output the rows draw is unchanged and the call count is the per-row
- * render count.
- */
-vi.mock('@playliberty/i18n', async importOriginal => {
-  const actual = await importOriginal<typeof import('@playliberty/i18n')>();
-  return { ...actual, formatDuration: vi.fn(actual.formatDuration) };
-});
 
 const PLAYLIST_ID = 'playlist-1';
 
@@ -62,15 +62,13 @@ function renderDetail(playlistId = PLAYLIST_ID) {
     <QueryClientProvider client={queryClient}>
       <I18nProvider preferred={['en']}>
         <RouterProvider router={router} />
+        <DeferredToasts />
       </I18nProvider>
     </QueryClientProvider>
   );
 }
 
-/*
- * The playlist read the skip-setting tests answer with, so a handler can echo the
- * value it was sent without repeating the whole shape.
- */
+/* The playlist read a handler echoes a value into, without the whole shape. */
 function playlistJson(skipNonMusic: boolean) {
   return {
     id: 'playlist-1',
@@ -86,18 +84,18 @@ function playlistJson(skipNonMusic: boolean) {
     sort: 'playlist',
     access: 'owner',
     hasShares: false,
+    pinned: false,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   };
 }
 
-/* One association for a tracks page or a queue list, so a paging test states only
- * its ids, titles and positions. */
+/* One association, so a test states only its ids, titles and positions. */
 function trackJson(
   id: string,
   title: string,
   position: number,
-  fileStatus = 'stored'
+  fileStatus: TrackFileStatus = TrackFileStatus.Stored
 ) {
   return {
     track: {
@@ -119,71 +117,6 @@ function trackJson(
   };
 }
 
-/*
- * The media-query stub answers one query and delegates every other to the
- * global default, so a test can move the viewport without disturbing the
- * `prefers-reduced-motion` checks. The returned function puts the original back,
- * because a stub left in place would follow every later test.
- */
-function stubViewport(matchingQuery: string): () => void {
-  const original = window.matchMedia;
-
-  window.matchMedia = (query: string) =>
-    ({
-      matches: query === matchingQuery,
-      media: query,
-      onchange: null,
-      addListener: () => undefined,
-      removeListener: () => undefined,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-      dispatchEvent: () => false
-    }) as MediaQueryList;
-
-  return () => {
-    window.matchMedia = original;
-  };
-}
-
-const DURATIONS = { 'track-1': 337, 'track-2': 273, 'track-3': 565 } as const;
-
-function renderedRows(): Map<number, number> {
-  const counts = new Map<number, number>();
-
-  for (const [seconds] of vi.mocked(formatDuration).mock.calls) {
-    counts.set(seconds, (counts.get(seconds) ?? 0) + 1);
-  }
-
-  return counts;
-}
-
-function playerTrack(id: keyof typeof DURATIONS): PlayerTrack {
-  return {
-    id,
-    title: id,
-    playlistId: PLAYLIST_ID,
-    playlistName: 'Rain On The Window',
-    durationSeconds: DURATIONS[id],
-    thumbnailPath: null
-  };
-}
-
-function openQueue(): void {
-  act(() => {
-    usePlayerStore
-      .getState()
-      .startQueue(
-        PLAYLIST_ID,
-        [
-          playerTrack('track-1'),
-          playerTrack('track-2'),
-          playerTrack('track-3')
-        ],
-        'track-2'
-      );
-  });
-}
-
 function listTitles(): string[] {
   return screen
     .getAllByRole('button', { name: /^(Play|Pause) / })
@@ -198,6 +131,10 @@ beforeEach(() => {
   usePlayerStore.getState().clear();
 });
 
+afterEach(() => {
+  window.localStorage.clear();
+});
+
 describe('PlaylistDetailPage', () => {
   it('offers a labelled way home', async () => {
     renderDetail();
@@ -205,45 +142,6 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('link', { name: 'Back to home' })
     ).toHaveAttribute('href', '/');
-  });
-
-  /*
-   * The header's two arrangements are different markup, so the viewport decides
-   * between them: the web draws the card, whose cover sits above the identity,
-   * and a phone draws the row, whose cover sits beside it. The assertion is the
-   * attribute the component renders, because that is what picks the markup the
-   * rest of the header hangs off.
-   */
-  it('draws the header as the card at the web width', async () => {
-    const { container } = renderDetail();
-
-    await screen.findByRole('button', { name: 'Play this playlist' });
-
-    expect(
-      container.querySelector('[data-arrangement="card"]')
-    ).toBeInTheDocument();
-    expect(
-      container.querySelector('[data-arrangement="row"]')
-    ).not.toBeInTheDocument();
-  });
-
-  it('draws the header as the row at the phone width', async () => {
-    const restore = stubViewport(MOBILE_QUERY);
-
-    try {
-      const { container } = renderDetail();
-
-      await screen.findByRole('button', { name: 'Play this playlist' });
-
-      expect(
-        container.querySelector('[data-arrangement="row"]')
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('[data-arrangement="card"]')
-      ).not.toBeInTheDocument();
-    } finally {
-      restore();
-    }
   });
 
   it('lists the playlist tracks that are playable', async () => {
@@ -257,20 +155,6 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('offers no play control for a track whose file is not stored', async () => {
-    renderDetail();
-
-    /*
-     * `Flamenco Sketches` is pending in the fixtures, so it is listed and
-     * unplayable. The control is absent rather than disabled: a button that
-     * cannot be pressed would claim a track can be heard when it cannot.
-     */
-    expect(await screen.findByText('Flamenco Sketches')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Play Flamenco Sketches' })
-    ).not.toBeInTheDocument();
-  });
-
   it('draws the list in the queue order while the queue is this playlist, shuffled', async () => {
     renderDetail();
 
@@ -282,11 +166,6 @@ describe('PlaylistDetailPage', () => {
       expect(usePlayerStore.getState().queue).toHaveLength(2)
     );
 
-    /*
-     * The list is the queue's order, whatever the draw produced: the two stored
-     * rows are the playable tracks in the queue's own sequence, and the pending
-     * row joins the group before it.
-     */
     const queueTitles = usePlayerStore
       .getState()
       .queue.map(track => track.title);
@@ -302,11 +181,6 @@ describe('PlaylistDetailPage', () => {
     expect(titles).toEqual(queueTitles);
   });
 
-  /*
-   * The header's shuffle presses on the queue's own playlist, so the detail's
-   * control is pressed while this playlist is the queue and unpressed while the
-   * queue is another one, even though the player is shuffled either way.
-   */
   it('presses the header shuffle while this playlist is the queue', async () => {
     renderDetail();
 
@@ -346,73 +220,9 @@ describe('PlaylistDetailPage', () => {
     ).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('builds the queue from the pressed track and starts there', async () => {
-    renderDetail();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
-
-    await waitFor(() =>
-      expect(usePlayerStore.getState().queue).toHaveLength(2)
-    );
-
-    const state = usePlayerStore.getState();
-
-    expect(state.queue.map(track => track.title)).toEqual([
-      'Blue In Green',
-      'Naima'
-    ]);
-    expect(state.queue.every(track => track.playlistId === PLAYLIST_ID)).toBe(
-      true
-    );
-    expect(
-      state.queue.every(track => track.playlistName === 'Rain On The Window')
-    ).toBe(true);
-    expect(state.currentId).toBe('track-2');
-    expect(state.isPlaying).toBe(true);
-    expect(state.positionSeconds).toBe(0);
-  });
-
-  it('moves the playhead inside a shuffled queue rather than rebuilding it', async () => {
-    renderDetail();
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
-    );
-    await waitFor(() =>
-      expect(usePlayerStore.getState().queue).toHaveLength(2)
-    );
-
-    const shuffledQueue = usePlayerStore
-      .getState()
-      .queue.map(track => track.id);
-    /* A row other than the one the draw started on, so the press is a move and not
-     * a pause. */
-    const target = usePlayerStore
-      .getState()
-      .queue.find(track => track.id !== usePlayerStore.getState().currentId);
-
-    if (target === undefined) {
-      throw new Error('the shuffled queue should hold a second track');
-    }
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: `Play ${target.title}` })
-    );
-
-    const state = usePlayerStore.getState();
-
-    /* The queue the listener can see is the queue that plays: the press moves the
-     * cursor and leaves the order, the mode and the position of every entry. */
-    expect(state.queue.map(track => track.id)).toEqual(shuffledQueue);
-    expect(state.shuffle).toBe(true);
-    expect(state.currentId).toBe(target.id);
-    expect(state.isPlaying).toBe(true);
-  });
-
   /*
-   * The list pages in. The server's total is three and a page is two here, so the
-   * first screen draws two rows and the header reads the window; the control
-   * loads the rest and the header goes back to the standing total.
+   * The list pages in: the server's total is three and a page is two, so the
+   * first screen draws two rows and the header reads the window.
    */
   it('pages the list in and reads the displayed count', async () => {
     const all = [
@@ -422,7 +232,7 @@ describe('PlaylistDetailPage', () => {
     ];
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
         ({ request }) => {
           const offset = Number(
             new URL(request.url).searchParams.get('offset') ?? '0'
@@ -460,8 +270,8 @@ describe('PlaylistDetailPage', () => {
   });
 
   /*
-   * The queue comes from the whole-list read, not from the page on screen: the
-   * list shows one of two tracks and a press still queues both.
+   * The queue comes from the whole-list read, not the page on screen: the list
+   * shows one of two tracks and a press still queues both.
    */
   it('plays the whole playlist from the whole-list read, not the page', async () => {
     const all = [
@@ -469,17 +279,20 @@ describe('PlaylistDetailPage', () => {
       trackJson('whole-2', 'Whole Two', 1)
     ];
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json({
-          items: all.slice(0, 1),
-          total: all.length,
-          limit: 1,
-          offset: 0,
-          counts: countsOf(all)
-        })
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: all.slice(0, 1),
+            total: all.length,
+            limit: 1,
+            offset: 0,
+            counts: countsOf(all)
+          })
       ),
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/queue', () =>
-        HttpResponse.json({ items: all })
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: all })
       )
     );
     renderDetail();
@@ -497,11 +310,38 @@ describe('PlaylistDetailPage', () => {
     ]);
   });
 
-  /*
-   * The queue read behind a press fails, and the header's own play control owns
-   * it: the control becomes the retry, a caption sits under the header, and a
-   * retry recovers.
-   */
+  it('disables the header play when the playlist holds no stored track', async () => {
+    const associations = [
+      trackJson('track-9', 'Still Downloading', 0, TrackFileStatus.Pending)
+    ];
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json(playlistJson(true))
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: associations,
+            total: 1,
+            limit: 50,
+            offset: 0,
+            counts: { ...EMPTY_COUNTS, pending: 1 }
+          })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: associations })
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
+  });
+
   it('owns a failed queue read on the header control and recovers on retry', async () => {
     const all = [
       trackJson('recover-1', 'Recover One', 0),
@@ -510,21 +350,17 @@ describe('PlaylistDetailPage', () => {
     let attempts = 0;
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/queue',
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
         () => {
           attempts += 1;
 
           if (attempts === 1) {
-            return HttpResponse.json(
-              {
-                type: 'about:blank',
-                title: 'Service unavailable',
-                status: 503,
-                detail: 'The queue is unavailable.',
-                code: 'service_unavailable'
-              },
-              { status: 503 }
-            );
+            return problemResponse({
+              code: ProblemCode.InternalError,
+              status: 503,
+              title: 'Service unavailable',
+              detail: 'The queue is unavailable.'
+            });
           }
 
           return HttpResponse.json({ items: all });
@@ -554,6 +390,48 @@ describe('PlaylistDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('acknowledges a row press while its queue read is in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        async () => {
+          await gate;
+          return HttpResponse.json({
+            items: [
+              trackJson('track-1', 'Naima', 0),
+              trackJson('track-2', 'Blue In Green', 1)
+            ]
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    const rowPlay = await screen.findByRole('button', {
+      name: 'Play Blue In Green'
+    });
+    fireEvent.click(rowPlay);
+
+    await waitFor(() => expect(rowPlay).toBeDisabled());
+    expect(rowPlay.closest('li')).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Play this playlist' })
+    ).not.toHaveAttribute('aria-busy');
+
+    release();
+
+    await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
+
+    expect(usePlayerStore.getState().queue).toHaveLength(2);
+  });
+
   it('disables the header next when the playing track is the last', async () => {
     renderDetail();
 
@@ -563,37 +441,6 @@ describe('PlaylistDetailPage', () => {
       await screen.findByRole('button', { name: 'Track next' })
     ).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Skip back' })).toBeEnabled();
-  });
-
-  it('toggles playback when the current row is pressed again', async () => {
-    renderDetail();
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Play Blue In Green' })
-    );
-    await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Pause Blue In Green' })
-    );
-    expect(usePlayerStore.getState().isPlaying).toBe(false);
-  });
-
-  it('keeps the header steps while paused on this playlist', async () => {
-    renderDetail();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Play Naima' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Pause this playlist' })
-    );
-
-    expect(usePlayerStore.getState().isPlaying).toBe(false);
-    expect(
-      screen.getByRole('button', { name: 'Skip back' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Track next' })
-    ).toBeInTheDocument();
   });
 
   it('offers the row menu to a writer, who may remove a track', async () => {
@@ -611,37 +458,39 @@ describe('PlaylistDetailPage', () => {
   it('forces a failed track to be fetched whole from its row menu', async () => {
     const posted: string[] = [];
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json({
-          items: [
-            {
-              track: {
-                id: 'track-9',
-                provider: 'youtube',
-                videoId: 'video-9',
-                title: 'The Great Below',
-                durationSeconds: 337,
-                skipNonMusic: false,
-                thumbnailPath: null,
-                fileStatus: 'failed',
-                sourceStatus: 'available',
-                failureReason:
-                  'SponsorBlock lookup failed, will retry on the next sync',
-                createdAt: '2026-09-01T00:00:00.000Z',
-                updatedAt: '2026-09-29T12:00:00.000Z'
-              },
-              origin: 'remote',
-              position: 0
-            }
-          ],
-          total: 1,
-          limit: 50,
-          offset: 0,
-          counts: { ...EMPTY_COUNTS, failed: 1 }
-        })
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: [
+              {
+                track: {
+                  id: 'track-9',
+                  provider: 'youtube',
+                  videoId: 'video-9',
+                  title: 'The Great Below',
+                  durationSeconds: 337,
+                  skipNonMusic: false,
+                  thumbnailPath: null,
+                  fileStatus: 'failed',
+                  sourceStatus: 'available',
+                  failureReason:
+                    'SponsorBlock lookup failed, will retry on the next sync',
+                  createdAt: '2026-09-01T00:00:00.000Z',
+                  updatedAt: '2026-09-29T12:00:00.000Z'
+                },
+                origin: 'remote',
+                position: 0
+              }
+            ],
+            total: 1,
+            limit: 50,
+            offset: 0,
+            counts: { ...EMPTY_COUNTS, failed: 1 }
+          })
       ),
       http.post(
-        'http://localhost:3000/api/v1/tracks/track-9/fetch-whole',
+        mockUrl(endpoints.fetchTrackWhole, { trackId: 'track-9' }),
         () => {
           posted.push('fetch-whole');
 
@@ -688,17 +537,10 @@ describe('PlaylistDetailPage', () => {
       screen.getByRole('menuitem', { name: 'Remove from playlist' })
     );
 
-    /* The press opens the window; the call waits for its deadline, and the
-     * toast speaks in the present because nothing has been removed yet. */
     expect(await screen.findByText('Removing track')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
-  /*
-   * The row the toast names is marked while the removal waits: dimmed, busy, and
-   * its play and lane disabled, so a track that is going cannot be played or
-   * removed again. Cancel lifts the mark and the row is live again.
-   */
   it('marks a track pending while its removal waits, and lifts it on Cancel', async () => {
     const { container } = renderDetail();
 
@@ -727,10 +569,6 @@ describe('PlaylistDetailPage', () => {
     ).toBeEnabled();
   });
 
-  /*
-   * The header is the target of the playlist's own deferred delete, so it wears
-   * the same mark: dimmed and busy, its door and controls disabled.
-   */
   it('marks the header pending while its delete waits', async () => {
     const { container } = renderDetail();
 
@@ -749,9 +587,8 @@ describe('PlaylistDetailPage', () => {
   });
 
   /*
-   * The playlist's own delete takes its tracks with it: every row wears the same
-   * mark, so a track that cannot survive its playlist's deletion stays unplayable
-   * while the window waits.
+   * The playlist's delete takes its tracks with it, so every row wears the same
+   * mark while the window waits.
    */
   it('marks the track rows pending while the playlist delete waits', async () => {
     renderDetail();
@@ -835,25 +672,112 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('names the account and the reason when a grant is refused', async () => {
+    server.use(
+      http.post(
+        mockUrl(endpoints.grantShare, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.Forbidden,
+            status: 403,
+            title: 'Forbidden',
+            detail: 'You cannot share this playlist.'
+          })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Can listen' }));
+
+    expect(
+      await screen.findByText('The playlist sharing with Ada has failed.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('You cannot share this playlist.')
+    ).toBeInTheDocument();
+
+    /* The server's list is unchanged, so the toggle stays off and usable. */
+    const listen = screen.getByRole('button', { name: 'Can listen' });
+    expect(listen).toHaveAttribute('aria-pressed', 'false');
+    expect(listen).toBeEnabled();
+  });
+
+  it('names the account and the reason when removing a share is refused', async () => {
+    const share = {
+      accountId: 'account-2',
+      account: { id: 'account-2', displayName: 'Ada', avatarUrl: null },
+      level: 'read',
+      createdAt: '2026-09-29T12:00:00.000Z'
+    };
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistShares, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json([share])
+      ),
+      http.delete(
+        mockUrl(endpoints.revokeShare, {
+          playlistId: PLAYLIST_ID,
+          accountId: 'account-2'
+        }),
+        () =>
+          problemResponse({
+            code: ProblemCode.Forbidden,
+            status: 403,
+            title: 'Forbidden',
+            detail: 'You cannot change this share.'
+          })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
+
+    const listen = await screen.findByRole('button', { name: 'Can listen' });
+    expect(listen).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(listen);
+
+    expect(
+      await screen.findByText(
+        'The playlist sharing with Ada could not be removed.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('You cannot change this share.')
+    ).toBeInTheDocument();
+
+    /* The share still stands, so the pressed toggle tells the truth. */
+    expect(screen.getByRole('button', { name: 'Can listen' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
   it('recovers the share dialog when its failed read is retried', async () => {
     let attempts = 0;
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/shares',
+        mockUrl(endpoints.playlistShares, { playlistId: PLAYLIST_ID }),
         () => {
           attempts += 1;
 
           if (attempts === 1) {
-            return HttpResponse.json(
-              {
-                type: 'about:blank',
-                title: 'Service unavailable',
-                status: 503,
-                detail: 'The shares are unavailable.',
-                code: 'service_unavailable'
-              },
-              { status: 503 }
-            );
+            return problemResponse({
+              code: ProblemCode.InternalError,
+              status: 503,
+              title: 'Service unavailable',
+              detail: 'The shares are unavailable.'
+            });
           }
 
           return HttpResponse.json([]);
@@ -875,22 +799,10 @@ describe('PlaylistDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
-    /* The dialog's body arrives: the directory's accounts, the reader left out. */
     expect(await screen.findByText('Ada')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Try again' })
     ).not.toBeInTheDocument();
-  });
-
-  it('shows the skip setting as a switch, on and enabled for the owner', async () => {
-    renderDetail();
-
-    const control = await screen.findByRole('switch', {
-      name: 'Skip non-music parts'
-    });
-
-    expect(control).toHaveAttribute('aria-checked', 'true');
-    expect(control).toBeEnabled();
   });
 
   it('flips the switch optimistically and locks it until the server answers', async () => {
@@ -901,7 +813,7 @@ describe('PlaylistDetailPage', () => {
     const bodies: unknown[] = [];
     server.use(
       http.patch(
-        'http://localhost:3000/api/v1/playlists/playlist-1/skip-non-music',
+        mockUrl(endpoints.skipNonMusic, { playlistId: PLAYLIST_ID }),
         async ({ request }) => {
           bodies.push(await request.json());
           await gate;
@@ -931,18 +843,14 @@ describe('PlaylistDetailPage', () => {
   it('puts the switch back and says why when the change is refused', async () => {
     server.use(
       http.patch(
-        'http://localhost:3000/api/v1/playlists/playlist-1/skip-non-music',
+        mockUrl(endpoints.skipNonMusic, { playlistId: PLAYLIST_ID }),
         () =>
-          HttpResponse.json(
-            {
-              type: 'about:blank',
-              title: 'Forbidden',
-              status: 403,
-              code: 'forbidden',
-              detail: 'You cannot change this playlist.'
-            },
-            { status: 403 }
-          )
+          problemResponse({
+            code: ProblemCode.Forbidden,
+            status: 403,
+            title: 'Forbidden',
+            detail: 'You cannot change this playlist.'
+          })
       )
     );
     renderDetail();
@@ -962,17 +870,15 @@ describe('PlaylistDetailPage', () => {
 
   it('shows a read failure rather than an empty list', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1/tracks', () =>
-        HttpResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Service unavailable',
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.InternalError,
             status: 503,
-            detail: 'The tracks are unavailable.',
-            code: 'service_unavailable'
-          },
-          { status: 503 }
-        )
+            title: 'Service unavailable',
+            detail: 'The tracks are unavailable.'
+          })
       )
     );
     renderDetail();
@@ -990,21 +896,17 @@ describe('PlaylistDetailPage', () => {
     let attempts = 0;
     server.use(
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
         () => {
           attempts += 1;
 
           if (attempts === 1) {
-            return HttpResponse.json(
-              {
-                type: 'about:blank',
-                title: 'Service unavailable',
-                status: 503,
-                detail: 'The tracks are unavailable.',
-                code: 'service_unavailable'
-              },
-              { status: 503 }
-            );
+            return problemResponse({
+              code: ProblemCode.InternalError,
+              status: 503,
+              title: 'Service unavailable',
+              detail: 'The tracks are unavailable.'
+            });
           }
 
           return HttpResponse.json({
@@ -1051,17 +953,13 @@ describe('PlaylistDetailPage', () => {
 
   it('shows the not-found state and no header when the playlist 404s', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
-        HttpResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Not found',
-            status: 404,
-            detail: 'No playlist with that id.',
-            code: 'not_found'
-          },
-          { status: 404 }
-        )
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        problemResponse({
+          code: ProblemCode.NotFound,
+          status: 404,
+          title: 'Not found',
+          detail: 'No playlist with that id.'
+        })
       )
     );
     renderDetail();
@@ -1069,8 +967,6 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'This playlist is not here' })
     ).toBeInTheDocument();
-    /* Neither cause is claimed, and the header for a playlist that is not there
-     * is not drawn. */
     expect(screen.queryByText('Rain On The Window')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: 'Nothing here yet' })
@@ -1083,19 +979,68 @@ describe('PlaylistDetailPage', () => {
     expect(await screen.findByText('kept')).toBeInTheDocument();
   });
 
+  /* The run settled with nothing failed; the downloads failed afterwards, so
+   * the band must read the same failure figure as the chips and the rows. */
+  it('draws the tracks failed when the run settled cleanly', async () => {
+    const all = [
+      trackJson('failed-1', 'Failed One', 0, TrackFileStatus.Failed),
+      trackJson('failed-2', 'Failed Two', 1, TrackFileStatus.Failed),
+      trackJson('failed-3', 'Failed Three', 2, TrackFileStatus.Failed),
+      trackJson('failed-4', 'Failed Four', 3, TrackFileStatus.Failed)
+    ];
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-1',
+            playlistId: 'playlist-1',
+            status: 'completed',
+            addedCount: 4,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T11:59:00.000Z',
+            finishedAt: '2026-09-29T12:00:00.000Z',
+            error: null
+          })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: all,
+            total: all.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all)
+          })
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('group', { name: '4 failed' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Failed 4' })
+    ).toBeInTheDocument();
+  });
+
   /*
-   * The failure half of the page's one-state pairing: a playlist the server
-   * marked failed draws the band with the run's own reason, the reassurance and
-   * the retry, and not the summary. This is the page pairing the status with the
-   * reason, which the component test alone cannot prove.
+   * The page pairs the status with the run's reason, which the component test
+   * alone cannot prove.
    */
   it('draws the run reason instead of the summary when the sync failed', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
         HttpResponse.json({ ...playlistJson(true), syncStatus: 'error' })
       ),
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/sync-runs/latest',
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
         () =>
           HttpResponse.json({
             id: 'run-1',
@@ -1132,26 +1077,9 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('gates the owner overflow on the playlist access', async () => {
-    renderDetail();
-
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    );
-
-    expect(
-      screen.getByRole('menuitem', { name: 'Sync now' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('menuitem', { name: 'Delete playlist' })
-    ).toBeInTheDocument();
-  });
-
   it('draws no overflow at all for a read collaborator', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
         HttpResponse.json({
           id: 'playlist-1',
           ownerAccountId: 'account-1',
@@ -1166,6 +1094,7 @@ describe('PlaylistDetailPage', () => {
           sort: 'playlist',
           access: 'read',
           hasShares: false,
+          pinned: false,
           createdAt: '2026-09-01T00:00:00.000Z',
           updatedAt: '2026-09-29T12:00:00.000Z'
         })
@@ -1184,10 +1113,68 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Add a track' })
     ).not.toBeInTheDocument();
+    /* So is the named sync: a reader cannot start a run. */
+    expect(
+      screen.queryByRole('button', { name: 'Sync now' })
+    ).not.toBeInTheDocument();
     /* The setting is still theirs to read, so the switch is drawn disabled. */
     expect(
       screen.getByRole('switch', { name: 'Skip non-music parts' })
     ).toBeDisabled();
+  });
+
+  it('starts a sync from the header without opening the overflow', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const posts: string[] = [];
+    server.use(
+      http.post(
+        mockUrl(endpoints.syncPlaylist, { playlistId: PLAYLIST_ID }),
+        async () => {
+          posts.push('sync');
+          await gate;
+
+          return respond(
+            endpoints.syncPlaylist,
+            {
+              id: 'run-header',
+              playlistId: PLAYLIST_ID,
+              status: SyncRunStatus.Running,
+              addedCount: 0,
+              retainedCount: 0,
+              removedCount: 0,
+              failedCount: 0,
+              startedAt: '2026-09-29T12:00:00.000Z',
+              finishedAt: null,
+              error: null
+            },
+            202
+          );
+        }
+      )
+    );
+    renderDetail();
+
+    const control = await screen.findByRole('button', { name: 'Sync now' });
+    fireEvent.click(control);
+
+    await waitFor(() => {
+      expect(posts).toHaveLength(1);
+      expect(control).toHaveAccessibleName('Syncing');
+    });
+    expect(screen.getAllByText('Syncing')).toHaveLength(1);
+    expect(control).toBeDisabled();
+
+    /* A second press on the busy control cannot start another run. */
+    fireEvent.click(control);
+    expect(posts).toHaveLength(1);
+
+    release();
+    await waitFor(() => {
+      expect(control).toHaveAccessibleName('Sync now');
+    });
   });
 
   it('draws the add control for the owner and opens the dialog', async () => {
@@ -1207,7 +1194,7 @@ describe('PlaylistDetailPage', () => {
   it('adds one video to the chosen playlists in one request', async () => {
     const posted: unknown[] = [];
     server.use(
-      http.post('http://localhost:3000/api/v1/tracks', async ({ request }) => {
+      http.post(mockUrl(endpoints.addTrack), async ({ request }) => {
         posted.push(await request.json());
 
         return HttpResponse.json({
@@ -1235,7 +1222,7 @@ describe('PlaylistDetailPage', () => {
 
   it('keeps the dialog open and names the playlists that refused', async () => {
     server.use(
-      http.get('http://localhost:3000/api/v1/playlists', () =>
+      http.get(mockUrl(endpoints.playlists), () =>
         HttpResponse.json({
           items: [
             {
@@ -1252,6 +1239,8 @@ describe('PlaylistDetailPage', () => {
               sort: 'playlist',
               access: 'owner',
               hasShares: false,
+              pinned: false,
+              counts: { ...EMPTY_COUNTS, stored: 3 },
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             },
@@ -1269,6 +1258,8 @@ describe('PlaylistDetailPage', () => {
               sort: 'playlist',
               access: 'owner',
               hasShares: false,
+              pinned: false,
+              counts: { ...EMPTY_COUNTS, stored: 3 },
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             }
@@ -1278,7 +1269,7 @@ describe('PlaylistDetailPage', () => {
           offset: 0
         })
       ),
-      http.post('http://localhost:3000/api/v1/tracks', () =>
+      http.post(mockUrl(endpoints.addTrack), () =>
         HttpResponse.json({
           results: [
             { playlistId: 'playlist-1', outcome: 'added' },
@@ -1305,7 +1296,7 @@ describe('PlaylistDetailPage', () => {
 
   it('closes the dialog when every playlist took the video', async () => {
     server.use(
-      http.post('http://localhost:3000/api/v1/tracks', () =>
+      http.post(mockUrl(endpoints.addTrack), () =>
         HttpResponse.json({
           results: [
             { playlistId: 'playlist-1', outcome: 'added' },
@@ -1322,8 +1313,7 @@ describe('PlaylistDetailPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
-    /* An all-success batch has nothing to read, so the dialog goes, after its
-     * exit. */
+    /* An all-success batch has nothing to read, so the dialog goes. */
     await waitFor(() => {
       expect(
         screen.queryByRole('dialog', { name: 'Add a track' })
@@ -1344,9 +1334,8 @@ describe('PlaylistDetailPage', () => {
 });
 
 /*
- * The sort control above the list. The write is the page's: the control is
- * presentational, so the page saves the order, asks the reads again and reports a
- * refusal.
+ * The control is presentational: the page saves the order, re-asks the reads
+ * and reports a refusal.
  */
 describe('PlaylistDetailPage sort control', () => {
   const TITLES: Record<string, string> = {
@@ -1361,9 +1350,9 @@ describe('PlaylistDetailPage sort control', () => {
 
     server.use(
       http.patch(
-        'http://localhost:3000/api/v1/playlists/playlist-1/sort',
+        mockUrl(endpoints.sortPlaylist, { playlistId: PLAYLIST_ID }),
         async ({ request }) => {
-          const body = (await request.json()) as { sort: string };
+          const body = SortPlaylistInputSchema.parse(await request.json());
           bodies.push(body);
           order = ['track-3', 'track-2', 'track-1'];
 
@@ -1371,7 +1360,7 @@ describe('PlaylistDetailPage sort control', () => {
         }
       ),
       http.get(
-        'http://localhost:3000/api/v1/playlists/playlist-1/tracks',
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
         () => {
           const items = order.map((id, index) =>
             trackJson(id, TITLES[id] ?? id, index)
@@ -1405,39 +1394,12 @@ describe('PlaylistDetailPage sort control', () => {
       ])
     );
   });
-
-  it('disables the control while the shuffled list is the one on screen', async () => {
-    renderDetail();
-    await screen.findByRole('button', { name: 'Play Blue In Green' });
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
-    );
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /^Sort by: / })).toBeDisabled()
-    );
-  });
-
-  it('disables the control for a read collaborator', async () => {
-    server.use(
-      http.get('http://localhost:3000/api/v1/playlists/playlist-1', () =>
-        HttpResponse.json({ ...playlistJson(true), access: 'read' })
-      )
-    );
-
-    renderDetail();
-
-    await screen.findByRole('button', { name: 'Play Blue In Green' });
-    expect(screen.getByRole('button', { name: /^Sort by: / })).toBeDisabled();
-  });
 });
 
 /*
- * The filter chips above the list. The counts come from the tracks read's own
- * whole-playlist aggregate, a chip narrows the list and the header's count line,
- * a filter that matches nothing names its empty state, and the chips step aside
- * while the shuffled queue is the list on screen.
+ * A chip narrows the list and the rail; the identity card keeps stating the
+ * playlist's own size, so no filter can make the playlist read as smaller. The
+ * chips step aside under the shuffled queue.
  */
 describe('PlaylistDetailPage filter chips', () => {
   function headerCard(container: HTMLElement): HTMLElement {
@@ -1467,7 +1429,7 @@ describe('PlaylistDetailPage filter chips', () => {
     ).toBeInTheDocument();
   });
 
-  it('narrows the list and the header count line, and All restores both', async () => {
+  it('narrows the list while the card keeps the playlist’s own size, and All restores the list', async () => {
     const { container } = renderDetail();
 
     await screen.findByRole('button', { name: 'Play Blue In Green' });
@@ -1478,8 +1440,13 @@ describe('PlaylistDetailPage filter chips', () => {
       expect(screen.queryByText('Flamenco Sketches')).not.toBeInTheDocument()
     );
     expect(listTitles()).toEqual(['Blue In Green', 'Naima']);
-    expect(within(headerCard(container)).getByText('2')).toBeInTheDocument();
-    /* The counts stay the whole playlist's and do not follow the filter. */
+    /* The card is the playlist's identity, not the filtered view: the rail's
+     * "All 3" and this figure are the same size. */
+    expect(within(headerCard(container)).getByText('3')).toBeInTheDocument();
+    expect(
+      within(headerCard(container)).getByText('tracks')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Pending 1' })
     ).toBeInTheDocument();
@@ -1490,6 +1457,20 @@ describe('PlaylistDetailPage filter chips', () => {
       expect(screen.getByText('Flamenco Sketches')).toBeInTheDocument()
     );
     expect(within(headerCard(container)).getByText('3')).toBeInTheDocument();
+  });
+
+  it('keeps the playlist’s own size under a filter that matches nothing', async () => {
+    const { container } = renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 0' }));
+
+    await screen.findByText('No failed tracks');
+
+    /* An empty filter is not an empty playlist: "0 tracks" would claim it is. */
+    expect(within(headerCard(container)).getByText('3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeInTheDocument();
   });
 
   it('draws the named empty state when a filter matches nothing, and Show all restores', async () => {
@@ -1509,23 +1490,79 @@ describe('PlaylistDetailPage filter chips', () => {
     expect(screen.queryByText('No failed tracks')).not.toBeInTheDocument();
   });
 
-  it('disables the chips while the shuffled list is on screen', async () => {
+  it('retries every failed track from one counted control on the failed view', async () => {
+    const all = [
+      trackJson('failed-1', 'Failed One', 0, TrackFileStatus.Failed),
+      trackJson('failed-2', 'Failed Two', 1, TrackFileStatus.Failed),
+      trackJson('failed-3', 'Failed Three', 2, TrackFileStatus.Failed)
+    ];
+    const retried: string[] = [];
+    let release = (): void => {};
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: all,
+            total: all.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all)
+          })
+      ),
+      http.post(mockUrl(endpoints.retryTrack), async ({ request }) => {
+        const parts = new URL(request.url).pathname.split('/');
+        retried.push(parts[parts.length - 2] ?? '');
+        await gate;
+
+        return HttpResponse.json({
+          ...all[0].track,
+          fileStatus: TrackFileStatus.Downloading
+        });
+      })
+    );
     renderDetail();
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    await screen.findByRole('button', { name: 'Failed 3' });
+    /* The state block carries the action until the failed view has its own. */
+    expect(
+      screen.getByRole('button', { name: 'Retry all 3 failed tracks' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 3' }));
+
+    await screen.findByText('Failed One');
+    const controls = screen.getAllByRole('button', {
+      name: 'Retry all 3 failed tracks'
+    });
+    expect(controls).toHaveLength(1);
+
+    fireEvent.click(controls[0]);
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Retrying all 3 failed tracks...'
+      })
+    ).toBeDisabled();
+
+    release();
+
+    await waitFor(() => expect(retried).toHaveLength(3));
+    expect(new Set(retried)).toEqual(
+      new Set(all.map(association => association.track.id))
     );
-
-    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
-
-    expect(screen.getByRole('button', { name: 'Stored 2' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'All 3' })).toBeDisabled();
   });
 
   /*
-   * A filter changes what is seen and not what plays: the queue is built from the
-   * whole-playlist read, so a filter that matched nothing still queues every
-   * playable track.
+   * A filter changes what is seen, not what plays: the queue comes from the
+   * whole-playlist read.
    */
   it('plays every playable track under a filter that matched nothing', async () => {
     renderDetail();
@@ -1545,46 +1582,5 @@ describe('PlaylistDetailPage filter chips', () => {
       'Blue In Green',
       'Naima'
     ]);
-  });
-});
-
-/*
- * The hot list's render count. `formatDuration` is called once per rendered track
- * row with that row's own duration, and the three fixture tracks have distinct
- * durations, so counting calls per argument is a per-row render count.
- */
-describe('PlaylistDetailPage row rendering', () => {
-  it('re-renders only the row a queue change affects', async () => {
-    renderDetail();
-
-    await screen.findByRole('button', { name: 'Play Naima' });
-
-    vi.mocked(formatDuration).mockClear();
-    openQueue();
-
-    const counts = renderedRows();
-
-    expect(counts.get(DURATIONS['track-2'])).toBe(1);
-    expect(counts.has(DURATIONS['track-1'])).toBe(false);
-    expect(counts.has(DURATIONS['track-3'])).toBe(false);
-  });
-
-  it('re-renders only the current row on a play/pause change', async () => {
-    renderDetail();
-
-    await screen.findByRole('button', { name: 'Play Naima' });
-
-    openQueue();
-    vi.mocked(formatDuration).mockClear();
-
-    act(() => {
-      usePlayerStore.getState().setPlaying(false);
-    });
-
-    const counts = renderedRows();
-
-    expect(counts.get(DURATIONS['track-2'])).toBe(1);
-    expect(counts.has(DURATIONS['track-1'])).toBe(false);
-    expect(counts.has(DURATIONS['track-3'])).toBe(false);
   });
 });

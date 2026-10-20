@@ -3,22 +3,18 @@ import type { FastifyInstance } from 'fastify';
 import {
   CreatePlaylistInputSchema,
   PageQuerySchema,
+  PinPlaylistInputSchema,
   PlaylistNotFoundReason,
   PlaylistTracksQuerySchema,
   ProblemCode,
   RenamePlaylistInputSchema,
   SkipNonMusicInputSchema,
-  SortPlaylistInputSchema
+  SortPlaylistInputSchema,
+  endpoints
 } from '@playliberty/contracts';
 
-import { playlistAudience } from '../../../shared/access/playlistAccess.js';
 import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
-import {
-  publishPlaylistChanged,
-  publishPlaylistRemoved,
-  publishTracksChangedForPlaylists
-} from '../../../shared/events/liveEvents.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
@@ -27,6 +23,7 @@ import {
   sendProblem,
   sendValidationFailed
 } from '../../../shared/problem.js';
+import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
 import {
@@ -43,6 +40,7 @@ import {
   readPlaylistForAccount,
   removeTrackForAccount,
   renamePlaylistForAccount,
+  updatePinForAccount,
   updateSkipNonMusicForAccount,
   updateSortForAccount
 } from '../playlistService.js';
@@ -51,7 +49,7 @@ export function registerPlaylistRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.get('/playlists', async (request, reply) => {
+  registerEndpoint(app, endpoints.playlists, async (request, reply) => {
     const parsed = parseBody(PageQuerySchema, request.query);
 
     if (!parsed.success) {
@@ -66,7 +64,7 @@ export function registerPlaylistRoutes(
     );
   });
 
-  app.post('/playlists', async (request, reply) => {
+  registerEndpoint(app, endpoints.createPlaylist, async (request, reply) => {
     const parsed = parseBody(CreatePlaylistInputSchema, request.body);
 
     if (!parsed.success) {
@@ -79,8 +77,8 @@ export function registerPlaylistRoutes(
       return sendInvalidRequest(reply);
     }
 
-    // The playlist and its run exist before this answers, so the client has an id
-    // to read the run from; the reconcile itself finishes behind the response.
+    // The playlist and run exist before this answers, giving the client an id
+    // to read the run from; the reconcile finishes behind the response.
     const started = startSyncForSource(
       context,
       request.account.id,
@@ -100,12 +98,13 @@ export function registerPlaylistRoutes(
     return reply.code(202).send(started.run);
   });
 
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.playlist,
     async (request, reply) => {
       const result = readPlaylistForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -121,8 +120,9 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id/tracks',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.playlistTracks,
     async (request, reply) => {
       const parsed = parseBody(PlaylistTracksQuerySchema, request.query);
 
@@ -132,7 +132,7 @@ export function registerPlaylistRoutes(
 
       const result = listPlaylistTracksForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id,
         {
           limit: parsed.data.limit,
@@ -153,12 +153,13 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id/queue',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.playlistQueue,
     async (request, reply) => {
       const result = listPlaylistQueueForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -174,8 +175,9 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.patch<{ Params: { id: string } }>(
-    '/playlists/:id',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.renamePlaylist,
     async (request, reply) => {
       const parsed = parseBody(RenamePlaylistInputSchema, request.body);
 
@@ -184,8 +186,8 @@ export function registerPlaylistRoutes(
       }
 
       const result = renamePlaylistForAccount(
-        context.database,
-        request.params.id,
+        context,
+        request.params.playlistId,
         request.account.id,
         parsed.data.name
       );
@@ -195,7 +197,6 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -203,15 +204,11 @@ export function registerPlaylistRoutes(
     }
   );
 
-  /*
-   * The skip-non-music setting, which the owner and a write collaborator may
-   * change. The write is not retroactive: it sets the default for tracks created
-   * from now on, and every track already created keeps the value it was born
-   * with. A read collaborator, a stranger and a missing playlist are one
-   * not-found.
-   */
-  app.patch<{ Params: { id: string } }>(
-    '/playlists/:id/skip-non-music',
+  /* The owner and write collaborator may change the skip-non-music setting, not
+   * retroactive: it sets the default for tracks created from now on. */
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.skipNonMusic,
     async (request, reply) => {
       const parsed = parseBody(SkipNonMusicInputSchema, request.body);
 
@@ -220,8 +217,8 @@ export function registerPlaylistRoutes(
       }
 
       const result = updateSkipNonMusicForAccount(
-        context.database,
-        request.params.id,
+        context,
+        request.params.playlistId,
         request.account.id,
         parsed.data.skipNonMusic
       );
@@ -231,7 +228,6 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -239,16 +235,11 @@ export function registerPlaylistRoutes(
     }
   );
 
-  /*
-   * The order the playlist's tracks are read in, which the owner and a write
-   * collaborator may change. The playlist's own order is the absence, so the press
-   * that clears the sort writes no value rather than a stored member. A read
-   * collaborator, a stranger and a missing playlist are one not-found. The
-   * playlist-changed event asks another client of this playlist for its playlist
-   * and its tracks again, because the order is part of both.
-   */
-  app.patch<{ Params: { id: string } }>(
-    '/playlists/:id/sort',
+  /* Owner and write collaborator may change the track order. The playlist's own
+   * order is the absence, so clearing the sort writes no value. */
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.sortPlaylist,
     async (request, reply) => {
       const parsed = parseBody(SortPlaylistInputSchema, request.body);
 
@@ -257,8 +248,8 @@ export function registerPlaylistRoutes(
       }
 
       const result = updateSortForAccount(
-        context.database,
-        request.params.id,
+        context,
+        request.params.playlistId,
         request.account.id,
         parsed.data.sort
       );
@@ -268,7 +259,6 @@ export function registerPlaylistRoutes(
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.playlist);
       }
 
@@ -276,13 +266,44 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.delete<{ Params: { id: string } }>(
-    '/playlists/:id',
+  /* Check is the read need, not write: a pin is the account's own placement,
+   * so a read collaborator may pin. No event: not a playlist change. */
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.pinPlaylist,
     async (request, reply) => {
-      const audience = playlistAudience(context.database, request.params.id);
-      const outcome = deletePlaylistForAccount(
+      const parsed = parseBody(PinPlaylistInputSchema, request.body);
+
+      if (!parsed.success) {
+        return sendValidationFailed(reply, parsed.issues);
+      }
+
+      const result = updatePinForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
+        request.account.id,
+        parsed.data.pinned
+      );
+
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+      }
+
+      if (result.outcome === PlaylistOutcome.Ok) {
+        return reply.send(result.playlist);
+      }
+
+      return exhaust(result);
+    }
+  );
+
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.deletePlaylist,
+    async (request, reply) => {
+      const outcome = deletePlaylistForAccount(
+        context,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -295,9 +316,8 @@ export function registerPlaylistRoutes(
           action: 'playlist_deleted',
           outcome: 'allowed',
           actor: request.account.id,
-          playlist: request.params.id
+          playlist: request.params.playlistId
         });
-        publishPlaylistRemoved(context, request.params.id, audience);
         return reply.code(204).send();
       }
 
@@ -305,12 +325,13 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.post<{ Params: { id: string } }>(
-    '/playlists/:id/sync',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.syncPlaylist,
     async (request, reply) => {
       const result = startSyncForPlaylist(
         context,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -331,12 +352,13 @@ export function registerPlaylistRoutes(
     }
   );
 
-  app.delete<{ Params: { id: string; trackId: string } }>(
-    '/playlists/:id/tracks/:trackId',
+  registerEndpoint<{ Params: { playlistId: string; trackId: string } }>(
+    app,
+    endpoints.removeTrack,
     async (request, reply) => {
       const outcome = removeTrackForAccount(
-        context.database,
-        request.params.id,
+        context,
+        request.params.playlistId,
         request.params.trackId,
         request.account.id
       );
@@ -346,7 +368,6 @@ export function registerPlaylistRoutes(
       }
 
       if (outcome === PlaylistOutcome.Ok) {
-        publishTracksChangedForPlaylists(context, [request.params.id]);
         return reply.code(204).send();
       }
 

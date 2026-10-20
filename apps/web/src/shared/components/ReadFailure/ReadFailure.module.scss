@@ -1,7 +1,7 @@
 /*
  * A failed blocking read: the sentence, and the one control that retries it. The
- * sentence is the note colour the surfaces already use, so the failure reads as
- * the same kind of text as the loading and empty notes around it.
+ * sentence is the note colour the surfaces already use, so it reads as the same
+ * kind of text as the loading and empty notes around it.
  */
 .read-failure {
   display: flex;
@@ -14,7 +14,7 @@
   }
 
   /* The secondary control the dialogs already draw, restated here so this
-   * surface does not depend on another specimen's stylesheet. */
+   * surface does not depend on another surface's stylesheet. */
   &__retry {
     display: inline-flex;
     align-items: center;

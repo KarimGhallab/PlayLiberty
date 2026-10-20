@@ -1,9 +1,5 @@
-/*
- * A removed track takes the removed tone whatever its file status is, because
- * the source is gone and the file should not compete with that news. The
- * precedence is the whole reason this mapping is shared rather than written
- * twice, once per client.
- */
+/* A removed track takes the removed tone whatever its file status; that
+ * precedence is why this mapping is shared rather than written per client. */
 import { TrackFileStatus, TrackSourceStatus } from '@playliberty/contracts';
 
 import { TrackTone } from '../types.js';

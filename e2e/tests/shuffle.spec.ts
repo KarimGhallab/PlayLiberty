@@ -5,21 +5,9 @@ import { addPlaylist, openPlaylist } from '../support/playlists';
 import { expect, test } from '../support/test';
 
 /*
- * The shuffle as an order the transport walks, and the list that shows it.
- *
- * These are end-to-end because the three behaviours under test are only true of
- * the assembled product: the queue is the player store's, the list is the detail
- * page's, and the order they agree on is drawn from a real playlist whose files a
- * real worker stored. A unit test proves the walk over a hand-written queue; only
- * a browser proves that the row pressed, the row drawn and the track sounding are
- * the same track.
- *
- * Five stored tracks and one that fails to download. The failing entry is
- * intentional: it can never be queued, so it is the row the queue order has to
- * leave alone, and it is what makes the list order a thing to assert rather than a
- * re-print of the queue. The downloads are drained rather than waited on, because
- * the worker stores two tracks per pass on a 30-second interval and this scenario
- * needs three passes.
+ * The shuffle as an order the transport walks and the list that shows it. The
+ * failing track can never be queued, so the list order is a thing to assert
+ * rather than a re-print of the queue.
  */
 
 const SOURCE = 'E2Eshuffle1';
@@ -63,30 +51,21 @@ function shuffleControl(page: Page): Locator {
   return page.getByRole('button', { name: `Shuffle ${TITLE}` });
 }
 
-/*
- * The first press on a playlist with no queue for it reads the tracks and builds
- * one, so the pressed state is set a moment later. Waiting on `aria-pressed` is
- * that moment; reading the drawn order before it would read the playlist's order
- * and make every assertion after it a race.
- */
+/* The first press builds the queue, so `aria-pressed` is the moment to wait
+ * for; reading the drawn order before it would be a race. */
 async function pressShuffle(page: Page): Promise<void> {
   await shuffleControl(page).click();
   await expect(shuffleControl(page)).toHaveAttribute('aria-pressed', 'true');
 }
 
-/*
- * The drain stores the backlog in one call, so the wait is on the product
- * finishing rather than on the worker's next interval; the last row offering its
- * play control is that finish, and a reload re-reads the list the drain produced.
- */
+/* The drain stores the backlog in one call, so the last row offering its play
+ * control is the finish; a reload re-reads the list it produced. */
 async function seed(page: Page): Promise<void> {
   await addPlaylist(page, {
     sourceId: SOURCE,
     title: TITLE,
     entries: ENTRIES,
-    /* The failing entry is a download that fails, so it is the one row that can
-     * never be queued: a failure is terminal until a retry, and the list still
-     * has to draw it. */
+    /* The failing entry can never be queued, yet the list still draws it. */
     downloads: { [FAILED.videoId]: 'fail' }
   });
   await openPlaylist(page, TITLE);
@@ -99,13 +78,8 @@ async function seed(page: Page): Promise<void> {
     })
   ).toBeVisible();
 
-  /*
-   * The fixture is two seconds long and the player advances when a track ends,
-   * so a walk slower than the file would be overtaken by the track finishing and
-   * the queue would move on its own. Looping the element keeps `ended` from
-   * firing, which leaves the manual step the only thing that moves the queue and
-   * makes these walks deterministic on a slow runner.
-   */
+  /* Looping the two-second fixture keeps `ended` from firing, so the manual
+   * step is the only thing that moves the queue on a slow runner. */
   await page.locator('audio').evaluate(element => {
     (element as HTMLAudioElement).loop = true;
   });
@@ -122,9 +96,8 @@ test('the queue a shuffle builds leads with a stored track and the list draws it
   const sounding = await soundingTitle(page);
   expect(STORED.map(entry => entry.title)).toContain(sounding);
 
-  /* The list is drawn in the queue's order, led by the sounding track, and the
-   * failed row stays in its playlist neighbourhood rather than being promoted or
-   * dropped. */
+  /* The list follows the queue, led by the sounding track; the failed row stays
+   * in its playlist neighbourhood. */
   const titles = await rowTitles(page);
   expect(titles[0]).toBe(sounding);
   expect(titles).toContain(FAILED.title);
@@ -149,11 +122,8 @@ test('next walks the shuffled queue and stops at its end rather than re-rolling'
     await expect(currentRow(page)).toHaveText(new RegExp(order[step]));
   }
 
-  /*
-   * The last entry is the end. The forward step is disabled and a press changes
-   * nothing, which is the whole point: a shuffled queue that re-rolled would move
-   * to a track the listener already heard.
-   */
+  /* A press at the end changes nothing: a queue that re-rolled would move to a
+   * track already heard. */
   await expect(page.getByRole('button', { name: 'Track next' })).toBeDisabled();
   await page.getByRole('button', { name: 'Track next' }).click({ force: true });
   expect(await soundingTitle(page)).toBe(order[order.length - 1]);

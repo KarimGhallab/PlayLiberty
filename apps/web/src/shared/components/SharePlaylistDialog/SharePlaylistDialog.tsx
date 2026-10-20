@@ -1,9 +1,11 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { ShareLevel } from '@playliberty/contracts';
+import type { AccountSummary } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
+import { problemSentence } from '../../api/problem/problem';
 import {
   useAccountDirectory,
   useCurrentAccount,
@@ -11,20 +13,17 @@ import {
   usePlaylistShares,
   useRevokeShare
 } from '../../api/queries/queries';
+import { NOTICE_WINDOW_MS } from '../../player/usePlayTransition/usePlayTransition';
 import Dialog from '../Dialog/Dialog';
 import styles from '../Dialog/Dialog.module.scss';
+import NoticeToast from '../NoticeToast/NoticeToast';
 import ReadFailure from '../ReadFailure/ReadFailure';
 import shareStyles from './SharePlaylistDialog.module.scss';
 
 /*
- * Share one playlist. The body lists the accounts from the directory. Each name
- * carries a level switch and an action: grant turns a level on, revoke turns it
- * off, and the two share one call because sharing is one fact about a pair of
- * accounts.
- *
- * The list is a read of the playlist's shares, so the dialog arrives knowing who
- * already has it rather than asking the person to remember. A grant and a revoke
- * both invalidate that read, so the list settles on the server's answer.
+ * Share one playlist: the body lists the directory's accounts, each with a
+ * level switch and an action. The list reads the shares, so the dialog
+ * arrives knowing who already has it.
  */
 
 interface SharePlaylistDialogProps {
@@ -41,6 +40,13 @@ const LEVELS: readonly {
   { level: ShareLevel.Write, label: 'shareDialog.edit' }
 ];
 
+/* The account the server refused, and which write it refused. */
+interface ShareRefusal {
+  readonly name: string;
+  readonly message: MessageKey<Messages>;
+  readonly error: Error;
+}
+
 export default function SharePlaylistDialog({
   open,
   playlistId,
@@ -54,11 +60,10 @@ export default function SharePlaylistDialog({
   const grant = useGrantShare(playlistId);
   const revoke = useRevokeShare(playlistId);
   const [working, setWorking] = useState<string | null>(null);
+  const [refused, setRefused] = useState<ShareRefusal | null>(null);
 
-  /*
-   * The directory without the reader. A share with oneself is a refusal the route
-   * owns, and offering a row that can only fail is worse than not offering it.
-   */
+  /* The directory without the reader: a share with oneself is a refusal the
+   * route owns, and a row that can only fail is worse than none. */
   const currentAccountId = me.data?.id ?? null;
   const candidates = (directory.data ?? []).filter(
     account => account.id !== currentAccountId
@@ -67,15 +72,50 @@ export default function SharePlaylistDialog({
   const levelOf = (accountId: string): ShareLevel | null =>
     shares.data?.find(share => share.accountId === accountId)?.level ?? null;
 
-  const setLevel = (accountId: string, level: ShareLevel | null): void => {
-    setWorking(accountId);
-
-    if (level === null) {
-      revoke.mutate(accountId, { onSettled: () => setWorking(null) });
+  /* The notice lives as long as the pin's does, so a later refusal can take the
+   * same slot. */
+  useEffect(() => {
+    if (refused === null) {
       return;
     }
 
-    grant.mutate({ accountId, level }, { onSettled: () => setWorking(null) });
+    const timer = setTimeout(() => setRefused(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [refused]);
+
+  const setLevel = (
+    account: AccountSummary,
+    level: ShareLevel | null
+  ): void => {
+    setRefused(null);
+    setWorking(account.id);
+
+    if (level === null) {
+      revoke.mutate(account.id, {
+        onSettled: () => setWorking(null),
+        onError: error =>
+          setRefused({
+            name: account.displayName,
+            message: 'shareDialog.revokeFailed',
+            error
+          })
+      });
+      return;
+    }
+
+    grant.mutate(
+      { accountId: account.id, level },
+      {
+        onSettled: () => setWorking(null),
+        onError: error =>
+          setRefused({
+            name: account.displayName,
+            message: 'shareDialog.grantFailed',
+            error
+          })
+      }
+    );
   };
 
   return (
@@ -129,7 +169,7 @@ export default function SharePlaylistDialog({
                       disabled={working === account.id}
                       onClick={() =>
                         setLevel(
-                          account.id,
+                          account,
                           level === option.level ? null : option.level
                         )
                       }>
@@ -142,6 +182,13 @@ export default function SharePlaylistDialog({
           })}
         </ul>
       ) : null}
+      {refused === null ? null : (
+        <NoticeToast
+          message={t(refused.message, { name: refused.name })}
+          detail={problemSentence(t, refused.error)}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
     </Dialog>
   );
 }

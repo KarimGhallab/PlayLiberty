@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ProblemCode } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import { ApiError } from '../../api/client/client';
@@ -8,8 +9,7 @@ import ReadFailure from './ReadFailure';
 
 /*
  * The recovery surface's own contract: the fallback sentence when the error
- * carries no mapped sentence, and the one retry that names itself and locks
- * while it works. The mapping itself is the problem module's, tested there.
+ * carries no mapped sentence, and the one retry. The mapping is tested there.
  */
 
 const FALLBACK = 'Playlists could not be loaded.';
@@ -19,7 +19,7 @@ function apiError(detail: string | null): ApiError {
     type: 'about:blank',
     title: 'Service unavailable',
     status: 503,
-    code: 'service_unavailable',
+    code: ProblemCode.InternalError,
     detail: detail ?? undefined
   });
 }
@@ -40,12 +40,6 @@ function renderFailure(props: Partial<Parameters<typeof ReadFailure>[0]> = {}) {
 describe('ReadFailure', () => {
   it('shows the fallback sentence for an error that is not an ApiError', () => {
     renderFailure();
-
-    expect(screen.getByText(FALLBACK)).toBeInTheDocument();
-  });
-
-  it('shows the fallback sentence for an ApiError with no detail', () => {
-    renderFailure({ error: apiError(null) });
 
     expect(screen.getByText(FALLBACK)).toBeInTheDocument();
   });

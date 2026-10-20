@@ -1,0 +1,10 @@
+# 30: The library as a gallery of tiles
+
+**Status:** resolved
+**Labels:** `enhancement`, `ready-for-agent`
+
+## Outcome
+
+The library is a gallery of cover tiles: every tile carries what the row carried plus a mark of how much of the playlist is not on disk, in a grid of `repeat(auto-fill, minmax(232px, 1fr))` with `--space-4` gaps, four columns at 1056 and one fewer below, so no second rule, and a 396px tile whether or not the mark is drawn. `PlaylistTileHeader.tsx` is the header's third arrangement and composes the same seam as the row and the card (the name, the share mark, the count, the sync line with its elapsed time and the owner line) and takes only the props it honours, with no play, transport or retry, and the shared door rule moved to `playlistDoor.ts`; `PlaylistItem.tsx` replaces `PlaylistListItem` and hands the page one deferred delete because the actions module is a hook and a hook cannot be called in a loop. `IncompleteBadge.tsx` is one presentational pill carrying the count of tracks whose file is not stored, toned by the worst reason present (`failed`, then `unavailable`, then `downloading`, then `pending`), with the breakdown of non-zero reasons on hover and on focus and the same breakdown in its `aria-label`, drawing nothing when every track is stored or its counts are null; `PlaylistSchema` gains `PlaylistWithCountsSchema`, and `fileStatusCountsByPlaylist` computes the counts for the whole page in one grouped query so the gallery asks once, with their sum being the playlist's own `trackCount`. The copy is `library.notDownloaded`, saying "not stored" and never "missing" because the glossary's `Track.fileStatus` says `stored`, and a track whose source video was removed is deliberately not a reason; `LibrarySkeleton.tsx` draws eight tiles in the same grid, and the behaviours are owned by `IncompleteBadge.test.tsx`, the tile arrangement's section in `PlaylistHeader.test.tsx`, the assembly in `LibraryPage.test.tsx`, the counts in `playlistRoutes.test.ts` and the journey in `e2e/tests/library.spec.ts`.
+
+See [`08-see-the-library`](../specs/08-see-the-library.md).

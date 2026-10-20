@@ -5,10 +5,7 @@ import {
   IconVolume4
 } from '@tabler/icons-react';
 
-/*
- * The speaker glyph, read by both the volume control's button and the volume
- * notice, so they cannot pick different glyphs for the same level.
- */
+/* The speaker glyph, shared by the button and the notice, one per level. */
 export function volumeIcon(volume: number, muted: boolean) {
   if (muted || volume <= 0) {
     return IconVolume3;

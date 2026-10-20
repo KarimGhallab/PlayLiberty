@@ -1,10 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 
-import { AddTrackInputSchema, ProblemCode } from '@playliberty/contracts';
+import {
+  AddTrackInputSchema,
+  ProblemCode,
+  endpoints
+} from '@playliberty/contracts';
 import { YoutubeSourceKind } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
-import { publishTrackChanged } from '../../../shared/events/liveEvents.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
@@ -12,6 +15,7 @@ import {
   sendUnprocessable,
   sendValidationFailed
 } from '../../../shared/problem.js';
+import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
 import { addTrackToPlaylists } from '../addTrackToPlaylists.js';
@@ -28,19 +32,8 @@ import {
   TrackThumbnailOutcome
 } from '../types.js';
 
-/*
- * The media is content-stable, so it is worth caching in the browser and worth
- * nothing to a shared cache. A track's audio is written once and the track only
- * becomes playable once stored, so the client never holds a failed one; a
- * thumbnail is keyed by a video id that never changes and the client only asks
- * for it once the path is set. Both are `private`, so no shared cache may store
- * or replay one account's media to another, and both keep their validators, so a
- * request past the window revalidates into a 304 rather than a re-download.
- *
- * The values are the `Cache-Control` string, so they are seconds; `sendFile`'s
- * `maxAge` option is milliseconds and can only produce `public`, which is why the
- * header is written here and `cacheControl` is turned off below.
- */
+/* Media is content-stable: browser-cacheable, but `private`, so no shared cache
+ * may replay one account's media to another. Cache-Control seconds. */
 const AUDIO_CACHE_CONTROL = 'private, max-age=604800';
 const THUMBNAIL_CACHE_CONTROL = 'private, max-age=2592000';
 
@@ -48,7 +41,7 @@ export function registerTrackRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.post('/tracks', async (request, reply) => {
+  registerEndpoint(app, endpoints.addTrack, async (request, reply) => {
     const parsed = parseBody(AddTrackInputSchema, request.body);
 
     if (!parsed.success) {
@@ -57,8 +50,7 @@ export function registerTrackRoutes(
 
     const info = resolveSourceUrl(parsed.data.url);
 
-    // A playlist URL is what the create-a-playlist dialog takes, and this dialog
-    // takes a video; the whole request is refused so no playlist is touched.
+    // This route takes a video; a playlist URL refuses the whole request.
     if (info === null || info.kind !== YoutubeSourceKind.Video) {
       return sendUnprocessable(reply);
     }
@@ -73,12 +65,13 @@ export function registerTrackRoutes(
     return reply.send(result);
   });
 
-  app.get<{ Params: { id: string } }>(
-    '/tracks/:id/stream',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.trackStream,
     async (request, reply) => {
       const result = resolveTrackForStream(
         context.database,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 
@@ -121,12 +114,13 @@ export function registerTrackRoutes(
     }
   );
 
-  app.get<{ Params: { id: string } }>(
-    '/tracks/:id/thumbnail',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.trackThumbnail,
     async (request, reply) => {
       const result = resolveTrackForThumbnail(
         context.database,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 
@@ -160,12 +154,13 @@ export function registerTrackRoutes(
     }
   );
 
-  app.post<{ Params: { id: string } }>(
-    '/tracks/:id/retry',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.retryTrack,
     async (request, reply) => {
       const result = retryTrackForAccount(
         context,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 
@@ -187,7 +182,6 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === RetryTrackOutcome.Ok) {
-        publishTrackChanged(context, result.track.id);
         return reply.send(result.track);
       }
 
@@ -195,12 +189,13 @@ export function registerTrackRoutes(
     }
   );
 
-  app.post<{ Params: { id: string } }>(
-    '/tracks/:id/fetch-whole',
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
+    endpoints.fetchTrackWhole,
     async (request, reply) => {
       const result = fetchTrackWholeForAccount(
         context,
-        request.params.id,
+        request.params.trackId,
         request.account.id
       );
 
@@ -223,7 +218,6 @@ export function registerTrackRoutes(
       }
 
       if (result.outcome === FetchWholeOutcome.Ok) {
-        publishTrackChanged(context, result.track.id);
         return reply.send(result.track);
       }
 

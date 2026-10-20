@@ -35,9 +35,8 @@ afterEach(async () => {
 });
 
 /*
- * The owned track this suite reads: an account that owns a playlist holding the
- * track, composed from the shared builders. The association is manual at
- * position zero, the same shape an owner adding their own track produces.
+ * Owned track this suite reads: an account owning a playlist that holds it, the
+ * association manual at position zero, as an owner adding a track produces.
  */
 function seedOwnedTrack(
   database: DatabaseHandle,

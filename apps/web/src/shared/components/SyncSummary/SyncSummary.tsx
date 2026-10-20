@@ -1,100 +1,113 @@
 import { SyncRunStatus } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
-import { formatLastSynced, useI18n } from '@playliberty/i18n';
+import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 
+import RetryFailedControl from '../RetryFailedControl/RetryFailedControl';
 import styles from './SyncSummary.module.scss';
 
 /*
- * The sync summary is never drawn beside the sync error, which replaces it: the
- * summary says what the run did and the error says what to do about it, and the
- * two would put the same news in the same column twice.
- *
- * A playlist with no run has no summary and renders nothing at all rather than
- * four zeroes: a summary of a run that never happened is a claim about the last
- * run that there was not one.
- *
- * The figure is quiet by default and colour is spent only on a count that is not
- * zero, so a run that changed nothing needs no reading at all. The stamp is the
- * run's `finishedAt`, which a running run does not have yet, so a run still in
- * flight draws its own word in place of the stamp.
- *
- * The in-flight line is derived, and says so. There is no stored pending count
- * anywhere in the contract, so while a run is active the downloading figure
- * comes from the tracks the client already holds and the surface states that
- * rather than presenting a number the server never reported.
+ * The summary is never drawn beside the sync error, which replaces it. The
+ * stamp frames the run's counts; the failed figure is live and says so. Zero
+ * cells are hidden, and a run that changed nothing says so.
  */
 
 interface SyncSummaryProps {
   run: SyncRun;
   now: Date;
+  /* The whole playlist's failed tracks, the same aggregate the chips draw. */
+  failedCount: number;
   /* How many of the tracks this client holds are downloading. Passed only while
    * a run is active, because that is the only time the line is drawn. */
   downloadingCount?: number;
+  /* Retry every failed track. Absent for a reader, or when the failed view
+   * already carries the control. */
+  onRetryFailed?: () => void;
+  retryingFailed?: boolean;
+  /* Whether a running run draws its own stamp; the caller may hide it when a
+   * control above already names the sync. */
+  showRunningStamp?: boolean;
+}
+
+interface SummaryCell {
+  readonly key: string;
+  readonly count: number;
+  readonly word: string;
+  readonly tone?: string;
 }
 
 export default function SyncSummary({
   run,
   now,
-  downloadingCount = 0
+  failedCount,
+  downloadingCount = 0,
+  onRetryFailed,
+  retryingFailed = false,
+  showRunningStamp = true
 }: SyncSummaryProps) {
   const { t } = useI18n();
   const finishedAt = run.finishedAt === null ? null : new Date(run.finishedAt);
   const running = run.status === SyncRunStatus.Running;
-  const toneOf = (count: number, tone: string): string | undefined =>
-    count === 0 ? undefined : tone;
+  const keptWord = t('syncSummary.kept', { count: run.retainedCount });
+  const addedWord = t('syncSummary.added', { count: run.addedCount });
+  const removedWord = t('syncSummary.removed', { count: run.removedCount });
+  const failedWord = t('syncSummary.failed', { count: failedCount });
+  const cells: SummaryCell[] = [
+    { key: 'kept', count: run.retainedCount, word: keptWord },
+    { key: 'added', count: run.addedCount, word: addedWord, tone: 'added' },
+    {
+      key: 'removed',
+      count: run.removedCount,
+      word: removedWord,
+      tone: 'removed'
+    },
+    { key: 'failed', count: failedCount, word: failedWord, tone: 'failed' }
+  ].filter(cell => cell.count > 0);
 
   return (
     <div className={styles.syncSummary}>
-      <div className={styles.syncSummary__band}>
-        <div className={styles.syncSummary__cell}>
-          <span className={styles.syncSummary__n}>{run.retainedCount}</span>
-          <span className={styles.syncSummary__word}>
-            {t('syncSummary.kept', { count: run.retainedCount })}
-          </span>
+      {running && !showRunningStamp ? null : (
+        <p className={styles.syncSummary__stamp}>
+          {running
+            ? t('syncSummary.syncing')
+            : t('syncSummary.lastSync', {
+                time: formatRelativeTime(t, finishedAt ?? now, now)
+              })}
+        </p>
+      )}
+      {cells.length === 0 ? (
+        running ? null : (
+          <p className={styles.syncSummary__noChanges}>
+            {t('syncSummary.noChanges')}
+          </p>
+        )
+      ) : (
+        <div className={styles.syncSummary__band}>
+          {cells.map(cell => (
+            <div
+              key={cell.key}
+              className={styles.syncSummary__cell}
+              role="group"
+              aria-label={`${cell.count} ${cell.word}`}>
+              <span className={styles.syncSummary__n} data-tone={cell.tone}>
+                {cell.count}
+              </span>
+              <span className={styles.syncSummary__word}>{cell.word}</span>
+            </div>
+          ))}
         </div>
-        <div className={styles.syncSummary__cell}>
-          <span
-            className={styles.syncSummary__n}
-            data-tone={toneOf(run.addedCount, 'added')}>
-            {run.addedCount}
-          </span>
-          <span className={styles.syncSummary__word}>
-            {t('syncSummary.added', { count: run.addedCount })}
-          </span>
-        </div>
-        <div className={styles.syncSummary__cell}>
-          <span
-            className={styles.syncSummary__n}
-            data-tone={toneOf(run.removedCount, 'removed')}>
-            {run.removedCount}
-          </span>
-          <span className={styles.syncSummary__word}>
-            {t('syncSummary.removed', { count: run.removedCount })}
-          </span>
-        </div>
-        <div className={styles.syncSummary__cell}>
-          <span
-            className={styles.syncSummary__n}
-            data-tone={toneOf(run.failedCount, 'failed')}>
-            {run.failedCount}
-          </span>
-          <span className={styles.syncSummary__word}>
-            {t('syncSummary.failed', { count: run.failedCount })}
-          </span>
-        </div>
-      </div>
+      )}
+      {failedCount > 0 && onRetryFailed !== undefined ? (
+        <RetryFailedControl
+          count={failedCount}
+          retrying={retryingFailed}
+          onRetry={onRetryFailed}
+        />
+      ) : null}
       {running && downloadingCount > 0 ? (
         <p className={styles.syncSummary__flight}>
           {t('syncSummary.downloading', { count: downloadingCount })}
         </p>
       ) : null}
-      <p className={styles.syncSummary__stamp}>
-        {running
-          ? t('syncSummary.syncing')
-          : finishedAt === null
-            ? t('syncSummary.syncedJustNow')
-            : formatLastSynced(t, finishedAt, now)}
-      </p>
     </div>
   );
 }

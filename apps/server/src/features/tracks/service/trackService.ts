@@ -8,12 +8,13 @@ import {
   EntryOutcome,
   trackEntry
 } from '../../../shared/access/entry.js';
+import type { AppContext } from '../../../shared/context.js';
+import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { tracks } from '../../../platform/database/schema.js';
 import { withDownloadQueue } from '../downloadQueue/downloadQueue.js';
-import type { DownloadQueueContext } from '../downloadQueue/downloadQueue.js';
 import { TrackTransitionOutcome } from '../trackLifecycle/trackLifecycle.js';
 import type {
   FetchWholeResult,
@@ -27,6 +28,11 @@ import {
   TrackStreamOutcome,
   TrackThumbnailOutcome
 } from '../types.js';
+
+type TrackWriteContext = Pick<
+  AppContext,
+  'database' | 'kickDownloads' | 'events'
+>;
 
 function loadTrack(
   database: DatabaseHandle,
@@ -105,12 +111,8 @@ export function resolveTrackForThumbnail(
   return entry.value;
 }
 
-/*
- * The track a video id already has, if any. A track is instance-wide and keyed by
- * video id, so this is the dedup read both the sync and the batch add make before
- * they create one, and its caller decides what to do with a track that exists:
- * the sync re-queues a failed one, the batch add reuses it untouched.
- */
+/* The dedup read: a track is keyed by video id, so sync and batch add call it
+ * before creating one. */
 export function findTrackByVideoId(
   database: DatabaseHandle,
   videoId: string
@@ -122,12 +124,8 @@ export function findTrackByVideoId(
     .get();
 }
 
-/*
- * The stored row carries two fields the contract does not: the media path the
- * stream route resolves, and the thumbnail URL the source reported. Neither is
- * metadata, so neither crosses the wire; the artwork is reached through the
- * track's own route.
- */
+/* Media path and thumbnail URL stay off the wire; artwork is reached through
+ * the track's own route. */
 export function toTrackView(row: TrackRow): Track {
   return {
     id: row.id,
@@ -145,17 +143,10 @@ export function toTrackView(row: TrackRow): Track {
   };
 }
 
-/*
- * Putting a failed track back in the queue without running a sync. The right
- * follows the track rather than the playlist, because the track is instance-wide
- * and a household shares one copy, so anyone who can write a playlist that holds
- * it may retry it. Only a failed track is retryable: a stored one has its audio, a
- * pending or downloading one is already queued, and unavailable is terminal. A
- * missing track and one no writable playlist holds are the same not-found, so the
- * route confirms nothing it will not act on. No run is created and no sync starts.
- */
+/* Retry a failed track without a sync. The right follows the track, so write
+ * access to a holding playlist may retry it; absent reads as not-found. */
 export function retryTrackForAccount(
-  context: DownloadQueueContext,
+  context: TrackWriteContext,
   trackId: string,
   accountId: string
 ): RetryTrackResult {
@@ -193,25 +184,17 @@ export function retryTrackForAccount(
     return { outcome: RetryTrackOutcome.NotFound };
   }
 
+  if (entry.value.outcome === RetryTrackOutcome.Ok) {
+    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+  }
+
   return entry.value;
 }
 
-/*
- * Forcing one track to be fetched whole. The bypass exists for a track whose
- * SponsorBlock lookup failed, or one the listener knows should stay whole, and it
- * is offered only when there is no stored file: a stored file is shared by every
- * association, so overwriting it would change every other playlist that references
- * the video. Healing an already-stored track is an operator action on the media
- * object, not a per-listener one.
- *
- * It flips the recorded policy to false and returns the track to `pending`, so the
- * next pass fetches it without the cut. The right follows the track the way retry
- * does: the owner of a playlist that holds it or a write collaborator on one, and
- * a read collaborator, a stranger, an orphan and a missing track are one
- * not-found.
- */
+/* Fetch a track whole, only when no stored file exists: the file is shared
+ * across every association, so overwriting it would change every playlist. */
 export function fetchTrackWholeForAccount(
-  context: DownloadQueueContext,
+  context: TrackWriteContext,
   trackId: string,
   accountId: string
 ): FetchWholeResult {
@@ -228,11 +211,8 @@ export function fetchTrackWholeForAccount(
     AccessNeed.Write,
     () =>
       withDownloadQueue<FetchWholeResult>(context, queue => {
-        /*
-         * The eligibility rule lives in the lifecycle: a stored track has a file to
-         * protect, a downloading one is mid-fetch and moving it would race the
-         * worker, and an unavailable one is gone. The module refuses all three.
-         */
+        /* Eligibility lives in the lifecycle: stored has a file, downloading
+         * would race the worker, unavailable is gone. */
         const transition = queue.fetchWhole(track.id);
 
         if (transition.outcome === TrackTransitionOutcome.Refused) {
@@ -252,6 +232,10 @@ export function fetchTrackWholeForAccount(
 
   if (entry.outcome === EntryOutcome.Denied) {
     return { outcome: FetchWholeOutcome.NotFound };
+  }
+
+  if (entry.value.outcome === FetchWholeOutcome.Ok) {
+    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
   }
 
   return entry.value;

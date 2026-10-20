@@ -42,8 +42,8 @@ describe('the startup sweep', () => {
       fileStatus: TrackFileStatus.Downloading
     });
 
-    // A download that was interrupted: a temporary file, a row still claiming to
-    // be downloading, and no stored file.
+    // An interrupted download: a temporary file, a row still claiming to be
+    // downloading, and no stored file.
     const tempFile = join(context.mediaPaths.tempDir, 'aaaaaaaaaaa.stored.m4a');
     await mkdir(dirname(tempFile), { recursive: true });
     await writeFile(tempFile, 'half a download');

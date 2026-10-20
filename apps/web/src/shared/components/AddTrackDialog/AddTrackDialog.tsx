@@ -1,34 +1,18 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { AddTrackInputSchema, AddTrackOutcome } from '@playliberty/contracts';
 import type { AddTrackResult, Playlist } from '@playliberty/contracts';
+import { AddTrackInputSchema, AddTrackOutcome } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import Dialog from '../Dialog/Dialog';
 import dialogStyles from '../Dialog/Dialog.module.scss';
+import Spinner from '../Spinner/Spinner';
 import styles from './AddTrackDialog.module.scss';
 
 /*
- * The add-a-track dialog, and the playlist detail's only door for one pasted
- * video. It takes a video URL and a set of writable playlists, and it is one
- * request for the whole batch: `POST /tracks` resolves the video once and answers
- * one outcome per chosen playlist. It is named for the track and its field takes
- * a video URL, which is the glossary's own distinction: a track is what the
- * server stores, a video is its source on YouTube.
- *
- * The body is the writable playlists, and the playlist being looked at arrives
- * checked, so the common case is one press. A playlist the account cannot write
- * to is absent rather than disabled, the screen's own rule; the caller has
- * already filtered to `owner` and `write`, and this component never offers a
- * control that cannot be pressed.
- *
- * The dialog is two surfaces. Choosing playlists and reporting a refusal are the
- * same node, so the title and the field do not move and only the block under the
- * list changes. It closes on an all-success outcome, where there is nothing to
- * read, and stays open on any `refused`, naming the playlists that refused. The
- * refusal carries no cause: the route withholds it on purpose so the batch cannot
- * enumerate other accounts' playlists, and the copy is about the outcome and not
- * the reason.
+ * The add-a-track dialog: one request for the whole batch, resolving the video
+ * once and answering one outcome per chosen playlist. A refusal names the
+ * playlists and no cause, so the batch cannot enumerate other accounts'.
  */
 
 interface AddTrackDialogProps {
@@ -63,12 +47,11 @@ export default function AddTrackDialog({
   const [url, setUrl] = useState('');
   const [invalid, setInvalid] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string[]>([currentPlaylistId]);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
 
-  /*
-   * A fresh dialog opens on an empty field and only the current playlist checked,
-   * so a cancelled paste and a cancelled choice do not linger into the next open.
-   */
+  /* A fresh open resets the field and the selection, so a cancelled paste and
+   * choice do not linger into the next open. */
   if (open !== wasOpen) {
     setWasOpen(open);
 
@@ -76,6 +59,7 @@ export default function AddTrackDialog({
       setUrl('');
       setInvalid(null);
       setChosen([currentPlaylistId]);
+      setConfirmingDiscard(false);
     }
   }
 
@@ -87,11 +71,8 @@ export default function AddTrackDialog({
     setInvalid(null);
   }, [problem]);
 
-  /*
-   * The refused playlists of a returned batch, which is what keeps the dialog
-   * open. Empty while there is no result and empty on an all-success batch, so
-   * the block draws only when something refused.
-   */
+  /* The refused playlists of a returned batch, which is what keeps the dialog
+   * open; empty on no result and on an all-success batch. */
   const refusedIds =
     result === null
       ? []
@@ -100,13 +81,28 @@ export default function AddTrackDialog({
           .map(entry => entry.playlistId);
 
   /* Whether every playlist in the batch refused, so the lead can say "nothing
-   * was added" rather than "added to the rest". The denominator is the batch's
-   * own size, not the checkboxes on screen, which can have been changed since. */
+   * was added". The denominator is the batch's own size, not the checkboxes. */
   const everyRefused =
     result !== null && refusedIds.length === result.results.length;
 
   const nameOf = (playlistId: string): string =>
     playlists.find(playlist => playlist.id === playlistId)?.name ?? playlistId;
+
+  const dirty = url.trim().length > 0;
+
+  function requestClose(): void {
+    if (confirmingDiscard) {
+      setConfirmingDiscard(false);
+      return;
+    }
+
+    if (!dirty) {
+      onClose();
+      return;
+    }
+
+    setConfirmingDiscard(true);
+  }
 
   const toggle = (playlistId: string): void => {
     setChosen(current =>
@@ -127,13 +123,8 @@ export default function AddTrackDialog({
       playlistIds: chosen
     });
 
-    /*
-     * The schema checks that it is a URL; the video check is this dialog's own,
-     * the same half the add dialog does for a playlist. A `list` parameter is a
-     * playlist URL, which "add a track" does not take, and the whole request is
-     * refused so no playlist is touched. The server makes the same check, and
-     * this is the client's half of it in one slot.
-     */
+    /* The schema checks it is a URL; a `list` parameter makes it a playlist
+     * URL, which this dialog does not take, so the whole request is refused. */
     const isPlaylistUrl =
       parsed.success && new URL(parsed.data.url).searchParams.has('list');
 
@@ -152,36 +143,56 @@ export default function AddTrackDialog({
       title={t('addTrackDialog.title')}
       description={t('addTrackDialog.description')}
       initialFocus={field}
-      onRequestClose={onClose}
+      onRequestClose={requestClose}
       actions={
-        <>
-          <button
-            className={dialogStyles.dialog__secondary}
-            type="button"
-            disabled={isWorking}
-            onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            className={dialogStyles.dialog__primary}
-            type="button"
-            data-loading={isWorking ? 'true' : undefined}
-            aria-busy={isWorking}
-            onClick={submit}>
-            {isWorking ? (
-              <>
-                <span
-                  className={dialogStyles.dialog__spinner}
-                  aria-hidden="true"
-                />
-                {t('addTrackDialog.adding')}
-              </>
-            ) : (
-              t('addTrackDialog.add')
-            )}
-          </button>
-        </>
+        confirmingDiscard ? (
+          <>
+            <button
+              className={dialogStyles.dialog__secondary}
+              type="button"
+              onClick={() => setConfirmingDiscard(false)}>
+              {t('common.keepEditing')}
+            </button>
+            <button
+              className={dialogStyles.dialog__primary}
+              type="button"
+              onClick={onClose}>
+              {t('common.discard')}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className={dialogStyles.dialog__secondary}
+              type="button"
+              disabled={isWorking}
+              onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              className={dialogStyles.dialog__primary}
+              type="button"
+              data-loading={isWorking ? 'true' : undefined}
+              aria-busy={isWorking}
+              disabled={isWorking || !dirty || chosen.length === 0}
+              onClick={submit}>
+              {isWorking ? (
+                <>
+                  <Spinner />
+                  {t('addTrackDialog.adding')}
+                </>
+              ) : (
+                t('addTrackDialog.add')
+              )}
+            </button>
+          </>
+        )
       }>
+      {confirmingDiscard ? (
+        <p className={dialogStyles.dialog__discard} role="alert">
+          {t('common.discardPrompt')}
+        </p>
+      ) : null}
       {refusedIds.length > 0 ? (
         <div className={styles.addTrack__refused}>
           <p className={styles.addTrack__refusedLead}>

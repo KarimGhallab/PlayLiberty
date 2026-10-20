@@ -3,19 +3,17 @@ import { useI18n } from '@playliberty/i18n';
 import styles from './LibrarySkeleton.module.scss';
 
 /*
- * The library's loading state: the shape of the list rather than a sentence
- * about waiting. Five rows of the item's own 136px, each a 96px cover and the
- * two lines the header draws, so the read resolves into the space this held and
- * nothing on the page moves when it lands. Five because that is what fills the
- * 1056 column's first screen.
- *
- * The shapes carry no text, so they are `aria-hidden` and the only thing a
- * screen reader hears is the status sentence, which is why the sentence is
- * still on the page and off screen rather than gone.
+ * The shape of the gallery rather than a sentence about waiting, so the read
+ * resolves into the space this held and nothing moves when it lands.
  */
-const ROWS = 5;
+/* Eight fills the column's first screen at four columns and two rows. */
+const ITEMS = 8;
 
-export default function LibrarySkeleton() {
+interface LibrarySkeletonProps {
+  layout: 'tile' | 'card';
+}
+
+export default function LibrarySkeleton({ layout }: LibrarySkeletonProps) {
   const { t } = useI18n();
 
   return (
@@ -23,16 +21,27 @@ export default function LibrarySkeleton() {
       <span className={styles.librarySkeleton__spoken}>
         {t('library.loading')}
       </span>
-      <div className={styles.librarySkeleton__rows} aria-hidden="true">
-        {Array.from({ length: ROWS }, (_, index) => (
-          <div className={styles.librarySkeleton__row} key={index}>
-            <div className={styles.librarySkeleton__cover} />
-            <div className={styles.librarySkeleton__body}>
-              <div className={styles.librarySkeleton__name} />
-              <div className={styles.librarySkeleton__meta} />
+      <div className={styles.librarySkeleton__grid} aria-hidden="true">
+        {Array.from({ length: ITEMS }, (_, index) =>
+          layout === 'card' ? (
+            <div className={styles.librarySkeleton__card} key={index}>
+              <div className={styles.librarySkeleton__picture} />
+              <div className={styles.librarySkeleton__cardBody}>
+                <div className={styles.librarySkeleton__name} />
+                <div className={styles.librarySkeleton__status} />
+              </div>
             </div>
-          </div>
-        ))}
+          ) : (
+            <div className={styles.librarySkeleton__tile} key={index}>
+              <div className={styles.librarySkeleton__cover} />
+              <div className={styles.librarySkeleton__body}>
+                <div className={styles.librarySkeleton__name} />
+                <div className={styles.librarySkeleton__meta} />
+                <div className={styles.librarySkeleton__count} />
+              </div>
+            </div>
+          )
+        )}
       </div>
     </div>
   );

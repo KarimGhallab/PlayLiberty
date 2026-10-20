@@ -2,18 +2,9 @@ import type { Problem } from '@playliberty/contracts';
 import { ProblemSchema } from '@playliberty/contracts';
 
 /*
- * The one place the API is spoken to. Every request is same-origin (`/api/v1`),
- * so nginx or the Vite dev proxy forwards it and no CORS is in play. A mutation
- * carries the client header the architecture requires; a `GET` never does,
- * because a `GET` never mutates.
- *
- * The edge can answer `401` or redirect to its SSO login. Both mean the browser
- * is not authenticated, and the fix is a top-level navigation so the edge can
- * re-run the flow, which a fetch cannot do itself. That navigation is attempted
- * once per tab: a second navigation is a reload loop with no exit, so if the app
- * comes back still unauthenticated the request fails with the problem. Any
- * response that is not that failure clears the flag, so a session that expires
- * later can re-authenticate.
+ * The one place the API is spoken to, same-origin (`/api/v1`) so no CORS is in
+ * play; a mutation carries the client header, a `GET` never does. A `401` or
+ * SSO redirect triggers one navigation per tab, then fails rather than looping.
  */
 
 export const API_PREFIX = '/api/v1';
@@ -117,20 +108,8 @@ export async function apiGet<T>(
   return schema.parse(await response.json());
 }
 
-/*
- * The status of a stream request that has already failed in the audio element.
- *
- * An `<audio>` element reports a load failure as a `MediaError` and never the
- * HTTP status: a `401`, a `404` and a `409` are one code to it. The player has
- * to tell an expired session apart from a track that is gone, so on the
- * element's failure it asks the route again for the status alone.
- *
- * It is deliberately the same `send` path every other request uses, so a refusal
- * because the session expired reaches the re-authentication guard and a second
- * refusal in the same tab surfaces as the problem rather than a reload loop. It
- * is a `HEAD`, so the probe transfers no media, and it runs only after a load has
- * already failed, so playback that succeeds makes no request of its own.
- */
+/* Re-ask the route for the status the element cannot report: a 401, 404 and 409
+ * are one code to it. A `HEAD` through `send`, so the re-auth guard applies. */
 export async function probeStreamStatus(path: string): Promise<number> {
   const response = await send(path, { method: 'HEAD' });
 
@@ -156,9 +135,8 @@ export async function apiPost<T>(
 }
 
 /*
- * A `POST` with no body, for a verb the server reads as a command rather than as
- * a document: starting a sync carries the playlist id in the path and nothing in
- * the body, so sending `{}` would be a body the route does not read.
+ * A `POST` with no body, for a command the server reads off the path: sending
+ * `{}` would be a body the route does not read.
  */
 export async function apiCommand<T>(
   path: string,
@@ -192,8 +170,8 @@ export async function apiPatch<T>(
 }
 
 /*
- * A `DELETE` whose success carries no body: `204` is the route's answer for a
- * deleted playlist, so there is nothing to parse and a schema would be a lie.
+ * A `DELETE` whose success carries no body (`204`), so there is nothing to
+ * parse and a schema would be a lie.
  */
 export async function apiDelete(path: string): Promise<void> {
   const response = await send(path, { method: 'DELETE' });

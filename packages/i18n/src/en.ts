@@ -1,12 +1,14 @@
 /*
- * The source of truth for the `Messages` shape.
- *
- * Keys are symbolic and hierarchical: a key names the surface and the fact, not
- * the English sentence, so a copy edit does not churn a key.
+ * The source of truth for the `Messages` shape. Keys name the surface and the
+ * fact, never the English sentence, so a copy edit does not churn a key.
  */
 export const en = {
   app: {
-    name: 'PlayLiberty'
+    name: 'PlayLiberty',
+    title: {
+      playlist: '{app} - {name}',
+      track: '{app} - {playlist} ({track})'
+    }
   },
   language: {
     label: 'Language',
@@ -14,19 +16,27 @@ export const en = {
     french: 'Français'
   },
   common: {
-    cancel: 'Cancel'
+    cancel: 'Cancel',
+    discardPrompt: 'Discard this link? The link you pasted will be lost.',
+    keepEditing: 'Keep editing',
+    discard: 'Discard'
   },
   library: {
     add: 'Add a playlist',
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
+    pinned: 'Pinned',
+    rest: 'Others',
+    pinFailed: 'The pin could not be changed.',
+    notDownloaded: {
+      one: '{count} track is not stored',
+      other: '{count} tracks are not stored'
+    },
     deleteDeferred: 'Deleting playlist',
-    replaced: 'The earlier action was replaced.',
-    willNotDelete: '“{name}” will not be deleted.',
     empty: {
       heading: 'No playlists yet',
       promise:
-        'Paste a YouTube playlist link, then sync it. Every track you download is yours from then on, even if the video is taken down later.'
+        'Paste a YouTube playlist link, then sync it. Every stored track is yours from then on, even if the video is taken down later.'
     }
   },
   detail: {
@@ -51,6 +61,14 @@ export const en = {
     filterBy: 'Filter by',
     filterAll: 'All',
     filterShowAll: 'Show all',
+    retryFailed: {
+      one: 'Retry 1 failed track',
+      other: 'Retry all {count} failed tracks'
+    },
+    retryingFailed: {
+      one: 'Retrying 1 failed track...',
+      other: 'Retrying all {count} failed tracks...'
+    },
     filterEmpty: {
       stored: 'No stored tracks',
       pending: 'No pending tracks',
@@ -66,7 +84,18 @@ export const en = {
     retry: 'Retry',
     fetchWhole: 'Fetch whole',
     remove: 'Remove from playlist',
-    fullLength: 'Full length'
+    fullLength: 'Full length',
+    failure: {
+      unavailable: 'This video is no longer available.',
+      private: 'This video is private.',
+      blocked: 'YouTube blocked this download.',
+      network: 'YouTube could not be reached.',
+      unknown: 'The download failed.'
+    },
+    showDetails: 'Show details',
+    hideDetails: 'Hide details',
+    showDetailsFor: 'Show details for {title}',
+    hideDetailsFor: 'Hide details for {title}'
   },
   skipSetting: {
     label: 'Skip non-music parts'
@@ -88,7 +117,9 @@ export const en = {
     readFailed: 'Accounts could not be loaded.',
     empty: 'There is no one else here to share with yet.',
     listen: 'Can listen',
-    edit: 'Can edit'
+    edit: 'Can edit',
+    grantFailed: 'The playlist sharing with {name} has failed.',
+    revokeFailed: 'The playlist sharing with {name} could not be removed.'
   },
   addTrackDialog: {
     title: 'Add a track',
@@ -135,7 +166,7 @@ export const en = {
     prose:
       'This playlist has never been synced. Syncing goes to YouTube and downloads the audio of every track in it.',
     promise:
-      'A sync takes a few minutes, but once a track is downloaded, a video removed from YouTube will not drop it from this playlist.',
+      'A sync takes a few minutes, but once a track is stored, a video removed from YouTube will not drop it from this playlist.',
     sync: 'Sync now',
     syncing: 'Syncing'
   },
@@ -158,10 +189,15 @@ export const en = {
     private: 'Private playlist',
     share: 'Share',
     rename: 'Rename',
+    pin: 'Pin',
+    unpin: 'Unpin',
     syncNow: 'Sync now',
+    syncing: 'Syncing',
     delete: 'Delete playlist',
     play: 'Play this playlist',
+    playNamed: 'Play {name}',
     pause: 'Pause this playlist',
+    pauseNamed: 'Pause {name}',
     skipBack: 'Skip back',
     trackNext: 'Track next',
     shuffle: 'Shuffle {name}',
@@ -178,7 +214,7 @@ export const en = {
     playing: 'Playing',
     paused: 'Paused'
   },
-  shuffle: {
+  start: {
     empty: 'Nothing to play in “{name}”.',
     emptyDetail: 'No track in it has finished downloading.',
     unreachable: '“{name}” could not be read.',
@@ -272,9 +308,10 @@ export const en = {
       one: 'failed',
       other: 'failed'
     },
+    lastSync: 'Last sync {time}',
+    noChanges: 'Nothing changed',
     downloading: '{count} downloading',
-    syncing: 'Syncing',
-    syncedJustNow: 'Synced just now'
+    syncing: 'Syncing'
   },
   syncError: {
     reach: 'Could not reach {provider}, the playlist may not be up to date.',

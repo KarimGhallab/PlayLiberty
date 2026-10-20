@@ -103,8 +103,7 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
   answers fast enough that the invalidation is the feedback.
 - **The error state of a read is the screen's, and it is distinct from empty.** A failed playlist read renders
   the detail's error state, not an empty track list; a failed library read renders the library's error state,
-  not the empty gallery. The `404` a revoked share produces is the "gone" state the design records already name,
-  not a fault.
+  not the empty gallery. The `404` a revoked share produces is the "gone" state, not a fault.
 - **A problem document is shown as the problem it is.** The client already parses `application/problem+json`;
   a screen shows the problem's title, and a mutation shows the message beside the control that caused it. The
   client does not invent a message for a status code it was given a document for, and it does not show a
@@ -172,6 +171,5 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
 - Any push channel, websocket or server-sent event.
 - Offline caching and a service worker. Offline is out of scope in v1.
 - Optimistic updates, and any state the server has not confirmed.
-- The wording of a screen's error state, which the design records own, beyond the rule that a problem's title
-  is what is shown.
+- The wording of a screen's error state, beyond the rule that a problem's title is what is shown.
 - The server's routes and the shape of their answers, which the other specs own.

@@ -1,15 +1,16 @@
 import { create } from 'zustand';
 
 import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
-import { currentIndex, nextIndex, queuePlaylistId } from '../types';
+import {
+  SeekDirection,
+  currentIndex,
+  currentTrack,
+  nextIndex,
+  queuePlaylistId
+} from '../types';
 
-/*
- * A refetch returns the entries the server holds, in the playlist's saved order.
- * A shuffled queue keeps its own arrangement, so known ids keep their sequence and
- * new ids append in the read's order, and a track the refetch no longer returns is
- * gone. The current id survives either way, which is the whole point: the music
- * does not move under the listener.
- */
+/* Merge a refetch by id: known ids keep their sequence in a shuffled queue, new
+ * ids append, a dropped track is gone, and the current id survives. */
 export function mergeQueue(
   current: readonly PlayerTrack[],
   incoming: readonly PlayerTrack[]
@@ -40,12 +41,64 @@ function clampVolume(volume: number): number {
   return Math.min(1, Math.max(0, volume));
 }
 
-/*
- * A random entry of a queue, or undefined when it is empty. It is the draw the
- * shuffle spends on which track leads: pressing shuffle is asking for a new
- * arrangement and a new start, so the leader is drawn rather than taken from
- * wherever the playhead already stands.
- */
+/* The store's one position bound: the current track's declared duration, or
+ * null while there is no duration to measure against. */
+function boundedPosition(state: PlayerState, seconds: number): number | null {
+  const duration = currentTrack(state)?.durationSeconds ?? null;
+
+  if (duration === null || duration <= 0 || !Number.isFinite(seconds)) {
+    return null;
+  }
+
+  return Math.min(duration, Math.max(0, seconds));
+}
+
+/* A target the element is already standing on is not worth a write. */
+const SEEK_EPSILON_SECONDS = 0.5;
+
+export function shouldApplySeek(currentTime: number, target: number): boolean {
+  return Math.abs(currentTime - target) > SEEK_EPSILON_SECONDS;
+}
+
+/* The one write a step and a jump share: bound the target, then ask the
+ * element to apply it. */
+function seekPatch(state: PlayerState, seconds: number): Partial<PlayerState> {
+  const position = boundedPosition(state, seconds);
+
+  if (position === null) {
+    return state;
+  }
+
+  return { positionSeconds: position, seekTo: position };
+}
+
+function signedStep(direction: SeekDirection, seconds: number): number {
+  return direction === SeekDirection.Forward ? seconds : -seconds;
+}
+
+/* A restored offset only resumes a track it still fits: a vanished track, an
+ * unknown duration, or a position outside the track starts at zero. */
+function restoredPosition(
+  track: PlayerTrack | undefined,
+  positionSeconds: number
+): number {
+  if (track === undefined || track.durationSeconds === null) {
+    return 0;
+  }
+
+  if (
+    !Number.isFinite(positionSeconds) ||
+    positionSeconds <= 0 ||
+    positionSeconds >= track.durationSeconds
+  ) {
+    return 0;
+  }
+
+  return positionSeconds;
+}
+
+/* A random entry, or undefined when empty. Shuffle draws a new leader rather
+ * than taking the track the playhead already stands on. */
 export function randomTrack(
   queue: readonly PlayerTrack[]
 ): PlayerTrack | undefined {
@@ -57,13 +110,8 @@ export function randomTrack(
 }
 
 /*
- * Fisher-Yates over every track but the one that leads the result. The leading
- * track is the one being played, or the first stored one when a fresh queue is
- * opened, and it is hoisted to the front rather than left where the shuffle
- * happens to put it: the transport starts on the first entry, so the first entry
- * is the track the press meant to keep. Shuffling is a change of order and not of
- * track, so the leading track does not move out of the queue, and everything
- * after it is a full scatter of the rest.
+ * Fisher-Yates over the rest, the leader hoisted to the front: the transport
+ * starts on the first entry, so shuffling changes order, not track.
  */
 function shuffledWithLeader(
   queue: readonly PlayerTrack[],
@@ -78,23 +126,19 @@ function shuffledWithLeader(
     [rest[i], rest[j]] = [rest[j], rest[i]];
   }
 
-  /*
-   * No leader to hoist: the caller named a track that is not in the queue, which
-   * a built queue and a hydrated one both rule out. The scatter is all there is.
-   */
+  /* No leader in the queue to hoist; the scatter is all there is. */
   return leader === undefined ? rest : [leader, ...rest];
 }
 
-/*
- * How far into a track a previous press has to be before it means "restart this
- * one" rather than "step back". Five seconds is enough that a listener who has
- * just landed on the track and changed their mind steps back, while one who has
- * heard the opening restarts it. The first track has nothing behind it, so a
- * press there restarts rather than doing nothing.
- */
+/* The keyboard's step and the Media Session's larger one: the caller names the
+ * direction, the store owns the distance. */
+const KEYBOARD_SEEK_SECONDS = 5;
+const MEDIA_SESSION_SEEK_SECONDS = 10;
+
+/* How far into a track a previous press means "step back", not "restart". */
 const SKIP_PREVIOUS_GRACE_SECONDS = 5;
 
-export const usePlayerStore = create<PlayerState>()(set => ({
+export const usePlayerStore = create<PlayerState>()((set, get) => ({
   queue: [],
   sourceQueue: [],
   currentId: null,
@@ -105,13 +149,19 @@ export const usePlayerStore = create<PlayerState>()(set => ({
   shuffle: false,
   muted: false,
   hydrate: (state: PersistedPlayerState) =>
-    set({
-      queue: [...state.sourceQueue],
-      sourceQueue: [...state.sourceQueue],
-      currentId: state.currentId,
-      positionSeconds: state.positionSeconds,
-      volume: clampVolume(state.volume),
-      shuffle: false
+    set(() => {
+      const queue = [...state.sourceQueue];
+      const current = queue.find(track => track.id === state.currentId);
+
+      return {
+        queue,
+        sourceQueue: [...state.sourceQueue],
+        currentId: current === undefined ? null : state.currentId,
+        positionSeconds: restoredPosition(current, state.positionSeconds),
+        seekTo: null,
+        volume: clampVolume(state.volume),
+        shuffle: false
+      };
     }),
   startQueue: (
     playlistId: string,
@@ -120,11 +170,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
     shuffle = false
   ) =>
     set(() => {
-      /*
-       * A start track the caller does not include is not a queue: there is nothing
-       * to play. An empty queue is the honest answer, and the caller that built it
-       * from a real list never hits this.
-       */
+      /* A start track not in the list is no queue: empty is honest. */
       const queue = tracks.filter(track => track.playlistId === playlistId);
 
       if (!queue.some(track => track.id === startTrackId)) {
@@ -151,11 +197,8 @@ export const usePlayerStore = create<PlayerState>()(set => ({
     }),
   applyRefetch: (playlistId: string, tracks: readonly PlayerTrack[]) =>
     set(state => {
-      /*
-       * A refetch of another playlist is not this queue. The player names one
-       * playlist, and merging a second one in would extend the queue across
-       * playlists, which is the thing the queue is built to avoid.
-       */
+      /* A refetch of another playlist is not this queue; merging it in would
+       * extend the queue across playlists. */
       if (queuePlaylistId(state) !== playlistId) {
         return state;
       }
@@ -169,11 +212,8 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         queue.some(track => track.id === state.currentId);
 
       /*
-       * The current track and the offset do not move. The one case that does move
-       * something is the current track itself leaving the source: there is then no
-       * track to be on, so the offset resets and the queue stops. Whether playback
-       * then advances is decided elsewhere; this store only refuses to keep a
-       * cursor pointing at nothing.
+       * The current track and offset do not move, unless the current track
+       * leaves the source: then the cursor clears and the queue stops.
        */
       if (!currentStillThere) {
         return {
@@ -236,10 +276,7 @@ export const usePlayerStore = create<PlayerState>()(set => ({
 
       /*
        * The failure is the current track's, so the queue continues from the
-       * entry that now occupies its place, which is the next one. There is none
-       * when it was the last entry: the queue is spent and stops, the same
-       * answer the end of the queue gives, rather than leaving the cursor on a
-       * track that is gone.
+       * entry that now occupies its place; at the last entry it stops.
        */
       const next = index >= 0 ? queue[index] : undefined;
 
@@ -286,14 +323,8 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         return state;
       }
 
-      /*
-       * A press inside the grace window is "step back", which the first track
-       * cannot do. Anywhere else, past the window or at the start of the queue,
-       * the track restarts where it stands, and `seekTo` carries the jump so the
-       * element moves even though the current id does not change. Either way the
-       * transport resumes, because reaching for next or previous is a play
-       * gesture and not a way to move a paused cursor.
-       */
+      /* Inside the grace window, step back; past it or at the first track, the
+       * track restarts in place, `seekTo` carrying the jump, and resumes. */
       if (index > 0 && state.positionSeconds < SKIP_PREVIOUS_GRACE_SECONDS) {
         return {
           currentId: state.queue[index - 1].id,
@@ -310,10 +341,8 @@ export const usePlayerStore = create<PlayerState>()(set => ({
       const next = nextIndex(state);
 
       /*
-       * The end of the queue stops rather than wrapping. There is no next track, so
-       * the playhead returns to the start of the last one and playback stops, which
-       * is what "finish the album" means and is not the same as "skip at the end",
-       * which does nothing.
+       * The end of the queue stops rather than wrapping: the playhead returns
+       * to the last track's start, where "skip at the end" would do nothing.
        */
       if (next < 0) {
         return { positionSeconds: 0, seekTo: null, isPlaying: false };
@@ -326,10 +355,40 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         isPlaying: true
       };
     }),
-  seek: (seconds: number) =>
-    set(() => {
-      const clamped = Math.max(0, seconds);
-      return { positionSeconds: clamped, seekTo: clamped };
+  seekBy: (direction: SeekDirection) =>
+    set(state => {
+      const step = signedStep(direction, KEYBOARD_SEEK_SECONDS);
+
+      return seekPatch(state, state.positionSeconds + step);
+    }),
+  seekByPage: (direction: SeekDirection) =>
+    set(state => {
+      const step = signedStep(direction, MEDIA_SESSION_SEEK_SECONDS);
+
+      return seekPatch(state, state.positionSeconds + step);
+    }),
+  seekToFraction: (fraction: number) =>
+    set(state => {
+      const duration = currentTrack(state)?.durationSeconds ?? null;
+
+      if (duration === null || duration <= 0 || !Number.isFinite(fraction)) {
+        return state;
+      }
+
+      const clamped = Math.min(1, Math.max(0, fraction));
+
+      return seekPatch(state, clamped * duration);
+    }),
+  seekToStart: () => set(state => seekPatch(state, 0)),
+  seekToEnd: () =>
+    set(state => {
+      const duration = currentTrack(state)?.durationSeconds ?? null;
+
+      if (duration === null || duration <= 0) {
+        return state;
+      }
+
+      return seekPatch(state, duration);
     }),
   setShuffle: (shuffle: boolean) =>
     set(state => {
@@ -337,15 +396,8 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         return state;
       }
 
-      /*
-       * Shuffle reorders the queue in place and its answer is the queue itself.
-       * Turning it on draws a new arrangement and a new start: a random entry
-       * leads, the rest scatter behind it, and the playhead moves to that entry,
-       * because the press asked for a fresh shuffle rather than a re-arrangement
-       * around the track already playing. Turning it off puts the queue back in
-       * the playlist's own order and leaves the playhead where it stands, which
-       * is why that order is kept beside the queue.
-       */
+      /* Turning shuffle on draws a new order and a new leader; turning it off
+       * restores the playlist order and leaves the playhead in place. */
       if (!shuffle) {
         return { shuffle, queue: [...state.sourceQueue] };
       }
@@ -365,8 +417,27 @@ export const usePlayerStore = create<PlayerState>()(set => ({
         isPlaying: true
       };
     }),
-  clearSeek: () => set({ seekTo: null }),
-  setPosition: (seconds: number) => set({ positionSeconds: seconds }),
+  consumeSeek: () => {
+    const target = get().seekTo;
+
+    if (target !== null) {
+      set({ seekTo: null });
+    }
+
+    return target;
+  },
+  setPosition: (seconds: number) =>
+    set(state => {
+      const position = boundedPosition(state, seconds);
+
+      if (position !== null) {
+        return { positionSeconds: position };
+      }
+
+      return Number.isFinite(seconds)
+        ? { positionSeconds: Math.max(0, seconds) }
+        : state;
+    }),
   setPlaying: (playing: boolean) => set({ isPlaying: playing }),
   setVolume: (volume: number) => set({ volume: clampVolume(volume) }),
   setMuted: (muted: boolean) => set({ muted }),

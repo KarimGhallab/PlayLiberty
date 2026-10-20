@@ -1,0 +1,87 @@
+/*
+ * The same quiet surface as the header's other controls: a raised box, the
+ * accent on hover, the menu on the overlay tier.
+ */
+.language-menu {
+  position: relative;
+
+  &__trigger {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-height);
+    height: var(--control-height);
+    color: var(--ink);
+    background: var(--surface-raised);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--accent);
+    }
+  }
+
+  &__menu {
+    --menu-origin: top right;
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    z-index: var(--z-overlay);
+    min-width: 170px;
+    padding: var(--space-1);
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    text-align: start;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface);
+    }
+  }
+
+  /*
+   * 32px here, with the 44px thumb target growing outward through `::before`
+   * rather than making the box taller.
+   */
+  @media (max-width: 767px) {
+    &__trigger {
+      width: 32px;
+      height: 32px;
+
+      &::before {
+        content: '';
+        position: absolute;
+        inset: -6px;
+      }
+    }
+  }
+
+  /* Holds its 14px when hidden, so the rows never shift as the check moves. */
+  &__check {
+    flex-shrink: 0;
+    color: var(--accent-hover);
+    opacity: 0;
+
+    &[data-visible='true'] {
+      opacity: 1;
+    }
+  }
+}

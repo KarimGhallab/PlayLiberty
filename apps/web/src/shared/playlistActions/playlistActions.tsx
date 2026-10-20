@@ -1,5 +1,7 @@
 import {
   IconPencil,
+  IconPin,
+  IconPinnedOff,
   IconRotate,
   IconShare,
   IconTrash
@@ -15,32 +17,21 @@ import { problemSentence } from '../api/problem/problem';
 import {
   useDeletePlaylist,
   useRenamePlaylist,
-  useSyncPlaylist
+  useSyncPlaylist,
+  useUpdatePin
 } from '../api/queries/queries';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
-import type { PendingAction } from '../components/useDeferredAction/useDeferredAction';
+import type { PendingAction } from '../components/useDeferredAction/types';
 
 /*
- * One module owns a playlist's actions: the owner/writer rule that decides which
- * of share, rename, sync and delete an account may perform, the menu the header
- * draws, and the effects behind each item. The library item and the detail page
- * hand a playlist in and take the menu and the dialogs back, so neither
- * re-derives the rule nor re-wires the effects.
- *
- * Two things stay with the consumer because they genuinely differ. The undo
- * window is the surface's, because the library keeps one for the whole gallery
- * and the detail keeps its own; the module hands the delete to it. And leaving
- * the gone route is the detail's, so the module takes an `onDeleted` that runs
- * after the delete commits.
- *
- * `playlistId` is separate from `playlist` because the detail's route carries the
- * id before the playlist has loaded: the mutations are keyed by the id and are
- * ready, while the rule and the delete's name wait for the playlist.
+ * One module owns a surface's playlist actions: the four mutations, the menu
+ * each playlist is given, and the two dialogs. A gallery reads it once rather
+ * than once per item, so N items never multiply the observers or dialogs.
  */
 
 export interface PlaylistAction {
-  readonly key: 'share' | 'rename' | 'sync' | 'delete';
+  readonly key: 'pin' | 'share' | 'rename' | 'sync' | 'delete';
   readonly label: MessageKey<Messages>;
   readonly Icon: typeof IconShare;
   readonly onSelect: () => void;
@@ -53,28 +44,33 @@ export interface PlaylistActionsOptions {
   readonly defer: (action: PendingAction) => void;
   /** The sentence the delete toast shows, which differs by surface. */
   readonly deleteMessage: MessageKey<Messages>;
-  /** Runs after the delete commits, for a consumer that must leave the route. */
+  /** Runs after the delete commits, for a consumer leaving the route. */
   readonly onDeleted?: () => void;
+  /*
+   * The library's own action: present puts Pin or Unpin on the menu and hands a
+   * failed write to the surface, which owns the notice; absent on the detail.
+   */
+  readonly pin?: {
+    readonly onRefused: (error: Error) => void;
+  };
 }
 
 export interface PlaylistActions {
-  /** The items the header draws, already gated by access. Empty for a reader. */
-  readonly menu: readonly PlaylistAction[];
-  /** The rename and share dialogs, for the consumer to place. */
+  /** The items one playlist's header draws, gated by access; empty before it loads. */
+  readonly menuFor: (
+    playlist: Playlist | undefined
+  ) => readonly PlaylistAction[];
+  /** The rename and share dialogs, for the page to place. */
   readonly dialogs: ReactNode;
-  /** Start a sync. The same mutation the menu's Sync now item runs. */
-  readonly syncNow: () => void;
-  /** Whether that sync is in flight. */
-  readonly syncing: boolean;
-  /** Whether the account may write: the owner or a write collaborator. */
-  readonly canWrite: boolean;
+  /** Start one playlist's sync. The same mutation the menu's Sync now item runs. */
+  readonly syncNow: (playlistId: string) => void;
+  /** Whether this playlist's sync is in flight. */
+  readonly syncing: (playlistId: string) => boolean;
 }
 
 /*
- * Whether the account may write to a playlist: it owns it or holds a write
- * share. A playlist that has not loaded is not writable, which is the same
- * answer a reader gets. It is exported so the menu's gating here and the
- * detail's writable set are one rule rather than two that must agree.
+ * Whether the account may write: it owns the playlist or holds a write share;
+ * an unloaded one is not writable. Exported so the menu and detail agree.
  */
 export function canWritePlaylist(playlist: Playlist | undefined): boolean {
   const access = playlist?.access ?? null;
@@ -83,116 +79,146 @@ export function canWritePlaylist(playlist: Playlist | undefined): boolean {
 }
 
 export function usePlaylistActions(
-  playlistId: string,
-  playlist: Playlist | undefined,
   options: PlaylistActionsOptions
 ): PlaylistActions {
   const { t } = useI18n();
-  const sync = useSyncPlaylist(playlistId);
-  const rename = useRenamePlaylist(playlistId);
-  const remove = useDeletePlaylist(playlistId);
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
+  const sync = useSyncPlaylist();
+  const rename = useRenamePlaylist();
+  const remove = useDeletePlaylist();
+  const pin = useUpdatePin();
+  const [renameTarget, setRenameTarget] = useState<Playlist | null>(null);
+  const [shareTarget, setShareTarget] = useState<Playlist | null>(null);
 
-  const access = playlist?.access ?? null;
-  const canWrite = canWritePlaylist(playlist);
-
-  const syncItem = (): PlaylistAction => ({
-    key: 'sync',
-    label: 'header.syncNow',
-    Icon: IconRotate,
-    onSelect: () => sync.mutate(),
-    disabled: sync.isPending
-  });
-
-  /*
-   * The delete is the one item the module cannot finish on its own: it opens the
-   * consumer's undo window, and the commit leaves the route only where the
-   * consumer says so. A playlist that has not loaded has no name to defer, so the
-   * item is absent rather than opening a toast that names nothing.
-   */
-  const deleteItem = (): PlaylistAction | null => {
+  const menuFor = (
+    playlist: Playlist | undefined
+  ): readonly PlaylistAction[] => {
     if (playlist === undefined) {
-      return null;
+      return [];
     }
 
-    return {
-      key: 'delete',
-      label: 'header.delete',
-      Icon: IconTrash,
-      destructive: true,
-      onSelect: () =>
-        options.defer({
-          id: playlist.id,
-          message: t(options.deleteMessage),
-          detail: playlist.name,
-          commit: () =>
-            remove.mutate(undefined, { onSuccess: options.onDeleted })
-        })
+    const access = playlist.access;
+    const menu: PlaylistAction[] = [];
+
+    /*
+     * Visibility alone grants the pin, so every menu holds it, a reader's alone.
+     * Its key stays `pin` while its label toggles, so the control never moves.
+     */
+    const pinItem = (): PlaylistAction | null => {
+      if (options.pin === undefined) {
+        return null;
+      }
+
+      const refused = options.pin.onRefused;
+
+      return {
+        key: 'pin',
+        label: playlist.pinned ? 'header.unpin' : 'header.pin',
+        Icon: playlist.pinned ? IconPinnedOff : IconPin,
+        disabled: pin.isPending && pin.variables?.playlistId === playlist.id,
+        onSelect: () =>
+          pin.mutate(
+            { playlistId: playlist.id, pinned: !playlist.pinned },
+            { onError: refused }
+          )
+      };
     };
+
+    const syncItem = (): PlaylistAction => ({
+      key: 'sync',
+      label: 'header.syncNow',
+      Icon: IconRotate,
+      onSelect: () => sync.mutate(playlist.id),
+      disabled: sync.isPending && sync.variables === playlist.id
+    });
+
+    if (access === 'owner') {
+      const pinEntry = pinItem();
+      if (pinEntry !== null) {
+        menu.push(pinEntry);
+      }
+
+      menu.push(
+        {
+          key: 'share',
+          label: 'header.share',
+          Icon: IconShare,
+          onSelect: () => setShareTarget(playlist)
+        },
+        {
+          key: 'rename',
+          label: 'header.rename',
+          Icon: IconPencil,
+          onSelect: () => setRenameTarget(playlist)
+        },
+        syncItem(),
+        {
+          key: 'delete',
+          label: 'header.delete',
+          Icon: IconTrash,
+          destructive: true,
+          onSelect: () =>
+            options.defer({
+              id: playlist.id,
+              message: t(options.deleteMessage),
+              detail: playlist.name,
+              commit: () =>
+                remove.mutate(playlist.id, { onSuccess: options.onDeleted })
+            })
+        }
+      );
+    } else if (access === 'write') {
+      const pinEntry = pinItem();
+      if (pinEntry !== null) {
+        menu.push(pinEntry);
+      }
+
+      menu.push(syncItem());
+    } else if (access === 'read') {
+      const pinEntry = pinItem();
+      if (pinEntry !== null) {
+        menu.push(pinEntry);
+      }
+    }
+
+    return menu;
   };
 
-  const menu: PlaylistAction[] = [];
-  if (access === 'owner') {
-    menu.push(
-      {
-        key: 'share',
-        label: 'header.share',
-        Icon: IconShare,
-        onSelect: () => setShareOpen(true)
-      },
-      {
-        key: 'rename',
-        label: 'header.rename',
-        Icon: IconPencil,
-        onSelect: () => setRenameOpen(true)
-      },
-      syncItem()
-    );
-
-    const del = deleteItem();
-    if (del !== null) {
-      menu.push(del);
-    }
-  } else if (access === 'write') {
-    menu.push(syncItem());
-  }
-
   /*
-   * The dialogs are mounted only while open, which is the library's rule: a
-   * gallery of fifty closed items must not ask the account directory or the
-   * reader's own account any questions.
+   * Mount the dialogs only while open: a gallery of closed items must not ask
+   * the account directory or the reader's account anything.
    */
   const dialogs =
-    playlist === undefined ? null : (
+    renameTarget === null && shareTarget === null ? null : (
       <>
-        {renameOpen ? (
+        {renameTarget === null ? null : (
           <RenamePlaylistDialog
             open
-            currentName={playlist.name}
+            currentName={renameTarget.name}
             isWorking={rename.isPending}
             problem={rename.isError ? problemSentence(t, rename.error) : null}
             onSubmit={name =>
-              rename.mutate(name, { onSuccess: () => setRenameOpen(false) })
+              rename.mutate(
+                { playlistId: renameTarget.id, name },
+                { onSuccess: () => setRenameTarget(null) }
+              )
             }
-            onClose={() => setRenameOpen(false)}
+            onClose={() => setRenameTarget(null)}
           />
-        ) : null}
-        {shareOpen ? (
+        )}
+        {shareTarget === null ? null : (
           <SharePlaylistDialog
             open
-            playlistId={playlist.id}
-            onClose={() => setShareOpen(false)}
+            playlistId={shareTarget.id}
+            onClose={() => setShareTarget(null)}
           />
-        ) : null}
+        )}
       </>
     );
 
   return {
-    menu,
+    menuFor,
     dialogs,
-    syncNow: () => sync.mutate(),
-    syncing: sync.isPending,
-    canWrite
+    syncNow: playlistId => sync.mutate(playlistId),
+    syncing: playlistId => sync.isPending && sync.variables === playlistId
   };
 }

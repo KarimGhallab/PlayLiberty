@@ -3,15 +3,12 @@ import type { FastifyInstance } from 'fastify';
 import {
   PlaylistNotFoundReason,
   ProblemCode,
-  SharePlaylistInputSchema
+  SharePlaylistInputSchema,
+  endpoints
 } from '@playliberty/contracts';
 
 import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
-import {
-  publishPlaylistChanged,
-  publishPlaylistRemoved
-} from '../../../shared/events/liveEvents.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
@@ -19,6 +16,7 @@ import {
   sendProblem,
   sendValidationFailed
 } from '../../../shared/problem.js';
+import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
 import {
   GrantShareOutcome,
@@ -32,12 +30,13 @@ export function registerShareRoutes(
   app: FastifyInstance,
   context: AppContext
 ): void {
-  app.get<{ Params: { id: string } }>(
-    '/playlists/:id/shares',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.playlistShares,
     async (request, reply) => {
       const shares = listSharesForAccount(
         context.database,
-        request.params.id,
+        request.params.playlistId,
         request.account.id
       );
 
@@ -49,8 +48,9 @@ export function registerShareRoutes(
     }
   );
 
-  app.post<{ Params: { id: string } }>(
-    '/playlists/:id/shares',
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.grantShare,
     async (request, reply) => {
       const parsed = parseBody(SharePlaylistInputSchema, request.body);
 
@@ -59,8 +59,8 @@ export function registerShareRoutes(
       }
 
       const result = grantShareForAccount(
-        context.database,
-        request.params.id,
+        context,
+        request.params.playlistId,
         request.account.id,
         parsed.data.accountId,
         parsed.data.level
@@ -93,11 +93,10 @@ export function registerShareRoutes(
           action: 'share_granted',
           outcome: 'allowed',
           actor: request.account.id,
-          playlist: request.params.id,
+          playlist: request.params.playlistId,
           account: parsed.data.accountId,
           level: parsed.data.level
         });
-        publishPlaylistChanged(context, request.params.id);
         return reply.send(result.share);
       }
 
@@ -105,12 +104,13 @@ export function registerShareRoutes(
     }
   );
 
-  app.delete<{ Params: { id: string; accountId: string } }>(
-    '/playlists/:id/shares/:accountId',
+  registerEndpoint<{ Params: { playlistId: string; accountId: string } }>(
+    app,
+    endpoints.revokeShare,
     async (request, reply) => {
       const outcome = revokeShareForAccount(
-        context.database,
-        request.params.id,
+        context,
+        request.params.playlistId,
         request.account.id,
         request.params.accountId
       );
@@ -119,23 +119,15 @@ export function registerShareRoutes(
         return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
       }
 
-      /*
-       * The revoked account is told the playlist is gone, so a screen open on it
-       * reads as not-found rather than as a fault; the owner and the accounts
-       * that remain hear the change, which is the audience read after the delete.
-       */
+      /* The revoked account is told the playlist is gone, so its screen reads
+       * not-found; the remaining audience hears the change. */
       audit(request.log, {
         action: 'share_revoked',
         outcome: 'allowed',
         actor: request.account.id,
-        playlist: request.params.id,
+        playlist: request.params.playlistId,
         account: request.params.accountId
       });
-      publishPlaylistRemoved(context, request.params.id, [
-        request.params.accountId
-      ]);
-      publishPlaylistChanged(context, request.params.id);
-
       return reply.code(204).send();
     }
   );

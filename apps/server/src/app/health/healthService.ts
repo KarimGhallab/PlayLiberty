@@ -12,18 +12,8 @@ export interface ReadinessOptions {
 export type ReadinessResult =
   { ready: true } | { ready: false; error: unknown };
 
-/*
- * Readiness means the process can serve: the database answers and the media root
- * is reachable. Both are the two resources the server owns, so this is a check on
- * the platform rather than on any feature, and the error is handed back so the
- * route can log it, because logging is the framework's concern rather than this
- * function's.
- *
- * It is a readiness check and not a health check, which is why it touches the disk
- * at all: /healthz answers as long as the process is up, and /readyz answers only
- * when the process could actually serve a stream. A pod that is alive but cannot
- * reach its media root should be taken out of rotation, not reported as fine.
- */
+/* Readiness: the database answers and the media root is reachable, the platform
+ * resources. Unlike /healthz, it touches disk, so a bad pod is taken out. */
 export async function checkReadiness(
   options: ReadinessOptions
 ): Promise<ReadinessResult> {

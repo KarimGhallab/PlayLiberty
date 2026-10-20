@@ -7,6 +7,7 @@ import { I18nProvider } from '@playliberty/i18n';
 import '@playliberty/tokens/tokens.css';
 
 import { ApiError } from './shared/api/client/client';
+import DeferredToasts from './shared/components/UndoToast/DeferredToasts';
 import { attachPlayerPersistence } from './shared/player/playerPersistence/playerPersistence';
 import { usePlayerStore } from './shared/player/playerStore/playerStore';
 import './shared/styles/base.scss';
@@ -21,10 +22,8 @@ attachPlayerPersistence({
 });
 
 /*
- * A client error is the server's answer, not a transient fault: a `404` for a
- * revoked share has to reach the gone state at once rather than after three
- * retries. Only a server error, or a request that never reached the server, is
- * worth trying again.
+ * A 4xx is the server's answer, not a transient fault: a revoked share's `404`
+ * must reach the gone state at once. Only a 5xx or an unreached server retries.
  */
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +44,7 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <RouterProvider router={router} />
+        <DeferredToasts />
       </I18nProvider>
     </QueryClientProvider>
   </StrictMode>

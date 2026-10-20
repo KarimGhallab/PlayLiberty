@@ -43,18 +43,6 @@ function association(id: string) {
 }
 
 describe('orderTracksByQueue', () => {
-  it('opens a group at each queued track and keeps the playlist order in it', () => {
-    const tracks = ['a', 'b', 'c', 'd'].map(association);
-    const queue = [queued('a'), queued('b'), queued('c'), queued('d')];
-
-    expect(orderTracksByQueue(tracks, queue).map(row => row.track.id)).toEqual([
-      'a',
-      'b',
-      'c',
-      'd'
-    ]);
-  });
-
   it('carries a row the queue does not hold with the group before it', () => {
     const tracks = ['a', 'b', 'c', 'd'].map(association);
     const shuffledQueue = [queued('a'), queued('c'), queued('b'), queued('d')];

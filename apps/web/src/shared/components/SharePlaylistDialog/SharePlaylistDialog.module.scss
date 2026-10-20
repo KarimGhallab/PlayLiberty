@@ -1,7 +1,6 @@
 /*
- * The share dialog's list. It borrows the shared dialog's chrome and adds only
- * the list, because the shell already owns the card, the motion and the action
- * row.
+ * The share dialog's list; it borrows the shared dialog's chrome and adds only
+ * the list, since the shell owns the card, the motion and the action row.
  */
 .share {
   &__note {

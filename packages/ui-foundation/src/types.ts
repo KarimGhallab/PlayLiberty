@@ -1,8 +1,5 @@
-/**
- * The six display tones, one per track state. Each value names the `tone-*`
- * token that carries it, so a client resolves a tone to its own platform's
- * colour without a colour crossing this package.
- */
+/** The six track-state tones, each naming the `tone-*` token that carries it,
+ * so no colour crosses this package. */
 export enum TrackTone {
   Pending = 'pending',
   Downloading = 'downloading',

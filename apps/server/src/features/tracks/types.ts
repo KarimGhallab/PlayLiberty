@@ -24,11 +24,8 @@ export type TrackThumbnailResult =
   | { outcome: TrackThumbnailOutcome.NotFound }
   | { outcome: TrackThumbnailOutcome.Forbidden };
 
-/*
- * The fields a track is created from, before any file exists. The video id is the
- * identity and the dedup key; the rest is metadata the source supplied. A track
- * already held for the same id is never created a second time.
- */
+/* The fields a track is created from: the video id is the identity and dedup
+ * key, so a held track is never created twice. */
 export interface TrackSeed {
   videoId: string;
   title: string;
@@ -48,11 +45,8 @@ export type RetryTrackResult =
   | { outcome: RetryTrackOutcome.NotFound }
   | { outcome: RetryTrackOutcome.NotRetryable };
 
-/*
- * Forcing one track to be fetched whole. `NotEligible` covers every state the
- * bypass cannot act on: a stored track has a shared file, a downloading one is
- * already being fetched, and an unavailable one is gone.
- */
+/* `NotEligible` covers every state the bypass cannot act on: stored is shared,
+ * downloading is already fetching, unavailable is gone. */
 export enum FetchWholeOutcome {
   Ok = 'ok',
   NotFound = 'not_found',

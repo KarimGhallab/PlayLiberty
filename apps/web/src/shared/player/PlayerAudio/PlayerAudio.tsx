@@ -1,29 +1,24 @@
 import { useEffect, useRef } from 'react';
 
-import { API_PREFIX } from '../../api/client/client';
+import { endpoints } from '@playliberty/contracts';
+
+import { mediaUrl } from '../../api/endpoints/endpoints';
 import {
   bindSessionHandlers,
   publishMetadata
 } from '../mediaSession/mediaSession';
-import { usePlayerStore } from '../playerStore/playerStore';
+import { shouldApplySeek, usePlayerStore } from '../playerStore/playerStore';
 import {
   StreamFailureKind,
   classifyStreamFailure
 } from '../streamFailure/streamFailure';
-import { currentTrack } from '../types';
+import { SeekDirection, currentTrack } from '../types';
 
 /*
- * The one global audio element. It lives in the shell so playback survives a
- * route change, and it is the only component that touches the element.
- *
- * Exactly one track is reachable at a time: the source is derived from the
- * current id, and a new id replaces the source rather than adding one. Nothing
- * is prefetched, because the element is given a source only when a track is
- * reached and the browser fetches it then.
+ * The one audio element, in the shell so playback survives a route change, and
+ * the only component that touches it. Exactly one track is reachable at a time:
+ * a new id replaces the source, nothing is prefetched.
  */
-
-/** How far the element may drift from the store before the store is the truth. */
-const SEEK_EPSILON = 0.5;
 
 export default function PlayerAudio() {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -36,17 +31,13 @@ export default function PlayerAudio() {
   const muted = usePlayerStore(state => state.muted);
   const setPosition = usePlayerStore(state => state.setPosition);
   const setPlaying = usePlayerStore(state => state.setPlaying);
-  const clearSeek = usePlayerStore(state => state.clearSeek);
+  const consumeSeek = usePlayerStore(state => state.consumeSeek);
   const advance = usePlayerStore(state => state.advance);
   const dropAndAdvance = usePlayerStore(state => state.dropAndAdvance);
 
   /*
-   * A load failure is classified before anything moves. The element cannot say
-   * whether it failed because the track is gone or because the session expired,
-   * so the route is asked for its status; only a definitive answer removes the
-   * entry, and an unknown failure leaves it in place and stops. `failedId` is
-   * captured so a probe that resolves after the listener moved on does not touch
-   * the track they are on now.
+   * Classify a load failure before anything moves: only a definitive answer
+   * drops the entry, and `failedId` guards a probe that resolves after a move.
    */
   const handleError = (): void => {
     if (currentId === null) {
@@ -73,21 +64,15 @@ export default function PlayerAudio() {
     });
   };
 
-  /*
-   * `skipNext`, `skipPrevious` and `seek` are stable store actions, but reading
-   * them through the store keeps the element's handlers off a stale closure when
-   * the queue changes under it.
-   */
+  /* Read through the store so the element's handlers stay off a stale closure
+   * when the queue changes under them. */
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
-  const seek = usePlayerStore(state => state.seek);
+  const seekByPage = usePlayerStore(state => state.seekByPage);
 
   /*
-   * A ref, not state, is the resume target. The store's `positionSeconds` is
-   * written by the element on every `timeupdate`, so applying it whenever it
-   * changed would fight the element's own progress; the value a track should
-   * start at is whatever the store held when the track was reached, which is a
-   * fact about that moment and not about the current render.
+   * A ref, not state: `positionSeconds` is written on every `timeupdate`, so
+   * the resume target is the value held when the track was reached.
    */
   const resumeAtRef = useRef(positionSeconds);
   const lastIdRef = useRef(currentId);
@@ -112,14 +97,13 @@ export default function PlayerAudio() {
       return;
     }
 
-    audio.src = `${API_PREFIX}/tracks/${currentId}/stream`;
+    audio.src = mediaUrl(endpoints.trackStream, { trackId: currentId });
     audio.load();
   }, [currentId]);
 
   /*
-   * The resume seek has to wait for metadata, because `currentTime` cannot be
-   * set before the browser knows how long the file is: setting it earlier is
-   * silently dropped and the track starts at zero.
+   * The resume seek waits for metadata: `currentTime` set before the browser
+   * knows the duration is silently dropped, and the track starts at zero.
    */
   useEffect(() => {
     const audio = audioRef.current;
@@ -159,9 +143,8 @@ export default function PlayerAudio() {
   }, [volume, muted]);
 
   /*
-   * A seek request is applied once and cleared, which is how an immediate jump
-   * is told apart from the element reporting its own progress. `seekTo` is null
-   * on every render but the one a seek produced.
+   * A seek request applies once: the store hands it over and clears it, so an
+   * immediate jump is told from the element reporting its own progress.
    */
   useEffect(() => {
     const audio = audioRef.current;
@@ -170,20 +153,20 @@ export default function PlayerAudio() {
       return;
     }
 
-    if (Math.abs(audio.currentTime - seekTo) > SEEK_EPSILON) {
-      audio.currentTime = seekTo;
+    const target = consumeSeek();
+
+    if (target === null) {
+      return;
     }
 
-    clearSeek();
-  }, [seekTo, clearSeek]);
+    if (shouldApplySeek(audio.currentTime, target)) {
+      audio.currentTime = target;
+    }
+  }, [seekTo, consumeSeek]);
 
   /*
-   * The element follows playback and the current track together. A track change
-   * reloads the source, and `load()` leaves the element paused, so a skip while
-   * playing has to start the new source in the same commit or the bar shows pause
-   * over silence. `currentId` is therefore a dependency and not only the source
-   * effect's: the two effects run in order, the source first, and this one plays
-   * what the source just loaded.
+   * `load()` leaves the element paused, so a skip while playing must start the
+   * new source in the same commit: hence `currentId` here, source effect first.
    */
   useEffect(() => {
     const audio = audioRef.current;
@@ -205,10 +188,8 @@ export default function PlayerAudio() {
     audio.pause();
   }, [isPlaying, currentId, setPlaying]);
 
-  /*
-   * The controls in both directions: metadata and the handlers are re-published
-   * whenever the track changes, so they never describe a track that is gone.
-   */
+  /* Re-publish metadata whenever the track changes, so it never describes a
+   * track that is gone. */
   useEffect(() => {
     if (current === null) {
       publishMetadata(null);
@@ -221,7 +202,7 @@ export default function PlayerAudio() {
         : [
             {
               src: new URL(
-                `${API_PREFIX}/tracks/${current.id}/thumbnail`,
+                mediaUrl(endpoints.trackThumbnail, { trackId: current.id }),
                 window.location.origin
               ).href
             }
@@ -235,6 +216,8 @@ export default function PlayerAudio() {
     });
   }, [current]);
 
+  /* The handlers read the store at press time, so they bind once instead of
+   * rebinding as the position moves. */
   useEffect(
     () =>
       bindSessionHandlers({
@@ -242,10 +225,10 @@ export default function PlayerAudio() {
         onPause: () => setPlaying(false),
         onNextTrack: () => skipNext(),
         onPreviousTrack: () => skipPrevious(),
-        onSeekBackward: () => seek(Math.max(0, positionSeconds - 10)),
-        onSeekForward: () => seek(positionSeconds + 10)
+        onSeekBackward: () => seekByPage(SeekDirection.Backward),
+        onSeekForward: () => seekByPage(SeekDirection.Forward)
       }),
-    [setPlaying, skipNext, skipPrevious, seek, positionSeconds]
+    [setPlaying, skipNext, skipPrevious, seekByPage]
   );
 
   return (

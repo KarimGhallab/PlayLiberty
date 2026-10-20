@@ -27,9 +27,8 @@ afterEach(() => {
 });
 
 /*
- * The keys a fact asks again are pinned in `cacheEffects.test.ts`, so this test
- * only pins the event-to-fact mapping. It is pure, so it is tested without a
- * component and without a socket.
+ * The keys are pinned in `cacheEffects.test.ts`, so this test only pins the
+ * event-to-fact mapping; being pure, it needs no socket.
  */
 describe('invalidateForLiveEvent', () => {
   it('names everything changed when ready arrives', () => {

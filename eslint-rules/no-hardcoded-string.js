@@ -1,19 +1,13 @@
 /*
- * Rejects a hardcoded user-facing string. The web client owns every sentence a
- * person reads through `@playliberty/i18n`, so copy written straight into JSX
- * text or into a known label prop is a string that would never be translated and
- * that a later language would silently leave in English.
- *
- * Not every literal is copy: a symbol, a placeholder like `--:--`, an HTML entity
- * or an example URL is not a sentence, and a rule that flagged them would be
- * turned off within a day.
+ * Rejects copy written straight into JSX text or a label prop: the web client
+ * reads every sentence through `@playliberty/i18n`, so the string would never
+ * be translated. Symbols, entities and example URLs are not copy.
  */
 
 const LETTER = /[A-Za-z]/;
 const ENTITY = /&[a-zA-Z0-9#]+;/g;
 const URL = /^https?:\/\//;
 
-/* The props that render a person-facing word or sentence. */
 const LABEL_PROPS = new Set([
   'aria-label',
   'aria-valuetext',
@@ -27,15 +21,11 @@ const LABEL_PROPS = new Set([
   'actionLabel'
 ]);
 
-/* The few non-copy strings the interface draws; each is symbol-only, so the letter
- * test above already lets it through. */
+/* Symbol-only interface strings the letter test already lets through. */
 const ALLOWED = new Set(['--:--', '×', '·', '%']);
 
-/*
- * A template with no expressions is a string; one with expressions is dynamic
- * and is left alone, because the copy is split around the value and the rule
- * cannot see it whole.
- */
+/* A template with expressions is dynamic: the copy is split around the value
+ * and the rule cannot see it whole, so it is left alone. */
 function literalText(node) {
   if (node === null || node === undefined) {
     return null;
@@ -76,12 +66,8 @@ function isCopy(value) {
   return true;
 }
 
-/*
- * A call is trusted whole: `t('key')` is the catalog, and a formatting call
- * holds no copy, so neither is descended into. That is what lets a label prop
- * hold `cond ? t('a') : t('b')` while a plain `cond ? 'Pause' : 'Play'` is
- * still caught.
- */
+/* A call is trusted whole, so a label prop may hold `cond ? t('a') : t('b')`
+ * while a plain `cond ? 'Pause' : 'Play'` is still caught. */
 function scan(node, report) {
   if (node === null || node === undefined) {
     return;
@@ -149,7 +135,7 @@ export default {
         }
       },
       JSXExpressionContainer(node) {
-        /* An attribute's container is the attribute's own business. */
+        /* JSXAttribute handles an attribute's own container. */
         if (
           node.parent.type !== 'JSXElement' &&
           node.parent.type !== 'JSXFragment'

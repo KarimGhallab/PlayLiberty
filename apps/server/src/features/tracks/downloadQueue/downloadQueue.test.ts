@@ -13,9 +13,8 @@ import type { DownloadQueueContext } from './downloadQueue.js';
 import { withDownloadQueue } from './downloadQueue.js';
 
 /*
- * The seam is what makes the wake structural: an operation opens a queue, moves
- * tracks through it, and the worker is woken once at the end if anything queued.
- * These tests drive it directly, at its interface, rather than through a route.
+ * Seam makes the wake structural: an operation opens a queue, moves tracks, and
+ * the worker is woken once at the end if anything queued.
  */
 
 let context: TestContext | undefined;

@@ -21,6 +21,7 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | Video id           | The YouTube video id. The identity of a track and the dedup key: one file per video id, shared by every playlist that references it. |
 | Playlist           | A named, owner-owned, ordered collection of tracks. In v1 the only kind is the Synced playlist.                                      |
 | Gallery            | The playlists an account can see, presented as one collection on the library. Never "shelf".                                         |
+| Pin                | One account's own placement of a playlist above the rest of its gallery. Per account, so it never moves another's. Never "favorite". |
 | Synced playlist    | A playlist that mirrors a YouTube source. Created by pasting a URL; synced manually in v1.                                           |
 | Source             | The YouTube entity a synced playlist mirrors, a playlist URL or a single video URL, identified by its source id.                     |
 | Association        | The link of a track to a playlist. A track can have many associations. Never "membership".                                           |
@@ -50,6 +51,8 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | `Association.origin`  | `remote`, `manual`                                          |
 | `Playlist.syncStatus` | `idle`, `syncing`, `error`                                  |
 
+The user-facing word for `fileStatus: stored` is **stored** in English and **stockée** in French, wherever the state appears: the filter chip, the incomplete badge, the empty promise and the row.
+
 ## Playback and delivery
 
 | Term          | Meaning                                                                                     |
@@ -61,14 +64,14 @@ One word per idea. When a concept has two names here, pick the one in the left c
 
 ## Language
 
-| Term     | Meaning                                                                                                                                                                                                                  |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Language | `en` or `fr`. The language the interface is rendered in. Resolved once per browser, from an explicit choice, then the browser's preference, then `en`. Per browser, never on the account, and never known to the server. |
-| Locale   | A browser preference tag such as `fr-CA`, matched to a supported Language by its base. The app stores the resolved Language, never the tag.                                                                              |
+| Term     | Meaning                                                                                                                                                                                                                                                                                                |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language | `en` or `fr`. The language the interface is rendered in. Resolved once per browser, from an explicit choice, then the browser's preference, then `en`. Per browser, never on the account, and never known to the server. The control that changes it sits on both the library and the playlist detail. |
+| Locale   | A browser preference tag such as `fr-CA`, matched to a supported Language by its base. The app stores the resolved Language, never the tag.                                                                                                                                                            |
 
 ## Out of scope in v1
 
-Sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, favorites, ratings, play counts, and search.
+Sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
 
 ## Terms that are easy to mix up
 
@@ -78,4 +81,5 @@ Sharing outside the instance, public or unauthenticated access, casting, social 
 - **Removal** vs **Remote-removed** vs **Deletion**: removal suppresses one association; remote-removed means the source video is gone but the track is retained; deletion is the orphan prune removing media.
 - **Stream** vs **Download**: streaming is the only delivery. A download endpoint would be file export, a non-goal.
 - **Language** vs **Locale**: a language is one of the two the interface is written in, `en` or `fr`; a locale is the browser's preference tag, `fr-CA`, that resolves to one. The app stores the language and never the tag.
+- **Pin** vs **Favorite**: a pin is one account's placement of a playlist above the rest of its own gallery; a favorite would be a judgement about a thing. The feature is a pin, so the two words are never one.
 - **Interface language** vs **user content**: the interface language is the app's and switches with the language button; a playlist name, a track title and an account name are the source's or the user's and are never translated.

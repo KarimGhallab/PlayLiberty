@@ -31,6 +31,8 @@ Capabilities in v1:
 - Stream stored tracks to the web and mobile clients.
 - Multiple accounts, each with its own playlists; a playlist owner can share read-only or read-write with specific accounts.
 - Add one pasted video to several write-accessible playlists at once.
+- Pin playlists to the top of the account's own gallery, as a per-account placement and not a rating or a
+  favorites list.
 - Manual sync, retention, and weekly orphan pruning.
 
 Hard constraints:
@@ -44,7 +46,7 @@ Hard constraints:
 
 ## Non-Goals
 
-Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, favorites, ratings, play counts, and search.
+Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
 
 ## Brand Commitments
 
@@ -64,4 +66,4 @@ The product definition and the server, web, and mobile stacks all came out of st
 
 ## Accessibility & Inclusion
 
-Target the usual bar: keyboard reach and visible focus on the web client, sufficient contrast in light and dark, and respect for reduced-motion preferences. No UI exists yet, so nothing is enforced; enforcement starts with the first client and is recorded in `docs/DESIGN.md`.
+Target the usual bar: keyboard reach and visible focus on the web client, sufficient contrast in the dark theme the clients ship, and respect for reduced-motion preferences. The design decisions, and the rules that hold them, are in [DESIGN.md](DESIGN.md).

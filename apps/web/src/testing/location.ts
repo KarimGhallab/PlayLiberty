@@ -1,10 +1,8 @@
 import { vi } from 'vitest';
 
 /*
- * jsdom's `location.assign` is a non-writable own property, so it cannot be
- * spied in place. The whole `location` object can be replaced, which is what the
- * re-authentication guard's test needs: it asserts the navigation happened
- * without letting jsdom attempt it.
+ * `location.assign` is a non-writable own property, so it cannot be spied in
+ * place: the whole object is replaced instead.
  */
 const originalLocation = window.location;
 

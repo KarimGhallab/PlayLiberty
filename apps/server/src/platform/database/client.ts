@@ -1,12 +1,13 @@
 import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
 
 import * as schema from './schema.js';
 
 export interface DatabaseHandle {
   sqlite: Database.Database;
   db: BetterSQLite3Database<typeof schema>;
+  unitOfWork<Result>(operation: () => Result): Result;
 }
 
 export function createDatabase(databasePath: string): DatabaseHandle {
@@ -18,5 +19,10 @@ export function createDatabase(databasePath: string): DatabaseHandle {
 
   const db = drizzle(sqlite, { schema });
 
-  return { sqlite, db };
+  return {
+    sqlite,
+    db,
+    unitOfWork: <Result>(operation: () => Result): Result =>
+      sqlite.transaction(operation)()
+  };
 }

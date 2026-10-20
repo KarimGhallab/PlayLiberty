@@ -1,7 +1,11 @@
 import { IconPlus } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
-import type { Messages, Translator } from '@playliberty/i18n';
+import { TrackFileStatus } from '@playliberty/contracts';
+import type {
+  PlaylistWithCounts,
+  TrackFileStatusCounts
+} from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import { problemSentence } from '../../../shared/api/problem/problem';
@@ -11,61 +15,60 @@ import {
   useCreatePlaylist,
   usePlaylists
 } from '../../../shared/api/queries/queries';
+import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
+import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
+import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
-import UndoToast from '../../../shared/components/UndoToast/UndoToast';
-import {
-  UNDO_WINDOW_MS,
-  useDeferredAction
-} from '../../../shared/components/useDeferredAction/useDeferredAction';
+import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
+import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
+import { currentTrack } from '../../../shared/player/types';
 import {
   NOTICE_WINDOW_MS,
+  StartIntent,
+  pressForPlaylist,
   refusalNotice,
-  useShufflePlaylist
-} from '../../../shared/player/useShufflePlaylist/useShufflePlaylist';
+  usePlayTransition
+} from '../../../shared/player/usePlayTransition/usePlayTransition';
+import { usePlaylistActions } from '../../../shared/playlistActions/playlistActions';
+import {
+  MOBILE_QUERY,
+  useMediaQuery
+} from '../../../shared/useMediaQuery/useMediaQuery';
 
 import AddPlaylistDialog from '../AddPlaylistDialog/AddPlaylistDialog';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
-import LanguageMenu from '../LanguageMenu/LanguageMenu';
 import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
-import PlaylistListItem from '../PlaylistListItem';
+import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';
 
-/*
- * The sentence for the intent a second delete dropped. The displaced action's
- * name is the whole of it: the first delete never reaches the server, so saying
- * which playlist is no longer going is the honest correction, not a count.
- */
-function replacedSentence(
-  replaced: { detail: string | null } | null,
-  t: Translator<Messages>
-) {
-  if (replaced === null) {
-    return null;
+const TRACK_STATUSES = Object.values(TrackFileStatus);
+
+/* The gallery's status filter reads the whole library: one total per status
+ * over every playlist's counts. */
+function totalStatusCounts(
+  items: readonly PlaylistWithCounts[]
+): TrackFileStatusCounts {
+  const totals: TrackFileStatusCounts = {
+    [TrackFileStatus.Stored]: 0,
+    [TrackFileStatus.Pending]: 0,
+    [TrackFileStatus.Downloading]: 0,
+    [TrackFileStatus.Failed]: 0,
+    [TrackFileStatus.Unavailable]: 0
+  };
+
+  for (const item of items) {
+    for (const status of TRACK_STATUSES) {
+      totals[status] += item.counts[status];
+    }
   }
-  if (replaced.detail === null) {
-    return t('library.replaced');
-  }
-  return t('library.willNotDelete', { name: replaced.detail });
+
+  return totals;
 }
 
 /*
- * The list of playlists is the only entry point to content, so this is the route
- * a user lands on. Four states and no fifth: loading, a failed read, the empty
- * gallery, and the populated list.
- *
- * The add control lives in the header, and on the empty state it is the gallery's
- * framed action alone: the header's is suppressed there so the one screen where a
- * person has seen neither control offers one invitation, not two. Both open one
- * dialog. On success the dialog closes and the list is invalidated, so the new
- * playlist arrives from the server rather than from a row this screen invented;
- * the person stays here and watches it appear rather than being taken into a
- * playlist they have not seen yet.
- *
- * The page owns the one undo window, because a delete is the one destructive
- * action an item offers and two of them in the same window must replace rather
- * than stack. An item hands its own commit to this window; the toast below is the
- * page's single surface for it.
+ * Four states and no fifth: loading, failure, the empty gallery, the list. Each
+ * delete opens its own undo window, so a second one stacks rather than replaces.
  */
 export default function LibraryPage() {
   const { t } = useI18n();
@@ -73,28 +76,103 @@ export default function LibraryPage() {
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
   const deferred = useDeferredAction();
-  const { shufflePlaylist, refusal } = useShufflePlaylist();
+  const { play, shuffle, refusal, startingPress } = usePlayTransition();
+  const isMobile = useMediaQuery(MOBILE_QUERY);
+  const docked = usePlayerStore(state => currentTrack(state) !== null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pinRefused, setPinRefused] = useState<Error | null>(null);
+  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
+    null
+  );
+  const pinnedHeadingId = useId();
+  const restHeadingId = useId();
+  const actions = usePlaylistActions({
+    defer: deferred.defer,
+    deleteMessage: 'library.deleteDeferred',
+    pin: { onRefused: error => setPinRefused(error) }
+  });
 
   /*
-   * The owner line needs the directory, and the directory is a second read that
-   * may be pending, failed or short of the owner. In every one of those cases the
-   * resolved name is null and the item falls back to its share indicator, so the
-   * line never blocks the list and never invents a name.
+   * The directory may be pending, failed, or short of the owner, so the name
+   * resolves to null and the item falls back to its share indicator.
    */
   const directoryItems = directory.data ?? [];
 
   const refused = problemSentence(t, createPlaylist.error);
 
-  const isEmpty = playlists.isSuccess && playlists.data.items.length === 0;
+  const items = playlists.isSuccess ? playlists.data.items : [];
+  const statusCounts = totalStatusCounts(items);
+  const hasStatusCounts = TRACK_STATUSES.some(
+    status => statusCounts[status] > 0
+  );
+  const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
 
   /*
-   * The dialog reports the end of its exit, which is the moment to drop anything
-   * it was holding. Success is the one close the dialog does not initiate, so the
-   * page sets `open` false and the dialog runs the same fade every other close
-   * runs; the list is already invalidated by the mutation, so the read that
-   * follows carries the new playlist and the screen they are standing on is the
-   * one that gains it.
+   * A status the library no longer carries cannot stay in force; a live read
+   * that drops the last track in it returns the gallery to All.
+   */
+  useEffect(() => {
+    if (statusFilter !== null && activeCount === 0) {
+      setStatusFilter(null);
+    }
+  }, [statusFilter, activeCount]);
+
+  const visibleItems =
+    statusFilter === null
+      ? items
+      : items.filter(playlist => playlist.counts[statusFilter] > 0);
+
+  /*
+   * The page filters and never sorts, so both groups keep the server's order.
+   */
+  const pinned = visibleItems.filter(playlist => playlist.pinned);
+  const rest = visibleItems.filter(playlist => !playlist.pinned);
+
+  const isEmpty = playlists.isSuccess && items.length === 0;
+  const grouped = pinned.length > 0 && rest.length > 0;
+
+  /* The refusal withdraws on the window the other notices use. */
+  useEffect(() => {
+    if (pinRefused === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setPinRefused(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [pinRefused]);
+
+  const renderItem = (playlist: PlaylistWithCounts) => {
+    const startingThisPlaylist = pressForPlaylist(startingPress, playlist.id);
+
+    return (
+      <li key={playlist.id} className={styles.library__cell}>
+        <PlaylistItem
+          playlist={playlist}
+          ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
+          pending={deferred.windows.some(entry => entry.id === playlist.id)}
+          layout={isMobile ? 'card' : 'tile'}
+          menu={actions.menuFor(playlist)}
+          onPlay={() => play(playlist)}
+          onShuffle={() => shuffle(playlist)}
+          playbackStarting={startingThisPlaylist !== null}
+          startingControl={
+            startingThisPlaylist?.intent === StartIntent.Shuffle
+              ? 'shuffle'
+              : 'play'
+          }
+        />{' '}
+      </li>
+    );
+  };
+
+  const renderList = (list: readonly PlaylistWithCounts[]) => (
+    <ul className={styles.library__grid}>{list.map(renderItem)}</ul>
+  );
+
+  /*
+   * Success is the one close the dialog does not initiate, so the page drops
+   * `open` and the dialog runs its usual fade.
    */
   useEffect(() => {
     if (createPlaylist.isSuccess) {
@@ -103,12 +181,12 @@ export default function LibraryPage() {
   }, [createPlaylist.isSuccess]);
 
   return (
-    <main className={styles.library}>
+    <main className={styles.library} data-player={docked ? 'true' : undefined}>
       <div className={styles.library__head}>
         <h1 className={styles.library__title}>{t('app.name')}</h1>
         <div className={styles.library__actions}>
           <LanguageMenu />
-          {isEmpty ? null : (
+          {isEmpty || isMobile ? null : (
             <button
               type="button"
               className={styles.library__add}
@@ -123,7 +201,17 @@ export default function LibraryPage() {
           )}
         </div>
       </div>
-      {playlists.isPending ? <LibrarySkeleton /> : null}
+      {playlists.isSuccess && items.length > 0 && hasStatusCounts ? (
+        <PlaylistFilterChips
+          counts={statusCounts}
+          active={statusFilter}
+          showEmpty={false}
+          onChange={setStatusFilter}
+        />
+      ) : null}
+      {playlists.isPending ? (
+        <LibrarySkeleton layout={isMobile ? 'card' : 'tile'} />
+      ) : null}
       {playlists.isError ? (
         <ReadFailure
           message={t('library.readFailed')}
@@ -132,27 +220,38 @@ export default function LibraryPage() {
           retrying={playlists.isFetching}
         />
       ) : null}
-      {playlists.isSuccess && playlists.data.items.length === 0 ? (
-        <EmptyGallery onAdd={() => setDialogOpen(true)} />
+      {isEmpty ? <EmptyGallery onAdd={() => setDialogOpen(true)} /> : null}
+      {playlists.isSuccess && pinned.length > 0 ? (
+        <section aria-labelledby={pinnedHeadingId}>
+          <h2 id={pinnedHeadingId} className={styles.library__sectionTitle}>
+            {t('library.pinned')}
+          </h2>
+          {renderList(pinned)}
+        </section>
       ) : null}
-      {playlists.isSuccess && playlists.data.items.length > 0 ? (
-        <ul className={styles.library__list}>
-          {playlists.data.items.map(playlist => (
-            <li key={playlist.id} className={styles.library__item}>
-              <PlaylistListItem
-                playlist={playlist}
-                ownerName={ownerNameFrom(
-                  directoryItems,
-                  playlist.ownerAccountId
-                )}
-                pending={deferred.pending?.id === playlist.id}
-                defer={deferred.defer}
-                onShuffle={() => shufflePlaylist(playlist)}
-              />
-            </li>
-          ))}
-        </ul>
+      {/* A boundary needs two sides: an account that has pinned nothing, or one that
+       * has pinned everything, sees the one list it has always seen. */}
+      {playlists.isSuccess && grouped ? (
+        <hr className={styles.library__rule} />
       ) : null}
+      {playlists.isSuccess && rest.length > 0 ? (
+        grouped ? (
+          <section aria-labelledby={restHeadingId}>
+            <h2 id={restHeadingId} className={styles.library__restTitle}>
+              {t('library.rest')}
+            </h2>
+            {renderList(rest)}
+          </section>
+        ) : (
+          renderList(rest)
+        )
+      ) : null}
+      {isEmpty || !isMobile ? null : (
+        <FloatingAction
+          label={t('library.add')}
+          onClick={() => setDialogOpen(true)}
+        />
+      )}
       <AddPlaylistDialog
         open={dialogOpen}
         onSubmit={(url, skipNonMusic) =>
@@ -165,21 +264,17 @@ export default function LibraryPage() {
         isWorking={createPlaylist.isPending}
         problem={refused}
       />
-      {deferred.pending !== null ? (
-        <UndoToast
-          message={deferred.pending.message}
-          detail={deferred.pending.detail}
-          replacedLabel={replacedSentence(deferred.replaced, t)}
-          windowKey={deferred.windowId}
-          durationMs={UNDO_WINDOW_MS}
-          actionLabel={t('common.cancel')}
-          onAction={deferred.cancel}
-          onDismiss={deferred.cancel}
-        />
-      ) : null}
+      {actions.dialogs}
       {refusal === null ? null : (
         <NoticeToast
           {...refusalNotice(refusal, t)}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {pinRefused === null ? null : (
+        <NoticeToast
+          message={t('library.pinFailed')}
+          detail={problemSentence(t, pinRefused)}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

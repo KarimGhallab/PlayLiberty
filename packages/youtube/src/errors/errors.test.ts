@@ -7,11 +7,8 @@ import {
   isVideoUnavailableMessage
 } from './errors.js';
 
-/*
- * The two classifications the adapter's download path picks between. A gone video
- * is terminal and a SponsorBlock outage is retryable, so the sets must not
- * overlap; a phrase landing in both would make an outage permanently terminal.
- */
+/* The two sets must not overlap: a phrase in both would make a retryable outage
+ * permanently terminal. */
 
 describe('the SponsorBlock failure classification', () => {
   it('recognises the phrases yt-dlp reports an outage with', () => {

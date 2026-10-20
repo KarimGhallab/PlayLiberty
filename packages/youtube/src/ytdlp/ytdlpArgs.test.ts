@@ -30,10 +30,8 @@ describe('buildListArgs', () => {
     };
     const args = buildListArgs(info);
 
-    /*
-     * Exact, not `toContain('youtube')`: yt-dlp matches an extractor name
-     * exactly, and a playlist URL is `youtube:tab`.
-     */
+    /* Exact: yt-dlp matches an extractor name exactly, and a playlist URL is
+     * `youtube:tab`. */
     expect(args).toContain('--use-extractors');
     const selector = args[args.indexOf('--use-extractors') + 1];
     expect(selector).toBe('youtube,youtube:tab');
@@ -127,8 +125,8 @@ describe('buildDownloadArgs', () => {
         skipNonMusic
       );
 
-      // `--force-keyframes-at-cuts` re-encodes the whole file first, which would
-      // break the architecture's no-transcoding rule. The cut is a stream copy.
+      // `--force-keyframes-at-cuts` would re-encode the whole file, breaking
+      // the no-transcoding rule. The cut is a stream copy.
       expect(args).not.toContain('--force-keyframes-at-cuts');
     }
   });

@@ -10,20 +10,9 @@ import {
 } from './support/paths';
 
 /*
- * End-to-end tests run against a real server and a real database, driven through a
- * browser. Two seams are faked and nothing else: the YouTube adapter (external and
- * non-deterministic) through `NODE_ENV=test`, and the edge identity, which the Vite
- * dev server already injects on its API proxy.
- *
- * One worker, because the server and its database are one shared instance. Tests
- * reset it between runs through the test-only reset route rather than by starting a
- * second server.
- *
- * The scenario file is written by the tests and read by the server's fake adapter
- * on every call, so the stack can boot before any test has chosen a scenario.
- *
- * The stack must be built first: `pnpm run build` produces the workspace packages
- * the Vite dev server resolves and the server `dist` this config boots.
+ * A real server and database driven through a browser; only the YouTube adapter
+ * (`NODE_ENV=test`) and the edge identity (injected by the Vite dev proxy) are
+ * faked. One worker, because server and database are one shared instance.
  */
 export default defineConfig({
   testDir: './tests',
@@ -40,9 +29,22 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /phone\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] }
+    },
+    {
+      name: 'phone',
+      testMatch: /phone\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true
+      }
     }
   ],
+  // The stack must be built first: `pnpm run build` produces the dist booted
+  // here and the workspace packages the dev server resolves.
   webServer: [
     {
       name: 'server',

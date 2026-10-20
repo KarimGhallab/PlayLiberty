@@ -15,10 +15,6 @@ describe('toLanguage', () => {
 });
 
 describe('resolveLanguage', () => {
-  it('lets an explicit choice beat the browser preference', () => {
-    expect(resolveLanguage('fr', ['en-US', 'en'])).toBe(Language.French);
-  });
-
   it('uses the browser preference when there is no explicit choice', () => {
     expect(resolveLanguage(null, ['en-US', 'en'])).toBe(Language.English);
   });

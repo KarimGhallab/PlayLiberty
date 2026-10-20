@@ -1,29 +1,14 @@
 import { Link } from '@tanstack/react-router';
-import type { MouseEvent as ReactMouseEvent } from 'react';
 
-import TrackBars from '../TrackBars';
 import styles from './PlaylistHeader.module.scss';
+import { playlistDoor } from './playlistDoor';
 import type { PlaylistHeaderSeam } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 
 /*
- * The row arrangement of the playlist header: the cover beside the identity
- * block, the actions in a column at the end. The library draws it for each item
- * and the playlist detail draws it under 768px, where the card's height does not
- * fit.
- *
- * The row is the one arrangement that is a door: `onOpen` is offered only by a
- * surface whose row opens something other than itself, which is the library and
- * never the detail. A press anywhere on the row opens it except on a link, a
- * button or the open menu, so the controls and the two links carve themselves
- * out. `showSyncTime` and `now` belong to the same surface: the library's
- * gallery is where the elapsed line is read, and the detail's row does not ask
- * for it.
- *
- * The cover is a link of its own, hidden from assistive technology so the name
- * carries the one announcement per item, and it draws the playing bars while
- * the queue is this playlist. The cover defers its image, because the gallery
- * draws one per item.
+ * The row arrangement: the cover beside the identity block, the actions in a
+ * column at the end. `onOpen` is offered only where the row opens something
+ * other than itself. The cover link is hidden from AT so the name announces.
  */
 
 export interface PlaylistRowHeaderProps extends PlaylistHeaderSeam {
@@ -49,7 +34,8 @@ export default function PlaylistRowHeader({
     primaryControl,
     shuffleControl,
     menuControl,
-    identity
+    identity,
+    door
   } = usePlaylistHeader({
     ...seam,
     playlist,
@@ -60,18 +46,7 @@ export default function PlaylistRowHeader({
     pending
   });
 
-  const openFromClick =
-    onOpen === undefined
-      ? undefined
-      : (event: ReactMouseEvent<HTMLDivElement>): void => {
-          const target = event.target as HTMLElement;
-
-          if (target.closest('a, button, [role="menu"]') !== null) {
-            return;
-          }
-
-          onOpen();
-        };
+  const openFromClick = onOpen === undefined ? undefined : playlistDoor(onOpen);
 
   return (
     <div
@@ -86,15 +61,14 @@ export default function PlaylistRowHeader({
       data-state={playing ? 'playing' : 'paused'}>
       {groundElement}
       <Link
+        {...door}
         to="/playlists/$playlistId"
         params={{ playlistId: playlist.id }}
         className={styles.playlistHeader__cover}
         aria-hidden="true"
         tabIndex={-1}
-        aria-disabled={pending ? true : undefined}
-        onClick={pending ? event => event.preventDefault() : undefined}
         data-art={cover === null ? 'no-art' : 'art'}
-        data-sleeve={cover === null ? sleeve : undefined}>
+        data-sleeve={sleeve}>
         {cover === null ? null : (
           <img
             className={styles.playlistHeader__art}
@@ -105,19 +79,6 @@ export default function PlaylistRowHeader({
             onError={onCoverError}
           />
         )}
-        {current && playing ? (
-          <>
-            <span
-              className={styles.playlistHeader__barsScrim}
-              aria-hidden="true"
-            />
-            <TrackBars
-              className={styles.playlistHeader__bars}
-              barClassName={styles.playlistHeader__bar}
-              playing={playing}
-            />
-          </>
-        ) : null}
       </Link>
       <div className={styles.playlistHeader__body}>{identity}</div>
       <div className={styles.playlistHeader__actions}>
@@ -129,6 +90,7 @@ export default function PlaylistRowHeader({
           </div>
         )}
       </div>
+      <span className={styles.playlistHeader__line} aria-hidden="true" />
     </div>
   );
 }
