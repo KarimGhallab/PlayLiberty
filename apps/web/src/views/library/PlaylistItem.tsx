@@ -62,7 +62,7 @@ export default function PlaylistItem({
     mark: (
       <IncompleteBadge
         counts={playlist.counts}
-        tipEdge={isCard ? 'end' : 'start'}
+        tipEdge={isCard ? 'compact' : 'start'}
       />
     ),
     onShuffle,

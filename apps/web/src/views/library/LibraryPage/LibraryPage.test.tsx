@@ -718,6 +718,37 @@ describe('LibraryPage', () => {
     }
   });
 
+  it('keeps a gallery card pill on its compact tip', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      renderLibraryPage();
+
+      expect(
+        await screen.findByRole('img', {
+          name: '2 tracks are not stored · Failed 2'
+        })
+      ).toHaveAttribute('data-tip', 'compact');
+    } finally {
+      restore();
+    }
+  });
+
   it('offers Cover to a write collaborator in the gallery', async () => {
     server.use(
       http.get(mockUrl(endpoints.playlists), () =>
