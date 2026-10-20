@@ -39,9 +39,6 @@ const EnvSchema = z.object({
     .default(3),
   DOWNLOAD_SOCKET_TIMEOUT: z.coerce.number().int().positive().default(30),
   DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().positive().default(900000),
-  PANGOLIN_API_URL: optionalUrl,
-  PANGOLIN_RESOURCE_ID: optionalString,
-  PANGOLIN_INTEGRATION_API_KEY: optionalString,
   YTDLP_BINARY: z.string().default('yt-dlp'),
   FFMPEG_BINARY: z.string().default('ffmpeg'),
   FFPROBE_BINARY: z.string().default('ffprobe'),
@@ -96,11 +93,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       fragmentRetries: value.DOWNLOAD_FRAGMENT_RETRIES,
       fileAccessRetries: value.DOWNLOAD_FILE_ACCESS_RETRIES,
       socketTimeout: value.DOWNLOAD_SOCKET_TIMEOUT
-    },
-    pangolin: {
-      apiUrl: value.PANGOLIN_API_URL ?? null,
-      resourceId: value.PANGOLIN_RESOURCE_ID ?? null,
-      integrationApiKey: value.PANGOLIN_INTEGRATION_API_KEY ?? null
     },
     e2eFakeScript: value.E2E_FAKE_SCRIPT ?? null
   };

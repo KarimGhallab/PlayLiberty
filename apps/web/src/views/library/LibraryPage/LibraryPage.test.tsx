@@ -354,6 +354,7 @@ describe('LibraryPage', () => {
     const { container } = renderLibraryPage();
 
     expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
+    expect(await screen.findByText('Shared by Ada')).toBeInTheDocument();
     const list = screen.getByRole('list');
     expect(within(list).getByText('1')).toBeInTheDocument();
     expect(within(list).getByText('track')).toBeInTheDocument();
@@ -370,6 +371,8 @@ describe('LibraryPage', () => {
   it('presses only the playlist the queue belongs to', async () => {
     renderLibraryPage();
 
+    await screen.findByText('Shared by Ada');
+
     const own = await screen.findByRole('button', {
       name: 'Shuffle Rain On The Window'
     });
@@ -377,6 +380,8 @@ describe('LibraryPage', () => {
 
     fireEvent.click(own);
     await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
+    await waitFor(() => expect(own).toHaveAttribute('aria-pressed', 'true'));
+    await waitFor(() => expect(own).toBeEnabled());
 
     expect(own).toHaveAttribute('aria-pressed', 'true');
     expect(other).toHaveAttribute('aria-pressed', 'false');
@@ -385,6 +390,16 @@ describe('LibraryPage', () => {
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     );
     await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(false));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+      ).toHaveAttribute('aria-pressed', 'false')
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+      ).toBeEnabled()
+    );
 
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
@@ -1124,12 +1139,18 @@ describe('LibraryPage', () => {
     renderLibraryPage();
 
     await screen.findByText('Rain On The Window');
+    await screen.findByText('Shared by Ada');
     fireEvent.click(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     );
 
     await waitFor(() =>
       expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Pause Rain On The Window' })
+      ).toBeEnabled()
     );
 
     const state = usePlayerStore.getState();
@@ -1182,6 +1203,7 @@ describe('LibraryPage', () => {
     renderLibraryPage();
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
+    await screen.findByText('Shared by Ada');
 
     const item = () =>
       screen
@@ -1207,11 +1229,13 @@ describe('LibraryPage', () => {
     await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
 
     expect(usePlayerStore.getState().queue).toHaveLength(2);
-    expect(
-      within(item()).getByRole('button', {
-        name: 'Pause Rain On The Window'
-      })
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(item()).getByRole('button', {
+          name: 'Pause Rain On The Window'
+        })
+      ).toBeEnabled()
+    );
   });
 
   it('draws the play disabled on a playlist with nothing stored', async () => {
@@ -1279,12 +1303,18 @@ describe('LibraryPage', () => {
       renderLibraryPage();
 
       await screen.findByText('Rain On The Window');
+      await screen.findByText('Shared by Ada');
       fireEvent.click(
         screen.getByRole('button', { name: 'Play Rain On The Window' })
       );
 
       await waitFor(() =>
         expect(usePlayerStore.getState().queue).toHaveLength(2)
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Pause Rain On The Window' })
+        ).toBeEnabled()
       );
 
       const state = usePlayerStore.getState();

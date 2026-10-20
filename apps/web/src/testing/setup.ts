@@ -15,6 +15,22 @@ import { server } from './mocks/server';
 URL.createObjectURL = () => 'blob:test-preview';
 URL.revokeObjectURL = () => undefined;
 
+/* TanStack Router scrolls to the top after every rendered route; jsdom's
+ * `scrollTo` is an unimplemented stub that logs each call. */
+Object.defineProperty(window, 'scrollTo', {
+  configurable: true,
+  writable: true,
+  value: () => undefined
+});
+
+/* The player resets its media element with `load()`; jsdom only logs that it
+ * is unimplemented. */
+Object.defineProperty(window.HTMLMediaElement.prototype, 'load', {
+  configurable: true,
+  writable: true,
+  value: () => undefined
+});
+
 if (typeof window.matchMedia !== 'function') {
   window.matchMedia = (query: string) =>
     ({
