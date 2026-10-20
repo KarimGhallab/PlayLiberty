@@ -6,4 +6,4 @@ echo "(1) Building the workspace..."
 pnpm run build
 
 echo "(2) Running all tests (unit, then e2e)..."
-pnpm test
+pnpm test:parallel

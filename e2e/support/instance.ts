@@ -5,7 +5,7 @@ import type { APIRequestContext, Page } from '@playwright/test';
 import { FAKE_SCRIPT } from './paths';
 
 /*
- * A scenario is written to the shared file so a test restarts nothing. The
+ * A scenario is written to the worker's file so a test restarts nothing. The
  * reset goes through the Vite dev server, the only thing that injects the edge
  * identity the server fails closed without.
  */
