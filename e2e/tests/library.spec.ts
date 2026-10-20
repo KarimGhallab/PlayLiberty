@@ -118,7 +118,7 @@ test('a playlist’s action menu covers the docked bar', async ({ page }) => {
     .click();
 
   const item = await page
-    .getByRole('menuitem', { name: 'Delete playlist' })
+    .getByRole('menuitem', { name: 'Delete' })
     .boundingBox();
   const dock = await page.locator('footer').boundingBox();
 
@@ -127,7 +127,7 @@ test('a playlist’s action menu covers the docked bar', async ({ page }) => {
   /* Asserted, not assumed: a panel clear of the bar would pass vacuously. */
   expect(item!.y + item!.height).toBeGreaterThan(dock!.y);
 
-  await page.getByRole('menuitem', { name: 'Delete playlist' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
 
   /* The undo window proves the press reached the menu and not the bar. */
   await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();

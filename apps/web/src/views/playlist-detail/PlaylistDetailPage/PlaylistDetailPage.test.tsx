@@ -578,7 +578,7 @@ describe('PlaylistDetailPage', () => {
         name: 'More actions for Rain On The Window'
       })
     );
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
 
     const header = container.querySelector('[data-arrangement="card"]');
     expect(header).toHaveAttribute('aria-busy', 'true');
@@ -599,7 +599,7 @@ describe('PlaylistDetailPage', () => {
         name: 'More actions for Rain On The Window'
       })
     );
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
 
     expect(
       screen.getByRole('button', { name: 'Play Blue In Green' })
@@ -641,6 +641,155 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  });
+
+  it('offers Cover to the owner, uploads the file and shows the new cover', async () => {
+    const version = '2026-10-20T12:00:00.000Z';
+    let coverVersion: string | null = null;
+    const uploads: { contentType: string | null; bytes: number }[] = [];
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({
+          ...playlistJson(true),
+          coverUpdatedAt: coverVersion
+        })
+      ),
+      http.post(
+        mockUrl(endpoints.setPlaylistCover, { playlistId: PLAYLIST_ID }),
+        async ({ request }) => {
+          uploads.push({
+            contentType: request.headers.get('content-type'),
+            bytes: (await request.arrayBuffer()).byteLength
+          });
+          coverVersion = version;
+
+          return HttpResponse.json({
+            ...playlistJson(true),
+            coverUpdatedAt: version
+          });
+        }
+      )
+    );
+
+    const { container } = renderDetail();
+    const opener = await screen.findByRole('button', {
+      name: 'More actions for Rain On The Window'
+    });
+
+    fireEvent.click(opener);
+    expect(
+      screen.getByRole('menuitem', { name: 'Update the cover' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Playlist cover'
+    });
+    const input = dialog.querySelector<HTMLInputElement>('input[type=file]');
+    const file = new File([new Uint8Array([1, 2, 3])], 'cover.jpg', {
+      type: 'image/jpeg'
+    });
+
+    if (input === null) {
+      throw new Error('the cover dialog has no file input');
+    }
+
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(uploads).toHaveLength(1));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Playlist cover' })
+      ).not.toBeInTheDocument()
+    );
+    expect(opener).toHaveFocus();
+
+    await waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-arrangement="card"] img')
+          ?.getAttribute('src')
+      ).toBe(
+        `/api/v1/playlists/playlist-1/cover?v=${encodeURIComponent(version)}`
+      )
+    );
+
+    expect(uploads).toEqual([{ contentType: 'image/jpeg', bytes: 3 }]);
+  });
+
+  it('keeps the cover dialog open with one sentence when the save fails', async () => {
+    server.use(
+      http.post(
+        mockUrl(endpoints.setPlaylistCover, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.InternalError,
+            status: 500,
+            title: 'Internal Server Error'
+          })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Playlist cover'
+    });
+    const input = dialog.querySelector<HTMLInputElement>('input[type=file]');
+
+    if (input === null) {
+      throw new Error('the cover dialog has no file input');
+    }
+
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File([new Uint8Array([1])], 'cover.jpg', {
+            type: 'image/jpeg'
+          })
+        ]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The cover could not be saved.'
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Playlist cover' })
+    ).toBeInTheDocument();
+  });
+
+  it('offers Cover to a write collaborator', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), access: 'write' })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+
+    expect(
+      screen.getByRole('menuitem', { name: 'Update the cover' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Rename' })
+    ).not.toBeInTheDocument();
   });
 
   it('names the playlist from the playlist read', async () => {
@@ -1067,9 +1216,7 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.getByText(/All 3 tracks are still here and will never be deleted/)
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Sync now' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sync' })).toBeInTheDocument();
     expect(screen.queryByText('kept')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show details' }));
@@ -1117,7 +1264,7 @@ describe('PlaylistDetailPage', () => {
     ).not.toBeInTheDocument();
     /* So is the named sync: a reader cannot start a run. */
     expect(
-      screen.queryByRole('button', { name: 'Sync now' })
+      screen.queryByRole('button', { name: 'Sync' })
     ).not.toBeInTheDocument();
     /* The setting is still theirs to read, so the switch is drawn disabled. */
     expect(

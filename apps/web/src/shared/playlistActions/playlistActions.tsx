@@ -1,5 +1,6 @@
 import {
   IconPencil,
+  IconPhoto,
   IconPin,
   IconPinnedOff,
   IconRotate,
@@ -17,9 +18,11 @@ import { problemSentence } from '../api/problem/problem';
 import {
   useDeletePlaylist,
   useRenamePlaylist,
+  useSetPlaylistCover,
   useSyncPlaylist,
   useUpdatePin
 } from '../api/queries/queries';
+import CoverDialog from '../components/CoverDialog/CoverDialog';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
 import type { PendingAction } from '../components/useDeferredAction/types';
@@ -31,7 +34,7 @@ import type { PendingAction } from '../components/useDeferredAction/types';
  */
 
 export interface PlaylistAction {
-  readonly key: 'pin' | 'share' | 'rename' | 'sync' | 'delete';
+  readonly key: 'pin' | 'share' | 'rename' | 'cover' | 'sync' | 'delete';
   readonly label: MessageKey<Messages>;
   readonly Icon: typeof IconShare;
   readonly onSelect: () => void;
@@ -62,7 +65,7 @@ export interface PlaylistActions {
   ) => readonly PlaylistAction[];
   /** The rename and share dialogs, for the page to place. */
   readonly dialogs: ReactNode;
-  /** Start one playlist's sync. The same mutation the menu's Sync now item runs. */
+  /** Start one playlist's sync. The same mutation the menu's Sync item runs. */
   readonly syncNow: (playlistId: string) => void;
   /** Whether this playlist's sync is in flight. */
   readonly syncing: (playlistId: string) => boolean;
@@ -84,10 +87,13 @@ export function usePlaylistActions(
   const { t } = useI18n();
   const sync = useSyncPlaylist();
   const rename = useRenamePlaylist();
+  const cover = useSetPlaylistCover();
   const remove = useDeletePlaylist();
   const pin = useUpdatePin();
   const [renameTarget, setRenameTarget] = useState<Playlist | null>(null);
   const [shareTarget, setShareTarget] = useState<Playlist | null>(null);
+  const [coverTarget, setCoverTarget] = useState<Playlist | null>(null);
+  const [coverOpen, setCoverOpen] = useState(false);
 
   const menuFor = (
     playlist: Playlist | undefined
@@ -131,6 +137,18 @@ export function usePlaylistActions(
       disabled: sync.isPending && sync.variables === playlist.id
     });
 
+    const coverItem = (): PlaylistAction => ({
+      key: 'cover',
+      label: 'header.cover',
+      Icon: IconPhoto,
+      disabled: cover.isPending,
+      onSelect: () => {
+        cover.reset();
+        setCoverTarget(playlist);
+        setCoverOpen(true);
+      }
+    });
+
     if (access === 'owner') {
       const pinEntry = pinItem();
       if (pinEntry !== null) {
@@ -150,6 +168,7 @@ export function usePlaylistActions(
           Icon: IconPencil,
           onSelect: () => setRenameTarget(playlist)
         },
+        coverItem(),
         syncItem(),
         {
           key: 'delete',
@@ -172,7 +191,7 @@ export function usePlaylistActions(
         menu.push(pinEntry);
       }
 
-      menu.push(syncItem());
+      menu.push(coverItem(), syncItem());
     } else if (access === 'read') {
       const pinEntry = pinItem();
       if (pinEntry !== null) {
@@ -188,8 +207,29 @@ export function usePlaylistActions(
    * the account directory or the reader's account anything.
    */
   const dialogs =
-    renameTarget === null && shareTarget === null ? null : (
+    renameTarget === null &&
+    shareTarget === null &&
+    coverTarget === null ? null : (
       <>
+        {coverTarget === null ? null : (
+          <CoverDialog
+            open={coverOpen}
+            playlist={coverTarget}
+            isWorking={cover.isPending}
+            problem={cover.isError ? t('coverDialog.uploadFailed') : null}
+            onSubmit={file =>
+              cover.mutate(
+                { playlistId: coverTarget.id, file },
+                { onSuccess: () => setCoverOpen(false) }
+              )
+            }
+            onClose={() => setCoverOpen(false)}
+            onClosed={() => {
+              setCoverTarget(null);
+              cover.reset();
+            }}
+          />
+        )}
         {renameTarget === null ? null : (
           <RenamePlaylistDialog
             open

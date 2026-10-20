@@ -11,10 +11,10 @@ import {
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import { PlaylistSyncStatus, endpoints } from '@playliberty/contracts';
+import { PlaylistSyncStatus } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import {
   formatLastSynced,
@@ -24,8 +24,8 @@ import {
 } from '@playliberty/i18n';
 import { sleeveIndex } from '@playliberty/ui-foundation';
 
-import { mediaUrl } from '../../api/endpoints/endpoints';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
+import { usePlaylistCover } from '../../playlistCover/usePlaylistCover';
 import Menu from '../Menu/Menu';
 import PlayGlyph from '../PlayGlyph';
 import Spinner from '../Spinner/Spinner';
@@ -44,23 +44,6 @@ import { playlistDoorProps } from './playlistDoor';
 /* Which start control a press belongs to, so only it shows the in-flight
  * state while the others wait. */
 export type PlaybackStartControl = 'play' | 'shuffle';
-
-enum CoverFailure {
-  None = 'none',
-  Custom = 'custom',
-  Track = 'track'
-}
-
-/* The custom image carries its version, so a replacement is a new cache key. */
-function customCoverUrl(playlist: Playlist): string | null {
-  if (playlist.coverUpdatedAt === null) {
-    return null;
-  }
-
-  const path = mediaUrl(endpoints.playlistCover, { playlistId: playlist.id });
-
-  return `${path}?v=${encodeURIComponent(playlist.coverUpdatedAt)}`;
-}
 
 export interface PlaylistHeaderSeam {
   playlist: Playlist;
@@ -201,24 +184,7 @@ export function usePlaylistHeader({
   /* The identity hue a no-artwork cover draws. Derived from the id, so it is the
    * same sleeve wherever this playlist appears and it survives a reload. */
   const sleeve = sleeveIndex(playlist.id);
-  const customCoverSrc = customCoverUrl(playlist);
-  const trackCoverSrc =
-    playlist.coverTrackId === null
-      ? null
-      : mediaUrl(endpoints.trackThumbnail, { trackId: playlist.coverTrackId });
-  const [coverFailure, setCoverFailure] = useState(CoverFailure.None);
-  const showingCustom =
-    customCoverSrc !== null && coverFailure === CoverFailure.None;
-  const cover = showingCustom
-    ? customCoverSrc
-    : coverFailure === CoverFailure.Track
-      ? null
-      : trackCoverSrc;
-
-  /* The image has no source to name, so the failure state names which level
-   * failed: the custom image first, then the track thumbnail, then the sleeve. */
-  const onCoverError = () =>
-    setCoverFailure(showingCustom ? CoverFailure.Custom : CoverFailure.Track);
+  const { cover, onCoverError } = usePlaylistCover(playlist);
 
   const groundElement = ground ? (
     <span
@@ -236,10 +202,6 @@ export function usePlaylistHeader({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [shareTipDismissed, setShareTipDismissed] = useState(false);
   const { run, endRun } = usePlayPauseMorph(playing);
-
-  useEffect(() => {
-    setCoverFailure(CoverFailure.None);
-  }, [playlist.coverUpdatedAt, playlist.coverTrackId]);
 
   const door = playlistDoorProps(pending);
 

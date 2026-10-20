@@ -74,7 +74,7 @@ test('a failed sync leaves the playlist marked as failed rather than silent', as
   await page
     .getByRole('button', { name: 'More actions for Evening Jazz' })
     .click();
-  await page.getByRole('menuitem', { name: 'Sync now' }).click();
+  await page.getByRole('menuitem', { name: 'Sync' }).click();
 
   await expect(page.getByText('Sync failed')).toBeVisible({
     timeout: 15_000

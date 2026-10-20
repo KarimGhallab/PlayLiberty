@@ -108,6 +108,17 @@ export const en = {
     save: 'Save',
     saving: 'Saving'
   },
+  coverDialog: {
+    title: 'Playlist cover',
+    description: 'JPEG, PNG or WebP, up to 5 MB.',
+    choose: 'Choose image',
+    wrongType: 'Choose a JPEG, PNG or WebP image.',
+    tooLarge: 'Choose an image smaller than 5 MB.',
+    uploadFailed: 'The cover could not be saved.',
+    save: 'Save',
+    saving: 'Saving',
+    discardPrompt: 'Discard this image? The image you chose will be lost.'
+  },
   shareDialog: {
     title: 'Share playlist',
     description:
@@ -189,11 +200,12 @@ export const en = {
     private: 'Private playlist',
     share: 'Share',
     rename: 'Rename',
+    cover: 'Update the cover',
     pin: 'Pin',
     unpin: 'Unpin',
     syncNow: 'Sync now',
     syncing: 'Syncing',
-    delete: 'Delete playlist',
+    delete: 'Delete',
     play: 'Play this playlist',
     playNamed: 'Play {name}',
     pause: 'Pause this playlist',
@@ -320,7 +332,7 @@ export const en = {
       other:
         'All {count} tracks are still here and will never be deleted even if the videos are removed from {provider}.'
     },
-    sync: 'Sync now',
+    sync: 'Sync',
     syncing: 'Syncing',
     show: 'Show details',
     hide: 'Hide details'

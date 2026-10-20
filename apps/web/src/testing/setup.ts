@@ -10,6 +10,11 @@ import { server } from './mocks/server';
  * jsdom has no `matchMedia`, and the default answer is no preference, so the
  * tests exercise the animated path; a test wanting reduced motion overrides it.
  */
+/* jsdom's object URL cannot take its own `File`; a preview only needs a
+ * stable string to draw. */
+URL.createObjectURL = () => 'blob:test-preview';
+URL.revokeObjectURL = () => undefined;
+
 if (typeof window.matchMedia !== 'function') {
   window.matchMedia = (query: string) =>
     ({

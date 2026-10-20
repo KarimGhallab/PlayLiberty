@@ -151,6 +151,27 @@ export async function apiCommand<T>(
   return schema.parse(await response.json());
 }
 
+/* A raw body, for an image whose bytes and type the server owns. */
+export async function apiUpload<T>(
+  path: string,
+  body: Blob,
+  contentType: string,
+  schema: ResponseSchema<T>
+): Promise<T> {
+  const bytes = await body.arrayBuffer();
+  const response = await send(path, {
+    method: 'POST',
+    headers: { 'Content-Type': contentType },
+    body: bytes
+  });
+
+  if (!response.ok) {
+    throw await readError(response);
+  }
+
+  return schema.parse(await response.json());
+}
+
 export async function apiPatch<T>(
   path: string,
   body: unknown,

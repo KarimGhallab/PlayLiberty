@@ -16,6 +16,7 @@ import {
   useRenamePlaylist,
   useRetryTrack,
   useRevokeShare,
+  useSetPlaylistCover,
   useSyncPlaylist,
   useUpdatePin,
   useUpdateSkipNonMusic
@@ -94,6 +95,25 @@ describe('the mutation cache facts', () => {
 
     await act(async () => {
       result.current.mutate({ playlistId: PLAYLIST, name: 'Morning Jazz' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(facts.playlistChanged).toHaveBeenCalledWith(queryClient, PLAYLIST);
+  });
+
+  it('setting a cover refreshes the playlist and the gallery', async () => {
+    const { queryClient, facts, wrapper } = setup();
+    const { result } = renderHook(() => useSetPlaylistCover(), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({
+        playlistId: PLAYLIST,
+        file: new File([new Uint8Array([1])], 'cover.jpg', {
+          type: 'image/jpeg'
+        })
+      });
     });
 
     await waitFor(() => {

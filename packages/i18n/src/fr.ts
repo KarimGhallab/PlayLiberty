@@ -111,6 +111,17 @@ export const fr: Messages = {
     save: 'Enregistrer',
     saving: 'Enregistrement'
   },
+  coverDialog: {
+    title: 'Image de la playlist',
+    description: 'JPEG, PNG ou WebP, jusqu’à 5 Mo.',
+    choose: 'Choisir une image',
+    wrongType: 'Choisissez une image JPEG, PNG ou WebP.',
+    tooLarge: 'Choisissez une image de moins de 5 Mo.',
+    uploadFailed: "L'image n'a pas pu être enregistrée.",
+    save: 'Enregistrer',
+    saving: 'Enregistrement',
+    discardPrompt: "Abandonner cette image ? L'image choisie sera perdue."
+  },
   shareDialog: {
     title: 'Partager la playlist',
     description:
@@ -193,11 +204,12 @@ export const fr: Messages = {
     private: 'Playlist privée',
     share: 'Partager',
     rename: 'Renommer',
+    cover: "Changer l'image",
     pin: 'Épingler',
     unpin: 'Désépingler',
     syncNow: 'Synchroniser',
     syncing: 'Synchronisation',
-    delete: 'Supprimer la playlist',
+    delete: 'Supprimer',
     play: 'Lire cette playlist',
     playNamed: 'Lire {name}',
     pause: 'Mettre en pause cette playlist',
