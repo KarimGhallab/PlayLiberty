@@ -61,6 +61,7 @@ export const PlaylistSchema = z.object({
   ownerAccountId: identifier,
   name: z.string(),
   coverTrackId: identifier.nullable(),
+  coverUpdatedAt: isoDateTime.nullable(),
   provider: z.enum(Provider),
   sourcePlaylistId: z.string().min(1),
   syncStatus: z.enum(PlaylistSyncStatus),

@@ -1,7 +1,7 @@
 # Curate a playlist
 
-Status: ready
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -31,59 +31,6 @@ Renaming, deleting, removing a track and retrying a failed track are four more r
 exist as stubs except the batch add. Every route enforces the same rule: the owner may do all of it, a write
 collaborator may add, remove and retry, and a read collaborator may do none of it. Removing a track always
 suppresses it, so the next sync does not put it back.
-
-## User Stories
-
-1. As a listener, I want to paste a video URL and choose several of my playlists, so that one song reaches
-   every list it belongs in.
-2. As a listener, I want the add dialog to show the playlist I am looking at already chosen, so that the
-   common case is one press.
-3. As a listener, I want to add a video to every playlist I can write to in one action, so that I do not
-   repeat myself.
-4. As a listener, I want to be told which playlists took the video and which did not, so that a partly
-   successful add is not a mystery.
-5. As a listener, I want a playlist that already has the video to count as done rather than as a failure, so
-   that the action succeeds when the outcome is what I wanted.
-6. As a listener, I want a video added to several playlists to be fetched once, so that my instance does not
-   download the same song twice.
-7. As a listener, I want the video to appear at the end of each playlist, so that adding does not rearrange
-   what I already had.
-8. As a listener, I want a playlist I cannot write to not be offered in the dialog, so that I am not shown a
-   choice I cannot make.
-9. As a listener, I want a playlist URL pasted where a video belongs to be refused clearly, so that I know
-   which dialog I am in.
-10. As a listener, I want to rename a playlist, so that the name is mine and not the source's.
-11. As a listener, I want an empty name refused, so that a playlist cannot disappear from my library.
-12. As a listener, I want to delete a playlist, so that a gallery I no longer want is gone.
-13. As a listener, I want a deleted playlist to leave my other playlists alone, so that deleting one thing
-    does not cost me another.
-14. As a listener, I want the audio of a deleted playlist to be reclaimed eventually rather than immediately,
-    so that deleting a playlist is fast and the disk catches up on its own.
-15. As a listener, I want to remove a track from a playlist, so that the list reflects my choice.
-16. As a listener, I want a removed track to stay removed after a sync, so that the source does not undo me.
-17. As a listener, I want a track I removed to come back if I put it back on the source, so that removing it
-    was a choice and not a deletion.
-18. As a listener, I want removing a track to leave it playable in another playlist that has it, so that my
-    arrangements are independent.
-19. As a listener, I want to retry a track whose download failed, so that I do not have to run a whole sync to
-    try one song again.
-20. As a listener, I want a track that is gone from the source not to be retryable, so that retrying is not a
-    way to keep asking for something that cannot come back.
-21. As a playlist owner, I want to rename and delete my own playlist, so that it is mine to manage.
-22. As a playlist owner, I want a write collaborator to add and remove tracks, so that the people I share with
-    can help me curate.
-23. As a playlist owner, I want a write collaborator unable to rename or delete, so that the playlist keeps an
-    owner.
-24. As a write collaborator, I want the controls I may use to be the only ones shown, so that the interface
-    does not offer me a refusal.
-25. As a read collaborator, I want to see the playlist and do nothing to it, so that a read share is a read
-    share.
-26. As a member of a household, I want a track I share with a playlist to be playable by everyone who has it,
-    so that sharing works.
-27. As an account, I want these actions to require the client header and pass the origin check, so that another
-    site cannot change my library.
-28. As an account, I want a playlist I cannot see to be refused the same way as one that does not exist, so
-    that nothing is confirmed about other people's shelves.
 
 ## Implementation Decisions
 
@@ -161,44 +108,6 @@ suppresses it, so the next sync does not put it back.
   and the row controls the `access` field permits, and every refusal it never draws is still enforced when it
   is asked for directly.
 - **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)), and no transcoding ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)).
-
-## Testing Decisions
-
-- **One seam, at the highest point available.** The real app over a temporary database and media root,
-  exercised through HTTP injection, with accounts, playlists, shares and tracks seeded directly and a fake
-  YouTube adapter so nothing in this spec touches the network.
-- **What makes a good test here** is the response validated against the contract schemas plus the state a user
-  would see afterwards, never the number of queries or the order the work happened in. A test that asserts
-  three inserts ran is a test of the implementation; one that asserts three associations exist and the count is
-  three is a test of the behaviour.
-- **The cases that must exist:**
-  - one request with three writable playlists adds one track and three manual associations, each at the end,
-    and the track count moves by one on each;
-  - the result carries one outcome per chosen playlist, in the order sent;
-  - a playlist that already holds the video reports `already_present` and the batch otherwise succeeds;
-  - a read collaborator's playlist is `refused` while the others are `added`, in the same request;
-  - a playlist that does not exist is `refused` with the same shape as a refused writable one, so the two
-    cannot be told apart;
-  - a playlist URL is refused for the whole request with `422`, and no association is created anywhere;
-  - an empty list, a malformed URL, and more ids than the cap are each refused with `422`;
-  - a video id already in the instance produces one track and no second download, including when the existing
-    track is `stored`;
-  - the video is appended, and an existing position is unchanged;
-  - rename trims, refuses an empty name, refuses a non-owner, and changes nothing but the name;
-  - delete refuses a non-owner, removes the playlist and its associations, leaves other playlists' tracks and
-    counts alone, and leaves the media on disk for the prune;
-  - removing a track requires owner or write, removes the association, moves the count, writes a suppression,
-    and leaves the file and any other playlist's association alone;
-  - a sync after a removal does not re-add the association, and one after the video returns to the source does;
-  - removing an association that is not there answers `404`;
-  - retry moves a `failed` track to `pending`, is refused for `unavailable`, is refused for a read
-    collaborator, and does not create a sync run;
-  - every mutating route is refused without the client header.
-- **Prior art:** the existing server route tests, which build the real app over a temporary database and media
-  root, seed accounts directly and validate responses against the contract schemas, and the association
-  service's own tests, which already cover the count moving in the same transaction as the row. The batch
-  result is new, and the single-playlist association case it replaces is the prior art for the half of it that
-  already exists.
 
 ## Out of Scope
 

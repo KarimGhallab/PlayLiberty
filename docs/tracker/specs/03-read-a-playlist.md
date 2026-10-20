@@ -1,7 +1,7 @@
 # Read a playlist
 
-Status: ready
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -22,48 +22,6 @@ playlist holds them. It is the only way into a track's metadata, it never return
 not associate, and it answers the same way the playlist route and the latest-run route already do: a playlist
 the account cannot see is not found, and a playlist that has simply never synced is an empty list with a
 playlist beside it.
-
-## User Stories
-
-1. As a listener, I want to open a playlist and see its tracks, so that I can choose what to play.
-2. As a listener, I want each track to show its title, duration and artwork, so that I recognise it.
-3. As a listener, I want the tracks in the order the playlist holds them, so that the list means something.
-4. As a listener, I want to see which tracks came from the source and which I added by hand, so that I know
-   what a sync is about to reconcile.
-5. As a listener, I want every track's state to be shown as a word as well as a colour, so that I can read the
-   list without relying on colour.
-6. As a listener, I want to see that a track is pending or downloading rather than have it silently absent, so
-   that I know it is coming.
-7. As a listener, I want to see that a track failed and why, so that I can decide whether to retry it.
-8. As a listener, I want a track that has left the source to be marked as kept, so that I understand why it is
-   still there.
-9. As a listener, I want a track with no file to be visible but not playable, so that the list is honest about
-   what I can hear.
-10. As a listener, I want a track with no artwork to still be listed, so that a missing picture does not hide a
-    song.
-11. As a listener, I want a track with an unknown duration to still be listed, so that a missing number does
-    not hide a song.
-12. As a listener, I want a track whose failure reason is long to be readable rather than to break the row, so
-    that an unusual failure does not break the screen.
-13. As a listener, I want a playlist that has never synced to show an empty state rather than an error, so
-    that I can tell "nothing yet" from "something is wrong".
-14. As a listener, I want a playlist I no longer have access to to read as gone rather than as forbidden, so
-    that a revoked share does not look like a fault.
-15. As a read collaborator, I want to see the playlist's tracks, so that a share I was given is usable.
-16. As a write collaborator, I want to see the playlist's tracks, so that I can curate what I was given.
-17. As an account, I want a playlist belonging to somebody else to answer the same way as one that does not
-    exist, so that the route does not confirm what I cannot see.
-18. As an account, I want a track from another playlist never to appear in this one, so that playlists stay the
-    boundary of what I see.
-19. As an account, I want my own track to appear once even if it is in two of my playlists, so that a list is
-    not inflated by my own arrangements.
-20. As a listener, I want a long playlist to page rather than to arrive in one enormous response, so that the
-    screen opens.
-21. As a listener, I want to know how many tracks a playlist holds in total, so that I know when I have seen
-    them all.
-22. As a listener, I want a track's stored state to be decided by the server, so that the client does not
-    guess what is playable.
-23. As a listener, I want the route to be a read, so that opening a playlist never changes anything.
 
 ## Implementation Decisions
 
@@ -114,35 +72,6 @@ playlist beside it.
   and it refetches while a sync or a download is making the list change. The loop belongs to
   [`09-keep-the-screens-current`](09-keep-the-screens-current.md).
 - **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the stored media as the source of truth ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)).
-
-## Testing Decisions
-
-- **One seam, at the highest point available.** The real app over a temporary database, exercised through HTTP
-  injection, with accounts, playlists, tracks and associations seeded directly so the test states only what it
-  is about.
-- **What makes a good test here** is the response validated against the contract schema plus the rows that came
-  back, never the shape of the query that produced them. A route test that asserts a join was used is a test of
-  the implementation; one that asserts a track from another playlist is absent is a test of the boundary.
-- **The cases that must exist:**
-  - a playlist with associations returns them in position order, each with its origin and position;
-  - an association with the same position as another returns in a stable order across two calls;
-  - a track associated with another playlist does not appear;
-  - a track associated with this playlist and another appears once;
-  - a playlist with no associations returns an empty page with a total of zero and a successful status;
-  - a playlist that does not exist answers `404`;
-  - a playlist owned by another account with no share answers `404`;
-  - an owner, a read collaborator and a write collaborator each receive the playlist;
-  - a revoked share answers `404` from that moment, which is the same answer as never having had one;
-  - every track status in the glossary's table is returned faithfully, including `unavailable` and a failed
-    track with a reason;
-  - a track with a null thumbnail and a null duration is returned with both null rather than omitted;
-  - paging returns the requested window and the true total, and the last page is short rather than padded;
-  - the response validates against the playlist-track page schema.
-- **Prior art:** the existing server route tests, which build the real app over a temporary database, seed
-  accounts directly, and validate responses against the contract schemas. The playlist route's own tests
-  already cover the `404` for a playlist the account cannot see, and this route inherits that expectation
-  rather than inventing a second one. The list route's ordering and access-map code is the shape this query
-  follows.
 
 ## Out of Scope
 

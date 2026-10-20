@@ -15,6 +15,8 @@ const devIdentity: Readonly<Record<string, string>> = {
 };
 
 export default defineConfig({
+  /* Sharded E2E runs get one optimizer cache each. */
+  cacheDir: process.env.VITE_CACHE_DIR,
   plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
   server: {
     open: process.env.VITE_NO_OPEN !== '1',

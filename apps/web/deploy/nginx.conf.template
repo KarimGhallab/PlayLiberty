@@ -8,6 +8,10 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # A cover is capped at 5 MB by the server; the margin lets the server answer
+    # an over-size upload instead of nginx replacing it with its own page.
+    client_max_body_size 6m;
+
     # Forwarded unchanged to the server. The Pangolin Remote-* headers and the
     # client's X-PlayLiberty-Client header pass through by default.
     proxy_set_header Host $host;

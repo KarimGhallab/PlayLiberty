@@ -20,12 +20,10 @@ describe('loadConfig', () => {
     const config = loadConfig({
       MEDIA_ROOT: '/media',
       DATABASE_PATH: '/db.sqlite',
-      PUBLIC_ORIGIN: '',
-      PANGOLIN_API_URL: ''
+      PUBLIC_ORIGIN: ''
     });
 
     expect(config.publicOrigin).toBeNull();
-    expect(config.pangolin.apiUrl).toBeNull();
   });
 
   it('fails when a required variable is missing', () => {

@@ -3,13 +3,13 @@ import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { Playlist } from '@playliberty/contracts';
 import {
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   ShareLevel
 } from '@playliberty/contracts';
-import type { Playlist } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import type { PlaylistActionsOptions } from './playlistActions';
@@ -27,6 +27,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     ownerAccountId: 'account-1',
     name: 'Rain On The Window',
     coverTrackId: null,
+    coverUpdatedAt: null,
     provider: Provider.Youtube,
     sourcePlaylistId: 'PL-demo',
     syncStatus: PlaylistSyncStatus.Idle,
@@ -80,22 +81,23 @@ function control(
 }
 
 describe('usePlaylistActions', () => {
-  it('offers the owner the five actions, with the pin first and the delete last', () => {
+  it('offers the owner six actions, with the pin first and the delete last', () => {
     const { menu } = control(playlist());
 
     expect(menu.map(item => item.key)).toEqual([
       'pin',
       'share',
       'rename',
+      'cover',
       'sync',
       'delete'
     ]);
   });
 
-  it('offers a write collaborator the pin and Sync now', () => {
+  it('offers a write collaborator the pin, Cover and Sync', () => {
     const { menu } = control(playlist({ access: ShareLevel.Write }));
 
-    expect(menu.map(item => item.key)).toEqual(['pin', 'sync']);
+    expect(menu.map(item => item.key)).toEqual(['pin', 'cover', 'sync']);
   });
 
   it('reads Pin on an unpinned playlist and Unpin on a pinned one', () => {
@@ -116,6 +118,7 @@ describe('usePlaylistActions', () => {
     expect(menu.map(item => item.key)).toEqual([
       'share',
       'rename',
+      'cover',
       'sync',
       'delete'
     ]);

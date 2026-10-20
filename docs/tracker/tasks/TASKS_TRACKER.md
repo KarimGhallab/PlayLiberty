@@ -46,6 +46,7 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`37-one-playable-rule`](37-one-playable-rule.md)                                                                           | resolved | none                                       | none                                                      |
 | [`38-playlist-actions-once-per-page`](38-playlist-actions-once-per-page.md)                                                 | resolved | none                                       | none                                                      |
 | [`39-one-owner-for-seek`](39-one-owner-for-seek.md)                                                                         | resolved | none                                       | none                                                      |
+| [`40-upload-a-playlist-cover`](14-upload-a-playlist-cover/TICKETS.md)                                                       | resolved | none                                       | none                                                      |
 
 Feature-scoped ticket sets live in a folder named for their spec:
 
@@ -62,6 +63,7 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`11-choose-a-language/TICKETS.md`](11-choose-a-language/TICKETS.md)
 - [`12-sort-and-filter-the-track-list/TICKETS.md`](12-sort-and-filter-the-track-list/TICKETS.md)
 - [`13-pin-a-playlist/TICKETS.md`](13-pin-a-playlist/TICKETS.md).
+- [`14-upload-a-playlist-cover/TICKETS.md`](14-upload-a-playlist-cover/TICKETS.md).
 
 ## Conventions
 

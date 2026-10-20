@@ -65,12 +65,12 @@
   }
 
   /*
-   * From the trailing edge where the mark ends a row: a 180px column cannot
-   * hang from a card's 141px identity without leaving the frame.
+   * A card's pill can sit anywhere across the status line: open from its start
+   * without the 180px floor, so a left-column card never reaches past the frame.
    */
-  &[data-tip='end'] &__tip {
-    right: 0;
-    left: auto;
+  &[data-tip='compact'] &__tip {
+    right: auto;
+    left: 0;
     min-width: 0;
   }
 

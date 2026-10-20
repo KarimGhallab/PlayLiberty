@@ -68,14 +68,14 @@ describe('SyncError', () => {
   it('offers the retry when retrying can work', () => {
     renderError({ onRetry: () => undefined });
 
-    expect(screen.getByRole('button', { name: 'Sync now' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Sync' })).toBeEnabled();
   });
 
   it('offers no retry when it cannot work', () => {
     renderError();
 
     expect(
-      screen.queryByRole('button', { name: 'Sync now' })
+      screen.queryByRole('button', { name: 'Sync' })
     ).not.toBeInTheDocument();
   });
 

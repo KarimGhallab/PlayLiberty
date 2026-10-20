@@ -11,10 +11,10 @@ import {
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import { PlaylistSyncStatus, endpoints } from '@playliberty/contracts';
+import { PlaylistSyncStatus } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import {
   formatLastSynced,
@@ -24,8 +24,8 @@ import {
 } from '@playliberty/i18n';
 import { sleeveIndex } from '@playliberty/ui-foundation';
 
-import { mediaUrl } from '../../api/endpoints/endpoints';
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
+import { usePlaylistCover } from '../../playlistCover/usePlaylistCover';
 import Menu from '../Menu/Menu';
 import PlayGlyph from '../PlayGlyph';
 import Spinner from '../Spinner/Spinner';
@@ -184,12 +184,7 @@ export function usePlaylistHeader({
   /* The identity hue a no-artwork cover draws. Derived from the id, so it is the
    * same sleeve wherever this playlist appears and it survives a reload. */
   const sleeve = sleeveIndex(playlist.id);
-  const coverSrc =
-    playlist.coverTrackId === null
-      ? null
-      : mediaUrl(endpoints.trackThumbnail, { trackId: playlist.coverTrackId });
-  const [coverFailed, setCoverFailed] = useState(false);
-  const cover = coverFailed ? null : coverSrc;
+  const { cover, onCoverError } = usePlaylistCover(playlist);
 
   const groundElement = ground ? (
     <span
@@ -207,10 +202,6 @@ export function usePlaylistHeader({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [shareTipDismissed, setShareTipDismissed] = useState(false);
   const { run, endRun } = usePlayPauseMorph(playing);
-
-  useEffect(() => {
-    setCoverFailed(false);
-  }, [playlist.coverTrackId]);
 
   const door = playlistDoorProps(pending);
 
@@ -533,7 +524,7 @@ export function usePlaylistHeader({
   return {
     sleeve,
     cover,
-    onCoverError: () => setCoverFailed(true),
+    onCoverError,
     ground: groundElement,
     primaryControl,
     shuffleControl,

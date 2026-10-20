@@ -26,12 +26,12 @@ const scrimStyle = {
  * is not tabbable, and `[tabindex="-1"]` is dropped as programmatic-only.
  */
 const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled]):not([type="hidden"])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])'
+  'a[href]:not([hidden])',
+  'button:not([disabled]):not([hidden])',
+  'input:not([disabled]):not([type="hidden"]):not([hidden])',
+  'select:not([disabled]):not([hidden])',
+  'textarea:not([disabled]):not([hidden])',
+  '[tabindex]:not([tabindex="-1"]):not([hidden])'
 ].join(', ');
 
 function focusablesWithin(root: HTMLElement | null): HTMLElement[] {

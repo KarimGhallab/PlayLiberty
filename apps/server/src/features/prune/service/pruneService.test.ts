@@ -1,4 +1,4 @@
-import { access, chmod, mkdir, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, utimes, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { eq } from 'drizzle-orm';
@@ -26,7 +26,7 @@ import {
   mediaRelativePath,
   thumbnailRelativePath
 } from '../../../platform/media/mediaPaths.js';
-import { pruneOrphanTracks } from './pruneService.js';
+import { pruneOrphanCovers, pruneOrphanTracks } from './pruneService.js';
 
 let context: TestContext | undefined;
 
@@ -48,11 +48,15 @@ function database(): DatabaseHandle {
 function recordingLogger(): {
   logger: FastifyBaseLogger;
   warnings: Record<string, unknown>[];
+  infos: Record<string, unknown>[];
 } {
   const warnings: Record<string, unknown>[] = [];
+  const infos: Record<string, unknown>[] = [];
 
   const logger = {
-    info: (): void => undefined,
+    info: (payload: Record<string, unknown>, message: string): void => {
+      infos.push({ ...payload, message });
+    },
     debug: (): void => undefined,
     warn: (payload: Record<string, unknown>): void => {
       warnings.push(payload);
@@ -63,7 +67,7 @@ function recordingLogger(): {
     child: (): unknown => logger
   } as unknown as FastifyBaseLogger;
 
-  return { logger, warnings };
+  return { logger, warnings, infos };
 }
 
 /* A logger whose first warning aborts the controller: the deterministic hook
@@ -102,6 +106,23 @@ async function writeBytes(relativePath: string): Promise<string> {
   return absolutePath;
 }
 
+/* A cover file, aged past the sweep's grace window when asked. */
+async function writeCover(name: string, ageMs = 0): Promise<string> {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  const absolutePath = join(context.mediaPaths.coversDir, name);
+  await writeFile(absolutePath, 'the-cover');
+
+  if (ageMs > 0) {
+    const when = new Date(Date.now() - ageMs);
+    await utimes(absolutePath, when, when);
+  }
+
+  return absolutePath;
+}
+
 async function exists(absolutePath: string): Promise<boolean> {
   return access(absolutePath).then(
     () => true,
@@ -123,6 +144,19 @@ function prune(logger: FastifyBaseLogger, signal?: AbortSignal) {
   }
 
   return pruneOrphanTracks({
+    database: context.database,
+    mediaPaths: context.mediaPaths,
+    logger,
+    signal
+  });
+}
+
+function pruneCovers(logger: FastifyBaseLogger, signal?: AbortSignal) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return pruneOrphanCovers({
     database: context.database,
     mediaPaths: context.mediaPaths,
     logger,
@@ -419,5 +453,61 @@ describe('pruning orphaned tracks', () => {
     // The file the run could not remove is still there, so the row is honest.
     await chmod(dirname(blockedAudio), 0o700);
     await expect(exists(blockedAudio)).resolves.toBe(true);
+  });
+});
+
+/* Two hours, so the file is unambiguously past the one-hour grace window. */
+const OLD_COVER_MS = 2 * 60 * 60 * 1000;
+
+describe('pruning orphaned covers', () => {
+  it('removes an unreferenced cover file older than the grace window', async () => {
+    context = await createTestContext();
+    const { logger } = recordingLogger();
+    const orphan = await writeCover('orphan.webp', OLD_COVER_MS);
+
+    const removed = await pruneCovers(logger);
+
+    expect(removed).toBe(1);
+    await expect(exists(orphan)).resolves.toBe(false);
+  });
+
+  it('keeps a referenced cover file however old it is', async () => {
+    context = await createTestContext();
+    const { logger } = recordingLogger();
+    seedPlaylist(database(), seedAccount(database()).accountId, {
+      coverPath: 'covers/referenced.webp'
+    });
+    const referenced = await writeCover('referenced.webp', OLD_COVER_MS);
+
+    const removed = await pruneCovers(logger);
+
+    expect(removed).toBe(0);
+    await expect(exists(referenced)).resolves.toBe(true);
+  });
+
+  it('keeps an unreferenced cover inside the one-hour grace window', async () => {
+    context = await createTestContext();
+    const { logger } = recordingLogger();
+    const fresh = await writeCover('fresh.webp');
+
+    const removed = await pruneCovers(logger);
+
+    expect(removed).toBe(0);
+    await expect(exists(fresh)).resolves.toBe(true);
+  });
+
+  it('logs the number of cover files it removed', async () => {
+    context = await createTestContext();
+    const { logger, infos } = recordingLogger();
+    await writeCover('one.webp', OLD_COVER_MS);
+    await writeCover('two.webp', OLD_COVER_MS);
+
+    const removed = await pruneCovers(logger);
+
+    expect(removed).toBe(2);
+    expect(infos).toContainEqual({
+      removed: 2,
+      message: 'cover prune finished'
+    });
   });
 });

@@ -972,10 +972,17 @@
     border-radius: var(--radius-control);
   }
 
-  /* The chip's own top and box plus its gap, so the panel opens under it. */
+  /*
+   * The chip's own top and box plus its gap, so the panel opens under it. The
+   * panel starts at the card's start edge and keeps the detail menu's width, so
+   * a gallery menu is not narrower than the same menu on the detail.
+   */
   &[data-arrangement='card'][data-item='true'] &__menu {
+    --menu-origin: top left;
     top: calc(var(--space-2) + 32px + var(--space-2));
-    min-width: 0;
+    right: auto;
+    left: calc(-1 * (var(--space-4) + var(--space-2)));
+    min-width: 176px;
   }
 
   &[data-arrangement='row'] &__menu {

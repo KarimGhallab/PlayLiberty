@@ -183,6 +183,7 @@ const PLAYLIST_ONE: Playlist = {
   ownerAccountId: 'account-1',
   name: 'Rain On The Window',
   coverTrackId: null,
+  coverUpdatedAt: null,
   provider: Provider.Youtube,
   sourcePlaylistId: 'PL-demo',
   syncStatus: PlaylistSyncStatus.Idle,
@@ -396,6 +397,16 @@ export const handlers = [
     () => respond(endpoints.renamePlaylist, RENAMED_PLAYLIST),
     PLAYLIST_ONE_PARAMS
   ),
+  mockEndpoint(
+    endpoints.setPlaylistCover,
+    () =>
+      respond(endpoints.setPlaylistCover, {
+        ...PLAYLIST_ONE,
+        coverUpdatedAt: '2026-10-20T12:00:00.000Z'
+      }),
+    PLAYLIST_ONE_PARAMS
+  ),
+  mockEndpoint(endpoints.removePlaylistCover, NO_CONTENT, PLAYLIST_ONE_PARAMS),
   /* Echoes the sent value, so a test reads the optimistic result back. */
   mockEndpoint(
     endpoints.skipNonMusic,

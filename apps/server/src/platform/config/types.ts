@@ -10,12 +10,6 @@ export interface DownloadConfig {
   socketTimeout: number;
 }
 
-export interface PangolinConfig {
-  apiUrl: string | null;
-  resourceId: string | null;
-  integrationApiKey: string | null;
-}
-
 export interface Config {
   nodeEnv: string;
   port: number;
@@ -34,7 +28,6 @@ export interface Config {
   ffprobeBinary: string;
   downloadTimeoutMs: number;
   download: DownloadConfig;
-  pangolin: PangolinConfig;
   /* The E2E fake adapter's scenario file, read only under `NODE_ENV=test`.
    * The fake is not even imported otherwise. */
   e2eFakeScript: string | null;

@@ -1,7 +1,7 @@
 # Sync a playlist
 
-Status: ready
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -29,60 +29,6 @@ and running the same sync twice changes nothing the second time.
 A sync that cannot read its source changes nothing at all. That is the constraint the rest of this spec is
 built to protect, and it is a refusal rather than a recovery.
 
-## User Stories
-
-1. As a listener, I want to paste a YouTube playlist URL, so that the music I already chose comes with me off
-   YouTube.
-2. As a listener, I want the playlist to be created and the sync to start without me waiting on YouTube, so
-   that I can go and do something else.
-3. As a listener, I want to know the sync is running, so that a quiet screen is not a broken one.
-4. As a listener, I want to see how many tracks the sync added, so that I know it did something.
-5. As a listener, I want to see that tracks were kept even though they left the source, so that I understand
-   why my playlist is longer than YouTube's.
-6. As a listener, I want a video that is gone from the source to still play, so that the promise of the
-   product is not a claim on a landing page.
-7. As a listener, I want a track I removed to stay removed after a sync, so that the library reflects my
-   choice and not the source's.
-8. As a listener, I want a video I add back on YouTube to come back on the next sync, so that suppression is
-   not permanent.
-9. As a listener, I want running a sync twice to change nothing the second time, so that I can sync whenever
-   I like without fear.
-10. As a listener, I want the playlist to be named after the source, so that I recognise it in my library.
-11. As a listener, I want the playlist to show the source's cover, so that my library looks like mine.
-12. As a listener, I want track titles and durations filled in, so that the list is readable before the audio
-    arrives.
-13. As a listener, I want a track that has left the source to be marked as such, so that I know it is kept
-    rather than current.
-14. As a listener, I want a track that left the source before it was ever downloaded to be left alone rather
-    than queued forever, so that my playlist does not carry a promise nothing will keep.
-15. As a listener, I want a sync that cannot reach the source to tell me it failed, so that I know nothing
-    was lost.
-16. As a listener, I want a failed sync to change nothing, so that a bad network cannot empty my library.
-17. As a listener, I want the failed playlist to show that its last sync failed rather than that it has never
-    synced, so that the two are not confused.
-18. As a listener, I want the same playlist on two devices to show the same counts, so that the numbers are a
-    fact and not a guess.
-19. As a listener, I want a playlist I already synced to be returned when I paste its URL again, so that I do
-    not end up with two copies.
-20. As a listener, I want to paste a single video URL and get a one-track playlist, so that a song I found on
-    its own is not a special case.
-21. As a member of a household, I want my own playlist for a source another member already synced, so that
-    sharing a taste is not a prerequisite for having it.
-22. As a member of a household, I want that second playlist to cost no extra downloads, so that the same song
-    is not fetched twice for the same instance.
-23. As a playlist owner, I want to start a sync of a playlist I own, so that I control when it refreshes.
-24. As a write collaborator, I want to start a sync of a playlist shared with me for writing, so that I can
-    keep it current without asking the owner.
-25. As a read collaborator, I want a sync to be refused rather than offered and refused, so that the control
-    is absent where I cannot use it.
-26. As a listener, I want two of my syncs not to interleave, so that track order and counts stay coherent.
-27. As a listener, I want a sync already running to refuse a second one, so that I am told rather than
-    silently queued.
-28. As an account, I want my identity taken from the edge rather than from anything I send, so that nobody can
-    sync as me.
-29. As an account, I want the sync to require the client header and pass the origin check, so that another
-    site cannot drive my instance.
-
 ## Implementation Decisions
 
 - **The two mutating routes are the ones already stubbed**: create a synced playlist from a URL, and start a
@@ -108,19 +54,19 @@ built to protect, and it is a refusal rather than a recovery.
 - **Source uniqueness is per owner.** The unique index the schema ships is on provider and source playlist id
   alone, which would stop a second account from ever mirroring a source the first account mirrored. It
   becomes owner, provider, source playlist id. The media store is server-wide and the playlist is
-  owner-owned, so two accounts holding one source cost two sets of associations and no extra media, which is
-  user story 22. _Decided here:_ this is a schema migration, and it is the one decision in this spec that
+  owner-owned, so two accounts holding one source cost two sets of associations and no extra media.
+  _Decided here:_ this is a schema migration, and it is the one decision in this spec that
   changes a constraint the database already enforces.
 - **Reconciliation is one pass over the source membership, with five cases and no others:**
-  - a video id the instance has never seen becomes a new track with `fileStatus: pending` and one remote
-    association appended at the end of the playlist;
-  - a video id already associated with this playlist is left exactly as it is, including its position and its
-    metadata;
-  - a video id associated with this playlist and absent from the source has its track marked
-    `sourceStatus: removed`, which is remote-removed, and the file is retained;
-  - a video id with a suppression for this playlist is skipped, and gets no association;
-  - a video id the instance already holds as a track gets a new association only, never a second track and
-    never a second download.
+- a video id the instance has never seen becomes a new track with `fileStatus: pending` and one remote
+  association appended at the end of the playlist;
+- a video id already associated with this playlist is left exactly as it is, including its position and its
+  metadata;
+- a video id associated with this playlist and absent from the source has its track marked
+  `sourceStatus: removed`, which is remote-removed, and the file is retained;
+- a video id with a suppression for this playlist is skipped, and gets no association;
+- a video id the instance already holds as a track gets a new association only, never a second track and
+  never a second download.
 - **Positions are append-only under a sync.** A sync assigns a position only to an association it creates,
   and never rewrites the position of one that already exists. Reordering in YouTube therefore does not reorder
   the gallery, and a sync cannot fight an arrangement the user made. _Decided here:_ no contract offers
@@ -141,13 +87,13 @@ built to protect, and it is a refusal rather than a recovery.
   the most dangerous failure in the product and the answer is a refusal, not a recovery. _Decided here:_ the
   architecture names the reconcile and the counts but not the failure branch.
 - **The four counts mean this, and the first and third are zero by construction:**
-  - `addedCount` is the number of associations the run created;
-  - `retainedCount` is the number of tracks the run marked remote-removed;
-  - `removedCount` is always `0` in v1, because a sync never removes an association, and the field exists so
-    a client can show a number that will mean something if a future decision gives a sync the power to
-    remove;
-  - `failedCount` is the number of tracks left in `failed` or `unavailable` for this playlist after the run.
-    _Decided here:_ the architecture names four counts and does not say what each measures.
+- `addedCount` is the number of associations the run created;
+- `retainedCount` is the number of tracks the run marked remote-removed;
+- `removedCount` is always `0` in v1, because a sync never removes an association, and the field exists so
+  a client can show a number that will mean something if a future decision gives a sync the power to
+  remove;
+- `failedCount` is the number of tracks left in `failed` or `unavailable` for this playlist after the run.
+  _Decided here:_ the architecture names four counts and does not say what each measures.
 - **`lastSyncedAt` is set when a run finishes, whether it completed or failed**, because a failed run is a
   sync that happened. `syncStatus` is `syncing` while a run is in flight, `error` after a failure, and `idle`
   after a success. _Decided here:_ the alternative, leaving `lastSyncedAt` null on failure, makes a failed
@@ -155,13 +101,13 @@ built to protect, and it is a refusal rather than a recovery.
   `lastSyncedAt` being null.
 - **The playlist takes its name and cover from the source**, both read in the same pass, because the name is
   non-nullable and nothing else in the contracts says where a name comes from. A source with no usable title
-  falls back to its source id. _Decided here._
+  falls back to its source id.
 - **A field the flat pass does not carry is fetched as a single-video read; the rest of the playlist never
   is.** A missing duration on one entry costs one extra read, and a playlist never degrades to a read per
   entry.
 - **The run's counts, the playlist's `lastSyncedAt` and its `syncStatus` are written in one transaction at the
   end of the run**, so a client never reads a finished run beside a playlist that still says it is syncing.
-  _Decided here._
+
 - **Suppression is written by removing a track and read only by the reconcile.** The table exists in the
   schema and nothing in the server references it; this spec gives the reader and
   [`04-curate-a-playlist`](04-curate-a-playlist.md) gives the writer.
@@ -169,36 +115,6 @@ built to protect, and it is a refusal rather than a recovery.
   a process, because the adapter is the only seam to the source and that boundary is what makes the sync
   testable at all.
 - **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), no transcoding and the AAC/M4A store ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)), private deployment behind the edge ([Deployment behind the Pangolin edge](../../ARCHITECTURE.md#deployment-behind-the-pangolin-edge)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)). The retention promise is owned by [`PRODUCT.md`](../../PRODUCT.md).
-
-## Testing Decisions
-
-- **One seam, at the highest point available.** The real Fastify app, built over a temporary database and a
-  temporary media root, exercised through HTTP injection, with a fake YouTube adapter substituted for the real
-  one. No test in this spec spawns a process, touches the network, or writes outside its temporary directory.
-- **What makes a good test here** is the response validated against the contract schemas plus the state a user
-  would see afterwards, never the order the reconcile happened to call things in. A test that asserts the
-  adapter was called twice is a test of the implementation; a test that asserts a track exists with a position
-  and a `pending` file status is a test of the behaviour.
-- **The cases that must exist:**
-  - a first sync of a new playlist creates it, names it, and returns a run in `running`;
-  - a second sync with no change on the source adds nothing and leaves every position alone;
-  - a new video on the source raises `addedCount` by one and creates one pending track;
-  - a video that left the source raises `retainedCount` by one, leaves `removedCount` at zero, and the track
-    still streams;
-  - a track that left the source while still pending becomes `unavailable` and is not queued;
-  - a suppressed video is not re-associated on the next sync;
-  - a video added to a second account's playlist is associated but not downloaded twice;
-  - re-pasting a source the caller already synced returns the same playlist and a run, not a second playlist;
-  - a source that cannot be read yields a failed run, an `error` status, a `lastSyncedAt` that is not null,
-    and no track marked removed;
-  - a second sync while one is in flight is refused;
-  - a read collaborator's sync is refused and an owner or write collaborator's is not;
-  - a single video URL creates a one-track playlist;
-  - a mutation without the client header is refused.
-- **Prior art:** the existing server route tests, which build the real app over a temporary database and media
-  root, seed accounts directly, and validate responses against the contract schemas. The fake adapter is a new
-  seam at the same height, not a lower one, because the adapter already publishes an interface. The
-  playlist-list and playlist-read services are already written against the database this spec writes to.
 
 ## Out of Scope
 

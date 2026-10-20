@@ -1,0 +1,10 @@
+.gitignore
+.prettierignore
+
+.husky/
+
+apps/server/drizzle/
+
+*.conf.template
+
+*.toml

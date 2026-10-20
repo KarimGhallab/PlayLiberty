@@ -28,7 +28,7 @@ export const fr: Messages = {
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
     pinned: 'Épinglées',
-    rest: 'Autres',
+    syncing: 'Synchronisation en cours',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
     notDownloaded: {
       one: "{count} piste n'est pas stockée",
@@ -110,6 +110,22 @@ export const fr: Messages = {
     invalid: "Un nom est requis, jusqu'à 200 caractères.",
     save: 'Enregistrer',
     saving: 'Enregistrement'
+  },
+  coverDialog: {
+    title: 'Image de la playlist',
+    description: 'JPEG, PNG ou WebP, jusqu’à 5 Mo.',
+    choose: 'Choisir une image',
+    wrongType: 'Choisissez une image JPEG, PNG ou WebP.',
+    tooLarge: 'Choisissez une image de moins de 5 Mo.',
+    uploadFailed: "L'image n'a pas pu être enregistrée.",
+    remove: "Retirer l'image",
+    removing: 'Retrait',
+    removePrompt:
+      "Retirer l'image personnalisée ? La playlist utilisera l'image de sa première piste.",
+    removeFailed: "L'image n'a pas pu être retirée.",
+    save: 'Enregistrer',
+    saving: 'Enregistrement',
+    discardPrompt: "Abandonner cette image ? L'image choisie sera perdue."
   },
   shareDialog: {
     title: 'Partager la playlist',
@@ -193,11 +209,12 @@ export const fr: Messages = {
     private: 'Playlist privée',
     share: 'Partager',
     rename: 'Renommer',
+    cover: "Changer l'image",
     pin: 'Épingler',
     unpin: 'Désépingler',
     syncNow: 'Synchroniser',
     syncing: 'Synchronisation',
-    delete: 'Supprimer la playlist',
+    delete: 'Supprimer',
     play: 'Lire cette playlist',
     playNamed: 'Lire {name}',
     pause: 'Mettre en pause cette playlist',

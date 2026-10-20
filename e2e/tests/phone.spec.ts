@@ -21,7 +21,6 @@ const TRACK = { videoId: 'e2ephone01', title: 'Blue In Green' };
 
 /* The target a thumb is owed, and what each control draws. */
 const TARGET = 44;
-const CONTROL = 36;
 const MUTE = 36;
 const SWITCH_WIDTH = 40;
 const SWITCH_HEIGHT = 22;

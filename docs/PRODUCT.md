@@ -4,7 +4,7 @@ PlayLiberty is a self-hosted, multi-user audio player for web and mobile that mi
 
 ## Platform
 
-Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see [the server stack](ARCHITECTURE.md#the-server-stack)). The web client is a React 19.2 and Vite SPA served by nginx as the single public origin (see [the web stack](ARCHITECTURE.md#the-web-stack)). The mobile client is an Expo React Native app carrying a per-user Pangolin access token obtained through a self-service browser flow (see [the mobile stack](ARCHITECTURE.md#the-mobile-stack) and [mobile provisioning](ARCHITECTURE.md#mobile-provisioning)). The server and web client skeletons exist (`apps/server`, `apps/web`, `packages/contracts`, `packages/tokens`, `packages/ui-foundation`, `packages/i18n`, `packages/youtube`); the mobile client is not built yet.
+Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see [the server stack](ARCHITECTURE.md#the-server-stack)). The web client is a React 19.2 and Vite SPA served by nginx as the single public origin (see [the web stack](ARCHITECTURE.md#the-web-stack)). The mobile client is an Expo React Native app carrying a per-user Pangolin access token obtained through a self-service browser flow (see [the mobile stack](ARCHITECTURE.md#the-mobile-stack) and [mobile provisioning](ARCHITECTURE.md#mobile-provisioning)). The server, web client and shared packages exist (`apps/server`, `apps/web`, `packages/contracts`, `packages/tokens`, `packages/ui-foundation`, `packages/i18n`, `packages/youtube`); the mobile client is not built yet.
 
 ## Users
 
@@ -31,14 +31,15 @@ Capabilities in v1:
 - Stream stored tracks to the web and mobile clients.
 - Multiple accounts, each with its own playlists; a playlist owner can share read-only or read-write with specific accounts.
 - Add one pasted video to several write-accessible playlists at once.
-- Pin playlists to the top of the account's own gallery, as a per-account placement and not a rating or a
-  favorites list.
+- Pin playlists to the top of the account's own gallery.
+- Set or remove a custom cover for a playlist, shared with everyone who can read it. See the
+  [playlist cover](GLOSSARY.md#content) for the fallback chain.
 - Manual sync, retention, and weekly orphan pruning.
 
 Hard constraints:
 
 - Audio only. No video storage or playback.
-- No transcoding, ever. The stored format must play natively everywhere, which fixes it to AAC/M4A. See [audio is stored as-is, never transcoded](ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded).
+- No audio transcoding, ever. The stored audio format must play natively everywhere, which fixes it to AAC/M4A. See [audio is stored as-is, never transcoded](ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded).
 - The stored media, not YouTube, is the source of truth for playback.
 - A sync must never delete a track because a source video disappeared.
 - No global library view: playlists are the only entry point to content.
@@ -46,15 +47,11 @@ Hard constraints:
 
 ## Non-Goals
 
-Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
+Permanent: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, audio transcoding, video, file export or download endpoints, ratings, play counts, and search.
 
 ## Brand Commitments
 
 Calm, content-first, and quiet. The interface is a playlist library, not a video feed. It should feel like a dependable personal gallery, and must not nag or gamify.
-
-## Evidence on Hand
-
-The product definition and the server, web, and mobile stacks all came out of structured grilling sessions. The decisions are recorded in `docs/GLOSSARY.md` and `docs/ARCHITECTURE.md`, with [the server stack](ARCHITECTURE.md#the-server-stack), [the web stack](ARCHITECTURE.md#the-web-stack), and [the mobile stack](ARCHITECTURE.md#the-mobile-stack) covering the stacks and [mobile provisioning](ARCHITECTURE.md#mobile-provisioning) the mobile access model. The server skeleton, the web client skeleton, the shared contracts, the design tokens, the shared UI decisions, and the YouTube adapter exist with their tests; the mobile client does not, and there is no dataset.
 
 ## Product Principles
 

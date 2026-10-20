@@ -1,15 +1,22 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { DATABASE_PATH, FAKE_SCRIPT, MEDIA_ROOT } from './paths';
+import { e2eInstanceIndices, instancePaths } from './paths';
 
 /*
- * `better-sqlite3` does not create its directory, so `e2e/.data` must exist
- * before the server boots. Cleaning the media root and the scenario file keeps
- * a run from reading a previous run's file or stale answer.
+ * `better-sqlite3` does not create its directory, so each instance's data
+ * directory must exist before boot. The scenario directory is created once,
+ * and cleaning each file keeps a run from reading a previous answer.
  */
 export default async function globalSetup(): Promise<void> {
-  await mkdir(dirname(DATABASE_PATH), { recursive: true });
-  await mkdir(MEDIA_ROOT, { recursive: true });
-  await rm(FAKE_SCRIPT, { force: true });
+  await Promise.all(
+    e2eInstanceIndices().map(async index => {
+      const instance = instancePaths(index);
+
+      await mkdir(dirname(instance.databasePath), { recursive: true });
+      await mkdir(instance.mediaRoot, { recursive: true });
+      await mkdir(dirname(instance.fakeScript), { recursive: true });
+      await rm(instance.fakeScript, { force: true });
+    })
+  );
 }

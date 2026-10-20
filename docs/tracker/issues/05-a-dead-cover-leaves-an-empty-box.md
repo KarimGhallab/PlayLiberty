@@ -5,4 +5,4 @@
 
 ## Outcome
 
-Resolved by [`10-one-artwork-pipeline-the-cover-reuses-the-tracks-thumbnail`](10-one-artwork-pipeline-the-cover-reuses-the-tracks-thumbnail.md). The empty-box half is the sleeve fallback on a failed image load, now in `PlaylistHeader`; the durability half is superseded, because the cover is the first track's stored thumbnail, so there is no separate cover to store and no third-party request from any client.
+Resolved by [`10-one-artwork-pipeline-the-cover-reuses-the-tracks-thumbnail`](10-one-artwork-pipeline-the-cover-reuses-the-tracks-thumbnail.md). The empty-box half is the sleeve fallback on a failed thumbnail load, now in `PlaylistHeader`. The durability half was closed as superseded at the time, because the cover was the first track's stored thumbnail; [`14-upload-a-playlist-cover`](../specs/14-upload-a-playlist-cover.md) restores a separate stored cover above that fallback.

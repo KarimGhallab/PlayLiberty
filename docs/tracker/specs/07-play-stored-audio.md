@@ -1,7 +1,7 @@
 # Play stored audio
 
 Status: resolved
-Labels: `enhancement`, `ready-for-agent`
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -26,49 +26,6 @@ survives a reload. The order the queue was built with is re-applied over every r
 listener is playing along does not move under them. A track with no stored file cannot be played, is not
 offered where a control would be, and is skipped rather than allowed to stall the queue. What is playing is
 reflected in the browser's own media controls, from the same state.
-
-## User Stories
-
-1. As a listener, I want to press play on a track and hear it, so that the gallery is a player and not a list.
-2. As a listener, I want the whole playlist to become the queue, so that the music continues without me
-   choosing each track.
-3. As a listener, I want to start from the track I pressed rather than from the top, so that a long list is
-   usable.
-4. As a listener, I want to skip forward and back within the queue, so that I control what I hear next.
-5. As a listener, I want to see what is playing and what is next, so that I know where I am in the list.
-6. As a listener, I want to see progress through the current track, so that I can judge how long is left.
-7. As a listener, I want to seek within a track, so that a long track is navigable.
-8. As a listener, I want seeking to be immediate, so that I do not wait for the file to arrive.
-9. As a listener, I want to pause and resume without losing my place, so that I can stop and come back.
-10. As a listener, I want to change the volume, so that the player obeys the room I am in.
-11. As a listener, I want the player to keep playing while I browse to another playlist, so that the music does
-    not stop when I look at something else.
-12. As a listener, I want the browser's media controls to show the track, so that the tab behaves like a
-    player.
-13. As a listener, I want the queue to survive a reload in the tab I am listening in, so that a refresh does
-    not forget the session.
-14. As a listener, I want to come back to the same spot in a track, so that resuming is resuming.
-15. As a listener, I want a list refreshing while I listen not to change the order, so that the queue is mine.
-16. As a listener, I want a track with no audio yet to show no play control rather than a dead one, so that
-    nothing on screen lies about what I can hear.
-17. As a listener, I want a track that has left the source to still play, so that the product's promise holds at
-    the moment it is tested.
-18. As a listener, I want the queue to move past a track that turns out to be unplayable, so that one broken
-    track does not end the session.
-19. As a listener, I want to be sent to sign in again if my access has expired, so that an expired session is
-    not a silent failure.
-20. As a listener, I want exactly one track playing at a time, so that two songs do not talk over each other.
-21. As a member of a household, I want a track my partner added to hear the same file as mine, so that playback
-    is not a second copy.
-22. As a member of a household, I want a shared playlist to play for me, so that a read share is worth having.
-23. As a listener, I want to know which playlist the queue came from, so that I know what I am hearing.
-24. As a listener, I want to replace the queue by playing something else, so that the old list does not follow
-    me around.
-25. As a listener, I want the player to be there on every screen, so that I never have to go back to play.
-26. As an operator, I want playing a track to write nothing to the server, so that the instance records no
-    listening history.
-27. As an operator, I want the media store to be the only thing ever played, so that the instance never depends
-    on a source being reachable at play time.
 
 ## Implementation Decisions
 
@@ -131,38 +88,6 @@ reflected in the browser's own media controls, from the same state.
   either way. The deduplication that makes this true is a property of the media store, and the player simply
   never knows there was a second playlist.
 - **Inherited constraints are owned by the architecture and not restated here:** no transcoding and the stored media as what plays ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)), identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
-
-## Testing Decisions
-
-- **The seam is the player itself, with the audio element replaced.** The player is exercised as a store and a
-  component against a fake audio element that reports its events, plus a mocked network so that stream requests
-  are assertions rather than bytes. The client does not need a real file to prove the queue, the order, the
-  persistence, the skipping and the refusal handling.
-- **What makes a good test here** is what the player does in response to an event, never the internals of the
-  audio element. A test that counts setters is a test of a wrapper; one that says a track failed to load and
-  the next one started is a test of the feature.
-- **The cases that must exist:**
-  - pressing play on a track builds the queue from its playlist, starting at that track;
-  - playing in another playlist replaces the queue rather than extending it;
-  - a refetch arriving mid-playback does not change the order, the index, or the offset;
-  - the queue order survives a refetch and a reload;
-  - the offset within the current track is persisted and restored;
-  - a track whose file status is not stored has no play control, and is not in a queue built from that
-    playlist;
-  - a queue entry that fails to load is dropped and playback advances;
-  - a track that is not found is dropped and playback advances;
-  - an expired session is not presented as a playback error and triggers the client's own re-authentication
-    path;
-  - skipping forward and back within the queue, and finishing the last track, stop at the end rather than
-    wrapping;
-  - the Media Session reflects the player state and drives it in both directions;
-  - a browser without the Media Session API loses the controls rather than throwing;
-  - nothing is written to the server when a track plays, and the client's network log contains no request other
-    than the reads and the stream.
-- **Prior art and its limits:** the web scaffold already sets up the player store, a single global audio element
-  and the Media Session wiring, so the shape of the state is decided. It is not proven. One thing cannot be
-  proven with a fake and needs a check of its own: that a real seek is immediate against a real stored file in a
-  real browser. That is a verification step for the end-to-end ticket rather than for these tests.
 
 ## Out of Scope
 

@@ -26,7 +26,7 @@ export const en = {
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
     pinned: 'Pinned',
-    rest: 'Others',
+    syncing: 'Syncing',
     pinFailed: 'The pin could not be changed.',
     notDownloaded: {
       one: '{count} track is not stored',
@@ -107,6 +107,22 @@ export const en = {
     invalid: 'A name is required, up to 200 characters.',
     save: 'Save',
     saving: 'Saving'
+  },
+  coverDialog: {
+    title: 'Playlist cover',
+    description: 'JPEG, PNG or WebP, up to 5 MB.',
+    choose: 'Choose image',
+    wrongType: 'Choose a JPEG, PNG or WebP image.',
+    tooLarge: 'Choose an image smaller than 5 MB.',
+    uploadFailed: 'The cover could not be saved.',
+    remove: 'Remove cover',
+    removing: 'Removing',
+    removePrompt:
+      "Remove the custom cover? The playlist will use its first track's cover.",
+    removeFailed: 'The cover could not be removed.',
+    save: 'Save',
+    saving: 'Saving',
+    discardPrompt: 'Discard this image? The image you chose will be lost.'
   },
   shareDialog: {
     title: 'Share playlist',
@@ -189,11 +205,12 @@ export const en = {
     private: 'Private playlist',
     share: 'Share',
     rename: 'Rename',
+    cover: 'Update the cover',
     pin: 'Pin',
     unpin: 'Unpin',
     syncNow: 'Sync now',
     syncing: 'Syncing',
-    delete: 'Delete playlist',
+    delete: 'Delete',
     play: 'Play this playlist',
     playNamed: 'Play {name}',
     pause: 'Pause this playlist',
@@ -320,7 +337,7 @@ export const en = {
       other:
         'All {count} tracks are still here and will never be deleted even if the videos are removed from {provider}.'
     },
-    sync: 'Sync now',
+    sync: 'Sync',
     syncing: 'Syncing',
     show: 'Show details',
     hide: 'Hide details'

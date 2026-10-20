@@ -36,8 +36,9 @@ const SEVERITY: readonly TrackFileStatus[] = [
 
 interface IncompleteBadgeProps {
   counts: TrackFileStatusCounts | null;
-  /* Which edge of the pill the breakdown hangs from. */
-  tipEdge?: 'start' | 'end';
+  /* Whether the breakdown keeps its 180px floor or opens compact from the
+   * pill's start. */
+  tipEdge?: 'start' | 'compact';
 }
 
 export default function IncompleteBadge({

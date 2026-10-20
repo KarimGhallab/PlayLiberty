@@ -41,6 +41,10 @@ describe('the origin security headers', () => {
     expect(directives.every(line => line.endsWith('always;'))).toBe(true);
   });
 
+  it('admits a cover upload larger than the default body limit', () => {
+    expect(origin).toContain('client_max_body_size 6m;');
+  });
+
   it('includes the headers at the server level and in each caching location', () => {
     const includes =
       origin.match(

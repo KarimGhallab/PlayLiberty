@@ -28,7 +28,7 @@ describe('EmptyGallery', () => {
     renderGallery(vi.fn());
 
     expect(
-      screen.queryByRole('button', { name: 'Sync now' })
+      screen.queryByRole('button', { name: 'Sync' })
     ).not.toBeInTheDocument();
   });
 

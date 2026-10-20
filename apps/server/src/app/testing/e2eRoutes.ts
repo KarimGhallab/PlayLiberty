@@ -50,6 +50,7 @@ export function registerE2eRoutes(
       recursive: true,
       force: true
     });
+    await rm(context.mediaPaths.coversDir, { recursive: true, force: true });
     await ensureMediaDirectories(context.mediaPaths);
 
     return reply.code(204).send();

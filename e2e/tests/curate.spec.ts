@@ -52,7 +52,7 @@ test('deleting a playlist removes it once the undo window closes', async ({
   await openPlaylist(page, TITLE);
 
   await openHeaderMenu(page);
-  await page.getByRole('menuitem', { name: 'Delete playlist' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
   await expect(page.getByText('Deleting playlist')).toBeVisible();
 
   /* The item is gone, not merely hidden. */
@@ -84,7 +84,7 @@ test('deleting from the library item removes it once the undo window closes', as
   await addPlaylist(page, { sourceId: SOURCE, title: TITLE, entries: [FIRST] });
 
   await openHeaderMenu(page);
-  await page.getByRole('menuitem', { name: 'Delete playlist' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
   await expect(page.getByText('Deleting playlist')).toBeVisible();
 
   await expect(page.getByText('No playlists yet')).toBeVisible({
@@ -335,7 +335,7 @@ test('syncing a playlist picks up new source tracks and a second sync changes no
     response =>
       response.url().endsWith('/sync') && response.request().method() === 'POST'
   );
-  await page.getByRole('menuitem', { name: 'Sync now' }).click();
+  await page.getByRole('menuitem', { name: 'Sync' }).click();
   await firstSync;
   await reloadUntil(page, page.getByText(SECOND.title));
   await expect(page.getByText(SECOND.title)).toBeVisible();
@@ -345,7 +345,7 @@ test('syncing a playlist picks up new source tracks and a second sync changes no
     response =>
       response.url().endsWith('/sync') && response.request().method() === 'POST'
   );
-  await page.getByRole('menuitem', { name: 'Sync now' }).click();
+  await page.getByRole('menuitem', { name: 'Sync' }).click();
   await secondSync;
   await reloadUntil(page, page.getByText('Up to date'));
   await expect(page.getByText(FIRST.title)).toHaveCount(1);

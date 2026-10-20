@@ -1,7 +1,7 @@
 # Prune orphaned tracks
 
-Status: ready
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -25,43 +25,6 @@ their stored media and their thumbnails, and then removes the track. It never to
 still holds, whatever state that track is in. It never runs while a track is being downloaded. And anything it
 cannot finish this week is left for the next week, or for the sweep that already runs when the server starts,
 rather than being forced through.
-
-## User Stories
-
-1. As a listener, I want the disk to be reclaimed after I delete a playlist, so that the instance does not grow
-   without limit.
-2. As a listener, I want the audio I still use to be safe from any scheduled cleanup, so that a weekly job
-   cannot take a song I play.
-3. As a listener, I want a track whose playlist I deleted to be reclaimed, so that deleting is a real deletion.
-4. As a listener, I want a track I removed from one playlist but kept in another to be left alone, so that
-   pruning follows references rather than history.
-5. As a listener, I want a track whose download has not finished yet to be left alone, so that a cleanup cannot
-   cancel work in progress.
-6. As a listener, I want a track that failed to download to eventually be reclaimed once nothing holds it, so
-   that a broken track does not sit on the disk forever.
-7. As a listener, I want a track whose video is gone but which I still keep to survive indefinitely, so that
-   the promise of the product is not time limited.
-8. As a member of a household, I want a track shared with a collaborator to be safe from cleanup, so that
-   somebody else's playlist protects the file too.
-9. As a member of a household, I want one track with no remaining references anywhere to be removed once, so
-   that two people dropping the same song does not leave an orphan behind.
-10. As an operator, I want the cleanup to run on a schedule I configure, so that the instance's rhythm is mine
-    and not a constant's.
-11. As an operator, I want the cleanup to be quiet when it finds nothing, so that a healthy instance is not
-    filling logs every week.
-12. As an operator, I want to know how many tracks a cleanup removed, so that I can see the instance working.
-13. As an operator, I want a cleanup that fails on one track to continue with the others, so that one bad file
-    does not stop the job.
-14. As an operator, I want a track whose media cannot be deleted to be left for next time rather than
-    half-removed, so that the database never claims a file that is not there.
-15. As an operator, I want the job to stop cleanly with the server, so that a shutdown does not interrupt a
-    deletion midway.
-16. As an operator, I want the job to be protected from overlapping itself, so that a slow run cannot be joined
-    by a second one.
-17. As an operator, I want the startup sweep to remain the backstop, so that a crash during a cleanup
-    eventually resolves.
-18. As an operator, I want the job to never be triggered by a user request, so that a client cannot make the
-    instance delete things.
 
 ## Implementation Decisions
 
@@ -110,32 +73,6 @@ rather than being forced through.
   feature in the set with no client clause at all. A track that the prune removes is gone from a playlist only
   because something already removed its last association.
 - **Inherited constraints are owned by the architecture and not restated here:** no transcoding and the AAC/M4A store ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)). The retention promise that a stored track survives its source is owned by [`PRODUCT.md`](../../PRODUCT.md).
-
-## Testing Decisions
-
-- **One seam, at the highest point available.** The prune is invoked directly rather than through a clock, so a
-  test states the state it builds and the state it expects afterwards and does not wait a week. The real
-  database and the real media root, in a temporary directory, so that what is asserted is what a file would be.
-- **What makes a good test here** is what survives and what is gone, never the order of deletes or the number of
-  queries. A test that asserts two unlink calls is a test of the implementation; one that asserts the file is
-  still on disk and the row is still there is a test of the behaviour.
-- **The cases that must exist:**
-  - a track with no associations has its row, its audio file and its thumbnail removed;
-  - a track with one association survives entirely, with its file intact, whatever its file status and whatever
-    its source status;
-  - a remote-removed stored track that is still in a playlist survives;
-  - a track associated only through another account's playlist survives;
-  - a failed track with no associations is removed;
-  - a downloading track is skipped and survives;
-  - a track whose media cannot be removed keeps its row and is removed on a later run once the file is gone;
-  - removing the last association to a track does not remove anything immediately, and the next run does;
-  - deleting a playlist leaves its media in place and the next run reclaims it;
-  - a run that finds nothing removes nothing and reports zero;
-  - the returned count equals the number of tracks actually gone;
-  - a track that only a suppressed video would re-add is still an orphan, since suppression is not a reference.
-- **Prior art:** the scheduler already exists with its guard against overlapping runs, its stop handle and its
-  logging, and the startup sweep is the existing precedent for reconciling rows against files in a temporary
-  directory. The prune follows both rather than inventing a shape.
 
 ## Out of Scope
 

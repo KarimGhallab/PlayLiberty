@@ -1,12 +1,12 @@
 # PlayLiberty
 
-PlayLiberty is an audio player for web and mobile that syncs YouTube playlists and keeps them saved, so a removed video never removes a track from a user's playlist. It is a self-hosted private multi-user service, deployed behind the Pangolin authenticating edge. The server side will own accounts, playlists, the media store, and sync; the clients present and stream that media.
+PlayLiberty is an audio player for web and mobile that syncs YouTube playlists and keeps them saved, so a removed video never removes a track from a user's playlist. It is a self-hosted private multi-user service, deployed behind the Pangolin authenticating edge. The server owns accounts, playlists, the media store, and sync; the web client presents and streams that media, and the mobile client is planned.
 
 ## Read first if needed
 
 - `docs/PRODUCT.md` - product intent, users, constraints, principles.
 - `docs/GLOSSARY.md` - the project's vocabulary. Read it before naming a domain concept.
-- `docs/ARCHITECTURE.md` - components, layer boundaries, and where things live.
+- `docs/ARCHITECTURE.md` - components, layer boundaries, where things live, and the decisions.
 - `docs/adr/` - architecture decision records.
 - `docs/tracker/` - AI work tracking: issues, specs, tasks.
 

@@ -10,6 +10,7 @@ import {
 import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Playlist } from '@playliberty/contracts';
@@ -72,6 +73,28 @@ function renderRow(
   );
 }
 
+interface SwitchableHeaderProps {
+  initial: Playlist;
+  next: Playlist;
+}
+
+function SwitchableHeader({ initial, next }: SwitchableHeaderProps) {
+  const [playlist, setPlaylist] = useState(initial);
+
+  return (
+    <>
+      <button type="button" onClick={() => setPlaylist(next)}>
+        Change playlist
+      </button>
+      <PlaylistRowHeader playlist={playlist} playable />
+    </>
+  );
+}
+
+function renderSwitchable(initial: Playlist, next: Playlist) {
+  return renderInRouter(<SwitchableHeader initial={initial} next={next} />);
+}
+
 function renderCard(
   playlist: Playlist,
   ownerName: string | null = null,
@@ -106,12 +129,30 @@ function renderTile(
   );
 }
 
+const CUSTOM_VERSION = '2026-10-20T12:00:00.000Z';
+
+function customCoverUrl(playlistId: string, version = CUSTOM_VERSION): string {
+  return `/api/v1/playlists/${playlistId}/cover?v=${encodeURIComponent(version)}`;
+}
+
+function trackCoverUrl(trackId: string): string {
+  return `/api/v1/tracks/${trackId}/thumbnail`;
+}
+
+function playlistWithCover(): Playlist {
+  return playlist({
+    coverUpdatedAt: CUSTOM_VERSION,
+    coverTrackId: 'track-9'
+  });
+}
+
 function playlist(overrides: Partial<Playlist> = {}): Playlist {
   return {
     id: 'playlist-1',
     ownerAccountId: 'account-1',
     name: 'Rain On The Window',
     coverTrackId: null,
+    coverUpdatedAt: null,
     provider: Provider.Youtube,
     sourcePlaylistId: 'PL-demo',
     syncStatus: PlaylistSyncStatus.Idle,
@@ -310,6 +351,134 @@ describe('PlaylistHeader', () => {
 
     /* No empty box: the failed image becomes the sleeve. */
     expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('draws the versioned custom cover when the playlist has one', async () => {
+    const { container } = renderRow(
+      playlist({
+        coverUpdatedAt: CUSTOM_VERSION,
+        coverTrackId: 'track-9'
+      })
+    );
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const image = container.querySelector('img');
+    expect(image?.getAttribute('src')).toBe(customCoverUrl('playlist-1'));
+  });
+
+  it('falls back from a failed custom cover to the track, then to the sleeve', async () => {
+    const { container } = renderRow(
+      playlist({
+        coverUpdatedAt: CUSTOM_VERSION,
+        coverTrackId: 'track-9'
+      })
+    );
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      trackCoverUrl('track-9')
+    );
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  const arrangements: {
+    name: string;
+    render: (playlist: Playlist) => HTMLElement;
+  }[] = [
+    { name: 'card', render: playlist => renderCard(playlist).container },
+    { name: 'tile', render: playlist => renderTile(playlist).container }
+  ];
+
+  it.each(arrangements)(
+    'draws the same custom cover and fallback in the $name arrangement',
+    async ({ render }) => {
+      const container = render(playlistWithCover());
+
+      await screen.findByRole('link', { name: 'Rain On The Window' });
+
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        customCoverUrl('playlist-1')
+      );
+
+      fireEvent.error(container.querySelector('img') as HTMLImageElement);
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        trackCoverUrl('track-9')
+      );
+
+      fireEvent.error(container.querySelector('img') as HTMLImageElement);
+      expect(container.querySelector('img')).toBeNull();
+    }
+  );
+
+  it('draws the custom cover and the same fallback in the detail ground', async () => {
+    const { container } = renderRow(playlistWithCover(), null, {
+      ground: true
+    });
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    const ground = () =>
+      container.querySelector('[data-ground="art"], [data-ground="sleeve"]');
+    expect(ground()?.getAttribute('style')).toContain(
+      customCoverUrl('playlist-1')
+    );
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(ground()?.getAttribute('style')).toContain(trackCoverUrl('track-9'));
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(
+      container.querySelector('[data-ground="sleeve"]')
+    ).toBeInTheDocument();
+  });
+
+  it('retries the custom cover after its version changes', async () => {
+    const first = playlist({
+      coverUpdatedAt: CUSTOM_VERSION,
+      coverTrackId: 'track-9'
+    });
+    const second = playlist({
+      coverUpdatedAt: '2026-10-21T12:00:00.000Z',
+      coverTrackId: 'track-9'
+    });
+    const { container } = renderSwitchable(first, second);
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      trackCoverUrl('track-9')
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change playlist' }));
+
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      customCoverUrl('playlist-1', '2026-10-21T12:00:00.000Z')
+    );
+  });
+
+  it('retries the track thumbnail after the track changes', async () => {
+    const first = playlist({ coverTrackId: 'track-9' });
+    const second = playlist({ coverTrackId: 'track-10' });
+    const { container } = renderSwitchable(first, second);
+
+    await screen.findByRole('link', { name: 'Rain On The Window' });
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(container.querySelector('img')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change playlist' }));
+
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      trackCoverUrl('track-10')
+    );
   });
 
   it('reads a never-synced playlist by its idle state, beside a never-synced line', async () => {

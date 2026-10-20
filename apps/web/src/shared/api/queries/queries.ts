@@ -37,7 +37,8 @@ import {
   deleteEndpoint,
   patchEndpoint,
   postEndpoint,
-  readEndpoint
+  readEndpoint,
+  uploadEndpoint
 } from '../endpoints/endpoints';
 
 export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
@@ -313,6 +314,53 @@ export function useSyncPlaylist(): UseMutationResult<SyncRun, Error, string> {
     mutationFn: (playlistId: string) =>
       commandEndpoint(endpoints.syncPlaylist, { playlistId }),
     onSuccess: (_run, playlistId) => {
+      cacheEffects.playlistChanged(queryClient, playlistId);
+    }
+  });
+}
+
+export interface SetPlaylistCoverVariables {
+  readonly playlistId: string;
+  readonly file: File;
+}
+
+/* The image bytes stay whole; the server normalises them and answers the
+ * playlist carrying its new cover version. */
+export function useSetPlaylistCover(): UseMutationResult<
+  Playlist,
+  Error,
+  SetPlaylistCoverVariables
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ playlistId, file }: SetPlaylistCoverVariables) =>
+      uploadEndpoint(endpoints.setPlaylistCover, file, file.type, {
+        playlistId
+      }),
+    onSuccess: (playlist, { playlistId }) => {
+      queryClient.setQueryData(['playlist', playlistId], playlist);
+      cacheEffects.playlistChanged(queryClient, playlistId);
+    }
+  });
+}
+
+export function useRemovePlaylistCover(): UseMutationResult<
+  void,
+  Error,
+  string
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (playlistId: string) =>
+      deleteEndpoint(endpoints.removePlaylistCover, { playlistId }),
+    onSuccess: (_void, playlistId) => {
+      queryClient.setQueryData<Playlist>(['playlist', playlistId], previous =>
+        previous === undefined
+          ? undefined
+          : { ...previous, coverUpdatedAt: null }
+      );
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });

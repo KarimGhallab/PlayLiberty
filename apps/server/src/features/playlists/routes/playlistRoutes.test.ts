@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { and, eq, sql } from 'drizzle-orm';
@@ -169,6 +169,13 @@ function selectPlaylist(playlistId: string) {
     .get();
 }
 
+async function fileExists(absolutePath: string): Promise<boolean> {
+  return access(absolutePath).then(
+    () => true,
+    () => false
+  );
+}
+
 function selectTrack(trackId: string) {
   if (context === undefined) {
     throw new Error('the test context is not created');
@@ -252,6 +259,7 @@ describe('GET /playlists', () => {
     expect(page.items).toHaveLength(1);
     expect(page.items[0]?.name).toBe('Evening');
     expect(page.items[0]?.trackCount).toBe(2);
+    expect(page.items[0]?.coverUpdatedAt).toBeNull();
     /* The library list carries the setting too, not just the single read. */
     expect(page.items[0]?.skipNonMusic).toBe(false);
   });
@@ -479,6 +487,44 @@ describe('GET /playlists', () => {
     expect(page.total).toBe(4);
   });
 
+  it('leads the rest with a playlist whose first sync is still running', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const pinned = seedPlaylist(context.database, owner.accountId, {
+      name: 'Pinned',
+      createdAt: '2026-09-04T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Alpha',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    /* The first sync names the row after its source id; 'PL...' would sort in
+     * the middle without the processing rank. */
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'PLstillrunning',
+      syncStatus: PlaylistSyncStatus.Syncing,
+      createdAt: '2026-09-03T10:00:00.000Z'
+    });
+    seedPlaylist(context.database, owner.accountId, {
+      name: 'Zebra',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    seedPin(context.database, owner.accountId, pinned.playlistId, {
+      pinnedAt: '2026-10-01T10:00:00.000Z'
+    });
+
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+
+    expect(page.items.map(item => item.name)).toEqual([
+      'Pinned',
+      'PLstillrunning',
+      'Alpha',
+      'Zebra'
+    ]);
+  });
+
   it('pages across the pins and the rest in the same order', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
@@ -593,6 +639,7 @@ describe('GET /playlists/:id', () => {
     const playlist = PlaylistSchema.parse(response.json());
     expect(playlist.id).toBe(playlistId);
     expect(playlist.trackCount).toBe(1);
+    expect(playlist.coverUpdatedAt).toBeNull();
     /* The setting crosses the wire, so a client can show it. */
     expect(playlist.skipNonMusic).toBe(false);
   });
@@ -2512,6 +2559,53 @@ describe('DELETE /playlists/:id', () => {
     expect(response.statusCode).toBe(204);
     expect(selectPlaylist(playlistId)).toBeUndefined();
     expect(countAssociations(context.database, playlistId)).toBe(0);
+  });
+
+  it('removes the custom cover file with the playlist', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const coverPath = 'covers/cover-to-remove.webp';
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      coverPath,
+      coverUpdatedAt: '2026-10-20T12:00:00.000Z'
+    });
+    const cover = join(context.mediaPaths.root, coverPath);
+    await writeFile(cover, 'the-cover');
+
+    const response = await del(
+      `/api/v1/playlists/${playlistId}`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(204);
+    expect(selectPlaylist(playlistId)).toBeUndefined();
+    await expect(fileExists(cover)).resolves.toBe(false);
+  });
+
+  it('keeps its answer when the cover file cannot be removed', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const coverPath = 'covers/blocked-cover.webp';
+    const { playlistId } = seedPlaylist(context.database, owner.accountId, {
+      coverPath,
+      coverUpdatedAt: '2026-10-20T12:00:00.000Z'
+    });
+    const cover = join(context.mediaPaths.root, coverPath);
+    await writeFile(cover, 'the-cover');
+    await chmod(context.mediaPaths.coversDir, 0o500);
+
+    try {
+      const response = await del(
+        `/api/v1/playlists/${playlistId}`,
+        owner.pangolinUserId
+      );
+
+      expect(response.statusCode).toBe(204);
+      expect(selectPlaylist(playlistId)).toBeUndefined();
+      await expect(fileExists(cover)).resolves.toBe(true);
+    } finally {
+      await chmod(context.mediaPaths.coversDir, 0o700);
+    }
   });
 
   it('leaves the stored files on disk for the prune to reclaim', async () => {

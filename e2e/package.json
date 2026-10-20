@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:parallel": "node scripts/run-parallel.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },
   "keywords": [],

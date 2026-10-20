@@ -76,6 +76,7 @@ const newPlaylist = {
   ownerAccountId: 'account-1',
   name: 'New Mix',
   coverTrackId: null,
+  coverUpdatedAt: null,
   provider: 'youtube',
   sourcePlaylistId: 'PL-new',
   syncStatus: 'syncing',
@@ -98,6 +99,7 @@ function ownedItem(id: string, name: string) {
     ownerAccountId: 'account-1',
     name,
     coverTrackId: null,
+    coverUpdatedAt: null,
     provider: 'youtube',
     sourcePlaylistId: `PL-${id}`,
     syncStatus: 'idle',
@@ -124,6 +126,7 @@ function sharedItem() {
     ownerAccountId: 'account-2',
     name: 'Shared Mix',
     coverTrackId: null,
+    coverUpdatedAt: null,
     provider: 'youtube',
     sourcePlaylistId: 'PL-shared',
     syncStatus: 'idle',
@@ -150,6 +153,7 @@ const baseItems = [
     ownerAccountId: 'account-1',
     name: 'Rain On The Window',
     coverTrackId: null,
+    coverUpdatedAt: null,
     provider: 'youtube',
     sourcePlaylistId: 'PL-demo',
     syncStatus: 'idle',
@@ -350,6 +354,7 @@ describe('LibraryPage', () => {
     const { container } = renderLibraryPage();
 
     expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
+    expect(await screen.findByText('Shared by Ada')).toBeInTheDocument();
     const list = screen.getByRole('list');
     expect(within(list).getByText('1')).toBeInTheDocument();
     expect(within(list).getByText('track')).toBeInTheDocument();
@@ -366,6 +371,8 @@ describe('LibraryPage', () => {
   it('presses only the playlist the queue belongs to', async () => {
     renderLibraryPage();
 
+    await screen.findByText('Shared by Ada');
+
     const own = await screen.findByRole('button', {
       name: 'Shuffle Rain On The Window'
     });
@@ -373,6 +380,8 @@ describe('LibraryPage', () => {
 
     fireEvent.click(own);
     await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
+    await waitFor(() => expect(own).toHaveAttribute('aria-pressed', 'true'));
+    await waitFor(() => expect(own).toBeEnabled());
 
     expect(own).toHaveAttribute('aria-pressed', 'true');
     expect(other).toHaveAttribute('aria-pressed', 'false');
@@ -381,6 +390,16 @@ describe('LibraryPage', () => {
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     );
     await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(false));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+      ).toHaveAttribute('aria-pressed', 'false')
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+      ).toBeEnabled()
+    );
 
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
@@ -544,6 +563,172 @@ describe('LibraryPage', () => {
     ).toEqual(['Pin']);
   });
 
+  it('offers Cover on a gallery item, uploads the file and shows the new cover', async () => {
+    const version = '2026-10-20T12:00:00.000Z';
+    let coverVersion: string | null = null;
+
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              coverUpdatedAt: coverVersion
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post(
+        mockUrl(endpoints.setPlaylistCover, { playlistId: 'playlist-1' }),
+        () => {
+          coverVersion = version;
+
+          return HttpResponse.json({
+            ...ownedItem('playlist-1', 'Rain On The Window'),
+            coverUpdatedAt: version
+          });
+        }
+      )
+    );
+
+    const { container } = renderLibraryPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    expect(
+      screen.getByRole('menuitem', { name: 'Update the cover' })
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Playlist cover'
+    });
+    const input = dialog.querySelector<HTMLInputElement>('input[type=file]');
+    const file = new File([new Uint8Array([1, 2, 3])], 'cover.jpg', {
+      type: 'image/jpeg'
+    });
+
+    if (input === null) {
+      throw new Error('the cover dialog has no file input');
+    }
+
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitForDialogExit();
+
+    await waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-arrangement="tile"] img')
+          ?.getAttribute('src')
+      ).toBe(
+        `/api/v1/playlists/playlist-1/cover?v=${encodeURIComponent(version)}`
+      )
+    );
+  });
+
+  it('removes the cover from the gallery and falls back to the first track', async () => {
+    const version = '2026-10-20T12:00:00.000Z';
+    let removed = false;
+    const deletes: string[] = [];
+    const item = {
+      ...ownedItem('playlist-1', 'Rain On The Window'),
+      coverTrackId: 'track-9'
+    };
+
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...item,
+              coverUpdatedAt: removed ? null : version
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.delete(
+        mockUrl(endpoints.removePlaylistCover, { playlistId: 'playlist-1' }),
+        () => {
+          deletes.push('remove-cover');
+          removed = true;
+
+          return new HttpResponse(null, { status: 204 });
+        }
+      )
+    );
+
+    const { container } = renderLibraryPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Playlist cover'
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/v1/tracks/track-9/thumbnail'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    await waitForDialogExit();
+    expect(deletes).toEqual(['remove-cover']);
+
+    await waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-arrangement="tile"] img')
+          ?.getAttribute('src')
+      ).toBe('/api/v1/tracks/track-9/thumbnail')
+    );
+  });
+
+  it('keeps a gallery card pill on its compact tip', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    const restore = stubViewport(MOBILE_QUERY);
+
+    try {
+      renderLibraryPage();
+
+      expect(
+        await screen.findByRole('img', {
+          name: '2 tracks are not stored · Failed 2'
+        })
+      ).toHaveAttribute('data-tip', 'compact');
+    } finally {
+      restore();
+    }
+  });
+
   it('draws a flagged item in the named section above the list and not in the list below', async () => {
     pinnedRead([
       { ...ownedItem('playlist-1', 'Rain On The Window'), pinned: true },
@@ -568,12 +753,41 @@ describe('LibraryPage', () => {
       within(lists[1]!).getByRole('link', { name: 'Shared Mix' })
     ).toBeInTheDocument();
 
-    const restSection = screen.getByRole('region', { name: 'Others' });
     expect(
-      within(restSection).getByRole('link', { name: 'Shared Mix' })
+      screen.queryByRole('region', { name: 'Others' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('draws the running first sync between the pins and the unlabelled rest', async () => {
+    pinnedRead([
+      { ...ownedItem('playlist-1', 'Pinned one'), pinned: true },
+      { ...ownedItem('playlist-2', 'PLstarting'), syncStatus: 'syncing' },
+      ownedItem('playlist-3', 'Rest one')
+    ]);
+    renderLibraryPage();
+
+    const pinnedSection = await screen.findByRole('region', {
+      name: 'Pinned'
+    });
+    const syncingSection = screen.getByRole('region', { name: 'Syncing' });
+
+    expect(
+      within(pinnedSection).getByRole('link', { name: 'Pinned one' })
     ).toBeInTheDocument();
     expect(
-      within(restSection).queryByRole('link', { name: 'Rain On The Window' })
+      within(syncingSection).getByRole('link', { name: 'PLstarting' })
+    ).toBeInTheDocument();
+
+    /* DOM order is the reading order: the pins, the running row, the rest. */
+    const lists = screen.getAllByRole('list');
+    const nameOf = (list: HTMLElement) =>
+      within(list).getByRole('link').textContent;
+
+    expect(nameOf(lists[0]!)).toBe('Pinned one');
+    expect(nameOf(lists[1]!)).toBe('PLstarting');
+    expect(nameOf(lists[2]!)).toBe('Rest one');
+    expect(
+      screen.queryByRole('region', { name: 'Others' })
     ).not.toBeInTheDocument();
   });
 
@@ -605,6 +819,9 @@ describe('LibraryPage', () => {
 
     expect(
       screen.queryByRole('region', { name: 'Pinned' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Syncing' })
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Pinned')).not.toBeInTheDocument();
   });
@@ -707,6 +924,7 @@ describe('LibraryPage', () => {
                 ownerAccountId: 'account-1',
                 name: 'Rain On The Window',
                 coverTrackId: null,
+                coverUpdatedAt: null,
                 provider: 'youtube',
                 sourcePlaylistId: 'PL-demo',
                 syncStatus: 'idle',
@@ -726,6 +944,7 @@ describe('LibraryPage', () => {
                 ownerAccountId: 'account-2',
                 name: 'Shared Mix',
                 coverTrackId: null,
+                coverUpdatedAt: null,
                 provider: 'youtube',
                 sourcePlaylistId: 'PL-shared',
                 syncStatus: 'idle',
@@ -754,6 +973,7 @@ describe('LibraryPage', () => {
               ownerAccountId: 'account-1',
               name: 'Rain On The Window',
               coverTrackId: null,
+              coverUpdatedAt: null,
               provider: 'youtube',
               sourcePlaylistId: 'PL-demo',
               syncStatus: 'idle',
@@ -855,12 +1075,18 @@ describe('LibraryPage', () => {
     renderLibraryPage();
 
     await screen.findByText('Rain On The Window');
+    await screen.findByText('Shared by Ada');
     fireEvent.click(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     );
 
     await waitFor(() =>
       expect(usePlayerStore.getState().queue).toHaveLength(2)
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Pause Rain On The Window' })
+      ).toBeEnabled()
     );
 
     const state = usePlayerStore.getState();
@@ -913,6 +1139,7 @@ describe('LibraryPage', () => {
     renderLibraryPage();
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
+    await screen.findByText('Shared by Ada');
 
     const item = () =>
       screen
@@ -938,11 +1165,13 @@ describe('LibraryPage', () => {
     await waitFor(() => expect(usePlayerStore.getState().isPlaying).toBe(true));
 
     expect(usePlayerStore.getState().queue).toHaveLength(2);
-    expect(
-      within(item()).getByRole('button', {
-        name: 'Pause Rain On The Window'
-      })
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(item()).getByRole('button', {
+          name: 'Pause Rain On The Window'
+        })
+      ).toBeEnabled()
+    );
   });
 
   it('draws the play disabled on a playlist with nothing stored', async () => {
@@ -955,6 +1184,7 @@ describe('LibraryPage', () => {
               ownerAccountId: 'account-1',
               name: 'Rain On The Window',
               coverTrackId: null,
+              coverUpdatedAt: null,
               provider: 'youtube',
               sourcePlaylistId: 'PL-demo',
               syncStatus: 'idle',
@@ -1009,12 +1239,18 @@ describe('LibraryPage', () => {
       renderLibraryPage();
 
       await screen.findByText('Rain On The Window');
+      await screen.findByText('Shared by Ada');
       fireEvent.click(
         screen.getByRole('button', { name: 'Play Rain On The Window' })
       );
 
       await waitFor(() =>
         expect(usePlayerStore.getState().queue).toHaveLength(2)
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Pause Rain On The Window' })
+        ).toBeEnabled()
       );
 
       const state = usePlayerStore.getState();
@@ -1168,7 +1404,11 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('New Mix')).toBeInTheDocument();
-    expect(screen.getByText('Syncing')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Syncing' })).getByText(
+        'New Mix'
+      )
+    ).toBeInTheDocument();
   });
 
   it('shows the server problem beside the field when the create is refused', async () => {
@@ -1211,12 +1451,12 @@ describe('LibraryPage', () => {
         name: 'More actions for Rain On The Window'
       })
     );
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
 
     fireEvent.click(
       screen.getByRole('button', { name: 'More actions for Night Bus' })
     );
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
 
     const toasts = screen.getAllByRole('status');
 
@@ -1237,7 +1477,7 @@ describe('LibraryPage', () => {
         name: 'More actions for Rain On The Window'
       })
     );
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete playlist' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
 
     const row = container.querySelector('[data-arrangement="tile"]');
     expect(row).toHaveAttribute('aria-busy', 'true');

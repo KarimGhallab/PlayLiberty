@@ -81,6 +81,7 @@ export enum ProblemCode {
   TrackNotRetryable = 'track_not_retryable',
   TrackNotFetchable = 'track_not_fetchable',
   ThumbnailNotFound = 'thumbnail_not_found',
+  CoverNotFound = 'cover_not_found',
   Forbidden = 'forbidden',
   SelfShare = 'self_share',
   AccountNotFound = 'account_not_found',

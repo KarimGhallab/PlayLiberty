@@ -20,10 +20,13 @@ function counts(
   return { ...EMPTY_COUNTS, ...overrides };
 }
 
-function renderMark(value: TrackFileStatusCounts | null) {
+function renderMark(
+  value: TrackFileStatusCounts | null,
+  tipEdge?: 'start' | 'compact'
+) {
   return render(
     <I18nProvider preferred={['en']}>
-      <IncompleteBadge counts={value} />
+      <IncompleteBadge counts={value} tipEdge={tipEdge} />
     </I18nProvider>
   );
 }
@@ -100,6 +103,16 @@ describe('IncompleteBadge', () => {
         name: '1 track is not stored · Pending 1'
       })
     ).toBeInTheDocument();
+  });
+
+  it('uses the compact tip for a mark on a gallery card', async () => {
+    renderMark(counts({ [TrackFileStatus.Failed]: 2 }), 'compact');
+
+    expect(
+      await screen.findByRole('img', {
+        name: '2 tracks are not stored · Failed 2'
+      })
+    ).toHaveAttribute('data-tip', 'compact');
   });
 
   it('draws nothing when every track is stored', async () => {

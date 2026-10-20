@@ -12,7 +12,8 @@ import {
   apiDelete,
   apiGet,
   apiPatch,
-  apiPost
+  apiPost,
+  apiUpload
 } from '../client/client';
 
 /*
@@ -63,6 +64,20 @@ export function patchEndpoint<T>(
   params: EndpointParams = {}
 ): Promise<T> {
   return apiPatch(pathOf(endpoint, params), body, endpoint.response);
+}
+
+export function uploadEndpoint<T>(
+  endpoint: ApiEndpoint<T>,
+  body: Blob,
+  contentType: string,
+  params: EndpointParams = {}
+): Promise<T> {
+  return apiUpload(
+    pathOf(endpoint, params),
+    body,
+    contentType,
+    endpoint.response
+  );
 }
 
 export function deleteEndpoint(

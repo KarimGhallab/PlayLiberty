@@ -491,6 +491,43 @@ describe('POST /playlists/:id/sync', () => {
     expect(playlist.trackCount).toBe(2);
   });
 
+  it('leaves a custom cover alone', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: fakeYoutube(source([entry('a')]), source([entry('a')]))
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    const coverPath = 'covers/kept.webp';
+    const coverUpdatedAt = '2026-10-20T12:00:00.000Z';
+
+    context.database.db
+      .update(playlists)
+      .set({ coverPath, coverUpdatedAt })
+      .where(eq(playlists.id, first.playlistId))
+      .run();
+
+    await postSync(first.playlistId, 'owner-1');
+    await runFinished(first.playlistId, 'owner-1');
+
+    const row = context.database.db
+      .select({
+        coverPath: playlists.coverPath,
+        coverUpdatedAt: playlists.coverUpdatedAt
+      })
+      .from(playlists)
+      .where(eq(playlists.id, first.playlistId))
+      .get();
+
+    expect(row).toEqual({ coverPath, coverUpdatedAt });
+  });
+
   it('appends a new video and leaves an associated one exactly as it is', async () => {
     context = await createTestContext(
       {},

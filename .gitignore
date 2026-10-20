@@ -2,7 +2,7 @@ todo.md
 apps/server/data
 
 # E2E runtime artifacts: the fake's scenario file, the test database and media
-e2e/.scenario.json
+e2e/.scenario/
 e2e/.data
 e2e/.media
 e2e/test-results

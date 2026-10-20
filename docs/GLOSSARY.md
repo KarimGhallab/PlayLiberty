@@ -1,6 +1,6 @@
 # Glossary
 
-One word per idea. When a concept has two names here, pick the one in the left column and change the other.
+One word per idea. When a concept has two names here, pick the one in the left column and change the other. The product's non-goals live in [PRODUCT.md](PRODUCT.md#non-goals).
 
 ## Accounts and access
 
@@ -17,9 +17,13 @@ One word per idea. When a concept has two names here, pick the one in the left c
 
 | Term               | Meaning                                                                                                                              |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Track              | One server-wide playable item, keyed by video id. The only thing stored and streamed.                                                |
+| Track              | One server-wide playable item, keyed by video id. Its audio is the only media streamed.                                              |
 | Video id           | The YouTube video id. The identity of a track and the dedup key: one file per video id, shared by every playlist that references it. |
 | Playlist           | A named, owner-owned, ordered collection of tracks. In v1 the only kind is the Synced playlist.                                      |
+| Playlist cover     | The image a playlist draws: its custom cover when one is set, otherwise its first track's thumbnail, otherwise its sleeve.           |
+| Custom cover       | One image per playlist, chosen by the owner or a write collaborator and shared with every reader. Never per account.                 |
+| Cover file         | The normalised WebP under `covers/` for a custom cover. Immutable and versioned; never a track thumbnail.                            |
+| Sleeve             | The hue a playlist draws when it has no image at all, derived from its id and never stored. The last fallback of the cover.          |
 | Gallery            | The playlists an account can see, presented as one collection on the library. Never "shelf".                                         |
 | Pin                | One account's own placement of a playlist above the rest of its gallery. Per account, so it never moves another's. Never "favorite". |
 | Synced playlist    | A playlist that mirrors a YouTube source. Created by pasting a URL; synced manually in v1.                                           |
@@ -28,7 +32,7 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | Remote association | An association created by sync from the source.                                                                                      |
 | Manual association | An association created by pasting a single video URL and choosing playlists.                                                         |
 | Suppression        | A record per `(playlist, video id)` that stops a sync from re-adding a remote association the user removed.                          |
-| Media store        | The server-wide set of stored tracks and thumbnails. There is no global Library view in v1; playlists are the only entry point.      |
+| Media store        | The server-wide set of stored tracks, thumbnails and cover files.                                                                    |
 
 ## Sync and lifecycle
 
@@ -55,12 +59,12 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 
 ## Playback and delivery
 
-| Term          | Meaning                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| Stream        | Server-to-client delivery of a stored track over HTTP with `Range` support. No transcoding. |
-| Range request | A partial-content request that lets a client seek within a track.                           |
-| Queue         | Per-client playback state. Not stored on the server.                                        |
-| Offline       | A client-side copy for playback without the server. Out of scope in v1.                     |
+| Term          | Meaning                                                                 |
+| ------------- | ----------------------------------------------------------------------- |
+| Stream        | Server-to-client delivery of a stored track over HTTP with `Range`.     |
+| Range request | A partial-content request that lets a client seek within a track.       |
+| Queue         | Per-client playback state. Not stored on the server.                    |
+| Offline       | A client-side copy for playback without the server. Out of scope in v1. |
 
 ## Language
 
@@ -68,10 +72,6 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Language | `en` or `fr`. The language the interface is rendered in. Resolved once per browser, from an explicit choice, then the browser's preference, then `en`. Per browser, never on the account, and never known to the server. The control that changes it sits on both the library and the playlist detail. |
 | Locale   | A browser preference tag such as `fr-CA`, matched to a supported Language by its base. The app stores the resolved Language, never the tag.                                                                                                                                                            |
-
-## Out of scope in v1
-
-Sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
 
 ## Terms that are easy to mix up
 
@@ -82,4 +82,5 @@ Sharing outside the instance, public or unauthenticated access, casting, social 
 - **Stream** vs **Download**: streaming is the only delivery. A download endpoint would be file export, a non-goal.
 - **Language** vs **Locale**: a language is one of the two the interface is written in, `en` or `fr`; a locale is the browser's preference tag, `fr-CA`, that resolves to one. The app stores the language and never the tag.
 - **Pin** vs **Favorite**: a pin is one account's placement of a playlist above the rest of its own gallery; a favorite would be a judgement about a thing. The feature is a pin, so the two words are never one.
+- **Playlist cover** vs **track thumbnail**: a playlist cover belongs to the playlist and every reader sees the same image; a track thumbnail belongs to the track. The first track's thumbnail is only the fallback for a playlist with no custom cover.
 - **Interface language** vs **user content**: the interface language is the app's and switches with the language button; a playlist name, a track title and an account name are the source's or the user's and are never translated.
