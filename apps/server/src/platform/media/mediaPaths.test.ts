@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { mediaRelativePath, thumbnailRelativePath } from './mediaPaths.js';
+import {
+  coverRelativePath,
+  mediaRelativePath,
+  thumbnailRelativePath
+} from './mediaPaths.js';
 
 describe('mediaRelativePath', () => {
   it('shards a video id under the media directory', () => {
@@ -25,6 +29,20 @@ describe('thumbnailRelativePath', () => {
 
   it('refuses an id that would resolve outside the media store', () => {
     expect(() => thumbnailRelativePath('../../../../tmp/evil')).toThrow(
+      /outside the media store/
+    );
+  });
+});
+
+describe('coverRelativePath', () => {
+  it('names a cover by its playlist and token under the covers directory', () => {
+    expect(coverRelativePath('playlist-1', 'token-1')).toBe(
+      'covers/playlist-1-token-1.webp'
+    );
+  });
+
+  it('refuses an id that would resolve outside the media store', () => {
+    expect(() => coverRelativePath('../../../../tmp/evil', 'token-1')).toThrow(
       /outside the media store/
     );
   });

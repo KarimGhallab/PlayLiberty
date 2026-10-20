@@ -8,8 +8,8 @@ import type {
 } from 'fastify';
 import Fastify from 'fastify';
 
-import { ProblemCode } from '@playliberty/contracts';
 import type { LiveEvent } from '@playliberty/contracts';
+import { ProblemCode } from '@playliberty/contracts';
 import { YtdlpClient } from '@playliberty/youtube';
 
 import type { AppContext } from '../shared/context.js';
@@ -24,8 +24,12 @@ import {
   DEFAULT_EVENT_HEARTBEAT_MS,
   registerEventRoutes
 } from '../features/events/routes/eventRoutes.js';
+import { registerCoverRoutes } from '../features/playlists/cover/routes/coverRoutes.js';
 import { registerPlaylistRoutes } from '../features/playlists/routes/playlistRoutes.js';
-import { pruneOrphanTracks } from '../features/prune/service/pruneService.js';
+import {
+  pruneOrphanCovers,
+  pruneOrphanTracks
+} from '../features/prune/service/pruneService.js';
 import { registerShareRoutes } from '../features/shares/routes/shareRoutes.js';
 import { registerSyncRunRoutes } from '../features/sync/routes/syncRunRoutes.js';
 import { registerTrackRoutes } from '../features/tracks/routes/trackRoutes.js';
@@ -156,6 +160,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     async api => {
       registerAccountRoutes(api, context);
       registerPlaylistRoutes(api, context);
+      registerCoverRoutes(api, context);
       registerShareRoutes(api, context);
       registerSyncRunRoutes(api, context);
       registerTrackRoutes(api, context);
@@ -194,12 +199,15 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       cron: context.config.pruneCron,
       logger: app.log,
       run: async (signal: AbortSignal): Promise<void> => {
-        await pruneOrphanTracks({
+        const pruneOptions = {
           database: context.database,
           mediaPaths: context.mediaPaths,
           logger: app.log,
           signal
-        });
+        };
+
+        await pruneOrphanTracks(pruneOptions);
+        await pruneOrphanCovers(pruneOptions);
       }
     });
   });

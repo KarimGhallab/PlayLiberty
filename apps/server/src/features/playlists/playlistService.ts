@@ -1,3 +1,6 @@
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import type {
@@ -27,6 +30,7 @@ import {
   resolvePlaylistAccessMany,
   sharedPlaylistIds
 } from '../../shared/access/playlistAccess.js';
+import type { AppContext } from '../../shared/context.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 
@@ -385,13 +389,24 @@ export function updatePinForAccount(
   );
 }
 
+/* The row is already gone, so a file that survives is unreferenced and the
+ * weekly sweep reclaims it; a failed unlink must never fail the delete. */
+function removeCoverFile(root: string, coverPath: string): void {
+  try {
+    rmSync(join(root, coverPath), { force: true });
+  } catch {
+    // Left to the weekly cover sweep.
+  }
+}
+
 /*
  * The cascade bypasses the association service's write rule, safe because the
- * only count is this row's and it is going. Media is left to the weekly prune.
- * The audience is read before the row goes, because it cannot be read after.
+ * only count is this row's and it is going. The cover file goes with the row on
+ * a best-effort basis; track media is left to the weekly prune. The audience is
+ * read before the row goes, because it cannot be read after.
  */
 export function deletePlaylistForAccount(
-  context: LiveEventContext,
+  context: Pick<AppContext, 'database' | 'events' | 'mediaPaths'>,
   playlistId: string,
   accountId: string
 ): PlaylistOutcome {
@@ -403,10 +418,15 @@ export function deletePlaylistForAccount(
     () => {
       const accountIds = playlistAudience(context.database, playlistId);
 
-      context.database.db
+      const deleted = context.database.db
         .delete(playlists)
         .where(eq(playlists.id, playlistId))
-        .run();
+        .returning({ coverPath: playlists.coverPath })
+        .get();
+
+      if (deleted !== undefined && deleted.coverPath !== null) {
+        removeCoverFile(context.mediaPaths.root, deleted.coverPath);
+      }
 
       announce(context, {
         kind: ChangeKind.PlaylistRemoved,

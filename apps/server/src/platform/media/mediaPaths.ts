@@ -9,12 +9,14 @@ function isSubPath(src: string, dst: string): boolean {
 
 export const MEDIA_DIRECTORY = 'media';
 export const THUMBNAILS_DIRECTORY = 'thumbnails';
+export const COVERS_DIRECTORY = 'covers';
 export const TEMP_DIRECTORY = '.tmp';
 
 export interface MediaPaths {
   root: string;
   mediaDir: string;
   thumbnailsDir: string;
+  coversDir: string;
   tempDir: string;
 }
 
@@ -27,6 +29,7 @@ export function createMediaPaths(root: string): MediaPaths {
     root: absoluteRoot,
     mediaDir: join(absoluteRoot, MEDIA_DIRECTORY),
     thumbnailsDir: join(absoluteRoot, THUMBNAILS_DIRECTORY),
+    coversDir: join(absoluteRoot, COVERS_DIRECTORY),
     tempDir: join(absoluteRoot, TEMP_DIRECTORY)
   };
 }
@@ -41,6 +44,23 @@ export function mediaRelativePath(videoId: string, extension: string): string {
 
 export function thumbnailRelativePath(videoId: string): string {
   return shardedRelativePath(THUMBNAILS_DIRECTORY, videoId, `${videoId}.jpg`);
+}
+
+/* A cover is named by its playlist and a random token, so a replacement never
+ * reuses a file name. */
+export function coverRelativePath(playlistId: string, token: string): string {
+  const leaf = `${playlistId}-${token}.webp`;
+  const relative = posix.join(COVERS_DIRECTORY, leaf);
+  const root = `${posix.resolve('/', COVERS_DIRECTORY)}/`;
+  const resolved = posix.resolve('/', relative);
+
+  if (!isSubPath(root, resolved)) {
+    throw new Error(
+      `The playlist id "${playlistId}" resolves outside the media store.`
+    );
+  }
+
+  return relative;
 }
 
 /* Traversal guard, the second layer after the adapter: an id with `..` cannot
@@ -66,5 +86,6 @@ function shardedRelativePath(
 export async function ensureMediaDirectories(paths: MediaPaths): Promise<void> {
   await mkdir(paths.mediaDir, { recursive: true });
   await mkdir(paths.thumbnailsDir, { recursive: true });
+  await mkdir(paths.coversDir, { recursive: true });
   await mkdir(paths.tempDir, { recursive: true });
 }

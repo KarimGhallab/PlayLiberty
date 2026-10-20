@@ -175,6 +175,25 @@ export const endpoints = {
     response: PlaylistSchema,
     errors: [ProblemCode.PlaylistNotFound, ...READ_ERRORS]
   }),
+  setPlaylistCover: defineEndpoint({
+    method: HttpMethod.Post,
+    path: '/playlists/:playlistId/cover',
+    response: PlaylistSchema,
+    errors: [
+      ProblemCode.PlaylistNotFound,
+      ProblemCode.UnprocessableRequest,
+      ...WRITE_ERRORS
+    ]
+  }),
+  playlistCover: defineMediaEndpoint({
+    method: HttpMethod.Get,
+    path: '/playlists/:playlistId/cover',
+    errors: [
+      ProblemCode.PlaylistNotFound,
+      ProblemCode.CoverNotFound,
+      ...READ_ERRORS
+    ]
+  }),
   latestSyncRun: defineEndpoint({
     method: HttpMethod.Get,
     path: '/playlists/:playlistId/sync-runs/latest',

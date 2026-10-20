@@ -3,5 +3,7 @@
     "npx eslint --cache --fix --quiet",
     "npx prettier --list-different --write"
   ],
-  "!(*.{ts,tsx,sql})": ["npx prettier --list-different --write"]
+  "!(*.{ts,tsx,sql,conf.template,toml})": [
+    "npx prettier --list-different --write"
+  ]
 }

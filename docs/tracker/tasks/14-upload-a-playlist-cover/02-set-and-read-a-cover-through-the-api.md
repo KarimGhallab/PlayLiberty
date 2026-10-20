@@ -1,33 +1,31 @@
 # 02: Set and read a cover through the API
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-## What to build
+## Outcome
 
-An owner or write collaborator can upload a custom cover for a playlist, and any account that can read the
-playlist can fetch it. The upload accepts a raw JPEG, PNG or WebP body up to 5 MB. The server normalises it with
-`sharp`, auto-orients it, caps the long edge at 1600px, strips metadata and stores WebP at quality 0.86. The
-stored file is immutable and versioned, and the playlist row records its path and the new `coverUpdatedAt`.
+The server now accepts a raw JPEG, PNG or WebP at `POST /playlists/:playlistId/cover` from the owner or a
+write collaborator, and serves it at `GET /playlists/:playlistId/cover` to any reader. The route has an
+image-only body parser capped at 5 MB and no multipart parser. `sharp` auto-orients the image, rejects a
+non-image, an animated image and an image over 64 megapixels, caps the long edge at 1600px without enlarging,
+strips metadata and writes WebP at quality 86.
 
-The upload route resolves the playlist at the write need. The cover media route resolves it at the read need and
-serves the stored WebP with the private media cache. A missing cover answers not-found. A successful upload
-publishes the existing playlist-changed event after commit. The edge proxy allows the larger image request.
+Each upload writes an immutable `covers/<playlistId>-<token>.webp` through the temp directory and renames it
+into place before the row records the path and a later `coverUpdatedAt`. The previous file is deleted only
+after the row commits, best effort; a failed write leaves the previous row and file. The media route serves
+the current file as `image/webp` with `private, max-age=2592000`, answers `cover_not_found` for a playlist
+without a cover or a missing file, and `playlist_not_found` for an unreachable playlist. A successful upload
+publishes one `playlist.changed` event to the read audience after the row carries the cover; a refusal
+publishes none.
 
-## Blocked by
+The nginx template admits 6 MB so the server answers an over-size upload, the E2E reset clears `covers/`, and
+the server depends on `sharp@^0.35.5`. Route tests cover the three formats, orientation and metadata
+stripping, the 1600px cap, replacement and old-file removal, the type, non-image, 5 MB and 64MP refusals
+leaving the previous cover, the owner/write/read/stranger/missing matrix, the media headers, a missing cover
+and missing file, the event, a failed write, and survival across sync, rename, skip and sort.
 
-[`01`](01-carry-the-cover-through-the-playlist-read.md).
-
-## Acceptance criteria
-
-- [ ] A raw image body is accepted for JPEG, PNG and WebP, capped at 5 MB, with no multipart dependency.
-- [ ] `sharp` is added to the server, the container build succeeds, and the edge proxy accepts the larger cover request.
-- [ ] The server rejects an unsupported type, a non-image body, an image over 64 megapixels and a file over 5 MB, leaving the previous cover untouched.
-- [ ] A valid upload is stored as WebP with a long edge no greater than 1600px, no metadata and a new cover version.
-- [ ] Only the owner and a write collaborator can upload; a read collaborator, a stranger and a missing playlist get the same not-found answer.
-- [ ] A reader can fetch the cover as a versioned, privately cached WebP; a playlist without a cover answers not-found.
-- [ ] The stored file is written before the row commits, the previous file is deleted only after the new row commits, and a failed write leaves the previous cover.
-- [ ] A successful upload publishes one playlist-changed event to the read audience; a refusal publishes none.
-- [ ] The playlist read returns the new `coverUpdatedAt`; sync and the other playlist mutations leave it alone.
-- [ ] Route tests cover the three formats, the limits, the access matrix, the media headers and the event.
+Verification: `pnpm run build` and the server container build pass, and `sharp` loads in the runtime image.
+The full unit suite passes (server 375, web 498). Lint reports no errors; its warnings are in the concurrently
+edited playlist-delete work and the existing phone journey.
 
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

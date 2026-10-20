@@ -1,27 +1,13 @@
 # 07: Prune unreferenced cover files
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-## What to build
+## Outcome
 
-The weekly orphan prune also sweeps the covers directory. It builds the set of cover paths referenced by
-playlists, deletes files no playlist references and older than one hour, and leaves referenced files and recent
-files alone. It logs the count and keeps the rest of the orphan prune unchanged.
+`pruneOrphanCovers` joins the weekly prune. It reads the playlist rows' `coverPath` set first, walks `covers/`, and removes a file only when no row references it and its mtime is more than an hour old; referenced files and recent files stay. It logs `{ removed }` on `cover prune finished`, honours the scheduler's abort signal between files, and treats a missing covers directory as an empty sweep. The scheduler runs it after the track prune with the same logger and signal, so track behaviour is unchanged.
 
-Deleting a playlist removes its cover file as a best effort. A failed delete is left for the next prune rather
-than failing the playlist delete.
+`deletePlaylistForAccount` now deletes the row with `RETURNING cover_path` and unlinks that file as a best effort. A failed unlink is caught, the delete still answers 204, and the now-unreferenced file is left to the sweep.
 
-## Blocked by
-
-[`01`](01-carry-the-cover-through-the-playlist-read.md).
-
-## Acceptance criteria
-
-- [ ] The weekly prune deletes an unreferenced cover file older than one hour.
-- [ ] It keeps a referenced cover file and an unreferenced file inside the one-hour grace window.
-- [ ] It logs the number of cover files removed and leaves track pruning unchanged.
-- [ ] Deleting a playlist removes its cover file as a best effort.
-- [ ] A failed cover file delete does not fail the playlist delete.
-- [ ] Prune tests cover the orphan, the referenced file, the grace window and the playlist delete.
+Coverage: four service tests (orphan old file, old referenced file, fresh unreferenced file, the logged count), a scheduler tick test for the cover sweep, and two DELETE route tests (the cover goes with the playlist; a read-only covers directory still answers 204 and leaves the file). Verification: `pnpm run build` passes, `pnpm run lint` is clean apart from the existing `phone.spec.ts` warning, the 376 server tests and all 37 e2e journeys pass.
 
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).
