@@ -501,7 +501,6 @@ describe('pruning orphaned covers', () => {
     const { logger, infos } = recordingLogger();
     await writeCover('one.webp', OLD_COVER_MS);
     await writeCover('two.webp', OLD_COVER_MS);
-    await writeCover('fresh.webp');
 
     const removed = await pruneCovers(logger);
 

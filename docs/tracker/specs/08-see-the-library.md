@@ -1,7 +1,7 @@
 # See the library
 
-Status: ready
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -27,40 +27,6 @@ the playlist. An owner's own playlist carries no "shared by" line; a playlist sh
 the owner through the account directory. Before the first sync the screen is an empty gallery whose action is
 "Add a playlist", which opens the dialog and creates a Synced playlist, and the new item appears from the
 server rather than from the client's optimism.
-
-## User Stories
-
-1. As a listener, I want to land on a list of my playlists, so that I can choose what to listen to.
-2. As a listener, I want a playlist I own beside one shared with me, in one list, so that I do not have to
-   look in two places.
-3. As a listener, I want each item to show its name, cover and track count, so that I recognise it.
-4. As a listener, I want each item to show whether it is up to date, syncing or failed, so that a fault is
-   visible without opening it.
-5. As a listener, I want a shared item to say who shared it, so that a gallery of several people's playlists is
-   legible.
-6. As a listener, I want to open a playlist from its cover or its name, so that a list is a set of doors.
-7. As a listener, I want to add a playlist by pasting a URL, so that this is where content enters the instance.
-8. As a listener, I want the new playlist to appear as soon as it is created and to show that it is syncing, so
-   that I am not left wondering whether the paste worked.
-9. As a listener with no playlists at all, I want to be told so and offered the one action that helps, so that
-   an empty screen is an invitation rather than a gap.
-10. As a listener, I want a playlist that exists but has never synced to be a different state from having no
-    playlists, so that "nothing yet" and "something is wrong" do not look the same.
-11. As a listener, I want the count to be the number of tracks the playlist holds, so that I can compare a
-    playlist to YouTube without opening it.
-12. As a listener, I want a long list to still open, so that a large library is not a screen that never loads.
-13. As a read collaborator, I want the playlist I was given to appear here, so that a share is usable rather
-    than a message.
-14. As a member of a household, I want a playlist shared with me to be marked as not mine, so that I do not
-    expect to rename or delete it.
-15. As an account, I want a playlist I have lost access to to disappear, so that a revoked share is not a
-    broken row.
-16. As an account, I want the library to show only what I can see, so that a gallery is not a place to discover
-    other people's ids.
-17. As a listener, I want the list to refresh while a sync runs, so that the counts and the state are current.
-18. As a listener, I want a failed sync on the library to read the same way as on the playlist, so that I do
-    not learn a second vocabulary for one fact.
-19. As an operator, I want the library to be a read, so that landing on it never changes anything.
 
 ## Implementation Decisions
 
@@ -117,32 +83,6 @@ server rather than from the client's optimism.
 - **The library is a read and writes nothing on arrival.** Opening it, focusing it, and refreshing it create no
   playlist, no run, and no share.
 - **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the private deployment ([Deployment behind the Pangolin edge](../../ARCHITECTURE.md#deployment-behind-the-pangolin-edge)).
-
-## Testing Decisions
-
-- **The seam is the component plus the two reads it makes.** The library is exercised with a mocked network:
-  `GET /playlists` for the list and `GET /accounts` for the one owner name a shared item needs. The dialog is
-  exercised by submitting it and asserting the request the client made and the state it moved to, never the
-  internals of the form.
-- **What makes a good test here** is what a person sees and what the client asks for, never the order of
-  renders. A test that asserts a fetch fired is a test of the plumbing; one that says an empty account shows
-  "Add a playlist" and a shared item shows its owner's name is a test of the feature.
-- **The cases that must exist:**
-  - a populated library renders one item per playlist with its name, count and sync line;
-  - an account with no playlists renders the empty gallery and its action, and not the playlist empty state;
-  - a playlist in `syncing` renders as syncing, and one in `error` renders the failed state;
-  - a playlist that has never synced renders as never synced rather than as a fault;
-  - a shared item renders the owner's display name, and an owned item renders no line;
-  - a shared item's owner is missing from the directory page and the item falls back to the indicator alone;
-  - the cover and the name both navigate to `/playlists/:id`, and the cover link is not separately announced;
-  - submitting the dialog with a valid URL posts it, closes, and invalidates the list;
-  - submitting an invalid or empty URL is refused by the schema and no request is made;
-  - the page has no search, sort, filter or pagination control;
-  - a revoked playlist disappears on the next list read and nothing else changes.
-- **Prior art:** the library component's own test already renders through the query provider against a mocked
-  list, and the fixtures are the shapes the cases above assert against. The shared-access
-  helpers behind `GET /playlists` already cover what a caller can see, so this spec tests the screen and not
-  the visibility rule.
 
 ## Out of Scope
 

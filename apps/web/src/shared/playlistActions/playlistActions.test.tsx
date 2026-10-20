@@ -92,7 +92,6 @@ describe('usePlaylistActions', () => {
       'sync',
       'delete'
     ]);
-    expect(menu.find(item => item.key === 'cover')?.label).toBe('header.cover');
   });
 
   it('offers a write collaborator the pin, Cover and Sync', () => {

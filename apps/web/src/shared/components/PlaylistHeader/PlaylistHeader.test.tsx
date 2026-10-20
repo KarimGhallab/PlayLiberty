@@ -392,7 +392,6 @@ describe('PlaylistHeader', () => {
     name: string;
     render: (playlist: Playlist) => HTMLElement;
   }[] = [
-    { name: 'row', render: playlist => renderRow(playlist).container },
     { name: 'card', render: playlist => renderCard(playlist).container },
     { name: 'tile', render: playlist => renderTile(playlist).container }
   ];

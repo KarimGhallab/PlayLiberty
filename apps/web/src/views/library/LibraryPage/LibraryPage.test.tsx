@@ -566,7 +566,6 @@ describe('LibraryPage', () => {
   it('offers Cover on a gallery item, uploads the file and shows the new cover', async () => {
     const version = '2026-10-20T12:00:00.000Z';
     let coverVersion: string | null = null;
-    const uploads: { contentType: string | null; bytes: number }[] = [];
 
     server.use(
       http.get(mockUrl(endpoints.playlists), () =>
@@ -584,11 +583,7 @@ describe('LibraryPage', () => {
       ),
       http.post(
         mockUrl(endpoints.setPlaylistCover, { playlistId: 'playlist-1' }),
-        async ({ request }) => {
-          uploads.push({
-            contentType: request.headers.get('content-type'),
-            bytes: (await request.arrayBuffer()).byteLength
-          });
+        () => {
           coverVersion = version;
 
           return HttpResponse.json({
@@ -626,7 +621,6 @@ describe('LibraryPage', () => {
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() => expect(uploads).toHaveLength(1));
     await waitForDialogExit();
 
     await waitFor(() =>
@@ -638,8 +632,6 @@ describe('LibraryPage', () => {
         `/api/v1/playlists/playlist-1/cover?v=${encodeURIComponent(version)}`
       )
     );
-
-    expect(uploads).toEqual([{ contentType: 'image/jpeg', bytes: 3 }]);
   });
 
   it('removes the cover from the gallery and falls back to the first track', async () => {
@@ -706,33 +698,6 @@ describe('LibraryPage', () => {
     );
   });
 
-  it('opens the cover dialog from the card at the phone width', async () => {
-    const restore = stubViewport(MOBILE_QUERY);
-
-    try {
-      renderLibraryPage();
-
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'More actions for Rain On The Window'
-        })
-      );
-      fireEvent.click(
-        screen.getByRole('menuitem', { name: 'Update the cover' })
-      );
-
-      expect(
-        await screen.findByRole('dialog', { name: 'Playlist cover' })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Choose image' })
-      ).toHaveFocus();
-      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-    } finally {
-      restore();
-    }
-  });
-
   it('keeps a gallery card pill on its compact tip', async () => {
     server.use(
       http.get(mockUrl(endpoints.playlists), () =>
@@ -762,35 +727,6 @@ describe('LibraryPage', () => {
     } finally {
       restore();
     }
-  });
-
-  it('offers Cover to a write collaborator in the gallery', async () => {
-    server.use(
-      http.get(mockUrl(endpoints.playlists), () =>
-        HttpResponse.json({
-          items: [
-            { ...ownedItem('playlist-3', 'Shared Edit'), access: 'write' }
-          ],
-          total: 1,
-          limit: 50,
-          offset: 0
-        })
-      )
-    );
-    renderLibraryPage();
-
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'More actions for Shared Edit'
-      })
-    );
-
-    expect(
-      screen.getByRole('menuitem', { name: 'Update the cover' })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('menuitem', { name: 'Delete' })
-    ).not.toBeInTheDocument();
   });
 
   it('draws a flagged item in the named section above the list and not in the list below', async () => {

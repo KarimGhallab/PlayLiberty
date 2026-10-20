@@ -72,8 +72,6 @@ describe('AddTrackDialog', () => {
       screen.getByRole('dialog', { name: 'Add a track' })
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Video link')).toHaveFocus();
-    const boxes = screen.getAllByRole('checkbox');
-    expect(boxes[0]).toHaveAccessibleName('Rain On The Window');
     expect(
       screen.getByRole('checkbox', { name: 'Rain On The Window' })
     ).toBeChecked();

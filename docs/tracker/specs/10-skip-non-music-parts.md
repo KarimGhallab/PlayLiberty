@@ -1,7 +1,7 @@
 # Skip non-music parts
 
-Status: ready
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -28,54 +28,6 @@ created from then on and is never retroactive. A track is therefore stored alrea
 matching what is heard. A video with no SponsorBlock data is stored whole. A video whose SponsorBlock lookup
 fails fails the track and waits for the next sync, and the listener can force a single fileless track to be
 fetched whole when the trimmed result is wrong.
-
-## User Stories
-
-1. As a listener, I want the talking before the music removed, so that a track begins with the music.
-2. As a listener, I want a sponsor read or a self-promotion removed, so that an ad is not part of a song.
-3. As a listener, I want the non-music sections of a long upload removed, so that an album or a mix plays as
-   music end to end.
-4. As a listener, I want the removal to happen when the track is fetched, so that adding a playlist is the only
-   action I take.
-5. As a listener, I want "Skip non-music parts" on by default when I add a playlist, so that I get the
-   behaviour without hunting for a setting.
-6. As a listener, I want to turn it off when I add the playlist, so that a source I want whole stays whole.
-7. As a listener, I want to change the setting later, so that a playlist I set up before I knew about it is not
-   stuck.
-8. As a listener, I want a change not to be retroactive, so that turning it off does not disturb tracks I
-   already have.
-9. As a listener, I want the audio not to be re-encoded, so that it sounds as it did and plays natively
-   everywhere.
-10. As a listener, I want the stored duration to match what I hear, so that the player's clock and the scrub bar
-    are right.
-11. As a listener, I want a video with no SponsorBlock entry stored whole, so that a missing community entry
-    costs me nothing.
-12. As a listener, I want a track whose SponsorBlock lookup failed to be retried by my next sync, so that a
-    temporary outage does not cost me a song permanently.
-13. As a listener, I want that track to read as failed and not as gone, so that a retryable fault and a deleted
-    video are distinguishable.
-14. As a listener, I want to force one track to be fetched whole when the trimmed result is wrong, so that I
-    have a way out.
-15. As a listener, I want that force to apply to the one track I asked for, so that my repair does not change
-    somebody else's playlist.
-16. As a member of a household, I want a video two of us reference to be stored once, so that the house keeps
-    one copy and YouTube sees one request.
-17. As a member of a household, I want the first playlist to fetch a video to set its trimming for everyone, so
-    that the single stored file is a rule and not a race.
-18. As an owner, I want to change my playlist's setting after creation, so that the default follows what I now
-    want, without touching tracks already fetched.
-19. As an owner, I want to see why a track in my playlist is full length when I expected it trimmed, so that
-    the store is not a black box.
-20. As an operator, I want the cut to be a stream copy, so that the server stays a file server and the
-    no-transcoding rule holds.
-21. As an operator, I want the policy read from the track row, so that the worker needs no playlist and no
-    second queue.
-22. As an operator, I want a SponsorBlock failure to be classified and logged, so that a fault is diagnosable
-    without a debugger.
-23. As an operator, I want the categories to be fixed in code, so that the removal is one behaviour and not a
-    configuration surface.
-24. As an operator, I want the cost of an outage to be known and accepted, so that the retry behaviour is a
-    decision rather than an accident.
 
 ## Implementation Decisions
 
@@ -115,9 +67,9 @@ fetched whole when the trimmed result is wrong.
   is an operator deleting the media object, not a per-listener action.
 - **There is no over-removal guard.** A segment set that spans most of a track is honoured, because the
   community's own data and voting are the guard and a second ceiling would only add a silent exception.
-  _Decided here._
+
 - **There is no reprocessing when SponsorBlock data changes.** Segment data is community-edited and drifts, and
-  the app re-reads nothing after the download. _Decided here._ The consequence is stated plainly: a wrong
+  the app re-reads nothing after the download. The consequence is stated plainly: a wrong
   segment set is permanent for a stored track, recoverable only by the bypass on a fileless track.
 - **A video with no segments, or none in the three categories, is stored whole and is not a failure.** The
   same result follows when yt-dlp drops a segment whose stored `videoDuration` no longer matches the video, so
@@ -139,39 +91,11 @@ fetched whole when the trimmed result is wrong.
 - **An outage costs a full download per retry, and that is accepted.** yt-dlp fetches the whole file before it
   exits non-zero on a SponsorBlock error, so a failed attempt is not free. The alternative, pre-flighting the
   API in our own code, would reimplement the tool's hash lookup and filters and would be a second thing to keep
-  in step. _Decided here._
+  in step.
 - **Inherited constraints are owned by the architecture and not restated here:** no transcoding, ever, and the AAC/M4A
   store with the Opus tolerance ([Audio is stored as-is, never transcoded](../../ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded)), identity from the
   forwarded edge headers ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client
   header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
-
-## Testing Decisions
-
-- **No new seam.** The behavior is exercised through the real app over a temporary database and media root,
-  with the fake YouTube adapter that [02](02-store-a-track.md) already introduced and that the sync tests
-  already use. The flag is asserted on the adapter's argument tests, one level below, next to the existing
-  argument tests, and the error classification is asserted there too.
-- **What makes a good test here** is the resulting state and the bytes served, never the sequence of tool
-  invocations. A test that asserts yt-dlp was passed `--sponsorblock-remove` is an adapter argument test; a
-  test that stores a track and reads its duration back, or reads a trimmed file's bytes, is the feature test.
-- **The cases that must exist:**
-  - a playlist created without the option defaults to skip, and one created with it off records false;
-  - the created playlist's value is returned on the read and cannot be changed by an update;
-  - a sync creates a track carrying the syncing playlist's value;
-  - a manual add to several playlists with mixed values records the first writable playlist's value;
-  - a second playlist referencing a stored track does not re-fetch it and does not change its value;
-  - the adapter receives `skipNonMusic` true for a skip track and the download arguments carry the three
-    categories, and receives false with no removal flag for a bypassed track;
-  - a successful download writes the duration the fake adapter reports, not the source duration;
-  - a SponsorBlock-classified failure leaves `failed` with the stable reason and not `unavailable`, and the next
-    sync returns it to `pending`;
-  - the bypass sets `skip_non_music` false, returns the track to `pending`, and the next pass downloads it
-    whole;
-  - a track with a stored file has no bypass path that would overwrite the shared file;
-  - a download that reports no segments stores the track whole and `stored`.
-- **Prior art:** the server route tests in [02](02-store-a-track.md) that build the real app over a temporary
-  database and media root and assert against the contract schemas, and the adapter's argument tests, which is
-  the level below and stays there.
 
 ## Out of Scope
 
@@ -184,19 +108,3 @@ fetched whole when the trimmed result is wrong.
 - Healing an already-stored track, which is an operator action on the media object.
 - Any client surface beyond the playlist detail's track row, where the state word, the server's failure sentence
   and the bypass control live.
-
-## Further Notes
-
-- **The lossless claim is verified, not assumed.** On a real music video with a `music_offtopic` segment,
-  `--sponsorblock-remove` kept every remaining AAC packet byte-identical to the source, aligned to a 1024-sample
-  frame, at the same 128 kbps, while `--force-keyframes-at-cuts` changed the bit rate and the packets from the
-  first one onward. The two commands differ by exactly one flag, which is why the flag is called out above.
-- **Coverage on music content is real.** `music_offtopic` segments are present on popular official videos, not
-  only on podcasts, including non-music intros of tens of seconds and trailing outros. The three categories are
-  worth having for the video sources the gallery is likely to contain.
-- **The failure signature** is `Unable to communicate with SponsorBlock API` and `SponsorBlock information is
-unavailable`, and on an outage yt-dlp still writes a complete, untrimmed file before exiting non-zero. That is
-  where the accepted outage cost comes from.
-- **The residual risk is the residual risk.** With no guard, no reprocessing, and a non-retroactive write, a
-  wrong segment set is unrecoverable for a track that already has a file. This is a deliberate choice, recorded
-  here so a later reader does not read it as an oversight.

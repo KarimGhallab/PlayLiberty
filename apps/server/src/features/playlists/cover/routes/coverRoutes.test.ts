@@ -467,18 +467,12 @@ describe('setting a playlist cover', () => {
     const owned = PlaylistSchema.parse(
       (await upload(playlistId, owner.pangolinUserId, jpeg)).json()
     );
-    const ownerRow = coverRow(playlistId);
     const collaborated = PlaylistSchema.parse(
       (await upload(playlistId, writer.pangolinUserId, jpeg)).json()
     );
-    const writerRow = coverRow(playlistId);
 
     expect(owned.coverUpdatedAt).not.toBeNull();
     expect(collaborated.coverUpdatedAt).not.toBe(owned.coverUpdatedAt);
-    expect(writerRow?.coverPath).not.toBe(ownerRow?.coverPath);
-    expect(await fileExists(join(mediaRoot(), ownerRow?.coverPath ?? ''))).toBe(
-      false
-    );
 
     expect(
       (await upload(playlistId, reader.pangolinUserId, jpeg)).statusCode

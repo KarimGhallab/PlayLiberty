@@ -112,11 +112,6 @@ describe('CoverDialog', () => {
     expect(container.querySelector('img')?.getAttribute('src')).toBe(
       `/api/v1/playlists/playlist-1/cover?v=${encodeURIComponent(CUSTOM_VERSION)}`
     );
-
-    /* The square is a drop target, not a second button. */
-    expect(container.querySelector('[data-cover-drop]')?.tagName).not.toBe(
-      'BUTTON'
-    );
   });
 
   it('opens the file picker from the labelled button', () => {

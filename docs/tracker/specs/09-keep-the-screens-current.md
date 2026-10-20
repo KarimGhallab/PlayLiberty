@@ -1,7 +1,7 @@
 # Keep the screens current
 
-Status: ready
-Labels: `enhancement`, `ready-for-agent`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 
@@ -26,37 +26,6 @@ reads the event names, so a settled library is a still screen and an idle instan
 Every mutation invalidates the reads it changed, so a rename, delete, add, remove, retry, share or sync shows
 its result without a manual reload. An expired session is handled once per tab by navigating so the edge can
 re-authenticate, and a second refusal is shown as the problem it is rather than reloading forever.
-
-## User Stories
-
-1. As a listener, I want to paste a playlist and watch it fill, so that a quiet screen is not a broken one.
-2. As a listener, I want the counts and the state to update when a sync finishes, so that I do not have to
-   reload to see the result.
-3. As a listener, I want a track to move from pending to downloading to playable on its own, so that the list
-   tells me what is happening.
-4. As a listener, I want the list to stop refreshing once everything is settled, so that the app is not doing
-   work I did not ask for.
-5. As a listener, I want the library and the playlist to agree, so that two screens are not two versions of one
-   fact.
-6. As a listener, I want a rename, a delete, a removal or a retry to show up at once, so that my action has a
-   visible result.
-7. As a listener, I want a share I grant or revoke to change the library at once, in both directions.
-8. As a listener, I want the latest run's figures and its error to appear without a reload, so that the sync
-   summary and the sync error are live rather than a snapshot.
-9. As a listener, I want a failed read to say so rather than to look empty, so that "nothing there" and
-   "something broke" are different.
-10. As a listener, I want a playlist I have lost access to to read as gone, so that a revoked share is not a
-    fault.
-11. As a listener, I want my session to be re-established when it has expired, so that I am not stuck on a
-    screen that will not load.
-12. As a listener, I want an expired session not to turn into a reload loop, so that a broken edge does not
-    make the tab unusable.
-13. As an account, I want every mutation to carry the client header and pass the origin check, so that another
-    site cannot change my library.
-14. As an account, I want a refusal to be shown as the problem the server sent, so that the message I read is
-    the one the server wrote.
-15. As an operator, I want the client to be told when work changes rather than to ask, so that an idle
-    instance answers nothing until there is something to say.
 
 ## Implementation Decisions
 
@@ -87,16 +56,16 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
   the current answer rather than the one from before. This is the one refresh that is not tied to work in
   flight.
 - **Every mutation invalidates the reads it changed, and nothing else.** The map, once:
-  - creating a playlist invalidates `['playlists']`;
-  - starting a sync invalidates `['playlist', id]`, `['playlist', id, 'sync-run', 'latest']` and
-    `['playlist', id, 'tracks']`;
-  - rename and delete invalidate `['playlists']` and `['playlist', id]`, and delete also removes
-    `['playlist', id]` from the cache so a deleted playlist does not linger;
-  - the batch add, remove and retry invalidate `['playlist', id, 'tracks']` and `['playlist', id]`, because the
-    track count moves with the association;
-  - granting and revoking a share invalidates `['playlist', id]`, `['playlist', id, 'shares']` and
-    `['playlists']`, because a collaborator's library changes too.
-    The map is exhaustive by design: a mutation that invalidates nothing is a screen that shows the old answer.
+- creating a playlist invalidates `['playlists']`;
+- starting a sync invalidates `['playlist', id]`, `['playlist', id, 'sync-run', 'latest']` and
+  `['playlist', id, 'tracks']`;
+- rename and delete invalidate `['playlists']` and `['playlist', id]`, and delete also removes
+  `['playlist', id]` from the cache so a deleted playlist does not linger;
+- the batch add, remove and retry invalidate `['playlist', id, 'tracks']` and `['playlist', id]`, because the
+  track count moves with the association;
+- granting and revoking a share invalidates `['playlist', id]`, `['playlist', id, 'shares']` and
+  `['playlists']`, because a collaborator's library changes too.
+  The map is exhaustive by design: a mutation that invalidates nothing is a screen that shows the old answer.
 - **No mutation is optimistic.** The server's answer is the state the screen shows, which is the same reason
   [`08-see-the-library`](08-see-the-library.md) does not draw a created playlist before the server returns it.
   An optimistic row would have to be reconciled against an id it does not have, and every mutation here already
@@ -130,40 +99,6 @@ re-authenticate, and a second refusal is shown as the problem it is rather than 
   give the list, and the latest run gives the summary or the error. They are three resources with three
   lifetimes, and invalidating one does not invalidate the others.
 - **Inherited constraints are owned by the architecture and not restated here:** identity from the forwarded edge headers and fail-closed ([Identity comes from Pangolin's forwarded headers](../../ARCHITECTURE.md#identity-comes-from-pangolins-forwarded-headers)), and the client header with the origin check ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)).
-
-## Testing Decisions
-
-- **The seam is the query client with a mocked network.** The screens are rendered against a `QueryClient` and
-  an MSW server, so what is asserted is the requests the client makes and the state the screen reaches, never
-  the internals of a hook. The player's own tests are
-  [`07-play-stored-audio`](07-play-stored-audio.md)'s and are not repeated here.
-- **What makes a good test here** is the behavior over a change: an event arrives, the client invalidates the
-  reads the event names, and the screen reaches the server's new answer. A test that asserts a hook was called
-  is a test of the wiring; one that emits an event through the injected `EventSource` port and asserts the
-  refetch is a test of the feature. The port is the seam for the stream, and the mocked network is the seam for
-  the answers; the real wire is covered end to end, because MSW cannot fake an `EventSource`.
-- **The cases that must exist:**
-  - a sync-status event invalidates the playlist, its run and its tracks, and the screen settles on the
-    server's new answer;
-  - a track file-status event invalidates the tracks and the playlist, and an event for a track in another
-    playlist leaves this screen alone;
-  - a playlist, association or share event invalidates the reads the map names, in this tab and in a second
-    one;
-  - a reconnect re-reads every query the client holds, and a settled instance receives no event at all;
-  - creating a playlist invalidates the library and the new item appears from the server;
-  - starting a sync invalidates the playlist, its run and its tracks;
-  - rename, delete, the batch add, remove and retry each invalidate the reads the map names;
-  - granting and revoking a share invalidate the playlist, its shares and the library;
-  - a failed read renders the error state and an empty read renders the empty state, and the two differ;
-  - a `404` from a revoked share renders the gone state rather than an error;
-  - a mutation without the client header is refused by the server, and the client always sends it;
-  - the first `401` in a tab navigates to the current URL, a second `401` in the same tab is surfaced as a
-    problem and does not navigate again, and a successful response clears the record;
-  - a problem document's title is what a person sees, and no raw status number is.
-- **Prior art:** the scaffold's API client already implements the same-origin request, the client header on
-  mutations, the problem parsing and the re-authentication guard, and the web client's library test already
-  renders through a query provider against a mocked network. This spec is the behavior those pieces are for,
-  and its tests are the ones that would have caught the reload loop the guard exists to prevent.
 
 ## Out of Scope
 

@@ -1,13 +1,13 @@
 # Architecture
 
-PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server and web client skeletons exist today, alongside the shared contracts, the design tokens, the shared UI decisions, the localization package, the YouTube adapter, and the utilities; the mobile client is planned. The non-obvious choices are stated in [Decisions](#decisions).
+PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, shared contracts, design tokens, shared UI decisions, localization package, and YouTube adapter exist; the mobile client is planned. The non-obvious choices are stated in [Decisions](#decisions).
 
 ## Components
 
 ### The applications
 
-- `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. Scaffolded; the feature behavior is still being built. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See [The server stack](#the-server-stack) and [The server's folder boundaries](#the-servers-folder-boundaries).
-- `apps/web` - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Scaffolded; the feature behavior is still being built. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
+- `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See [The server stack](#the-server-stack) and [The server's folder boundaries](#the-servers-folder-boundaries).
+- `apps/web` - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
 - `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
 
 ### The packages
@@ -25,7 +25,7 @@ One SQLite database and one media root, both owned by the server.
 - The database holds accounts, playlists, tracks, associations, suppressions, shares, and sync runs, in one SQLite file opened with `better-sqlite3` and Drizzle. A playlist carries its provider, its source playlist id, an optional server-only cover path, and the cover version the contract exposes (`coverUpdatedAt`); a track carries its provider and video id. Only the server process writes it, under WAL with a busy timeout.
 - The media root holds `media/<ab>/<videoId>.<ext>`, `thumbnails/<ab>/<videoId>.jpg` and `covers/<playlistId>-<token>.webp`. Audio and thumbnails are sharded by the first two characters of the video id; a cover is named by its playlist and a random token. Stored audio is faststart, so a browser can seek without fetching the file tail.
 - Audio deduplication is server-wide: one file per video id, referenced by every association, across every account. Covers are not deduplicated: a playlist holds one custom cover file per version.
-- There is no global library view in v1, so playlists are the only entry point, but the store is server-wide so a track survives as long as any association references it.
+- The store is server-wide, so a track survives as long as any association references it.
 
 ### YouTube
 
@@ -93,7 +93,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 ## Deployment shapes
 
 - Local development: `pnpm install`, then `pnpm run build` or `pnpm run watch`. The Vite dev server proxies `/api` to the running server; the mobile app runs as a development build against the public origin.
-- Production: private, behind the Pangolin authenticating edge. The nginx container is the origin: it joins the `pangolin_frontend` network (declared `external`), never publishes a host port, and serves the SPA while proxying the API to the server over the pod-local loopback. The server trusts Pangolin's forwarded `Remote-*` headers and fails closed without them. The mobile app is distributed as a sideloaded Android APK. See [Decisions](#decisions). The server and web `Containerfile`s, the dev `compose.yaml`, and the production unit `deploy/playliberty-web.kube` exist; the unit runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
+- Production: private, behind the Pangolin authenticating edge. The nginx origin serves the SPA and proxies the API to the server over the pod-local loopback; the concrete network and container rules live in [Deployment behind the Pangolin edge](#deployment-behind-the-pangolin-edge). The mobile app is distributed as a sideloaded Android APK. The server and web `Containerfile`s, the dev `compose.yaml`, and the production unit `deploy/playliberty-web.kube` exist; the unit runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
 - Clients: the web client is served through the edge; the mobile client carries its own per-user token and streams through the same edge.
 
 ## Decisions
@@ -138,7 +138,7 @@ Every `POST`, `PUT`, `PATCH`, and `DELETE` must carry the `X-PlayLiberty-Client`
 
 ### The server's folder boundaries
 
-`apps/server/src/` is four folders and a `main.ts`: `app/` the composition root and the request pipeline, `features/` one folder per domain module, `shared/` cross-cutting code no feature owns, and `platform/` the resources features sit on. Each feature holds its own routes, its own service, and its own contracts. Two dependency rules and one lint rule enforce the arrangement rather than a convention: `platform/` and `shared/` must not import `features/`, only `app/buildApp.ts` may import a route registrar, and raw SQL is confined to `platform/database/` and `shared/access/`. The rules exist because the rule for who may reach a playlist had been written three times in three feature folders before the split. See [Layer boundaries](#layer-boundaries-normative).
+The four folders are a dependency order, not a naming convention; the rules and their enforcement are in [Layer boundaries](#layer-boundaries-normative). The split exists because the rule for who may reach a playlist had been written three times in three feature folders.
 
 ### Adding a video is one batch request
 

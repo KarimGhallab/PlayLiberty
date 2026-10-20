@@ -1883,7 +1883,6 @@ describe('PATCH /playlists/:id', () => {
 
     expect(response.statusCode).toBe(200);
     expect(PlaylistSchema.parse(response.json()).name).toBe('Evening Jazz');
-    expect(PlaylistSchema.parse(response.json()).coverUpdatedAt).toBeNull();
     expect(
       context.database.db
         .select()

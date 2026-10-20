@@ -1,6 +1,6 @@
 # Glossary
 
-One word per idea. When a concept has two names here, pick the one in the left column and change the other.
+One word per idea. When a concept has two names here, pick the one in the left column and change the other. The product's non-goals live in [PRODUCT.md](PRODUCT.md#non-goals).
 
 ## Accounts and access
 
@@ -32,7 +32,7 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | Remote association | An association created by sync from the source.                                                                                      |
 | Manual association | An association created by pasting a single video URL and choosing playlists.                                                         |
 | Suppression        | A record per `(playlist, video id)` that stops a sync from re-adding a remote association the user removed.                          |
-| Media store        | The server-wide set of stored tracks, thumbnails and cover files. No global library view in v1; playlists are the only entry point.  |
+| Media store        | The server-wide set of stored tracks, thumbnails and cover files.                                                                    |
 
 ## Sync and lifecycle
 
@@ -59,12 +59,12 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 
 ## Playback and delivery
 
-| Term          | Meaning                                                                                   |
-| ------------- | ----------------------------------------------------------------------------------------- |
-| Stream        | Server-to-client delivery of a stored track over HTTP with `Range`. No audio transcoding. |
-| Range request | A partial-content request that lets a client seek within a track.                         |
-| Queue         | Per-client playback state. Not stored on the server.                                      |
-| Offline       | A client-side copy for playback without the server. Out of scope in v1.                   |
+| Term          | Meaning                                                                 |
+| ------------- | ----------------------------------------------------------------------- |
+| Stream        | Server-to-client delivery of a stored track over HTTP with `Range`.     |
+| Range request | A partial-content request that lets a client seek within a track.       |
+| Queue         | Per-client playback state. Not stored on the server.                    |
+| Offline       | A client-side copy for playback without the server. Out of scope in v1. |
 
 ## Language
 
@@ -72,10 +72,6 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Language | `en` or `fr`. The language the interface is rendered in. Resolved once per browser, from an explicit choice, then the browser's preference, then `en`. Per browser, never on the account, and never known to the server. The control that changes it sits on both the library and the playlist detail. |
 | Locale   | A browser preference tag such as `fr-CA`, matched to a supported Language by its base. The app stores the resolved Language, never the tag.                                                                                                                                                            |
-
-## Out of scope in v1
-
-Sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, audio transcoding, video, file export or download endpoints, ratings, play counts, and search.
 
 ## Terms that are easy to mix up
 
