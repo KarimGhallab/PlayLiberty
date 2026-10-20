@@ -45,6 +45,23 @@ import { playlistDoorProps } from './playlistDoor';
  * state while the others wait. */
 export type PlaybackStartControl = 'play' | 'shuffle';
 
+enum CoverFailure {
+  None = 'none',
+  Custom = 'custom',
+  Track = 'track'
+}
+
+/* The custom image carries its version, so a replacement is a new cache key. */
+function customCoverUrl(playlist: Playlist): string | null {
+  if (playlist.coverUpdatedAt === null) {
+    return null;
+  }
+
+  const path = mediaUrl(endpoints.playlistCover, { playlistId: playlist.id });
+
+  return `${path}?v=${encodeURIComponent(playlist.coverUpdatedAt)}`;
+}
+
 export interface PlaylistHeaderSeam {
   playlist: Playlist;
   ownerName?: string | null;
@@ -184,12 +201,24 @@ export function usePlaylistHeader({
   /* The identity hue a no-artwork cover draws. Derived from the id, so it is the
    * same sleeve wherever this playlist appears and it survives a reload. */
   const sleeve = sleeveIndex(playlist.id);
-  const coverSrc =
+  const customCoverSrc = customCoverUrl(playlist);
+  const trackCoverSrc =
     playlist.coverTrackId === null
       ? null
       : mediaUrl(endpoints.trackThumbnail, { trackId: playlist.coverTrackId });
-  const [coverFailed, setCoverFailed] = useState(false);
-  const cover = coverFailed ? null : coverSrc;
+  const [coverFailure, setCoverFailure] = useState(CoverFailure.None);
+  const showingCustom =
+    customCoverSrc !== null && coverFailure === CoverFailure.None;
+  const cover = showingCustom
+    ? customCoverSrc
+    : coverFailure === CoverFailure.Track
+      ? null
+      : trackCoverSrc;
+
+  /* The image has no source to name, so the failure state names which level
+   * failed: the custom image first, then the track thumbnail, then the sleeve. */
+  const onCoverError = () =>
+    setCoverFailure(showingCustom ? CoverFailure.Custom : CoverFailure.Track);
 
   const groundElement = ground ? (
     <span
@@ -209,8 +238,8 @@ export function usePlaylistHeader({
   const { run, endRun } = usePlayPauseMorph(playing);
 
   useEffect(() => {
-    setCoverFailed(false);
-  }, [playlist.coverTrackId]);
+    setCoverFailure(CoverFailure.None);
+  }, [playlist.coverUpdatedAt, playlist.coverTrackId]);
 
   const door = playlistDoorProps(pending);
 
@@ -533,7 +562,7 @@ export function usePlaylistHeader({
   return {
     sleeve,
     cover,
-    onCoverError: () => setCoverFailed(true),
+    onCoverError,
     ground: groundElement,
     primaryControl,
     shuffleControl,
