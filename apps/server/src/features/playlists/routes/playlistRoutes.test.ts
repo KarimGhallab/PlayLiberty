@@ -252,6 +252,7 @@ describe('GET /playlists', () => {
     expect(page.items).toHaveLength(1);
     expect(page.items[0]?.name).toBe('Evening');
     expect(page.items[0]?.trackCount).toBe(2);
+    expect(page.items[0]?.coverUpdatedAt).toBeNull();
     /* The library list carries the setting too, not just the single read. */
     expect(page.items[0]?.skipNonMusic).toBe(false);
   });
@@ -631,6 +632,7 @@ describe('GET /playlists/:id', () => {
     const playlist = PlaylistSchema.parse(response.json());
     expect(playlist.id).toBe(playlistId);
     expect(playlist.trackCount).toBe(1);
+    expect(playlist.coverUpdatedAt).toBeNull();
     /* The setting crosses the wire, so a client can show it. */
     expect(playlist.skipNonMusic).toBe(false);
   });
@@ -1874,6 +1876,7 @@ describe('PATCH /playlists/:id', () => {
 
     expect(response.statusCode).toBe(200);
     expect(PlaylistSchema.parse(response.json()).name).toBe('Evening Jazz');
+    expect(PlaylistSchema.parse(response.json()).coverUpdatedAt).toBeNull();
     expect(
       context.database.db
         .select()

@@ -74,6 +74,8 @@ export interface SeedPlaylistOptions {
   skipNonMusic?: boolean;
   sort?: PlaylistSort | null;
   lastSyncedAt?: string | null;
+  coverPath?: string | null;
+  coverUpdatedAt?: string | null;
   createdAt?: string;
 }
 
@@ -167,6 +169,8 @@ export function seedPlaylist(
       skipNonMusic: options.skipNonMusic ?? true,
       sort: options.sort ?? null,
       lastSyncedAt: options.lastSyncedAt ?? null,
+      coverPath: options.coverPath ?? null,
+      coverUpdatedAt: options.coverUpdatedAt ?? null,
       createdAt: options.createdAt ?? new Date().toISOString()
     })
     .run();

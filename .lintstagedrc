@@ -3,5 +3,5 @@
     "npx eslint --cache --fix --quiet",
     "npx prettier --list-different --write"
   ],
-  "!(*.{ts,tsx})": ["npx prettier --list-different --write"]
+  "!(*.{ts,tsx,sql})": ["npx prettier --list-different --write"]
 }

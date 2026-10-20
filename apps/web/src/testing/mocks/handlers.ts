@@ -183,6 +183,7 @@ const PLAYLIST_ONE: Playlist = {
   ownerAccountId: 'account-1',
   name: 'Rain On The Window',
   coverTrackId: null,
+  coverUpdatedAt: null,
   provider: Provider.Youtube,
   sourcePlaylistId: 'PL-demo',
   syncStatus: PlaylistSyncStatus.Idle,

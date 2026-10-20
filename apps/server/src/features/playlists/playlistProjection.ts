@@ -25,6 +25,7 @@ export function toPlaylistView(
     ownerAccountId: row.ownerAccountId,
     name: row.name,
     coverTrackId,
+    coverUpdatedAt: row.coverUpdatedAt,
     provider: row.provider,
     sourcePlaylistId: row.sourcePlaylistId,
     syncStatus: row.syncStatus,

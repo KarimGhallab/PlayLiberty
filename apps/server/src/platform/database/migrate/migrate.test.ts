@@ -54,7 +54,13 @@ describe('runMigrations', () => {
     expect(
       names(database, `select name from pragma_table_info('playlist')`)
     ).toEqual(
-      expect.arrayContaining(['source_url', 'skip_non_music', 'track_count'])
+      expect.arrayContaining([
+        'source_url',
+        'skip_non_music',
+        'track_count',
+        'cover_path',
+        'cover_updated_at'
+      ])
     );
     expect(
       names(database, `select name from pragma_table_info('track')`)

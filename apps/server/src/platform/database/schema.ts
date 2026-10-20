@@ -58,6 +58,8 @@ export const playlists = sqliteTable(
       .default(true),
     sort: text('sort').$type<PlaylistSort>(),
     lastSyncedAt: text('last_synced_at'),
+    coverPath: text('cover_path'),
+    coverUpdatedAt: text('cover_updated_at'),
     trackCount: integer('track_count').notNull().default(0),
     createdAt: text('created_at').notNull().$defaultFn(createdAt),
     updatedAt: text('updated_at').notNull().$defaultFn(createdAt)
