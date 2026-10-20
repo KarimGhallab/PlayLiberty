@@ -115,6 +115,11 @@ export const en = {
     wrongType: 'Choose a JPEG, PNG or WebP image.',
     tooLarge: 'Choose an image smaller than 5 MB.',
     uploadFailed: 'The cover could not be saved.',
+    remove: 'Remove cover',
+    removing: 'Removing',
+    removePrompt:
+      "Remove the custom cover? The playlist will use its first track's cover.",
+    removeFailed: 'The cover could not be removed.',
     save: 'Save',
     saving: 'Saving',
     discardPrompt: 'Discard this image? The image you chose will be lost.'

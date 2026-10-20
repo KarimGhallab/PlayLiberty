@@ -12,6 +12,7 @@ import {
   useDeletePlaylist,
   useFetchTrackWhole,
   useGrantShare,
+  useRemovePlaylistCover,
   useRemoveTrack,
   useRenamePlaylist,
   useRetryTrack,
@@ -114,6 +115,20 @@ describe('the mutation cache facts', () => {
           type: 'image/jpeg'
         })
       });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(facts.playlistChanged).toHaveBeenCalledWith(queryClient, PLAYLIST);
+  });
+
+  it('removing a cover refreshes the playlist and the gallery', async () => {
+    const { queryClient, facts, wrapper } = setup();
+    const { result } = renderHook(() => useRemovePlaylistCover(), { wrapper });
+
+    await act(async () => {
+      result.current.mutate(PLAYLIST);
     });
 
     await waitFor(() => {

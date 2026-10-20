@@ -770,6 +770,119 @@ describe('PlaylistDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('removes the custom cover and falls back to the first track', async () => {
+    const version = '2026-10-20T12:00:00.000Z';
+    let removed = false;
+    const deletes: string[] = [];
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({
+          ...playlistJson(true),
+          coverTrackId: 'track-9',
+          coverUpdatedAt: removed ? null : version
+        })
+      ),
+      http.delete(
+        mockUrl(endpoints.removePlaylistCover, { playlistId: PLAYLIST_ID }),
+        () => {
+          deletes.push('remove-cover');
+          removed = true;
+
+          return new HttpResponse(null, { status: 204 });
+        }
+      )
+    );
+
+    const { container } = renderDetail();
+    const opener = await screen.findByRole('button', {
+      name: 'More actions for Rain On The Window'
+    });
+
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Playlist cover'
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(
+      screen.getByText(
+        "Remove the custom cover? The playlist will use its first track's cover."
+      )
+    ).toBeInTheDocument();
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/v1/tracks/track-9/thumbnail'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Playlist cover' })
+      ).not.toBeInTheDocument()
+    );
+    expect(opener).toHaveFocus();
+    expect(deletes).toEqual(['remove-cover']);
+
+    await waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-arrangement="card"] img')
+          ?.getAttribute('src')
+      ).toBe('/api/v1/tracks/track-9/thumbnail')
+    );
+  });
+
+  it('keeps the custom cover and the dialog when removal fails', async () => {
+    const version = '2026-10-20T12:00:00.000Z';
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), coverUpdatedAt: version })
+      ),
+      http.delete(
+        mockUrl(endpoints.removePlaylistCover, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.InternalError,
+            status: 500,
+            title: 'Internal Server Error'
+          })
+      )
+    );
+
+    const { container } = renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remove cover' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(
+      await screen.findByText('The cover could not be removed.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Playlist cover' })
+    ).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-arrangement="card"] img')
+          ?.getAttribute('src')
+      ).toBe(
+        `/api/v1/playlists/playlist-1/cover?v=${encodeURIComponent(version)}`
+      )
+    );
+  });
+
   it('offers Cover to a write collaborator', async () => {
     server.use(
       http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>

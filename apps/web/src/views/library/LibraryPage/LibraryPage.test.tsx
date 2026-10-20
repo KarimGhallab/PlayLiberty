@@ -627,6 +627,70 @@ describe('LibraryPage', () => {
     expect(uploads).toEqual([{ contentType: 'image/jpeg', bytes: 3 }]);
   });
 
+  it('removes the cover from the gallery and falls back to the first track', async () => {
+    const version = '2026-10-20T12:00:00.000Z';
+    let removed = false;
+    const deletes: string[] = [];
+    const item = {
+      ...ownedItem('playlist-1', 'Rain On The Window'),
+      coverTrackId: 'track-9'
+    };
+
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...item,
+              coverUpdatedAt: removed ? null : version
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.delete(
+        mockUrl(endpoints.removePlaylistCover, { playlistId: 'playlist-1' }),
+        () => {
+          deletes.push('remove-cover');
+          removed = true;
+
+          return new HttpResponse(null, { status: 204 });
+        }
+      )
+    );
+
+    const { container } = renderLibraryPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Playlist cover'
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/v1/tracks/track-9/thumbnail'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    await waitForDialogExit();
+    expect(deletes).toEqual(['remove-cover']);
+
+    await waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-arrangement="tile"] img')
+          ?.getAttribute('src')
+      ).toBe('/api/v1/tracks/track-9/thumbnail')
+    );
+  });
+
   it('opens the cover dialog from the card at the phone width', async () => {
     const restore = stubViewport(MOBILE_QUERY);
 

@@ -118,6 +118,11 @@ export const fr: Messages = {
     wrongType: 'Choisissez une image JPEG, PNG ou WebP.',
     tooLarge: 'Choisissez une image de moins de 5 Mo.',
     uploadFailed: "L'image n'a pas pu être enregistrée.",
+    remove: "Retirer l'image",
+    removing: 'Retrait',
+    removePrompt:
+      "Retirer l'image personnalisée ? La playlist utilisera l'image de sa première piste.",
+    removeFailed: "L'image n'a pas pu être retirée.",
     save: 'Enregistrer',
     saving: 'Enregistrement',
     discardPrompt: "Abandonner cette image ? L'image choisie sera perdue."

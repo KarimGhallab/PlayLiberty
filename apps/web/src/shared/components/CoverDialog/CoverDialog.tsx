@@ -18,25 +18,31 @@ interface CoverDialogProps {
   readonly open: boolean;
   readonly playlist: Playlist;
   readonly onSubmit: (file: File) => void;
+  readonly onRemove?: () => void;
   readonly onClose: () => void;
   readonly onClosed?: () => void;
   readonly isWorking?: boolean;
+  readonly isRemoving?: boolean;
   readonly problem?: string | null;
+  readonly removeProblem?: string | null;
 }
 
 /*
- * One square is the whole cover surface: it shows the current or the chosen
- * image, and the labelled button below is its keyboard and touch path. The
- * server owns the bytes; this dialog only checks the type and size.
+ * One square is the whole cover surface: the current, chosen, or post-removal
+ * image, with the labelled button below as its keyboard path. The server owns
+ * the bytes; this dialog checks type and size and asks before removing.
  */
 export default function CoverDialog({
   open,
   playlist,
   onSubmit,
+  onRemove,
   onClose,
   onClosed,
   isWorking = false,
-  problem = null
+  isRemoving = false,
+  problem = null,
+  removeProblem = null
 }: CoverDialogProps) {
   const { t } = useI18n();
   const messageId = useId();
@@ -47,9 +53,12 @@ export default function CoverDialog({
   const [previewFailed, setPreviewFailed] = useState(false);
   const [invalid, setInvalid] = useState<string | null>(null);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
   const { cover: currentCover, onCoverError } = usePlaylistCover(playlist);
+  const { cover: replacementCover, onCoverError: onReplacementError } =
+    usePlaylistCover(playlist, false);
 
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -60,6 +69,7 @@ export default function CoverDialog({
       setPreviewFailed(false);
       setInvalid(null);
       setConfirmingDiscard(false);
+      setConfirmingRemove(false);
       setDragging(false);
     }
   }
@@ -72,15 +82,25 @@ export default function CoverDialog({
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  const message = invalid ?? problem;
+  const busy = isWorking || isRemoving;
+  const canRemove = onRemove !== undefined && playlist.coverUpdatedAt !== null;
+  const message = invalid ?? (confirmingRemove ? removeProblem : problem);
   const dirty = file !== null;
-  const source =
-    file === null ? currentCover : previewFailed ? null : previewUrl;
-  const onImageError =
-    file === null ? onCoverError : () => setPreviewFailed(true);
+  const source = confirmingRemove
+    ? replacementCover
+    : file === null
+      ? currentCover
+      : previewFailed
+        ? null
+        : previewUrl;
+  const onImageError = confirmingRemove
+    ? onReplacementError
+    : file === null
+      ? onCoverError
+      : () => setPreviewFailed(true);
 
   function selectFile(selected: File): void {
-    if (isWorking) {
+    if (busy) {
       return;
     }
 
@@ -101,7 +121,12 @@ export default function CoverDialog({
   }
 
   function requestClose(): void {
-    if (isWorking) {
+    if (busy) {
+      return;
+    }
+
+    if (confirmingRemove) {
+      setConfirmingRemove(false);
       return;
     }
 
@@ -119,7 +144,7 @@ export default function CoverDialog({
   }
 
   function submit(): void {
-    if (isWorking || file === null) {
+    if (busy || file === null) {
       return;
     }
 
@@ -135,7 +160,34 @@ export default function CoverDialog({
       onRequestClose={requestClose}
       onClosed={onClosed}
       actions={
-        confirmingDiscard ? (
+        confirmingRemove ? (
+          <>
+            <button
+              className={dialogStyles.dialog__secondary}
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirmingRemove(false)}>
+              {t('common.cancel')}
+            </button>
+            <button
+              className={dialogStyles.dialog__primary}
+              type="button"
+              data-destructive="true"
+              data-loading={isRemoving ? 'true' : undefined}
+              aria-busy={isRemoving}
+              disabled={busy}
+              onClick={onRemove}>
+              {isRemoving ? (
+                <>
+                  <Spinner />
+                  {t('coverDialog.removing')}
+                </>
+              ) : (
+                t('coverDialog.remove')
+              )}
+            </button>
+          </>
+        ) : confirmingDiscard ? (
           <>
             <button
               className={dialogStyles.dialog__secondary}
@@ -155,7 +207,7 @@ export default function CoverDialog({
             <button
               className={dialogStyles.dialog__secondary}
               type="button"
-              disabled={isWorking}
+              disabled={busy}
               onClick={requestClose}>
               {t('common.cancel')}
             </button>
@@ -164,7 +216,7 @@ export default function CoverDialog({
               type="button"
               data-loading={isWorking ? 'true' : undefined}
               aria-busy={isWorking}
-              disabled={isWorking || file === null}
+              disabled={busy || file === null}
               onClick={submit}>
               {isWorking ? (
                 <>
@@ -178,6 +230,11 @@ export default function CoverDialog({
           </>
         )
       }>
+      {confirmingRemove ? (
+        <p className={dialogStyles.dialog__discard} role="alert">
+          {t('coverDialog.removePrompt')}
+        </p>
+      ) : null}
       {confirmingDiscard ? (
         <p className={dialogStyles.dialog__discard} role="alert">
           {t('coverDialog.discardPrompt')}
@@ -192,14 +249,14 @@ export default function CoverDialog({
           data-sleeve={source === null ? sleeveIndex(playlist.id) : undefined}
           aria-hidden="true"
           onDragEnter={() => {
-            if (!isWorking) {
+            if (!busy) {
               setDragging(true);
             }
           }}
           onDragOver={event => {
             event.preventDefault();
 
-            if (!isWorking) {
+            if (!busy) {
               setDragging(true);
             }
           }}
@@ -236,7 +293,7 @@ export default function CoverDialog({
           className={styles.cover__input}
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          disabled={isWorking}
+          disabled={busy}
           hidden
           onChange={event => {
             const selected = event.target.files?.[0];
@@ -252,11 +309,23 @@ export default function CoverDialog({
           ref={chooseButton}
           className={`${dialogStyles.dialog__secondary} ${styles.cover__choose}`}
           type="button"
-          disabled={isWorking}
+          disabled={busy}
           aria-describedby={message === null ? undefined : messageId}
           onClick={() => fileInput.current?.click()}>
           {t('coverDialog.choose')}
         </button>
+        {canRemove && !confirmingRemove ? (
+          <button
+            className={styles.cover__remove}
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setConfirmingDiscard(false);
+              setConfirmingRemove(true);
+            }}>
+            {t('coverDialog.remove')}
+          </button>
+        ) : null}
       </div>
       {message === null ? null : (
         <p className={dialogStyles.field__message} id={messageId} role="alert">

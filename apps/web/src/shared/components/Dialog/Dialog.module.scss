@@ -124,6 +124,31 @@
     }
   }
 
+  &__primary[data-destructive='true'] {
+    color: var(--bg);
+    background: var(--tone-failed);
+    border-color: var(--tone-failed);
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--tone-failed) 88%, black);
+      border-color: color-mix(in srgb, var(--tone-failed) 88%, black);
+    }
+
+    &:disabled {
+      color: color-mix(in srgb, var(--tone-failed) 40%, var(--muted));
+      background: color-mix(
+        in srgb,
+        var(--tone-failed) 22%,
+        var(--surface-raised)
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--tone-failed) 35%,
+        var(--surface-raised)
+      );
+    }
+  }
+
   &__secondary:disabled,
   &__primary:disabled {
     cursor: not-allowed;

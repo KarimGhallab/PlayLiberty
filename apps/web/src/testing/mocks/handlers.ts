@@ -406,6 +406,7 @@ export const handlers = [
       }),
     PLAYLIST_ONE_PARAMS
   ),
+  mockEndpoint(endpoints.removePlaylistCover, NO_CONTENT, PLAYLIST_ONE_PARAMS),
   /* Echoes the sent value, so a test reads the optimistic result back. */
   mockEndpoint(
     endpoints.skipNonMusic,

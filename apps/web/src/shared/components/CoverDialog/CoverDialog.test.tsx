@@ -54,12 +54,19 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
   };
 }
 
+function coveredPlaylist(trackId: string | null = null): Playlist {
+  return playlist({
+    coverUpdatedAt: CUSTOM_VERSION,
+    coverTrackId: trackId
+  });
+}
+
 function imageFile(name = 'cover.jpg', type = 'image/jpeg', bytes = 8): File {
   return new File([new Uint8Array(bytes)], name, { type });
 }
 
-function renderDialog(props: Partial<Parameters<typeof CoverDialog>[0]> = {}) {
-  return render(
+function dialogElement(props: Partial<Parameters<typeof CoverDialog>[0]> = {}) {
+  return (
     <I18nProvider preferred={['en']}>
       <CoverDialog
         open
@@ -70,6 +77,10 @@ function renderDialog(props: Partial<Parameters<typeof CoverDialog>[0]> = {}) {
       />
     </I18nProvider>
   );
+}
+
+function renderDialog(props: Partial<Parameters<typeof CoverDialog>[0]> = {}) {
+  return render(dialogElement(props));
 }
 
 function choose(container: HTMLElement, file: File): void {
@@ -225,6 +236,138 @@ describe('CoverDialog', () => {
     );
   });
 
+  it('offers Remove only while a custom cover exists', () => {
+    const covered = renderDialog({
+      playlist: coveredPlaylist(),
+      onRemove: vi.fn()
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Remove cover' })
+    ).toBeInTheDocument();
+    covered.unmount();
+
+    renderDialog({ playlist: playlist(), onRemove: vi.fn() });
+
+    expect(
+      screen.queryByRole('button', { name: 'Remove cover' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps Remove available when the custom image fails', () => {
+    const { container } = renderDialog({
+      playlist: coveredPlaylist(),
+      onRemove: vi.fn()
+    });
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Remove cover' })
+    ).toBeInTheDocument();
+  });
+
+  it('asks once before removing, previews the first track, and Cancel returns', () => {
+    const onRemove = vi.fn();
+    const { container } = renderDialog({
+      playlist: coveredPlaylist('track-9'),
+      onRemove
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      "Remove the custom cover? The playlist will use its first track's cover."
+    );
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/v1/tracks/track-9/thumbnail'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      `/api/v1/playlists/playlist-1/cover?v=${encodeURIComponent(CUSTOM_VERSION)}`
+    );
+    expect(
+      screen.getByRole('button', { name: 'Remove cover' })
+    ).toBeInTheDocument();
+  });
+
+  it('previews the sleeve when there is no first track to fall back to', () => {
+    const { container } = renderDialog({
+      playlist: coveredPlaylist(),
+      onRemove: vi.fn()
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(
+      container.querySelector('[data-cover-drop]')?.getAttribute('data-art')
+    ).toBe('no-art');
+  });
+
+  it('falls back to the sleeve when the previewed track image fails', () => {
+    const { container } = renderDialog({
+      playlist: coveredPlaylist('track-9'),
+      onRemove: vi.fn()
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(
+      container.querySelector('[data-cover-drop]')?.getAttribute('data-art')
+    ).toBe('no-art');
+  });
+
+  it('removes once and reports the busy state', () => {
+    const onRemove = vi.fn();
+    const view = renderDialog({ playlist: coveredPlaylist(), onRemove });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(onRemove).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      dialogElement({
+        playlist: coveredPlaylist(),
+        onRemove,
+        isRemoving: true
+      })
+    );
+
+    const removing = screen.getByRole('button', { name: 'Removing' });
+    expect(removing).toBeDisabled();
+    expect(removing).toHaveAttribute('aria-busy', 'true');
+
+    fireEvent.click(removing);
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the dialog open with one sentence when removal fails', () => {
+    renderDialog({
+      playlist: coveredPlaylist(),
+      onRemove: vi.fn(),
+      removeProblem: 'The cover could not be removed.'
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Playlist cover' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('The cover could not be removed.')
+    ).toBeInTheDocument();
+  });
+
   it('asks before Cancel, Escape and the scrim discard a selection', () => {
     const onClose = vi.fn();
     const { container } = renderDialog({ onClose });
@@ -254,7 +397,10 @@ describe('CoverDialog', () => {
   });
 
   it('has no axe violations', async () => {
-    const { container } = renderDialog();
+    const { container } = renderDialog({
+      playlist: coveredPlaylist(),
+      onRemove: vi.fn()
+    });
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }

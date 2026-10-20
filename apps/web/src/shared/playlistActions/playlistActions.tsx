@@ -17,6 +17,7 @@ import { useI18n } from '@playliberty/i18n';
 import { problemSentence } from '../api/problem/problem';
 import {
   useDeletePlaylist,
+  useRemovePlaylistCover,
   useRenamePlaylist,
   useSetPlaylistCover,
   useSyncPlaylist,
@@ -28,9 +29,9 @@ import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylist
 import type { PendingAction } from '../components/useDeferredAction/types';
 
 /*
- * One module owns a surface's playlist actions: the four mutations, the menu
- * each playlist is given, and the two dialogs. A gallery reads it once rather
- * than once per item, so N items never multiply the observers or dialogs.
+ * One module owns a surface's playlist actions: the mutations, the menu each
+ * playlist is given, and the dialogs. A gallery reads it once rather than once
+ * per item, so N items never multiply the observers or dialogs.
  */
 
 export interface PlaylistAction {
@@ -63,7 +64,7 @@ export interface PlaylistActions {
   readonly menuFor: (
     playlist: Playlist | undefined
   ) => readonly PlaylistAction[];
-  /** The rename and share dialogs, for the page to place. */
+  /** The dialogs, for the page to place. */
   readonly dialogs: ReactNode;
   /** Start one playlist's sync. The same mutation the menu's Sync item runs. */
   readonly syncNow: (playlistId: string) => void;
@@ -88,6 +89,7 @@ export function usePlaylistActions(
   const sync = useSyncPlaylist();
   const rename = useRenamePlaylist();
   const cover = useSetPlaylistCover();
+  const removeCover = useRemovePlaylistCover();
   const remove = useDeletePlaylist();
   const pin = useUpdatePin();
   const [renameTarget, setRenameTarget] = useState<Playlist | null>(null);
@@ -141,9 +143,10 @@ export function usePlaylistActions(
       key: 'cover',
       label: 'header.cover',
       Icon: IconPhoto,
-      disabled: cover.isPending,
+      disabled: cover.isPending || removeCover.isPending,
       onSelect: () => {
         cover.reset();
+        removeCover.reset();
         setCoverTarget(playlist);
         setCoverOpen(true);
       }
@@ -216,17 +219,27 @@ export function usePlaylistActions(
             open={coverOpen}
             playlist={coverTarget}
             isWorking={cover.isPending}
+            isRemoving={removeCover.isPending}
             problem={cover.isError ? t('coverDialog.uploadFailed') : null}
+            removeProblem={
+              removeCover.isError ? t('coverDialog.removeFailed') : null
+            }
             onSubmit={file =>
               cover.mutate(
                 { playlistId: coverTarget.id, file },
                 { onSuccess: () => setCoverOpen(false) }
               )
             }
+            onRemove={() =>
+              removeCover.mutate(coverTarget.id, {
+                onSuccess: () => setCoverOpen(false)
+              })
+            }
             onClose={() => setCoverOpen(false)}
             onClosed={() => {
               setCoverTarget(null);
               cover.reset();
+              removeCover.reset();
             }}
           />
         )}

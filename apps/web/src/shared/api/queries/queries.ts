@@ -345,6 +345,27 @@ export function useSetPlaylistCover(): UseMutationResult<
   });
 }
 
+export function useRemovePlaylistCover(): UseMutationResult<
+  void,
+  Error,
+  string
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (playlistId: string) =>
+      deleteEndpoint(endpoints.removePlaylistCover, { playlistId }),
+    onSuccess: (_void, playlistId) => {
+      queryClient.setQueryData<Playlist>(['playlist', playlistId], previous =>
+        previous === undefined
+          ? undefined
+          : { ...previous, coverUpdatedAt: null }
+      );
+      cacheEffects.playlistChanged(queryClient, playlistId);
+    }
+  });
+}
+
 export interface RenamePlaylistVariables {
   readonly playlistId: string;
   readonly name: string;

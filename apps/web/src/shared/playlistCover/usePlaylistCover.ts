@@ -29,8 +29,11 @@ export interface PlaylistCover {
 
 /* The custom, first-track, sleeve chain every surface that draws a playlist
  * cover shares, so their failure states cannot drift. */
-export function usePlaylistCover(playlist: Playlist): PlaylistCover {
-  const customCoverSrc = customCoverUrl(playlist);
+export function usePlaylistCover(
+  playlist: Playlist,
+  includeCustom = true
+): PlaylistCover {
+  const customCoverSrc = includeCustom ? customCoverUrl(playlist) : null;
   const trackCoverSrc =
     playlist.coverTrackId === null
       ? null
@@ -51,7 +54,7 @@ export function usePlaylistCover(playlist: Playlist): PlaylistCover {
 
   useEffect(() => {
     setCoverFailure(CoverFailure.None);
-  }, [playlist.coverUpdatedAt, playlist.coverTrackId]);
+  }, [playlist.coverUpdatedAt, playlist.coverTrackId, includeCustom]);
 
   return { cover, onCoverError };
 }

@@ -79,6 +79,31 @@
     max-width: 280px;
   }
 
+  &__remove {
+    padding: 0;
+    color: var(--tone-failed);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      color: color-mix(in srgb, var(--tone-failed) 80%, var(--ink));
+    }
+
+    &:disabled {
+      color: var(--control-disabled-fg);
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
   &__input {
     display: none;
   }
