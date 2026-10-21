@@ -21,7 +21,6 @@ import type { SyncAllOutcome } from '../../../shared/api/queries/queries';
 import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
 import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
-import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import SyncAllControl from '../../../shared/components/SyncAllControl/SyncAllControl';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
@@ -45,14 +44,16 @@ import {
 
 import AddPlaylistDialog from '../AddPlaylistDialog/AddPlaylistDialog';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
+import LibraryFilterBar from '../LibraryFilterBar/LibraryFilterBar';
+import type { LibraryScope } from '../LibraryFilterBar/LibraryFilterBar';
 import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
 import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';
 
 const TRACK_STATUSES = Object.values(TrackFileStatus);
 
-/* The gallery's status filter reads the whole library: one total per status
- * over every playlist's counts. */
+/* The gallery's status filter reads the scope it is drawn over: one total per
+ * status over every playlist in that scope. */
 function totalStatusCounts(
   items: readonly PlaylistWithCounts[]
 ): TrackFileStatusCounts {
@@ -118,6 +119,7 @@ export default function LibraryPage() {
   const { play, shuffle, refusal, startingPress } = usePlayTransition();
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const docked = usePlayerStore(state => currentTrack(state) !== null);
+  const [scope, setScope] = useState<LibraryScope>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pinRefused, setPinRefused] = useState<Error | null>(null);
   const [syncAllNotice, setSyncAllNotice] = useState<SyncAllOutcome | null>(
@@ -147,15 +149,18 @@ export default function LibraryPage() {
   const refused = problemSentence(t, createPlaylist.error);
 
   const items = playlists.isSuccess ? playlists.data.items : [];
-  const statusCounts = totalStatusCounts(items);
+  const sharedItems = items.filter(playlist => playlist.access !== 'owner');
+  const hasShared = sharedItems.length > 0;
+  const scopedItems = scope === 'shared' ? sharedItems : items;
+  const statusCounts = totalStatusCounts(scopedItems);
   const hasStatusCounts = TRACK_STATUSES.some(
     status => statusCounts[status] > 0
   );
   const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
 
   /*
-   * A status the library no longer carries cannot stay in force; a live read
-   * that drops the last track in it returns the gallery to All.
+   * A status the scope no longer carries cannot stay in force; a live read
+   * that drops the last track in it returns the status rail to All.
    */
   useEffect(() => {
     if (statusFilter !== null && activeCount === 0) {
@@ -163,13 +168,20 @@ export default function LibraryPage() {
     }
   }, [statusFilter, activeCount]);
 
+  /* The scope cannot outlive the last share: its pair leaves the rail. */
+  useEffect(() => {
+    if (scope === 'shared' && !hasShared) {
+      setScope('all');
+    }
+  }, [scope, hasShared]);
+
   const visibleItems =
     statusFilter === null
-      ? items
-      : items.filter(playlist => playlist.counts[statusFilter] > 0);
+      ? scopedItems
+      : scopedItems.filter(playlist => playlist.counts[statusFilter] > 0);
 
   /*
-   * The bulk sync covers what the filter shows and the account can write, less
+   * The bulk sync covers what the filters show and the account can write, less
    * what is already running; this array is the set a press freezes.
    */
   const syncable = visibleItems.filter(
@@ -347,12 +359,19 @@ export default function LibraryPage() {
           )}
         </div>
       </div>
-      {playlists.isSuccess && items.length > 0 && hasStatusCounts ? (
-        <PlaylistFilterChips
+      {playlists.isSuccess &&
+      items.length > 0 &&
+      (hasShared || hasStatusCounts) ? (
+        <LibraryFilterBar
+          hasShared={hasShared}
+          totalCount={items.length}
+          sharedCount={sharedItems.length}
+          scope={scope}
+          onScopeChange={setScope}
           counts={statusCounts}
-          active={statusFilter}
-          showEmpty={false}
-          onChange={setStatusFilter}
+          showStatus={hasStatusCounts}
+          activeStatus={statusFilter}
+          onStatusChange={setStatusFilter}
         />
       ) : null}
       {playlists.isPending ? (

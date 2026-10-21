@@ -215,6 +215,13 @@
     color: var(--muted);
   }
 
+  /* A quiet shade of the shared role: readable without pulling focus from the
+   * name. Private keeps the neutral. */
+  &__share[data-share='own-shared'],
+  &__share[data-share='collab'] {
+    color: var(--shared-quiet);
+  }
+
   &__share-tip {
     display: none;
     position: absolute;
@@ -378,7 +385,7 @@
    * than a third fact on the meta line. */
   &__owner {
     margin: 0;
-    color: var(--muted);
+    color: var(--shared);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
   }

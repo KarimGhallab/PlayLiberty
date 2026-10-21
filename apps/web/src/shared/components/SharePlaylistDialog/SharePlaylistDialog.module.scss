@@ -73,10 +73,11 @@
       outline-offset: var(--focus-offset);
     }
 
+    /* The level in force names a share, so it takes the shared role. */
     &[aria-pressed='true'] {
-      color: var(--accent);
+      color: var(--shared);
       background: var(--surface);
-      border-color: var(--accent);
+      border-color: var(--shared);
     }
   }
 }

@@ -31,6 +31,15 @@ export const colors = {
   'control-border': { kind: TokenKind.Color, value: '#6e7379' },
   'accent-hover': { kind: TokenKind.Color, value: '#4cac90' },
   emphasis: { kind: TokenKind.Color, value: '#e39a3c' },
+
+  /* The shared role: a sky that names anything about sharing, a quiet shade for
+   * the card marks, and a surface and boundary for the gallery's shared scope. */
+  shared: { kind: TokenKind.Color, value: '#649fcb' },
+  'shared-quiet': { kind: TokenKind.Color, value: '#698ba5' },
+  'shared-surface': { kind: TokenKind.Color, value: '#132b3d' },
+  'shared-border': { kind: TokenKind.Color, value: '#44779c' },
+  'shared-muted': { kind: TokenKind.Color, value: '#87adcb' },
+
   'control-disabled-fg': { kind: TokenKind.Color, value: '#888b8d' },
   'control-disabled-bg': { kind: TokenKind.Color, value: '#1e2229' },
   scrim: { kind: TokenKind.Color, value: 'rgb(0 0 0 / 0.6)' },

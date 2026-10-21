@@ -29,6 +29,10 @@ export const fr: Messages = {
     readFailed: 'Impossible de charger les playlists.',
     pinned: 'Épinglées',
     syncing: 'Synchronisation en cours',
+    scopeAll: 'Toutes',
+    scopeShared: 'Partagées avec moi',
+    scopeLabel: 'Filtrer par propriétaire',
+    allTracks: 'Toutes les pistes',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
     notDownloaded: {
       one: "{count} piste n'est pas stockée",

@@ -436,6 +436,75 @@ describe('LibraryPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('narrows the gallery to the playlists shared with the account', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              trackCount: 3,
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+            },
+            sharedItem()
+          ],
+          total: 2,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    const scope = await screen.findByRole('group', {
+      name: 'Filter by owner'
+    });
+    const all = within(scope).getByRole('button', { name: 'All 2' });
+    const shared = within(scope).getByRole('button', {
+      name: 'Shared with me 1'
+    });
+
+    expect(all).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByRole('button', { name: 'All tracks 7' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Failed 2' })
+    ).toBeInTheDocument();
+
+    /* The status filter in force cannot survive a scope that lacks it. */
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 2' }));
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+
+    fireEvent.click(shared);
+
+    expect(await screen.findByText('Shared Mix')).toBeInTheDocument();
+    expect(screen.queryByText('Rain On The Window')).not.toBeInTheDocument();
+    expect(shared).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByRole('button', { name: 'All tracks 4' })
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.queryByRole('button', { name: 'Failed 2' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(all);
+
+    expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('draws no ownership scope when nothing is shared', async () => {
+    listRead([ownedItem('playlist-1', 'Rain On The Window')]);
+    renderLibraryPage();
+
+    expect(await screen.findByText('Rain On The Window')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Filter by owner' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 1' })).toBeInTheDocument();
+  });
+
   it('filters the gallery by a status its tracks carry', async () => {
     server.use(
       http.get(mockUrl(endpoints.playlists), () =>
@@ -1635,6 +1704,24 @@ describe('LibraryPage', () => {
     expect(
       screen.queryByRole('button', { name: /^Sync / })
     ).not.toBeInTheDocument();
+  });
+
+  it('narrows the bulk sync to the scope', async () => {
+    listRead([
+      ownedItem('playlist-1', 'Rain On The Window'),
+      { ...sharedItem(), access: 'write' }
+    ]);
+    renderLibraryPage();
+
+    expect(
+      await screen.findByRole('button', { name: 'Sync all 2 playlists' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Shared with me 1' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Sync 1 playlist' })
+    ).toBeInTheDocument();
   });
 
   it('locks the control while the loop runs, over the set the press took', async () => {

@@ -46,6 +46,15 @@ describe('PlaylistFilterChips', () => {
     expect(screen.getByRole('button', { name: 'Unavailable 0' })).toBeDefined();
   });
 
+  it('names All as the caller asks where another All is on screen', () => {
+    renderChips({ allLabelKey: 'library.allTracks' });
+
+    expect(screen.getByRole('button', { name: 'All tracks 3' })).toBeDefined();
+    expect(
+      screen.queryByRole('button', { name: 'All 3' })
+    ).not.toBeInTheDocument();
+  });
+
   it('offers only the statuses the counts carry when the caller asks', () => {
     renderChips({ showEmpty: false });
 

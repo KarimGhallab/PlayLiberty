@@ -27,6 +27,10 @@ export const en = {
     readFailed: 'Playlists could not be loaded.',
     pinned: 'Pinned',
     syncing: 'Syncing',
+    scopeAll: 'All',
+    scopeShared: 'Shared with me',
+    scopeLabel: 'Filter by owner',
+    allTracks: 'All tracks',
     pinFailed: 'The pin could not be changed.',
     notDownloaded: {
       one: '{count} track is not stored',
