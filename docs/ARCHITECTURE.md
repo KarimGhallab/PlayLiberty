@@ -86,6 +86,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `packages/contracts/src/` - the API Zod schemas and inferred types.
 - `packages/youtube/src/` - the yt-dlp adapter.
 - `scripts/validate-tsconfig-paths.cjs` - keeps `tsconfig.depcruise.json` paths aligned with the workspace.
+- `scripts/build-production-deployment.mjs` - the production build command behind `pnpm deploy:build-for-production`: it builds the `:latest` images, creates `/srv/playliberty` and ensures the three Podman secrets. It never installs or starts the unit.
 - `.dependency-cruiser.cjs` - layer and dependency rules, run on commit.
 - `docs/` - product, domain, architecture, and decisions.
 - `docs/tracker/tasks/` - the stack tasks and the scaffold tasks.
@@ -93,7 +94,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 ## Deployment shapes
 
 - Local development: `pnpm install`, then `pnpm run build` or `pnpm run watch`. The Vite dev server proxies `/api` to the running server; the mobile app runs as a development build against the public origin.
-- Production: private, behind the Pangolin authenticating edge. The nginx origin serves the SPA and proxies the API to the server over the pod-local loopback; the concrete network and container rules live in [Deployment behind the Pangolin edge](#deployment-behind-the-pangolin-edge). The mobile app is distributed as a sideloaded Android APK. The server and web `Containerfile`s, the dev `compose.yaml`, and the production unit `deploy/playliberty-web.kube` exist; the unit runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
+- Production: private, behind the Pangolin authenticating edge. The nginx origin serves the SPA and proxies the API to the server over the pod-local loopback; the concrete network and container rules live in [Deployment behind the Pangolin edge](#deployment-behind-the-pangolin-edge). The mobile app is distributed as a sideloaded Android APK. The server and web `Containerfile`s, the dev `compose.yaml`, and the production unit `deploy/playliberty-web.kube` exist; the unit runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network. The host is prepared by `pnpm deploy:build-for-production`, which builds the images, creates `/srv/playliberty` and ensures `playliberty_edge_assertion`, `playliberty_public_origin` and the optional `pangolin_admin_user`. The unit maps the deploying user to container UID 1000 with `UserNS=keep-id:uid=1000,gid=1000`. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
 - Clients: the web client is served through the edge; the mobile client carries its own per-user token and streams through the same edge.
 
 ## Decisions
@@ -102,7 +103,7 @@ The non-obvious choices, stated once and normative. Read the entry that touches 
 
 ### Deployment behind the Pangolin edge
 
-Production is private, behind the Pangolin authenticating edge. The origin never publishes a host port and attaches to the shared `pangolin_frontend` network declared `external`, running as a `systemd --user` Quadlet unit. Pangolin supplies the authentication the service would otherwise build, and an unauthenticated port would put a personal media service and its YouTube dependency on the network. The concrete container rules live in the deployment guideline.
+Production is private, behind the Pangolin authenticating edge. The origin never publishes a host port and attaches to the shared `pangolin_frontend` network declared `external`, running as a `systemd --user` Quadlet unit. Pangolin supplies the authentication the service would otherwise build, and an unauthenticated port would put a personal media service and its YouTube dependency on the network. The host is prepared by the build command, not by a deploy command; installing and starting the unit remains the operator's job. The concrete container rules live in the deployment guideline.
 
 ### Audio is stored as-is, never transcoded
 
@@ -114,7 +115,7 @@ Audio is served verbatim; images are the one kind of media the server re-encodes
 
 ### Identity comes from Pangolin's forwarded headers
 
-The server takes the account from the `Remote-User`, `Remote-Email`, `Remote-Name`, and `Remote-Role` headers the edge injects, auto-provisions an account on first sight, and fails closed when the headers are absent. The app runs no login and stores no password; the first admin is a config value matching a Pangolin user. Because reachability alone proved too implicit a guarantee, the origin also requires the edge to inject a secret `X-PlayLiberty-Edge` assertion on every request it proxies and refuses one without it, even a request carrying `Remote-*`; a production process refuses to start when the assertion is not configured. The network rule stays as the second layer.
+The server takes the account from the `Remote-User`, `Remote-Email`, `Remote-Name`, and `Remote-Role` headers the edge injects, auto-provisions an account on first sight, and fails closed when the headers are absent. The app runs no login and stores no password; the admin list is the optional `pangolin_admin_user` secret, whose values match exact `Remote-User` values. Because reachability alone proved too implicit a guarantee, the origin also requires the edge to inject a secret `X-PlayLiberty-Edge` assertion on every request it proxies and refuses one without it, even a request carrying `Remote-*`; a production process refuses to start when the assertion is not configured. The network rule stays as the second layer.
 
 ### The server stack
 

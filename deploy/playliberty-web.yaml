@@ -37,11 +37,11 @@ spec:
         - name: WEB_UPSTREAM
           value: 127.0.0.1:8081
       volumeMounts:
-        - name: nginx-conf
+        - name: playliberty-web-conf
           mountPath: /etc/nginx/conf.d
-        - name: nginx-cache
+        - name: playliberty-web-cache
           mountPath: /var/cache/nginx
-        - name: tmp
+        - name: playliberty-web-tmp
           mountPath: /tmp
       livenessProbe:
         exec:
@@ -84,17 +84,19 @@ spec:
           value: /media
         - name: DATABASE_PATH
           value: /data/playliberty.db
+        # The browser origin, compared exactly by the CSRF check.
         - name: PUBLIC_ORIGIN
-          value: https://playliberty.example.com
-        - name: PANGOLIN_API_URL
-          value: https://pangolin.example.com
-        - name: PANGOLIN_RESOURCE_ID
-          value: replace-me
-        - name: PANGOLIN_INTEGRATION_API_KEY
           valueFrom:
             secretKeyRef:
-              name: playliberty-secrets
-              key: pangolin-integration-api-key
+              name: playliberty_public_origin
+              key: PUBLIC_ORIGIN
+        # Optional: an absent secret means no admin account.
+        - name: ADMIN_PANGOLIN_USER_IDS
+          valueFrom:
+            secretKeyRef:
+              name: pangolin_admin_user
+              key: ADMIN_PANGOLIN_USER_IDS
+              optional: true
         - name: EDGE_ASSERTION
           valueFrom:
             secretKeyRef:
@@ -105,7 +107,7 @@ spec:
           mountPath: /media
         - name: data
           mountPath: /data
-        - name: tmp
+        - name: playliberty-server-tmp
           mountPath: /tmp
       livenessProbe:
         # No wget in the server image; node is the one probe runner it always has.
@@ -132,12 +134,16 @@ spec:
       hostPath:
         path: /srv/playliberty/data
         type: DirectoryOrCreate
-    - name: tmp
-      emptyDir:
-        sizeLimit: 64Mi
-    - name: nginx-conf
+    - name: playliberty-web-conf
       emptyDir:
         sizeLimit: 8Mi
-    - name: nginx-cache
+    - name: playliberty-web-cache
       emptyDir:
         sizeLimit: 32Mi
+    - name: playliberty-web-tmp
+      emptyDir:
+        medium: Memory
+        sizeLimit: 64Mi
+    - name: playliberty-server-tmp
+      emptyDir:
+        sizeLimit: 64Mi

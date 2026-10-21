@@ -9,7 +9,7 @@ operator.
 
 | Ticket                                                                                      | Status          | Blocked by                                   | Blocks                                               |
 | ------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------- | ---------------------------------------------------- |
-| [`01-audit-the-deployment-artifacts`](01-audit-the-deployment-artifacts.md)                 | ready-for-agent | none                                         | [`02`](02-build-the-production-deployment-script.md) |
+| [`01-audit-the-deployment-artifacts`](01-audit-the-deployment-artifacts.md)                 | resolved        | none                                         | [`02`](02-build-the-production-deployment-script.md) |
 | [`02-build-the-production-deployment-script`](02-build-the-production-deployment-script.md) | ready-for-agent | [`01`](01-audit-the-deployment-artifacts.md) | none                                                 |
 
 ## Conventions

@@ -16,3 +16,4 @@ Tooling lives at the root: TypeScript, ESLint, Prettier with import sorting, Hus
 - `pnpm run build` - build every workspace package in dependency order.
 - `pnpm run lint` - lint the repository.
 - `pnpm run format` - format the repository.
+- `pnpm deploy:build-for-production` - build the production images, prepare the host directories, and ensure the Podman secrets. It does not install or start the service.

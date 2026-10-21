@@ -15,7 +15,6 @@ COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/i18n/package.json packages/i18n/package.json
 COPY packages/tokens/package.json packages/tokens/package.json
 COPY packages/ui-foundation/package.json packages/ui-foundation/package.json
-COPY packages/utils/package.json packages/utils/package.json
 COPY packages/youtube/package.json packages/youtube/package.json
 # Only the web client's dependency graph is installed, so the server's native
 # modules (and their toolchain) never enter this image.
