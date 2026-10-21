@@ -1,6 +1,6 @@
 # Prepare the production deployment
 
-Status: ready
+Status: resolved
 Labels: `enhancement`
 
 ## Problem Statement
