@@ -4,3 +4,4 @@ Description=PlayLiberty web/server
 [Kube]
 Yaml=playliberty-web.yaml
 Network=pangolin_frontend.network
+UserNS=keep-id:uid=1000,gid=1000

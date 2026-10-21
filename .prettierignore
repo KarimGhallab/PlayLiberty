@@ -1,10 +1,15 @@
+# ignore files
 .gitignore
 .prettierignore
 
 .husky/
 
+# Database migration scripts
 apps/server/drizzle/
 
 *.conf.template
-
 *.toml
+
+# Deployment files
+ContainerFile
+*.kube
