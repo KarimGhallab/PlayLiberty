@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '@playliberty/i18n';
 
+import { stubViewport } from '../../../testing/viewport';
+import { TOUCH_QUERY } from '../../useMediaQuery/useMediaQuery';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 import PlayerBar from './PlayerBar';
@@ -103,6 +105,22 @@ describe('PlayerBar', () => {
     expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
     expect(screen.getByText('1:12')).toBeInTheDocument();
     expect(screen.getByText('3:00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mute' })).toBeInTheDocument();
+  });
+
+  it('leaves the level to the OS on a device that cannot hover', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    const restore = stubViewport(TOUCH_QUERY);
+
+    try {
+      await renderBar();
+
+      expect(
+        screen.queryByRole('button', { name: 'Mute' })
+      ).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 
   it('opens the playing playlist from its name', async () => {

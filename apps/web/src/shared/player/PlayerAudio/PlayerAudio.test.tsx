@@ -3,6 +3,8 @@ import { HttpResponse, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { server } from '../../../testing/mocks/server';
+import { stubViewport } from '../../../testing/viewport';
+import { TOUCH_QUERY } from '../../useMediaQuery/useMediaQuery';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 import PlayerAudio from './PlayerAudio';
@@ -241,6 +243,24 @@ describe('PlayerAudio', () => {
     });
 
     expect(audio().volume).toBeCloseTo(0.3);
+  });
+
+  it('leaves the level to the OS on a device that cannot hover', () => {
+    const restore = stubViewport(TOUCH_QUERY);
+
+    try {
+      render(<PlayerAudio />);
+
+      act(() => {
+        usePlayerStore.getState().setVolume(0.3);
+        usePlayerStore.getState().setMuted(true);
+      });
+
+      expect(audio().volume).toBe(1);
+      expect(audio().muted).toBe(false);
+    } finally {
+      restore();
+    }
   });
 
   it('advances when a track ends and stops when the queue is spent', () => {

@@ -45,6 +45,13 @@ function readMatch(query: string): boolean {
  * 1056. Not a custom property, so each branching stylesheet restates it. */
 export const MOBILE_QUERY = '(max-width: 767px)';
 
+/*
+ * Input capability, not width: a phone in landscape is 844px wide and a narrow
+ * desktop window still has a pointer. The player leaves the level to the OS on a
+ * device that cannot hover.
+ */
+export const TOUCH_QUERY = '(hover: none)';
+
 /** The preference that removes motion without removing the state change. */
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 

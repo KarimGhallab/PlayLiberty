@@ -103,6 +103,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`90-the-gallery-cannot-sync-every-playlist-at-once`](90-the-gallery-cannot-sync-every-playlist-at-once.md)                                               | `resolved` | enhancement   | Sync is one overflow press per playlist, so the head row needs a Sync all over the filtered writable set.                   |
 | [`91-space-belongs-to-the-transport`](91-space-belongs-to-the-transport.md)                                                                               | `resolved` | enhancement   | Space is yielded to the focused control, so play/pause needs the body, and one predicate serves the arrows too.             |
 | [`92-shift-n-and-shift-p-do-not-skip`](92-shift-n-and-shift-p-do-not-skip.md)                                                                             | `resolved` | enhancement   | No shortcut skips a track; the bar's buttons are the only path and they need focus first.                                   |
+| [`93-the-player-bar-carries-a-level-control-a-phone-cannot-use`](93-the-player-bar-carries-a-level-control-a-phone-cannot-use.md)                         | `resolved` | enhancement   | A phone shows a mute and a rail it cannot use; the level belongs to the OS there, with the element pinned to 1.             |
 
 ## Conventions
 

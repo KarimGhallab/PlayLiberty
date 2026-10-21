@@ -8,6 +8,7 @@ import { formatDuration, useI18n } from '@playliberty/i18n';
 import { mediaUrl } from '../../api/endpoints/endpoints';
 import PlayGlyph from '../../components/PlayGlyph';
 import { usePlayPauseMorph } from '../../components/usePlayPauseMorph/usePlayPauseMorph';
+import { TOUCH_QUERY, useMediaQuery } from '../../useMediaQuery/useMediaQuery';
 import VolumeControl from '../VolumeControl/VolumeControl';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { ownsArrowKey, ownsGlobalKey } from '../transportKeys';
@@ -50,6 +51,7 @@ export default function PlayerBar() {
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
   const canSkipNext = usePlayerStore(hasNext);
+  const touch = useMediaQuery(TOUCH_QUERY);
   const scrubRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const { run, endRun } = usePlayPauseMorph(isPlaying);
@@ -317,9 +319,11 @@ export default function PlayerBar() {
           {formatDuration(duration)}
         </span>
       </div>
-      <div className={styles.playerBar__volume}>
-        <VolumeControl />
-      </div>
+      {touch ? null : (
+        <div className={styles.playerBar__volume}>
+          <VolumeControl />
+        </div>
+      )}
     </footer>
   );
 }
