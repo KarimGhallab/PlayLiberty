@@ -218,19 +218,67 @@ describe('PlayerBar', () => {
     expect(usePlayerStore.getState().isPlaying).toBe(true);
   });
 
-  it('leaves Space to a focused button', async () => {
+  /*
+   * #78 handed Space to whatever held focus; #91 takes it back, because Enter
+   * and the pointer still activate every control.
+   */
+  it('takes Space from a focused button without activating it', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     await renderBar();
     const play = screen.getByRole('button', { name: 'Pause' });
     play.focus();
 
+    /* Cancelled, so the browser synthesizes no click on the button. */
     const notCancelled = fireEvent.keyDown(play, { key: ' ' });
 
-    expect(notCancelled).toBe(true);
-    expect(usePlayerStore.getState().isPlaying).toBe(true);
-
-    fireEvent.click(play);
+    expect(notCancelled).toBe(false);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('takes Space from a link, a slider and a focusable badge alike', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    await renderBar();
+
+    const link = document.createElement('a');
+    link.href = '#track';
+    const slider = document.createElement('div');
+    slider.setAttribute('role', 'slider');
+    const badge = document.createElement('span');
+    badge.setAttribute('role', 'img');
+
+    for (const control of [link, slider, badge]) {
+      control.tabIndex = 0;
+      document.body.append(control);
+      control.focus();
+      const before = usePlayerStore.getState().isPlaying;
+
+      const notCancelled = fireEvent.keyDown(control, { key: ' ' });
+
+      expect(notCancelled).toBe(false);
+      expect(usePlayerStore.getState().isPlaying).toBe(!before);
+      control.remove();
+    }
+  });
+
+  it('leaves Space to an open menu and to a dialog', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    await renderBar();
+
+    for (const role of ['menu', 'dialog']) {
+      const surface = document.createElement('div');
+      const item = document.createElement('button');
+
+      surface.setAttribute('role', role);
+      surface.append(item);
+      document.body.append(surface);
+      item.focus();
+
+      const notCancelled = fireEvent.keyDown(item, { key: ' ' });
+
+      expect(notCancelled).toBe(true);
+      expect(usePlayerStore.getState().isPlaying).toBe(true);
+      surface.remove();
+    }
   });
 
   it('leaves the arrows to a focused menu, listbox or slider', async () => {

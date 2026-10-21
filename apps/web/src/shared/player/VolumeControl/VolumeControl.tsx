@@ -4,6 +4,7 @@ import { useI18n } from '@playliberty/i18n';
 
 import VolumeToast from '../VolumeToast/VolumeToast';
 import { usePlayerStore } from '../playerStore/playerStore';
+import { ownsArrowKey, ownsGlobalKey } from '../transportKeys';
 import { volumeIcon } from '../volumeIcon';
 import styles from './VolumeControl.module.scss';
 
@@ -47,16 +48,6 @@ export default function VolumeControl() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target;
-
-      if (
-        target instanceof HTMLElement &&
-        (target.isContentEditable ||
-          target.closest('input, textarea, select') !== null)
-      ) {
-        return;
-      }
-
       if (event.metaKey || event.ctrlKey || event.altKey) {
         return;
       }
@@ -65,6 +56,10 @@ export default function VolumeControl() {
       const state = usePlayerStore.getState();
 
       if (event.key === 'ArrowUp') {
+        if (ownsArrowKey(event)) {
+          return;
+        }
+
         event.preventDefault();
         setVolume(state.volume + KEYBOARD_STEP);
         setNotice(token => (token ?? 0) + 1);
@@ -72,6 +67,10 @@ export default function VolumeControl() {
       }
 
       if (event.key === 'ArrowDown') {
+        if (ownsArrowKey(event)) {
+          return;
+        }
+
         event.preventDefault();
         setVolume(state.volume - KEYBOARD_STEP);
         setNotice(token => (token ?? 0) + 1);
@@ -79,6 +78,10 @@ export default function VolumeControl() {
       }
 
       if (event.key === 'm' || event.key === 'M') {
+        if (ownsGlobalKey(event)) {
+          return;
+        }
+
         event.preventDefault();
         setMuted(!state.muted);
       }
