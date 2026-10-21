@@ -91,6 +91,30 @@ export default function PlayerBar() {
             ? SeekDirection.Forward
             : SeekDirection.Backward
         );
+        return;
+      }
+
+      /* Shift and a letter: no control activates on one, so only text entry and
+       * an open menu or dialog keep it. The store's own actions carry the grace
+       * window and the clamp, exactly as the bar's buttons do. */
+      if (event.shiftKey) {
+        const chord = event.key.toLowerCase();
+
+        if (chord !== 'n' && chord !== 'p') {
+          return;
+        }
+
+        if (ownsGlobalKey(event)) {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (chord === 'n') {
+          state.skipNext();
+        } else {
+          state.skipPrevious();
+        }
       }
     };
 
@@ -163,21 +187,34 @@ export default function PlayerBar() {
           </span>
         </div>
         <div className={styles.playerBar__transport}>
-          <button
-            type="button"
-            className={styles.playerBar__step}
-            aria-label={t('playerBar.previous')}
-            onClick={() => skipPrevious()}>
-            <IconPlayerSkipBack
-              className={styles.playerBar__stepIcon}
-              aria-hidden="true"
-              focusable="false"
-            />
-          </button>
+          <span className={styles.playerBar__hint}>
+            <button
+              type="button"
+              className={styles.playerBar__step}
+              aria-label={t('playerBar.previous')}
+              aria-keyshortcuts="Shift+P"
+              onClick={() => skipPrevious()}>
+              <IconPlayerSkipBack
+                className={styles.playerBar__stepIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+            </button>
+            <span className={styles.playerBar__tip} aria-hidden="true">
+              <kbd className={styles.playerBar__key}>
+                {t('playerBar.shortcutShift')}
+              </kbd>
+              +
+              <kbd className={styles.playerBar__key}>
+                {t('playerBar.shortcutPrevious')}
+              </kbd>
+            </span>
+          </span>
           <button
             type="button"
             className={styles.playerBar__play}
             aria-label={isPlaying ? t('playerBar.pause') : t('playerBar.play')}
+            aria-keyshortcuts="Space"
             data-run={run}
             onAnimationEnd={endRun}
             onClick={() => setPlaying(!isPlaying)}>
@@ -186,18 +223,30 @@ export default function PlayerBar() {
               stripClassName={styles.playerBar__strip}
             />
           </button>
-          <button
-            type="button"
-            className={styles.playerBar__step}
-            aria-label={t('playerBar.next')}
-            disabled={!canSkipNext}
-            onClick={() => skipNext()}>
-            <IconPlayerSkipForward
-              className={styles.playerBar__stepIcon}
-              aria-hidden="true"
-              focusable="false"
-            />
-          </button>
+          <span className={styles.playerBar__hint}>
+            <button
+              type="button"
+              className={styles.playerBar__step}
+              aria-label={t('playerBar.next')}
+              aria-keyshortcuts="Shift+N"
+              disabled={!canSkipNext}
+              onClick={() => skipNext()}>
+              <IconPlayerSkipForward
+                className={styles.playerBar__stepIcon}
+                aria-hidden="true"
+                focusable="false"
+              />
+            </button>
+            <span className={styles.playerBar__tip} aria-hidden="true">
+              <kbd className={styles.playerBar__key}>
+                {t('playerBar.shortcutShift')}
+              </kbd>
+              +
+              <kbd className={styles.playerBar__key}>
+                {t('playerBar.shortcutNext')}
+              </kbd>
+            </span>
+          </span>
         </div>
       </div>
       <div className={styles.playerBar__position}>

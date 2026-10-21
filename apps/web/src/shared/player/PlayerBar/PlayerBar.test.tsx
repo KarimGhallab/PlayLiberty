@@ -281,6 +281,136 @@ describe('PlayerBar', () => {
     }
   });
 
+  it('skips forward with Shift+N and back with Shift+P', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    fireEvent.keyDown(document.body, { key: 'N', shiftKey: true });
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+
+    fireEvent.keyDown(document.body, { key: 'P', shiftKey: true });
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+  });
+
+  it('takes the chords while a button has focus', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+    const play = screen.getByRole('button', { name: 'Pause' });
+    play.focus();
+
+    const notCancelled = fireEvent.keyDown(play, {
+      key: 'N',
+      shiftKey: true
+    });
+
+    expect(notCancelled).toBe(false);
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+  });
+
+  it('steps back through Shift+P only inside the grace window', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], second.id);
+    usePlayerStore.getState().setPosition(30);
+    await renderBar();
+
+    /* Past the grace window the press restarts the track in place. */
+    fireEvent.keyDown(document.body, { key: 'P', shiftKey: true });
+
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    usePlayerStore.getState().setPosition(2);
+    fireEvent.keyDown(document.body, { key: 'P', shiftKey: true });
+
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+  });
+
+  it('does not skip past the last track', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    await renderBar();
+
+    fireEvent.keyDown(document.body, { key: 'N', shiftKey: true });
+
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+  });
+
+  it('leaves the chords to a text field, an open menu and a dialog', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    const field = document.createElement('input');
+    document.body.append(field);
+    field.focus();
+    expect(fireEvent.keyDown(field, { key: 'N', shiftKey: true })).toBe(true);
+
+    for (const role of ['menu', 'dialog']) {
+      const surface = document.createElement('div');
+      const item = document.createElement('button');
+
+      surface.setAttribute('role', role);
+      surface.append(item);
+      document.body.append(surface);
+      item.focus();
+      expect(fireEvent.keyDown(item, { key: 'N', shiftKey: true })).toBe(true);
+      surface.remove();
+    }
+
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+    field.remove();
+  });
+
+  it('leaves a chord with another modifier to the browser', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    for (const modifier of ['ctrlKey', 'altKey', 'metaKey'] as const) {
+      const notCancelled = fireEvent.keyDown(document.body, {
+        key: 'N',
+        shiftKey: true,
+        [modifier]: true
+      });
+
+      expect(notCancelled).toBe(true);
+      expect(usePlayerStore.getState().currentId).toBe('track-1');
+    }
+  });
+
+  it('is a no-op with an empty queue', async () => {
+    await renderBar();
+
+    const notCancelled = fireEvent.keyDown(window, {
+      key: 'N',
+      shiftKey: true
+    });
+
+    expect(notCancelled).toBe(true);
+  });
+
+  it('keeps the chords on the playlist page', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar(`/playlists/${PLAYLIST}`);
+
+    fireEvent.keyDown(document.body, { key: 'N', shiftKey: true });
+
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+  });
+
+  it('announces the shortcuts on the transport buttons', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    expect(screen.getByRole('button', { name: 'Pause' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Space'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Previous track' })
+    ).toHaveAttribute('aria-keyshortcuts', 'Shift+P');
+    expect(screen.getByRole('button', { name: 'Next track' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Shift+N'
+    );
+  });
+
   it('leaves the arrows to a focused menu, listbox or slider', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     usePlayerStore.getState().setPosition(20);

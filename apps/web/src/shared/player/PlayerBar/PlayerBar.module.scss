@@ -129,6 +129,47 @@
     flex-shrink: 0;
   }
 
+  /* The step's chord, on hover or focus. Nothing shows at rest: the bar is the
+   * densest row on screen, and the play button carries none, Space being the
+   * one key nobody needs telling. */
+  &__hint {
+    position: relative;
+    display: inline-flex;
+  }
+
+  &__tip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + var(--space-2));
+    left: 50%;
+    z-index: var(--z-overlay);
+    gap: 3px;
+    padding: var(--space-1) var(--space-2);
+    translate: -50% 0;
+    background-color: var(--surface-raised);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-card);
+    white-space: nowrap;
+  }
+
+  &__hint:hover &__tip,
+  &__hint:focus-within &__tip {
+    display: inline-flex;
+  }
+
+  &__key {
+    min-width: 18px;
+    padding: 0 4px;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-xs);
+    line-height: 16px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--control-border);
+    border-radius: 4px;
+  }
+
   &__step {
     position: relative;
     display: grid;

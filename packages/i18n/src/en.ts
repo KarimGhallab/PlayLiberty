@@ -189,7 +189,10 @@ export const en = {
     play: 'Play',
     pause: 'Pause',
     position: 'Position in track',
-    positionValue: '{elapsed} of {duration}'
+    positionValue: '{elapsed} of {duration}',
+    shortcutShift: 'Shift',
+    shortcutPrevious: 'P',
+    shortcutNext: 'N'
   },
   volume: {
     label: 'Volume',

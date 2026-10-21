@@ -193,7 +193,10 @@ export const fr: Messages = {
     play: 'Lire',
     pause: 'Mettre en pause',
     position: 'Position dans la piste',
-    positionValue: '{elapsed} sur {duration}'
+    positionValue: '{elapsed} sur {duration}',
+    shortcutShift: 'Shift',
+    shortcutPrevious: 'P',
+    shortcutNext: 'N'
   },
   volume: {
     label: 'Volume',
