@@ -32,6 +32,27 @@ export const en = {
       one: '{count} track is not stored',
       other: '{count} tracks are not stored'
     },
+    syncAll: {
+      one: 'Sync 1 playlist',
+      other: 'Sync all {count} playlists'
+    },
+    syncingAll: {
+      one: 'Syncing 1 playlist...',
+      other: 'Syncing {count} playlists...'
+    },
+    syncAllStarted: {
+      one: 'Started 1 sync',
+      other: 'Started {count} syncs'
+    },
+    syncAllRunning: {
+      one: '1 is already running',
+      other: '{count} are already running'
+    },
+    syncAllNone: {
+      one: 'The playlist is already syncing',
+      other: 'All {count} playlists are already syncing'
+    },
+    syncAllStopped: 'Sync all stopped',
     deleteDeferred: 'Deleting playlist',
     empty: {
       heading: 'No playlists yet',

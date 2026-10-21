@@ -243,6 +243,20 @@ function createRefused(): { requests: Request[] } {
 }
 
 /* A list read whose items are exactly what the test hands in. */
+function listRead(items: readonly object[]): void {
+  server.use(
+    http.get(mockUrl(endpoints.playlists), () =>
+      HttpResponse.json({
+        items,
+        total: items.length,
+        limit: 50,
+        offset: 0
+      })
+    )
+  );
+}
+
+/* The same read, typed for the pin flow's own items. */
 function pinnedRead(items: ReturnType<typeof ownedItem>[]): void {
   server.use(
     http.get(mockUrl(endpoints.playlists), () =>
@@ -1520,5 +1534,232 @@ describe('LibraryPage', () => {
       await screen.findByRole('button', { name: 'Ajouter une playlist' })
     ).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('fr');
+  });
+
+  /*
+   * One press over the set the gallery shows and the account can write,
+   * skipping a run already going and never touching a read-only share.
+   */
+  it('syncs every writable playlist in view from one press', async () => {
+    const pressed: string[] = [];
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            ownedItem('playlist-1', 'Rain On The Window'),
+            ownedItem('playlist-2', 'Night Bus'),
+            { ...ownedItem('playlist-3', 'Shared Write'), access: 'write' },
+            sharedItem(),
+            {
+              ...ownedItem('playlist-4', 'Already Running'),
+              syncStatus: 'syncing'
+            }
+          ],
+          total: 5,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post(mockUrl(endpoints.syncPlaylist), ({ request }) => {
+        const parts = new URL(request.url).pathname.split('/');
+        pressed.push(parts[parts.length - 2] ?? '');
+
+        return HttpResponse.json(syncRun, { status: 202 });
+      })
+    );
+    renderLibraryPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sync all 3 playlists' })
+    );
+
+    await waitFor(() => {
+      expect(pressed).toEqual(['playlist-1', 'playlist-2', 'playlist-3']);
+    });
+  });
+
+  it('counts only the failed playlists the filter shows', async () => {
+    const pressed: string[] = [];
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              counts: { ...EMPTY_COUNTS, failed: 2 }
+            },
+            {
+              ...ownedItem('playlist-2', 'Night Bus'),
+              counts: { ...EMPTY_COUNTS, stored: 4 }
+            },
+            {
+              ...sharedItem(),
+              counts: { ...EMPTY_COUNTS, failed: 1 }
+            }
+          ],
+          total: 3,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post(mockUrl(endpoints.syncPlaylist), ({ request }) => {
+        const parts = new URL(request.url).pathname.split('/');
+        pressed.push(parts[parts.length - 2] ?? '');
+
+        return HttpResponse.json(syncRun, { status: 202 });
+      })
+    );
+    renderLibraryPage();
+
+    expect(
+      await screen.findByRole('button', { name: 'Sync all 2 playlists' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed 3' }));
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sync 1 playlist' })
+    );
+
+    await waitFor(() => {
+      expect(pressed).toEqual(['playlist-1']);
+    });
+  });
+
+  it('draws no sync all when the view holds nothing writable', async () => {
+    listRead([sharedItem()]);
+    renderLibraryPage();
+
+    await screen.findByText('Shared Mix');
+
+    expect(
+      screen.queryByRole('button', { name: /^Sync / })
+    ).not.toBeInTheDocument();
+  });
+
+  it('locks the control while the loop runs, over the set the press took', async () => {
+    let release = (): void => undefined;
+    const held = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            ownedItem('playlist-1', 'Rain On The Window'),
+            ownedItem('playlist-2', 'Night Bus')
+          ],
+          total: 2,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post(mockUrl(endpoints.syncPlaylist), async ({ request }) => {
+        const parts = new URL(request.url).pathname.split('/');
+        const playlistId = parts[parts.length - 2] ?? '';
+
+        if (playlistId === 'playlist-1') {
+          await held;
+        }
+
+        return HttpResponse.json(syncRun, { status: 202 });
+      })
+    );
+    renderLibraryPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sync all 2 playlists' })
+    );
+
+    const working = await screen.findByRole('button', {
+      name: 'Syncing 2 playlists...'
+    });
+    expect(working).toBeDisabled();
+    expect(working).toHaveAttribute('aria-busy', 'true');
+
+    release();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Sync all 2 playlists' })
+      ).toBeEnabled();
+    });
+  });
+
+  it('keeps the bulk action on screen while the syncs it started run', async () => {
+    let status = 'idle';
+    const items = (): ReturnType<typeof ownedItem>[] =>
+      [1, 2, 3].map(index => ({
+        ...ownedItem(`playlist-${index}`, `Mix ${index}`),
+        syncStatus: status
+      }));
+
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: items(),
+          total: 3,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post(mockUrl(endpoints.syncPlaylist), () => {
+        status = 'syncing';
+
+        return HttpResponse.json(syncRun, { status: 202 });
+      })
+    );
+    renderLibraryPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sync all 3 playlists' })
+    );
+
+    /* The loop ends on the last `202`, long before the runs do: once the list
+     * read reports them all running, the control has to still be there. */
+    await screen.findByRole('heading', { name: 'Syncing' });
+
+    const working = screen.getByRole('button', {
+      name: 'Syncing 3 playlists...'
+    });
+
+    expect(working).toBeDisabled();
+  });
+
+  it('skips a playlist already running and reports the tally', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            ownedItem('playlist-1', 'Rain On The Window'),
+            ownedItem('playlist-2', 'Night Bus'),
+            ownedItem('playlist-3', 'High Water')
+          ],
+          total: 3,
+          limit: 50,
+          offset: 0
+        })
+      ),
+      http.post(mockUrl(endpoints.syncPlaylist), ({ request }) => {
+        const parts = new URL(request.url).pathname.split('/');
+        const playlistId = parts[parts.length - 2] ?? '';
+
+        return playlistId === 'playlist-2'
+          ? problemResponse({
+              code: ProblemCode.SyncAlreadyRunning,
+              status: 409,
+              title: 'Sync Already Running'
+            })
+          : HttpResponse.json(syncRun, { status: 202 });
+      })
+    );
+    renderLibraryPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sync all 3 playlists' })
+    );
+
+    expect(await screen.findByText('Started 2 syncs')).toBeInTheDocument();
+    expect(screen.getByText('1 is already running')).toBeInTheDocument();
   });
 });

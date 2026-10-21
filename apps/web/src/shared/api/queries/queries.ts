@@ -26,6 +26,7 @@ import type {
 } from '@playliberty/contracts';
 import {
   PlaylistSort,
+  ProblemCode,
   TrackFileStatus,
   endpoints
 } from '@playliberty/contracts';
@@ -315,6 +316,57 @@ export function useSyncPlaylist(): UseMutationResult<SyncRun, Error, string> {
       commandEndpoint(endpoints.syncPlaylist, { playlistId }),
     onSuccess: (_run, playlistId) => {
       cacheEffects.playlistChanged(queryClient, playlistId);
+    }
+  });
+}
+
+export interface SyncAllOutcome {
+  readonly started: number;
+  readonly alreadyRunning: number;
+  /** The refusal that ended the loop, `null` when every playlist took it. */
+  readonly stopped: unknown;
+}
+
+/*
+ * Start every playlist in the frozen set, one at a time. `409` is a fact about
+ * the set rather than a failure, so it is counted and the loop goes on; any
+ * other refusal stops it, since repeating a fault for every remaining playlist
+ * helps nobody.
+ */
+export function useSyncAllPlaylists(): UseMutationResult<
+  SyncAllOutcome,
+  Error,
+  readonly string[]
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (playlistIds: readonly string[]) => {
+      let started = 0;
+      let alreadyRunning = 0;
+
+      for (const playlistId of playlistIds) {
+        try {
+          await commandEndpoint(endpoints.syncPlaylist, { playlistId });
+          started += 1;
+        } catch (error) {
+          if (
+            error instanceof ApiError &&
+            error.problem?.code === ProblemCode.SyncAlreadyRunning
+          ) {
+            alreadyRunning += 1;
+            continue;
+          }
+
+          return { started, alreadyRunning, stopped: error };
+        }
+      }
+
+      return { started, alreadyRunning, stopped: null };
+    },
+    /* One invalidation for the batch: the settle events arrive per playlist. */
+    onSettled: () => {
+      cacheEffects.everyPlaylistChanged(queryClient);
     }
   });
 }

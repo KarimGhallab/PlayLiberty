@@ -9,6 +9,7 @@
 
   &__head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
@@ -21,10 +22,15 @@
     font-weight: var(--weight-semibold);
   }
 
+  /* Wrapping the row rather than truncating a label: the bulk action's count is
+   * the reason it can be trusted, so the number is never the part that goes. */
   &__actions {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--space-3);
+    margin-left: auto;
   }
 
   &__add {
@@ -111,7 +117,7 @@
     }
 
     &__title {
-      font-size: var(--text-lg);
+      font-size: var(--text-md);
     }
 
     /* One step under the page title, which is --text-lg at this width, so the

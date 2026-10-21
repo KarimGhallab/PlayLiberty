@@ -7,19 +7,23 @@ import type {
   TrackFileStatusCounts
 } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
+import type { Messages, Translator } from '@playliberty/i18n';
 
 import { problemSentence } from '../../../shared/api/problem/problem';
 import {
   ownerNameFrom,
   useAccountDirectory,
   useCreatePlaylist,
-  usePlaylists
+  usePlaylists,
+  useSyncAllPlaylists
 } from '../../../shared/api/queries/queries';
+import type { SyncAllOutcome } from '../../../shared/api/queries/queries';
 import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
 import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import SyncAllControl from '../../../shared/components/SyncAllControl/SyncAllControl';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { currentTrack } from '../../../shared/player/types';
@@ -30,7 +34,10 @@ import {
   refusalNotice,
   usePlayTransition
 } from '../../../shared/player/usePlayTransition/usePlayTransition';
-import { usePlaylistActions } from '../../../shared/playlistActions/playlistActions';
+import {
+  canWritePlaylist,
+  usePlaylistActions
+} from '../../../shared/playlistActions/playlistActions';
 import {
   MOBILE_QUERY,
   useMediaQuery
@@ -67,6 +74,37 @@ function totalStatusCounts(
 }
 
 /*
+ * The batch notice names the tally, and the refusal that ended the loop when
+ * one did. A stop is the louder fact: the count alone would read as success.
+ */
+function syncAllNoticeFor(
+  t: Translator<Messages>,
+  outcome: SyncAllOutcome
+): { readonly message: string; readonly detail: string | null } {
+  if (outcome.stopped !== null) {
+    return {
+      message: t('library.syncAllStopped'),
+      detail: problemSentence(t, outcome.stopped)
+    };
+  }
+
+  if (outcome.started === 0) {
+    return {
+      message: t('library.syncAllNone', { count: outcome.alreadyRunning }),
+      detail: null
+    };
+  }
+
+  return {
+    message: t('library.syncAllStarted', { count: outcome.started }),
+    detail:
+      outcome.alreadyRunning === 0
+        ? null
+        : t('library.syncAllRunning', { count: outcome.alreadyRunning })
+  };
+}
+
+/*
  * Four states and no fifth: loading, failure, the empty gallery, the list. Each
  * delete opens its own undo window, so a second one stacks rather than replaces.
  */
@@ -75,12 +113,20 @@ export default function LibraryPage() {
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
   const createPlaylist = useCreatePlaylist();
+  const syncAll = useSyncAllPlaylists();
   const deferred = useDeferredAction();
   const { play, shuffle, refusal, startingPress } = usePlayTransition();
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const docked = usePlayerStore(state => currentTrack(state) !== null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pinRefused, setPinRefused] = useState<Error | null>(null);
+  const [syncAllNotice, setSyncAllNotice] = useState<SyncAllOutcome | null>(
+    null
+  );
+  const [batch, setBatch] = useState<{
+    readonly ids: readonly string[];
+    readonly at: number;
+  } | null>(null);
   const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
     null
   );
@@ -123,6 +169,38 @@ export default function LibraryPage() {
       : items.filter(playlist => playlist.counts[statusFilter] > 0);
 
   /*
+   * The bulk sync covers what the filter shows and the account can write, less
+   * what is already running; this array is the set a press freezes.
+   */
+  const syncable = visibleItems.filter(
+    playlist =>
+      canWritePlaylist(playlist) &&
+      playlist.syncStatus !== PlaylistSyncStatus.Syncing
+  );
+
+  /*
+   * The batch a press started, held until a list read taken after it settles
+   * shows none of its playlists running. Without it the control unmounts the
+   * moment the last `202` returns, because every playlist it started is already
+   * `syncing` by then, and the words would flip back for the couple of frames
+   * between the loop ending and that read landing.
+   */
+  const batchSyncing =
+    batch !== null &&
+    batch.ids.some(id =>
+      items.some(
+        playlist =>
+          playlist.id === id &&
+          playlist.syncStatus === PlaylistSyncStatus.Syncing
+      )
+    );
+  const batchBusy =
+    batch !== null &&
+    (syncAll.isPending || batchSyncing || playlists.dataUpdatedAt <= batch.at);
+
+  const syncAllCount = batchBusy ? batch.ids.length : syncable.length;
+
+  /*
    * The page filters and never sorts, so every group keeps the server's order.
    * A pin outranks a running first sync, so the transient group holds the
    * unpinned rows only.
@@ -159,6 +237,33 @@ export default function LibraryPage() {
   const drawnGroups = groups.filter(group => group.items.length > 0);
 
   const isEmpty = playlists.isSuccess && items.length === 0;
+
+  /* The batch notice withdraws on the window the other notices use. */
+  useEffect(() => {
+    if (syncAllNotice === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setSyncAllNotice(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [syncAllNotice]);
+
+  /*
+   * The batch ends on a read taken after it settled that finds none of it
+   * running, so a read still in flight cannot end it early.
+   */
+  useEffect(() => {
+    if (batch === null || syncAll.isPending) {
+      return;
+    }
+
+    if (playlists.dataUpdatedAt <= batch.at || batchSyncing) {
+      return;
+    }
+
+    setBatch(null);
+  }, [batch, syncAll.isPending, batchSyncing, playlists.dataUpdatedAt]);
 
   /* The refusal withdraws on the window the other notices use. */
   useEffect(() => {
@@ -215,6 +320,18 @@ export default function LibraryPage() {
         <h1 className={styles.library__title}>{t('app.name')}</h1>
         <div className={styles.library__actions}>
           <LanguageMenu />
+          {syncAllCount === 0 ? null : (
+            <SyncAllControl
+              count={syncAllCount}
+              working={batchBusy}
+              onPress={() => {
+                const ids = syncable.map(playlist => playlist.id);
+
+                setBatch({ ids, at: playlists.dataUpdatedAt });
+                syncAll.mutate(ids, { onSuccess: setSyncAllNotice });
+              }}
+            />
+          )}
           {isEmpty || isMobile ? null : (
             <button
               type="button"
@@ -299,6 +416,12 @@ export default function LibraryPage() {
         <NoticeToast
           message={t('library.pinFailed')}
           detail={problemSentence(t, pinRefused)}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {syncAllNotice === null ? null : (
+        <NoticeToast
+          {...syncAllNoticeFor(t, syncAllNotice)}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

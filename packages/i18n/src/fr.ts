@@ -34,6 +34,27 @@ export const fr: Messages = {
       one: "{count} piste n'est pas stockée",
       other: '{count} pistes ne sont pas stockées'
     },
+    syncAll: {
+      one: 'Synchroniser 1 playlist',
+      other: 'Synchroniser les {count} playlists'
+    },
+    syncingAll: {
+      one: 'Synchronisation de 1 playlist...',
+      other: 'Synchronisation de {count} playlists...'
+    },
+    syncAllStarted: {
+      one: '1 synchronisation lancée',
+      other: '{count} synchronisations lancées'
+    },
+    syncAllRunning: {
+      one: '1 est déjà en cours',
+      other: '{count} sont déjà en cours'
+    },
+    syncAllNone: {
+      one: 'La playlist est déjà en cours de synchronisation',
+      other: 'Les {count} playlists sont déjà en cours de synchronisation'
+    },
+    syncAllStopped: 'Synchronisation interrompue',
     deleteDeferred: 'Suppression de la playlist',
     empty: {
       heading: 'Aucune playlist',
