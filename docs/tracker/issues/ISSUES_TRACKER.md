@@ -105,6 +105,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`92-shift-n-and-shift-p-do-not-skip`](92-shift-n-and-shift-p-do-not-skip.md)                                                                             | `resolved` | enhancement   | No shortcut skips a track; the bar's buttons are the only path and they need focus first.                                   |
 | [`93-the-player-bar-carries-a-level-control-a-phone-cannot-use`](93-the-player-bar-carries-a-level-control-a-phone-cannot-use.md)                         | `resolved` | enhancement   | A phone shows a mute and a rail it cannot use; the level belongs to the OS there, with the element pinned to 1.             |
 | [`94-the-gallery-cannot-show-only-the-playlists-shared-with-the-account`](94-the-gallery-cannot-show-only-the-playlists-shared-with-the-account.md)       | `resolved` | enhancement   | A gallery holding a share cannot narrow to it; the ownership scope leads the filter rail and the counts follow it.          |
+| [`95-the-current-track-is-hard-to-find-while-scrolling`](95-the-current-track-is-hard-to-find-while-scrolling.md)                                         | `resolved` | enhancement   | The current row is easy to lose in a long list; it now rests on a quiet accent ground with a playback word.                 |
 
 ## Conventions
 

@@ -327,23 +327,23 @@ describe('TrackRow', () => {
 
   it('announces playing on the current track while the queue runs', () => {
     renderRow({ current: true, playing: true });
-    expect(screen.getByRole('img', { name: 'Playing' })).toBeInTheDocument();
+    expect(screen.getByText('Playing')).toBeInTheDocument();
   });
 
-  /* The mark is drawn for the current track in both states, so its label is the
-   * state and not the row's presence. */
+  /* The word is drawn for the current track in both states, so it names the
+   * playback state and not the row's presence. */
   it('announces paused, not playing, on the current track while the queue is held', () => {
     renderRow({ current: true, playing: false });
 
-    expect(screen.getByRole('img', { name: 'Paused' })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('img', { name: 'Playing' })
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('Paused')).toBeInTheDocument();
+    expect(screen.queryByText('Playing')).not.toBeInTheDocument();
   });
 
-  it('draws no equalizer on a non-current row', () => {
+  it('marks no row but the current one', () => {
     renderRow({ current: false, playing: false });
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+
+    expect(screen.queryByText('Playing')).not.toBeInTheDocument();
+    expect(screen.queryByText('Paused')).not.toBeInTheDocument();
   });
 
   it('shows a placeholder rather than a zero when the duration is unknown', () => {

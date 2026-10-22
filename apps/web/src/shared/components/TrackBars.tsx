@@ -1,9 +1,6 @@
-import { useI18n } from '@playliberty/i18n';
-
 /*
- * The equalizer strip on the current row's artwork: its label is the queue's
- * state, playing or paused, not the row's presence. The phase table, computed
- * with `M = 2n - 1` rather than `n`, keeps the bars from stair-stepping.
+ * The equalizer strip on the current row's artwork. The row's word names the
+ * playback state, so the strip is decorative; the phases keep it from stepping.
  */
 
 /** The phases, in bar order, as `--rest` scale values; the still form drawn
@@ -16,21 +13,11 @@ const DELAYS: readonly number[] = [0, -380, -760, -1150, -130, -510];
 interface TrackBarsProps {
   readonly className: string;
   readonly barClassName: string;
-  readonly playing: boolean;
 }
 
-export default function TrackBars({
-  className,
-  barClassName,
-  playing
-}: TrackBarsProps) {
-  const { t } = useI18n();
-
+export default function TrackBars({ className, barClassName }: TrackBarsProps) {
   return (
-    <span
-      className={className}
-      role="img"
-      aria-label={playing ? t('trackBars.playing') : t('trackBars.paused')}>
+    <span className={className} aria-hidden="true">
       {RESTS.map((rest, index) => (
         <span
           key={rest + ':' + DELAYS[index]}
