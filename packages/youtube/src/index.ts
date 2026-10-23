@@ -12,9 +12,10 @@ export {
   EgressAgentClient,
   EgressConfigUnknownError,
   EgressSourceInvalidError,
-  EgressSourceUnavailableError
+  EgressSourceUnavailableError,
+  EgressStreamError
 } from './egressAgent/client.js';
-export { EgressListFetcher } from './egressAgent/listFetcher.js';
+export { EgressAgentFetcher } from './egressAgent/agentFetcher.js';
 export { validateYoutubeUrl } from './validateYoutubeUrl/validateYoutubeUrl.js';
 export {
   buildDownloadArgs,

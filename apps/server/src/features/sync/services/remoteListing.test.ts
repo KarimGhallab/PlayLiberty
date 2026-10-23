@@ -113,7 +113,7 @@ describe('listing through the egress agent', () => {
   it('reconciles a playlist from the agent and records the exit as the source', async () => {
     const { agent, calls } = fakeAgent(async () => source(['a', 'b']));
     context = await createTestContext(
-      { YOUTUBE_LIST_TRANSPORT: 'egress-agent' },
+      { YOUTUBE_TRANSPORT: 'egress-agent' },
       { egressAgent: agent }
     );
 
@@ -138,7 +138,7 @@ describe('listing through the egress agent', () => {
       throw new EgressSourceUnavailableError('blocked');
     });
     context = await createTestContext(
-      { YOUTUBE_LIST_TRANSPORT: 'egress-agent' },
+      { YOUTUBE_TRANSPORT: 'egress-agent' },
       { egressAgent: agent }
     );
 
@@ -154,7 +154,7 @@ describe('listing through the egress agent', () => {
       throw new Error('The egress agent did not answer in time.');
     });
     context = await createTestContext(
-      { YOUTUBE_LIST_TRANSPORT: 'egress-agent' },
+      { YOUTUBE_TRANSPORT: 'egress-agent' },
       { egressAgent: agent }
     );
 

@@ -1,4 +1,8 @@
-import type { DownloadOptions, EgressAgentStatus } from '@playliberty/youtube';
+import type {
+  AgentFetchRequest,
+  DownloadOptions,
+  EgressAgentStatus
+} from '@playliberty/youtube';
 import { YtdlpFetcher } from '@playliberty/youtube';
 
 import { readExitIp } from './agent/exitIp.js';
@@ -91,8 +95,9 @@ async function main(): Promise<void> {
     'PROBE_TIMEOUT_MS',
     DEFAULT_PROBE_TIMEOUT_MS
   );
+  const ytdlpBinary = process.env.YTDLP_BINARY ?? 'yt-dlp';
   const fetcher = new YtdlpFetcher({
-    binary: process.env.YTDLP_BINARY ?? 'yt-dlp',
+    binary: ytdlpBinary,
     timeoutMs: probeTimeoutMs,
     download: PROBE_DOWNLOAD
   });
@@ -125,12 +130,30 @@ async function main(): Promise<void> {
     return;
   }
 
+  const fetchTrack = async (
+    request: AgentFetchRequest & { tempDir: string }
+  ): Promise<{ filePath: string }> => {
+    const downloader = new YtdlpFetcher({
+      binary: ytdlpBinary,
+      timeoutMs: request.timeoutMs,
+      download: request.download
+    });
+    const fetched = await downloader.fetchTrack({
+      videoId: request.videoId,
+      tempDir: request.tempDir,
+      skipNonMusic: request.skipNonMusic
+    });
+
+    return { filePath: fetched.filePath };
+  };
+
   const handle = await startAgent({
     socketPath,
     peerUid,
     status,
     probe,
-    list: url => fetcher.listSource(url)
+    list: url => fetcher.listSource(url),
+    fetch: fetchTrack
   });
 
   const log = (event: string): void => {

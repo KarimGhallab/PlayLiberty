@@ -163,6 +163,18 @@ export function failTrack(
   });
 }
 
+/* A transport that died mid-stream is not the track's fault: the claim goes
+ * back to pending, so the next pass retries it without a failed row. */
+export function releaseTrack(
+  database: DatabaseHandle,
+  trackId: string
+): TrackTransitionResult {
+  return applyTransition(database, trackId, [TrackFileStatus.Downloading], {
+    fileStatus: TrackFileStatus.Pending,
+    failureReason: null
+  });
+}
+
 export function retryTrack(
   database: DatabaseHandle,
   trackId: string

@@ -3,7 +3,10 @@ import { dirname, join } from 'node:path';
 
 import type { FastifyBaseLogger } from 'fastify';
 
-import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
+import {
+  EgressStreamError,
+  YoutubeVideoUnavailableError
+} from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
@@ -18,6 +21,7 @@ import {
   claimPendingTracks,
   failTrack,
   markTrackSourceRemoved,
+  releaseTrack,
   storeThumbnail,
   storeTrack
 } from '../../tracks/trackLifecycle/trackLifecycle.js';
@@ -149,6 +153,18 @@ async function processClaimedTrack(
       logger.info(
         { trackId: track.id, videoId: track.videoId },
         'track source is gone'
+      );
+      return;
+    }
+
+    // A transport that died mid-stream is not the track's fault: the claim goes
+    // back to pending, so the next pass retries it without a failed row.
+    if (error instanceof EgressStreamError) {
+      releaseTrack(context.database, track.id);
+      announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+      logger.warn(
+        { trackId: track.id, videoId: track.videoId, err: error },
+        'track fetch interrupted'
       );
       return;
     }

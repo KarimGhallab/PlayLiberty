@@ -1,6 +1,6 @@
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -9,9 +9,13 @@ import {
   EgressConfigUnknownError,
   EgressSourceInvalidError,
   EgressSourceUnavailableError,
-  YoutubeSourceKind
+  YoutubeSourceKind,
+  YoutubeSponsorBlockError,
+  YoutubeVideoUnavailableError
 } from '@playliberty/youtube';
 import type {
+  AgentFetchRequest,
+  DownloadOptions,
   EgressAgentStatus,
   EgressProbeFacts,
   YoutubeSource
@@ -54,6 +58,31 @@ const source: YoutubeSource = {
 
 const URL = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
 
+const DOWNLOAD: DownloadOptions = {
+  concurrency: 1,
+  sleepRequests: 1,
+  sleepIntervalMin: 5,
+  sleepIntervalMax: 15,
+  limitRate: '5M',
+  retries: 1,
+  fragmentRetries: 1,
+  fileAccessRetries: 1,
+  socketTimeout: 30
+};
+
+type FetchFn = (
+  request: AgentFetchRequest & { tempDir: string }
+) => Promise<{ filePath: string }>;
+
+async function writeFakeTrack(
+  request: AgentFetchRequest & { tempDir: string }
+): Promise<{ filePath: string }> {
+  const filePath = join(request.tempDir, `${request.videoId}.webm`);
+  await writeFile(filePath, 'fake-audio');
+
+  return { filePath };
+}
+
 let directory: string | undefined;
 let close: (() => Promise<void>) | undefined;
 
@@ -74,6 +103,7 @@ async function agent(
   overrides: {
     probe?: (name?: string) => Promise<EgressProbeFacts>;
     list?: (url: string) => Promise<YoutubeSource>;
+    fetch?: FetchFn;
   } = {}
 ): Promise<string> {
   directory = await mkdtemp(join(tmpdir(), 'playliberty-egress-agent-'));
@@ -83,7 +113,8 @@ async function agent(
     peerUid: uid,
     status: async () => status,
     probe: overrides.probe ?? (async () => probe),
-    list: overrides.list ?? (async () => source)
+    list: overrides.list ?? (async () => source),
+    fetch: overrides.fetch ?? writeFakeTrack
   });
   close = handle.close;
   return socketPath;
@@ -146,6 +177,76 @@ describe('the egress agent', () => {
     ).rejects.toBeInstanceOf(EgressConfigUnknownError);
   });
 
+  it('streams a fetched track with its source extension', async () => {
+    const socketPath = await agent();
+    const target = join(dirname(socketPath), 'download');
+
+    const result = await new EgressAgentClient(socketPath).fetchTrack({
+      videoId: 'jNQXAC9IVRw',
+      tempDir: target,
+      skipNonMusic: false,
+      download: DOWNLOAD,
+      timeoutMs: 5000
+    });
+
+    expect(result.filePath.endsWith('.webm')).toBe(true);
+    expect(await readFile(result.filePath, 'utf8')).toBe('fake-audio');
+  });
+
+  it('turns a gone video into the terminal error the worker knows', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      fetch: async () => {
+        throw new YoutubeVideoUnavailableError('jNQXAC9IVRw');
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).fetchTrack({
+        videoId: 'jNQXAC9IVRw',
+        tempDir: join(dirname(socketPath), 'download'),
+        skipNonMusic: false,
+        download: DOWNLOAD,
+        timeoutMs: 5000
+      })
+    ).rejects.toBeInstanceOf(YoutubeVideoUnavailableError);
+  });
+
+  it('keeps a SponsorBlock outage transient', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      fetch: async () => {
+        throw new YoutubeSponsorBlockError('jNQXAC9IVRw');
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).fetchTrack({
+        videoId: 'jNQXAC9IVRw',
+        tempDir: join(dirname(socketPath), 'download'),
+        skipNonMusic: true,
+        download: DOWNLOAD,
+        timeoutMs: 5000
+      })
+    ).rejects.toBeInstanceOf(YoutubeSponsorBlockError);
+  });
+
+  it('classifies a refused fetch as a source failure', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      fetch: async () => {
+        throw new Error('ERROR: Sign in to confirm you are not a bot');
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).fetchTrack({
+        videoId: 'jNQXAC9IVRw',
+        tempDir: join(dirname(socketPath), 'download'),
+        skipNonMusic: false,
+        download: DOWNLOAD,
+        timeoutMs: 5000
+      })
+    ).rejects.toMatchObject({ reason: 'blocked' });
+  });
+
   it('gives the socket to the peer and to nobody else', async () => {
     const socketPath = await agent();
     const socket = await stat(socketPath);
@@ -164,7 +265,8 @@ describe('the egress agent', () => {
       peerUid: process.getuid?.() ?? 1000,
       status: async () => status,
       probe: async () => probe,
-      list: async () => source
+      list: async () => source,
+      fetch: writeFakeTrack
     });
     close = handle.close;
 

@@ -18,6 +18,7 @@ import type {
   IYoutubeClient
 } from '@playliberty/youtube';
 import {
+  EgressStreamError,
   SPONSORBLOCK_FAILURE_REASON,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError
@@ -290,6 +291,21 @@ describe('the download worker', () => {
     // No probe ran, so no file duration was written and the row keeps its
     // source value.
     expect(row?.durationSeconds).toBe(180);
+  });
+
+  it('returns a track to pending when the fetch is interrupted', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressStreamError()
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(row?.failureReason).toBeNull();
   });
 
   it('fetches a track whole after the route flips its policy', async () => {

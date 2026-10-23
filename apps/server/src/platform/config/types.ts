@@ -30,7 +30,7 @@ export interface Config {
   egressAgentSocket: string;
   pruneCron: string;
   ytdlpBinary: string;
-  youtubeListTransport: YoutubeListTransport;
+  youtubeTransport: YoutubeListTransport;
   ffmpegBinary: string;
   ffprobeBinary: string;
   downloadTimeoutMs: number;

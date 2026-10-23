@@ -58,6 +58,14 @@ export interface IEgressAgentClient {
   status(): Promise<EgressAgentStatus>;
   probe(name?: string): Promise<EgressProbeFacts>;
   list(url: string): Promise<YoutubeSource>;
+  fetchTrack(request: AgentFetchRequest): Promise<FetchedTrack>;
+}
+
+/* The server owns the download options; they travel per request so the agent
+ * has no second configuration surface. */
+export interface AgentFetchRequest extends FetchTrackRequest {
+  download: DownloadOptions;
+  timeoutMs: number;
 }
 
 export type EgressFailure = 'blocked' | 'unavailable' | 'network' | 'unknown';

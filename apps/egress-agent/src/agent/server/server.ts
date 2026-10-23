@@ -1,13 +1,20 @@
-import { chmod, chown, rm, stat } from 'node:fs/promises';
-import type { IncomingMessage, Server, ServerResponse } from 'node:http';
+import { createReadStream } from 'node:fs';
+import { chmod, chown, mkdtemp, rm, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import type { IncomingMessage, Server, ServerResponse } from 'node:http';
+import { tmpdir } from 'node:os';
+import { extname, join } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 
 import type {
+  AgentFetchRequest,
   EgressAgentStatus,
   EgressProbeFacts,
   YoutubeSource
 } from '@playliberty/youtube';
 import {
+  YoutubeSponsorBlockError,
+  YoutubeVideoUnavailableError,
   classifyEgressFailure,
   validateYoutubeUrl
 } from '@playliberty/youtube';
@@ -18,7 +25,7 @@ import { UnknownConfigError } from '../probe/probe.js';
  * only peer that can reach it. Node has no SO_PEERCRED, and the kernel already
  * enforces this at connect time. */
 const SOCKET_MODE = 0o600;
-const MAX_BODY_BYTES = 1024;
+const MAX_BODY_BYTES = 4096;
 
 export interface AgentOptions {
   socketPath: string;
@@ -26,6 +33,11 @@ export interface AgentOptions {
   status: () => Promise<EgressAgentStatus>;
   probe: (name?: string) => Promise<EgressProbeFacts>;
   list: (url: string) => Promise<YoutubeSource>;
+  /* The route owns the temp directory; the fetcher writes into it and the
+   * route removes it once the bytes have left. */
+  fetch: (
+    request: AgentFetchRequest & { tempDir: string }
+  ) => Promise<{ filePath: string }>;
 }
 
 export interface AgentHandle {
@@ -91,6 +103,69 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+interface FetchBody {
+  videoId: string;
+  skipNonMusic: boolean;
+  timeoutMs: number;
+  download: AgentFetchRequest['download'];
+}
+
+const DOWNLOAD_NUMBERS = [
+  'concurrency',
+  'sleepRequests',
+  'sleepIntervalMin',
+  'sleepIntervalMax',
+  'retries',
+  'fragmentRetries',
+  'fileAccessRetries',
+  'socketTimeout'
+] as const;
+
+function parseFetchBody(value: unknown): FetchBody | null {
+  if (
+    !isRecord(value) ||
+    typeof value.videoId !== 'string' ||
+    value.videoId.length === 0 ||
+    typeof value.skipNonMusic !== 'boolean' ||
+    typeof value.timeoutMs !== 'number' ||
+    !Number.isInteger(value.timeoutMs) ||
+    value.timeoutMs <= 0 ||
+    !isRecord(value.download)
+  ) {
+    return null;
+  }
+
+  const download = value.download;
+
+  if (
+    DOWNLOAD_NUMBERS.some(field => typeof download[field] !== 'number') ||
+    typeof download.limitRate !== 'string' ||
+    download.limitRate.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    videoId: value.videoId,
+    skipNonMusic: value.skipNonMusic,
+    timeoutMs: value.timeoutMs,
+    download: download as unknown as FetchBody['download']
+  };
+}
+
+function sendJson(
+  response: ServerResponse,
+  status: number,
+  body: unknown
+): void {
+  response.writeHead(status, { 'content-type': 'application/json' });
+  response.end(JSON.stringify(body));
+}
+
 async function route(
   request: IncomingMessage,
   options: AgentOptions
@@ -154,9 +229,7 @@ async function route(
         status: 502,
         body: {
           error: 'source_unavailable',
-          reason: classifyEgressFailure(
-            error instanceof Error ? error.message : String(error)
-          )
+          reason: classifyEgressFailure(messageOf(error))
         }
       };
     }
@@ -165,16 +238,70 @@ async function route(
   return { status: 404, body: { error: 'not_found' } };
 }
 
-function send(response: ServerResponse, result: AgentResponse): void {
-  response.writeHead(result.status, { 'content-type': 'application/json' });
-  response.end(JSON.stringify(result.body));
+/* The one route that answers with bytes: the temp directory belongs to this
+ * call, and it is removed whether the stream finished or failed. */
+async function streamFetch(
+  request: IncomingMessage,
+  response: ServerResponse,
+  options: AgentOptions
+): Promise<void> {
+  const parsed = parseFetchBody(await readBody(request));
+
+  if (parsed === null) {
+    sendJson(response, 400, { error: 'invalid_request' });
+    return;
+  }
+
+  const directory = await mkdtemp(join(tmpdir(), 'playliberty-egress-'));
+
+  try {
+    const result = await options.fetch({ ...parsed, tempDir: directory });
+    const extension = extname(result.filePath).slice(1);
+    const size = (await stat(result.filePath)).size;
+
+    response.writeHead(200, {
+      'content-type': 'application/octet-stream',
+      'content-length': size,
+      'x-source-extension': extension
+    });
+
+    await pipeline(createReadStream(result.filePath), response);
+  } catch (error) {
+    if (response.headersSent) {
+      response.destroy();
+    } else if (error instanceof YoutubeVideoUnavailableError) {
+      sendJson(response, 410, { error: 'unavailable' });
+    } else if (error instanceof YoutubeSponsorBlockError) {
+      sendJson(response, 502, { error: 'sponsorblock' });
+    } else {
+      sendJson(response, 502, {
+        error: 'source_unavailable',
+        reason: classifyEgressFailure(messageOf(error))
+      });
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 }
 
 export async function startAgent(options: AgentOptions): Promise<AgentHandle> {
   const server = createServer((request, response) => {
+    const path = request.url?.split('?')[0] ?? '';
+
+    if (request.method === 'POST' && path === '/fetch') {
+      void streamFetch(request, response, options).catch(() => {
+        if (!response.headersSent) {
+          sendJson(response, 500, { error: 'internal' });
+        } else {
+          response.destroy();
+        }
+      });
+      return;
+    }
+
     void route(request, options).then(
-      result => send(response, result),
-      () => send(response, { status: 500, body: { error: 'internal' } })
+      result => sendJson(response, result.status, result.body),
+      () => sendJson(response, 500, { error: 'internal' })
     );
   });
 

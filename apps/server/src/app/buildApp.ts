@@ -12,7 +12,7 @@ import type { LiveEvent } from '@playliberty/contracts';
 import { ProblemCode } from '@playliberty/contracts';
 import {
   EgressAgentClient,
-  EgressListFetcher,
+  EgressAgentFetcher,
   YtdlpClient,
   YtdlpFetcher
 } from '@playliberty/youtube';
@@ -81,11 +81,14 @@ function createYoutubeClient(
     timeoutMs: config.downloadTimeoutMs,
     download: config.download
   };
-  const local = new YtdlpFetcher(options);
   const fetcher =
-    config.youtubeListTransport === 'egress-agent'
-      ? new EgressListFetcher(egressAgent, local)
-      : local;
+    config.youtubeTransport === 'egress-agent'
+      ? new EgressAgentFetcher(
+          egressAgent,
+          config.download,
+          config.downloadTimeoutMs
+        )
+      : new YtdlpFetcher(options);
 
   return new YtdlpClient(options, fetcher);
 }
