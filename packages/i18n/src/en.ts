@@ -64,6 +64,26 @@ export const en = {
         'Paste a YouTube playlist link, then sync it. Every stored track is yours from then on, even if the video is taken down later.'
     }
   },
+  egress: {
+    title: 'VPN settings',
+    back: 'Back to home',
+    loading: 'Loading the configurations.',
+    readFailed: 'The configurations could not be loaded.',
+    notAvailable: 'This page is not available.',
+    empty: 'No configuration is installed.',
+    agentUp: 'Egress agent reachable.',
+    agentDown:
+      'Egress agent unreachable. The configurations below are the last known states.',
+    name: 'Name',
+    endpoint: 'Endpoint',
+    status: 'Status',
+    lastAttempt: 'Last attempt',
+    active: 'Active',
+    never: 'Never',
+    statusOk: 'OK',
+    statusFailed: 'Failed',
+    statusUnknown: 'Unknown'
+  },
   detail: {
     back: 'Back to home',
     addTrack: 'Add a track',

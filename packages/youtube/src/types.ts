@@ -54,6 +54,21 @@ export interface ISourceFetcher {
   fetchTrack(request: FetchTrackRequest): Promise<FetchedTrack>;
 }
 
+export interface IEgressAgentClient {
+  status(): Promise<EgressAgentStatus>;
+}
+
+export interface EgressAgentStatus {
+  pool: EgressAgentConfig[];
+  active: string | null;
+  loadedSince: string | null;
+}
+
+export interface EgressAgentConfig {
+  name: string;
+  endpoint: string | null;
+}
+
 export interface DownloadOptions {
   concurrency: number;
   sleepRequests: number;

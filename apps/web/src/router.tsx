@@ -10,6 +10,7 @@ import PlayerAudio from './shared/player/PlayerAudio/PlayerAudio';
 import PlayerBar from './shared/player/PlayerBar/PlayerBar';
 import { useDocumentTitle } from './shared/useDocumentTitle/useDocumentTitle';
 
+import EgressPage from './views/egress/EgressPage/EgressPage';
 import LibraryPage from './views/library/LibraryPage/LibraryPage';
 import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage';
 
@@ -46,9 +47,16 @@ const playlistDetailRoute = createRoute({
   component: PlaylistDetailPage
 });
 
+const egressRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/egress',
+  component: EgressPage
+});
+
 export const routeTree = rootRoute.addChildren([
   libraryRoute,
-  playlistDetailRoute
+  playlistDetailRoute,
+  egressRoute
 ]);
 
 export const router = createRouter({ routeTree });

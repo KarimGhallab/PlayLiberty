@@ -13,8 +13,10 @@ import {
 import { useCallback, useMemo } from 'react';
 
 import type {
+  Account,
   AccountSummary,
   AddTrackResult,
+  EgressRead,
   Playlist,
   PlaylistPage,
   PlaylistTrack,
@@ -62,10 +64,19 @@ export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
 
 /* The only read that names the reader; the share picker omits its row, and
  * sharing with oneself is a route refusal. */
-export function useCurrentAccount(): UseQueryResult<AccountSummary, Error> {
+export function useCurrentAccount(): UseQueryResult<Account, Error> {
   return useQuery({
     queryKey: ['me'],
     queryFn: () => readEndpoint(endpoints.currentAccount)
+  });
+}
+
+/* The operator's pool: an admin-only read, so a 404 here is the gate, not a
+ * fault. */
+export function useEgress(): UseQueryResult<EgressRead, Error> {
+  return useQuery({
+    queryKey: ['egress'],
+    queryFn: () => readEndpoint(endpoints.egress)
   });
 }
 

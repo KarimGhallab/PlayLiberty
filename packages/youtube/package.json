@@ -13,8 +13,8 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc-watch --noClear",
+    "build": "tsc -p tsconfig.build.json",
+    "watch": "tsc-watch --noClear -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "test": "vitest run"
   },

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   AddTrackOutcome,
   AssociationOrigin,
+  EgressStatus,
   LiveEventType,
   PlaylistSort,
   PlaylistSyncStatus,
@@ -132,6 +133,25 @@ export const SyncRunSchema = z.object({
   startedAt: isoDateTime,
   finishedAt: isoDateTime.nullable(),
   error: z.string().nullable()
+});
+
+/* One row per installed Proton config. `active` mirrors the agent's report,
+ * and the timestamps are evidence: nothing is assumed healthy. */
+export const EgressConfigSchema = z.object({
+  name: z.string().min(1),
+  endpoint: z.string().nullable(),
+  status: z.enum(EgressStatus),
+  active: z.boolean(),
+  lastAttemptAt: isoDateTime.nullable(),
+  lastProbeAt: isoDateTime.nullable(),
+  lastError: z.string().nullable()
+});
+
+export const EgressReadSchema = z.object({
+  /* The read still answers when the agent is down, so the page can say so
+   * rather than showing an empty list. */
+  agentReachable: z.boolean(),
+  configs: z.array(EgressConfigSchema)
 });
 
 export const ProblemSchema = z.object({

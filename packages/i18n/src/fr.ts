@@ -66,6 +66,26 @@ export const fr: Messages = {
         "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste stockée vous appartient ensuite, même si la vidéo est retirée plus tard."
     }
   },
+  egress: {
+    title: 'Paramètres VPN',
+    back: "Retour à l'accueil",
+    loading: 'Chargement des configurations.',
+    readFailed: 'Impossible de charger les configurations.',
+    notAvailable: 'Page indisponible.',
+    empty: 'Aucune configuration installée.',
+    agentUp: 'Agent egress joignable.',
+    agentDown:
+      'Agent egress injoignable. Les configurations ci-dessous sont les derniers états connus.',
+    name: 'Nom',
+    endpoint: 'Point de terminaison',
+    status: 'État',
+    lastAttempt: 'Dernière tentative',
+    active: 'Active',
+    never: 'Jamais',
+    statusOk: 'OK',
+    statusFailed: 'Échec',
+    statusUnknown: 'Inconnu'
+  },
   detail: {
     back: "Retour à l'accueil",
     addTrack: 'Ajouter une piste',

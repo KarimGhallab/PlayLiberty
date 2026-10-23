@@ -13,6 +13,14 @@ export enum PlaylistSyncStatus {
   Error = 'error'
 }
 
+/* A config's last measured state: `unknown` until something probes or uses it,
+ * so nothing is assumed healthy by default. */
+export enum EgressStatus {
+  Ok = 'ok',
+  Failed = 'failed',
+  Unknown = 'unknown'
+}
+
 export enum PlaylistSort {
   Playlist = 'playlist',
   NewestFirst = 'newest_first',

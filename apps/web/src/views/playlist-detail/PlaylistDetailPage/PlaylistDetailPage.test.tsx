@@ -1101,7 +1101,10 @@ describe('PlaylistDetailPage', () => {
     );
     fireEvent.click(screen.getByRole('menuitem', { name: 'Share' }));
 
-    const listen = await screen.findByRole('button', { name: 'Can listen' });
+    const listen = await screen.findByRole('button', {
+      name: 'Can listen',
+      pressed: true
+    });
     expect(listen).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(listen);
 

@@ -7,6 +7,7 @@ export {
   YoutubeVideoUnavailableError
 } from './errors/errors.js';
 export * from './types.js';
+export { EgressAgentClient } from './egressAgent/client.js';
 export { validateYoutubeUrl } from './validateYoutubeUrl/validateYoutubeUrl.js';
 export {
   buildDownloadArgs,

@@ -1,0 +1,14 @@
+.egressLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  color: var(--egress);
+  border-radius: var(--radius-control);
+
+  &:hover {
+    color: var(--egress-muted);
+    background: var(--egress-surface);
+  }
+}

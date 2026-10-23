@@ -1,8 +1,9 @@
 import { ProblemCode } from './enums.js';
 import {
+  AccountSchema,
   AccountSummaryPageSchema,
-  AccountSummarySchema,
   AddTrackResultSchema,
+  EgressReadSchema,
   PlaylistPageSchema,
   PlaylistSchema,
   PlaylistTrackListSchema,
@@ -134,8 +135,16 @@ export const endpoints = {
   currentAccount: defineEndpoint({
     method: HttpMethod.Get,
     path: '/me',
-    response: AccountSummarySchema,
+    response: AccountSchema,
     errors: READ_ERRORS
+  }),
+  /* The caller's own role is part of the account read, so the client can gate
+   * an admin surface without asking a second route. */
+  egress: defineEndpoint({
+    method: HttpMethod.Get,
+    path: '/egress',
+    response: EgressReadSchema,
+    errors: [ProblemCode.NotFound, ...READ_ERRORS]
   }),
   createPlaylist: defineEndpoint({
     method: HttpMethod.Post,

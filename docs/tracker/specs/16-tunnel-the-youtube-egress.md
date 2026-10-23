@@ -8,7 +8,8 @@ Labels: `enhancement`
 The server has one egress: its own address. `packages/youtube` spawns yt-dlp with
 no proxy, no cookies and no tunnel, so a flagged VPS address, a bot check, or a
 missing proof turns every listing and every download into a failure. Playback
-survives, because the stored media is the source of truth, but ingest stops, and
+survives, because the stored media is the source of truth, but source access
+stops, and
 it stops loudly: the download worker claims pending tracks, marks each one failed
 with a bounded excerpt of yt-dlp's stderr, and the sync run is written failed with
 the vendor's message.
@@ -26,7 +27,7 @@ can see which exits exist and which still work.
 
 ## Solution
 
-A system-scoped agent, `apps/ingest`, runs on the host inside a dedicated network
+A system-scoped agent, `apps/egress-agent`, runs on the host inside a dedicated network
 namespace whose only route is a Proton WireGuard interface. It owns the pool of
 configs and which one is loaded, and it is the only thing that runs yt-dlp. The
 pod reaches it over a Unix socket, and the server keeps the database, the media
@@ -57,7 +58,7 @@ status, and can probe or switch an exit by hand.
   because the server already owns scheduling and history, and two owners of one
   decision is how a rotation loop starts.
 - **The transport is HTTP over a Unix socket, not a port.** The socket is
-  `/run/playliberty/ingest.sock`, created by the agent, and the pod mounts its
+  `/run/playliberty/egress-agent.sock`, created by the agent, and the pod mounts its
   directory. The agent requires `SO_PEERCRED` to report the configured peer uid,
   so a stray local process cannot drive the tunnel. No host port, no published
   listener, no network exposure. _Decided here,_ because the alternative is a
@@ -145,7 +146,7 @@ status, and can probe or switch an exit by hand.
   config marked failed resets it to `unknown` and clears its counter, because the
   operator's choice is newer than the stored failure. _Decided here,_ because the
   egress is operator information and a household account has no action to take.
-- **The server owns the pool settings.** `INGEST_SOCKET`, `INGEST_PEER_UID`,
+- **The server owns the pool settings.** `EGRESS_AGENT_SOCKET`, `EGRESS_AGENT_PEER_UID`,
   `EGRESS_FAILURE_LIMIT` (5), `EGRESS_DRAIN_TIMEOUT_MS` (60000) and
   `EGRESS_SWITCH_COOLDOWN_MS` (60000) are configuration, with those defaults, and
   the agent receives download options per request so there is one config owner.
@@ -175,11 +176,11 @@ status, and can probe or switch an exit by hand.
    gains `listSource` and `fetch` on a fetcher seam, and the remux and duration
    probe move into a module the composition uses. The local fetcher keeps the
    current yt-dlp arguments, so the existing argument tests still describe it.
-2. **Define the ingest contract and both ends.** The five calls (`status`,
+2. **Define the egress agent contract and both ends.** The five calls (`status`,
    `list`, `fetch`, `switch`, `probe`) with their schemas, an HTTP-on-Unix-socket
    client that streams `fetch` into a temp file, and a server handler that checks
    the peer uid. Contract and streaming tests run over a real socket.
-3. **Build `apps/ingest`.** Pool discovery and parsing, `wg syncconf`, the
+3. **Build `apps/egress-agent`.** Pool discovery and parsing, `wg syncconf`, the
    bounded drain, the five endpoints, a `--dry-run` that parses and reports
    without touching the interface, and a fake `wg` plus a fake yt-dlp for the
    tests.

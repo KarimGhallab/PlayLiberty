@@ -39,8 +39,9 @@ afterEach(async () => {
 });
 
 async function workspace(): Promise<string> {
-  directory = await mkdtemp(join(tmpdir(), 'ytdlp-fetch-'));
-  return directory;
+  const root = await mkdtemp(join(tmpdir(), 'ytdlp-fetch-'));
+  directory = root;
+  return root;
 }
 
 /* Stands in for the tool: reads the `-o` template and writes the file the

@@ -43,6 +43,7 @@ describe('runMigrations', () => {
     expect(tables).toEqual([
       'account',
       'association',
+      'egress_config',
       'playlist',
       'playlist_pin',
       'share',

@@ -7,9 +7,9 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
-    "build": "tsc && node ./scripts/copy-fixtures.mjs",
-    "dev": "tsc-watch --noClear --onSuccess \"node --env-file=.env dist/main.js\"",
-    "watch": "tsc-watch --noClear",
+    "build": "tsc -p tsconfig.build.json && node ./scripts/copy-fixtures.mjs",
+    "dev": "tsc-watch --noClear -p tsconfig.build.json --onSuccess \"node --env-file=.env dist/main.js\"",
+    "watch": "tsc-watch --noClear -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate"

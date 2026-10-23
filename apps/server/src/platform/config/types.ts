@@ -22,6 +22,8 @@ export interface Config {
    * cannot forge the identity headers. Required in production, else null. */
   edgeAssertion: string | null;
   adminPangolinUserIds: string[];
+  /* The egress agent's socket: the host owns it, the pod only connects. */
+  egressAgentSocket: string;
   pruneCron: string;
   ytdlpBinary: string;
   ffmpegBinary: string;

@@ -11,6 +11,7 @@ import {
 
 import {
   AssociationOrigin,
+  EgressStatus,
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
@@ -207,6 +208,24 @@ export const syncRuns = sqliteTable(
   table => [index('sync_run_playlist_idx').on(table.playlistId)]
 );
 
+/* One row per installed Proton config. The name is the file stem and the key;
+ * every other column is the last measured state, never an assumption. */
+export const egressConfigs = sqliteTable('egress_config', {
+  name: text('name').primaryKey(),
+  endpoint: text('endpoint'),
+  status: text('status')
+    .$type<EgressStatus>()
+    .notNull()
+    .default(EgressStatus.Unknown),
+  consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+  lastAttemptAt: text('last_attempt_at'),
+  lastError: text('last_error'),
+  lastProbeAt: text('last_probe_at'),
+  lastExitIp: text('last_exit_ip'),
+  active: integer('active', { mode: 'boolean' }).notNull().default(false),
+  updatedAt: text('updated_at').notNull().$defaultFn(createdAt)
+});
+
 export type AccountRow = typeof accounts.$inferSelect;
 export type PlaylistRow = typeof playlists.$inferSelect;
 export type TrackRow = typeof tracks.$inferSelect;
@@ -214,3 +233,4 @@ export type AssociationRow = typeof associations.$inferSelect;
 export type ShareRow = typeof shares.$inferSelect;
 export type PlaylistPinRow = typeof playlistPins.$inferSelect;
 export type SyncRunRow = typeof syncRuns.$inferSelect;
+export type EgressConfigRow = typeof egressConfigs.$inferSelect;

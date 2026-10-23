@@ -1,5 +1,5 @@
 import type { LiveEvent } from '@playliberty/contracts';
-import type { IYoutubeClient } from '@playliberty/youtube';
+import type { IEgressAgentClient, IYoutubeClient } from '@playliberty/youtube';
 
 import type { Config } from '../platform/config/types.js';
 import type { DatabaseHandle } from '../platform/database/client.js';
@@ -16,6 +16,8 @@ export interface AppContext {
   database: DatabaseHandle;
   mediaPaths: MediaPaths;
   youtube: IYoutubeClient;
+  /* The egress agent: the pool and the loaded config, never a policy. */
+  egressAgent: IEgressAgentClient;
   kickDownloads: () => void;
   events: EventBus<LiveEvent>;
 }

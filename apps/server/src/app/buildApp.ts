@@ -10,7 +10,7 @@ import Fastify from 'fastify';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import { ProblemCode } from '@playliberty/contracts';
-import { YtdlpClient } from '@playliberty/youtube';
+import { EgressAgentClient, YtdlpClient } from '@playliberty/youtube';
 
 import type { AppContext } from '../shared/context.js';
 import { EventBus } from '../shared/events/eventBus/EventBus.js';
@@ -20,6 +20,8 @@ import { registerAccountRoutes } from '../features/accounts/routes/accountRoutes
 import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
+import { registerEgressRoutes } from '../features/egress/routes/egressRoutes.js';
+import { reconcileEgress } from '../features/egress/service/egressService.js';
 import {
   DEFAULT_EVENT_HEARTBEAT_MS,
   registerEventRoutes
@@ -46,6 +48,8 @@ export interface AppOptions {
   database: AppContext['database'];
   mediaPaths: AppContext['mediaPaths'];
   youtube?: AppContext['youtube'];
+  /* The egress agent's client; a test passes a fake, a real process builds it. */
+  egressAgent?: AppContext['egressAgent'];
   /* A test's replacement for the worker wake-up; real `onReady` swaps in the
    * worker's own kick. */
   kickDownloads?: () => void;
@@ -103,6 +107,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     database: options.database,
     mediaPaths: options.mediaPaths,
     youtube: options.youtube ?? createYoutubeClient(options.config),
+    egressAgent:
+      options.egressAgent ??
+      new EgressAgentClient(options.config.egressAgentSocket),
     kickDownloads: options.kickDownloads ?? (() => undefined),
     events: options.events ?? new EventBus<LiveEvent>()
   };
@@ -159,6 +166,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(
     async api => {
       registerAccountRoutes(api, context);
+      registerEgressRoutes(api, context);
       registerPlaylistRoutes(api, context);
       registerCoverRoutes(api, context);
       registerShareRoutes(api, context);
@@ -182,6 +190,16 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   let scheduler: JobHandle | null = null;
 
   app.addHook('onReady', async () => {
+    const reachable = await reconcileEgress(
+      context.database,
+      context.egressAgent
+    );
+
+    if (!reachable) {
+      // The host may start the agent after the server; the first read retries.
+      app.log.warn('the egress agent is unreachable at boot');
+    }
+
     const sweep = await runStartupSweep(context.mediaPaths, context.database);
     app.log.info({ ...sweep }, 'startup sweep finished');
 

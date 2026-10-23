@@ -7,6 +7,8 @@ import {
   AddTrackInputSchema,
   AddTrackResultSchema,
   CreatePlaylistInputSchema,
+  EgressConfigSchema,
+  EgressReadSchema,
   LiveEventSchema,
   PageQuerySchema,
   PinPlaylistInputSchema,
@@ -55,6 +57,8 @@ export type SkipNonMusicInput = z.infer<typeof SkipNonMusicInputSchema>;
 export type SortPlaylistInput = z.infer<typeof SortPlaylistInputSchema>;
 export type PinPlaylistInput = z.infer<typeof PinPlaylistInputSchema>;
 export type PageQuery = z.infer<typeof PageQuerySchema>;
+export type EgressConfig = z.infer<typeof EgressConfigSchema>;
+export type EgressRead = z.infer<typeof EgressReadSchema>;
 
 export interface Page<T> {
   items: T[];

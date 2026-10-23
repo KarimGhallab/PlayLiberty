@@ -8,6 +8,8 @@ export type {
   AddTrackInput,
   AddTrackResult,
   CreatePlaylistInput,
+  EgressConfig,
+  EgressRead,
   LiveEvent,
   Page,
   PageQuery,

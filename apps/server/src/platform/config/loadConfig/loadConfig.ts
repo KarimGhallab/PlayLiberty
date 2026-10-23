@@ -24,6 +24,10 @@ const EnvSchema = z.object({
   PUBLIC_ORIGIN: optionalUrl,
   EDGE_ASSERTION: optionalString,
   ADMIN_PANGOLIN_USER_IDS: z.string().default(''),
+  EGRESS_AGENT_SOCKET: z
+    .string()
+    .min(1)
+    .default('/run/playliberty/egress-agent.sock'),
   PRUNE_CRON: z.string().default('0 4 * * 0'),
   DOWNLOAD_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
   DOWNLOAD_SLEEP_REQUESTS: z.coerce.number().nonnegative().default(1),
@@ -78,6 +82,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     adminPangolinUserIds: value.ADMIN_PANGOLIN_USER_IDS.split(',')
       .map(entry => entry.trim())
       .filter(entry => entry.length > 0),
+    egressAgentSocket: value.EGRESS_AGENT_SOCKET,
     pruneCron: value.PRUNE_CRON,
     ytdlpBinary: value.YTDLP_BINARY,
     ffmpegBinary: value.FFMPEG_BINARY,

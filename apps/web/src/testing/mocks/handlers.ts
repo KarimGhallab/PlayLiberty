@@ -16,10 +16,12 @@ import {
   SyncRunStatus,
   TrackFileStatus,
   TrackSourceStatus,
+  UserRole,
   endpointPattern,
   endpoints
 } from '@playliberty/contracts';
 import type {
+  Account,
   AccountSummary,
   AccountSummaryPage,
   AddTrackResult,
@@ -216,6 +218,14 @@ const ACCOUNT_ONE: AccountSummary = {
   avatarUrl: null
 };
 
+/* The reader's own account: the one read that carries the role, which the
+ * library uses to decide whether the egress link exists. */
+const CURRENT_ACCOUNT: Account = {
+  ...ACCOUNT_ONE,
+  email: 'you@example.com',
+  role: UserRole.User
+};
+
 const ACCOUNT_TWO: AccountSummary = {
   id: 'account-2',
   displayName: 'Ada',
@@ -343,7 +353,7 @@ export const handlers = [
   ),
   /* The reader, which the share picker uses to leave the reader's own row out. */
   mockEndpoint(endpoints.currentAccount, () =>
-    respond(endpoints.currentAccount, ACCOUNT_ONE)
+    respond(endpoints.currentAccount, CURRENT_ACCOUNT)
   ),
   mockEndpoint(
     endpoints.playlistShares,

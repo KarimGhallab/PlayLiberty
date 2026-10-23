@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { FastifyInstance, FastifyServerOptions } from 'fastify';
 
 import type { LiveEvent } from '@playliberty/contracts';
-import type { IYoutubeClient } from '@playliberty/youtube';
+import type { IEgressAgentClient, IYoutubeClient } from '@playliberty/youtube';
 
 import { EventBus } from '../../shared/events/eventBus/EventBus.js';
 
@@ -32,6 +32,8 @@ export interface TestContext {
 export interface TestContextOptions {
   /* The source seam: a sync test passes a fake, others get the real client. */
   youtube?: IYoutubeClient;
+  /* The egress agent seam: an egress test passes a fake agent. */
+  egressAgent?: IEgressAgentClient;
   /* A spy to observe that a sync queued work; jobs are off by default. */
   kickDownloads?: () => void;
   /* Whether the worker and scheduler run. Off by default, so a unit test that
@@ -69,6 +71,7 @@ export async function createTestContext(
     database,
     mediaPaths,
     youtube: options.youtube,
+    egressAgent: options.egressAgent,
     kickDownloads: options.kickDownloads,
     startBackgroundJobs: options.startBackgroundJobs ?? false,
     sseHeartbeatMs: options.sseHeartbeatMs,
