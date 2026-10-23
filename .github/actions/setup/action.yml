@@ -4,8 +4,6 @@ description: Install the pinned toolchain and the workspace dependencies.
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v7
-
     - name: Install pnpm
       uses: pnpm/action-setup@v6
       with:

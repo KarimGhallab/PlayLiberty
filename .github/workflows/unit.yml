@@ -8,6 +8,7 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-26.04
     steps:
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
       - name: Build the workspace

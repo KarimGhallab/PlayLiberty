@@ -18,6 +18,23 @@ const instances = e2eInstanceIndices();
 const primary = instancePaths(instances[0]);
 const sharedResults = process.env.E2E_INSTANCE === undefined;
 
+/* One CI leg runs one engine and names it; a local run keeps Chromium. */
+const engines = {
+  chromium: devices['Desktop Chrome'],
+  firefox: devices['Desktop Firefox'],
+  webkit: devices['Desktop Safari']
+};
+
+const engineName = process.env.E2E_BROWSER ?? 'chromium';
+
+if (!Object.hasOwn(engines, engineName)) {
+  throw new Error(
+    `E2E_BROWSER must be one of ${Object.keys(engines).join(', ')}, not "${engineName}".`
+  );
+}
+
+const engine = engines[engineName as keyof typeof engines];
+
 export default defineConfig({
   testDir: './tests',
   globalSetup: './support/global-setup.ts',
@@ -33,15 +50,15 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
+      name: engineName,
       testIgnore: /phone\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
+      use: { ...engine }
     },
     {
       name: 'phone',
       testMatch: /phone\.spec\.ts/,
       use: {
-        ...devices['Desktop Chrome'],
+        ...engine,
         viewport: { width: 390, height: 844 },
         hasTouch: true,
         isMobile: true

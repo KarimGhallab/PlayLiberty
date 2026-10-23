@@ -8,6 +8,7 @@ jobs:
     name: Typecheck and build
     runs-on: ubuntu-26.04
     steps:
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
       - name: Typecheck the e2e suite
