@@ -1,3 +1,5 @@
+import type { EgressFailure } from '../types.js';
+
 /*
  * A gone video is terminal and a SponsorBlock outage is transient: one is
  * pointless to retry, the other is the point of retrying. The phrases are
@@ -27,6 +29,41 @@ const SPONSORBLOCK_PATTERNS: RegExp[] = [
 
 export function isSponsorBlockFailureMessage(message: string): boolean {
   return SPONSORBLOCK_PATTERNS.some(pattern => pattern.test(message));
+}
+
+/* A probe failure has to become one of four sentences, never the tool's own
+ * stderr. The order matters: a gone video is not an exit fault. */
+const BLOCKED_PATTERNS: RegExp[] = [
+  /sign in to confirm/i,
+  /confirm you.re not a bot/i,
+  /http error 403/i,
+  /http error 429/i
+];
+
+const NETWORK_PATTERNS: RegExp[] = [
+  /timed out/i,
+  /timeout/i,
+  /connection (?:refused|reset|closed)/i,
+  /temporary failure in name resolution/i,
+  /network is unreachable/i,
+  /unable to download webpage/i,
+  /unable to connect/i
+];
+
+export function classifyEgressFailure(message: string): EgressFailure {
+  if (isVideoUnavailableMessage(message)) {
+    return 'unavailable';
+  }
+
+  if (BLOCKED_PATTERNS.some(pattern => pattern.test(message))) {
+    return 'blocked';
+  }
+
+  if (NETWORK_PATTERNS.some(pattern => pattern.test(message))) {
+    return 'network';
+  }
+
+  return 'unknown';
 }
 
 /* Fixed here so a client renders a sentence rather than yt-dlp's stderr. It

@@ -4,9 +4,13 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { EgressAgentClient } from '@playliberty/youtube';
-import type { EgressAgentStatus } from '@playliberty/youtube';
+import {
+  EgressAgentClient,
+  EgressConfigUnknownError
+} from '@playliberty/youtube';
+import type { EgressAgentStatus, EgressProbeFacts } from '@playliberty/youtube';
 
+import { UnknownConfigError } from './probe.js';
 import { startAgent } from './server.js';
 import { chooseActive } from './status.js';
 
@@ -17,6 +21,14 @@ const status: EgressAgentStatus = {
   ],
   active: '01-fr',
   loadedSince: '2026-10-23T10:00:00.000Z'
+};
+
+const probe: EgressProbeFacts = {
+  handshake: true,
+  listing: true,
+  exitIp: '185.0.0.9',
+  reason: null,
+  active: '01-fr'
 };
 
 let directory: string | undefined;
@@ -35,14 +47,16 @@ afterEach(async () => {
 });
 
 async function agent(
-  uid: number = process.getuid?.() ?? 1000
+  uid: number = process.getuid?.() ?? 1000,
+  probeFn: (name?: string) => Promise<EgressProbeFacts> = async () => probe
 ): Promise<string> {
   directory = await mkdtemp(join(tmpdir(), 'playliberty-egress-agent-'));
   const socketPath = join(directory, 'egress-agent.sock');
   const handle = await startAgent({
     socketPath,
     peerUid: uid,
-    status: async () => status
+    status: async () => status,
+    probe: probeFn
   });
   close = handle.close;
   return socketPath;
@@ -53,6 +67,24 @@ describe('the egress agent', () => {
     const socketPath = await agent();
 
     expect(await new EgressAgentClient(socketPath).status()).toEqual(status);
+  });
+
+  it('answers a probe over the socket', async () => {
+    const socketPath = await agent();
+
+    expect(await new EgressAgentClient(socketPath).probe('02-ch')).toEqual(
+      probe
+    );
+  });
+
+  it('turns an unknown config into the client error, not an outage', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, async () => {
+      throw new UnknownConfigError('03-missing');
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).probe('03-missing')
+    ).rejects.toBeInstanceOf(EgressConfigUnknownError);
   });
 
   it('gives the socket to the peer and to nobody else', async () => {
@@ -71,7 +103,8 @@ describe('the egress agent', () => {
     const handle = await startAgent({
       socketPath,
       peerUid: process.getuid?.() ?? 1000,
-      status: async () => status
+      status: async () => status,
+      probe: async () => probe
     });
     close = handle.close;
 

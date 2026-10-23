@@ -1,5 +1,6 @@
 export { buildFaststartArgs, finalizeAudio } from './audio/audio.js';
 export {
+  classifyEgressFailure,
   isSponsorBlockFailureMessage,
   isVideoUnavailableMessage,
   SPONSORBLOCK_FAILURE_REASON,
@@ -7,7 +8,10 @@ export {
   YoutubeVideoUnavailableError
 } from './errors/errors.js';
 export * from './types.js';
-export { EgressAgentClient } from './egressAgent/client.js';
+export {
+  EgressAgentClient,
+  EgressConfigUnknownError
+} from './egressAgent/client.js';
 export { validateYoutubeUrl } from './validateYoutubeUrl/validateYoutubeUrl.js';
 export {
   buildDownloadArgs,

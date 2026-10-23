@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import { ProblemCode, UserRole, endpoints } from '@playliberty/contracts';
 
@@ -6,7 +6,19 @@ import type { AppContext } from '../../../shared/context.js';
 import { sendProblem } from '../../../shared/problem.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
-import { readEgress, reconcileEgress } from '../service/egressService.js';
+import {
+  probeEgress,
+  readEgress,
+  reconcileEgress
+} from '../service/egressService.js';
+
+function refuse(reply: FastifyReply) {
+  return sendProblem(reply, {
+    status: 404,
+    code: ProblemCode.NotFound,
+    title: 'Not Found'
+  });
+}
 
 /* The egress is operator information: a non-admin gets the same not-found a
  * missing route would give, so the surface does not announce itself. */
@@ -16,11 +28,7 @@ export function registerEgressRoutes(
 ): void {
   registerEndpoint(app, endpoints.egress, async (request, reply) => {
     if (request.account.role !== UserRole.Admin) {
-      return sendProblem(reply, {
-        status: 404,
-        code: ProblemCode.NotFound,
-        title: 'Not Found'
-      });
+      return refuse(reply);
     }
 
     const agentReachable = await reconcileEgress(
@@ -33,4 +41,35 @@ export function registerEgressRoutes(
       configs: readEgress(context.database)
     });
   });
+
+  registerEndpoint<{ Params: { name: string } }>(
+    app,
+    endpoints.probeEgress,
+    async (request, reply) => {
+      if (request.account.role !== UserRole.Admin) {
+        return refuse(reply);
+      }
+
+      const result = await probeEgress(
+        context.database,
+        context.egressAgent,
+        request.params.name
+      );
+
+      if (result.outcome === 'config_unknown') {
+        return refuse(reply);
+      }
+
+      /* An unreachable agent is still an answer the page can draw: the rows
+       * stay as they were and the control reports the failure. */
+      if (result.outcome === 'agent_unreachable') {
+        return reply.send({
+          agentReachable: false,
+          configs: readEgress(context.database)
+        });
+      }
+
+      return reply.send(result.read);
+    }
+  );
 }

@@ -1,14 +1,16 @@
 import { IconChevronLeft } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 
-import type { EgressConfig } from '@playliberty/contracts';
 import { EgressStatus } from '@playliberty/contracts';
 import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 import type { Messages, Translator } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
-import { useEgress } from '../../../shared/api/queries/queries';
+import { useEgress, useProbeEgress } from '../../../shared/api/queries/queries';
+import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePlayTransition';
 
 import styles from './EgressPage.module.scss';
 
@@ -23,14 +25,29 @@ function statusLabel(t: Translator<Messages>, status: EgressStatus): string {
   }
 }
 
-function attemptOf(
+/* The stored code is the server's classification; an unknown one still gets a
+ * sentence rather than the tool's stderr. */
+function reasonLabel(t: Translator<Messages>, reason: string): string {
+  switch (reason) {
+    case 'blocked':
+      return t('egress.reason.blocked');
+    case 'unavailable':
+      return t('egress.reason.unavailable');
+    case 'network':
+      return t('egress.reason.network');
+    default:
+      return t('egress.reason.unknown');
+  }
+}
+
+function timeOf(
   t: Translator<Messages>,
-  config: EgressConfig,
+  value: string | null,
   now: number
 ): string {
-  return config.lastAttemptAt === null
+  return value === null
     ? t('egress.never')
-    : formatRelativeTime(t, new Date(config.lastAttemptAt), now);
+    : formatRelativeTime(t, new Date(value), now);
 }
 
 /*
@@ -40,9 +57,28 @@ function attemptOf(
 export default function EgressPage() {
   const { t } = useI18n();
   const egress = useEgress();
+  const probe = useProbeEgress();
+  const [probeNotice, setProbeNotice] = useState<
+    'unreachable' | 'failed' | null
+  >(null);
   const now = Date.now();
   const notAvailable =
     egress.error instanceof ApiError && egress.error.status === 404;
+
+  useEffect(() => {
+    if (probeNotice === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setProbeNotice(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [probeNotice]);
+
+  const probeMessage =
+    probeNotice === 'unreachable'
+      ? t('egress.probeUnreachable')
+      : t('egress.probeFailed');
 
   return (
     <main className={styles.egress}>
@@ -106,6 +142,8 @@ export default function EgressPage() {
                   <th scope="col">{t('egress.endpoint')}</th>
                   <th scope="col">{t('egress.status')}</th>
                   <th scope="col">{t('egress.lastAttempt')}</th>
+                  <th scope="col">{t('egress.lastProbe')}</th>
+                  <th scope="col">{t('egress.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,15 +163,61 @@ export default function EgressPage() {
                     </th>
                     <td className={styles.egress__mono}>
                       {config.endpoint ?? '-'}
+                      {config.lastExitIp === null ? null : (
+                        <span className={styles.egress__observed}>
+                          {t('egress.seen', { ip: config.lastExitIp })}
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span
                         className={`${styles.egress__status} ${styles[`egress__status--${config.status}`]}`}>
                         {statusLabel(t, config.status)}
                       </span>
+                      {config.status === EgressStatus.Failed &&
+                      config.lastError !== null ? (
+                        <span className={styles.egress__reason}>
+                          {reasonLabel(t, config.lastError)}
+                        </span>
+                      ) : null}
                     </td>
                     <td className={styles.egress__mono}>
-                      {attemptOf(t, config, now)}
+                      {timeOf(t, config.lastAttemptAt, now)}
+                    </td>
+                    <td className={styles.egress__mono}>
+                      {timeOf(t, config.lastProbeAt, now)}
+                    </td>
+                    <td>
+                      <div className={styles.egress__probeWrap}>
+                        <span
+                          className={styles.egress__probeSizer}
+                          aria-hidden="true">
+                          {t('egress.probing')}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.egress__probe}
+                          disabled={probe.isPending}
+                          aria-busy={
+                            probe.isPending && probe.variables === config.name
+                              ? true
+                              : undefined
+                          }
+                          onClick={() =>
+                            probe.mutate(config.name, {
+                              onSuccess: read => {
+                                if (!read.agentReachable) {
+                                  setProbeNotice('unreachable');
+                                }
+                              },
+                              onError: () => setProbeNotice('failed')
+                            })
+                          }>
+                          {probe.isPending && probe.variables === config.name
+                            ? t('egress.probing')
+                            : t('egress.probe')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -142,6 +226,10 @@ export default function EgressPage() {
           )}
         </>
       ) : null}
+
+      {probeNotice === null ? null : (
+        <NoticeToast message={probeMessage} durationMs={NOTICE_WINDOW_MS} />
+      )}
     </main>
   );
 }

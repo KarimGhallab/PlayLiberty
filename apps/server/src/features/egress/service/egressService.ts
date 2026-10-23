@@ -1,7 +1,9 @@
-import { asc, notInArray } from 'drizzle-orm';
+import { asc, eq, notInArray } from 'drizzle-orm';
 
 import type { EgressRead } from '@playliberty/contracts';
+import { EgressStatus } from '@playliberty/contracts';
 import type { IEgressAgentClient } from '@playliberty/youtube';
+import { EgressConfigUnknownError } from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import { egressConfigs } from '../../../platform/database/schema.js';
@@ -76,6 +78,72 @@ export function readEgress(database: DatabaseHandle): EgressRead['configs'] {
       active: row.active,
       lastAttemptAt: row.lastAttemptAt,
       lastProbeAt: row.lastProbeAt,
+      lastExitIp: row.lastExitIp,
       lastError: row.lastError
     }));
+}
+
+export type ProbeOutcome =
+  | { outcome: 'ok'; read: EgressRead }
+  | { outcome: 'agent_unreachable' }
+  | { outcome: 'config_unknown' };
+
+/*
+ * A probe is evidence, not a download: it writes the row it measured and the
+ * active flag the agent reports after the switch, and nothing else. A probe
+ * that fails at the listing still keeps the exit address it managed to read.
+ */
+export async function probeEgress(
+  database: DatabaseHandle,
+  agent: IEgressAgentClient,
+  name: string
+): Promise<ProbeOutcome> {
+  let facts;
+
+  try {
+    facts = await agent.probe(name);
+  } catch (error) {
+    if (error instanceof EgressConfigUnknownError) {
+      return { outcome: 'config_unknown' };
+    }
+
+    return { outcome: 'agent_unreachable' };
+  }
+
+  const ok = facts.listing && facts.exitIp !== null;
+  const now = new Date().toISOString();
+
+  database.unitOfWork(() => {
+    database.db
+      .update(egressConfigs)
+      .set({
+        status: ok ? EgressStatus.Ok : EgressStatus.Failed,
+        lastProbeAt: now,
+        lastExitIp: facts.exitIp,
+        lastError: ok ? null : facts.reason,
+        ...(ok ? { consecutiveFailures: 0 } : {})
+      })
+      .where(eq(egressConfigs.name, name))
+      .run();
+
+    /* A probe of a standby switched the agent, so the marker moves with it. */
+    database.db
+      .update(egressConfigs)
+      .set({ active: false })
+      .where(eq(egressConfigs.active, true))
+      .run();
+
+    if (facts.active !== null) {
+      database.db
+        .update(egressConfigs)
+        .set({ active: true })
+        .where(eq(egressConfigs.name, facts.active))
+        .run();
+    }
+  });
+
+  return {
+    outcome: 'ok',
+    read: { agentReachable: true, configs: readEgress(database) }
+  };
 }

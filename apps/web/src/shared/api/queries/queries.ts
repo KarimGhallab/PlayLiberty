@@ -80,6 +80,19 @@ export function useEgress(): UseQueryResult<EgressRead, Error> {
   });
 }
 
+/* A probe answers the whole read, so the page updates in one response. */
+export function useProbeEgress(): UseMutationResult<EgressRead, Error, string> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (name: string) =>
+      postEndpoint(endpoints.probeEgress, {}, { name }),
+    onSuccess: read => {
+      queryClient.setQueryData(['egress'], read);
+    }
+  });
+}
+
 /*
  * The name an owner id resolves to, or null when absent. Null is a real answer
  * and must not be confused with an empty string, which renders a blank line.

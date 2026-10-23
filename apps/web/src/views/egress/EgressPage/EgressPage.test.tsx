@@ -6,7 +6,7 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 
@@ -33,6 +33,7 @@ const READ = {
       active: true,
       lastAttemptAt: TWO_HOURS_AGO,
       lastProbeAt: null,
+      lastExitIp: null,
       lastError: null
     },
     {
@@ -42,6 +43,7 @@ const READ = {
       active: false,
       lastAttemptAt: null,
       lastProbeAt: null,
+      lastExitIp: null,
       lastError: null
     }
   ]
@@ -93,7 +95,7 @@ describe('the egress page', () => {
     expect(screen.getByRole('cell', { name: 'OK' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Unknown' })).toBeInTheDocument();
     expect(screen.getByText('2 hours ago')).toBeInTheDocument();
-    expect(screen.getByText('Never')).toBeInTheDocument();
+    expect(screen.getAllByText('Never')[0]).toBeInTheDocument();
     expect(screen.getByText('Egress agent reachable.')).toBeInTheDocument();
   });
 
@@ -147,6 +149,81 @@ describe('the egress page', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Try again' })
+    ).toBeInTheDocument();
+  });
+
+  it('probes an exit and draws the measured address', async () => {
+    const probed = {
+      ...READ,
+      configs: [
+        {
+          ...READ.configs[0],
+          status: EgressStatus.Ok,
+          lastProbeAt: new Date().toISOString(),
+          lastExitIp: '185.0.0.9'
+        },
+        READ.configs[1]
+      ]
+    };
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.probeEgress, { name: '01-fr' }), () =>
+        respond(endpoints.probeEgress, probed)
+      )
+    );
+
+    renderPage();
+
+    const buttons = await screen.findAllByRole('button', { name: 'Test' });
+    fireEvent.click(buttons[0]);
+
+    expect(await screen.findByText('Seen at 185.0.0.9')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'OK' })).toBeInTheDocument();
+  });
+
+  it('reports an unreachable agent without claiming the probe ran', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.probeEgress, { name: '01-fr' }), () =>
+        respond(endpoints.probeEgress, { ...READ, agentReachable: false })
+      )
+    );
+
+    renderPage();
+
+    const buttons = await screen.findAllByRole('button', { name: 'Test' });
+    fireEvent.click(buttons[0]);
+
+    expect(
+      await screen.findByText('The egress agent could not be reached.')
+    ).toBeInTheDocument();
+  });
+
+  it('reports a probe that could not be run', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.probeEgress, { name: '01-fr' }), () =>
+        problemResponse({
+          code: ProblemCode.InternalError,
+          status: 500,
+          title: 'Internal Server Error'
+        })
+      )
+    );
+
+    renderPage();
+
+    const buttons = await screen.findAllByRole('button', { name: 'Test' });
+    fireEvent.click(buttons[0]);
+
+    expect(
+      await screen.findByText('The test could not be run.')
     ).toBeInTheDocument();
   });
 });

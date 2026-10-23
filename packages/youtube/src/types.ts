@@ -56,6 +56,19 @@ export interface ISourceFetcher {
 
 export interface IEgressAgentClient {
   status(): Promise<EgressAgentStatus>;
+  probe(name?: string): Promise<EgressProbeFacts>;
+}
+
+export type EgressFailure = 'blocked' | 'unavailable' | 'network' | 'unknown';
+
+/* The three facts a probe measures, plus the switch it may have made. A null
+ * handshake means no interface is configured, not a failure. */
+export interface EgressProbeFacts {
+  handshake: boolean | null;
+  listing: boolean;
+  exitIp: string | null;
+  reason: EgressFailure | null;
+  active: string | null;
 }
 
 export interface EgressAgentStatus {
