@@ -1,5 +1,6 @@
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
+import { mutePlayback } from '../support/audio';
 import { drainDownloads, writeScenario } from '../support/instance';
 import {
   addPlaylist,
@@ -21,7 +22,6 @@ const TRACK = { videoId: 'e2ephone01', title: 'Blue In Green' };
 
 /* The target a thumb is owed, and what each control draws. */
 const TARGET = 44;
-const MUTE = 36;
 const SWITCH_WIDTH = 40;
 const SWITCH_HEIGHT = 22;
 const OVERFLOW = 28;
@@ -154,6 +154,7 @@ test('the card keeps the name clear of the failed mark', async ({ page }) => {
 });
 
 test('a tap above the seeker moves the playhead', async ({ page, request }) => {
+  await mutePlayback(page);
   await seed(page, request);
 
   await page.getByRole('button', { name: `Play ${TRACK.title}` }).tap();
@@ -189,32 +190,37 @@ test('a tap above the seeker moves the playhead', async ({ page, request }) => {
   expect(await currentTime()).toBeLessThan(0.5);
 });
 
-test('a tap above the mute silences the player', async ({ page, request }) => {
+/*
+ * The level is the OS's on a phone: no mute, no rail, and a level persisted on a
+ * desktop must not arrive here as a quiet the user cannot undo.
+ */
+test('a phone leaves the level to the OS', async ({ page, request }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'playliberty.player',
+      JSON.stringify({
+        sourceQueue: [],
+        currentId: null,
+        positionSeconds: 0,
+        volume: 0.3
+      })
+    );
+  });
   await seed(page, request);
 
   await page.getByRole('button', { name: `Play ${TRACK.title}` }).tap();
   await settleBar(page);
 
-  const audio = page.locator('audio');
-  const muted = (): Promise<boolean> =>
-    audio.evaluate(element => (element as HTMLAudioElement).muted);
-
-  await expect.poll(muted).toBe(false);
-
-  const mute = page.getByRole('button', { name: 'Mute', exact: true });
-  const box = await mute.boundingBox();
-
-  if (box === null) {
-    throw new Error('The mute has no box to tap.');
-  }
-
-  // 2px above the 36px button: inside the target, outside the drawn box.
-  await page.touchscreen.tap(box.x + box.width / 2, box.y - 2);
-
-  await expect.poll(muted).toBe(true);
   await expect(
-    page.getByRole('button', { name: 'Unmute', exact: true })
-  ).toBeVisible();
+    page.getByRole('button', { name: 'Mute', exact: true })
+  ).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page
+        .locator('audio')
+        .evaluate(element => (element as HTMLAudioElement).volume)
+    )
+    .toBe(1);
 });
 
 test('every control reaches the touch target it owes', async ({
@@ -223,10 +229,6 @@ test('every control reaches the touch target it owes', async ({
 }) => {
   await seed(page, request);
   await page.getByRole('button', { name: `Play ${TRACK.title}` }).tap();
-
-  expect(
-    await measureTarget(page.getByRole('button', { name: 'Mute', exact: true }))
-  ).toEqual({ height: MUTE, width: MUTE });
 
   expect(
     await measureTarget(

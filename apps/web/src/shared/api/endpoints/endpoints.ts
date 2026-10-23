@@ -70,10 +70,11 @@ export function uploadEndpoint<T>(
   endpoint: ApiEndpoint<T>,
   body: Blob,
   contentType: string,
-  params: EndpointParams = {}
+  params: EndpointParams = {},
+  query?: URLSearchParams
 ): Promise<T> {
   return apiUpload(
-    pathOf(endpoint, params),
+    pathOf(endpoint, params, query),
     body,
     contentType,
     endpoint.response

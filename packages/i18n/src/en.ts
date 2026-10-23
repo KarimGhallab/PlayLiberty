@@ -27,11 +27,36 @@ export const en = {
     readFailed: 'Playlists could not be loaded.',
     pinned: 'Pinned',
     syncing: 'Syncing',
+    scopeAll: 'All',
+    scopeShared: 'Shared with me',
+    scopeLabel: 'Filter by owner',
+    allTracks: 'All tracks',
     pinFailed: 'The pin could not be changed.',
     notDownloaded: {
       one: '{count} track is not stored',
       other: '{count} tracks are not stored'
     },
+    syncAll: {
+      one: 'Sync 1 playlist',
+      other: 'Sync all {count} playlists'
+    },
+    syncingAll: {
+      one: 'Syncing 1 playlist...',
+      other: 'Syncing {count} playlists...'
+    },
+    syncAllStarted: {
+      one: 'Started 1 sync',
+      other: 'Started {count} syncs'
+    },
+    syncAllRunning: {
+      one: '1 is already running',
+      other: '{count} are already running'
+    },
+    syncAllNone: {
+      one: 'The playlist is already syncing',
+      other: 'All {count} playlists are already syncing'
+    },
+    syncAllStopped: 'Sync all stopped',
     deleteDeferred: 'Deleting playlist',
     empty: {
       heading: 'No playlists yet',
@@ -42,6 +67,8 @@ export const en = {
   detail: {
     back: 'Back to home',
     addTrack: 'Add a track',
+    syncPlaylist: 'Sync the playlist',
+    syncingPlaylist: 'Syncing the playlist...',
     loadingTracks: 'Loading tracks.',
     readFailed: 'Tracks could not be loaded.',
     noTracks: 'No tracks yet.',
@@ -122,7 +149,10 @@ export const en = {
     removeFailed: 'The cover could not be removed.',
     save: 'Save',
     saving: 'Saving',
-    discardPrompt: 'Discard this image? The image you chose will be lost.'
+    discardPrompt: 'Discard this image? The image you chose will be lost.',
+    cropHint: 'Drag the image or use the arrow keys to move it.',
+    zoom: 'Zoom',
+    reset: 'Reset'
   },
   shareDialog: {
     title: 'Share playlist',
@@ -168,7 +198,10 @@ export const en = {
     play: 'Play',
     pause: 'Pause',
     position: 'Position in track',
-    positionValue: '{elapsed} of {duration}'
+    positionValue: '{elapsed} of {duration}',
+    shortcutShift: 'Shift',
+    shortcutPrevious: 'P',
+    shortcutNext: 'N'
   },
   volume: {
     label: 'Volume',
@@ -209,7 +242,6 @@ export const en = {
     pin: 'Pin',
     unpin: 'Unpin',
     syncNow: 'Sync now',
-    syncing: 'Syncing',
     delete: 'Delete',
     play: 'Play this playlist',
     playNamed: 'Play {name}',

@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { endpoints } from '@playliberty/contracts';
 
 import { mediaUrl } from '../../api/endpoints/endpoints';
+import { TOUCH_QUERY, useMediaQuery } from '../../useMediaQuery/useMediaQuery';
 import {
   bindSessionHandlers,
   publishMetadata
@@ -29,6 +30,7 @@ export default function PlayerAudio() {
   const seekTo = usePlayerStore(state => state.seekTo);
   const volume = usePlayerStore(state => state.volume);
   const muted = usePlayerStore(state => state.muted);
+  const touch = useMediaQuery(TOUCH_QUERY);
   const setPosition = usePlayerStore(state => state.setPosition);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const consumeSeek = usePlayerStore(state => state.consumeSeek);
@@ -138,9 +140,11 @@ export default function PlayerAudio() {
       return;
     }
 
-    audio.muted = muted;
-    audio.volume = volume;
-  }, [volume, muted]);
+    /* A touch device has no level surface and honours the OS one, so a level
+     * persisted on a desktop must not arrive there as a quiet it cannot undo. */
+    audio.muted = touch ? false : muted;
+    audio.volume = touch ? 1 : volume;
+  }, [volume, muted, touch]);
 
   /*
    * A seek request applies once: the store hands it over and clears it, so an

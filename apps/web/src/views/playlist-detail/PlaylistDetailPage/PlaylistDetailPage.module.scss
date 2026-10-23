@@ -11,9 +11,10 @@
   /* The docked player bar is an overlay, so its height is paid for here. */
   padding: 0 var(--space-4) calc(var(--player-bar-height) + var(--space-5));
 
-  /* The back link and, for a writer, the add control, one row. */
+  /* The back link and, for a writer, the sync and add controls, one row. */
   &__wayhome {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
@@ -22,8 +23,11 @@
 
   &__actions {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--space-3);
+    margin-inline-start: auto;
   }
 
   /*

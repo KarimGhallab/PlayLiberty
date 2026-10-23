@@ -1,6 +1,13 @@
 import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 
 import {
   PlaylistSort,
@@ -42,6 +49,7 @@ import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/
 import PlaylistSortControl from '../../../shared/components/PlaylistSortControl/PlaylistSortControl';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import RetryFailedControl from '../../../shared/components/RetryFailedControl/RetryFailedControl';
+import SyncControl from '../../../shared/components/SyncControl/SyncControl';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
@@ -139,6 +147,60 @@ export default function PlaylistDetailPage() {
   /* The queue's own derivation, so a shuffled queue goes dead at its last entry
    * exactly as an unshuffled one does. */
   const canSkipNext = usePlayerStore(hasNext);
+
+  const listRef = useRef<HTMLUListElement>(null);
+  const scrollHandledFor = useRef<string | null>(null);
+
+  /*
+   * Opening the queue's playlist lands on its current row, not the top. The jump
+   * waits one task because the router resets a cached navigation to the top, and
+   * is made once per open; pages load until the row exists.
+   */
+  useLayoutEffect(() => {
+    if (scrollHandledFor.current === playlistId) {
+      return;
+    }
+
+    if (!isQueue || currentId === null) {
+      scrollHandledFor.current = playlistId;
+      return;
+    }
+
+    if (activeState !== null || !tracks.isSuccess || tracks.isPlaceholderData) {
+      return;
+    }
+
+    const row = listRef.current?.querySelector<HTMLElement>('li[data-state]');
+
+    if (row === null || row === undefined) {
+      if (tracks.hasMore && !tracks.loadingMore && !tracks.moreFailed) {
+        tracks.loadMore();
+      } else if (!tracks.hasMore) {
+        scrollHandledFor.current = playlistId;
+      }
+
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      row.scrollIntoView({ behavior: 'instant', block: 'center' });
+      scrollHandledFor.current = playlistId;
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    activeState,
+    currentId,
+    isQueue,
+    playlistId,
+    tracks.hasMore,
+    tracks.isPlaceholderData,
+    tracks.isSuccess,
+    tracks.loadMore,
+    tracks.loadingMore,
+    tracks.moreFailed,
+    tracks.tracks
+  ]);
 
   const ownerName =
     playlist.data !== undefined && directory.data !== undefined
@@ -316,11 +378,6 @@ export default function PlaylistDetailPage() {
     hasNext: canSkipNext,
     onShuffle: () => transition.shuffle(playlistView),
     shuffled,
-    onSync:
-      canWrite && !emptyStateSync && !syncErrorShown
-        ? () => actions.syncNow(playlistId)
-        : undefined,
-    syncing: syncInFlight,
     menu: actions.menuFor(playlist.data),
     /* The window claim is made only while the list is the whole playlist: a
      * narrowed list owes a denominator the card does not carry. */
@@ -353,6 +410,15 @@ export default function PlaylistDetailPage() {
         </Link>
         <div className={styles.playlistDetail__actions}>
           <LanguageMenu />
+          {canWrite && !emptyStateSync && !syncErrorShown ? (
+            <SyncControl
+              label={t('detail.syncPlaylist')}
+              workingLabel={t('detail.syncingPlaylist')}
+              working={syncInFlight}
+              disabled={playlistPending}
+              onPress={() => actions.syncNow(playlistId)}
+            />
+          ) : null}
           {/*
            * The labelled button above the phone breakpoint, the floating action
            * below it, one at a time; absent for a reader, like any control.
@@ -537,7 +603,7 @@ export default function PlaylistDetailPage() {
             </div>
           ) : null}
           {tracks.isSuccess && tracks.tracks.length > 0 ? (
-            <ul className={styles.playlistDetail__list}>
+            <ul className={styles.playlistDetail__list} ref={listRef}>
               {(listShuffled
                 ? orderTracksByQueue(tracks.tracks, queue)
                 : tracks.tracks

@@ -20,6 +20,7 @@ import {
   normalizeCoverImage
 } from './normalizeCoverImage.js';
 import type {
+  CoverCrop,
   ReadPlaylistCoverResult,
   RemovePlaylistCoverResult,
   SetPlaylistCoverResult
@@ -40,7 +41,8 @@ export async function setPlaylistCoverForAccount(
   context: AppContext,
   playlistId: string,
   accountId: string,
-  image: Buffer
+  image: Buffer,
+  crop: CoverCrop | null = null
 ): Promise<SetPlaylistCoverResult> {
   const entry = playlistEntry(
     context.database,
@@ -64,7 +66,7 @@ export async function setPlaylistCoverForAccount(
   let normalized: Buffer;
 
   try {
-    normalized = await normalizeCoverImage(image);
+    normalized = await normalizeCoverImage(image, crop);
   } catch (error) {
     if (error instanceof InvalidCoverImageError) {
       return { outcome: PlaylistCoverOutcome.InvalidImage };

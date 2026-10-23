@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '@playliberty/i18n';
 
+import { stubViewport } from '../../../testing/viewport';
+import { TOUCH_QUERY } from '../../useMediaQuery/useMediaQuery';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 import PlayerBar from './PlayerBar';
@@ -103,6 +105,22 @@ describe('PlayerBar', () => {
     expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
     expect(screen.getByText('1:12')).toBeInTheDocument();
     expect(screen.getByText('3:00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mute' })).toBeInTheDocument();
+  });
+
+  it('leaves the level to the OS on a device that cannot hover', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    const restore = stubViewport(TOUCH_QUERY);
+
+    try {
+      await renderBar();
+
+      expect(
+        screen.queryByRole('button', { name: 'Mute' })
+      ).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 
   it('opens the playing playlist from its name', async () => {
@@ -218,19 +236,162 @@ describe('PlayerBar', () => {
     expect(usePlayerStore.getState().isPlaying).toBe(true);
   });
 
-  it('leaves Space to a focused button', async () => {
+  /*
+   * #78 handed Space to whatever held focus; #91 takes it back, because Enter
+   * and the pointer still activate every control.
+   */
+  it('takes Space from a focused button without activating it', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     await renderBar();
     const play = screen.getByRole('button', { name: 'Pause' });
     play.focus();
 
+    /* Cancelled, so the browser synthesizes no click on the button. */
     const notCancelled = fireEvent.keyDown(play, { key: ' ' });
 
-    expect(notCancelled).toBe(true);
-    expect(usePlayerStore.getState().isPlaying).toBe(true);
-
-    fireEvent.click(play);
+    expect(notCancelled).toBe(false);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('takes Space from a link, a slider and a focusable badge alike', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    await renderBar();
+
+    const link = document.createElement('a');
+    link.href = '#track';
+    const slider = document.createElement('div');
+    slider.setAttribute('role', 'slider');
+    const badge = document.createElement('span');
+    badge.setAttribute('role', 'img');
+
+    for (const control of [link, slider, badge]) {
+      control.tabIndex = 0;
+      document.body.append(control);
+      control.focus();
+      const before = usePlayerStore.getState().isPlaying;
+
+      const notCancelled = fireEvent.keyDown(control, { key: ' ' });
+
+      expect(notCancelled).toBe(false);
+      expect(usePlayerStore.getState().isPlaying).toBe(!before);
+      control.remove();
+    }
+  });
+
+  it('leaves Space to an open menu and to a dialog', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    await renderBar();
+
+    for (const role of ['menu', 'dialog']) {
+      const surface = document.createElement('div');
+      const item = document.createElement('button');
+
+      surface.setAttribute('role', role);
+      surface.append(item);
+      document.body.append(surface);
+      item.focus();
+
+      const notCancelled = fireEvent.keyDown(item, { key: ' ' });
+
+      expect(notCancelled).toBe(true);
+      expect(usePlayerStore.getState().isPlaying).toBe(true);
+      surface.remove();
+    }
+  });
+
+  it('skips forward with Shift+N and back with Shift+P', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    fireEvent.keyDown(document.body, { key: 'N', shiftKey: true });
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+
+    fireEvent.keyDown(document.body, { key: 'P', shiftKey: true });
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+  });
+
+  it('takes the chords while a button has focus', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+    const play = screen.getByRole('button', { name: 'Pause' });
+    play.focus();
+
+    const notCancelled = fireEvent.keyDown(play, {
+      key: 'N',
+      shiftKey: true
+    });
+
+    expect(notCancelled).toBe(false);
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+  });
+
+  it('leaves the chords to a text field, an open menu and a dialog', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    const field = document.createElement('input');
+    document.body.append(field);
+    field.focus();
+    expect(fireEvent.keyDown(field, { key: 'N', shiftKey: true })).toBe(true);
+
+    for (const role of ['menu', 'dialog']) {
+      const surface = document.createElement('div');
+      const item = document.createElement('button');
+
+      surface.setAttribute('role', role);
+      surface.append(item);
+      document.body.append(surface);
+      item.focus();
+      expect(fireEvent.keyDown(item, { key: 'N', shiftKey: true })).toBe(true);
+      surface.remove();
+    }
+
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+    field.remove();
+  });
+
+  it('leaves a chord with another modifier to the browser', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    for (const modifier of ['ctrlKey', 'altKey', 'metaKey'] as const) {
+      const notCancelled = fireEvent.keyDown(document.body, {
+        key: 'N',
+        shiftKey: true,
+        [modifier]: true
+      });
+
+      expect(notCancelled).toBe(true);
+      expect(usePlayerStore.getState().currentId).toBe('track-1');
+    }
+  });
+
+  it('is a no-op with an empty queue', async () => {
+    await renderBar();
+
+    const notCancelled = fireEvent.keyDown(window, {
+      key: 'N',
+      shiftKey: true
+    });
+
+    expect(notCancelled).toBe(true);
+  });
+
+  it('announces the shortcuts on the transport buttons', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first, second], first.id);
+    await renderBar();
+
+    expect(screen.getByRole('button', { name: 'Pause' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Space'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Previous track' })
+    ).toHaveAttribute('aria-keyshortcuts', 'Shift+P');
+    expect(screen.getByRole('button', { name: 'Next track' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Shift+N'
+    );
   });
 
   it('leaves the arrows to a focused menu, listbox or slider', async () => {

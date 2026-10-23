@@ -26,10 +26,12 @@ import type {
 } from '@playliberty/contracts';
 import {
   PlaylistSort,
+  ProblemCode,
   TrackFileStatus,
   endpoints
 } from '@playliberty/contracts';
 
+import type { CoverCrop } from '../../coverCrop/coverCrop';
 import { cacheEffects } from '../cacheEffects/cacheEffects';
 import { ApiError } from '../client/client';
 import {
@@ -319,9 +321,78 @@ export function useSyncPlaylist(): UseMutationResult<SyncRun, Error, string> {
   });
 }
 
+export interface SyncAllOutcome {
+  readonly started: number;
+  readonly alreadyRunning: number;
+  /** The refusal that ended the loop, `null` when every playlist took it. */
+  readonly stopped: unknown;
+}
+
+/*
+ * Start every playlist in the frozen set, one at a time. `409` is a fact about
+ * the set rather than a failure, so it is counted and the loop goes on; any
+ * other refusal stops it, since repeating a fault for every remaining playlist
+ * helps nobody.
+ */
+export function useSyncAllPlaylists(): UseMutationResult<
+  SyncAllOutcome,
+  Error,
+  readonly string[]
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (playlistIds: readonly string[]) => {
+      let started = 0;
+      let alreadyRunning = 0;
+
+      for (const playlistId of playlistIds) {
+        try {
+          await commandEndpoint(endpoints.syncPlaylist, { playlistId });
+          started += 1;
+        } catch (error) {
+          if (
+            error instanceof ApiError &&
+            error.problem?.code === ProblemCode.SyncAlreadyRunning
+          ) {
+            alreadyRunning += 1;
+            continue;
+          }
+
+          return { started, alreadyRunning, stopped: error };
+        }
+      }
+
+      return { started, alreadyRunning, stopped: null };
+    },
+    /* One invalidation for the batch: the settle events arrive per playlist. */
+    onSettled: () => {
+      cacheEffects.everyPlaylistChanged(queryClient);
+    }
+  });
+}
+
 export interface SetPlaylistCoverVariables {
   readonly playlistId: string;
   readonly file: File;
+  readonly crop: CoverCrop | null;
+}
+
+/* The four fields travel together or not at all; six decimals keep the region
+ * inside a pixel of what the dialog showed. */
+export function coverCropQuery(
+  crop: CoverCrop | null
+): URLSearchParams | undefined {
+  if (crop === null) {
+    return undefined;
+  }
+
+  return new URLSearchParams({
+    cropX: crop.x.toFixed(6),
+    cropY: crop.y.toFixed(6),
+    cropWidth: crop.width.toFixed(6),
+    cropHeight: crop.height.toFixed(6)
+  });
 }
 
 /* The image bytes stay whole; the server normalises them and answers the
@@ -334,10 +405,14 @@ export function useSetPlaylistCover(): UseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ playlistId, file }: SetPlaylistCoverVariables) =>
-      uploadEndpoint(endpoints.setPlaylistCover, file, file.type, {
-        playlistId
-      }),
+    mutationFn: ({ playlistId, file, crop }: SetPlaylistCoverVariables) =>
+      uploadEndpoint(
+        endpoints.setPlaylistCover,
+        file,
+        file.type,
+        { playlistId },
+        coverCropQuery(crop)
+      ),
     onSuccess: (playlist, { playlistId }) => {
       queryClient.setQueryData(['playlist', playlistId], playlist);
       cacheEffects.playlistChanged(queryClient, playlistId);

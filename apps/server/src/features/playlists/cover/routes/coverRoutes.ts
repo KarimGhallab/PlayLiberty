@@ -21,6 +21,8 @@ import {
   setPlaylistCoverForAccount
 } from '../coverService.js';
 import { MAX_COVER_BYTES } from '../normalizeCoverImage.js';
+import { InvalidCoverCropError, readCoverCrop } from '../readCoverCrop.js';
+import type { CoverCrop } from '../types.js';
 import { PlaylistCoverOutcome } from '../types.js';
 
 /* The stored cover is content-stable because its URL carries the version. */
@@ -51,45 +53,57 @@ export function registerCoverRoutes(
     }
   );
 
-  registerEndpoint<{ Params: { playlistId: string } }>(
-    app,
-    endpoints.setPlaylistCover,
-    async (request, reply) => {
-      if (!isAcceptedCoverType(request.headers['content-type'])) {
-        return sendProblem(reply, {
-          status: 415,
-          code: ProblemCode.RequestError,
-          title: 'Unsupported Media Type',
-          detail: 'A cover must be a JPEG, PNG or WebP image.'
-        });
-      }
-
-      if (!Buffer.isBuffer(request.body)) {
-        return sendUnprocessable(reply);
-      }
-
-      const result = await setPlaylistCoverForAccount(
-        context,
-        request.params.playlistId,
-        request.account.id,
-        request.body
-      );
-
-      if (result.outcome === PlaylistCoverOutcome.PlaylistNotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
-      }
-
-      if (result.outcome === PlaylistCoverOutcome.InvalidImage) {
-        return sendUnprocessable(reply);
-      }
-
-      if (result.outcome === PlaylistCoverOutcome.Ok) {
-        return reply.send(result.playlist);
-      }
-
-      return exhaust(result);
+  registerEndpoint<{
+    Params: { playlistId: string };
+    Querystring: Record<string, unknown>;
+  }>(app, endpoints.setPlaylistCover, async (request, reply) => {
+    if (!isAcceptedCoverType(request.headers['content-type'])) {
+      return sendProblem(reply, {
+        status: 415,
+        code: ProblemCode.RequestError,
+        title: 'Unsupported Media Type',
+        detail: 'A cover must be a JPEG, PNG or WebP image.'
+      });
     }
-  );
+
+    if (!Buffer.isBuffer(request.body)) {
+      return sendUnprocessable(reply);
+    }
+
+    let crop: CoverCrop | null;
+
+    try {
+      crop = readCoverCrop(request.query);
+    } catch (error) {
+      if (error instanceof InvalidCoverCropError) {
+        return sendUnprocessable(reply);
+      }
+
+      throw error;
+    }
+
+    const result = await setPlaylistCoverForAccount(
+      context,
+      request.params.playlistId,
+      request.account.id,
+      request.body,
+      crop
+    );
+
+    if (result.outcome === PlaylistCoverOutcome.PlaylistNotFound) {
+      return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+    }
+
+    if (result.outcome === PlaylistCoverOutcome.InvalidImage) {
+      return sendUnprocessable(reply);
+    }
+
+    if (result.outcome === PlaylistCoverOutcome.Ok) {
+      return reply.send(result.playlist);
+    }
+
+    return exhaust(result);
+  });
 
   registerEndpoint<{ Params: { playlistId: string } }>(
     app,

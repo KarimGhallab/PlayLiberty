@@ -21,6 +21,8 @@ interface PlaylistFilterChipsProps {
   disabled?: boolean;
   /* Whether a status with no tracks is drawn. */
   showEmpty?: boolean;
+  /* The word for All where another All on screen counts playlists. */
+  allLabelKey?: MessageKey<Messages>;
   onChange: (state: TrackFileStatus | null) => void;
 }
 
@@ -53,6 +55,7 @@ export default function PlaylistFilterChips({
   active,
   disabled = false,
   showEmpty = true,
+  allLabelKey,
   onChange
 }: PlaylistFilterChipsProps) {
   const { t } = useI18n();
@@ -73,7 +76,11 @@ export default function PlaylistFilterChips({
         {chips.map(chip => {
           const pressed = active === chip.value;
           const count = chip.value === null ? total : counts[chip.value];
-          const label = t(chip.labelKey);
+          const labelKey =
+            chip.value === null
+              ? (allLabelKey ?? chip.labelKey)
+              : chip.labelKey;
+          const label = t(labelKey);
 
           return (
             <Chip

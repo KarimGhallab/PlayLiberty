@@ -224,9 +224,9 @@ export function usePlaylistActions(
             removeProblem={
               removeCover.isError ? t('coverDialog.removeFailed') : null
             }
-            onSubmit={file =>
+            onSubmit={(file, crop) =>
               cover.mutate(
-                { playlistId: coverTarget.id, file },
+                { playlistId: coverTarget.id, file, crop },
                 { onSuccess: () => setCoverOpen(false) }
               )
             }

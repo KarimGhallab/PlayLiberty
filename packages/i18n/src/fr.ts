@@ -29,11 +29,36 @@ export const fr: Messages = {
     readFailed: 'Impossible de charger les playlists.',
     pinned: 'Épinglées',
     syncing: 'Synchronisation en cours',
+    scopeAll: 'Toutes',
+    scopeShared: 'Partagées avec moi',
+    scopeLabel: 'Filtrer par propriétaire',
+    allTracks: 'Toutes les pistes',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
     notDownloaded: {
       one: "{count} piste n'est pas stockée",
       other: '{count} pistes ne sont pas stockées'
     },
+    syncAll: {
+      one: 'Synchroniser 1 playlist',
+      other: 'Synchroniser les {count} playlists'
+    },
+    syncingAll: {
+      one: 'Synchronisation de 1 playlist...',
+      other: 'Synchronisation de {count} playlists...'
+    },
+    syncAllStarted: {
+      one: '1 synchronisation lancée',
+      other: '{count} synchronisations lancées'
+    },
+    syncAllRunning: {
+      one: '1 est déjà en cours',
+      other: '{count} sont déjà en cours'
+    },
+    syncAllNone: {
+      one: 'La playlist est déjà en cours de synchronisation',
+      other: 'Les {count} playlists sont déjà en cours de synchronisation'
+    },
+    syncAllStopped: 'Synchronisation interrompue',
     deleteDeferred: 'Suppression de la playlist',
     empty: {
       heading: 'Aucune playlist',
@@ -44,6 +69,8 @@ export const fr: Messages = {
   detail: {
     back: "Retour à l'accueil",
     addTrack: 'Ajouter une piste',
+    syncPlaylist: 'Synchroniser la playlist',
+    syncingPlaylist: 'Synchronisation de la playlist...',
     loadingTracks: 'Chargement des pistes.',
     readFailed: 'Impossible de charger les pistes.',
     noTracks: 'Aucune piste.',
@@ -125,7 +152,11 @@ export const fr: Messages = {
     removeFailed: "L'image n'a pas pu être retirée.",
     save: 'Enregistrer',
     saving: 'Enregistrement',
-    discardPrompt: "Abandonner cette image ? L'image choisie sera perdue."
+    discardPrompt: "Abandonner cette image ? L'image choisie sera perdue.",
+    cropHint:
+      "Faites glisser l'image ou utilisez les flèches pour la déplacer.",
+    zoom: 'Zoom',
+    reset: 'Réinitialiser'
   },
   shareDialog: {
     title: 'Partager la playlist',
@@ -172,7 +203,10 @@ export const fr: Messages = {
     play: 'Lire',
     pause: 'Mettre en pause',
     position: 'Position dans la piste',
-    positionValue: '{elapsed} sur {duration}'
+    positionValue: '{elapsed} sur {duration}',
+    shortcutShift: 'Shift',
+    shortcutPrevious: 'P',
+    shortcutNext: 'N'
   },
   volume: {
     label: 'Volume',
@@ -213,7 +247,6 @@ export const fr: Messages = {
     pin: 'Épingler',
     unpin: 'Désépingler',
     syncNow: 'Synchroniser',
-    syncing: 'Synchronisation',
     delete: 'Supprimer',
     play: 'Lire cette playlist',
     playNamed: 'Lire {name}',

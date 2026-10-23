@@ -10,6 +10,7 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
+import type { CoverCrop } from '../../coverCrop/coverCrop';
 import CoverDialog from './CoverDialog';
 
 const CUSTOM_VERSION = '2026-10-20T12:00:00.000Z';
@@ -93,6 +94,46 @@ function choose(container: HTMLElement, file: File): void {
   fireEvent.change(input, { target: { files: [file] } });
 }
 
+/* jsdom never decodes an image, so the natural size the crop math reads is
+ * declared here and the load event fired by hand. */
+function loadChosen(
+  container: HTMLElement,
+  width = 2000,
+  height = 1000
+): HTMLImageElement {
+  const picture = container.querySelector('img');
+
+  if (picture === null) {
+    throw new Error('the dialog shows no image');
+  }
+
+  Object.defineProperty(picture, 'naturalWidth', {
+    value: width,
+    configurable: true
+  });
+  Object.defineProperty(picture, 'naturalHeight', {
+    value: height,
+    configurable: true
+  });
+  fireEvent.load(picture);
+
+  return picture;
+}
+
+function box(width: number, height: number) {
+  return {
+    left: 0,
+    top: 0,
+    right: width,
+    bottom: height,
+    width,
+    height,
+    x: 0,
+    y: 0,
+    toJSON: () => ({})
+  };
+}
+
 describe('CoverDialog', () => {
   it('opens on the labelled image button with the current custom cover', () => {
     const { container } = renderDialog({
@@ -154,7 +195,7 @@ describe('CoverDialog', () => {
 
     fireEvent.click(save);
 
-    expect(onSubmit).toHaveBeenCalledWith(file);
+    expect(onSubmit).toHaveBeenCalledWith(file, null);
   });
 
   it('accepts a dropped image through the square', () => {
@@ -400,6 +441,192 @@ describe('CoverDialog', () => {
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }
     });
+    expect(results.violations).toEqual([]);
+  });
+});
+
+function cropAt(crops: (CoverCrop | null)[], index: number): CoverCrop {
+  const crop = crops[index];
+
+  if (crop === null || crop === undefined) {
+    throw new Error(`save ${index} sent no crop`);
+  }
+
+  return crop;
+}
+
+describe('cropping the chosen cover', () => {
+  it('turns a loaded file into a stage with its zoom range and reset', () => {
+    const { container } = renderDialog();
+
+    choose(container, imageFile());
+    loadChosen(container, 2000, 1000);
+
+    expect(screen.getByRole('group')).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Zoom' })).toHaveAttribute(
+      'aria-valuemax',
+      '1.5625'
+    );
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
+  });
+
+  it('zooms from the rail and the arrow keys and reads the multiplier', () => {
+    const { container } = renderDialog();
+
+    choose(container, imageFile());
+    loadChosen(container, 2000, 1000);
+    const slider = screen.getByRole('slider', { name: 'Zoom' });
+    vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(box(200, 4));
+
+    fireEvent.pointerDown(slider, { clientX: 100, pointerId: 1 });
+    expect(slider).toHaveAttribute('aria-valuetext', '1.3x');
+
+    fireEvent.pointerUp(slider, { clientX: 100, pointerId: 1 });
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(screen.getByText('1.4x')).toBeInTheDocument();
+
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+
+    expect(screen.getByText('1.0x')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
+  });
+
+  it('pans with a drag and never leaves an empty edge', () => {
+    const crops: (CoverCrop | null)[] = [];
+    const { container } = renderDialog({
+      onSubmit: (_file, crop) => crops.push(crop)
+    });
+
+    choose(container, imageFile());
+    loadChosen(container, 900, 300);
+    const stage = screen.getByRole('group');
+    vi.spyOn(stage, 'getBoundingClientRect').mockReturnValue(box(280, 280));
+
+    fireEvent.pointerDown(stage, { clientX: 200, clientY: 140, pointerId: 1 });
+    fireEvent.pointerMove(stage, { clientX: 100, clientY: 140, pointerId: 1 });
+    fireEvent.pointerUp(stage, { clientX: 100, clientY: 140, pointerId: 1 });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const dragged = cropAt(crops, 0);
+    expect(dragged.width).toBeCloseTo(1 / 3);
+    expect(dragged.height).toBeCloseTo(1);
+    expect(dragged.x).toBeGreaterThan(1 / 3);
+
+    fireEvent.pointerDown(stage, { clientX: 280, clientY: 140, pointerId: 2 });
+    fireEvent.pointerMove(stage, {
+      clientX: -10000,
+      clientY: 140,
+      pointerId: 2
+    });
+    fireEvent.pointerUp(stage, { clientX: -10000, clientY: 140, pointerId: 2 });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const clamped = cropAt(crops, 1);
+    expect(clamped.x + clamped.width).toBeLessThanOrEqual(1 + 1e-9);
+  });
+
+  it('pans with the arrow keys on the stage', () => {
+    const crops: (CoverCrop | null)[] = [];
+    const { container } = renderDialog({
+      onSubmit: (_file, crop) => crops.push(crop)
+    });
+
+    choose(container, imageFile());
+    loadChosen(container, 900, 300);
+
+    fireEvent.keyDown(screen.getByRole('group'), { key: 'ArrowRight' });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const panned = cropAt(crops, 0);
+    expect(panned.x).toBeLessThan(1 / 3);
+    expect(panned.x + panned.width).toBeGreaterThanOrEqual(0);
+  });
+
+  it('resets to centered at 1x and then saves no crop', () => {
+    const crops: (CoverCrop | null)[] = [];
+    const { container } = renderDialog({
+      onSubmit: (_file, crop) => crops.push(crop)
+    });
+
+    choose(container, imageFile());
+    loadChosen(container, 2000, 1000);
+    const slider = screen.getByRole('slider', { name: 'Zoom' });
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+    expect(screen.getByText('1.0x')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(crops).toEqual([null]);
+  });
+
+  it('keeps the dialog and the crop when the save fails', () => {
+    const view = renderDialog();
+    const { container } = view;
+
+    choose(container, imageFile());
+    loadChosen(container, 2000, 1000);
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Zoom' }), {
+      key: 'ArrowRight'
+    });
+
+    view.rerender(dialogElement({ problem: 'The cover could not be saved.' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Playlist cover' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The cover could not be saved.'
+    );
+    expect(screen.getByText('1.1x')).toBeInTheDocument();
+  });
+
+  it('resets the crop when another file is chosen', () => {
+    const { container } = renderDialog();
+
+    choose(container, imageFile());
+    loadChosen(container, 2000, 1000);
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Zoom' }), {
+      key: 'ArrowRight'
+    });
+    expect(screen.getByText('1.1x')).toBeInTheDocument();
+
+    choose(container, imageFile('second.png', 'image/png'));
+
+    expect(
+      screen.queryByRole('slider', { name: 'Zoom' })
+    ).not.toBeInTheDocument();
+
+    loadChosen(container, 2000, 1000);
+
+    expect(screen.getByText('1.0x')).toBeInTheDocument();
+  });
+
+  it('shows an existing custom cover as a preview with no stage', () => {
+    renderDialog({ playlist: coveredPlaylist(), onRemove: vi.fn() });
+
+    expect(
+      screen.queryByRole('slider', { name: 'Zoom' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Reset' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+  });
+
+  it('has no axe violations on the crop stage', async () => {
+    const { container } = renderDialog();
+
+    choose(container, imageFile());
+    loadChosen(container, 2000, 1000);
+
+    const results = await axe.run(container, {
+      rules: { 'color-contrast': { enabled: false } }
+    });
+
     expect(results.violations).toEqual([]);
   });
 });

@@ -1,0 +1,21 @@
+name: Verify
+
+on:
+  workflow_call:
+
+jobs:
+  lint:
+    name: Verify (lint + check import + pnpm audit)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+
+      - name: Lint
+        run: pnpm run lint:check
+
+      - name: Check imports
+        run: pnpm run deps-cruise:check
+
+      - name: Audit the installed dependencies
+        run: pnpm audit --audit-level=high

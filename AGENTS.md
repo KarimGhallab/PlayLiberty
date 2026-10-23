@@ -19,7 +19,7 @@ and consumed with `workspace:*`.
 ## Guardrails
 
 - Do not commit or push unless explicitly asked; the human owns git history.
-- ESM everywhere (`"type": "module"`). The runtime is pinned in `mise.toml` (Node 26.5.0) and the package manager in `package.json` (`pnpm@12.4.2`); do not drift them.
+- ESM everywhere (`"type": "module"`). The runtime is pinned in `mise.toml` (Node 26.5.0) and the package manager in `package.json` (`pnpm@12.15.0`); do not drift them.
 - Deployment is private, behind the Pangolin authenticating edge. A production origin must never publish a host port and must join the `pangolin_frontend` network declared `external`. See `docs/ARCHITECTURE.md` and the deployment guideline.
 - The production host is prepared by `pnpm deploy:build-for-production`; it builds images and prepares storage and secrets only. It never installs or starts the unit. See `docs/ARCHITECTURE.md`.
 - No transcoding, ever. The stored AAC/M4A is served verbatim. See `docs/ARCHITECTURE.md`.

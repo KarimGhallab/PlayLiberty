@@ -179,6 +179,47 @@ describe('VolumeControl', () => {
     field.remove();
   });
 
+  it('leaves the arrows to a focused menu', () => {
+    usePlayerStore.getState().setVolume(0.5);
+    renderControl();
+    const menu = document.createElement('div');
+    menu.setAttribute('role', 'menu');
+    document.body.append(menu);
+
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.5);
+    menu.remove();
+  });
+
+  it('leaves the mute key to an open menu and to a dialog', () => {
+    renderControl();
+
+    for (const role of ['menu', 'dialog']) {
+      const surface = document.createElement('div');
+      surface.setAttribute('role', role);
+      document.body.append(surface);
+      surface.focus();
+
+      fireEvent.keyDown(surface, { key: 'm' });
+
+      expect(usePlayerStore.getState().muted).toBe(false);
+      surface.remove();
+    }
+  });
+
+  it('leaves a key another handler already prevented', () => {
+    renderControl();
+    const other = document.createElement('div');
+    other.addEventListener('keydown', event => event.preventDefault());
+    document.body.append(other);
+
+    fireEvent.keyDown(other, { key: 'm' });
+
+    expect(usePlayerStore.getState().muted).toBe(false);
+    other.remove();
+  });
+
   it('sets the level from where the pointer lands on the rail', () => {
     renderControl();
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));

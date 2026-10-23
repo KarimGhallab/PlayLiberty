@@ -41,6 +41,10 @@ const PHONE_SOURCE = 'E2Ecoverphone1';
 const PHONE_TITLE = 'Phone Cover';
 const PHONE_TRACK = { videoId: 'e2ecoverphon', title: 'Blue In Green' };
 
+const CROP_SOURCE = 'E2Ecovercrop1';
+const CROP_TITLE = 'Crop Journey';
+const CROP_TRACK = { videoId: 'e2ecovercrop', title: 'Blue In Green' };
+
 /* 64 and 48px solid PNGs, the formats the dialog accepts. */
 const COVER_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAQMAAACQp+OdAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGUExURS+efv///7b1ZuAAAAABYktHRAH/Ai3eAAAAB3RJTUUH6goUDQ4L70kteAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNi0xMC0yMFQxMzoxNDoxMSswMDowME1LbtsAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjYtMTAtMjBUMTM6MTQ6MTErMDA6MDA8FtZnAAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI2LTEwLTIwVDEzOjE0OjExKzAwOjAwawP3uAAAAA9JREFUKM9jYBgFo4B8AAACQAABjMWrdwAAAABJRU5ErkJggg==',
@@ -48,6 +52,13 @@ const COVER_PNG = Buffer.from(
 );
 const COVER_PNG_2 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwAQMAAABtzGvEAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGUExURUyskP///9XUxvkAAAABYktHRAH/Ai3eAAAAB3RJTUUH6goUDQ4L70kteAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNi0xMC0yMFQxMzoxNDoxMSswMDowME1LbtsAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjYtMTAtMjBUMTM6MTQ6MTErMDA6MDA8FtZnAAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI2LTEwLTIwVDEzOjE0OjExKzAwOjAwawP3uAAAAA1JREFUGNNjYBgF1AQAAVAAAafi2hYAAAAASUVORK5CYII=',
+  'base64'
+);
+
+/* 1000x800, red on the left and green on the right: a short edge over 640px so
+ * the stage can zoom, and bands deep enough that a pan is visible in a trace. */
+const WIDE_COVER_PNG = Buffer.from(
+  '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',
   'base64'
 );
 
@@ -181,6 +192,55 @@ async function chooseImage(
   });
 }
 
+interface CropFields {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/* The four fields the stage sent, or null when the save left the crop alone.
+ * The server test owns the region each fraction extracts. */
+function cropFields(url: string): CropFields | null {
+  const query = new URL(url).searchParams;
+
+  if (!query.has('cropX')) {
+    return null;
+  }
+
+  return {
+    x: Number(query.get('cropX')),
+    y: Number(query.get('cropY')),
+    width: Number(query.get('cropWidth')),
+    height: Number(query.get('cropHeight'))
+  };
+}
+
+/* The stored square, read off the image the page rendered rather than the
+ * bytes, so a cover that failed to decode cannot pass. */
+async function expectSquareCover(cover: Locator): Promise<void> {
+  await expect
+    .poll(() =>
+      cover.evaluate(image =>
+        'naturalWidth' in image ? Number(image.naturalWidth) : 0
+      )
+    )
+    .toBeGreaterThan(0);
+
+  const size = await cover.evaluate(image => {
+    if (!('naturalWidth' in image) || !('naturalHeight' in image)) {
+      return { width: 0, height: 0 };
+    }
+
+    return {
+      width: Number(image.naturalWidth),
+      height: Number(image.naturalHeight)
+    };
+  });
+
+  expect(size.width).toBe(size.height);
+}
+
 test('a custom cover reaches the detail and the gallery, survives a reload, and removal returns the first track', async ({
   page,
   request
@@ -261,6 +321,122 @@ test('a custom cover reaches the detail and the gallery, survives a reload, and 
   await expect(
     page.locator('[data-art="no-art"][data-sleeve]').first()
   ).toBeVisible();
+});
+
+test('an owner crops a new cover and the stored square survives a reload', async ({
+  page,
+  request
+}) => {
+  writeScenario({
+    sources: {
+      [CROP_SOURCE]: { title: CROP_TITLE, entries: [CROP_TRACK] }
+    }
+  });
+
+  const playlistId = await createForBrowser(request, CROP_SOURCE);
+
+  await page.goto('/');
+  await reloadUntil(page, page.getByRole('link', { name: CROP_TITLE }));
+  await drainDownloads(page);
+  await openPlaylist(page, CROP_TITLE);
+
+  await openHeaderMenu(page);
+  await page.getByRole('menuitem', { name: 'Update the cover' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Playlist cover' });
+  await chooseImage(dialog, 'wide.png', WIDE_COVER_PNG);
+
+  /* The stage appears once the image decodes; two steps reach 1.2x, inside the
+   * 1.25x this source allows. */
+  const zoom = dialog.getByRole('slider', { name: 'Zoom' });
+  await expect(zoom).toBeVisible();
+  await zoom.focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+
+  const box = await dialog.getByRole('group').boundingBox();
+
+  if (box === null) {
+    throw new Error('the crop stage has no box');
+  }
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    box.x + box.width / 2 - 60,
+    box.y + box.height / 2 + 20,
+    { steps: 4 }
+  );
+  await page.mouse.up();
+
+  const adjusted = page.waitForRequest(
+    sent =>
+      sent.method() === 'POST' &&
+      sent.url().includes(`/playlists/${playlistId}/cover`)
+  );
+
+  await dialog.getByRole('button', { name: 'Save' }).click();
+
+  const fields = cropFields((await adjusted).url());
+
+  if (fields === null) {
+    throw new Error('the adjusted upload carried no crop');
+  }
+
+  for (const value of Object.values(fields)) {
+    expect(value).toBeGreaterThanOrEqual(0);
+    expect(value).toBeLessThanOrEqual(1);
+  }
+
+  expect(fields.x + fields.width).toBeLessThanOrEqual(1);
+  expect(fields.y + fields.height).toBeLessThanOrEqual(1);
+  expect(fields.width).toBeLessThan(1);
+  expect(fields.x).toBeGreaterThan((1 - fields.width) / 2);
+  expect(fields.y).not.toBeCloseTo((1 - fields.height) / 2);
+
+  await expect(dialog).toBeHidden();
+
+  const detailCover = coverImage(page, playlistId);
+  await expect(detailCover).toBeVisible();
+  await expectSquareCover(detailCover);
+
+  await page.getByRole('link', { name: 'Back to home' }).click();
+  const cardCover = customCoverIn(galleryItem(page, CROP_TITLE), playlistId);
+  await expect(cardCover).toBeVisible();
+  await expectSquareCover(cardCover);
+
+  await page.reload();
+  await expect(cardCover).toBeVisible();
+  await expectSquareCover(cardCover);
+
+  /* A second upload untouched proves the centered default through the dialog. */
+  await openPlaylist(page, CROP_TITLE);
+  const before = await coverImage(page, playlistId).getAttribute('src');
+  await openHeaderMenu(page);
+  await page.getByRole('menuitem', { name: 'Update the cover' }).click();
+
+  const secondDialog = page.getByRole('dialog', { name: 'Playlist cover' });
+
+  await chooseImage(secondDialog, 'centered.png', COVER_PNG);
+  await expect(
+    secondDialog.getByRole('slider', { name: 'Zoom' })
+  ).toBeVisible();
+
+  const untouched = page.waitForRequest(
+    sent =>
+      sent.method() === 'POST' &&
+      sent.url().includes(`/playlists/${playlistId}/cover`)
+  );
+
+  await secondDialog.getByRole('button', { name: 'Save' }).click();
+
+  expect(cropFields((await untouched).url())).toBeNull();
+  await expect(secondDialog).toBeHidden();
+
+  const replaced = coverImage(page, playlistId);
+  await expect(replaced).toBeVisible();
+  await expect.poll(() => replaced.getAttribute('src')).not.toBe(before);
+  await expectSquareCover(replaced);
 });
 
 test('a read collaborator sees the cover and has no Cover item', async ({
@@ -379,6 +555,8 @@ test('the 390px arrangement opens the cover dialog and saves', async ({
   const dialog = page.getByRole('dialog', { name: 'Playlist cover' });
   await expect(dialog).toBeVisible();
   await chooseImage(dialog, 'phone-cover.png', COVER_PNG);
+  await expect(dialog.getByRole('group')).toBeVisible();
+  await expect(dialog.getByRole('slider', { name: 'Zoom' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
 

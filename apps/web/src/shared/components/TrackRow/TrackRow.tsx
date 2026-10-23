@@ -22,9 +22,9 @@ import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
 
 /*
- * The row's body is a hit layer that plays the track; the lane at its end sits
- * above it, so a press there opens the menu. A stored track draws no word, the
- * lane is inert without curate rights, and no state is carried by colour alone.
+ * The whole row plays the track; the lane at its end opens the menu above it.
+ * Only the current row draws a playback word, the lane is inert without curate
+ * rights, and no state rests on colour alone.
  */
 
 interface TrackRowProps {
@@ -229,13 +229,17 @@ function TrackRow({
           <TrackBars
             className={styles.trackRow__bars}
             barClassName={styles.trackRow__bar}
-            playing={playing}
           />
         ) : null}
       </span>
       <div className={styles.trackRow__body}>
         <span className={styles.trackRow__title}>{track.title}</span>
         <span className={styles.trackRow__sub}>
+          {current ? (
+            <span className={styles.trackRow__now}>
+              {playing ? t('trackBars.playing') : t('trackBars.paused')}
+            </span>
+          ) : null}
           {stateLabel === null ? null : (
             <span className={styles.trackRow__state} data-tone={tone}>
               {stateLabel}

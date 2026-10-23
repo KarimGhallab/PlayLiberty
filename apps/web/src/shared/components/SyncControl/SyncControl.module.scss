@@ -1,0 +1,111 @@
+/*
+ * The sync action, beside the Add: one control that states its scope, so it
+ * reads as secondary to the add rather than as a second one.
+ *
+ * Where a pointer can hover it rests as a square around its glyph and shows the
+ * words when hovered or focused; a touch screen has no hover to give, so there
+ * the words are always out.
+ */
+.sync {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: auto;
+  align-items: center;
+  height: var(--control-height);
+  /* Right side is the gap, the glyph and its padding: 8 + 16 + 9, plus the
+   * border. The glyph sits outside the grid, so no track rounding can move it. */
+  padding: 0 33px 0 9px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--surface);
+  }
+
+  &:disabled {
+    opacity: var(--opacity-disabled);
+  }
+
+  /* A run in progress is not an unavailable control: it stays legible and says
+   * what it is doing, while the disabled state keeps the press out. */
+  &[aria-busy='true'] {
+    opacity: 1;
+    cursor: progress;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-width) solid var(--accent);
+    outline-offset: var(--focus-offset);
+  }
+
+  &__word {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* Pinned to the button's right edge, which the row holds still. The offset is
+   * from the padding box, so 9px plus the border is the 10px the glyph needs to
+   * read centred in the resting square. */
+  &__glyph {
+    position: absolute;
+    top: 50%;
+    right: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    transform: translateY(-50%);
+  }
+
+  &__icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+  }
+
+  @media (hover: hover) {
+    /* 1px, not 9: with the glyph out of the grid the resting square is
+     * 2 + 1 + 33 = 36, and the glyph reads 10px from both edges. */
+    grid-template-columns: 0fr;
+    padding-left: 1px;
+    transition:
+      grid-template-columns 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      padding-left 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+
+    /* A quiet fade over the edge's travel: the words appear rather than slide,
+     * and nothing can leak from the clipped cell at rest. */
+    &__word {
+      opacity: 0;
+      transition: opacity 140ms linear;
+    }
+
+    /* Busy opens it without a pointer: a disabled control cannot be hovered,
+     * and the progress sentence is the only thing saying the loop runs. */
+    &:hover,
+    &:focus-visible,
+    &[aria-busy='true'] {
+      grid-template-columns: 1fr;
+      padding-left: 9px;
+    }
+
+    &:hover &__word,
+    &:focus-visible &__word,
+    &[aria-busy='true'] &__word {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    &__word {
+      transition: none;
+    }
+  }
+}

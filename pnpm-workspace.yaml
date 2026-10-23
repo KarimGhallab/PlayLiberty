@@ -11,5 +11,10 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@types/node@26.6.2'
   - eslint@10.11.0
-  - '@tanstack/react-router@1.170.41'
-  - '@tanstack/router-core@1.171.34'
+  - '@tanstack/react-router@1.170.41 || 1.170.46'
+  - '@tanstack/router-core@1.171.34 || 1.171.39'
+  - '@fastify/static@10.1.7'
+  - sass@1.106.1
+  - zustand@5.0.16
+overrides:
+  esbuild@<=0.24.2: ^0.25.0

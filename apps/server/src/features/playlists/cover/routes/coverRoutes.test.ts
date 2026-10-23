@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { chmod, stat } from 'node:fs/promises';
+import { chmod, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { eq } from 'drizzle-orm';
@@ -45,7 +45,8 @@ function upload(
   playlistId: string,
   pangolinUserId: string,
   image: Buffer,
-  contentType = 'image/jpeg'
+  contentType = 'image/jpeg',
+  query = ''
 ) {
   if (context === undefined) {
     throw new Error('the test context is not created');
@@ -53,7 +54,7 @@ function upload(
 
   return context.app.inject({
     method: 'POST',
-    url: `/api/v1/playlists/${playlistId}/cover`,
+    url: `/api/v1/playlists/${playlistId}/cover${query}`,
     headers: {
       'remote-user': pangolinUserId,
       'x-playliberty-client': 'test',
@@ -114,6 +115,21 @@ function coverUrl(playlistId: string, version: string): string {
   return `/api/v1/playlists/${playlistId}/cover?v=${encodeURIComponent(version)}`;
 }
 
+async function storedCover(
+  playlistId: string,
+  pangolinUserId: string,
+  coverUpdatedAt: string | null
+): Promise<Buffer> {
+  const response = await get(
+    coverUrl(playlistId, coverUpdatedAt ?? ''),
+    pangolinUserId
+  );
+
+  expect(response.statusCode).toBe(200);
+
+  return response.rawPayload;
+}
+
 function coverRow(playlistId: string) {
   return database()
     .db.select()
@@ -157,8 +173,94 @@ async function image(
     .toBuffer();
 }
 
+interface Colour {
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+}
+
+const RED: Colour = { r: 210, g: 30, b: 30 };
+const GREEN: Colour = { r: 30, g: 170, b: 70 };
+const BLUE: Colour = { r: 30, g: 60, b: 200 };
+
+/* Three equal vertical bands, so the colour of a stored region says which part
+ * of the image the server kept, not only how large it is. */
+async function bands(
+  colours: readonly Colour[],
+  format: 'png' | 'jpeg',
+  orientation?: number
+): Promise<Buffer> {
+  const bandWidth = 300;
+  const height = 300;
+  const width = bandWidth * colours.length;
+  const raw = Buffer.alloc(width * height * 3);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const colour = colours[Math.floor(x / bandWidth)];
+      const at = (y * width + x) * 3;
+      raw[at] = colour.r;
+      raw[at + 1] = colour.g;
+      raw[at + 2] = colour.b;
+    }
+  }
+
+  let pipeline = sharp(raw, { raw: { width, height, channels: 3 } });
+
+  if (orientation !== undefined) {
+    pipeline = pipeline.withMetadata({ orientation });
+  }
+
+  return format === 'png'
+    ? pipeline.png().toBuffer()
+    : pipeline.jpeg({ quality: 95 }).toBuffer();
+}
+
+async function solid(
+  width: number,
+  height: number,
+  colour: Colour = GREEN
+): Promise<Buffer> {
+  return sharp({
+    create: { width, height, channels: 3, background: colour }
+  })
+    .png()
+    .toBuffer();
+}
+
+interface Pixels {
+  readonly width: number;
+  readonly height: number;
+  readonly at: (x: number, y: number) => Colour;
+}
+
+async function pixels(encoded: Buffer): Promise<Pixels> {
+  const { data, info } = await sharp(encoded)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  return {
+    width: info.width,
+    height: info.height,
+    at: (x, y) => {
+      const at = (y * info.width + x) * info.channels;
+
+      return { r: data[at], g: data[at + 1], b: data[at + 2] };
+    }
+  };
+}
+
+/* WebP at the stored quality shifts a solid colour a little, and the fixtures
+ * are far enough apart that a tolerance still names the region. */
+function expectColour(actual: Colour, expected: Colour): void {
+  expect(Math.abs(actual.r - expected.r)).toBeLessThanOrEqual(24);
+  expect(Math.abs(actual.g - expected.g)).toBeLessThanOrEqual(24);
+  expect(Math.abs(actual.b - expected.b)).toBeLessThanOrEqual(24);
+}
+
 describe('setting a playlist cover', () => {
-  it('stores an uploaded JPEG as a capped WebP and serves it to a reader', async () => {
+  it('stores an uploaded JPEG as a capped square WebP and serves it to a reader', async () => {
     context = await createTestContext();
     const owner = seedAccount(database());
     const reader = seedAccount(database());
@@ -170,7 +272,7 @@ describe('setting a playlist cover', () => {
     const response = await upload(
       playlistId,
       owner.pangolinUserId,
-      await image('jpeg'),
+      await image('jpeg', 4000, 2000),
       'image/jpeg'
     );
 
@@ -197,7 +299,7 @@ describe('setting a playlist cover', () => {
 
     const metadata = await sharp(cover.rawPayload).metadata();
     expect(metadata.format).toBe('webp');
-    expect(metadata.width).toBe(800);
+    expect(metadata.width).toBe(1600);
     expect(metadata.height).toBe(1600);
     expect(metadata.exif).toBeUndefined();
     expect(metadata.orientation).toBeUndefined();
@@ -213,7 +315,7 @@ describe('setting a playlist cover', () => {
       const response = await upload(
         playlistId,
         owner.pangolinUserId,
-        await image(format),
+        await image(format, 4000, 2000),
         `image/${format}`
       );
 
@@ -229,7 +331,8 @@ describe('setting a playlist cover', () => {
 
       const metadata = await sharp(cover.rawPayload).metadata();
       expect(metadata.format).toBe('webp');
-      expect(Math.max(metadata.width, metadata.height)).toBe(1600);
+      expect(metadata.width).toBe(1600);
+      expect(metadata.height).toBe(1600);
     }
   );
 
@@ -255,7 +358,7 @@ describe('setting a playlist cover', () => {
 
     const metadata = await sharp(cover.rawPayload).metadata();
     expect(metadata.width).toBe(480);
-    expect(metadata.height).toBe(640);
+    expect(metadata.height).toBe(480);
   });
 
   it('replaces the file and version, and removes the previous file', async () => {
@@ -762,5 +865,243 @@ describe('setting a playlist cover', () => {
     } finally {
       await chmod(context.mediaPaths.coversDir, 0o700);
     }
+  });
+});
+
+describe('choosing the stored region', () => {
+  it('stores the centered square when the request carries no crop', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+
+    const playlist = PlaylistSchema.parse(
+      (
+        await upload(
+          playlistId,
+          owner.pangolinUserId,
+          await bands([RED, GREEN, BLUE], 'png'),
+          'image/png'
+        )
+      ).json()
+    );
+    const cover = await storedCover(
+      playlistId,
+      owner.pangolinUserId,
+      playlist.coverUpdatedAt
+    );
+    const stored = await pixels(cover);
+
+    expect(stored.width).toBe(300);
+    expect(stored.height).toBe(300);
+    expectColour(stored.at(10, 10), GREEN);
+    expectColour(stored.at(150, 150), GREEN);
+    expectColour(stored.at(290, 290), GREEN);
+  });
+
+  it('stores the requested region when the request carries a crop', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+    const rightThird =
+      '?cropX=0.6666666666666666&cropY=0&cropWidth=0.3333333333333333&cropHeight=1';
+
+    const playlist = PlaylistSchema.parse(
+      (
+        await upload(
+          playlistId,
+          owner.pangolinUserId,
+          await bands([RED, GREEN, BLUE], 'png'),
+          'image/png',
+          rightThird
+        )
+      ).json()
+    );
+    const cover = await storedCover(
+      playlistId,
+      owner.pangolinUserId,
+      playlist.coverUpdatedAt
+    );
+    const stored = await pixels(cover);
+
+    expect(stored.width).toBe(300);
+    expect(stored.height).toBe(300);
+    expectColour(stored.at(10, 10), BLUE);
+    expectColour(stored.at(150, 150), BLUE);
+    expectColour(stored.at(290, 290), BLUE);
+  });
+
+  it('orients the image before it applies the crop', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+
+    /* Stored 900x300, shown 300x900 after the quarter turn: the left band
+     * becomes the top third. A crop measured before the turn would keep a
+     * 900x100 strip instead of a 300x300 region. */
+    const playlist = PlaylistSchema.parse(
+      (
+        await upload(
+          playlistId,
+          owner.pangolinUserId,
+          await bands([RED, GREEN, BLUE], 'jpeg', 6),
+          'image/jpeg',
+          '?cropX=0&cropY=0&cropWidth=1&cropHeight=0.3333333333333333'
+        )
+      ).json()
+    );
+    const cover = await storedCover(
+      playlistId,
+      owner.pangolinUserId,
+      playlist.coverUpdatedAt
+    );
+    const stored = await pixels(cover);
+
+    expect(stored.width).toBe(300);
+    expect(stored.height).toBe(300);
+    expectColour(stored.at(10, 10), RED);
+    expectColour(stored.at(150, 150), RED);
+    expectColour(stored.at(290, 290), RED);
+  });
+
+  it('caps an extracted region at 1600px and never enlarges it', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+
+    const capped = PlaylistSchema.parse(
+      (
+        await upload(
+          playlistId,
+          owner.pangolinUserId,
+          await solid(4000, 2000),
+          'image/png',
+          '?cropX=0&cropY=0&cropWidth=0.5&cropHeight=0.5'
+        )
+      ).json()
+    );
+    const cappedMetadata = await sharp(
+      await storedCover(playlistId, owner.pangolinUserId, capped.coverUpdatedAt)
+    ).metadata();
+
+    expect(cappedMetadata.width).toBe(1600);
+    expect(cappedMetadata.height).toBe(800);
+
+    const small = PlaylistSchema.parse(
+      (
+        await upload(
+          playlistId,
+          owner.pangolinUserId,
+          await solid(4000, 2000),
+          'image/png',
+          '?cropX=0&cropY=0&cropWidth=0.05&cropHeight=0.1'
+        )
+      ).json()
+    );
+    const smallMetadata = await sharp(
+      await storedCover(playlistId, owner.pangolinUserId, small.coverUpdatedAt)
+    ).metadata();
+
+    expect(smallMetadata.width).toBe(200);
+    expect(smallMetadata.height).toBe(200);
+  });
+
+  it.each([
+    ['one field alone', '?cropX=0.1'],
+    ['a non-numeric field', '?cropX=abc&cropY=0&cropWidth=1&cropHeight=1'],
+    ['a zero width', '?cropX=0&cropY=0&cropWidth=0&cropHeight=1'],
+    ['a zero height', '?cropX=0&cropY=0&cropWidth=1&cropHeight=0'],
+    ['a negative origin', '?cropX=-0.1&cropY=0&cropWidth=0.5&cropHeight=1'],
+    [
+      'a width past the right edge',
+      '?cropX=0.6&cropY=0&cropWidth=0.5&cropHeight=1'
+    ],
+    [
+      'a height past the bottom edge',
+      '?cropX=0&cropY=0.6&cropWidth=1&cropHeight=0.5'
+    ],
+    ['a width beyond the image', '?cropX=0&cropY=0&cropWidth=1.5&cropHeight=1']
+  ])(
+    'refuses %s and leaves the previous cover alone',
+    async (_reason, query) => {
+      context = await createTestContext();
+      const owner = seedAccount(database());
+      const { playlistId } = seedPlaylist(database(), owner.accountId);
+
+      await upload(playlistId, owner.pangolinUserId, await image('jpeg'));
+      const before = coverRow(playlistId);
+      const file = join(mediaRoot(), before?.coverPath ?? '');
+
+      const response = await upload(
+        playlistId,
+        owner.pangolinUserId,
+        await image('png'),
+        'image/png',
+        query
+      );
+
+      expect(response.statusCode).toBe(422);
+      expect(ProblemSchema.parse(response.json()).code).toBe(
+        'unprocessable_request'
+      );
+      expect(coverRow(playlistId)).toEqual(before);
+      expect(await fileExists(file)).toBe(true);
+    }
+  );
+
+  it('keeps a square request square when the pixels do not divide evenly', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+
+    /* The stage's square on a 1000x800 source is 666.67px a side, so rounding
+     * each edge independently would land on 666 by 667. */
+    const playlist = PlaylistSchema.parse(
+      (
+        await upload(
+          playlistId,
+          owner.pangolinUserId,
+          await solid(1000, 800),
+          'image/png',
+          '?cropX=0.309524&cropY=0.02381&cropWidth=0.666667&cropHeight=0.833333'
+        )
+      ).json()
+    );
+    const metadata = await sharp(
+      await storedCover(
+        playlistId,
+        owner.pangolinUserId,
+        playlist.coverUpdatedAt
+      )
+    ).metadata();
+
+    expect(metadata.width).toBe(667);
+    expect(metadata.height).toBe(667);
+  });
+
+  it('keeps an existing non-square cover as it is', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const existing = await sharp({
+      create: { width: 2000, height: 500, channels: 3, background: BLUE }
+    })
+      .webp()
+      .toBuffer();
+    await writeFile(join(mediaRoot(), 'covers/existing.webp'), existing);
+
+    const { playlistId } = seedPlaylist(database(), owner.accountId, {
+      coverPath: 'covers/existing.webp',
+      coverUpdatedAt: '2026-10-20T12:00:00.000Z'
+    });
+    const { playlistId: otherId } = seedPlaylist(database(), owner.accountId);
+
+    await upload(otherId, owner.pangolinUserId, await image('jpeg'));
+
+    const served = await get(
+      coverUrl(playlistId, '2026-10-20T12:00:00.000Z'),
+      owner.pangolinUserId
+    );
+
+    expect(served.statusCode).toBe(200);
+    expect(served.rawPayload.equals(existing)).toBe(true);
   });
 });

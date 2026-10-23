@@ -31,7 +31,7 @@ async function rowTitles(page: Page): Promise<string[]> {
 function currentRow(page: Page): Locator {
   return page
     .getByRole('listitem')
-    .filter({ has: page.getByRole('img', { name: /^(Playing|Paused)$/ }) });
+    .filter({ has: page.getByText(/^(Playing|Paused)$/) });
 }
 
 async function addTrack(

@@ -215,6 +215,13 @@
     color: var(--muted);
   }
 
+  /* A quiet shade of the shared role: readable without pulling focus from the
+   * name. Private keeps the neutral. */
+  &__share[data-share='own-shared'],
+  &__share[data-share='collab'] {
+    color: var(--shared-quiet);
+  }
+
   &__share-tip {
     display: none;
     position: absolute;
@@ -268,7 +275,6 @@
 
   &__meta {
     display: flex;
-    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: var(--space-3);
@@ -323,62 +329,11 @@
     white-space: nowrap;
   }
 
-  /* The detail's named sync beside its state: its own surface keeps the accent
-   * legible over the cover, whose ground can be any colour. */
-  &__sync {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: 28px;
-    margin-inline-start: auto;
-    padding: 0 var(--space-3);
-    flex-shrink: 0;
-    color: var(--accent);
-    font-family: inherit;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-    line-height: var(--leading-normal);
-    white-space: nowrap;
-    background: var(--surface-raised);
-    border: 1px solid var(--control-border);
-    border-radius: var(--radius-control);
-    cursor: pointer;
-
-    &:hover:not(:disabled) {
-      background: var(--surface);
-    }
-
-    &:disabled {
-      cursor: default;
-    }
-
-    &:disabled:not([aria-busy='true']) {
-      color: var(--control-disabled-fg);
-    }
-
-    &[aria-busy='true'] {
-      color: var(--emphasis);
-      cursor: progress;
-    }
-
-    &:focus-visible {
-      outline: var(--focus-width) solid var(--accent);
-      outline-offset: var(--focus-offset);
-      border-radius: var(--radius-control);
-    }
-  }
-
-  &__sync-icon {
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    flex-shrink: 0;
-  }
-
   /* The owner of a playlist that is not the account's, as its own line rather
    * than a third fact on the meta line. */
   &__owner {
     margin: 0;
-    color: var(--muted);
+    color: var(--shared);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
   }

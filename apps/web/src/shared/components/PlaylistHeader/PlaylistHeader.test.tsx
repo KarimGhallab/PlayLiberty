@@ -291,39 +291,6 @@ describe('PlaylistHeader', () => {
     expect(await screen.findByText('Syncing')).toBeInTheDocument();
   });
 
-  it('offers the named sync beside the state and starts it in one press', async () => {
-    const onSync = vi.fn();
-    renderRow(playlist(), null, { onSync });
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Sync now' }));
-
-    expect(onSync).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows the sync control busy and refuses a second press in flight', async () => {
-    const onSync = vi.fn();
-    renderRow(playlist(), null, { onSync, syncing: true });
-
-    const control = await screen.findByRole('button', { name: 'Syncing' });
-
-    expect(screen.getAllByText('Syncing')).toHaveLength(1);
-    expect(control).toBeDisabled();
-    expect(control).toHaveAttribute('aria-busy', 'true');
-
-    fireEvent.click(control);
-    expect(onSync).not.toHaveBeenCalled();
-  });
-
-  it('draws no sync control when the caller cannot start one', async () => {
-    renderRow(playlist());
-
-    await screen.findByRole('link', { name: 'Rain On The Window' });
-
-    expect(
-      screen.queryByRole('button', { name: /^Sync/ })
-    ).not.toBeInTheDocument();
-  });
-
   it('renders a failed playlist as failed', async () => {
     renderRow(playlist({ syncStatus: PlaylistSyncStatus.Error }));
 
