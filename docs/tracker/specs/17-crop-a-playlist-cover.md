@@ -1,6 +1,6 @@
 # Crop a playlist cover on upload
 
-Status: ready
+Status: resolved
 Labels: `enhancement`
 
 ## Problem Statement
