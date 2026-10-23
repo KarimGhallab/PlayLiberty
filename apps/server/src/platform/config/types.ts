@@ -10,6 +10,10 @@ export interface DownloadConfig {
   socketTimeout: number;
 }
 
+/* Which process reads a source: the server's own yt-dlp, or the egress agent
+ * inside the tunnel. The default keeps a workstation and the tests local. */
+export type YoutubeListTransport = 'local' | 'egress-agent';
+
 export interface Config {
   nodeEnv: string;
   port: number;
@@ -26,6 +30,7 @@ export interface Config {
   egressAgentSocket: string;
   pruneCron: string;
   ytdlpBinary: string;
+  youtubeListTransport: YoutubeListTransport;
   ffmpegBinary: string;
   ffprobeBinary: string;
   downloadTimeoutMs: number;

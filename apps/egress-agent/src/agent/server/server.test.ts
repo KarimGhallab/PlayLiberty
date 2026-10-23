@@ -6,13 +6,20 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   EgressAgentClient,
-  EgressConfigUnknownError
+  EgressConfigUnknownError,
+  EgressSourceInvalidError,
+  EgressSourceUnavailableError,
+  YoutubeSourceKind
 } from '@playliberty/youtube';
-import type { EgressAgentStatus, EgressProbeFacts } from '@playliberty/youtube';
+import type {
+  EgressAgentStatus,
+  EgressProbeFacts,
+  YoutubeSource
+} from '@playliberty/youtube';
 
-import { UnknownConfigError } from './probe.js';
+import { UnknownConfigError } from '../probe/probe.js';
+import { chooseActive } from '../status.js';
 import { startAgent } from './server.js';
-import { chooseActive } from './status.js';
 
 const status: EgressAgentStatus = {
   pool: [
@@ -31,6 +38,22 @@ const probe: EgressProbeFacts = {
   active: '01-fr'
 };
 
+const source: YoutubeSource = {
+  kind: YoutubeSourceKind.Video,
+  sourceId: 'jNQXAC9IVRw',
+  title: 'Me at the zoo',
+  entries: [
+    {
+      videoId: 'jNQXAC9IVRw',
+      title: 'Me at the zoo',
+      durationSeconds: 19,
+      thumbnailUrl: null
+    }
+  ]
+};
+
+const URL = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
+
 let directory: string | undefined;
 let close: (() => Promise<void>) | undefined;
 
@@ -48,7 +71,10 @@ afterEach(async () => {
 
 async function agent(
   uid: number = process.getuid?.() ?? 1000,
-  probeFn: (name?: string) => Promise<EgressProbeFacts> = async () => probe
+  overrides: {
+    probe?: (name?: string) => Promise<EgressProbeFacts>;
+    list?: (url: string) => Promise<YoutubeSource>;
+  } = {}
 ): Promise<string> {
   directory = await mkdtemp(join(tmpdir(), 'playliberty-egress-agent-'));
   const socketPath = join(directory, 'egress-agent.sock');
@@ -56,7 +82,8 @@ async function agent(
     socketPath,
     peerUid: uid,
     status: async () => status,
-    probe: probeFn
+    probe: overrides.probe ?? (async () => probe),
+    list: overrides.list ?? (async () => source)
   });
   close = handle.close;
   return socketPath;
@@ -77,9 +104,41 @@ describe('the egress agent', () => {
     );
   });
 
+  it('answers a listing over the socket', async () => {
+    const socketPath = await agent();
+
+    expect(await new EgressAgentClient(socketPath).list(URL)).toEqual(source);
+  });
+
+  it('refuses a URL that is not a YouTube source', async () => {
+    const socketPath = await agent();
+
+    await expect(
+      new EgressAgentClient(socketPath).list('https://example.com/playlist')
+    ).rejects.toBeInstanceOf(EgressSourceInvalidError);
+  });
+
+  it('classifies a listing failure instead of calling it an outage', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      list: async () => {
+        throw new Error('ERROR: Sign in to confirm you are not a bot');
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).list(URL)
+    ).rejects.toMatchObject({ reason: 'blocked' });
+
+    await expect(
+      new EgressAgentClient(socketPath).list(URL)
+    ).rejects.toBeInstanceOf(EgressSourceUnavailableError);
+  });
+
   it('turns an unknown config into the client error, not an outage', async () => {
-    const socketPath = await agent(process.getuid?.() ?? 1000, async () => {
-      throw new UnknownConfigError('03-missing');
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      probe: async () => {
+        throw new UnknownConfigError('03-missing');
+      }
     });
 
     await expect(
@@ -104,7 +163,8 @@ describe('the egress agent', () => {
       socketPath,
       peerUid: process.getuid?.() ?? 1000,
       status: async () => status,
-      probe: async () => probe
+      probe: async () => probe,
+      list: async () => source
     });
     close = handle.close;
 

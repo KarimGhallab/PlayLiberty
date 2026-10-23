@@ -2,7 +2,15 @@ import { chmod, chown, rm, stat } from 'node:fs/promises';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
 
-import type { EgressAgentStatus, EgressProbeFacts } from '@playliberty/youtube';
+import type {
+  EgressAgentStatus,
+  EgressProbeFacts,
+  YoutubeSource
+} from '@playliberty/youtube';
+import {
+  classifyEgressFailure,
+  validateYoutubeUrl
+} from '@playliberty/youtube';
 
 import { UnknownConfigError } from '../probe/probe.js';
 
@@ -17,6 +25,7 @@ export interface AgentOptions {
   peerUid: number;
   status: () => Promise<EgressAgentStatus>;
   probe: (name?: string) => Promise<EgressProbeFacts>;
+  list: (url: string) => Promise<YoutubeSource>;
 }
 
 export interface AgentHandle {
@@ -116,6 +125,40 @@ async function route(
       }
 
       throw error;
+    }
+  }
+
+  if (request.method === 'POST' && path === '/list') {
+    const body = await readBody(request);
+
+    if (
+      !isRecord(body) ||
+      typeof body.url !== 'string' ||
+      body.url.length === 0
+    ) {
+      return { status: 400, body: { error: 'invalid_request' } };
+    }
+
+    try {
+      validateYoutubeUrl(body.url);
+    } catch {
+      return { status: 400, body: { error: 'invalid_source' } };
+    }
+
+    try {
+      return { status: 200, body: await options.list(body.url) };
+    } catch (error) {
+      /* A listing failure is the source's answer, not the agent failing: the
+       * server records the classified reason and its own sentence. */
+      return {
+        status: 502,
+        body: {
+          error: 'source_unavailable',
+          reason: classifyEgressFailure(
+            error instanceof Error ? error.message : String(error)
+          )
+        }
+      };
     }
   }
 

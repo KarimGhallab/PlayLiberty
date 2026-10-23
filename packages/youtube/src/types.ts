@@ -57,6 +57,7 @@ export interface ISourceFetcher {
 export interface IEgressAgentClient {
   status(): Promise<EgressAgentStatus>;
   probe(name?: string): Promise<EgressProbeFacts>;
+  list(url: string): Promise<YoutubeSource>;
 }
 
 export type EgressFailure = 'blocked' | 'unavailable' | 'network' | 'unknown';

@@ -129,7 +129,8 @@ async function main(): Promise<void> {
     socketPath,
     peerUid,
     status,
-    probe
+    probe,
+    list: url => fetcher.listSource(url)
   });
 
   const log = (event: string): void => {

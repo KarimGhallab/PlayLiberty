@@ -4,14 +4,17 @@ import type {
   EgressAgentStatus,
   EgressFailure,
   EgressProbeFacts,
-  IEgressAgentClient
+  IEgressAgentClient,
+  YoutubeSource,
+  YoutubeSourceEntry
 } from '../types.js';
+import { YoutubeSourceKind } from '../types.js';
 
 /* The read may not hang on a wedged agent: "unreachable" is an answer the page
- * can draw faster than a person gives up. A probe is a listing extraction, so
- * it gets the room one takes. */
+ * can draw faster than a person gives up. A probe or a listing is a yt-dlp run,
+ * so it gets the room one takes. */
 const STATUS_TIMEOUT_MS = 2000;
-const PROBE_TIMEOUT_MS = 120_000;
+const LIST_TIMEOUT_MS = 120_000;
 
 const FAILURES = new Set<EgressFailure>([
   'blocked',
@@ -19,6 +22,14 @@ const FAILURES = new Set<EgressFailure>([
   'network',
   'unknown'
 ]);
+
+/* Fixed sentences: the sync run records one of these, never the tool's stderr. */
+const SOURCE_FAILURE_MESSAGES: Record<EgressFailure, string> = {
+  blocked: 'YouTube refused the request from the exit.',
+  unavailable: 'The source is not available.',
+  network: 'The exit could not be reached.',
+  unknown: 'The source could not be read.'
+};
 
 /* A name the agent does not have is the caller's mistake, not an outage. */
 export class EgressConfigUnknownError extends Error {
@@ -31,8 +42,28 @@ export class EgressConfigUnknownError extends Error {
   }
 }
 
-/* A non-200 the caller has to interpret: 400 is an unknown config, anything
- * else is the agent failing. */
+/* The source URL itself is wrong, so retrying the sync cannot help. */
+export class EgressSourceInvalidError extends Error {
+  constructor() {
+    super('The source URL is not a valid YouTube URL.');
+    this.name = 'EgressSourceInvalidError';
+  }
+}
+
+/* The exit could not read the source. The reason is the classified code; the
+ * message is a sentence a run can carry. */
+export class EgressSourceUnavailableError extends Error {
+  readonly reason: EgressFailure;
+
+  constructor(reason: EgressFailure) {
+    super(SOURCE_FAILURE_MESSAGES[reason]);
+    this.name = 'EgressSourceUnavailableError';
+    this.reason = reason;
+  }
+}
+
+/* A non-200 the caller has to interpret: 400 is an unknown config or a bad
+ * source, anything else is the agent failing. */
 class AgentResponseError extends Error {
   readonly status: number;
 
@@ -59,8 +90,14 @@ function optionalString(value: unknown, field: string): string | null {
   return value;
 }
 
+function failureOf(value: unknown): EgressFailure {
+  return typeof value === 'string' && FAILURES.has(value as EgressFailure)
+    ? (value as EgressFailure)
+    : 'unknown';
+}
+
 /* The agent is ours, but a malformed answer must fail here rather than reach a
- * page that trusts it. */
+ * page or a sync that trusts it. */
 function parseEgressAgentStatus(value: unknown): EgressAgentStatus {
   if (!isRecord(value) || !Array.isArray(value.pool)) {
     throw new Error('The egress agent answered an unexpected payload.');
@@ -109,6 +146,46 @@ function parseProbeFacts(value: unknown): EgressProbeFacts {
   };
 }
 
+function parseEntry(value: unknown): YoutubeSourceEntry {
+  if (
+    !isRecord(value) ||
+    typeof value.videoId !== 'string' ||
+    typeof value.title !== 'string' ||
+    (value.durationSeconds !== null &&
+      typeof value.durationSeconds !== 'number') ||
+    (value.thumbnailUrl !== null && typeof value.thumbnailUrl !== 'string')
+  ) {
+    throw new Error('The egress agent reported an unexpected source entry.');
+  }
+
+  return {
+    videoId: value.videoId,
+    title: value.title,
+    durationSeconds: value.durationSeconds,
+    thumbnailUrl: value.thumbnailUrl
+  };
+}
+
+function parseYoutubeSource(value: unknown): YoutubeSource {
+  if (
+    !isRecord(value) ||
+    (value.kind !== YoutubeSourceKind.Playlist &&
+      value.kind !== YoutubeSourceKind.Video) ||
+    typeof value.sourceId !== 'string' ||
+    typeof value.title !== 'string' ||
+    !Array.isArray(value.entries)
+  ) {
+    throw new Error('The egress agent reported an unexpected source.');
+  }
+
+  return {
+    kind: value.kind,
+    sourceId: value.sourceId,
+    title: value.title,
+    entries: value.entries.map(parseEntry)
+  };
+}
+
 interface AgentRequest {
   socketPath: string;
   method: 'GET' | 'POST';
@@ -117,7 +194,12 @@ interface AgentRequest {
   timeoutMs: number;
 }
 
-function readJson(options: AgentRequest): Promise<unknown> {
+interface AgentResult {
+  status: number;
+  body: unknown;
+}
+
+function requestJson(options: AgentRequest): Promise<AgentResult> {
   const payload =
     options.body === undefined ? null : JSON.stringify(options.body);
 
@@ -143,13 +225,11 @@ function readJson(options: AgentRequest): Promise<unknown> {
           body += String(chunk);
         });
         response.on('end', () => {
-          if (response.statusCode !== 200) {
-            reject(new AgentResponseError(response.statusCode ?? 0));
-            return;
-          }
-
           try {
-            resolve(JSON.parse(body));
+            resolve({
+              status: response.statusCode ?? 0,
+              body: body.length === 0 ? null : JSON.parse(body)
+            });
           } catch {
             reject(new Error('The egress agent answered invalid JSON.'));
           }
@@ -170,6 +250,14 @@ function readJson(options: AgentRequest): Promise<unknown> {
   });
 }
 
+function expectOk(result: AgentResult): unknown {
+  if (result.status !== 200) {
+    throw new AgentResponseError(result.status);
+  }
+
+  return result.body;
+}
+
 /* The server's end of the egress agent socket. There is no port and no origin:
  * the agent owns the socket's permissions. */
 export class EgressAgentClient implements IEgressAgentClient {
@@ -177,32 +265,52 @@ export class EgressAgentClient implements IEgressAgentClient {
 
   public async status(): Promise<EgressAgentStatus> {
     return parseEgressAgentStatus(
-      await readJson({
-        socketPath: this._socketPath,
-        method: 'GET',
-        path: '/status',
-        timeoutMs: STATUS_TIMEOUT_MS
-      })
+      expectOk(
+        await requestJson({
+          socketPath: this._socketPath,
+          method: 'GET',
+          path: '/status',
+          timeoutMs: STATUS_TIMEOUT_MS
+        })
+      )
     );
   }
 
   public async probe(name?: string): Promise<EgressProbeFacts> {
-    try {
-      return parseProbeFacts(
-        await readJson({
-          socketPath: this._socketPath,
-          method: 'POST',
-          path: '/probe',
-          body: name === undefined ? {} : { name },
-          timeoutMs: PROBE_TIMEOUT_MS
-        })
-      );
-    } catch (error) {
-      if (error instanceof AgentResponseError && error.status === 400) {
-        throw new EgressConfigUnknownError(name ?? 'unknown');
-      }
+    const result = await requestJson({
+      socketPath: this._socketPath,
+      method: 'POST',
+      path: '/probe',
+      body: name === undefined ? {} : { name },
+      timeoutMs: LIST_TIMEOUT_MS
+    });
 
-      throw error;
+    if (result.status === 400) {
+      throw new EgressConfigUnknownError(name ?? 'unknown');
     }
+
+    return parseProbeFacts(expectOk(result));
+  }
+
+  public async list(url: string): Promise<YoutubeSource> {
+    const result = await requestJson({
+      socketPath: this._socketPath,
+      method: 'POST',
+      path: '/list',
+      body: { url },
+      timeoutMs: LIST_TIMEOUT_MS
+    });
+
+    if (result.status === 400) {
+      throw new EgressSourceInvalidError();
+    }
+
+    if (result.status === 502) {
+      throw new EgressSourceUnavailableError(
+        failureOf(isRecord(result.body) ? result.body.reason : null)
+      );
+    }
+
+    return parseYoutubeSource(expectOk(result));
   }
 }

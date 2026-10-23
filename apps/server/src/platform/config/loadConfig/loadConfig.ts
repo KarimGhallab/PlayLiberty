@@ -44,6 +44,7 @@ const EnvSchema = z.object({
   DOWNLOAD_SOCKET_TIMEOUT: z.coerce.number().int().positive().default(30),
   DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().positive().default(900000),
   YTDLP_BINARY: z.string().default('yt-dlp'),
+  YOUTUBE_LIST_TRANSPORT: z.enum(['local', 'egress-agent']).default('local'),
   FFMPEG_BINARY: z.string().default('ffmpeg'),
   FFPROBE_BINARY: z.string().default('ffprobe'),
   E2E_FAKE_SCRIPT: optionalString
@@ -85,6 +86,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     egressAgentSocket: value.EGRESS_AGENT_SOCKET,
     pruneCron: value.PRUNE_CRON,
     ytdlpBinary: value.YTDLP_BINARY,
+    youtubeListTransport: value.YOUTUBE_LIST_TRANSPORT,
     ffmpegBinary: value.FFMPEG_BINARY,
     ffprobeBinary: value.FFPROBE_BINARY,
     downloadTimeoutMs: value.DOWNLOAD_TIMEOUT_MS,

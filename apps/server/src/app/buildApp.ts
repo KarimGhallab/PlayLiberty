@@ -10,7 +10,12 @@ import Fastify from 'fastify';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import { ProblemCode } from '@playliberty/contracts';
-import { EgressAgentClient, YtdlpClient } from '@playliberty/youtube';
+import {
+  EgressAgentClient,
+  EgressListFetcher,
+  YtdlpClient,
+  YtdlpFetcher
+} from '@playliberty/youtube';
 
 import type { AppContext } from '../shared/context.js';
 import { EventBus } from '../shared/events/eventBus/EventBus.js';
@@ -66,15 +71,23 @@ export interface AppOptions {
 }
 
 function createYoutubeClient(
-  config: AppContext['config']
+  config: AppContext['config'],
+  egressAgent: AppContext['egressAgent']
 ): AppContext['youtube'] {
-  return new YtdlpClient({
+  const options = {
     binary: config.ytdlpBinary,
     ffmpegBinary: config.ffmpegBinary,
     ffprobeBinary: config.ffprobeBinary,
     timeoutMs: config.downloadTimeoutMs,
     download: config.download
-  });
+  };
+  const local = new YtdlpFetcher(options);
+  const fetcher =
+    config.youtubeListTransport === 'egress-agent'
+      ? new EgressListFetcher(egressAgent, local)
+      : local;
+
+  return new YtdlpClient(options, fetcher);
 }
 /* Colored logs in a terminal, JSON elsewhere. `pino-pretty` is a devDependency
  * named only as a transport target, which is why knip leaves it alone. */
@@ -102,14 +115,17 @@ function createLoggerOptions(
 }
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
+  const egressAgent =
+    options.egressAgent ??
+    new EgressAgentClient(options.config.egressAgentSocket);
+
   const context: AppContext = {
     config: options.config,
     database: options.database,
     mediaPaths: options.mediaPaths,
-    youtube: options.youtube ?? createYoutubeClient(options.config),
-    egressAgent:
-      options.egressAgent ??
-      new EgressAgentClient(options.config.egressAgentSocket),
+    youtube:
+      options.youtube ?? createYoutubeClient(options.config, egressAgent),
+    egressAgent,
     kickDownloads: options.kickDownloads ?? (() => undefined),
     events: options.events ?? new EventBus<LiveEvent>()
   };

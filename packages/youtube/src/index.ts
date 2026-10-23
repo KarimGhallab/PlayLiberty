@@ -10,8 +10,11 @@ export {
 export * from './types.js';
 export {
   EgressAgentClient,
-  EgressConfigUnknownError
+  EgressConfigUnknownError,
+  EgressSourceInvalidError,
+  EgressSourceUnavailableError
 } from './egressAgent/client.js';
+export { EgressListFetcher } from './egressAgent/listFetcher.js';
 export { validateYoutubeUrl } from './validateYoutubeUrl/validateYoutubeUrl.js';
 export {
   buildDownloadArgs,
