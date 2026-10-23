@@ -1,16 +1,21 @@
 # 03: Prove the crop journey end to end
 
-**What to build:** The full cover journey now includes crop. An owner uploads an asymmetric image through the dialog, drags and zooms, saves, and the detail and gallery show the new square; a reload keeps it. A second upload saves untouched, proving the centered default. The existing read-collaborator and 390px passes keep working with the crop stage present.
+**Status:** resolved
 
-**Blocked by:** 02.
-**Status:** open
-**Labels:** `enhancement`, `ready-for-agent`
+## Outcome
 
-- [ ] The owner journey chooses an asymmetric image, drags and zooms to a non-centered framing, saves, and the cover appears in the detail and the gallery.
-- [ ] The upload request carries the four fractions the stage produced; after a reload, the stored cover is square and still rendered.
-- [ ] A second upload saves without touching the stage and the stored cover is square; the centered region itself is owned by the server test.
-- [ ] The read collaborator still sees the cover and has no Cover item.
-- [ ] The 390px journey still opens the dialog, shows the crop stage and saves without adjustment.
-- [ ] The journey does not assert CSS classes, presentation `data-*` or pixel output already owned by the server tests.
+The cover journey now crops. An owner chooses a 1000x800 two-band PNG through the dialog, zooms to
+1.2x and drags off-centre, and the upload request carries `cropX`, `cropY`, `cropWidth` and
+`cropHeight` inside `0..1` with the width below 1 and the origin away from the centred position. The
+stored cover decodes as a square on the detail page, in the gallery, and after a reload. A second
+upload saves untouched, sends no crop fields, and stores a square as well. The read collaborator pass
+is unchanged and the 390px pass now also asserts the crop stage is shown before it saves.
 
-**Verification:** `pnpm test:e2e` and `pnpm test:e2e:typecheck` pass.
+The journey found a real defect: rounding the crop region's two edges independently could store
+666x667 for a square request. The server now rounds the region's width and height, which keeps a
+square request square, and `coverRoutes.test.ts` owns that rule.
+
+The journey asserts roles, the request query and the decoded dimensions only: no CSS classes, no
+presentation `data-*`, and no pixel output, which the server suite owns.
+
+See [`17-crop-a-playlist-cover.md`](../../specs/17-crop-a-playlist-cover.md).

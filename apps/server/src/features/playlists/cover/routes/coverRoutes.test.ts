@@ -1048,6 +1048,36 @@ describe('choosing the stored region', () => {
     }
   );
 
+  it('keeps a square request square when the pixels do not divide evenly', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+    const { playlistId } = seedPlaylist(database(), owner.accountId);
+
+    /* The stage's square on a 1000x800 source is 666.67px a side, so rounding
+     * each edge independently would land on 666 by 667. */
+    const playlist = PlaylistSchema.parse(
+      (
+        await upload(
+          playlistId,
+          owner.pangolinUserId,
+          await solid(1000, 800),
+          'image/png',
+          '?cropX=0.309524&cropY=0.02381&cropWidth=0.666667&cropHeight=0.833333'
+        )
+      ).json()
+    );
+    const metadata = await sharp(
+      await storedCover(
+        playlistId,
+        owner.pangolinUserId,
+        playlist.coverUpdatedAt
+      )
+    ).metadata();
+
+    expect(metadata.width).toBe(667);
+    expect(metadata.height).toBe(667);
+  });
+
   it('keeps an existing non-square cover as it is', async () => {
     context = await createTestContext();
     const owner = seedAccount(database());

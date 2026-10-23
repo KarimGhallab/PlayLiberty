@@ -32,7 +32,7 @@ Capabilities in v1:
 - Multiple accounts, each with its own playlists; a playlist owner can share read-only or read-write with specific accounts.
 - Add one pasted video to several write-accessible playlists at once.
 - Pin playlists to the top of the account's own gallery.
-- Set or remove a custom cover for a playlist, shared with everyone who can read it. See the
+- Set, crop or remove a custom cover for a playlist, shared with everyone who can read it. See the
   [playlist cover](GLOSSARY.md#content) for the fallback chain.
 - Manual sync, retention, and weekly orphan pruning.
 

@@ -15,24 +15,24 @@ One word per idea. When a concept has two names here, pick the one in the left c
 
 ## Content
 
-| Term               | Meaning                                                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Track              | One server-wide playable item, keyed by video id. Its audio is the only media streamed.                                              |
-| Video id           | The YouTube video id. The identity of a track and the dedup key: one file per video id, shared by every playlist that references it. |
-| Playlist           | A named, owner-owned, ordered collection of tracks. In v1 the only kind is the Synced playlist.                                      |
-| Playlist cover     | The image a playlist draws: its custom cover when one is set, otherwise its first track's thumbnail, otherwise its sleeve.           |
-| Custom cover       | One image per playlist, chosen by the owner or a write collaborator and shared with every reader. Never per account.                 |
-| Cover file         | The normalised WebP under `covers/` for a custom cover. Immutable and versioned; never a track thumbnail.                            |
-| Sleeve             | The hue a playlist draws when it has no image at all, derived from its id and never stored. The last fallback of the cover.          |
-| Gallery            | The playlists an account can see, presented as one collection on the library. Never "shelf".                                         |
-| Pin                | One account's own placement of a playlist above the rest of its gallery. Per account, so it never moves another's. Never "favorite". |
-| Synced playlist    | A playlist that mirrors a YouTube source. Created by pasting a URL; synced manually in v1.                                           |
-| Source             | The YouTube entity a synced playlist mirrors, a playlist URL or a single video URL, identified by its source id.                     |
-| Association        | The link of a track to a playlist. A track can have many associations. Never "membership".                                           |
-| Remote association | An association created by sync from the source.                                                                                      |
-| Manual association | An association created by pasting a single video URL and choosing playlists.                                                         |
-| Suppression        | A record per `(playlist, video id)` that stops a sync from re-adding a remote association the user removed.                          |
-| Media store        | The server-wide set of stored tracks, thumbnails and cover files.                                                                    |
+| Term               | Meaning                                                                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Track              | One server-wide playable item, keyed by video id. Its audio is the only media streamed.                                                                                                                  |
+| Video id           | The YouTube video id. The identity of a track and the dedup key: one file per video id, shared by every playlist that references it.                                                                     |
+| Playlist           | A named, owner-owned, ordered collection of tracks. In v1 the only kind is the Synced playlist.                                                                                                          |
+| Playlist cover     | The image a playlist draws: its custom cover when one is set, otherwise its first track's thumbnail, otherwise its sleeve.                                                                               |
+| Custom cover       | One image per playlist, chosen by the owner or a write collaborator and shared with every reader. A new upload is stored as the chosen square and the uncropped original is not kept. Never per account. |
+| Cover file         | The normalised WebP under `covers/` for a custom cover. A new file is the square crop of the upload; one stored before cropping keeps its aspect. Immutable and versioned; never a track thumbnail.      |
+| Sleeve             | The hue a playlist draws when it has no image at all, derived from its id and never stored. The last fallback of the cover.                                                                              |
+| Gallery            | The playlists an account can see, presented as one collection on the library. Never "shelf".                                                                                                             |
+| Pin                | One account's own placement of a playlist above the rest of its gallery. Per account, so it never moves another's. Never "favorite".                                                                     |
+| Synced playlist    | A playlist that mirrors a YouTube source. Created by pasting a URL; synced manually in v1.                                                                                                               |
+| Source             | The YouTube entity a synced playlist mirrors, a playlist URL or a single video URL, identified by its source id.                                                                                         |
+| Association        | The link of a track to a playlist. A track can have many associations. Never "membership".                                                                                                               |
+| Remote association | An association created by sync from the source.                                                                                                                                                          |
+| Manual association | An association created by pasting a single video URL and choosing playlists.                                                                                                                             |
+| Suppression        | A record per `(playlist, video id)` that stops a sync from re-adding a remote association the user removed.                                                                                              |
+| Media store        | The server-wide set of stored tracks, thumbnails and cover files.                                                                                                                                        |
 
 ## Sync and lifecycle
 

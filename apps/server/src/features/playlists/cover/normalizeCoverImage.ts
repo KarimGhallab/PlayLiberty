@@ -45,15 +45,18 @@ function centeredSquare(width: number, height: number): Region {
 function cropRegion(crop: CoverCrop, width: number, height: number): Region {
   const left = Math.min(width - 1, Math.round(crop.x * width));
   const top = Math.min(height - 1, Math.round(crop.y * height));
-  const right = Math.min(width, Math.round((crop.x + crop.width) * width));
-  const bottom = Math.min(height, Math.round((crop.y + crop.height) * height));
+  /* Rounding the size, not both edges, keeps a square request square: the two
+   * axes then carry the same source-pixel count through the rounding. */
+  const regionWidth = Math.min(
+    width - left,
+    Math.max(1, Math.round(crop.width * width))
+  );
+  const regionHeight = Math.min(
+    height - top,
+    Math.max(1, Math.round(crop.height * height))
+  );
 
-  return {
-    left,
-    top,
-    width: Math.min(width - left, Math.max(1, right - left)),
-    height: Math.min(height - top, Math.max(1, bottom - top))
-  };
+  return { left, top, width: regionWidth, height: regionHeight };
 }
 
 function createPipeline(input: Buffer): Sharp {
