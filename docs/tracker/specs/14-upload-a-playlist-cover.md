@@ -40,7 +40,7 @@ The browser checks the file's type and size and shows a preview. The server owns
 ## Out of Scope
 
 - Uploading or changing a cover from the mobile client. The API and the stored cover are shared, and the mobile arrangement is not part of this web-only corpus.
-- Crop, pan, zoom, rotate controls, filters or any image editor. The preview shows the square crop; the stored image keeps its aspect.
+- Crop, pan, zoom, rotate controls, filters or any image editor. The preview shows the square crop; the stored image keeps its aspect. Crop on a new upload is covered by [`17`](17-crop-a-playlist-cover.md).
 - More than one custom cover per playlist, cover history, undo, or reverting to a previous custom cover.
 - Per-account covers or a cover that differs by viewer.
 - Choosing a different track's thumbnail as the fallback, or a source-provided cover field.
