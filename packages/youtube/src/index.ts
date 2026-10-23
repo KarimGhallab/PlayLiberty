@@ -1,3 +1,4 @@
+export { buildFaststartArgs, finalizeAudio } from './audio/audio.js';
 export {
   isSponsorBlockFailureMessage,
   isVideoUnavailableMessage,
@@ -9,7 +10,7 @@ export * from './types.js';
 export { validateYoutubeUrl } from './validateYoutubeUrl/validateYoutubeUrl.js';
 export {
   buildDownloadArgs,
-  buildFaststartArgs,
   buildListArgs,
-  YtdlpClient
+  YtdlpClient,
+  YtdlpFetcher
 } from './ytdlp/ytdlp.js';

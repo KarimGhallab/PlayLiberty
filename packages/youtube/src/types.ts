@@ -36,6 +36,24 @@ export interface DownloadTrackResult {
   durationSeconds: number;
 }
 
+export interface FetchTrackRequest {
+  videoId: string;
+  tempDir: string;
+  skipNonMusic: boolean;
+}
+
+/* The path the tool wrote, not one derived from the video id: the format
+ * selection can fall back, and the extension follows it. */
+export interface FetchedTrack {
+  videoId: string;
+  filePath: string;
+}
+
+export interface ISourceFetcher {
+  listSource(url: string): Promise<YoutubeSource>;
+  fetchTrack(request: FetchTrackRequest): Promise<FetchedTrack>;
+}
+
 export interface DownloadOptions {
   concurrency: number;
   sleepRequests: number;
@@ -48,12 +66,26 @@ export interface DownloadOptions {
   socketTimeout: number;
 }
 
-export interface YtdlpOptions {
+export interface YtdlpFetcherOptions {
   binary: string;
+  timeoutMs: number;
+  download: DownloadOptions;
+}
+
+export interface FinalizeAudioOptions {
   ffmpegBinary: string;
   ffprobeBinary: string;
   timeoutMs: number;
-  download: DownloadOptions;
+}
+
+export interface FinalizeAudioRequest {
+  inputPath: string;
+  outputPath: string;
+}
+
+export interface YtdlpOptions extends YtdlpFetcherOptions {
+  ffmpegBinary: string;
+  ffprobeBinary: string;
   thumbnailTimeoutMs?: number;
   thumbnailMaxBytes?: number;
 }
