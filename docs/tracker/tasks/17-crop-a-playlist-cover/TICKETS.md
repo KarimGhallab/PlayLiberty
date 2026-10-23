@@ -8,7 +8,7 @@ proves the full journey, and `04` can run alongside any ticket.
 | Ticket                                                                                              | Status   | Blocked by                                               | Blocks                                      |
 | --------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------- | ------------------------------------------- |
 | [`01-store-every-new-cover-as-a-centered-square`](01-store-every-new-cover-as-a-centered-square.md) | resolved | none                                                     | [`02`](02-pan-and-zoom-the-chosen-cover.md) |
-| [`02-pan-and-zoom-the-chosen-cover`](02-pan-and-zoom-the-chosen-cover.md)                           | open     | [`01`](01-store-every-new-cover-as-a-centered-square.md) | [`03`](03-prove-the-crop-journey.md)        |
+| [`02-pan-and-zoom-the-chosen-cover`](02-pan-and-zoom-the-chosen-cover.md)                           | resolved | [`01`](01-store-every-new-cover-as-a-centered-square.md) | [`03`](03-prove-the-crop-journey.md)        |
 | [`03-prove-the-crop-journey`](03-prove-the-crop-journey.md)                                         | open     | [`02`](02-pan-and-zoom-the-chosen-cover.md)              | none                                        |
 | [`04-amend-the-cover-documents`](04-amend-the-cover-documents.md)                                   | open     | none                                                     | none                                        |
 

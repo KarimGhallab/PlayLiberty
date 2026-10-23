@@ -113,7 +113,8 @@ describe('the mutation cache facts', () => {
         playlistId: PLAYLIST,
         file: new File([new Uint8Array([1])], 'cover.jpg', {
           type: 'image/jpeg'
-        })
+        }),
+        crop: null
       });
     });
 

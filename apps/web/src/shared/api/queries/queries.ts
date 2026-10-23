@@ -31,6 +31,7 @@ import {
   endpoints
 } from '@playliberty/contracts';
 
+import type { CoverCrop } from '../../coverCrop/coverCrop';
 import { cacheEffects } from '../cacheEffects/cacheEffects';
 import { ApiError } from '../client/client';
 import {
@@ -374,6 +375,24 @@ export function useSyncAllPlaylists(): UseMutationResult<
 export interface SetPlaylistCoverVariables {
   readonly playlistId: string;
   readonly file: File;
+  readonly crop: CoverCrop | null;
+}
+
+/* The four fields travel together or not at all; six decimals keep the region
+ * inside a pixel of what the dialog showed. */
+export function coverCropQuery(
+  crop: CoverCrop | null
+): URLSearchParams | undefined {
+  if (crop === null) {
+    return undefined;
+  }
+
+  return new URLSearchParams({
+    cropX: crop.x.toFixed(6),
+    cropY: crop.y.toFixed(6),
+    cropWidth: crop.width.toFixed(6),
+    cropHeight: crop.height.toFixed(6)
+  });
 }
 
 /* The image bytes stay whole; the server normalises them and answers the
@@ -386,10 +405,14 @@ export function useSetPlaylistCover(): UseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ playlistId, file }: SetPlaylistCoverVariables) =>
-      uploadEndpoint(endpoints.setPlaylistCover, file, file.type, {
-        playlistId
-      }),
+    mutationFn: ({ playlistId, file, crop }: SetPlaylistCoverVariables) =>
+      uploadEndpoint(
+        endpoints.setPlaylistCover,
+        file,
+        file.type,
+        { playlistId },
+        coverCropQuery(crop)
+      ),
     onSuccess: (playlist, { playlistId }) => {
       queryClient.setQueryData(['playlist', playlistId], playlist);
       cacheEffects.playlistChanged(queryClient, playlistId);

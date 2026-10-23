@@ -149,7 +149,10 @@ export const en = {
     removeFailed: 'The cover could not be removed.',
     save: 'Save',
     saving: 'Saving',
-    discardPrompt: 'Discard this image? The image you chose will be lost.'
+    discardPrompt: 'Discard this image? The image you chose will be lost.',
+    cropHint: 'Drag the image or use the arrow keys to move it.',
+    zoom: 'Zoom',
+    reset: 'Reset'
   },
   shareDialog: {
     title: 'Share playlist',

@@ -152,7 +152,11 @@ export const fr: Messages = {
     removeFailed: "L'image n'a pas pu être retirée.",
     save: 'Enregistrer',
     saving: 'Enregistrement',
-    discardPrompt: "Abandonner cette image ? L'image choisie sera perdue."
+    discardPrompt: "Abandonner cette image ? L'image choisie sera perdue.",
+    cropHint:
+      "Faites glisser l'image ou utilisez les flèches pour la déplacer.",
+    zoom: 'Zoom',
+    reset: 'Réinitialiser'
   },
   shareDialog: {
     title: 'Partager la playlist',
