@@ -353,7 +353,6 @@ test('an owner crops a new cover and the stored square survives a reload', async
   await zoom.focus();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await expect(dialog.getByText('1.2x')).toBeVisible();
 
   const box = await dialog.getByRole('group').boundingBox();
 

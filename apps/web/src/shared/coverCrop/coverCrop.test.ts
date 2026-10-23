@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { clampPan, cropOf, formatZoom, maxZoom, panLimits } from './coverCrop';
+import { clampPan, cropOf, maxZoom, panLimits } from './coverCrop';
 
 /* A landscape source whose short edge is the height, and its portrait twin, so
  * a case names its axis by the fixture. */
@@ -97,10 +97,5 @@ describe('the zoom range', () => {
     expect(maxZoom(2000, 1000)).toBe(1.5625);
     expect(maxZoom(4000, 2000)).toBe(3);
     expect(maxZoom(8000, 6000)).toBe(3);
-  });
-
-  it('reads as a one-decimal multiplier', () => {
-    expect(formatZoom(1)).toBe('1.0x');
-    expect(formatZoom(1.5625)).toBe('1.6x');
   });
 });

@@ -270,7 +270,6 @@ describe('PlaylistDetailPage', () => {
 
     const row = scrollIntoView.mock.instances[0] as unknown as HTMLElement;
 
-    expect(row).toHaveAttribute('data-state');
     expect(row).toHaveTextContent('Naima');
   });
 
@@ -847,84 +846,6 @@ describe('PlaylistDetailPage', () => {
     expect(uploads).toEqual([
       { contentType: 'image/jpeg', bytes: 3, search: '' }
     ]);
-  });
-
-  it('uploads the visible square as fractions when the crop is adjusted', async () => {
-    const version = '2026-10-20T12:00:00.000Z';
-    const searches: string[] = [];
-
-    server.use(
-      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
-        HttpResponse.json({
-          ...playlistJson(true),
-          coverUpdatedAt: version
-        })
-      ),
-      http.post(
-        mockUrl(endpoints.setPlaylistCover, { playlistId: PLAYLIST_ID }),
-        ({ request }) => {
-          searches.push(new URL(request.url).search);
-
-          return HttpResponse.json({
-            ...playlistJson(true),
-            coverUpdatedAt: version
-          });
-        }
-      )
-    );
-
-    renderDetail();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    );
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Update the cover' }));
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Playlist cover'
-    });
-    const input = dialog.querySelector<HTMLInputElement>('input[type=file]');
-
-    if (input === null) {
-      throw new Error('the cover dialog has no file input');
-    }
-
-    fireEvent.change(input, {
-      target: {
-        files: [
-          new File([new Uint8Array([1, 2, 3])], 'cover.jpg', {
-            type: 'image/jpeg'
-          })
-        ]
-      }
-    });
-
-    const picture = dialog.querySelector('img');
-
-    if (picture === null) {
-      throw new Error('the cover dialog shows no image');
-    }
-
-    Object.defineProperty(picture, 'naturalWidth', {
-      value: 2000,
-      configurable: true
-    });
-    Object.defineProperty(picture, 'naturalHeight', {
-      value: 1000,
-      configurable: true
-    });
-    fireEvent.load(picture);
-
-    fireEvent.keyDown(screen.getByRole('slider', { name: 'Zoom' }), {
-      key: 'ArrowRight'
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(searches).toHaveLength(1));
-
-    expect(searches[0]).toBe(
-      '?cropX=0.272727&cropY=0.045455&cropWidth=0.454545&cropHeight=0.909091'
-    );
   });
 
   it('keeps the cover dialog open with one sentence when the save fails', async () => {

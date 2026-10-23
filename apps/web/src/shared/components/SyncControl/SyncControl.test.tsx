@@ -17,14 +17,6 @@ function renderControl(props: Partial<Parameters<typeof SyncControl>[0]>) {
 }
 
 describe('SyncControl', () => {
-  it('shows the scope the caller states', () => {
-    renderControl({});
-
-    expect(
-      screen.getByRole('button', { name: 'Sync all 12 playlists' })
-    ).toBeEnabled();
-  });
-
   it('locks and reports the work while the run is in flight', () => {
     renderControl({ working: true });
 

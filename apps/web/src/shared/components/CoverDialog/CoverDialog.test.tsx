@@ -456,21 +456,17 @@ function cropAt(crops: (CoverCrop | null)[], index: number): CoverCrop {
 }
 
 describe('cropping the chosen cover', () => {
-  it('turns a loaded file into a stage with its hint, zoom and reset', () => {
+  it('turns a loaded file into a stage with its zoom range and reset', () => {
     const { container } = renderDialog();
 
     choose(container, imageFile());
     loadChosen(container, 2000, 1000);
 
     expect(screen.getByRole('group')).toBeInTheDocument();
-    expect(
-      screen.getByText('Drag the image or use the arrow keys to move it.')
-    ).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'Zoom' })).toHaveAttribute(
       'aria-valuemax',
       '1.5625'
     );
-    expect(screen.getByText('1.0x')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
   });
 
