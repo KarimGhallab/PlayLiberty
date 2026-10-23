@@ -12,6 +12,8 @@ apps/server/drizzle/
 *.conf.template
 *.toml
 
+*.conf
+
 # Deployment files
 ContainerFile
 *.kube
