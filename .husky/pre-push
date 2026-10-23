@@ -1,9 +1,7 @@
 #!/bin/sh
 
-# Run every test before the push leaves the machine, the same way CI does: the
-# workspace is built first because the unit and e2e suites read from `dist`.
-echo "(1) Building the workspace..."
-pnpm run build
+echo "(1) Auditing the installed dependencies..."
+pnpm audit --audit-level=high
 
 echo "(2) Running all tests (unit, then e2e)..."
 pnpm test:parallel

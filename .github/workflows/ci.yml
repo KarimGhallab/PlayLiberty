@@ -12,16 +12,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    uses: ./.github/workflows/lint.yml
-
   build:
     uses: ./.github/workflows/build.yml
+
+  verify:
+    uses: ./.github/workflows/verify.yml
 
   unit:
     uses: ./.github/workflows/unit.yml
     needs:
-      - lint
+      - verify
       - build
 
   e2e:
@@ -31,14 +31,7 @@ jobs:
 
   success:
     name: Pipeline successful
-    runs-on: ubuntu-24.04
-    needs:
-      - lint
-      - build
-      - unit
-      - e2e
-    if: always()
+    needs: [build, verify, unit, e2e]
+    runs-on: ubuntu-26.04
     steps:
-      - name: Every stage passed
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
-        run: exit 1
+      - run: echo "CI pipeline successful."

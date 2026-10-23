@@ -6,13 +6,12 @@ on:
 jobs:
   build:
     name: Typecheck and build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
       - name: Typecheck the e2e suite
         run: pnpm run test:e2e:typecheck
 
-      - name: Build every app and package
+      - name: Build every apps and packages
         run: pnpm run build

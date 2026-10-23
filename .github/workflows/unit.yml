@@ -6,13 +6,10 @@ on:
 jobs:
   unit:
     name: Unit tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
-      # The workspace packages are read from `dist`, not from source, and the
-      # token stylesheet is read from `packages/tokens/dist`.
       - name: Build the workspace
         run: pnpm run build
 
