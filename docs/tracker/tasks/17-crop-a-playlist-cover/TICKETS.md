@@ -5,12 +5,12 @@ numbered in dependency order, each declaring its blocking edges. `01` is the ser
 through today's dialog, which immediately starts storing square covers. `02` adds the crop stage, `03`
 proves the full journey, and `04` can run alongside any ticket.
 
-| Ticket                                                                                              | Status | Blocked by                                               | Blocks                                      |
-| --------------------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------- | ------------------------------------------- |
-| [`01-store-every-new-cover-as-a-centered-square`](01-store-every-new-cover-as-a-centered-square.md) | open   | none                                                     | [`02`](02-pan-and-zoom-the-chosen-cover.md) |
-| [`02-pan-and-zoom-the-chosen-cover`](02-pan-and-zoom-the-chosen-cover.md)                           | open   | [`01`](01-store-every-new-cover-as-a-centered-square.md) | [`03`](03-prove-the-crop-journey.md)        |
-| [`03-prove-the-crop-journey`](03-prove-the-crop-journey.md)                                         | open   | [`02`](02-pan-and-zoom-the-chosen-cover.md)              | none                                        |
-| [`04-amend-the-cover-documents`](04-amend-the-cover-documents.md)                                   | open   | none                                                     | none                                        |
+| Ticket                                                                                              | Status   | Blocked by                                               | Blocks                                      |
+| --------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------- | ------------------------------------------- |
+| [`01-store-every-new-cover-as-a-centered-square`](01-store-every-new-cover-as-a-centered-square.md) | resolved | none                                                     | [`02`](02-pan-and-zoom-the-chosen-cover.md) |
+| [`02-pan-and-zoom-the-chosen-cover`](02-pan-and-zoom-the-chosen-cover.md)                           | open     | [`01`](01-store-every-new-cover-as-a-centered-square.md) | [`03`](03-prove-the-crop-journey.md)        |
+| [`03-prove-the-crop-journey`](03-prove-the-crop-journey.md)                                         | open     | [`02`](02-pan-and-zoom-the-chosen-cover.md)              | none                                        |
+| [`04-amend-the-cover-documents`](04-amend-the-cover-documents.md)                                   | open     | none                                                     | none                                        |
 
 ## Conventions
 

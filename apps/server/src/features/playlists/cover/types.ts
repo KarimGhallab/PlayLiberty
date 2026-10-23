@@ -1,5 +1,14 @@
 import type { Playlist } from '@playliberty/contracts';
 
+/* Fractions of the oriented image, so a crop means the same rectangle whatever
+ * the stored pixel size is. */
+export interface CoverCrop {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export enum PlaylistCoverOutcome {
   Ok = 'ok',
   PlaylistNotFound = 'playlist_not_found',

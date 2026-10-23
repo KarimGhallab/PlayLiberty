@@ -25,15 +25,21 @@ const engines = {
   webkit: devices['Desktop Safari']
 };
 
+type EngineName = keyof typeof engines;
+
+function isEngine(name: string): name is EngineName {
+  return Object.hasOwn(engines, name);
+}
+
 const engineName = process.env.E2E_BROWSER ?? 'chromium';
 
-if (!Object.hasOwn(engines, engineName)) {
+if (!isEngine(engineName)) {
   throw new Error(
     `E2E_BROWSER must be one of ${Object.keys(engines).join(', ')}, not "${engineName}".`
   );
 }
 
-const engine = engines[engineName as keyof typeof engines];
+const engine = engines[engineName];
 
 export default defineConfig({
   testDir: './tests',
