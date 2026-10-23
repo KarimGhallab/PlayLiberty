@@ -19,6 +19,7 @@ describe('the origin security headers', () => {
   it('sends a content security policy that locks the origin down', () => {
     expect(headers).toContain('Content-Security-Policy');
     expect(headers).toContain("default-src 'self'");
+    expect(headers).toContain("img-src 'self' blob:");
     expect(headers).toContain("object-src 'none'");
     expect(headers).toContain("base-uri 'self'");
     expect(headers).toContain("frame-ancestors 'none'");
@@ -54,5 +55,16 @@ describe('the origin security headers', () => {
     // The server block, `/assets/`, and `/index.html`: the two locations that add
     // their own `Cache-Control` would otherwise drop the inherited headers.
     expect(includes).toHaveLength(3);
+  });
+});
+
+/* The manifest fetch is uncredentialed unless the link asks for credentials,
+ * so an authenticating edge would answer it with a login redirect. */
+describe('the web app manifest link', () => {
+  it('sends cookies so the edge serves the manifest itself', () => {
+    const shell = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8');
+
+    expect(shell).toContain('rel="manifest"');
+    expect(shell).toContain('crossorigin="use-credentials"');
   });
 });
