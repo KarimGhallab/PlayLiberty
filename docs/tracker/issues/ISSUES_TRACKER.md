@@ -106,6 +106,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`93-the-player-bar-carries-a-level-control-a-phone-cannot-use`](93-the-player-bar-carries-a-level-control-a-phone-cannot-use.md)                         | `resolved` | enhancement   | A phone shows a mute and a rail it cannot use; the level belongs to the OS there, with the element pinned to 1.             |
 | [`94-the-gallery-cannot-show-only-the-playlists-shared-with-the-account`](94-the-gallery-cannot-show-only-the-playlists-shared-with-the-account.md)       | `resolved` | enhancement   | A gallery holding a share cannot narrow to it; the ownership scope leads the filter rail and the counts follow it.          |
 | [`95-the-current-track-is-hard-to-find-while-scrolling`](95-the-current-track-is-hard-to-find-while-scrolling.md)                                         | `resolved` | enhancement   | The current row is easy to lose in a long list; it now rests on a quiet accent ground with a playback word.                 |
+| [`96-the-playlist-details-sync-action-belongs-in-the-page-header`](96-the-playlist-details-sync-action-belongs-in-the-page-header.md)                     | `resolved` | enhancement   | The detail's sync sits in the header card; move it to the page header with the gallery's control and restore the card.      |
 
 ## Conventions
 

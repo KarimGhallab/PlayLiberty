@@ -1341,7 +1341,7 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Add a track' })
     ).not.toBeInTheDocument();
-    /* So is the named sync: a reader cannot start a run. */
+    /* So is the page sync: a reader cannot start a run. */
     expect(
       screen.queryByRole('button', { name: 'Sync' })
     ).not.toBeInTheDocument();
@@ -1351,7 +1351,7 @@ describe('PlaylistDetailPage', () => {
     ).toBeDisabled();
   });
 
-  it('starts a sync from the header without opening the overflow', async () => {
+  it('starts a sync from the page header without opening the overflow', async () => {
     let release!: () => void;
     const gate = new Promise<void>(resolve => {
       release = resolve;
@@ -1385,14 +1385,16 @@ describe('PlaylistDetailPage', () => {
     );
     renderDetail();
 
-    const control = await screen.findByRole('button', { name: 'Sync now' });
+    const control = await screen.findByRole('button', {
+      name: 'Sync the playlist'
+    });
     fireEvent.click(control);
 
     await waitFor(() => {
       expect(posts).toHaveLength(1);
-      expect(control).toHaveAccessibleName('Syncing');
+      expect(control).toHaveAccessibleName('Syncing the playlist...');
     });
-    expect(screen.getAllByText('Syncing')).toHaveLength(1);
+    expect(screen.getAllByText('Syncing the playlist...')).toHaveLength(1);
     expect(control).toBeDisabled();
 
     /* A second press on the busy control cannot start another run. */
@@ -1401,7 +1403,7 @@ describe('PlaylistDetailPage', () => {
 
     release();
     await waitFor(() => {
-      expect(control).toHaveAccessibleName('Sync now');
+      expect(control).toHaveAccessibleName('Sync the playlist');
     });
   });
 

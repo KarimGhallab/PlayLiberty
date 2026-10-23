@@ -42,6 +42,7 @@ import PlaylistSkipSetting from '../../../shared/components/PlaylistSkipSetting/
 import PlaylistSortControl from '../../../shared/components/PlaylistSortControl/PlaylistSortControl';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import RetryFailedControl from '../../../shared/components/RetryFailedControl/RetryFailedControl';
+import SyncControl from '../../../shared/components/SyncControl/SyncControl';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
@@ -316,11 +317,6 @@ export default function PlaylistDetailPage() {
     hasNext: canSkipNext,
     onShuffle: () => transition.shuffle(playlistView),
     shuffled,
-    onSync:
-      canWrite && !emptyStateSync && !syncErrorShown
-        ? () => actions.syncNow(playlistId)
-        : undefined,
-    syncing: syncInFlight,
     menu: actions.menuFor(playlist.data),
     /* The window claim is made only while the list is the whole playlist: a
      * narrowed list owes a denominator the card does not carry. */
@@ -353,6 +349,15 @@ export default function PlaylistDetailPage() {
         </Link>
         <div className={styles.playlistDetail__actions}>
           <LanguageMenu />
+          {canWrite && !emptyStateSync && !syncErrorShown ? (
+            <SyncControl
+              label={t('detail.syncPlaylist')}
+              workingLabel={t('detail.syncingPlaylist')}
+              working={syncInFlight}
+              disabled={playlistPending}
+              onPress={() => actions.syncNow(playlistId)}
+            />
+          ) : null}
           {/*
            * The labelled button above the phone breakpoint, the floating action
            * below it, one at a time; absent for a reader, like any control.

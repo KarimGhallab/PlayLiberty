@@ -69,6 +69,8 @@ export const fr: Messages = {
   detail: {
     back: "Retour à l'accueil",
     addTrack: 'Ajouter une piste',
+    syncPlaylist: 'Synchroniser la playlist',
+    syncingPlaylist: 'Synchronisation de la playlist...',
     loadingTracks: 'Chargement des pistes.',
     readFailed: 'Impossible de charger les pistes.',
     noTracks: 'Aucune piste.',
@@ -241,7 +243,6 @@ export const fr: Messages = {
     pin: 'Épingler',
     unpin: 'Désépingler',
     syncNow: 'Synchroniser',
-    syncing: 'Synchronisation',
     delete: 'Supprimer',
     play: 'Lire cette playlist',
     playNamed: 'Lire {name}',

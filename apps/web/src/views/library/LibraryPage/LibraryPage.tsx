@@ -22,7 +22,7 @@ import FloatingAction from '../../../shared/components/FloatingAction/FloatingAc
 import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
-import SyncAllControl from '../../../shared/components/SyncAllControl/SyncAllControl';
+import SyncControl from '../../../shared/components/SyncControl/SyncControl';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { currentTrack } from '../../../shared/player/types';
@@ -333,8 +333,9 @@ export default function LibraryPage() {
         <div className={styles.library__actions}>
           <LanguageMenu />
           {syncAllCount === 0 ? null : (
-            <SyncAllControl
-              count={syncAllCount}
+            <SyncControl
+              label={t('library.syncAll', { count: syncAllCount })}
+              workingLabel={t('library.syncingAll', { count: syncAllCount })}
               working={batchBusy}
               onPress={() => {
                 const ids = syncable.map(playlist => playlist.id);

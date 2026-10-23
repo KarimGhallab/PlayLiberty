@@ -1,12 +1,12 @@
 /*
- * The gallery's bulk action, beside the filled Add: one control that states its
- * scope, so it reads as secondary to the add rather than as a second one.
+ * The sync action, beside the Add: one control that states its scope, so it
+ * reads as secondary to the add rather than as a second one.
  *
  * Where a pointer can hover it rests as a square around its glyph and shows the
  * words when hovered or focused; a touch screen has no hover to give, so there
  * the words are always out.
  */
-.sync-all {
+.sync {
   position: relative;
   display: inline-grid;
   grid-template-columns: auto;

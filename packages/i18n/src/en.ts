@@ -67,6 +67,8 @@ export const en = {
   detail: {
     back: 'Back to home',
     addTrack: 'Add a track',
+    syncPlaylist: 'Sync the playlist',
+    syncingPlaylist: 'Syncing the playlist...',
     loadingTracks: 'Loading tracks.',
     readFailed: 'Tracks could not be loaded.',
     noTracks: 'No tracks yet.',
@@ -237,7 +239,6 @@ export const en = {
     pin: 'Pin',
     unpin: 'Unpin',
     syncNow: 'Sync now',
-    syncing: 'Syncing',
     delete: 'Delete',
     play: 'Play this playlist',
     playNamed: 'Play {name}',
