@@ -15,7 +15,7 @@ import {
 } from '@testing-library/react';
 import axe from 'axe-core';
 import { HttpResponse, http } from 'msw';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ProblemCode,
@@ -128,8 +128,16 @@ function listTitles(): string[] {
     .filter(title => title !== 'this playlist');
 }
 
+const scrollIntoView = vi.fn();
+
 beforeEach(() => {
   usePlayerStore.getState().clear();
+  scrollIntoView.mockClear();
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    writable: true,
+    value: scrollIntoView
+  });
 });
 
 afterEach(() => {
@@ -219,6 +227,121 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('lands on the current track when the page opens on the playing playlist', async () => {
+    usePlayerStore.getState().startQueue(
+      PLAYLIST_ID,
+      [
+        {
+          id: 'track-1',
+          title: 'Blue In Green',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 337,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-2',
+          title: 'Naima',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 273,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-3',
+          title: 'Flamenco Sketches',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 565,
+          thumbnailPath: null
+        }
+      ],
+      'track-2'
+    );
+    renderDetail();
+
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'instant',
+      block: 'center'
+    });
+
+    const row = scrollIntoView.mock.instances[0] as unknown as HTMLElement;
+
+    expect(row).toHaveAttribute('data-state');
+    expect(row).toHaveTextContent('Naima');
+  });
+
+  it('loads the pages in until it can land on the current track', async () => {
+    const all = [
+      trackJson('track-1', 'Blue In Green', 0),
+      trackJson('track-2', 'Naima', 1),
+      trackJson('track-3', 'Flamenco Sketches', 2, TrackFileStatus.Pending)
+    ];
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        ({ request }) => {
+          const offset = Number(
+            new URL(request.url).searchParams.get('offset') ?? '0'
+          );
+
+          return HttpResponse.json({
+            items: all.slice(offset, offset + 1),
+            total: all.length,
+            limit: 1,
+            offset,
+            counts: countsOf(all)
+          });
+        }
+      )
+    );
+    usePlayerStore.getState().startQueue(
+      PLAYLIST_ID,
+      all.map(association => ({
+        id: association.track.id,
+        title: association.track.title,
+        playlistId: PLAYLIST_ID,
+        playlistName: 'Rain On The Window',
+        durationSeconds: association.track.durationSeconds,
+        thumbnailPath: null
+      })),
+      'track-2'
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('button', { name: 'Pause Naima' })
+    ).toBeInTheDocument();
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+
+    const row = scrollIntoView.mock.instances[0] as unknown as HTMLElement;
+
+    expect(row).toHaveTextContent('Naima');
+  });
+
+  it('leaves the page at the top when another playlist is the queue', async () => {
+    usePlayerStore.getState().startQueue(
+      'other-playlist',
+      [
+        {
+          id: 'other-track',
+          title: 'Elsewhere',
+          playlistId: 'other-playlist',
+          playlistName: 'Elsewhere',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      'other-track'
+    );
+    renderDetail();
+
+    await screen.findByText('Naima');
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   /*

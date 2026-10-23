@@ -1,6 +1,13 @@
 import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 
 import {
   PlaylistSort,
@@ -140,6 +147,60 @@ export default function PlaylistDetailPage() {
   /* The queue's own derivation, so a shuffled queue goes dead at its last entry
    * exactly as an unshuffled one does. */
   const canSkipNext = usePlayerStore(hasNext);
+
+  const listRef = useRef<HTMLUListElement>(null);
+  const scrollHandledFor = useRef<string | null>(null);
+
+  /*
+   * Opening the queue's playlist lands on its current row, not the top. The jump
+   * waits one task because the router resets a cached navigation to the top, and
+   * is made once per open; pages load until the row exists.
+   */
+  useLayoutEffect(() => {
+    if (scrollHandledFor.current === playlistId) {
+      return;
+    }
+
+    if (!isQueue || currentId === null) {
+      scrollHandledFor.current = playlistId;
+      return;
+    }
+
+    if (activeState !== null || !tracks.isSuccess || tracks.isPlaceholderData) {
+      return;
+    }
+
+    const row = listRef.current?.querySelector<HTMLElement>('li[data-state]');
+
+    if (row === null || row === undefined) {
+      if (tracks.hasMore && !tracks.loadingMore && !tracks.moreFailed) {
+        tracks.loadMore();
+      } else if (!tracks.hasMore) {
+        scrollHandledFor.current = playlistId;
+      }
+
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      row.scrollIntoView({ behavior: 'instant', block: 'center' });
+      scrollHandledFor.current = playlistId;
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    activeState,
+    currentId,
+    isQueue,
+    playlistId,
+    tracks.hasMore,
+    tracks.isPlaceholderData,
+    tracks.isSuccess,
+    tracks.loadMore,
+    tracks.loadingMore,
+    tracks.moreFailed,
+    tracks.tracks
+  ]);
 
   const ownerName =
     playlist.data !== undefined && directory.data !== undefined
@@ -542,7 +603,7 @@ export default function PlaylistDetailPage() {
             </div>
           ) : null}
           {tracks.isSuccess && tracks.tracks.length > 0 ? (
-            <ul className={styles.playlistDetail__list}>
+            <ul className={styles.playlistDetail__list} ref={listRef}>
               {(listShuffled
                 ? orderTracksByQueue(tracks.tracks, queue)
                 : tracks.tracks
