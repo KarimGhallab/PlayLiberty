@@ -83,7 +83,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `apps/server/Containerfile`, `apps/web/Containerfile`, `compose.yaml`, and `deploy/` - the server and web images, the dev stack, and the production units: the user-scoped web pod and the system-scoped egress agent.
 - `apps/egress-agent/src/` - the host agent: the pool reader, the switch and check modules, the WireGuard and process helpers, the HTTP-on-Unix-socket server, and the remembered active state.
 - `deploy/systemd/playliberty-egress.service` - the system unit that creates the namespace and runs the agent inside it.
-- `deploy/egress/` - the idempotent namespace up/down scripts and the environment example.
+- `deploy/egress/` - the idempotent namespace up/down scripts, the run wrapper, and the environment example.
 - `docs/runbooks/egress-agent.md` - the host install, verification and reboot runbook.
 - `apps/web/src/` - the web SPA, views under `src/views/` and shared pieces under `src/shared/`. A module split across two or more files is one folder named after it, holding the module, its test and its stylesheet; a single-file module stays flat.
 - `apps/web/deploy/nginx.conf.template` - the static serving and `/api` proxy configuration, rendered by the nginx entrypoint at container start.

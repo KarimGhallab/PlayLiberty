@@ -59,7 +59,19 @@ config="$POOL/$name.conf"
 # The namespace and the veth that carries only the WireGuard endpoint. The
 # interface is created once and only synced on later starts, so an agent
 # restart never recreates a working interface.
-if [ ! -e "/run/netns/$NS" ]; then
+# A previous failed start can leave a stale /run/netns entry or a veth pair
+# whose peer reference no longer resolves. Recreate the namespace when it is
+# not usable, and remove the stale mount and file before adding it again.
+if [ -e "/run/netns/$NS" ] && ! ip -n "$NS" link show lo >/dev/null 2>&1; then
+  ip netns del "$NS" >/dev/null 2>&1 || true
+  umount "/run/netns/$NS" >/dev/null 2>&1 || true
+  rm -f "/run/netns/$NS" 2>/dev/null || true
+fi
+
+if [ -e "/run/netns/$NS" ]; then
+  ip -n "$NS" link show lo >/dev/null 2>&1 ||
+    die "The namespace $NS is stale and could not be removed."
+else
   ip netns add "$NS"
 fi
 

@@ -741,6 +741,7 @@ function checkRepositoryInputs() {
     'deploy/systemd/playliberty-egress.service',
     'deploy/egress/egress-up.sh',
     'deploy/egress/egress-down.sh',
+    'deploy/egress/egress-run.sh',
     'deploy/egress/egress.env.example'
   ];
 
@@ -864,6 +865,9 @@ function printNextSteps() {
   );
   console.log(
     '  sudo install -m 0755 deploy/egress/egress-down.sh /usr/local/lib/playliberty/egress-down'
+  );
+  console.log(
+    '  sudo install -m 0755 deploy/egress/egress-run.sh /usr/local/lib/playliberty/egress-run'
   );
   console.log(
     '  sudo install -m 0600 deploy/egress/egress.env.example /etc/playliberty/egress.env'

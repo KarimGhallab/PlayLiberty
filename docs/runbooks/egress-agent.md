@@ -128,6 +128,7 @@ matches the pool.
 sudo install -m 0644 deploy/systemd/playliberty-egress.service /etc/systemd/system/
 sudo install -m 0755 deploy/egress/egress-up.sh /usr/local/lib/playliberty/egress-up
 sudo install -m 0755 deploy/egress/egress-down.sh /usr/local/lib/playliberty/egress-down
+sudo install -m 0755 deploy/egress/egress-run.sh /usr/local/lib/playliberty/egress-run
 sudo install -m 0600 deploy/egress/egress.env.example /etc/playliberty/egress.env
 sudoedit /etc/playliberty/egress.env
 sudo systemctl daemon-reload
@@ -184,16 +185,17 @@ The running host uses the installed copies in `/etc/systemd/system` and
 
 ### System configuration and host executables
 
-| Path                                             | Owner / mode      | Purpose                                                                                  | Lifecycle                                     |
-| ------------------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `/etc/playliberty`                               | root:root, `0755` | Host configuration root.                                                                 | Persists.                                     |
-| `/etc/playliberty/proton`                        | root:root, `0700` | The Proton WireGuard pool, with files at `0600` named `NN-<slug>.conf`.                  | Persists; add configs here, not under `/opt`. |
-| `/etc/playliberty/egress.env`                    | root:root, `0600` | Agent overrides: peer uid, optional first-boot config, check URLs and timeouts.          | Persists.                                     |
-| `/etc/systemd/system/playliberty-egress.service` | root:root, `0644` | The system unit that creates the namespace and runs the agent.                           | Persists.                                     |
-| `/usr/local/lib/playliberty`                     | root:root, `0755` | Host-side egress executables.                                                            | Persists.                                     |
-| `/usr/local/lib/playliberty/egress-up`           | root, `0755`      | `ExecStartPre`: namespace, veth, `wg0`, routes, resolver, nftables and socket directory. | Persists; run by systemd.                     |
-| `/usr/local/lib/playliberty/egress-down`         | root, `0755`      | `ExecStop`: removes the namespace, veth, nftables table, resolver and socket.            | Persists; run by systemd on an explicit stop. |
-| `/usr/local/lib/playliberty/yt-dlp`              | root, `0755`      | The host yt-dlp extracted from the server image and verified against its label.          | Re-extracted by the build command.            |
+| Path                                             | Owner / mode      | Purpose                                                                                                           | Lifecycle                                     |
+| ------------------------------------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `/etc/playliberty`                               | root:root, `0755` | Host configuration root.                                                                                          | Persists.                                     |
+| `/etc/playliberty/proton`                        | root:root, `0700` | The Proton WireGuard pool, with files at `0600` named `NN-<slug>.conf`.                                           | Persists; add configs here, not under `/opt`. |
+| `/etc/playliberty/egress.env`                    | root:root, `0600` | Agent overrides: peer uid, optional first-boot config, check URLs and timeouts.                                   | Persists.                                     |
+| `/etc/systemd/system/playliberty-egress.service` | root:root, `0644` | The system unit that creates the namespace and runs the agent.                                                    | Persists.                                     |
+| `/usr/local/lib/playliberty`                     | root:root, `0755` | Host-side egress executables.                                                                                     | Persists.                                     |
+| `/usr/local/lib/playliberty/egress-up`           | root, `0755`      | Called by `egress-run` before the agent: namespace, veth, `wg0`, routes, resolver, nftables and socket directory. | Persists; run by systemd.                     |
+| `/usr/local/lib/playliberty/egress-down`         | root, `0755`      | `ExecStop`: removes the namespace, veth, nftables table, resolver and socket.                                     | Persists; run by systemd on an explicit stop. |
+| `/usr/local/lib/playliberty/egress-run`          | root, `0755`      | `ExecStart`: calls `egress-up`, then `exec`s the agent inside the namespace.                                      | Persists; run by systemd.                     |
+| `/usr/local/lib/playliberty/yt-dlp`              | root, `0755`      | The host yt-dlp extracted from the server image and verified against its label.                                   | Re-extracted by the build command.            |
 
 ### Runtime and persistent state
 
@@ -240,7 +242,8 @@ pool and the active state survive.
 
 ## What the unit creates
 
-`ExecStartPre` runs `egress-up`, which is idempotent:
+`ExecStart` runs `egress-run`, which calls `egress-up` and then `exec`s the
+agent with `ip netns exec`. `egress-up` is idempotent:
 
 - creates the `playliberty-egress` network namespace;
 - creates the `pl-egress0`/`pl-egress1` veth pair and puts one end in the
@@ -256,9 +259,8 @@ pool and the active state survive.
   sshd;
 - owns `/run/playliberty` as the pod's uid.
 
-`ExecStart` runs the agent with `ip netns exec`. `ExecStop` deletes the
-namespace only on an explicit stop, so `Restart=on-failure` keeps a working
-interface.
+`ExecStop` deletes the namespace only on an explicit stop, so
+`Restart=on-failure` keeps a working interface.
 
 The active config is `/var/lib/playliberty-egress/active`, written by the agent
 after every successful apply or switch. The up script reads it first, then

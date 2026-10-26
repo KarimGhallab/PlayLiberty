@@ -33,8 +33,7 @@ Environment=YTDLP_BINARY=/usr/local/lib/playliberty/yt-dlp
 Environment=EGRESS_AGENT_PEER_UID=1000
 EnvironmentFile=-/etc/playliberty/egress.env
 
-ExecStartPre=/usr/local/lib/playliberty/egress-up
-ExecStart=/usr/sbin/ip netns exec playliberty-egress /usr/bin/env node /opt/playliberty/apps/egress-agent/dist/main.js
+ExecStart=/usr/local/lib/playliberty/egress-run
 ExecStop=/usr/local/lib/playliberty/egress-down
 
 Restart=on-failure
@@ -54,7 +53,7 @@ ProtectHostname=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_ADMIN CAP_CHOWN CAP_DAC_OVERRIDE CAP_SETUID CAP_SETGID CAP_KILL
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_ADMIN CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_SETUID CAP_SETGID CAP_KILL
 
 [Install]
 WantedBy=multi-user.target
