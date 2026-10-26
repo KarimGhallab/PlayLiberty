@@ -502,6 +502,20 @@ function ensureEgressHost() {
     return;
   }
 
+  let wgQuick;
+
+  try {
+    wgQuick = run('sh', ['-c', 'command -v wg-quick']).stdout.trim();
+  } catch {
+    wgQuick = '';
+  }
+
+  if (wgQuick.length === 0) {
+    throw new Error(
+      'wireguard-tools is required: wg-quick was not found on PATH.'
+    );
+  }
+
   const names = run('sudo', [
     'find',
     EGRESS.pool,
@@ -544,8 +558,20 @@ function ensureEgressHost() {
       runOrPrint('sudo', ['chmod', '0600', file]);
     }
 
-    /* Read-only syntax check: strip writes only stdout. */
-    run('sudo', ['wg-quick', 'strip', file], { stdio: 'ignore' });
+    /* Read-only syntax check: strip writes only stdout, and the private key is
+     * discarded. The stderr is kept so a malformed file says why. */
+    try {
+      run('sudo', [wgQuick, 'strip', file], {
+        stdio: ['ignore', 'ignore', 'pipe']
+      });
+    } catch (error) {
+      throw new Error(
+        `The egress config ${name} is not a valid wg-quick file: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { cause: error }
+      );
+    }
 
     try {
       run('sudo', ['grep', '-Eq', '^[[:space:]]*Address[[:space:]]*=', file], {

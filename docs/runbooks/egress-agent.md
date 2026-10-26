@@ -25,6 +25,64 @@ Only the agent and its yt-dlp children run inside the tunnel. The pod keeps
   elsewhere.
 - A Proton WireGuard subscription and its configs downloaded once.
 
+## AppArmor
+
+Ubuntu 25.04 and later ship AppArmor profiles for `wg-quick` and `wg`. They
+allow `/etc/wireguard`, not `/etc/playliberty/proton`. The build command and
+the agent use `wg-quick strip`, and the agent and the up script use
+`wg syncconf` on a temporary file, so both profiles need local allowances.
+
+Check the profiles and their local includes:
+
+```sh
+sudo aa-status | grep -E 'wg|wg-quick'
+sudo grep -n 'local' /etc/apparmor.d/wg-quick /etc/apparmor.d/wg
+```
+
+Add the pool to `/etc/apparmor.d/local/wg-quick`:
+
+```sh
+sudo install -d -m 0755 /etc/apparmor.d/local
+sudo tee /etc/apparmor.d/local/wg-quick >/dev/null <<'EOF'
+# PlayLiberty egress pool: wg-quick strips these configs.
+/etc/playliberty/ r,
+/etc/playliberty/proton/ r,
+/etc/playliberty/proton/** r,
+EOF
+```
+
+Add the agent and up-script temporary files to `/etc/apparmor.d/local/wg`:
+
+```sh
+sudo tee /etc/apparmor.d/local/wg >/dev/null <<'EOF'
+# PlayLiberty egress: wg syncconf reads a stripped config from a temp file.
+/tmp/playliberty-wg-*/ r,
+/tmp/playliberty-wg-*/config.conf r,
+/tmp/tmp.* r,
+EOF
+```
+
+Reload the profiles:
+
+```sh
+sudo apparmor_parser -r /etc/apparmor.d/wg-quick
+sudo apparmor_parser -r /etc/apparmor.d/wg
+```
+
+If the profile does not include `<local/wg-quick>` or `<local/wg>`, add the
+same rules inside the profile before its closing brace instead, or use
+`sudo aa-complain /etc/apparmor.d/wg-quick` as a last resort. Do not disable
+AppArmor globally.
+
+Verify:
+
+```sh
+sudo wg-quick strip /etc/playliberty/proton/01-FR-634.conf >/dev/null
+sudo dmesg | tail -20
+```
+
+A remaining `apparmor="DENIED"` line names the profile and path to add.
+
 ## Build the host
 
 ```sh

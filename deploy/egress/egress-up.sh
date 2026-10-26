@@ -93,7 +93,7 @@ while IFS= read -r address; do
   ip -n "$NS" addr replace "$address" dev "$IFACE"
   addresses=$((addresses + 1))
 done < <(sed -n 's/^[[:space:]]*Address[[:space:]]*=[[:space:]]*//p' "$config" |
-  tr ',' '\n' | tr -d '[:space:]')
+  tr ',' '\n' | sed 's/[[:space:]]//g')
 [ "$addresses" -gt 0 ] || die "The active config has no IPv4 Address line."
 
 # The namespace resolver is the active config's DNS; the host resolver is not
@@ -105,7 +105,7 @@ while IFS= read -r dns; do
   case "$dns" in *:*) continue ;; esac
   printf 'nameserver %s\n' "$dns" >>"$RESOLV_DIR/resolv.conf"
 done < <(sed -n 's/^[[:space:]]*DNS[[:space:]]*=[[:space:]]*//p' "$config" |
-  tr ',' '\n' | tr -d '[:space:]')
+  tr ',' '\n' | sed 's/[[:space:]]//g')
 [ -s "$RESOLV_DIR/resolv.conf" ] ||
   die "The active config has no IPv4 DNS line."
 chmod 0644 "$RESOLV_DIR/resolv.conf"
