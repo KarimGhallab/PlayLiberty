@@ -57,6 +57,10 @@ describe('applyConfig', () => {
         return { stdout: STRIPPED };
       }
 
+      if (command === 'ip') {
+        return { stdout: '' };
+      }
+
       tempPath = args[2] as string;
       written = await readFile(tempPath, 'utf8');
 
@@ -64,16 +68,63 @@ describe('applyConfig', () => {
     };
 
     await applyConfig(
-      { interfaceName: 'playliberty-egress', poolDirectory: root, run },
+      {
+        interfaceName: 'playliberty-egress',
+        poolDirectory: root,
+        vethName: 'pl-egress1',
+        vethHostIp: '10.200.0.1',
+        run
+      },
       '01-fr'
     );
 
     expect(calls).toEqual([
       ['wg-quick', 'strip', join(root, '01-fr.conf')],
+      [
+        'ip',
+        'route',
+        'replace',
+        '185.0.0.1/32',
+        'via',
+        '10.200.0.1',
+        'dev',
+        'pl-egress1'
+      ],
       ['wg', 'syncconf', 'playliberty-egress', tempPath]
     ]);
     expect(written).toBe(STRIPPED);
     await expect(readFile(tempPath, 'utf8')).rejects.toThrow();
+  });
+
+  it('removes the previous endpoint route after the new one is in place', async () => {
+    const root = await pool();
+    const calls: string[][] = [];
+    const run: RunCommand = async (command, args) => {
+      calls.push([command, ...args]);
+
+      return { stdout: command === 'wg-quick' ? STRIPPED : '' };
+    };
+
+    await applyConfig(
+      {
+        interfaceName: 'wg0',
+        poolDirectory: root,
+        vethName: 'pl-egress1',
+        vethHostIp: '10.200.0.1',
+        previousEndpoint: '149.102.245.129:51820',
+        run
+      },
+      '01-fr'
+    );
+
+    expect(calls).toContainEqual([
+      'ip',
+      'route',
+      'del',
+      '149.102.245.129/32',
+      'dev',
+      'pl-egress1'
+    ]);
   });
 
   it('refuses a switch before touching the commands when no interface exists', async () => {
@@ -81,7 +132,16 @@ describe('applyConfig', () => {
     const run = vi.fn<RunCommand>();
 
     await expect(
-      applyConfig({ interfaceName: null, poolDirectory: root, run }, '01-fr')
+      applyConfig(
+        {
+          interfaceName: null,
+          poolDirectory: root,
+          vethName: 'pl-egress1',
+          vethHostIp: '10.200.0.1',
+          run
+        },
+        '01-fr'
+      )
     ).rejects.toBeInstanceOf(NoInterfaceError);
 
     expect(run).not.toHaveBeenCalled();
@@ -94,7 +154,16 @@ describe('applyConfig', () => {
     };
 
     await expect(
-      applyConfig({ interfaceName: 'wg0', poolDirectory: root, run }, '01-fr')
+      applyConfig(
+        {
+          interfaceName: 'wg0',
+          poolDirectory: root,
+          vethName: 'pl-egress1',
+          vethHostIp: '10.200.0.1',
+          run
+        },
+        '01-fr'
+      )
     ).rejects.toBeInstanceOf(WireGuardError);
   });
 
@@ -106,12 +175,25 @@ describe('applyConfig', () => {
         return { stdout: STRIPPED };
       }
 
+      if (command === 'ip') {
+        return { stdout: '' };
+      }
+
       tempPath = args[2] as string;
       throw new Error('wg: Unable to modify interface');
     };
 
     await expect(
-      applyConfig({ interfaceName: 'wg0', poolDirectory: root, run }, '01-fr')
+      applyConfig(
+        {
+          interfaceName: 'wg0',
+          poolDirectory: root,
+          vethName: 'pl-egress1',
+          vethHostIp: '10.200.0.1',
+          run
+        },
+        '01-fr'
+      )
     ).rejects.toMatchObject({
       message: 'The WireGuard interface could not be updated.'
     });

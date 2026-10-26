@@ -102,6 +102,10 @@ spec:
             secretKeyRef:
               name: playliberty_edge_assertion
               key: EDGE_ASSERTION
+        - name: YOUTUBE_TRANSPORT
+          value: egress-agent
+        - name: EGRESS_AGENT_SOCKET
+          value: /run/playliberty/egress-agent.sock
       volumeMounts:
         - name: media
           mountPath: /media
@@ -109,6 +113,9 @@ spec:
           mountPath: /data
         - name: playliberty-server-tmp
           mountPath: /tmp
+        - name: playliberty-egress
+          mountPath: /run/playliberty
+          readOnly: true
       livenessProbe:
         # No wget in the server image; node is the one probe runner it always has.
         exec:
@@ -147,3 +154,8 @@ spec:
     - name: playliberty-server-tmp
       emptyDir:
         sizeLimit: 64Mi
+    - name: playliberty-egress
+      hostPath:
+        # The system-scoped agent owns this directory and the socket in it.
+        path: /run/playliberty
+        type: DirectoryOrCreate

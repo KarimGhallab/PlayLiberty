@@ -16,7 +16,8 @@ import { readExitIp } from './agent/exitIp.js';
 import { readHandshake } from './agent/handshake.js';
 import { ChildRegistry } from './agent/processes/processes.js';
 import { startAgent } from './agent/server/server.js';
-import { chooseActive } from './agent/status.js';
+import { readActiveState, writeActiveState } from './agent/state/state.js';
+import { resolveActive } from './agent/status.js';
 import {
   DEFAULT_DRAIN_TIMEOUT_MS,
   SwitchInterruptedError,
@@ -27,6 +28,9 @@ import { readPool } from './pool/pool.js';
 
 const DEFAULT_SOCKET = '/run/playliberty/egress-agent.sock';
 const DEFAULT_PEER_UID = 1000;
+const DEFAULT_STATE_FILE = '/var/lib/playliberty-egress/active';
+const DEFAULT_VETH_NAME = 'pl-egress1';
+const DEFAULT_VETH_HOST_IP = '10.200.0.1';
 const DEFAULT_CHECK_URL = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
 const DEFAULT_EXIT_IP_URL = 'https://api.ipify.org';
 const DEFAULT_CHECK_TIMEOUT_MS = 60_000;
@@ -85,6 +89,7 @@ async function main(): Promise<void> {
     process.env.PROTON_POOL_DIR
   );
   const socketPath = process.env.EGRESS_AGENT_SOCKET ?? DEFAULT_SOCKET;
+  const stateFile = process.env.EGRESS_STATE_FILE ?? DEFAULT_STATE_FILE;
   const peerUid = Number.parseInt(
     process.env.EGRESS_AGENT_PEER_UID ?? String(DEFAULT_PEER_UID),
     10
@@ -95,13 +100,30 @@ async function main(): Promise<void> {
   }
 
   const interfaceName = process.env.WG_INTERFACE ?? null;
+  const vethName = process.env.EGRESS_VETH_NS ?? DEFAULT_VETH_NAME;
+  const vethHostIp = process.env.EGRESS_VETH_HOST_IP ?? DEFAULT_VETH_HOST_IP;
   const children = new ChildRegistry();
+  const pool = await readPool(poolDirectory);
+  const remembered = await readActiveState(stateFile);
   const state = {
-    active: chooseActive(
-      await readPool(poolDirectory),
-      process.env.PROTON_ACTIVE_CONFIG
-    ),
+    active: resolveActive(pool, remembered, process.env.PROTON_ACTIVE_CONFIG),
     loadedSince: new Date().toISOString()
+  };
+
+  /* A failed write leaves the interface where it is; the state file keeps the
+   * last name it could write, and the journal says why. */
+  const persistActive = async (name: string): Promise<void> => {
+    try {
+      await writeActiveState(stateFile, name);
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          at: new Date().toISOString(),
+          event: 'active_state_write_failed',
+          detail: error instanceof Error ? error.message : String(error)
+        })
+      );
+    }
   };
 
   const status = async (): Promise<EgressAgentStatus> => ({
@@ -120,10 +142,23 @@ async function main(): Promise<void> {
         poolDirectory,
         interfaceName,
         registry: children,
-        apply: next => applyConfig({ interfaceName, poolDirectory }, next),
-        onSwitched: next => {
+        apply: next =>
+          applyConfig(
+            {
+              interfaceName,
+              poolDirectory,
+              vethName,
+              vethHostIp,
+              previousEndpoint:
+                pool.find(config => config.name === state.active)?.endpoint ??
+                null
+            },
+            next
+          ),
+        onSwitched: async next => {
           state.active = next;
           state.loadedSince = new Date().toISOString();
+          await persistActive(next);
         }
       },
       drainTimeoutMs
@@ -183,6 +218,12 @@ async function main(): Promise<void> {
   if (process.argv.includes('--dry-run')) {
     console.log(JSON.stringify(await status(), null, 2));
     return;
+  }
+
+  /* The first boot pins the choice the unit already applied, so the next boot
+   * reads a name instead of falling through to the first file. */
+  if (state.active !== null) {
+    await persistActive(state.active);
   }
 
   const fetchTrack = async (

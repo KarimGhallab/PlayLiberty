@@ -47,6 +47,19 @@ describe('buildListArgs', () => {
     expect(args.at(-1)).toBe(info.url);
   });
 
+  it('forces IPv4 so a v6 lookup cannot fail the exit', () => {
+    const info: YoutubeUrlInfo = {
+      kind: YoutubeSourceKind.Video,
+      sourceId: 'dQw4w9WgXcQ',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    };
+
+    expect(buildListArgs(info)).toContain('--force-ipv4');
+    expect(
+      buildDownloadArgs(info.url, '/tmp/track.%(ext)s', downloadOptions, false)
+    ).toContain('--force-ipv4');
+  });
+
   it('forces no-playlist for a single video', () => {
     const info: YoutubeUrlInfo = {
       kind: YoutubeSourceKind.Video,

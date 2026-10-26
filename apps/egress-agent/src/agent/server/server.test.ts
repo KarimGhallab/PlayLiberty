@@ -23,7 +23,7 @@ import {
   YoutubeVideoUnavailableError
 } from '@playliberty/youtube';
 
-import { chooseActive } from '../status.js';
+import { chooseActive, resolveActive } from '../status.js';
 import { UnknownConfigError } from '../switch/switch.js';
 import { SwitchInterruptedError } from '../switch/switch.js';
 import { NoInterfaceError } from '../wireguard/wireguard.js';
@@ -374,6 +374,23 @@ describe('chooseActive', () => {
   it('refuses a name that is not in the pool', () => {
     expect(() => chooseActive(status.pool, '03-missing')).toThrow(
       /not in the pool/
+    );
+  });
+});
+
+describe('resolveActive', () => {
+  it('prefers the remembered name over the explicit name', () => {
+    expect(resolveActive(status.pool, '02-ch', '01-fr')).toBe('02-ch');
+  });
+
+  it('falls back to the explicit name, then the first file', () => {
+    expect(resolveActive(status.pool, null, '02-ch')).toBe('02-ch');
+    expect(resolveActive(status.pool, null, undefined)).toBe('01-fr');
+  });
+
+  it('refuses a remembered name that is no longer in the pool', () => {
+    expect(() => resolveActive(status.pool, '03-missing', undefined)).toThrow(
+      /active state file/
     );
   });
 });

@@ -34,7 +34,7 @@ export interface SwitchToOptions extends SwitchDeps {
   /* Null until the host has a namespace and an interface; a switch then has
    * nowhere to apply and must say so rather than pretend. */
   interfaceName: string | null;
-  onSwitched: (name: string) => void;
+  onSwitched: (name: string) => void | Promise<void>;
 }
 
 /*
@@ -77,7 +77,7 @@ export async function switchTo(
   }
 
   await switchExit(options, name, drainTimeoutMs);
-  options.onSwitched(name);
+  await options.onSwitched(name);
 }
 
 /* Kept for the caller that already holds the pool: a switch is a membership

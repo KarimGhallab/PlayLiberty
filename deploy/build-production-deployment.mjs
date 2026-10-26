@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { accessSync, existsSync, constants as fsConstants } from 'node:fs';
-import { homedir, userInfo } from 'node:os';
+import { createHash, randomBytes } from 'node:crypto';
+import {
+  accessSync,
+  existsSync,
+  constants as fsConstants,
+  mkdtempSync,
+  readFileSync,
+  rmSync
+} from 'node:fs';
+import { homedir, tmpdir, userInfo } from 'node:os';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +24,14 @@ const repoRoot = path.resolve(
 const STORAGE_ROOT = '/srv/playliberty';
 const MEDIA_ROOT = path.join(STORAGE_ROOT, 'media');
 const DATA_ROOT = path.join(STORAGE_ROOT, 'data');
+
+const EGRESS = {
+  root: '/etc/playliberty',
+  pool: '/etc/playliberty/proton',
+  binDirectory: '/usr/local/lib/playliberty',
+  hostBinary: '/usr/local/lib/playliberty/yt-dlp',
+  ytdlpLabel: 'org.playliberty.ytdlp.sha256'
+};
 
 const EDGE = {
   name: 'playliberty_edge_assertion',
@@ -33,8 +48,9 @@ const ADMIN = {
 
 const USAGE = `Usage: pnpm deploy:build-for-production [options]
 
-Build the production images, create /srv/playliberty, and ensure the Podman
-secrets. This command never installs, removes or starts a unit.
+Build the production images, create /srv/playliberty, validate the egress pool,
+extract the image's yt-dlp, and ensure the Podman secrets. This command never
+installs, removes or starts a unit.
 
 Options:
   --public-origin <url>       Public browser origin (https://host)
@@ -444,12 +460,262 @@ async function ensureAdmin() {
   console.log(dryRun ? '  Would prepare the secret.' : '  Secret prepared.');
 }
 
+/*
+ * The pool is root-owned and never written here. The agent's own parser is the
+ * one that reads it, and `wg-quick strip` is the one the switch will run, so a
+ * file that passes both is a file the agent can apply.
+ */
+function ensureEgressHost() {
+  console.log('\nEgress host');
+
+  runOrPrint('sudo', [
+    'install',
+    '-d',
+    '-m',
+    '0755',
+    '-o',
+    'root',
+    '-g',
+    'root',
+    '/etc/netns',
+    EGRESS.root,
+    EGRESS.binDirectory
+  ]);
+  runOrPrint('sudo', [
+    'install',
+    '-d',
+    '-m',
+    '0700',
+    '-o',
+    'root',
+    '-g',
+    'root',
+    EGRESS.pool
+  ]);
+  runOrPrint('sudo', ['chown', 'root:root', EGRESS.pool]);
+  runOrPrint('sudo', ['chmod', '0700', EGRESS.pool]);
+
+  if (dryRun) {
+    console.log(
+      '  Would validate the pool read-only and keep its files at 0600.'
+    );
+    return;
+  }
+
+  const names = run('sudo', [
+    'find',
+    EGRESS.pool,
+    '-maxdepth',
+    '1',
+    '(',
+    '-type',
+    'f',
+    '-o',
+    '-type',
+    'l',
+    ')',
+    '-name',
+    '*.conf',
+    '-printf',
+    '%f\n'
+  ])
+    .stdout.trim()
+    .split('\n')
+    .filter(name => name.length > 0)
+    .sort();
+
+  if (names.length === 0) {
+    console.log('  No configs yet; the agent will report an empty pool.');
+    return;
+  }
+
+  for (const name of names) {
+    if (!/^\d{2}-[A-Za-z0-9][A-Za-z0-9._-]*\.conf$/.test(name)) {
+      throw new Error(
+        `The egress config ${name} must be named NN-<slug>.conf.`
+      );
+    }
+
+    const file = path.join(EGRESS.pool, name);
+    const ownership = run('sudo', ['stat', '-c', '%u:%a', file]).stdout.trim();
+
+    if (ownership !== '0:600') {
+      runOrPrint('sudo', ['chown', 'root:root', file]);
+      runOrPrint('sudo', ['chmod', '0600', file]);
+    }
+
+    /* Read-only syntax check: strip writes only stdout. */
+    run('sudo', ['wg-quick', 'strip', file], { stdio: 'ignore' });
+
+    try {
+      run('sudo', ['grep', '-Eq', '^[[:space:]]*Address[[:space:]]*=', file], {
+        stdio: 'ignore'
+      });
+    } catch {
+      throw new Error(`The egress config ${name} has no Address line.`);
+    }
+
+    try {
+      run('sudo', ['grep', '-Eq', '^[[:space:]]*DNS[[:space:]]*=', file], {
+        stdio: 'ignore'
+      });
+    } catch {
+      throw new Error(`The egress config ${name} has no DNS line.`);
+    }
+  }
+
+  const agentEntry = path.join(
+    repoRoot,
+    'apps',
+    'egress-agent',
+    'dist',
+    'main.js'
+  );
+
+  if (!existsSync(agentEntry)) {
+    throw new Error('Build the workspace first: pnpm run build.');
+  }
+
+  const temporaryState = path.join(
+    tmpdir(),
+    `playliberty-pool-check-${String(process.pid)}`
+  );
+
+  try {
+    const result = run(
+      'sudo',
+      [
+        'env',
+        `PROTON_POOL_DIR=${EGRESS.pool}`,
+        `EGRESS_STATE_FILE=${temporaryState}`,
+        process.execPath,
+        agentEntry,
+        '--dry-run'
+      ],
+      { encoding: 'utf8' }
+    );
+    const status = JSON.parse(result.stdout);
+    const broken = status.pool.filter(config => config.endpoint === null);
+
+    if (broken.length > 0) {
+      throw new Error(
+        `The egress pool has configs without an endpoint: ${broken
+          .map(config => config.name)
+          .join(', ')}.`
+      );
+    }
+  } finally {
+    rmSync(temporaryState, { force: true });
+  }
+
+  console.log(
+    `  ${String(names.length)} config(s) parse; the pool was not written.`
+  );
+}
+
+/*
+ * The host binary is the image's, verified against the image's committed
+ * label. There is no second yt-dlp version to drift from the Containerfile.
+ */
+function ensureHostYtdlp() {
+  console.log('\nHost yt-dlp');
+
+  const image = 'localhost/playliberty-server:latest';
+
+  if (dryRun) {
+    printCommand('podman', ['create', image]);
+    printCommand('podman', [
+      'cp',
+      '<container>:/usr/local/bin/yt-dlp',
+      '<temporary>/yt-dlp'
+    ]);
+    printCommand('podman', [
+      'inspect',
+      '--format',
+      `{{ index .Config.Labels "${EGRESS.ytdlpLabel}" }}`,
+      image
+    ]);
+    printCommand('sudo', [
+      'install',
+      '-m',
+      '0755',
+      '-o',
+      'root',
+      '-g',
+      'root',
+      '<temporary>/yt-dlp',
+      EGRESS.hostBinary
+    ]);
+    console.log('  Would verify the image digest and install the binary.');
+    return;
+  }
+
+  const expected = run('podman', [
+    'inspect',
+    '--format',
+    `{{ index .Config.Labels "${EGRESS.ytdlpLabel}" }}`,
+    image
+  ]).stdout.trim();
+
+  if (!/^[0-9a-f]{64}$/.test(expected)) {
+    throw new Error(`The server image carries no ${EGRESS.ytdlpLabel} label.`);
+  }
+
+  const directory = mkdtempSync(path.join(tmpdir(), 'playliberty-ytdlp-'));
+  let container = null;
+
+  try {
+    container = run('podman', ['create', image]).stdout.trim();
+    const extracted = path.join(directory, 'yt-dlp');
+    run('podman', ['cp', `${container}:/usr/local/bin/yt-dlp`, extracted]);
+
+    const actual = createHash('sha256')
+      .update(readFileSync(extracted))
+      .digest('hex');
+
+    if (actual !== expected) {
+      throw new Error(
+        `The image's yt-dlp digest ${actual} does not match its committed ${expected}.`
+      );
+    }
+
+    runOrPrint('sudo', [
+      'install',
+      '-m',
+      '0755',
+      '-o',
+      'root',
+      '-g',
+      'root',
+      extracted,
+      EGRESS.hostBinary
+    ]);
+  } finally {
+    if (container !== null) {
+      try {
+        run('podman', ['rm', '-f', container]);
+      } catch {
+        // The container is disposable; a failed cleanup must not mask the
+        // digest or install failure that brought us here.
+      }
+    }
+
+    rmSync(directory, { recursive: true, force: true });
+  }
+
+  console.log(`  Installed ${EGRESS.hostBinary} (sha256 ${expected}).`);
+}
+
 function checkRepositoryInputs() {
   const required = [
     'apps/server/Containerfile',
     'apps/web/Containerfile',
-    'deploy/playliberty-web.yaml',
-    'deploy/playliberty-web.kube'
+    'deploy/quadlet/playliberty-web.yaml',
+    'deploy/quadlet/playliberty-web.kube',
+    'deploy/systemd/playliberty-egress.service',
+    'deploy/egress/egress-up.sh',
+    'deploy/egress/egress-down.sh',
+    'deploy/egress/egress.env.example'
   ];
 
   for (const relative of required) {
@@ -537,10 +803,16 @@ function printNextSteps() {
     'containers',
     'systemd'
   );
-  const manifest = path.join(repoRoot, 'deploy', 'playliberty-web.yaml');
-  const unit = path.join(repoRoot, 'deploy', 'playliberty-web.kube');
+  const manifest = path.join(
+    repoRoot,
+    'deploy',
+    'quadlet',
+    'playliberty-web.yaml'
+  );
+  const unit = path.join(repoRoot, 'deploy', 'quadlet', 'playliberty-web.kube');
 
   console.log('\nNext steps (not executed by this script):');
+  console.log('  # Web pod (user scope)');
   console.log(`  mkdir -p ${shellQuote(unitDirectory)}`);
   console.log(
     `  install -m 0644 ${shellQuote(manifest)} ${shellQuote(unitDirectory)}/`
@@ -555,6 +827,24 @@ function printNextSteps() {
   console.log(
     '  podman exec playliberty-web-web wget -qO- http://127.0.0.1:8080/healthz'
   );
+  console.log(
+    '  # Egress agent (system scope; the unit expects /opt/playliberty)'
+  );
+  console.log(
+    '  sudo install -m 0644 deploy/systemd/playliberty-egress.service /etc/systemd/system/'
+  );
+  console.log(
+    '  sudo install -m 0755 deploy/egress/egress-up.sh /usr/local/lib/playliberty/egress-up'
+  );
+  console.log(
+    '  sudo install -m 0755 deploy/egress/egress-down.sh /usr/local/lib/playliberty/egress-down'
+  );
+  console.log(
+    '  sudo install -m 0600 deploy/egress/egress.env.example /etc/playliberty/egress.env'
+  );
+  console.log('  # Edit /etc/playliberty/egress.env, then:');
+  console.log('  sudo systemctl daemon-reload');
+  console.log('  sudo systemctl enable --now playliberty-egress.service');
 }
 
 async function main() {
@@ -564,12 +854,16 @@ async function main() {
   }
 
   if (dryRun) {
-    console.log('Dry run: no build, directory or secret mutation will run.');
+    console.log(
+      'Dry run: no build, directory, pool, binary or secret mutation will run.'
+    );
   }
 
   checkRepositoryInputs();
   buildImages();
   ensureStorage();
+  ensureEgressHost();
+  ensureHostYtdlp();
   await ensureEdge();
   await ensurePublicOrigin();
   await ensureAdmin();
