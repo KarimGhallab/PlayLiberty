@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { SyncRun } from '@playliberty/contracts';
 import {
   PlaylistSchema,
   PlaylistSyncStatus,
@@ -8,13 +9,12 @@ import {
   TrackFileStatus,
   createPageSchema
 } from '@playliberty/contracts';
-import type { SyncRun } from '@playliberty/contracts';
+import type { IEgressAgentClient, YoutubeSource } from '@playliberty/youtube';
 import {
   EGRESS_BLOCKED_REASON,
   EgressSourceUnavailableError,
   YoutubeSourceKind
 } from '@playliberty/youtube';
-import type { IEgressAgentClient, YoutubeSource } from '@playliberty/youtube';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
@@ -101,17 +101,24 @@ function fakeAgent(list: (url: string) => Promise<YoutubeSource>): {
     calls,
     agent: {
       status: async () => ({ pool: [], active: null, loadedSince: null }),
-      probe: async () => {
-        throw new Error('the probe is not used by this test');
+      switch: async () => {
+        throw new Error('the switch is not used by this test');
       },
+      check: async () => {
+        throw new Error('the check is not used by this test');
+      },
+      applyConfig: async () => ({
+        pool: [],
+        active: null,
+        loadedSince: null
+      }),
       list: async (url: string): Promise<YoutubeSource> => {
         calls.push(url);
         return list(url);
       },
       fetchTrack: async () => {
         throw new Error('this test only lists');
-      },
-      switch: async () => ({ pool: [], active: null, loadedSince: null })
+      }
     }
   };
 }
@@ -197,8 +204,17 @@ describe('listing through the egress agent', () => {
     const switched: string[] = [];
     const agent: IEgressAgentClient = {
       status: async () => ({ pool, active, loadedSince: null }),
-      probe: async () => {
-        throw new Error('this test does not probe');
+      switch: async () => {
+        throw new Error('this test does not switch');
+      },
+      check: async () => {
+        throw new Error('this test does not check');
+      },
+      applyConfig: async (name: string) => {
+        switched.push(name);
+        active = name;
+
+        return { pool, active, loadedSince: null };
       },
       list: async (): Promise<YoutubeSource> => {
         calls += 1;
@@ -211,12 +227,6 @@ describe('listing through the egress agent', () => {
       },
       fetchTrack: async () => {
         throw new Error('this test does not fetch');
-      },
-      switch: async (name: string) => {
-        switched.push(name);
-        active = name;
-
-        return { pool, active, loadedSince: null };
       }
     };
 

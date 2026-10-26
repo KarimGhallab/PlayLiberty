@@ -43,6 +43,13 @@
       "when": 1793006065724,
       "tag": "0005_living_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793010991151,
+      "tag": "0006_rename_last_check",
+      "breakpoints": true
     }
   ]
 }

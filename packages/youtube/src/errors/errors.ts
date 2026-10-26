@@ -32,7 +32,7 @@ export function isSponsorBlockFailureMessage(message: string): boolean {
   return SPONSORBLOCK_PATTERNS.some(pattern => pattern.test(message));
 }
 
-/* A probe failure has to become one of four sentences, never the tool's own
+/* A check failure has to become one of four sentences, never the tool's own
  * stderr. The order matters: a gone video is not an exit fault. */
 const BLOCKED_PATTERNS: RegExp[] = [
   /sign in to confirm/i,

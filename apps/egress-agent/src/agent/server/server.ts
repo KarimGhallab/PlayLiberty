@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { chmod, chown, mkdtemp, rm, stat } from 'node:fs/promises';
-import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -9,7 +9,7 @@ import { pipeline } from 'node:stream/promises';
 import type {
   AgentFetchRequest,
   EgressAgentStatus,
-  EgressProbeFacts,
+  EgressCheckFacts,
   YoutubeSource
 } from '@playliberty/youtube';
 import {
@@ -19,7 +19,7 @@ import {
   validateYoutubeUrl
 } from '@playliberty/youtube';
 
-import { UnknownConfigError } from '../probe/probe.js';
+import { UnknownConfigError } from '../switch/switch.js';
 import {
   DEFAULT_DRAIN_TIMEOUT_MS,
   SwitchInterruptedError
@@ -35,14 +35,18 @@ export interface AgentOptions {
   socketPath: string;
   peerUid: number;
   status: () => Promise<EgressAgentStatus>;
-  probe: (name?: string) => Promise<EgressProbeFacts>;
+  /* The switch action applies the config if needed, then checks it. */
+  switch: (name?: string) => Promise<EgressCheckFacts>;
+  /* The check action reads the active config and never switches. */
+  check: () => Promise<EgressCheckFacts>;
+  /* The rotation primitive: apply the config without checking it. */
+  apply: (name: string, drainTimeoutMs: number) => Promise<void>;
   list: (url: string) => Promise<YoutubeSource>;
   /* The route owns the temp directory; the fetcher writes into it and the
    * route removes it once the bytes have left. */
   fetch: (
     request: AgentFetchRequest & { tempDir: string }
   ) => Promise<{ filePath: string }>;
-  switch: (name: string, drainTimeoutMs: number) => Promise<void>;
 }
 
 export interface AgentHandle {
@@ -181,7 +185,7 @@ async function route(
     return { status: 200, body: await options.status() };
   }
 
-  if (request.method === 'POST' && path === '/probe') {
+  if (request.method === 'POST' && path === '/switch') {
     const body = await readBody(request);
 
     if (!isRecord(body)) {
@@ -197,7 +201,7 @@ async function route(
     try {
       return {
         status: 200,
-        body: await options.probe(typeof name === 'string' ? name : undefined)
+        body: await options.switch(typeof name === 'string' ? name : undefined)
       };
     } catch (error) {
       if (error instanceof UnknownConfigError) {
@@ -209,6 +213,10 @@ async function route(
         body: { error: 'switch_failed', detail: messageOf(error) }
       };
     }
+  }
+
+  if (request.method === 'POST' && path === '/check') {
+    return { status: 200, body: await options.check() };
   }
 
   if (request.method === 'POST' && path === '/list') {
@@ -247,7 +255,7 @@ async function route(
     }
   }
 
-  if (request.method === 'POST' && path === '/switch') {
+  if (request.method === 'POST' && path === '/apply') {
     const body = await readBody(request);
 
     if (
@@ -263,7 +271,7 @@ async function route(
     }
 
     try {
-      await options.switch(
+      await options.apply(
         body.name,
         typeof body.drainTimeoutMs === 'number'
           ? body.drainTimeoutMs

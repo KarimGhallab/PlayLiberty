@@ -146,12 +146,6 @@ export const endpoints = {
     response: EgressReadSchema,
     errors: [ProblemCode.NotFound, ...READ_ERRORS]
   }),
-  probeEgress: defineEndpoint({
-    method: HttpMethod.Post,
-    path: '/egress/:name/probe',
-    response: EgressReadSchema,
-    errors: [ProblemCode.NotFound, ...WRITE_ERRORS]
-  }),
   switchEgress: defineEndpoint({
     method: HttpMethod.Post,
     path: '/egress/:name/switch',
@@ -161,6 +155,12 @@ export const endpoints = {
       ProblemCode.EgressSwitchFailed,
       ...WRITE_ERRORS
     ]
+  }),
+  checkEgress: defineEndpoint({
+    method: HttpMethod.Post,
+    path: '/egress/check',
+    response: EgressReadSchema,
+    errors: [ProblemCode.NotFound, ...WRITE_ERRORS]
   }),
   createPlaylist: defineEndpoint({
     method: HttpMethod.Post,

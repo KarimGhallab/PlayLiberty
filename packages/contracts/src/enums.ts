@@ -14,7 +14,7 @@ export enum PlaylistSyncStatus {
   Blocked = 'blocked'
 }
 
-/* A config's last measured state: `unknown` until something probes or uses it,
+/* A config's last measured state: `unknown` until something checks or uses it,
  * so nothing is assumed healthy by default. */
 export enum EgressStatus {
   Ok = 'ok',

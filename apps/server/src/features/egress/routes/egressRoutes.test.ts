@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { EgressStatus } from '@playliberty/contracts';
 import type {
   EgressAgentStatus,
-  EgressProbeFacts,
+  EgressCheckFacts,
   IEgressAgentClient
 } from '@playliberty/youtube';
 import {
@@ -26,7 +26,7 @@ const POOL: EgressAgentStatus = {
   loadedSince: '2026-10-23T10:00:00.000Z'
 };
 
-const PROBE_OK: EgressProbeFacts = {
+const CHECK_OK: EgressCheckFacts = {
   handshake: true,
   listing: true,
   exitIp: '185.0.0.9',
@@ -47,25 +47,23 @@ afterEach(async () => {
 interface FakeAgent {
   client: IEgressAgentClient;
   calls: number;
-  probes: string[];
-  switches: string[];
-  drains: number[];
+  checks: string[];
   setPool(status: EgressAgentStatus): void;
   fail(next: boolean): void;
-  setProbe(result: EgressProbeFacts | Error): void;
+  setCheck(result: EgressCheckFacts | Error): void;
   setSwitchError(error: Error | null): void;
+  setCheckError(error: Error | null): void;
 }
 
 function fakeAgent(status: EgressAgentStatus = POOL): FakeAgent {
   let current = status;
   let failing = false;
-  let probe: EgressProbeFacts | Error = PROBE_OK;
+  let check: EgressCheckFacts | Error = CHECK_OK;
   let switchError: Error | null = null;
+  let checkError: Error | null = null;
   const agent: FakeAgent = {
     calls: 0,
-    probes: [],
-    switches: [],
-    drains: [],
+    checks: [],
     client: {
       status: async (): Promise<EgressAgentStatus> => {
         agent.calls += 1;
@@ -76,32 +74,38 @@ function fakeAgent(status: EgressAgentStatus = POOL): FakeAgent {
 
         return current;
       },
-      probe: async (name?: string): Promise<EgressProbeFacts> => {
-        agent.probes.push(name ?? '');
-
-        if (probe instanceof Error) {
-          throw probe;
-        }
-
-        return probe;
-      },
-      fetchTrack: async () => {
-        throw new Error('the egress routes do not fetch a track');
-      },
-      switch: async (
-        name: string,
-        drainTimeoutMs: number
-      ): Promise<EgressAgentStatus> => {
-        agent.switches.push(name);
-        agent.drains.push(drainTimeoutMs);
+      switch: async (name?: string): Promise<EgressCheckFacts> => {
+        agent.checks.push(name ?? '');
 
         if (switchError !== null) {
           throw switchError;
         }
 
-        current = { ...current, active: name };
+        if (check instanceof Error) {
+          throw check;
+        }
 
-        return current;
+        return check;
+      },
+      check: async (): Promise<EgressCheckFacts> => {
+        agent.checks.push('');
+
+        if (checkError !== null) {
+          throw checkError;
+        }
+
+        if (check instanceof Error) {
+          throw check;
+        }
+
+        return check;
+      },
+      applyConfig: async (): Promise<EgressAgentStatus> => current,
+      list: async () => {
+        throw new Error('the egress routes do not list');
+      },
+      fetchTrack: async () => {
+        throw new Error('the egress routes do not fetch a track');
       }
     },
     setPool: (next: EgressAgentStatus): void => {
@@ -110,11 +114,14 @@ function fakeAgent(status: EgressAgentStatus = POOL): FakeAgent {
     fail: (next: boolean): void => {
       failing = next;
     },
-    setProbe: (result: EgressProbeFacts | Error): void => {
-      probe = result;
+    setCheck: (result: EgressCheckFacts | Error): void => {
+      check = result;
     },
     setSwitchError: (error: Error | null): void => {
       switchError = error;
+    },
+    setCheckError: (error: Error | null): void => {
+      checkError = error;
     }
   };
 
@@ -150,7 +157,7 @@ describe('the egress read', () => {
           status: EgressStatus.Unknown,
           active: true,
           lastAttemptAt: null,
-          lastProbeAt: null,
+          lastCheckAt: null,
           lastExitIp: null,
           lastError: null
         },
@@ -160,7 +167,7 @@ describe('the egress read', () => {
           status: EgressStatus.Unknown,
           active: false,
           lastAttemptAt: null,
-          lastProbeAt: null,
+          lastCheckAt: null,
           lastExitIp: null,
           lastError: null
         }
@@ -211,19 +218,19 @@ describe('the egress read', () => {
   });
 });
 
-describe('probing an exit', () => {
+describe('switching an exit', () => {
   it('records the exit address, the time and the ok state', async () => {
     const agent = fakeAgent();
     const app = await adminApp(agent);
 
     const response = await app.app.inject({
       method: 'POST',
-      url: '/api/v1/egress/01-fr/probe',
+      url: '/api/v1/egress/01-fr/switch',
       headers: ADMIN
     });
 
     expect(response.statusCode).toBe(200);
-    expect(agent.probes).toEqual(['01-fr']);
+    expect(agent.checks).toEqual(['01-fr']);
 
     const row = response.json().configs[0];
     expect(row).toMatchObject({
@@ -233,12 +240,12 @@ describe('probing an exit', () => {
       lastExitIp: '185.0.0.9',
       lastError: null
     });
-    expect(row.lastProbeAt).not.toBeNull();
+    expect(row.lastCheckAt).not.toBeNull();
   });
 
   it('records a classified failure and keeps the exit address it saw', async () => {
     const agent = fakeAgent();
-    agent.setProbe({
+    agent.setCheck({
       handshake: true,
       listing: false,
       exitIp: '185.0.0.9',
@@ -249,7 +256,7 @@ describe('probing an exit', () => {
 
     const response = await app.app.inject({
       method: 'POST',
-      url: '/api/v1/egress/01-fr/probe',
+      url: '/api/v1/egress/01-fr/switch',
       headers: ADMIN
     });
 
@@ -260,14 +267,14 @@ describe('probing an exit', () => {
     });
   });
 
-  it('moves the active marker when the probe switched to a standby', async () => {
+  it('moves the active marker when the switch changes the active row', async () => {
     const agent = fakeAgent();
-    agent.setProbe({ ...PROBE_OK, active: '02-ch' });
+    agent.setCheck({ ...CHECK_OK, active: '02-ch' });
     const app = await adminApp(agent);
 
     const response = await app.app.inject({
       method: 'POST',
-      url: '/api/v1/egress/02-ch/probe',
+      url: '/api/v1/egress/02-ch/switch',
       headers: ADMIN
     });
 
@@ -286,12 +293,12 @@ describe('probing an exit', () => {
 
   it('reports an unreachable agent without changing a row', async () => {
     const agent = fakeAgent();
-    agent.setProbe(new Error('The agent is down.'));
+    agent.setSwitchError(new Error('The agent is down.'));
     const app = await adminApp(agent);
 
     const response = await app.app.inject({
       method: 'POST',
-      url: '/api/v1/egress/01-fr/probe',
+      url: '/api/v1/egress/01-fr/switch',
       headers: ADMIN
     });
 
@@ -299,130 +306,8 @@ describe('probing an exit', () => {
     expect(response.json().agentReachable).toBe(false);
     expect(response.json().configs[0]).toMatchObject({
       status: EgressStatus.Unknown,
-      lastProbeAt: null
+      lastCheckAt: null
     });
-  });
-
-  it('answers not-found for a config the agent does not have', async () => {
-    const agent = fakeAgent();
-    agent.setProbe(new EgressConfigUnknownError('03-missing'));
-    const app = await adminApp(agent);
-
-    const response = await app.app.inject({
-      method: 'POST',
-      url: '/api/v1/egress/03-missing/probe',
-      headers: ADMIN
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toMatchObject({ code: 'not_found' });
-  });
-
-  it('answers not-found to a non-admin and never probes', async () => {
-    const agent = fakeAgent();
-    const app = await adminApp(agent);
-
-    const response = await app.app.inject({
-      method: 'POST',
-      url: '/api/v1/egress/01-fr/probe',
-      headers: USER
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(agent.probes).toEqual([]);
-  });
-});
-
-describe('switching an exit by hand', () => {
-  it('switches the pool and answers the moved active row', async () => {
-    const agent = fakeAgent();
-    const app = await adminApp(agent);
-
-    const response = await app.app.inject({
-      method: 'POST',
-      url: '/api/v1/egress/02-ch/switch',
-      headers: ADMIN
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(agent.switches).toEqual(['02-ch']);
-    expect(agent.drains).toEqual([60000]);
-    expect(
-      response
-        .json()
-        .configs.map((config: { name: string; active: boolean }) => [
-          config.name,
-          config.active
-        ])
-    ).toEqual([
-      ['01-fr', false],
-      ['02-ch', true]
-    ]);
-  });
-
-  it('returns a failed config to unknown with a clean counter', async () => {
-    const agent = fakeAgent();
-    const app = await adminApp(agent);
-
-    app.database.db
-      .update(egressConfigs)
-      .set({
-        status: EgressStatus.Failed,
-        consecutiveFailures: 5,
-        lastError: 'blocked'
-      })
-      .where(eq(egressConfigs.name, '02-ch'))
-      .run();
-
-    const response = await app.app.inject({
-      method: 'POST',
-      url: '/api/v1/egress/02-ch/switch',
-      headers: ADMIN
-    });
-
-    const row = response
-      .json()
-      .configs.find((config: { name: string }) => config.name === '02-ch');
-
-    expect(row).toMatchObject({
-      status: EgressStatus.Unknown,
-      lastError: null
-    });
-    expect(
-      app.database.db
-        .select()
-        .from(egressConfigs)
-        .where(eq(egressConfigs.name, '02-ch'))
-        .get()?.consecutiveFailures
-    ).toBe(0);
-  });
-
-  it('leaves the active row unchanged when the agent refuses the switch', async () => {
-    const agent = fakeAgent();
-    agent.setSwitchError(
-      new EgressSwitchFailedError('No WireGuard interface is configured.')
-    );
-    const app = await adminApp(agent);
-
-    const response = await app.app.inject({
-      method: 'POST',
-      url: '/api/v1/egress/02-ch/switch',
-      headers: ADMIN
-    });
-
-    expect(response.statusCode).toBe(502);
-    expect(response.json()).toMatchObject({
-      code: 'egress_switch_failed',
-      detail: 'No WireGuard interface is configured.'
-    });
-    expect(agent.switches).toEqual(['02-ch']);
-
-    const active = app.database.db
-      .select()
-      .from(egressConfigs)
-      .where(eq(egressConfigs.active, true))
-      .get();
-    expect(active?.name).toBe('01-fr');
   });
 
   it('answers not-found for a config the agent does not have', async () => {
@@ -440,9 +325,11 @@ describe('switching an exit by hand', () => {
     expect(response.json()).toMatchObject({ code: 'not_found' });
   });
 
-  it('reports an unreachable agent without moving the active row', async () => {
+  it('carries the agent sentence when the switch is refused', async () => {
     const agent = fakeAgent();
-    agent.setSwitchError(new Error('The agent is down.'));
+    agent.setSwitchError(
+      new EgressSwitchFailedError('No WireGuard interface is configured.')
+    );
     const app = await adminApp(agent);
 
     const response = await app.app.inject({
@@ -451,14 +338,19 @@ describe('switching an exit by hand', () => {
       headers: ADMIN
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json().agentReachable).toBe(false);
-    expect(
-      response
-        .json()
-        .configs.find((config: { name: string }) => config.name === '01-fr')
-        .active
-    ).toBe(true);
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({
+      code: 'egress_switch_failed',
+      detail: 'No WireGuard interface is configured.'
+    });
+    expect(agent.checks).toEqual(['02-ch']);
+
+    const active = app.database.db
+      .select()
+      .from(egressConfigs)
+      .where(eq(egressConfigs.active, true))
+      .get();
+    expect(active?.name).toBe('01-fr');
   });
 
   it('answers not-found to a non-admin and never switches', async () => {
@@ -467,12 +359,69 @@ describe('switching an exit by hand', () => {
 
     const response = await app.app.inject({
       method: 'POST',
-      url: '/api/v1/egress/02-ch/switch',
+      url: '/api/v1/egress/01-fr/switch',
       headers: USER
     });
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ code: 'not_found' });
-    expect(agent.switches).toEqual([]);
+    expect(agent.checks).toEqual([]);
+  });
+});
+
+describe('checking the active exit', () => {
+  it('records the exit address and leaves the marker alone', async () => {
+    const agent = fakeAgent();
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/check',
+      headers: ADMIN
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(agent.checks).toEqual(['']);
+    expect(response.json().configs[0]).toMatchObject({
+      name: '01-fr',
+      status: EgressStatus.Ok,
+      active: true,
+      lastExitIp: '185.0.0.9'
+    });
+    expect(response.json().configs[0].lastCheckAt).not.toBeNull();
+    expect(response.json().configs[1].active).toBe(false);
+  });
+
+  it('reports an unreachable agent without changing a row', async () => {
+    const agent = fakeAgent();
+    agent.setCheckError(new Error('The agent is down.'));
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/check',
+      headers: ADMIN
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().agentReachable).toBe(false);
+    expect(response.json().configs[0]).toMatchObject({
+      status: EgressStatus.Unknown,
+      lastCheckAt: null
+    });
+  });
+
+  it('answers not-found to a non-admin and never checks', async () => {
+    const agent = fakeAgent();
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/check',
+      headers: USER
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(agent.checks).toEqual([]);
   });
 });

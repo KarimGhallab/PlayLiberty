@@ -42,7 +42,7 @@ per config, five consecutive exit-level failures rotate to the next config in
 round robin, and a full pass of failed configs refuses the sync with a
 `blocked` state instead of a failed run and a screen of failed rows. An
 admin-only route in the web client lists the pool with its last attempt and its
-status, and can probe or switch an exit by hand.
+status, can switch a standby, and can check the active exit by hand.
 
 ## Implementation Decisions
 
@@ -54,7 +54,7 @@ status, and can probe or switch an exit by hand.
   container `NET_ADMIN` would trade every container rule for one routing rule.
 - **The agent is stateless and policy-free.** It owns the namespace, the pool,
   the loaded config, the child processes and the socket. It owns no database, no
-  media file, no ffmpeg and no retry, rotation or probe decision. _Decided here,_
+  media file, no ffmpeg and no retry, rotation or check decision. _Decided here,_
   because the server already owns scheduling and history, and two owners of one
   decision is how a rotation loop starts.
 - **The transport is HTTP over a Unix socket, not a port.** The socket is
@@ -126,26 +126,30 @@ status, and can probe or switch an exit by hand.
   being unreachable rather than as a playlist error.
 - **The health store is one server table.** `egress_config` holds one row per
   config: name, endpoint, status, consecutive failures, last attempt, last
-  error, last probe, last observed exit address, and whether the agent reports
+  error, last check, last observed exit address, and whether the agent reports
   it active. Latest state only, no history and no retention job. _Decided here,_
   because a history table needs a retention rule for a page nobody opens weekly.
 - **The agent is authoritative for the pool and the loaded config.** The server
   reconciles its table from `status` at boot and before each rotation, and owns
   the history and the policy. _Decided here,_ because after a restart the stored
   row can disagree with the interface that is actually up.
-- **Probing is on demand.** A probe reads the latest handshake, runs one listing
-  extraction, and records the observed exit address. There is no timer. A
-  successful real listing or download also refreshes the row, because it is the
-  same evidence. _Decided here,_ because the user's trigger is traffic, and a
-  schedule would be a second failure source with no consumer.
+- **The switch action checks on demand.** It applies the config if it is not
+  loaded, reads the latest handshake, runs one listing extraction, and records
+  the observed exit address. The check action reads the active config without
+  switching. There is no timer. A successful real listing or download also
+  refreshes the row, because it is the same evidence. _Decided here,_ because
+  the user's trigger is traffic, and a schedule would be a second failure
+  source with no consumer.
 - **The interface is one admin route in the existing web client.** `/egress`
   lists every config with its name, endpoint, status (`ok`, `failed`, `unknown`),
-  last attempt date, and a probe button and a switch button per row. It is gated
-  on `UserRole.Admin`, which the account read already carries, answers not-found
-  to everyone else, and is absent from navigation for non-admins. Switching to a
-  config marked failed resets it to `unknown` and clears its counter, because the
-  operator's choice is newer than the stored failure. _Decided here,_ because the
-  egress is operator information and a household account has no action to take.
+  last attempt date, and one action per row: `Switch` on a standby (applies and
+  checks) and `Check` on the active row (checks only). It is gated on
+  `UserRole.Admin`, which the account read already carries, answers not-found to
+  everyone else, and is absent from navigation for non-admins. The unverified
+  apply stays available to rotation, with no page control. The switch action
+  runs the check, so the check's verdict is what the row stores; there is no
+  blind reset. _Decided here,_ because the egress is operator information and a
+  household account has no action to take.
 - **The server owns the pool settings.** `EGRESS_AGENT_SOCKET`, `EGRESS_AGENT_PEER_UID`,
   `EGRESS_FAILURE_LIMIT` (5), `EGRESS_DRAIN_TIMEOUT_MS` (60000) and
   `EGRESS_SWITCH_COOLDOWN_MS` (60000) are configuration, with those defaults, and
@@ -176,22 +180,23 @@ status, and can probe or switch an exit by hand.
    gains `listSource` and `fetch` on a fetcher seam, and the remux and duration
    probe move into a module the composition uses. The local fetcher keeps the
    current yt-dlp arguments, so the existing argument tests still describe it.
-2. **Define the egress agent contract and both ends.** The five calls (`status`,
-   `list`, `fetch`, `switch`, `probe`) with their schemas, an HTTP-on-Unix-socket
-   client that streams `fetch` into a temp file, and a server handler that checks
-   the peer uid. Contract and streaming tests run over a real socket.
+2. **Define the egress agent contract and both ends.** The calls (`status`,
+   `list`, `fetch`, `switch`, `check`, `apply`) with their schemas, an
+   HTTP-on-Unix-socket client that streams `fetch` into a temp file, and a server
+   handler that checks the peer uid. Contract and streaming tests run over a real
+   socket.
 3. **Build `apps/egress-agent`.** Pool discovery and parsing, `wg syncconf`, the
-   bounded drain, the five endpoints, a `--dry-run` that parses and reports
-   without touching the interface, and a fake `wg` plus a fake yt-dlp for the
-   tests.
+   bounded drain, the endpoints, a `--dry-run` that parses and reports without
+   touching the interface, and a fake `wg` plus a fake yt-dlp for the tests.
 4. **Add the rotation policy and the blocked state to the server.** The exit
    classification wiring in the worker and the sync, the `egress_config` table
    and its migration, the counter, the cooldown, the one-switch bound, the
    derived circuit, the claim release, `PlaylistSyncStatus.blocked`, and the
-   contracts and routes that expose the pool.
+   contracts and routes that expose the pool, including the switch route and
+   the check route.
 5. **Add the `/egress` route to the web client.** The admin gate, the table, the
-   probe and switch actions with their in-flight and failure states, the
-   `blocked` sync label and its copy in both catalogues.
+   `Switch` and `Check` actions with their icons, in-flight and failure states,
+   the `blocked` sync label and its copy in both catalogues.
 6. **Write the deployment artifacts and the runbook.** The system unit, the
    script that creates the namespace and the interface, the socket directory,
    the per-namespace resolver, the pool directory and its permissions, the
@@ -199,20 +204,21 @@ status, and can probe or switch an exit by hand.
    `AGENTS.md`. The external deployment guideline is updated outside the
    repository.
 7. **Verify on the host.** The direct-versus-tunnel listing, the proof that only
-   the agent's traffic uses the interface, a probe, a forced switch, and a full
-   pass of failed configs producing `blocked`. No test asserts on Proton.
+   the agent's traffic uses the interface, a switch, a check of the active exit,
+   and a full pass of failed configs producing `blocked`. No test asserts on
+   Proton.
 
 Tasks 1 and 2 order the cut. Task 3 follows task 2. Tasks 4 and 6 follow task 3.
 Task 5 follows task 4.
 
 ## Out of Scope
 
-- A scheduled or automatic probe, and automatic rotation beyond the
+- A scheduled or automatic switch or check, and automatic rotation beyond the
   five-failure rule.
 - Reimplementing Proton's authentication or config API, and running Proton's
   own client on the host.
 - Cookies, PO tokens, a proxy, or a second VPS or exit host.
-- Probe history, charts, metrics, alerting or a notification when an exit dies.
+- Check history, charts, metrics, alerting or a notification when an exit dies.
 - Making the egress page visible to non-admins, or exposing it in the mobile
   client.
 - Rotating on gone videos, 404s, SponsorBlock outages or malformed URLs.

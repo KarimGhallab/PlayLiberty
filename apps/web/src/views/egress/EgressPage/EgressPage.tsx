@@ -1,4 +1,8 @@
-import { IconChevronLeft } from '@tabler/icons-react';
+import {
+  IconArrowsExchange,
+  IconChevronLeft,
+  IconCircleCheck
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
@@ -8,15 +12,31 @@ import type { Messages, Translator } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
 import {
+  useCheckEgress,
   useEgress,
-  useProbeEgress,
   useSwitchEgress
 } from '../../../shared/api/queries/queries';
-import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import ErrorToast from '../../../shared/components/Toast/ErrorToast';
+import SuccessToast from '../../../shared/components/Toast/SuccessToast';
+import ToastStack from '../../../shared/components/Toast/ToastStack';
 import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePlayTransition';
 
 import styles from './EgressPage.module.scss';
+
+interface ActionToast {
+  readonly id: number;
+  readonly kind: 'success' | 'error';
+  readonly message: string;
+  readonly detail: string | null;
+}
+
+let nextToastId = 0;
+
+function toastId(): number {
+  nextToastId += 1;
+  return nextToastId;
+}
 
 function statusLabel(t: Translator<Messages>, status: EgressStatus): string {
   switch (status) {
@@ -61,59 +81,85 @@ function timeOf(
 export default function EgressPage() {
   const { t } = useI18n();
   const egress = useEgress();
-  const probe = useProbeEgress();
   const switchExit = useSwitchEgress();
-  const [probeNotice, setProbeNotice] = useState<
-    'unreachable' | 'failed' | null
-  >(null);
-  const [switchNotice, setSwitchNotice] = useState<string | null>(null);
+  const check = useCheckEgress();
+  const [toast, setToast] = useState<ActionToast | null>(null);
   const now = Date.now();
   const notAvailable =
     egress.error instanceof ApiError && egress.error.status === 404;
 
   useEffect(() => {
-    if (probeNotice === null) {
+    if (toast === null) {
       return;
     }
 
-    const timer = setTimeout(() => setProbeNotice(null), NOTICE_WINDOW_MS);
+    const timer = setTimeout(() => setToast(null), NOTICE_WINDOW_MS);
 
     return () => clearTimeout(timer);
-  }, [probeNotice]);
+  }, [toast]);
 
-  useEffect(() => {
-    if (switchNotice === null) {
-      return;
-    }
+  const detailOf = (error: Error): string | null =>
+    error instanceof ApiError ? (error.problem?.detail ?? null) : null;
 
-    const timer = setTimeout(() => setSwitchNotice(null), NOTICE_WINDOW_MS);
+  const errorToast = (message: string, detail: string | null): ActionToast => ({
+    id: toastId(),
+    kind: 'error',
+    message,
+    detail
+  });
 
-    return () => clearTimeout(timer);
-  }, [switchNotice]);
-
-  const probeMessage =
-    probeNotice === 'unreachable'
-      ? t('egress.probeUnreachable')
-      : t('egress.probeFailed');
-
-  /* The server's fixed sentence is the switch failure's copy; the generic one
-   * is only for a failure that carried no detail. */
-  const switchTo = (name: string): void => {
+  const runSwitch = (name: string): void => {
     switchExit.mutate(name, {
       onSuccess: read => {
         if (!read.agentReachable) {
-          setSwitchNotice(t('egress.probeUnreachable'));
+          setToast(
+            errorToast(
+              t('egress.toast.switchFailed'),
+              t('egress.checkUnreachable')
+            )
+          );
+          return;
         }
+
+        setToast({
+          id: toastId(),
+          kind: 'success',
+          message: t('egress.toast.switched', { name }),
+          detail: t('egress.toast.answered')
+        });
       },
       onError: error => {
-        setSwitchNotice(
-          error instanceof ApiError
-            ? (error.problem?.detail ?? t('egress.switchFailed'))
-            : t('egress.switchFailed')
-        );
+        setToast(errorToast(t('egress.toast.switchFailed'), detailOf(error)));
       }
     });
   };
+
+  const runCheck = (): void => {
+    check.mutate(undefined, {
+      onSuccess: read => {
+        if (!read.agentReachable) {
+          setToast(
+            errorToast(t('egress.checkFailed'), t('egress.checkUnreachable'))
+          );
+          return;
+        }
+
+        const active = read.configs.find(config => config.active)?.name ?? '';
+
+        setToast({
+          id: toastId(),
+          kind: 'success',
+          message: t('egress.toast.checked', { name: active }),
+          detail: t('egress.toast.answered')
+        });
+      },
+      onError: error => {
+        setToast(errorToast(t('egress.checkFailed'), detailOf(error)));
+      }
+    });
+  };
+
+  const toastIsSuccess = toast?.kind === 'success';
 
   return (
     <main className={styles.egress}>
@@ -177,122 +223,143 @@ export default function EgressPage() {
                   <th scope="col">{t('egress.endpoint')}</th>
                   <th scope="col">{t('egress.status')}</th>
                   <th scope="col">{t('egress.lastAttempt')}</th>
-                  <th scope="col">{t('egress.lastProbe')}</th>
+                  <th scope="col">{t('egress.lastCheck')}</th>
                   <th scope="col">{t('egress.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {egress.data.configs.map(config => (
-                  <tr
-                    key={config.name}
-                    className={
-                      config.active ? styles['egress__row--active'] : undefined
-                    }>
-                    <th scope="row" className={styles.egress__name}>
-                      {config.name}
-                      {config.active ? (
-                        <span className={styles.egress__active}>
-                          {t('egress.active')}
+                {egress.data.configs.map(config => {
+                  const switchPending =
+                    switchExit.isPending &&
+                    switchExit.variables === config.name;
+                  const pending = config.active
+                    ? check.isPending
+                    : switchPending;
+
+                  return (
+                    <tr
+                      key={config.name}
+                      className={
+                        config.active
+                          ? styles['egress__row--active']
+                          : undefined
+                      }>
+                      <th scope="row" className={styles.egress__name}>
+                        {config.name}
+                        {config.active ? (
+                          <span className={styles.egress__active}>
+                            {t('egress.active')}
+                          </span>
+                        ) : null}
+                      </th>
+                      <td className={styles.egress__mono}>
+                        {config.endpoint ?? '-'}
+                        {config.lastExitIp === null ? null : (
+                          <span className={styles.egress__observed}>
+                            {t('egress.seen', { ip: config.lastExitIp })}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className={`${styles.egress__status} ${styles[`egress__status--${config.status}`]}`}>
+                          {statusLabel(t, config.status)}
                         </span>
-                      ) : null}
-                    </th>
-                    <td className={styles.egress__mono}>
-                      {config.endpoint ?? '-'}
-                      {config.lastExitIp === null ? null : (
-                        <span className={styles.egress__observed}>
-                          {t('egress.seen', { ip: config.lastExitIp })}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <span
-                        className={`${styles.egress__status} ${styles[`egress__status--${config.status}`]}`}>
-                        {statusLabel(t, config.status)}
-                      </span>
-                      {config.status === EgressStatus.Failed &&
-                      config.lastError !== null ? (
-                        <span className={styles.egress__reason}>
-                          {reasonLabel(t, config.lastError)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className={styles.egress__mono}>
-                      {timeOf(t, config.lastAttemptAt, now)}
-                    </td>
-                    <td className={styles.egress__mono}>
-                      {timeOf(t, config.lastProbeAt, now)}
-                    </td>
-                    <td>
-                      <div className={styles.egress__actions}>
-                        <div className={styles.egress__probeWrap}>
+                        {config.status === EgressStatus.Failed &&
+                        config.lastError !== null ? (
+                          <span className={styles.egress__reason}>
+                            {reasonLabel(t, config.lastError)}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className={styles.egress__mono}>
+                        {timeOf(t, config.lastAttemptAt, now)}
+                      </td>
+                      <td className={styles.egress__mono}>
+                        {timeOf(t, config.lastCheckAt, now)}
+                      </td>
+                      <td>
+                        <div className={styles.egress__actionWrap}>
                           <span
-                            className={styles.egress__probeSizer}
+                            className={styles.egress__actionSizer}
                             aria-hidden="true">
-                            {t('egress.probing')}
+                            {config.active ? (
+                              <IconCircleCheck
+                                className={styles.egress__actionIcon}
+                                focusable="false"
+                              />
+                            ) : (
+                              <IconArrowsExchange
+                                className={`${styles.egress__actionIcon} ${styles.egress__switchIcon}`}
+                                focusable="false"
+                              />
+                            )}
+                            {config.active
+                              ? t('egress.checking')
+                              : t('egress.switching')}
                           </span>
                           <button
                             type="button"
-                            className={styles.egress__probe}
-                            disabled={probe.isPending}
-                            aria-busy={
-                              probe.isPending && probe.variables === config.name
-                                ? true
-                                : undefined
-                            }
+                            className={styles.egress__action}
+                            disabled={switchExit.isPending || check.isPending}
+                            aria-busy={pending ? true : undefined}
                             onClick={() =>
-                              probe.mutate(config.name, {
-                                onSuccess: read => {
-                                  if (!read.agentReachable) {
-                                    setProbeNotice('unreachable');
-                                  }
-                                },
-                                onError: () => setProbeNotice('failed')
-                              })
+                              config.active
+                                ? runCheck()
+                                : runSwitch(config.name)
                             }>
-                            {probe.isPending && probe.variables === config.name
-                              ? t('egress.probing')
-                              : t('egress.probe')}
+                            {config.active ? (
+                              <IconCircleCheck
+                                className={styles.egress__actionIcon}
+                                aria-hidden="true"
+                                focusable="false"
+                              />
+                            ) : (
+                              <IconArrowsExchange
+                                className={`${styles.egress__actionIcon} ${styles.egress__switchIcon}`}
+                                aria-hidden="true"
+                                focusable="false"
+                              />
+                            )}
+                            {pending
+                              ? config.active
+                                ? t('egress.checking')
+                                : t('egress.switching')
+                              : config.active
+                                ? t('egress.check')
+                                : t('egress.switch')}
                           </button>
                         </div>
-                        <div className={styles.egress__switchWrap}>
-                          <span
-                            className={styles.egress__switchSizer}
-                            aria-hidden="true">
-                            {t('egress.switching')}
-                          </span>
-                          <button
-                            type="button"
-                            className={styles.egress__switch}
-                            disabled={config.active || switchExit.isPending}
-                            aria-busy={
-                              switchExit.isPending &&
-                              switchExit.variables === config.name
-                                ? true
-                                : undefined
-                            }
-                            onClick={() => switchTo(config.name)}>
-                            {switchExit.isPending &&
-                            switchExit.variables === config.name
-                              ? t('egress.switching')
-                              : t('egress.switch')}
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
         </>
       ) : null}
 
-      {probeNotice === null ? null : (
-        <NoticeToast message={probeMessage} durationMs={NOTICE_WINDOW_MS} />
-      )}
-
-      {switchNotice === null ? null : (
-        <NoticeToast message={switchNotice} durationMs={NOTICE_WINDOW_MS} />
+      {toast === null ? null : (
+        <ToastStack>
+          {toastIsSuccess ? (
+            <SuccessToast
+              key={toast.id}
+              message={toast.message}
+              detail={toast.detail}
+              durationMs={NOTICE_WINDOW_MS}
+              onDismiss={() => setToast(null)}
+            />
+          ) : (
+            <ErrorToast
+              key={toast.id}
+              message={toast.message}
+              detail={toast.detail}
+              durationMs={NOTICE_WINDOW_MS}
+              onDismiss={() => setToast(null)}
+            />
+          )}
+        </ToastStack>
       )}
     </main>
   );

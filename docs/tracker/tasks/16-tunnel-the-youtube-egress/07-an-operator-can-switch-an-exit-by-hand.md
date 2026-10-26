@@ -31,6 +31,9 @@ counter`: the row is seeded failed with five failures and a `blocked` error, the
 route switches to it, and the answer is `unknown`, no error, counter zero, with
 the active marker moved.
 
+Superseded by [10](10-one-action-per-egress-row.md): the page now has one
+action per row, and the unverified apply is rotation only.
+
 ## What to build
 
 The override. The switch mechanism already exists for rotation; this ticket gives

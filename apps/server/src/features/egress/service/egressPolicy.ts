@@ -136,7 +136,7 @@ export class EgressPolicyClient implements IYoutubeClient {
 
     /* One operation switches at most once: the retry below runs on the new
      * config and never asks for another switch, whatever it answers. */
-    const status = await this._options.agent.switch(
+    const status = await this._options.agent.applyConfig(
       next.name,
       this._options.drainTimeoutMs
     );

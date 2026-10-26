@@ -4,6 +4,7 @@ import type { EgressRead } from '@playliberty/contracts';
 import { EgressStatus } from '@playliberty/contracts';
 import type {
   EgressAgentStatus,
+  EgressCheckFacts,
   IEgressAgentClient
 } from '@playliberty/youtube';
 import {
@@ -112,16 +113,11 @@ export function readEgress(database: DatabaseHandle): EgressRead['configs'] {
       status: row.status,
       active: row.active,
       lastAttemptAt: row.lastAttemptAt,
-      lastProbeAt: row.lastProbeAt,
+      lastCheckAt: row.lastCheckAt,
       lastExitIp: row.lastExitIp,
       lastError: row.lastError
     }));
 }
-
-export type ProbeOutcome =
-  | { outcome: 'ok'; read: EgressRead }
-  | { outcome: 'agent_unreachable' }
-  | { outcome: 'config_unknown' };
 
 export type SwitchOutcome =
   | { outcome: 'ok'; read: EgressRead }
@@ -129,21 +125,23 @@ export type SwitchOutcome =
   | { outcome: 'config_unknown' }
   | { outcome: 'switch_failed'; message: string };
 
+export type CheckOutcome =
+  { outcome: 'ok'; read: EgressRead } | { outcome: 'agent_unreachable' };
+
 /*
- * The operator's choice is newer than the stored verdict: a config that was
- * failed returns to unknown with a clean counter once the agent has applied it.
- * A refused switch writes nothing, so the active row stays as it was.
+ * The switch action: apply the config if needed, then check it. The check is
+ * the evidence the row stores; a refused switch writes nothing, so the active
+ * row stays as it was.
  */
 export async function switchEgress(
   database: DatabaseHandle,
   agent: IEgressAgentClient,
-  name: string,
-  drainTimeoutMs: number
+  name: string
 ): Promise<SwitchOutcome> {
-  let status;
+  let facts;
 
   try {
-    status = await agent.switch(name, drainTimeoutMs);
+    facts = await agent.switch(name);
   } catch (error) {
     if (error instanceof EgressConfigUnknownError) {
       return { outcome: 'config_unknown' };
@@ -156,8 +154,7 @@ export async function switchEgress(
     return { outcome: 'agent_unreachable' };
   }
 
-  applyEgressStatus(database, status);
-  resetStaleFailure(database, name);
+  applyCheckFacts(database, name, facts);
 
   return {
     outcome: 'ok',
@@ -165,50 +162,39 @@ export async function switchEgress(
   };
 }
 
-function resetStaleFailure(database: DatabaseHandle, name: string): void {
-  const row = database.db
-    .select({ status: egressConfigs.status })
-    .from(egressConfigs)
-    .where(eq(egressConfigs.name, name))
-    .get();
-
-  if (row?.status !== EgressStatus.Failed) {
-    return;
-  }
-
-  database.db
-    .update(egressConfigs)
-    .set({
-      status: EgressStatus.Unknown,
-      consecutiveFailures: 0,
-      lastError: null
-    })
-    .where(eq(egressConfigs.name, name))
-    .run();
-}
-
-/*
- * A probe is evidence, not a download: it writes the row it measured and the
- * active flag the agent reports after the switch, and nothing else. A probe
- * that fails at the listing still keeps the exit address it managed to read.
- */
-export async function probeEgress(
+/* The check action: read the active config and never switch. */
+export async function checkEgress(
   database: DatabaseHandle,
-  agent: IEgressAgentClient,
-  name: string
-): Promise<ProbeOutcome> {
+  agent: IEgressAgentClient
+): Promise<CheckOutcome> {
   let facts;
 
   try {
-    facts = await agent.probe(name);
-  } catch (error) {
-    if (error instanceof EgressConfigUnknownError) {
-      return { outcome: 'config_unknown' };
-    }
-
+    facts = await agent.check();
+  } catch {
     return { outcome: 'agent_unreachable' };
   }
 
+  if (facts.active !== null) {
+    applyCheckFacts(database, facts.active, facts);
+  }
+
+  return {
+    outcome: 'ok',
+    read: { agentReachable: true, configs: readEgress(database) }
+  };
+}
+
+/*
+ * A check is evidence, not a download: it writes the row it measured and the
+ * active flag the agent reports after the switch, and nothing else. A check
+ * that fails at the listing still keeps the exit address it managed to read.
+ */
+function applyCheckFacts(
+  database: DatabaseHandle,
+  name: string,
+  facts: EgressCheckFacts
+): void {
   const ok = facts.listing && facts.exitIp !== null;
   const now = new Date().toISOString();
   const previous = database.db
@@ -216,7 +202,7 @@ export async function probeEgress(
     .from(egressConfigs)
     .where(eq(egressConfigs.active, true))
     .get();
-  /* A probe of a standby switches the agent: the new active starts clean. */
+  /* A switch of a standby changes the agent: the new active starts clean. */
   const becameActive =
     facts.active !== null && facts.active !== (previous?.name ?? null);
 
@@ -225,7 +211,7 @@ export async function probeEgress(
       .update(egressConfigs)
       .set({
         status: ok ? EgressStatus.Ok : EgressStatus.Failed,
-        lastProbeAt: now,
+        lastCheckAt: now,
         lastExitIp: facts.exitIp,
         lastError: ok ? null : facts.reason,
         ...(ok || becameActive ? { consecutiveFailures: 0 } : {})
@@ -233,7 +219,7 @@ export async function probeEgress(
       .where(eq(egressConfigs.name, name))
       .run();
 
-    /* A probe of a standby switched the agent, so the marker moves with it. */
+    /* A switch of a standby moved the agent, so the marker follows. */
     database.db
       .update(egressConfigs)
       .set({ active: false })
@@ -251,9 +237,4 @@ export async function probeEgress(
         .run();
     }
   });
-
-  return {
-    outcome: 'ok',
-    read: { agentReachable: true, configs: readEgress(database) }
-  };
 }

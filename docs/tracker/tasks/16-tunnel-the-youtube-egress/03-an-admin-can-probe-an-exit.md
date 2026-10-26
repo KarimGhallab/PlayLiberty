@@ -46,6 +46,9 @@ Verification: `pnpm run build`, `pnpm run lint:check` and
 active: "02-ch" }` and the active marker moves. That address is the workstation's
 own, because no tunnel is configured here; on the host it is the Proton exit.
 
+Superseded by [10](10-one-action-per-egress-row.md): the probe is now the
+switch action and the check action, and the page has one action per row.
+
 ## What to build
 
 Turn the pool page from a list into evidence. A probe reads the latest handshake,

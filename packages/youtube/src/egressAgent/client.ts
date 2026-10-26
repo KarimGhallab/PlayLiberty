@@ -1,7 +1,7 @@
 import { createWriteStream } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { request } from 'node:http';
 import type { IncomingMessage } from 'node:http';
+import { request } from 'node:http';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
@@ -12,8 +12,8 @@ import {
 import type {
   AgentFetchRequest,
   EgressAgentStatus,
+  EgressCheckFacts,
   EgressFailure,
-  EgressProbeFacts,
   FetchedTrack,
   IEgressAgentClient,
   YoutubeSource,
@@ -22,7 +22,7 @@ import type {
 import { YoutubeSourceKind } from '../types.js';
 
 /* The read may not hang on a wedged agent: "unreachable" is an answer the page
- * can draw faster than a person gives up. A probe or a listing is a yt-dlp run,
+ * can draw faster than a person gives up. A switch or a check is a yt-dlp run,
  * so it gets the room one takes. */
 const STATUS_TIMEOUT_MS = 2000;
 const LIST_TIMEOUT_MS = 120_000;
@@ -99,6 +99,16 @@ export class EgressSwitchFailedError extends Error {
   }
 }
 
+function switchFailureOf(body: unknown): EgressSwitchFailedError {
+  const detail = isRecord(body) ? body.detail : null;
+
+  return new EgressSwitchFailedError(
+    typeof detail === 'string' && detail.length > 0
+      ? detail
+      : 'The exit could not be switched.'
+  );
+}
+
 /* A non-200 the caller has to interpret: 400 is an unknown config or a bad
  * source, anything else is the agent failing. */
 class AgentResponseError extends Error {
@@ -162,7 +172,7 @@ function parseEgressAgentStatus(value: unknown): EgressAgentStatus {
   };
 }
 
-function parseProbeFacts(value: unknown): EgressProbeFacts {
+function parseCheckFacts(value: unknown): EgressCheckFacts {
   if (
     !isRecord(value) ||
     typeof value.listing !== 'boolean' ||
@@ -171,7 +181,7 @@ function parseProbeFacts(value: unknown): EgressProbeFacts {
       (typeof value.reason !== 'string' ||
         !FAILURES.has(value.reason as EgressFailure)))
   ) {
-    throw new Error('The egress agent answered an unexpected probe result.');
+    throw new Error('The egress agent answered an unexpected check result.');
   }
 
   return {
@@ -363,11 +373,11 @@ export class EgressAgentClient implements IEgressAgentClient {
     );
   }
 
-  public async probe(name?: string): Promise<EgressProbeFacts> {
+  public async switch(name?: string): Promise<EgressCheckFacts> {
     const result = await requestJson({
       socketPath: this._socketPath,
       method: 'POST',
-      path: '/probe',
+      path: '/switch',
       body: name === undefined ? {} : { name },
       timeoutMs: LIST_TIMEOUT_MS
     });
@@ -376,7 +386,22 @@ export class EgressAgentClient implements IEgressAgentClient {
       throw new EgressConfigUnknownError(name ?? 'unknown');
     }
 
-    return parseProbeFacts(expectOk(result));
+    if (result.status === 503) {
+      throw switchFailureOf(result.body);
+    }
+
+    return parseCheckFacts(expectOk(result));
+  }
+
+  public async check(): Promise<EgressCheckFacts> {
+    const result = await requestJson({
+      socketPath: this._socketPath,
+      method: 'POST',
+      path: '/check',
+      timeoutMs: LIST_TIMEOUT_MS
+    });
+
+    return parseCheckFacts(expectOk(result));
   }
 
   public async list(url: string): Promise<YoutubeSource> {
@@ -405,14 +430,14 @@ export class EgressAgentClient implements IEgressAgentClient {
     return parseYoutubeSource(expectOk(result));
   }
 
-  public async switch(
+  public async applyConfig(
     name: string,
     drainTimeoutMs: number
   ): Promise<EgressAgentStatus> {
     const result = await requestJson({
       socketPath: this._socketPath,
       method: 'POST',
-      path: '/switch',
+      path: '/apply',
       body: { name, drainTimeoutMs },
       /* The drain runs before the agent answers, so the wait is the bound. */
       timeoutMs: drainTimeoutMs + 30_000
@@ -423,13 +448,7 @@ export class EgressAgentClient implements IEgressAgentClient {
     }
 
     if (result.status === 503) {
-      const detail = isRecord(result.body) ? result.body.detail : null;
-
-      throw new EgressSwitchFailedError(
-        typeof detail === 'string' && detail.length > 0
-          ? detail
-          : 'The exit could not be switched.'
-      );
+      throw switchFailureOf(result.body);
     }
 
     return parseEgressAgentStatus(expectOk(result));

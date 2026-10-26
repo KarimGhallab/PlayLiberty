@@ -80,20 +80,8 @@ export function useEgress(): UseQueryResult<EgressRead, Error> {
   });
 }
 
-/* A probe answers the whole read, so the page updates in one response. */
-export function useProbeEgress(): UseMutationResult<EgressRead, Error, string> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (name: string) =>
-      postEndpoint(endpoints.probeEgress, {}, { name }),
-    onSuccess: read => {
-      queryClient.setQueryData(['egress'], read);
-    }
-  });
-}
-
-/* The operator's override: the switch answers the whole read, like a probe. */
+/* The switch action answers the whole read, so the page updates in one
+ * response. */
 export function useSwitchEgress(): UseMutationResult<
   EgressRead,
   Error,
@@ -104,6 +92,18 @@ export function useSwitchEgress(): UseMutationResult<
   return useMutation({
     mutationFn: (name: string) =>
       commandEndpoint(endpoints.switchEgress, { name }),
+    onSuccess: read => {
+      queryClient.setQueryData(['egress'], read);
+    }
+  });
+}
+
+/* The check action answers the whole read and never changes the exit. */
+export function useCheckEgress(): UseMutationResult<EgressRead, Error, void> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => commandEndpoint(endpoints.checkEgress),
     onSuccess: read => {
       queryClient.setQueryData(['egress'], read);
     }

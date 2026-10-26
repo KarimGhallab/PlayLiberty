@@ -14,10 +14,10 @@ the evidence in this ticket.
 
 - [ ] The direct listing fails from the VPS address and the tunnelled listing succeeds, both recorded.
 - [ ] The interface's counters show only the agent's traffic, and the host default route and sshd are unchanged throughout.
-- [ ] A probe reports `ok` with an exit address that is not the VPS address.
+- [ ] A switch reports `ok` with an exit address that is not the VPS address.
 - [ ] A real track downloads through the exit and lands in the store.
-- [ ] A forced switch moves the active config, and the next listing or download uses the new exit.
-- [ ] Five forced exit failures rotate to the next config, and a fully failed pool makes a sync answer `blocked` while the pending rows survive.
+- [ ] A switch of a standby moves the active config, and the next listing or download uses the new exit.
+- [ ] Five exit failures rotate to the next config, and a fully failed pool makes a sync answer `blocked` while the pending rows survive.
 - [ ] The gallery says the source is unreachable during the blocked pass, and nothing in the run leads with yt-dlp's stderr.
 - [ ] The evidence is recorded here, and any decision this ticket had to make is noted for the spec.
 

@@ -1,11 +1,9 @@
-import { useI18n } from '@playliberty/i18n';
-
-import styles from './UndoToast.module.scss';
+import Toast from '../Toast/Toast';
 
 /*
  * The deferred action's surface: an action the server has not yet been asked to
- * perform, with the one control that stops it. It never blocks: no scrim and no
- * focus trap.
+ * perform, with the one control that stops it. It composes the shared Toast
+ * with the Undo action.
  */
 
 interface UndoToastProps {
@@ -30,32 +28,14 @@ export default function UndoToast({
   onAction,
   onDismiss
 }: UndoToastProps) {
-  const { t } = useI18n();
-
   return (
-    <div className={styles.toast} role="status">
-      <span
-        key={windowKey}
-        className={styles.toast__ring}
-        aria-hidden="true"
-        style={{ animationDuration: `${durationMs}ms` }}
-      />
-      <span className={styles.toast__body}>
-        <span className={styles.toast__title}>{message}</span>
-        {detail === null ? null : (
-          <span className={styles.toast__detail}>{detail}</span>
-        )}
-      </span>
-      <button type="button" className={styles.toast__action} onClick={onAction}>
-        {actionLabel}
-      </button>
-      <button
-        type="button"
-        className={styles.toast__dismiss}
-        aria-label={t('toast.dismiss')}
-        onClick={onDismiss}>
-        ×
-      </button>
-    </div>
+    <Toast
+      message={message}
+      detail={detail}
+      windowKey={windowKey}
+      durationMs={durationMs}
+      action={{ label: actionLabel, onAction }}
+      onDismiss={onDismiss}
+    />
   );
 }

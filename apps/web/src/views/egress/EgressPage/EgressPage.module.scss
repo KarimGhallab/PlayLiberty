@@ -108,16 +108,9 @@
     th,
     td {
       padding: var(--space-3);
+      text-align: left;
       vertical-align: top;
       border-bottom: 1px solid var(--line);
-    }
-
-    th {
-      text-align: center;
-    }
-
-    td {
-      text-align: left;
     }
 
     thead th {
@@ -170,18 +163,10 @@
     font-size: var(--text-xs);
   }
 
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: start;
-    gap: var(--space-2);
-  }
-
-  /* Each cell reserves its wider label, padding included; the button keeps its
-   * own size inside it, so "Testing..." or "Switching..." never widens the
-   * column. */
-  &__probeWrap,
-  &__switchWrap {
+  /* The cell reserves the wider label with its icon, padding included; the
+   * button keeps its own size inside it, so "Switching..." or "Checking..."
+   * never widens the column. */
+  &__actionWrap {
     display: grid;
     justify-items: start;
 
@@ -190,8 +175,10 @@
     }
   }
 
-  &__probeSizer,
-  &__switchSizer {
+  &__actionSizer {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     visibility: hidden;
     padding: 0 var(--space-4);
     font-size: var(--text-sm);
@@ -199,8 +186,20 @@
     white-space: nowrap;
   }
 
-  &__probe,
-  &__switch {
+  &__actionIcon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+  }
+
+  &__switchIcon {
+    color: var(--egress);
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     height: var(--control-height);
     padding: 0 var(--space-4);
     color: var(--ink);
@@ -223,6 +222,10 @@
       border-color: var(--line);
       cursor: default;
     }
+  }
+
+  &__action:disabled &__switchIcon {
+    color: inherit;
   }
 
   &__status {

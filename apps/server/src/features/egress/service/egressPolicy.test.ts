@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { EgressStatus } from '@playliberty/contracts';
-import {
-  EgressCircuitOpenError,
-  EgressSourceUnavailableError,
-  YoutubeSourceKind,
-  YoutubeVideoUnavailableError
-} from '@playliberty/youtube';
 import type {
   EgressAgentStatus,
   IEgressAgentClient,
   IYoutubeClient,
   YoutubeSource
+} from '@playliberty/youtube';
+import {
+  EgressCircuitOpenError,
+  EgressSourceUnavailableError,
+  YoutubeSourceKind,
+  YoutubeVideoUnavailableError
 } from '@playliberty/youtube';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
@@ -64,20 +64,23 @@ async function harness(
   const counts = { downloads: 0 };
   const agent: IEgressAgentClient = {
     status: async () => status,
-    probe: async () => {
-      throw new Error('the policy does not probe');
+    switch: async () => {
+      throw new Error('the policy does not switch');
+    },
+    check: async () => {
+      throw new Error('the policy does not check');
+    },
+    applyConfig: async (name: string): Promise<EgressAgentStatus> => {
+      switched.push(name);
+      status = { ...status, active: name };
+
+      return status;
     },
     list: async () => {
       throw new Error('the policy talks to the inner client');
     },
     fetchTrack: async () => {
       throw new Error('the policy talks to the inner client');
-    },
-    switch: async (name: string): Promise<EgressAgentStatus> => {
-      switched.push(name);
-      status = { ...status, active: name };
-
-      return status;
     }
   };
   const inner: IYoutubeClient = {

@@ -7,7 +7,7 @@ import { sendProblem } from '../../../shared/problem.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
 import {
-  probeEgress,
+  checkEgress,
   readEgress,
   reconcileEgress,
   switchEgress
@@ -45,37 +45,6 @@ export function registerEgressRoutes(
 
   registerEndpoint<{ Params: { name: string } }>(
     app,
-    endpoints.probeEgress,
-    async (request, reply) => {
-      if (request.account.role !== UserRole.Admin) {
-        return refuse(reply);
-      }
-
-      const result = await probeEgress(
-        context.database,
-        context.egressAgent,
-        request.params.name
-      );
-
-      if (result.outcome === 'config_unknown') {
-        return refuse(reply);
-      }
-
-      /* An unreachable agent is still an answer the page can draw: the rows
-       * stay as they were and the control reports the failure. */
-      if (result.outcome === 'agent_unreachable') {
-        return reply.send({
-          agentReachable: false,
-          configs: readEgress(context.database)
-        });
-      }
-
-      return reply.send(result.read);
-    }
-  );
-
-  registerEndpoint<{ Params: { name: string } }>(
-    app,
     endpoints.switchEgress,
     async (request, reply) => {
       if (request.account.role !== UserRole.Admin) {
@@ -85,8 +54,7 @@ export function registerEgressRoutes(
       const result = await switchEgress(
         context.database,
         context.egressAgent,
-        request.params.name,
-        context.config.egressDrainTimeoutMs
+        request.params.name
       );
 
       if (result.outcome === 'config_unknown') {
@@ -104,7 +72,8 @@ export function registerEgressRoutes(
         });
       }
 
-      /* An unreachable agent is still an answer the page can draw. */
+      /* An unreachable agent is still an answer the page can draw: the rows
+       * stay as they were and the control reports the failure. */
       if (result.outcome === 'agent_unreachable') {
         return reply.send({
           agentReachable: false,
@@ -115,4 +84,21 @@ export function registerEgressRoutes(
       return reply.send(result.read);
     }
   );
+
+  registerEndpoint(app, endpoints.checkEgress, async (request, reply) => {
+    if (request.account.role !== UserRole.Admin) {
+      return refuse(reply);
+    }
+
+    const result = await checkEgress(context.database, context.egressAgent);
+
+    if (result.outcome === 'agent_unreachable') {
+      return reply.send({
+        agentReachable: false,
+        configs: readEgress(context.database)
+      });
+    }
+
+    return reply.send(result.read);
+  });
 }

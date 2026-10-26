@@ -143,7 +143,7 @@ export const EgressConfigSchema = z.object({
   status: z.enum(EgressStatus),
   active: z.boolean(),
   lastAttemptAt: isoDateTime.nullable(),
-  lastProbeAt: isoDateTime.nullable(),
+  lastCheckAt: isoDateTime.nullable(),
   lastExitIp: z.string().nullable(),
   lastError: z.string().nullable()
 });

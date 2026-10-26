@@ -38,7 +38,7 @@ const READ = {
       status: EgressStatus.Ok,
       active: true,
       lastAttemptAt: TWO_HOURS_AGO,
-      lastProbeAt: null,
+      lastCheckAt: null,
       lastExitIp: null,
       lastError: null
     },
@@ -48,7 +48,7 @@ const READ = {
       status: EgressStatus.Unknown,
       active: false,
       lastAttemptAt: null,
-      lastProbeAt: null,
+      lastCheckAt: null,
       lastExitIp: null,
       lastError: null
     }
@@ -82,6 +82,10 @@ function renderPage() {
       </I18nProvider>
     </QueryClientProvider>
   );
+}
+
+function activeRow(name: string): HTMLElement {
+  return screen.getByText(name).closest('tr') as HTMLElement;
 }
 
 describe('the egress page', () => {
@@ -157,15 +161,17 @@ describe('the egress page', () => {
       screen.getByRole('button', { name: 'Try again' })
     ).toBeInTheDocument();
   });
+});
 
-  it('probes an exit and draws the measured address', async () => {
-    const probed = {
+describe('the one action per row', () => {
+  it('checks the active row and draws the measured address', async () => {
+    const checked = {
       ...READ,
       configs: [
         {
           ...READ.configs[0],
           status: EgressStatus.Ok,
-          lastProbeAt: new Date().toISOString(),
+          lastCheckAt: new Date().toISOString(),
           lastExitIp: '185.0.0.9'
         },
         READ.configs[1]
@@ -175,67 +181,23 @@ describe('the egress page', () => {
       http.get(mockUrl(endpoints.egress), () =>
         respond(endpoints.egress, READ)
       ),
-      http.post(mockUrl(endpoints.probeEgress, { name: '01-fr' }), () =>
-        respond(endpoints.probeEgress, probed)
+      http.post(mockUrl(endpoints.checkEgress), () =>
+        respond(endpoints.checkEgress, checked)
       )
     );
 
     renderPage();
 
-    const buttons = await screen.findAllByRole('button', { name: 'Test' });
-    fireEvent.click(buttons[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Check' }));
 
     expect(await screen.findByText('Seen at 185.0.0.9')).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: 'OK' })).toBeInTheDocument();
-  });
-
-  it('reports an unreachable agent without claiming the probe ran', async () => {
-    server.use(
-      http.get(mockUrl(endpoints.egress), () =>
-        respond(endpoints.egress, READ)
-      ),
-      http.post(mockUrl(endpoints.probeEgress, { name: '01-fr' }), () =>
-        respond(endpoints.probeEgress, { ...READ, agentReachable: false })
-      )
-    );
-
-    renderPage();
-
-    const buttons = await screen.findAllByRole('button', { name: 'Test' });
-    fireEvent.click(buttons[0]);
-
+    expect(within(activeRow('01-fr')).getByText('Active')).toBeInTheDocument();
     expect(
-      await screen.findByText('The egress agent could not be reached.')
+      within(activeRow('01-fr')).getByRole('button', { name: 'Check' })
     ).toBeInTheDocument();
   });
 
-  it('reports a probe that could not be run', async () => {
-    server.use(
-      http.get(mockUrl(endpoints.egress), () =>
-        respond(endpoints.egress, READ)
-      ),
-      http.post(mockUrl(endpoints.probeEgress, { name: '01-fr' }), () =>
-        problemResponse({
-          code: ProblemCode.InternalError,
-          status: 500,
-          title: 'Internal Server Error'
-        })
-      )
-    );
-
-    renderPage();
-
-    const buttons = await screen.findAllByRole('button', { name: 'Test' });
-    fireEvent.click(buttons[0]);
-
-    expect(
-      await screen.findByText('The test could not be run.')
-    ).toBeInTheDocument();
-  });
-});
-
-describe('switching an exit by hand', () => {
-  it('disables the active row and moves the marker after a switch', async () => {
+  it('switches an inactive row and moves the marker', async () => {
     const switched = {
       ...READ,
       configs: [
@@ -255,16 +217,18 @@ describe('switching an exit by hand', () => {
     renderPage();
 
     const switches = await screen.findAllByRole('button', { name: 'Switch' });
-    expect(switches[0]).toBeDisabled();
-    expect(switches[1]).toBeEnabled();
+    expect(switches).toHaveLength(1);
+    fireEvent.click(switches[0]);
 
-    fireEvent.click(switches[1]);
-
-    const row = (await screen.findByText('02-ch')).closest('tr');
-    expect(within(row as HTMLElement).getByText('Active')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(activeRow('02-ch')).getByText('Active')).toBeInTheDocument()
+    );
     expect(
-      within(row as HTMLElement).getByRole('button', { name: 'Switch' })
-    ).toBeDisabled();
+      within(activeRow('02-ch')).getByRole('button', { name: 'Check' })
+    ).toBeInTheDocument();
+    expect(
+      within(activeRow('01-fr')).getByRole('button', { name: 'Switch' })
+    ).toBeInTheDocument();
   });
 
   it('says why a refused switch left the active row alone', async () => {
@@ -284,15 +248,12 @@ describe('switching an exit by hand', () => {
 
     renderPage();
 
-    const switches = await screen.findAllByRole('button', { name: 'Switch' });
-    fireEvent.click(switches[1]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch' }));
 
     expect(
       await screen.findByText('No WireGuard interface is configured.')
     ).toBeInTheDocument();
-
-    const row = screen.getByText('01-fr').closest('tr');
-    expect(within(row as HTMLElement).getByText('Active')).toBeInTheDocument();
+    expect(within(activeRow('01-fr')).getByText('Active')).toBeInTheDocument();
   });
 
   it('reports an unreachable agent without moving the marker', async () => {
@@ -301,24 +262,24 @@ describe('switching an exit by hand', () => {
         respond(endpoints.egress, READ)
       ),
       http.post(mockUrl(endpoints.switchEgress, { name: '02-ch' }), () =>
-        respond(endpoints.switchEgress, { ...READ, agentReachable: false })
+        respond(endpoints.switchEgress, {
+          ...READ,
+          agentReachable: false
+        })
       )
     );
 
     renderPage();
 
-    const switches = await screen.findAllByRole('button', { name: 'Switch' });
-    fireEvent.click(switches[1]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch' }));
 
     expect(
       await screen.findByText('The egress agent could not be reached.')
     ).toBeInTheDocument();
-
-    const row = screen.getByText('01-fr').closest('tr');
-    expect(within(row as HTMLElement).getByText('Active')).toBeInTheDocument();
+    expect(within(activeRow('01-fr')).getByText('Active')).toBeInTheDocument();
   });
 
-  it('cannot be pressed twice while the switch is in flight', async () => {
+  it('cannot be pressed twice while the operation is in flight', async () => {
     const switched = {
       ...READ,
       configs: [
@@ -346,8 +307,7 @@ describe('switching an exit by hand', () => {
 
     renderPage();
 
-    const switches = await screen.findAllByRole('button', { name: 'Switch' });
-    fireEvent.click(switches[1]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch' }));
 
     expect(
       await screen.findByRole('button', { name: 'Switching...' })
@@ -355,9 +315,71 @@ describe('switching an exit by hand', () => {
 
     release?.();
 
-    const row = screen.getByText('02-ch').closest('tr') as HTMLElement;
     await waitFor(() =>
-      expect(within(row).getByText('Active')).toBeInTheDocument()
+      expect(within(activeRow('02-ch')).getByText('Active')).toBeInTheDocument()
     );
+  });
+
+  it('shows the check in flight and cannot be pressed twice', async () => {
+    const checked = {
+      ...READ,
+      configs: [
+        {
+          ...READ.configs[0],
+          lastCheckAt: new Date().toISOString(),
+          lastExitIp: '185.0.0.9'
+        },
+        READ.configs[1]
+      ]
+    };
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.checkEgress), async () => {
+        await gate;
+
+        return respond(endpoints.checkEgress, checked);
+      })
+    );
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Check' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Checking...' })
+    ).toBeDisabled();
+
+    release?.();
+
+    expect(await screen.findByText('Seen at 185.0.0.9')).toBeInTheDocument();
+  });
+
+  it('reports a check that could not be completed', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.checkEgress), () =>
+        problemResponse({
+          code: ProblemCode.InternalError,
+          status: 500,
+          title: 'Internal Server Error'
+        })
+      )
+    );
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Check' }));
+
+    expect(
+      await screen.findByText('The check could not be completed.')
+    ).toBeInTheDocument();
   });
 });

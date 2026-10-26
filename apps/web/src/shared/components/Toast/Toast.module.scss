@@ -1,21 +1,11 @@
 /*
- * The undo toasts, anchored bottom-left above the player bar. The ring is a
- * sweep, not a number, and one animation over the duration handed in, so the
- * ring and the window's timer cannot drift.
+ * The toast surface. The ring is a sweep, not a number, and one animation over
+ * the duration handed in, so the ring and the host's timer cannot drift.
  */
-.toasts {
-  position: fixed;
-  left: var(--space-4);
-  bottom: calc(var(--space-4) + var(--player-bar-height));
-  z-index: calc(var(--z-overlay) + 1);
-  display: flex;
-  /* Newest first in the DOM, so the newest sits at the top of the stack. */
-  flex-direction: column;
-  gap: var(--space-2);
-  max-width: min(420px, calc(100vw - var(--space-4) * 2));
-}
-
 .toast {
+  --toast-tone: var(--accent);
+  --toast-tone-hover: var(--accent-hover);
+
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -29,16 +19,40 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
   animation: pl-toast-in var(--motion-base) var(--ease-standard);
 
+  &[data-tone='success'] {
+    --toast-tone: var(--accent);
+    --toast-tone-hover: var(--accent-hover);
+  }
+
+  &[data-tone='failed'] {
+    --toast-tone: var(--tone-failed);
+    --toast-tone-hover: color-mix(in srgb, var(--tone-failed) 80%, var(--ink));
+  }
+
   &__ring {
     width: 20px;
     height: 20px;
     flex-shrink: 0;
-    border: 2px solid var(--accent);
+    border: 2px solid var(--toast-tone);
     border-top-color: transparent;
     border-radius: var(--radius-chip);
     animation-name: pl-toast-ring;
     animation-timing-function: linear;
     animation-fill-mode: forwards;
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--toast-tone);
+
+    svg {
+      width: var(--icon-sm);
+      height: var(--icon-sm);
+    }
   }
 
   &__body {
@@ -69,7 +83,7 @@
   &__action {
     flex-shrink: 0;
     padding: 0;
-    color: var(--accent);
+    color: var(--toast-tone);
     font-family: inherit;
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
@@ -79,7 +93,7 @@
     cursor: pointer;
 
     &:hover {
-      color: var(--accent-hover);
+      color: var(--toast-tone-hover);
     }
 
     &:focus-visible {
@@ -136,7 +150,7 @@
 @media (prefers-reduced-motion: reduce) {
   .toast__ring {
     /* The sweep is decoration; the window itself is the host's timer. */
-    border-top-color: var(--accent);
+    border-top-color: var(--toast-tone);
     opacity: 0.6;
   }
 }

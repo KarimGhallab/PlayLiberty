@@ -220,7 +220,7 @@ export const egressConfigs = sqliteTable('egress_config', {
   consecutiveFailures: integer('consecutive_failures').notNull().default(0),
   lastAttemptAt: text('last_attempt_at'),
   lastError: text('last_error'),
-  lastProbeAt: text('last_probe_at'),
+  lastCheckAt: text('last_check_at'),
   lastExitIp: text('last_exit_ip'),
   lastSwitchAt: text('last_switch_at'),
   active: integer('active', { mode: 'boolean' }).notNull().default(false),

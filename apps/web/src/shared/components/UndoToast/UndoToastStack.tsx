@@ -1,6 +1,6 @@
+import ToastStack from '../Toast/ToastStack';
 import type { DeferredWindow } from '../useDeferredAction/types';
 import UndoToast from './UndoToast';
-import styles from './UndoToast.module.scss';
 
 /*
  * Every open window gets its own toast, newest first. The stack only places
@@ -23,7 +23,7 @@ export default function UndoToastStack({
   }
 
   return (
-    <div className={styles.toasts}>
+    <ToastStack>
       {[...windows].reverse().map(entry => (
         <UndoToast
           key={entry.key}
@@ -36,6 +36,6 @@ export default function UndoToastStack({
           onDismiss={() => onCancel(entry.key)}
         />
       ))}
-    </div>
+    </ToastStack>
   );
 }

@@ -58,10 +58,14 @@ export interface ISourceFetcher {
 
 export interface IEgressAgentClient {
   status(): Promise<EgressAgentStatus>;
-  probe(name?: string): Promise<EgressProbeFacts>;
+  /* The switch action applies the config if needed, then checks it. */
+  switch(name?: string): Promise<EgressCheckFacts>;
+  /* The check action reads the active config and never switches. */
+  check(): Promise<EgressCheckFacts>;
+  /* The rotation primitive: apply the config without checking it. */
+  applyConfig(name: string, drainTimeoutMs: number): Promise<EgressAgentStatus>;
   list(url: string): Promise<YoutubeSource>;
   fetchTrack(request: AgentFetchRequest): Promise<FetchedTrack>;
-  switch(name: string, drainTimeoutMs: number): Promise<EgressAgentStatus>;
 }
 
 /* The server owns the download options; they travel per request so the agent
@@ -73,9 +77,9 @@ export interface AgentFetchRequest extends FetchTrackRequest {
 
 export type EgressFailure = 'blocked' | 'unavailable' | 'network' | 'unknown';
 
-/* The three facts a probe measures, plus the switch it may have made. A null
- * handshake means no interface is configured, not a failure. */
-export interface EgressProbeFacts {
+/* The three facts a check measures, plus the active config. A null handshake
+ * means no interface is configured, not a failure. */
+export interface EgressCheckFacts {
   handshake: boolean | null;
   listing: boolean;
   exitIp: string | null;

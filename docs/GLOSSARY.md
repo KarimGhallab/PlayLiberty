@@ -66,6 +66,16 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 | Queue         | Per-client playback state. Not stored on the server.                    |
 | Offline       | A client-side copy for playback without the server. Out of scope in v1. |
 
+## Egress
+
+| Term   | Meaning                                                                                 |
+| ------ | --------------------------------------------------------------------------------------- |
+| Egress | The address a source read or download leaves through.                                   |
+| Exit   | The remote endpoint a WireGuard config routes through.                                  |
+| Switch | The user-facing action: apply the config if needed, then check it. The exit changes.    |
+| Check  | Read the active config's handshake, exit address and one listing. Never switches.       |
+| Apply  | The internal rotation primitive: apply a config without checking it. Not a user action. |
+
 ## Language
 
 | Term     | Meaning                                                                                                                                                                                                                                                                                                |
@@ -84,3 +94,4 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 - **Pin** vs **Favorite**: a pin is one account's placement of a playlist above the rest of its own gallery; a favorite would be a judgement about a thing. The feature is a pin, so the two words are never one.
 - **Playlist cover** vs **track thumbnail**: a playlist cover belongs to the playlist and every reader sees the same image; a track thumbnail belongs to the track. The first track's thumbnail is only the fallback for a playlist with no custom cover.
 - **Interface language** vs **user content**: the interface language is the app's and switches with the language button; a playlist name, a track title and an account name are the source's or the user's and are never translated.
+- **Switch** vs **check** vs **apply**: a switch applies the config if needed and checks it; a check reads the active config without switching; an apply is the internal rotation primitive that skips the check.

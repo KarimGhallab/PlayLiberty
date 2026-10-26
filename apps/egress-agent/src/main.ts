@@ -2,6 +2,7 @@ import type {
   AgentFetchRequest,
   DownloadOptions,
   EgressAgentStatus,
+  EgressCheckFacts,
   YoutubeSource
 } from '@playliberty/youtube';
 import {
@@ -10,30 +11,30 @@ import {
   YtdlpFetcher
 } from '@playliberty/youtube';
 
+import { checkActive } from './agent/check/check.js';
 import { readExitIp } from './agent/exitIp.js';
 import { readHandshake } from './agent/handshake.js';
-import { probeExit, requireInPool } from './agent/probe/probe.js';
 import { ChildRegistry } from './agent/processes/processes.js';
 import { startAgent } from './agent/server/server.js';
 import { chooseActive } from './agent/status.js';
 import {
   DEFAULT_DRAIN_TIMEOUT_MS,
   SwitchInterruptedError,
-  switchExit
+  switchTo
 } from './agent/switch/switch.js';
-import { NoInterfaceError, applyConfig } from './agent/wireguard/wireguard.js';
+import { applyConfig } from './agent/wireguard/wireguard.js';
 import { readPool } from './pool/pool.js';
 
 const DEFAULT_SOCKET = '/run/playliberty/egress-agent.sock';
 const DEFAULT_PEER_UID = 1000;
-const DEFAULT_PROBE_URL = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
+const DEFAULT_CHECK_URL = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
 const DEFAULT_EXIT_IP_URL = 'https://api.ipify.org';
-const DEFAULT_PROBE_TIMEOUT_MS = 60_000;
+const DEFAULT_CHECK_TIMEOUT_MS = 60_000;
 const DEFAULT_HANDSHAKE_FRESH_MS = 180_000;
 
-/* `listSource` never reads the download options; the probe only lists. The
+/* `listSource` never reads the download options; the check only lists. The
  * download path gets the server's options per request from ticket 05. */
-const PROBE_DOWNLOAD: DownloadOptions = {
+const CHECK_DOWNLOAD: DownloadOptions = {
   concurrency: 1,
   sleepRequests: 1,
   sleepIntervalMin: 5,
@@ -109,43 +110,37 @@ async function main(): Promise<void> {
     loadedSince: state.loadedSince
   });
 
-  const switchTo = async (
+  const localApplyConfig = (
     name: string,
     drainTimeoutMs: number = DEFAULT_DRAIN_TIMEOUT_MS
-  ): Promise<void> => {
-    await requireInPool(await readPool(poolDirectory), name);
-
-    /* Checked before the drain, so a host without an interface does not kill
-     * in-flight work it cannot replace. */
-    if (interfaceName === null) {
-      throw new NoInterfaceError();
-    }
-
-    await switchExit(
-      {
-        registry: children,
-        apply: next => applyConfig({ interfaceName, poolDirectory }, next)
-      },
+  ): Promise<void> =>
+    switchTo(
       name,
+      {
+        poolDirectory,
+        interfaceName,
+        registry: children,
+        apply: next => applyConfig({ interfaceName, poolDirectory }, next),
+        onSwitched: next => {
+          state.active = next;
+          state.loadedSince = new Date().toISOString();
+        }
+      },
       drainTimeoutMs
     );
 
-    state.active = name;
-    state.loadedSince = new Date().toISOString();
-  };
-
-  const probeTimeoutMs = numberEnv(
-    'PROBE_TIMEOUT_MS',
-    DEFAULT_PROBE_TIMEOUT_MS
+  const checkTimeoutMs = numberEnv(
+    'CHECK_TIMEOUT_MS',
+    DEFAULT_CHECK_TIMEOUT_MS
   );
   const ytdlpBinary = process.env.YTDLP_BINARY ?? 'yt-dlp';
   const fetcher = new YtdlpFetcher({
     binary: ytdlpBinary,
-    timeoutMs: probeTimeoutMs,
-    download: PROBE_DOWNLOAD,
+    timeoutMs: checkTimeoutMs,
+    download: CHECK_DOWNLOAD,
     trackProcess: children.track
   });
-  const probeUrl = process.env.PROBE_URL ?? DEFAULT_PROBE_URL;
+  const checkUrl = process.env.CHECK_URL ?? DEFAULT_CHECK_URL;
   const exitIpUrl = process.env.EXIT_IP_URL ?? DEFAULT_EXIT_IP_URL;
   const handshakeFreshMs = numberEnv(
     'HANDSHAKE_FRESH_MS',
@@ -164,17 +159,22 @@ async function main(): Promise<void> {
     }
   };
 
-  const probe = (name?: string) =>
-    probeExit(
-      {
-        active: () => state.active,
-        switchTo,
-        listSource: () => fetcher.listSource(probeUrl),
-        readExitIp: () => readExitIp(exitIpUrl, probeTimeoutMs),
-        readHandshake: () => readHandshake(interfaceName, handshakeFreshMs)
-      },
-      name
-    );
+  const checkDeps = {
+    active: () => state.active,
+    listSource: () => fetcher.listSource(checkUrl),
+    readExitIp: () => readExitIp(exitIpUrl, checkTimeoutMs),
+    readHandshake: () => readHandshake(interfaceName, handshakeFreshMs)
+  };
+
+  const check = (): Promise<EgressCheckFacts> => checkActive(checkDeps);
+
+  const switchConfig = async (name?: string): Promise<EgressCheckFacts> => {
+    if (name !== undefined && name !== state.active) {
+      await localApplyConfig(name);
+    }
+
+    return checkActive(checkDeps);
+  };
 
   /* Parse before listening: a broken pool or a misfiled active name is a boot
    * failure with a message, not a socket that answers 500 forever. */
@@ -215,10 +215,11 @@ async function main(): Promise<void> {
     socketPath,
     peerUid,
     status,
-    probe,
+    switch: switchConfig,
+    check,
+    apply: localApplyConfig,
     list,
-    fetch: fetchTrack,
-    switch: switchTo
+    fetch: fetchTrack
   });
 
   const log = (event: string): void => {
