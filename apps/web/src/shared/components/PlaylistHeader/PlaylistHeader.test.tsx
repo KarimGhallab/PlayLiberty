@@ -297,6 +297,12 @@ describe('PlaylistHeader', () => {
     expect(await screen.findByText('Sync failed')).toBeInTheDocument();
   });
 
+  it('names a blocked playlist as an unreachable source', async () => {
+    renderRow(playlist({ syncStatus: PlaylistSyncStatus.Blocked }));
+
+    expect(await screen.findByText('Source unreachable')).toBeInTheDocument();
+  });
+
   it('draws the cover from the first track thumbnail when the playlist has one', async () => {
     const { container } = renderRow(playlist({ coverTrackId: 'track-9' }));
 

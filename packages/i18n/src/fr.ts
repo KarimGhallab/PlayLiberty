@@ -355,7 +355,8 @@ export const fr: Messages = {
   syncState: {
     upToDate: 'À jour',
     syncing: 'Synchronisation',
-    failed: 'Échec de la synchronisation'
+    failed: 'Échec de la synchronisation',
+    blocked: 'Source inaccessible'
   },
   trackState: {
     removedFrom: 'Retirée de {provider}',

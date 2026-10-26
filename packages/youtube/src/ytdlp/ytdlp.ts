@@ -319,7 +319,8 @@ export class YtdlpFetcher implements ISourceFetcher {
     const { stdout } = await runProcess(
       this._options.binary,
       buildListArgs(info),
-      this._options.timeoutMs
+      this._options.timeoutMs,
+      this._options.trackProcess
     );
     return parseSourceJson(stdout, info);
   }
@@ -339,7 +340,8 @@ export class YtdlpFetcher implements ISourceFetcher {
           this._options.download,
           request.skipNonMusic
         ),
-        this._options.timeoutMs
+        this._options.timeoutMs,
+        this._options.trackProcess
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -24,6 +24,8 @@ import type {
   YoutubeSource
 } from '@playliberty/youtube';
 import {
+  EGRESS_BLOCKED_REASON,
+  EgressCircuitOpenError,
   SPONSORBLOCK_FAILURE_REASON,
   YoutubeSponsorBlockError
 } from '@playliberty/youtube';
@@ -1131,6 +1133,38 @@ describe('a failed sync changes nothing', () => {
     // An empty source, by contrast, is a real reading and retires the track.
     expect(trackByVideoId('aaaaaaaaaaa')?.sourceStatus).toBe(
       TrackSourceStatus.Removed
+    );
+  });
+
+  it('blocks the playlist and keeps the pending tracks when every exit is failed', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: scriptedYoutube([
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          new EgressCircuitOpenError()
+        ])
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    await postSync(first.playlistId, 'owner-1');
+    const blocked = await runFinished(first.playlistId, 'owner-1');
+
+    expect(blocked.status).toBe(SyncRunStatus.Failed);
+    expect(blocked.error).toBe(EGRESS_BLOCKED_REASON);
+
+    const playlist = await readPlaylist(first.playlistId, 'owner-1');
+    expect(playlist.syncStatus).toBe(PlaylistSyncStatus.Blocked);
+    expect(trackByVideoId('aaaaaaaaaaa')?.fileStatus).toBe(
+      TrackFileStatus.Pending
+    );
+    expect(trackByVideoId('bbbbbbbbbbb')?.fileStatus).toBe(
+      TrackFileStatus.Pending
     );
   });
 });

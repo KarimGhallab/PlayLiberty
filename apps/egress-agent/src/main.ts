@@ -1,15 +1,27 @@
 import type {
   AgentFetchRequest,
   DownloadOptions,
-  EgressAgentStatus
+  EgressAgentStatus,
+  YoutubeSource
 } from '@playliberty/youtube';
-import { YtdlpFetcher } from '@playliberty/youtube';
+import {
+  YoutubeSponsorBlockError,
+  YoutubeVideoUnavailableError,
+  YtdlpFetcher
+} from '@playliberty/youtube';
 
 import { readExitIp } from './agent/exitIp.js';
 import { readHandshake } from './agent/handshake.js';
 import { probeExit, requireInPool } from './agent/probe/probe.js';
+import { ChildRegistry } from './agent/processes/processes.js';
 import { startAgent } from './agent/server/server.js';
 import { chooseActive } from './agent/status.js';
+import {
+  DEFAULT_DRAIN_TIMEOUT_MS,
+  SwitchInterruptedError,
+  switchExit
+} from './agent/switch/switch.js';
+import { NoInterfaceError, applyConfig } from './agent/wireguard/wireguard.js';
 import { readPool } from './pool/pool.js';
 
 const DEFAULT_SOCKET = '/run/playliberty/egress-agent.sock';
@@ -57,6 +69,15 @@ function numberEnv(name: string, fallback: number): number {
   return value;
 }
 
+/* A switch kills what it drains; the route must answer `switching` rather than
+ * blame the source for a gone video it happened to be reading. */
+function isSourceError(error: unknown): boolean {
+  return (
+    error instanceof YoutubeVideoUnavailableError ||
+    error instanceof YoutubeSponsorBlockError
+  );
+}
+
 async function main(): Promise<void> {
   const poolDirectory = required(
     'PROTON_POOL_DIR',
@@ -72,23 +93,45 @@ async function main(): Promise<void> {
     throw new Error('EGRESS_AGENT_PEER_UID must be a non-negative integer.');
   }
 
-  const loadedSince = new Date().toISOString();
+  const interfaceName = process.env.WG_INTERFACE ?? null;
+  const children = new ChildRegistry();
   const state = {
     active: chooseActive(
       await readPool(poolDirectory),
       process.env.PROTON_ACTIVE_CONFIG
-    )
+    ),
+    loadedSince: new Date().toISOString()
   };
 
   const status = async (): Promise<EgressAgentStatus> => ({
     pool: await readPool(poolDirectory),
     active: state.active,
-    loadedSince
+    loadedSince: state.loadedSince
   });
 
-  const switchTo = async (name: string): Promise<void> => {
+  const switchTo = async (
+    name: string,
+    drainTimeoutMs: number = DEFAULT_DRAIN_TIMEOUT_MS
+  ): Promise<void> => {
     await requireInPool(await readPool(poolDirectory), name);
+
+    /* Checked before the drain, so a host without an interface does not kill
+     * in-flight work it cannot replace. */
+    if (interfaceName === null) {
+      throw new NoInterfaceError();
+    }
+
+    await switchExit(
+      {
+        registry: children,
+        apply: next => applyConfig({ interfaceName, poolDirectory }, next)
+      },
+      name,
+      drainTimeoutMs
+    );
+
     state.active = name;
+    state.loadedSince = new Date().toISOString();
   };
 
   const probeTimeoutMs = numberEnv(
@@ -99,15 +142,27 @@ async function main(): Promise<void> {
   const fetcher = new YtdlpFetcher({
     binary: ytdlpBinary,
     timeoutMs: probeTimeoutMs,
-    download: PROBE_DOWNLOAD
+    download: PROBE_DOWNLOAD,
+    trackProcess: children.track
   });
   const probeUrl = process.env.PROBE_URL ?? DEFAULT_PROBE_URL;
   const exitIpUrl = process.env.EXIT_IP_URL ?? DEFAULT_EXIT_IP_URL;
-  const interfaceName = process.env.WG_INTERFACE ?? null;
   const handshakeFreshMs = numberEnv(
     'HANDSHAKE_FRESH_MS',
     DEFAULT_HANDSHAKE_FRESH_MS
   );
+
+  const list = async (url: string): Promise<YoutubeSource> => {
+    try {
+      return await fetcher.listSource(url);
+    } catch (error) {
+      if (children.interrupted && !isSourceError(error)) {
+        throw new SwitchInterruptedError();
+      }
+
+      throw error;
+    }
+  };
 
   const probe = (name?: string) =>
     probeExit(
@@ -133,18 +188,27 @@ async function main(): Promise<void> {
   const fetchTrack = async (
     request: AgentFetchRequest & { tempDir: string }
   ): Promise<{ filePath: string }> => {
-    const downloader = new YtdlpFetcher({
-      binary: ytdlpBinary,
-      timeoutMs: request.timeoutMs,
-      download: request.download
-    });
-    const fetched = await downloader.fetchTrack({
-      videoId: request.videoId,
-      tempDir: request.tempDir,
-      skipNonMusic: request.skipNonMusic
-    });
+    try {
+      const downloader = new YtdlpFetcher({
+        binary: ytdlpBinary,
+        timeoutMs: request.timeoutMs,
+        download: request.download,
+        trackProcess: children.track
+      });
+      const fetched = await downloader.fetchTrack({
+        videoId: request.videoId,
+        tempDir: request.tempDir,
+        skipNonMusic: request.skipNonMusic
+      });
 
-    return { filePath: fetched.filePath };
+      return { filePath: fetched.filePath };
+    } catch (error) {
+      if (children.interrupted && !isSourceError(error)) {
+        throw new SwitchInterruptedError();
+      }
+
+      throw error;
+    }
   };
 
   const handle = await startAgent({
@@ -152,8 +216,9 @@ async function main(): Promise<void> {
     peerUid,
     status,
     probe,
-    list: url => fetcher.listSource(url),
-    fetch: fetchTrack
+    list,
+    fetch: fetchTrack,
+    switch: switchTo
   });
 
   const log = (event: string): void => {

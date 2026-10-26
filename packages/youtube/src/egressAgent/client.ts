@@ -82,6 +82,23 @@ export class EgressStreamError extends Error {
   }
 }
 
+/* A rotation drained this read. It is not an exit failure, so it must not
+ * count; the next pass starts on the config that is now loaded. */
+export class EgressSwitchError extends Error {
+  constructor() {
+    super('The exit switched while the source was being read.');
+    this.name = 'EgressSwitchError';
+  }
+}
+
+/* The agent was asked to switch and could not. The active row is unchanged. */
+export class EgressSwitchFailedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EgressSwitchFailedError';
+  }
+}
+
 /* A non-200 the caller has to interpret: 400 is an unknown config or a bad
  * source, anything else is the agent failing. */
 class AgentResponseError extends Error {
@@ -375,6 +392,10 @@ export class EgressAgentClient implements IEgressAgentClient {
       throw new EgressSourceInvalidError();
     }
 
+    if (result.status === 503) {
+      throw new EgressSwitchError();
+    }
+
     if (result.status === 502) {
       throw new EgressSourceUnavailableError(
         failureOf(isRecord(result.body) ? result.body.reason : null)
@@ -382,6 +403,36 @@ export class EgressAgentClient implements IEgressAgentClient {
     }
 
     return parseYoutubeSource(expectOk(result));
+  }
+
+  public async switch(
+    name: string,
+    drainTimeoutMs: number
+  ): Promise<EgressAgentStatus> {
+    const result = await requestJson({
+      socketPath: this._socketPath,
+      method: 'POST',
+      path: '/switch',
+      body: { name, drainTimeoutMs },
+      /* The drain runs before the agent answers, so the wait is the bound. */
+      timeoutMs: drainTimeoutMs + 30_000
+    });
+
+    if (result.status === 400) {
+      throw new EgressConfigUnknownError(name);
+    }
+
+    if (result.status === 503) {
+      const detail = isRecord(result.body) ? result.body.detail : null;
+
+      throw new EgressSwitchFailedError(
+        typeof detail === 'string' && detail.length > 0
+          ? detail
+          : 'The exit could not be switched.'
+      );
+    }
+
+    return parseEgressAgentStatus(expectOk(result));
   }
 
   public async fetchTrack(request: AgentFetchRequest): Promise<FetchedTrack> {
@@ -415,6 +466,11 @@ export class EgressAgentClient implements IEgressAgentClient {
 
       if (status === 410) {
         throw new YoutubeVideoUnavailableError(request.videoId);
+      }
+
+      /* A switch killed this download: the claim returns to pending. */
+      if (status === 503) {
+        throw new EgressStreamError();
       }
 
       if (status === 502 && error === 'sponsorblock') {

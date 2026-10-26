@@ -2,12 +2,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   PlaylistSchema,
+  PlaylistSyncStatus,
   SyncRunSchema,
   SyncRunStatus,
+  TrackFileStatus,
   createPageSchema
 } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
 import {
+  EGRESS_BLOCKED_REASON,
   EgressSourceUnavailableError,
   YoutubeSourceKind
 } from '@playliberty/youtube';
@@ -16,6 +19,8 @@ import type { IEgressAgentClient, YoutubeSource } from '@playliberty/youtube';
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
 import { TEST_SOURCE_ID } from '../../../app/testing/fakeYoutube.js';
+
+import { tracks } from '../../../platform/database/schema.js';
 
 const PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PL1234567890abcdef';
 const USER = 'owner-1';
@@ -38,6 +43,18 @@ function post(url: string) {
     url: '/api/v1/playlists',
     headers: { 'remote-user': USER, 'x-playliberty-client': 'test' },
     payload: { url }
+  });
+}
+
+function postSync(playlistId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.app.inject({
+    method: 'POST',
+    url: `/api/v1/playlists/${playlistId}/sync`,
+    headers: { 'remote-user': USER, 'x-playliberty-client': 'test' }
   });
 }
 
@@ -90,7 +107,11 @@ function fakeAgent(list: (url: string) => Promise<YoutubeSource>): {
       list: async (url: string): Promise<YoutubeSource> => {
         calls.push(url);
         return list(url);
-      }
+      },
+      fetchTrack: async () => {
+        throw new Error('this test only lists');
+      },
+      switch: async () => ({ pool: [], active: null, loadedSince: null })
     }
   };
 }
@@ -163,5 +184,75 @@ describe('listing through the egress agent', () => {
 
     expect(finished.status).toBe(SyncRunStatus.Failed);
     expect(finished.error).toBe('The egress agent did not answer in time.');
+  });
+
+  it('rotates five times and blocks the playlist with the pending tracks intact', async () => {
+    const pool = [
+      { name: '01-fr', endpoint: '185.0.0.1:51820' },
+      { name: '02-ch', endpoint: '185.0.0.2:51820' },
+      { name: '03-us', endpoint: '185.0.0.3:51820' }
+    ];
+    let active = '01-fr';
+    let calls = 0;
+    const switched: string[] = [];
+    const agent: IEgressAgentClient = {
+      status: async () => ({ pool, active, loadedSince: null }),
+      probe: async () => {
+        throw new Error('this test does not probe');
+      },
+      list: async (): Promise<YoutubeSource> => {
+        calls += 1;
+
+        if (calls === 1) {
+          return source(['aaaaaaaaaaa', 'bbbbbbbbbbb']);
+        }
+
+        throw new EgressSourceUnavailableError('blocked');
+      },
+      fetchTrack: async () => {
+        throw new Error('this test does not fetch');
+      },
+      switch: async (name: string) => {
+        switched.push(name);
+        active = name;
+
+        return { pool, active, loadedSince: null };
+      }
+    };
+
+    context = await createTestContext(
+      { YOUTUBE_TRANSPORT: 'egress-agent', EGRESS_SWITCH_COOLDOWN_MS: '0' },
+      { egressAgent: agent }
+    );
+
+    const first = SyncRunSchema.parse((await post(PLAYLIST_URL)).json());
+    await runFinished(first.playlistId);
+
+    /* The first sync lists once. The next eight failures count on 01 and then
+     * 02; the ninth switches to the last config and exhausts the pool. */
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await postSync(first.playlistId);
+      await runFinished(first.playlistId);
+    }
+
+    await postSync(first.playlistId);
+    const blocked = await runFinished(first.playlistId);
+
+    expect(blocked.status).toBe(SyncRunStatus.Failed);
+    expect(blocked.error).toBe(EGRESS_BLOCKED_REASON);
+    expect(switched).toEqual(['02-ch', '03-us']);
+
+    const playlist = PageSchema.parse((await get('/api/v1/playlists')).json())
+      .items[0];
+    expect(playlist?.syncStatus).toBe(PlaylistSyncStatus.Blocked);
+
+    const rows = context.database.db
+      .select({ fileStatus: tracks.fileStatus })
+      .from(tracks)
+      .all();
+    expect(rows.map(row => row.fileStatus)).toEqual([
+      TrackFileStatus.Pending,
+      TrackFileStatus.Pending
+    ]);
   });
 });

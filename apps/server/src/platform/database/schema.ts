@@ -222,6 +222,7 @@ export const egressConfigs = sqliteTable('egress_config', {
   lastError: text('last_error'),
   lastProbeAt: text('last_probe_at'),
   lastExitIp: text('last_exit_ip'),
+  lastSwitchAt: text('last_switch_at'),
   active: integer('active', { mode: 'boolean' }).notNull().default(false),
   updatedAt: text('updated_at').notNull().$defaultFn(createdAt)
 });

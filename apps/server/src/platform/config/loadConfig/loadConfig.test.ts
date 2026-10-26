@@ -16,6 +16,29 @@ describe('loadConfig', () => {
     expect(config.download.concurrency).toBe(3);
   });
 
+  it('defaults the egress rotation bounds and reads their overrides', () => {
+    const defaults = loadConfig({
+      MEDIA_ROOT: '/media',
+      DATABASE_PATH: '/db.sqlite'
+    });
+
+    expect(defaults.egressFailureLimit).toBe(5);
+    expect(defaults.egressDrainTimeoutMs).toBe(60000);
+    expect(defaults.egressSwitchCooldownMs).toBe(60000);
+
+    const overridden = loadConfig({
+      MEDIA_ROOT: '/media',
+      DATABASE_PATH: '/db.sqlite',
+      EGRESS_FAILURE_LIMIT: '3',
+      EGRESS_DRAIN_TIMEOUT_MS: '1000',
+      EGRESS_SWITCH_COOLDOWN_MS: '0'
+    });
+
+    expect(overridden.egressFailureLimit).toBe(3);
+    expect(overridden.egressDrainTimeoutMs).toBe(1000);
+    expect(overridden.egressSwitchCooldownMs).toBe(0);
+  });
+
   it('treats empty optional values as unset', () => {
     const config = loadConfig({
       MEDIA_ROOT: '/media',

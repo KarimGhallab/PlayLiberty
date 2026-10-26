@@ -26,6 +26,7 @@ import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
 import { registerEgressRoutes } from '../features/egress/routes/egressRoutes.js';
+import { EgressPolicyClient } from '../features/egress/service/egressPolicy.js';
 import { reconcileEgress } from '../features/egress/service/egressService.js';
 import {
   DEFAULT_EVENT_HEARTBEAT_MS,
@@ -122,12 +123,27 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     options.egressAgent ??
     new EgressAgentClient(options.config.egressAgentSocket);
 
+  const baseYoutube =
+    options.youtube ?? createYoutubeClient(options.config, egressAgent);
+  /* A test's fake already answers for itself; the policy only wraps the real
+   * transport, where an exit can actually be blamed. */
+  const youtube =
+    options.youtube === undefined &&
+    options.config.youtubeTransport === 'egress-agent'
+      ? new EgressPolicyClient(baseYoutube, {
+          database: options.database,
+          agent: egressAgent,
+          failureLimit: options.config.egressFailureLimit,
+          switchCooldownMs: options.config.egressSwitchCooldownMs,
+          drainTimeoutMs: options.config.egressDrainTimeoutMs
+        })
+      : baseYoutube;
+
   const context: AppContext = {
     config: options.config,
     database: options.database,
     mediaPaths: options.mediaPaths,
-    youtube:
-      options.youtube ?? createYoutubeClient(options.config, egressAgent),
+    youtube,
     egressAgent,
     kickDownloads: options.kickDownloads ?? (() => undefined),
     events: options.events ?? new EventBus<LiveEvent>()

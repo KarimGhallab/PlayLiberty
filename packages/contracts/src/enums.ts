@@ -10,7 +10,8 @@ export enum UserRole {
 export enum PlaylistSyncStatus {
   Idle = 'idle',
   Syncing = 'syncing',
-  Error = 'error'
+  Error = 'error',
+  Blocked = 'blocked'
 }
 
 /* A config's last measured state: `unknown` until something probes or uses it,

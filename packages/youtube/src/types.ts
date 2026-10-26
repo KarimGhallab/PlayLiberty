@@ -1,3 +1,5 @@
+import type { ChildProcess } from 'node:child_process';
+
 export enum YoutubeSourceKind {
   Playlist = 'playlist',
   Video = 'video'
@@ -59,6 +61,7 @@ export interface IEgressAgentClient {
   probe(name?: string): Promise<EgressProbeFacts>;
   list(url: string): Promise<YoutubeSource>;
   fetchTrack(request: AgentFetchRequest): Promise<FetchedTrack>;
+  switch(name: string, drainTimeoutMs: number): Promise<EgressAgentStatus>;
 }
 
 /* The server owns the download options; they travel per request so the agent
@@ -103,10 +106,15 @@ export interface DownloadOptions {
   socketTimeout: number;
 }
 
+/* A switch must be able to drain, then kill, a tool that is still running. The
+ * tracker returns its own release, so a finished child is forgotten. */
+export type ProcessTracker = (child: ChildProcess) => () => void;
+
 export interface YtdlpFetcherOptions {
   binary: string;
   timeoutMs: number;
   download: DownloadOptions;
+  trackProcess?: ProcessTracker;
 }
 
 export interface FinalizeAudioOptions {

@@ -11,6 +11,10 @@ import {
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
+import {
+  EGRESS_BLOCKED_REASON,
+  EgressCircuitOpenError
+} from '@playliberty/youtube';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
 import {
@@ -327,7 +331,14 @@ async function reconcile(
   } catch (error) {
     // Enough to leave no run hanging and no unhandled rejection.
     const finishedAt = new Date().toISOString();
-    const message = error instanceof Error ? error.message : 'The sync failed.';
+    /* An open circuit is the source being unreachable, not a playlist error:
+     * one fixed sentence, and a state the gallery can name. */
+    const blocked = error instanceof EgressCircuitOpenError;
+    const message = blocked
+      ? EGRESS_BLOCKED_REASON
+      : error instanceof Error
+        ? error.message
+        : 'The sync failed.';
 
     database.unitOfWork(() => {
       database.db
@@ -339,7 +350,9 @@ async function reconcile(
       database.db
         .update(playlists)
         .set({
-          syncStatus: PlaylistSyncStatus.Error,
+          syncStatus: blocked
+            ? PlaylistSyncStatus.Blocked
+            : PlaylistSyncStatus.Error,
           lastSyncedAt: finishedAt,
           updatedAt: finishedAt
         })

@@ -4,8 +4,13 @@ import { dirname, join } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
 
 import {
+  EgressCircuitOpenError,
+  EgressSourceUnavailableError,
   EgressStreamError,
-  YoutubeVideoUnavailableError
+  EgressSwitchError,
+  EgressSwitchFailedError,
+  YoutubeVideoUnavailableError,
+  isExitLevelFailure
 } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
@@ -157,9 +162,17 @@ async function processClaimedTrack(
       return;
     }
 
-    // A transport that died mid-stream is not the track's fault: the claim goes
-    // back to pending, so the next pass retries it without a failed row.
-    if (error instanceof EgressStreamError) {
+    // An interrupted transport, a switch, an open circuit or a blocked exit is
+    // not the track's fault: the claim goes back to pending, so no row is
+    // blamed and the next pass retries it once an exit works.
+    if (
+      error instanceof EgressStreamError ||
+      error instanceof EgressSwitchError ||
+      error instanceof EgressSwitchFailedError ||
+      error instanceof EgressCircuitOpenError ||
+      (error instanceof EgressSourceUnavailableError &&
+        isExitLevelFailure(error.reason))
+    ) {
       releaseTrack(context.database, track.id);
       announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
       logger.warn(

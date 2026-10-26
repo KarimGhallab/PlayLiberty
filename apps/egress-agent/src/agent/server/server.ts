@@ -20,6 +20,10 @@ import {
 } from '@playliberty/youtube';
 
 import { UnknownConfigError } from '../probe/probe.js';
+import {
+  DEFAULT_DRAIN_TIMEOUT_MS,
+  SwitchInterruptedError
+} from '../switch/switch.js';
 
 /* The socket is the gate: only the owner may connect, so the pod's uid is the
  * only peer that can reach it. Node has no SO_PEERCRED, and the kernel already
@@ -38,6 +42,7 @@ export interface AgentOptions {
   fetch: (
     request: AgentFetchRequest & { tempDir: string }
   ) => Promise<{ filePath: string }>;
+  switch: (name: string, drainTimeoutMs: number) => Promise<void>;
 }
 
 export interface AgentHandle {
@@ -199,7 +204,10 @@ async function route(
         return { status: 400, body: { error: 'unknown_config' } };
       }
 
-      throw error;
+      return {
+        status: 503,
+        body: { error: 'switch_failed', detail: messageOf(error) }
+      };
     }
   }
 
@@ -223,6 +231,10 @@ async function route(
     try {
       return { status: 200, body: await options.list(body.url) };
     } catch (error) {
+      if (error instanceof SwitchInterruptedError) {
+        return { status: 503, body: { error: 'switching' } };
+      }
+
       /* A listing failure is the source's answer, not the agent failing: the
        * server records the classified reason and its own sentence. */
       return {
@@ -233,6 +245,42 @@ async function route(
         }
       };
     }
+  }
+
+  if (request.method === 'POST' && path === '/switch') {
+    const body = await readBody(request);
+
+    if (
+      !isRecord(body) ||
+      typeof body.name !== 'string' ||
+      body.name.length === 0 ||
+      (body.drainTimeoutMs !== undefined &&
+        (typeof body.drainTimeoutMs !== 'number' ||
+          !Number.isInteger(body.drainTimeoutMs) ||
+          body.drainTimeoutMs <= 0))
+    ) {
+      return { status: 400, body: { error: 'invalid_request' } };
+    }
+
+    try {
+      await options.switch(
+        body.name,
+        typeof body.drainTimeoutMs === 'number'
+          ? body.drainTimeoutMs
+          : DEFAULT_DRAIN_TIMEOUT_MS
+      );
+    } catch (error) {
+      if (error instanceof UnknownConfigError) {
+        return { status: 400, body: { error: 'unknown_config' } };
+      }
+
+      return {
+        status: 503,
+        body: { error: 'switch_failed', detail: messageOf(error) }
+      };
+    }
+
+    return { status: 200, body: await options.status() };
   }
 
   return { status: 404, body: { error: 'not_found' } };
@@ -269,6 +317,8 @@ async function streamFetch(
   } catch (error) {
     if (response.headersSent) {
       response.destroy();
+    } else if (error instanceof SwitchInterruptedError) {
+      sendJson(response, 503, { error: 'switching' });
     } else if (error instanceof YoutubeVideoUnavailableError) {
       sendJson(response, 410, { error: 'unavailable' });
     } else if (error instanceof YoutubeSponsorBlockError) {

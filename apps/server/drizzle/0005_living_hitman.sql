@@ -1,0 +1,1 @@
+ALTER TABLE `egress_config` ADD `last_switch_at` text;

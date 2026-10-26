@@ -4,15 +4,6 @@ import { dirname, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  EgressAgentClient,
-  EgressConfigUnknownError,
-  EgressSourceInvalidError,
-  EgressSourceUnavailableError,
-  YoutubeSourceKind,
-  YoutubeSponsorBlockError,
-  YoutubeVideoUnavailableError
-} from '@playliberty/youtube';
 import type {
   AgentFetchRequest,
   DownloadOptions,
@@ -20,9 +11,22 @@ import type {
   EgressProbeFacts,
   YoutubeSource
 } from '@playliberty/youtube';
+import {
+  EgressAgentClient,
+  EgressConfigUnknownError,
+  EgressSourceInvalidError,
+  EgressSourceUnavailableError,
+  EgressStreamError,
+  EgressSwitchError,
+  YoutubeSourceKind,
+  YoutubeSponsorBlockError,
+  YoutubeVideoUnavailableError
+} from '@playliberty/youtube';
 
 import { UnknownConfigError } from '../probe/probe.js';
 import { chooseActive } from '../status.js';
+import { SwitchInterruptedError } from '../switch/switch.js';
+import { NoInterfaceError } from '../wireguard/wireguard.js';
 import { startAgent } from './server.js';
 
 const status: EgressAgentStatus = {
@@ -104,17 +108,24 @@ async function agent(
     probe?: (name?: string) => Promise<EgressProbeFacts>;
     list?: (url: string) => Promise<YoutubeSource>;
     fetch?: FetchFn;
+    switch?: (name: string, drainTimeoutMs: number) => Promise<void>;
   } = {}
 ): Promise<string> {
   directory = await mkdtemp(join(tmpdir(), 'playliberty-egress-agent-'));
   const socketPath = join(directory, 'egress-agent.sock');
+  let current = status;
   const handle = await startAgent({
     socketPath,
     peerUid: uid,
-    status: async () => status,
+    status: async () => current,
     probe: overrides.probe ?? (async () => probe),
     list: overrides.list ?? (async () => source),
-    fetch: overrides.fetch ?? writeFakeTrack
+    fetch: overrides.fetch ?? writeFakeTrack,
+    switch:
+      overrides.switch ??
+      (async (name: string): Promise<void> => {
+        current = { ...current, active: name };
+      })
   });
   close = handle.close;
   return socketPath;
@@ -247,6 +258,73 @@ describe('the egress agent', () => {
     ).rejects.toMatchObject({ reason: 'blocked' });
   });
 
+  it('switches the loaded config and answers the pool', async () => {
+    const socketPath = await agent();
+
+    const result = await new EgressAgentClient(socketPath).switch(
+      '02-ch',
+      5000
+    );
+
+    expect(result.active).toBe('02-ch');
+  });
+
+  it('refuses a switch to a config that is not in the pool', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      switch: async () => {
+        throw new UnknownConfigError('03-missing');
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).switch('03-missing', 5000)
+    ).rejects.toBeInstanceOf(EgressConfigUnknownError);
+  });
+
+  it('reports a refused switch with its fixed sentence', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      switch: async () => {
+        throw new NoInterfaceError();
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).switch('02-ch', 5000)
+    ).rejects.toMatchObject({
+      message: 'No WireGuard interface is configured.'
+    });
+  });
+
+  it('tells a killed download apart from a source failure', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      fetch: async () => {
+        throw new SwitchInterruptedError();
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).fetchTrack({
+        videoId: 'jNQXAC9IVRw',
+        tempDir: join(dirname(socketPath), 'download'),
+        skipNonMusic: false,
+        download: DOWNLOAD,
+        timeoutMs: 5000
+      })
+    ).rejects.toBeInstanceOf(EgressStreamError);
+  });
+
+  it('tells a killed listing apart from a source failure', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      list: async () => {
+        throw new SwitchInterruptedError();
+      }
+    });
+
+    await expect(
+      new EgressAgentClient(socketPath).list(URL)
+    ).rejects.toBeInstanceOf(EgressSwitchError);
+  });
+
   it('gives the socket to the peer and to nobody else', async () => {
     const socketPath = await agent();
     const socket = await stat(socketPath);
@@ -266,7 +344,8 @@ describe('the egress agent', () => {
       status: async () => status,
       probe: async () => probe,
       list: async () => source,
-      fetch: writeFakeTrack
+      fetch: writeFakeTrack,
+      switch: async () => undefined
     });
     close = handle.close;
 

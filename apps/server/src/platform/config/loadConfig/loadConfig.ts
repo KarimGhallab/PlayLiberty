@@ -28,6 +28,13 @@ const EnvSchema = z.object({
     .string()
     .min(1)
     .default('/run/playliberty/egress-agent.sock'),
+  EGRESS_FAILURE_LIMIT: z.coerce.number().int().min(1).max(20).default(5),
+  EGRESS_DRAIN_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
+  EGRESS_SWITCH_COOLDOWN_MS: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(60000),
   PRUNE_CRON: z.string().default('0 4 * * 0'),
   DOWNLOAD_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
   DOWNLOAD_SLEEP_REQUESTS: z.coerce.number().nonnegative().default(1),
@@ -84,6 +91,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       .map(entry => entry.trim())
       .filter(entry => entry.length > 0),
     egressAgentSocket: value.EGRESS_AGENT_SOCKET,
+    egressFailureLimit: value.EGRESS_FAILURE_LIMIT,
+    egressDrainTimeoutMs: value.EGRESS_DRAIN_TIMEOUT_MS,
+    egressSwitchCooldownMs: value.EGRESS_SWITCH_COOLDOWN_MS,
     pruneCron: value.PRUNE_CRON,
     ytdlpBinary: value.YTDLP_BINARY,
     youtubeTransport: value.YOUTUBE_TRANSPORT,

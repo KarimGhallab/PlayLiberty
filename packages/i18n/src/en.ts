@@ -350,7 +350,8 @@ export const en = {
   syncState: {
     upToDate: 'Up to date',
     syncing: 'Syncing',
-    failed: 'Sync failed'
+    failed: 'Sync failed',
+    blocked: 'Source unreachable'
   },
   trackState: {
     removedFrom: 'Removed from {provider}',

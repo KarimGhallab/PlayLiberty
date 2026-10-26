@@ -2,7 +2,10 @@ import { asc, eq, notInArray } from 'drizzle-orm';
 
 import type { EgressRead } from '@playliberty/contracts';
 import { EgressStatus } from '@playliberty/contracts';
-import type { IEgressAgentClient } from '@playliberty/youtube';
+import type {
+  EgressAgentStatus,
+  IEgressAgentClient
+} from '@playliberty/youtube';
 import { EgressConfigUnknownError } from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
@@ -14,20 +17,26 @@ import { egressConfigs } from '../../../platform/database/schema.js';
  * answer, not an error: the page must still draw the last known pool.
  */
 
-export async function reconcileEgress(
+/* The agent is authoritative for the pool and the loaded config; the row's
+ * history is left alone. A switch and a boot reconcile share this writer. */
+export function applyEgressStatus(
   database: DatabaseHandle,
-  agent: IEgressAgentClient
-): Promise<boolean> {
-  let status;
-
-  try {
-    status = await agent.status();
-  } catch {
-    return false;
-  }
-
+  status: EgressAgentStatus
+): void {
   const now = new Date().toISOString();
   const names = status.pool.map(config => config.name);
+  const previous = database.db
+    .select({ name: egressConfigs.name })
+    .from(egressConfigs)
+    .where(eq(egressConfigs.active, true))
+    .get();
+  /* A different loaded config is a switch, even one made outside the policy:
+   * the new active starts clean and its cooldown starts now. */
+  const nextActive = status.active;
+  const becameActive =
+    nextActive !== null &&
+    previous !== undefined &&
+    nextActive !== previous.name;
 
   database.unitOfWork(() => {
     for (const config of status.pool) {
@@ -60,7 +69,30 @@ export async function reconcileEgress(
       .delete(egressConfigs)
       .where(notInArray(egressConfigs.name, names))
       .run();
+
+    if (becameActive && nextActive !== null) {
+      database.db
+        .update(egressConfigs)
+        .set({ consecutiveFailures: 0, lastSwitchAt: now })
+        .where(eq(egressConfigs.name, nextActive))
+        .run();
+    }
   });
+}
+
+export async function reconcileEgress(
+  database: DatabaseHandle,
+  agent: IEgressAgentClient
+): Promise<boolean> {
+  let status;
+
+  try {
+    status = await agent.status();
+  } catch {
+    return false;
+  }
+
+  applyEgressStatus(database, status);
 
   return true;
 }
@@ -112,6 +144,14 @@ export async function probeEgress(
 
   const ok = facts.listing && facts.exitIp !== null;
   const now = new Date().toISOString();
+  const previous = database.db
+    .select({ name: egressConfigs.name })
+    .from(egressConfigs)
+    .where(eq(egressConfigs.active, true))
+    .get();
+  /* A probe of a standby switches the agent: the new active starts clean. */
+  const becameActive =
+    facts.active !== null && facts.active !== (previous?.name ?? null);
 
   database.unitOfWork(() => {
     database.db
@@ -121,7 +161,7 @@ export async function probeEgress(
         lastProbeAt: now,
         lastExitIp: facts.exitIp,
         lastError: ok ? null : facts.reason,
-        ...(ok ? { consecutiveFailures: 0 } : {})
+        ...(ok || becameActive ? { consecutiveFailures: 0 } : {})
       })
       .where(eq(egressConfigs.name, name))
       .run();
@@ -136,7 +176,10 @@ export async function probeEgress(
     if (facts.active !== null) {
       database.db
         .update(egressConfigs)
-        .set({ active: true })
+        .set({
+          active: true,
+          ...(becameActive ? { lastSwitchAt: now } : {})
+        })
         .where(eq(egressConfigs.name, facts.active))
         .run();
     }

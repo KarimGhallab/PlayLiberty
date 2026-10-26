@@ -18,7 +18,10 @@ import type {
   IYoutubeClient
 } from '@playliberty/youtube';
 import {
+  EgressCircuitOpenError,
+  EgressSourceUnavailableError,
   EgressStreamError,
+  EgressSwitchFailedError,
   SPONSORBLOCK_FAILURE_REASON,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError
@@ -306,6 +309,50 @@ describe('the download worker', () => {
     const row = trackRow(seeded.trackId);
     expect(row?.fileStatus).toBe(TrackFileStatus.Pending);
     expect(row?.failureReason).toBeNull();
+  });
+
+  it('returns a track to pending when every exit is failed', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressCircuitOpenError()
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(trackRow(seeded.trackId)?.failureReason).toBeNull();
+  });
+
+  it('returns a track to pending when the exit refuses the download', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressSourceUnavailableError('blocked')
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(trackRow(seeded.trackId)?.failureReason).toBeNull();
+  });
+
+  it('returns a track to pending when the switch itself fails', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressSwitchFailedError(
+        'The WireGuard interface could not be updated.'
+      )
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(trackRow(seeded.trackId)?.failureReason).toBeNull();
   });
 
   it('fetches a track whole after the route flips its policy', async () => {

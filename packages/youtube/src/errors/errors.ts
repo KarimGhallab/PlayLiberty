@@ -13,7 +13,8 @@ const UNAVAILABLE_PATTERNS: RegExp[] = [
   /video has been deleted/i,
   /has been removed/i,
   /no longer available/i,
-  /removed by the uploader/i
+  /removed by the uploader/i,
+  /http error 404/i
 ];
 
 export function isVideoUnavailableMessage(message: string): boolean {
@@ -45,14 +46,23 @@ const NETWORK_PATTERNS: RegExp[] = [
   /timeout/i,
   /connection (?:refused|reset|closed)/i,
   /temporary failure in name resolution/i,
+  /name or service not known/i,
+  /no address associated with hostname/i,
+  /getaddrinfo/i,
   /network is unreachable/i,
   /unable to download webpage/i,
-  /unable to connect/i
+  /unable to connect/i,
+  /handshake/i
 ];
 
 export function classifyEgressFailure(message: string): EgressFailure {
   if (isVideoUnavailableMessage(message)) {
     return 'unavailable';
+  }
+
+  /* A SponsorBlock outage is third-party and transient, never the exit. */
+  if (isSponsorBlockFailureMessage(message)) {
+    return 'unknown';
   }
 
   if (BLOCKED_PATTERNS.some(pattern => pattern.test(message))) {
@@ -64,6 +74,25 @@ export function classifyEgressFailure(message: string): EgressFailure {
   }
 
   return 'unknown';
+}
+
+/* The reasons a config can be blamed for. A gone video, a 404, a SponsorBlock
+ * outage and a malformed URL are never the exit's. */
+export function isExitLevelFailure(reason: EgressFailure): boolean {
+  return reason === 'blocked' || reason === 'network';
+}
+
+/* The one sentence a blocked run carries, never the vendor's output. */
+export const EGRESS_BLOCKED_REASON =
+  'The source is unreachable from every exit.';
+
+/* Every config is marked failed, so the circuit is open and no exit can be
+ * asked. The caller maps it to `blocked` rather than a failed row per track. */
+export class EgressCircuitOpenError extends Error {
+  constructor() {
+    super(EGRESS_BLOCKED_REASON);
+    this.name = 'EgressCircuitOpenError';
+  }
 }
 
 /* Fixed here so a client renders a sentence rather than yt-dlp's stderr. It

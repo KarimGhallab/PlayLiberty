@@ -39,7 +39,9 @@ export async function probeExit(
   deps: ProbeDeps,
   name?: string
 ): Promise<EgressProbeFacts> {
-  if (name !== undefined) {
+  /* A probe of the loaded config does not need to switch, which keeps the page
+   * usable on a host with no interface yet. */
+  if (name !== undefined && name !== deps.active()) {
     await deps.switchTo(name);
   }
 

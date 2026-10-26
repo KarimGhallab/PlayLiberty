@@ -1,6 +1,8 @@
 import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
 
+import type { ProcessTracker } from '../types.js';
+
 export interface RunResult {
   stdout: string;
   stderr: string;
@@ -22,7 +24,8 @@ function killProcessTree(child: ChildProcess): void {
 export function runProcess(
   command: string,
   args: string[],
-  timeoutMs: number
+  timeoutMs: number,
+  track?: ProcessTracker
 ): Promise<RunResult> {
   return new Promise<RunResult>((resolve, reject) => {
     const child = spawn(command, args, {
@@ -33,9 +36,16 @@ export function runProcess(
     let stdout = '';
     let stderr = '';
     let settled = false;
+    const release = track?.(child);
+
+    const finish = (): void => {
+      settled = true;
+      clearTimeout(timer);
+      release?.();
+    };
 
     const timer = setTimeout(() => {
-      settled = true;
+      finish();
       killProcessTree(child);
       reject(new Error(`${command} timed out after ${timeoutMs}ms.`));
     }, timeoutMs);
@@ -50,16 +60,14 @@ export function runProcess(
       if (settled) {
         return;
       }
-      settled = true;
-      clearTimeout(timer);
+      finish();
       reject(error);
     });
     child.on('close', code => {
       if (settled) {
         return;
       }
-      settled = true;
-      clearTimeout(timer);
+      finish();
       if (code === 0) {
         resolve({ stdout, stderr });
         return;

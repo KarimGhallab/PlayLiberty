@@ -40,6 +40,15 @@ describe('probeExit', () => {
     });
   });
 
+  it('does not switch when the named config is already loaded', async () => {
+    const switchTo = vi.fn(async () => undefined);
+
+    const facts = await probeExit(deps({ switchTo }), '01-fr');
+
+    expect(switchTo).not.toHaveBeenCalled();
+    expect(facts.active).toBe('01-fr');
+  });
+
   it('switches to a named config before probing it', async () => {
     let active = '01-fr';
     const switchTo = vi.fn(async (name: string) => {

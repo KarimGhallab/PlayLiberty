@@ -72,6 +72,14 @@ function fakeAgent(status: EgressAgentStatus = POOL): FakeAgent {
         }
 
         return probe;
+      },
+      fetchTrack: async () => {
+        throw new Error('the egress routes do not fetch a track');
+      },
+      switch: async (name: string): Promise<EgressAgentStatus> => {
+        current = { ...current, active: name };
+
+        return current;
       }
     },
     setPool: (next: EgressAgentStatus): void => {

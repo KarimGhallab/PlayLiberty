@@ -28,6 +28,11 @@ export interface Config {
   adminPangolinUserIds: string[];
   /* The egress agent's socket: the host owns it, the pod only connects. */
   egressAgentSocket: string;
+  /* The rotation policy: failures before a switch, the drain bound, and the
+   * cooldown that keeps a burst of parallel failures from walking the pool. */
+  egressFailureLimit: number;
+  egressDrainTimeoutMs: number;
+  egressSwitchCooldownMs: number;
   pruneCron: string;
   ytdlpBinary: string;
   youtubeTransport: YoutubeListTransport;
