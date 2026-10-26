@@ -150,9 +150,8 @@ sudo systemctl edit playliberty-egress.service
 Environment=PATH=/path/to/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ```
 
-A Node installed under `/home` is not visible because the unit sets
-`ProtectHome=yes`; install Node system-wide, or drop that line in the same
-drop-in.
+The unit's `PATH` is fixed. Prefer a system-wide Node; a Node under `/home`
+works only if the drop-in adds its directory to `PATH`.
 
 ## Deployment layout
 
@@ -208,7 +207,7 @@ The running host uses the installed copies in `/etc/systemd/system` and
 | `/var/lib/playliberty-egress`        | root:root, `0700` | Persistent agent state directory.                                               | systemd `StateDirectory`; persists.                               |
 | `/var/lib/playliberty-egress/active` | root, `0600`      | The loaded config name. This is the reboot memory.                              | Written by the agent; persists.                                   |
 | `/var/lib/playliberty-egress/cache`  | root              | The yt-dlp cache through `XDG_CACHE_HOME`.                                      | Created on demand; persists.                                      |
-| Service-private `/tmp`               | service           | Temporary downloads and the stripped WireGuard config.                          | `PrivateTmp=yes`; ephemeral.                                      |
+| Host `/tmp`                          | root              | Temporary downloads and the stripped WireGuard config.                          | Ephemeral; temp dirs are `0700`.                                  |
 
 ### Application data and the user-scope pod
 
@@ -243,7 +242,8 @@ pool and the active state survive.
 ## What the unit creates
 
 `ExecStart` runs `egress-run`, which calls `egress-up` and then `exec`s the
-agent with `ip netns exec`. `egress-up` is idempotent:
+agent with `ip netns exec`. `egress-up` runs in the host mount namespace, so
+`ip netns` and `ExecStop` see the same handle. It is idempotent:
 
 - creates the `playliberty-egress` network namespace;
 - creates the `pl-egress0`/`pl-egress1` veth pair and puts one end in the
@@ -292,6 +292,16 @@ curl --unix-socket /run/playliberty/egress-agent.sock http://localhost/status
 sudo -u nobody curl --unix-socket /run/playliberty/egress-agent.sock http://localhost/status
 ```
 
+If `ip -n playliberty-egress` reports `Invalid argument`, a mount-namespace
+protection such as `PrivateTmp` or `ProtectHome` is hiding the handle. Remove
+it from the unit, or inspect the running agent with `nsenter`:
+
+```sh
+PID="$(systemctl show -p MainPID --value playliberty-egress.service)"
+sudo nsenter -t "$PID" -m -n ip addr show wg0
+sudo nsenter -t "$PID" -m -n wg show wg0
+```
+
 The status JSON is the same pool the `/egress` page lists. A switch or check
 from the page moves the active marker and refreshes the state file.
 
@@ -323,6 +333,7 @@ or set `PROTON_ACTIVE_CONFIG` after removing the state file.
 | Symptom                                | Check                                                                                                                                                                             |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `egress-up` fails on the pool          | `stat -c '%u:%a' /etc/playliberty/proton /etc/playliberty/proton/*.conf`; the directory is `0:700` and files are `0:600`.                                                         |
+| `ip -n` reports `Invalid argument`     | A mount-namespace protection hides `/run/netns`; remove `PrivateTmp`, `ProtectHome`, `ProtectKernelModules` or `ProtectControlGroups`, or use `nsenter` as above.                 |
 | `wg syncconf` fails                    | `sudo wg-quick strip /etc/playliberty/proton/<name>.conf`; the build command already runs it.                                                                                     |
 | No handshake                           | `sudo ip netns exec playliberty-egress wg show wg0`; check the endpoint route, the host NAT rules and the host firewall's forwarding policy.                                      |
 | DNS fails in the namespace             | `sudo ip netns exec playliberty-egress cat /etc/resolv.conf`; it must be the config's `DNS`.                                                                                      |

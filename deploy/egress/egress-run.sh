@@ -1,9 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# The up script creates the namespace, the veth, the interface and the socket
-# directory in this process's mount namespace. The exec below enters that same
-# namespace, so the netns file is visible to the agent's main process.
+# The up script creates the namespace in the host mount namespace. The exec
+# below enters that same namespace, so the netns file is visible to the agent.
 
 NS="${EGRESS_NETNS:-playliberty-egress}"
 

@@ -44,10 +44,8 @@ KillMode=control-group
 UMask=0077
 NoNewPrivileges=yes
 
-PrivateTmp=yes
-ProtectHome=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
+# The namespace handle lives in the host mount namespace. PrivateTmp,
+# ProtectHome, ProtectKernelModules and ProtectControlGroups would hide it.
 ProtectClock=yes
 ProtectHostname=yes
 RestrictSUIDSGID=yes
