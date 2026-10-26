@@ -6,7 +6,10 @@ import type {
   EgressAgentStatus,
   IEgressAgentClient
 } from '@playliberty/youtube';
-import { EgressConfigUnknownError } from '@playliberty/youtube';
+import {
+  EgressConfigUnknownError,
+  EgressSwitchFailedError
+} from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import { egressConfigs } from '../../../platform/database/schema.js';
@@ -119,6 +122,70 @@ export type ProbeOutcome =
   | { outcome: 'ok'; read: EgressRead }
   | { outcome: 'agent_unreachable' }
   | { outcome: 'config_unknown' };
+
+export type SwitchOutcome =
+  | { outcome: 'ok'; read: EgressRead }
+  | { outcome: 'agent_unreachable' }
+  | { outcome: 'config_unknown' }
+  | { outcome: 'switch_failed'; message: string };
+
+/*
+ * The operator's choice is newer than the stored verdict: a config that was
+ * failed returns to unknown with a clean counter once the agent has applied it.
+ * A refused switch writes nothing, so the active row stays as it was.
+ */
+export async function switchEgress(
+  database: DatabaseHandle,
+  agent: IEgressAgentClient,
+  name: string,
+  drainTimeoutMs: number
+): Promise<SwitchOutcome> {
+  let status;
+
+  try {
+    status = await agent.switch(name, drainTimeoutMs);
+  } catch (error) {
+    if (error instanceof EgressConfigUnknownError) {
+      return { outcome: 'config_unknown' };
+    }
+
+    if (error instanceof EgressSwitchFailedError) {
+      return { outcome: 'switch_failed', message: error.message };
+    }
+
+    return { outcome: 'agent_unreachable' };
+  }
+
+  applyEgressStatus(database, status);
+  resetStaleFailure(database, name);
+
+  return {
+    outcome: 'ok',
+    read: { agentReachable: true, configs: readEgress(database) }
+  };
+}
+
+function resetStaleFailure(database: DatabaseHandle, name: string): void {
+  const row = database.db
+    .select({ status: egressConfigs.status })
+    .from(egressConfigs)
+    .where(eq(egressConfigs.name, name))
+    .get();
+
+  if (row?.status !== EgressStatus.Failed) {
+    return;
+  }
+
+  database.db
+    .update(egressConfigs)
+    .set({
+      status: EgressStatus.Unknown,
+      consecutiveFailures: 0,
+      lastError: null
+    })
+    .where(eq(egressConfigs.name, name))
+    .run();
+}
 
 /*
  * A probe is evidence, not a download: it writes the row it measured and the

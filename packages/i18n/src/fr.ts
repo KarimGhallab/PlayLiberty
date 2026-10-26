@@ -85,6 +85,9 @@ export const fr: Messages = {
     probing: 'Test en cours...',
     probeUnreachable: "L'agent egress est injoignable.",
     probeFailed: "Le test n'a pas pu être lancé.",
+    switch: 'Changer',
+    switching: 'Changement...',
+    switchFailed: "La configuration n'a pas pu être changée.",
     actions: 'Actions',
     seen: 'Vu à {ip}',
     reason: {

@@ -93,6 +93,23 @@ export function useProbeEgress(): UseMutationResult<EgressRead, Error, string> {
   });
 }
 
+/* The operator's override: the switch answers the whole read, like a probe. */
+export function useSwitchEgress(): UseMutationResult<
+  EgressRead,
+  Error,
+  string
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (name: string) =>
+      commandEndpoint(endpoints.switchEgress, { name }),
+    onSuccess: read => {
+      queryClient.setQueryData(['egress'], read);
+    }
+  });
+}
+
 /*
  * The name an owner id resolves to, or null when absent. Null is a real answer
  * and must not be confused with an empty string, which renders a blank line.

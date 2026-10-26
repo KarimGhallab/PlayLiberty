@@ -9,7 +9,8 @@ import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import {
   probeEgress,
   readEgress,
-  reconcileEgress
+  reconcileEgress,
+  switchEgress
 } from '../service/egressService.js';
 
 function refuse(reply: FastifyReply) {
@@ -62,6 +63,48 @@ export function registerEgressRoutes(
 
       /* An unreachable agent is still an answer the page can draw: the rows
        * stay as they were and the control reports the failure. */
+      if (result.outcome === 'agent_unreachable') {
+        return reply.send({
+          agentReachable: false,
+          configs: readEgress(context.database)
+        });
+      }
+
+      return reply.send(result.read);
+    }
+  );
+
+  registerEndpoint<{ Params: { name: string } }>(
+    app,
+    endpoints.switchEgress,
+    async (request, reply) => {
+      if (request.account.role !== UserRole.Admin) {
+        return refuse(reply);
+      }
+
+      const result = await switchEgress(
+        context.database,
+        context.egressAgent,
+        request.params.name,
+        context.config.egressDrainTimeoutMs
+      );
+
+      if (result.outcome === 'config_unknown') {
+        return refuse(reply);
+      }
+
+      /* The agent was asked and refused: the active row is untouched, and the
+       * page carries the agent's fixed sentence. */
+      if (result.outcome === 'switch_failed') {
+        return sendProblem(reply, {
+          status: 502,
+          code: ProblemCode.EgressSwitchFailed,
+          title: 'Switch Failed',
+          detail: result.message
+        });
+      }
+
+      /* An unreachable agent is still an answer the page can draw. */
       if (result.outcome === 'agent_unreachable') {
         return reply.send({
           agentReachable: false,

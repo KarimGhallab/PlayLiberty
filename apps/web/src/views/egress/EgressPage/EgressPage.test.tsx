@@ -6,7 +6,13 @@ import {
   createRoute,
   createRouter
 } from '@tanstack/react-router';
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within
+} from '@testing-library/react';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 
@@ -225,5 +231,133 @@ describe('the egress page', () => {
     expect(
       await screen.findByText('The test could not be run.')
     ).toBeInTheDocument();
+  });
+});
+
+describe('switching an exit by hand', () => {
+  it('disables the active row and moves the marker after a switch', async () => {
+    const switched = {
+      ...READ,
+      configs: [
+        { ...READ.configs[0], active: false },
+        { ...READ.configs[1], active: true }
+      ]
+    };
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.switchEgress, { name: '02-ch' }), () =>
+        respond(endpoints.switchEgress, switched)
+      )
+    );
+
+    renderPage();
+
+    const switches = await screen.findAllByRole('button', { name: 'Switch' });
+    expect(switches[0]).toBeDisabled();
+    expect(switches[1]).toBeEnabled();
+
+    fireEvent.click(switches[1]);
+
+    const row = (await screen.findByText('02-ch')).closest('tr');
+    expect(within(row as HTMLElement).getByText('Active')).toBeInTheDocument();
+    expect(
+      within(row as HTMLElement).getByRole('button', { name: 'Switch' })
+    ).toBeDisabled();
+  });
+
+  it('says why a refused switch left the active row alone', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.switchEgress, { name: '02-ch' }), () =>
+        problemResponse({
+          code: ProblemCode.EgressSwitchFailed,
+          status: 502,
+          title: 'Switch Failed',
+          detail: 'No WireGuard interface is configured.'
+        })
+      )
+    );
+
+    renderPage();
+
+    const switches = await screen.findAllByRole('button', { name: 'Switch' });
+    fireEvent.click(switches[1]);
+
+    expect(
+      await screen.findByText('No WireGuard interface is configured.')
+    ).toBeInTheDocument();
+
+    const row = screen.getByText('01-fr').closest('tr');
+    expect(within(row as HTMLElement).getByText('Active')).toBeInTheDocument();
+  });
+
+  it('reports an unreachable agent without moving the marker', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(mockUrl(endpoints.switchEgress, { name: '02-ch' }), () =>
+        respond(endpoints.switchEgress, { ...READ, agentReachable: false })
+      )
+    );
+
+    renderPage();
+
+    const switches = await screen.findAllByRole('button', { name: 'Switch' });
+    fireEvent.click(switches[1]);
+
+    expect(
+      await screen.findByText('The egress agent could not be reached.')
+    ).toBeInTheDocument();
+
+    const row = screen.getByText('01-fr').closest('tr');
+    expect(within(row as HTMLElement).getByText('Active')).toBeInTheDocument();
+  });
+
+  it('cannot be pressed twice while the switch is in flight', async () => {
+    const switched = {
+      ...READ,
+      configs: [
+        { ...READ.configs[0], active: false },
+        { ...READ.configs[1], active: true }
+      ]
+    };
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, READ)
+      ),
+      http.post(
+        mockUrl(endpoints.switchEgress, { name: '02-ch' }),
+        async () => {
+          await gate;
+
+          return respond(endpoints.switchEgress, switched);
+        }
+      )
+    );
+
+    renderPage();
+
+    const switches = await screen.findAllByRole('button', { name: 'Switch' });
+    fireEvent.click(switches[1]);
+
+    expect(
+      await screen.findByRole('button', { name: 'Switching...' })
+    ).toBeDisabled();
+
+    release?.();
+
+    const row = screen.getByText('02-ch').closest('tr') as HTMLElement;
+    await waitFor(() =>
+      expect(within(row).getByText('Active')).toBeInTheDocument()
+    );
   });
 });

@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { EgressStatus } from '@playliberty/contracts';
@@ -6,10 +7,15 @@ import type {
   EgressProbeFacts,
   IEgressAgentClient
 } from '@playliberty/youtube';
-import { EgressConfigUnknownError } from '@playliberty/youtube';
+import {
+  EgressConfigUnknownError,
+  EgressSwitchFailedError
+} from '@playliberty/youtube';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+
+import { egressConfigs } from '../../../platform/database/schema.js';
 
 const POOL: EgressAgentStatus = {
   pool: [
@@ -42,18 +48,24 @@ interface FakeAgent {
   client: IEgressAgentClient;
   calls: number;
   probes: string[];
+  switches: string[];
+  drains: number[];
   setPool(status: EgressAgentStatus): void;
   fail(next: boolean): void;
   setProbe(result: EgressProbeFacts | Error): void;
+  setSwitchError(error: Error | null): void;
 }
 
 function fakeAgent(status: EgressAgentStatus = POOL): FakeAgent {
   let current = status;
   let failing = false;
   let probe: EgressProbeFacts | Error = PROBE_OK;
+  let switchError: Error | null = null;
   const agent: FakeAgent = {
     calls: 0,
     probes: [],
+    switches: [],
+    drains: [],
     client: {
       status: async (): Promise<EgressAgentStatus> => {
         agent.calls += 1;
@@ -76,7 +88,17 @@ function fakeAgent(status: EgressAgentStatus = POOL): FakeAgent {
       fetchTrack: async () => {
         throw new Error('the egress routes do not fetch a track');
       },
-      switch: async (name: string): Promise<EgressAgentStatus> => {
+      switch: async (
+        name: string,
+        drainTimeoutMs: number
+      ): Promise<EgressAgentStatus> => {
+        agent.switches.push(name);
+        agent.drains.push(drainTimeoutMs);
+
+        if (switchError !== null) {
+          throw switchError;
+        }
+
         current = { ...current, active: name };
 
         return current;
@@ -90,6 +112,9 @@ function fakeAgent(status: EgressAgentStatus = POOL): FakeAgent {
     },
     setProbe: (result: EgressProbeFacts | Error): void => {
       probe = result;
+    },
+    setSwitchError: (error: Error | null): void => {
+      switchError = error;
     }
   };
 
@@ -305,5 +330,149 @@ describe('probing an exit', () => {
 
     expect(response.statusCode).toBe(404);
     expect(agent.probes).toEqual([]);
+  });
+});
+
+describe('switching an exit by hand', () => {
+  it('switches the pool and answers the moved active row', async () => {
+    const agent = fakeAgent();
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/02-ch/switch',
+      headers: ADMIN
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(agent.switches).toEqual(['02-ch']);
+    expect(agent.drains).toEqual([60000]);
+    expect(
+      response
+        .json()
+        .configs.map((config: { name: string; active: boolean }) => [
+          config.name,
+          config.active
+        ])
+    ).toEqual([
+      ['01-fr', false],
+      ['02-ch', true]
+    ]);
+  });
+
+  it('returns a failed config to unknown with a clean counter', async () => {
+    const agent = fakeAgent();
+    const app = await adminApp(agent);
+
+    app.database.db
+      .update(egressConfigs)
+      .set({
+        status: EgressStatus.Failed,
+        consecutiveFailures: 5,
+        lastError: 'blocked'
+      })
+      .where(eq(egressConfigs.name, '02-ch'))
+      .run();
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/02-ch/switch',
+      headers: ADMIN
+    });
+
+    const row = response
+      .json()
+      .configs.find((config: { name: string }) => config.name === '02-ch');
+
+    expect(row).toMatchObject({
+      status: EgressStatus.Unknown,
+      lastError: null
+    });
+    expect(
+      app.database.db
+        .select()
+        .from(egressConfigs)
+        .where(eq(egressConfigs.name, '02-ch'))
+        .get()?.consecutiveFailures
+    ).toBe(0);
+  });
+
+  it('leaves the active row unchanged when the agent refuses the switch', async () => {
+    const agent = fakeAgent();
+    agent.setSwitchError(
+      new EgressSwitchFailedError('No WireGuard interface is configured.')
+    );
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/02-ch/switch',
+      headers: ADMIN
+    });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({
+      code: 'egress_switch_failed',
+      detail: 'No WireGuard interface is configured.'
+    });
+    expect(agent.switches).toEqual(['02-ch']);
+
+    const active = app.database.db
+      .select()
+      .from(egressConfigs)
+      .where(eq(egressConfigs.active, true))
+      .get();
+    expect(active?.name).toBe('01-fr');
+  });
+
+  it('answers not-found for a config the agent does not have', async () => {
+    const agent = fakeAgent();
+    agent.setSwitchError(new EgressConfigUnknownError('03-missing'));
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/03-missing/switch',
+      headers: ADMIN
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'not_found' });
+  });
+
+  it('reports an unreachable agent without moving the active row', async () => {
+    const agent = fakeAgent();
+    agent.setSwitchError(new Error('The agent is down.'));
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/02-ch/switch',
+      headers: ADMIN
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().agentReachable).toBe(false);
+    expect(
+      response
+        .json()
+        .configs.find((config: { name: string }) => config.name === '01-fr')
+        .active
+    ).toBe(true);
+  });
+
+  it('answers not-found to a non-admin and never switches', async () => {
+    const agent = fakeAgent();
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/02-ch/switch',
+      headers: USER
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'not_found' });
+    expect(agent.switches).toEqual([]);
   });
 });

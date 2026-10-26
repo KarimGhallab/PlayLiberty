@@ -94,6 +94,7 @@ export enum ProblemCode {
   Forbidden = 'forbidden',
   SelfShare = 'self_share',
   AccountNotFound = 'account_not_found',
+  EgressSwitchFailed = 'egress_switch_failed',
   NotFound = 'not_found',
   RequestError = 'request_error',
   InternalError = 'internal_error',

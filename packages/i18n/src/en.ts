@@ -83,6 +83,9 @@ export const en = {
     probing: 'Testing...',
     probeUnreachable: 'The egress agent could not be reached.',
     probeFailed: 'The test could not be run.',
+    switch: 'Switch',
+    switching: 'Switching...',
+    switchFailed: 'The config could not be switched.',
     actions: 'Actions',
     seen: 'Seen at {ip}',
     reason: {

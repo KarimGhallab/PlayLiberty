@@ -7,7 +7,11 @@ import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 import type { Messages, Translator } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
-import { useEgress, useProbeEgress } from '../../../shared/api/queries/queries';
+import {
+  useEgress,
+  useProbeEgress,
+  useSwitchEgress
+} from '../../../shared/api/queries/queries';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePlayTransition';
@@ -58,9 +62,11 @@ export default function EgressPage() {
   const { t } = useI18n();
   const egress = useEgress();
   const probe = useProbeEgress();
+  const switchExit = useSwitchEgress();
   const [probeNotice, setProbeNotice] = useState<
     'unreachable' | 'failed' | null
   >(null);
+  const [switchNotice, setSwitchNotice] = useState<string | null>(null);
   const now = Date.now();
   const notAvailable =
     egress.error instanceof ApiError && egress.error.status === 404;
@@ -75,10 +81,39 @@ export default function EgressPage() {
     return () => clearTimeout(timer);
   }, [probeNotice]);
 
+  useEffect(() => {
+    if (switchNotice === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setSwitchNotice(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [switchNotice]);
+
   const probeMessage =
     probeNotice === 'unreachable'
       ? t('egress.probeUnreachable')
       : t('egress.probeFailed');
+
+  /* The server's fixed sentence is the switch failure's copy; the generic one
+   * is only for a failure that carried no detail. */
+  const switchTo = (name: string): void => {
+    switchExit.mutate(name, {
+      onSuccess: read => {
+        if (!read.agentReachable) {
+          setSwitchNotice(t('egress.probeUnreachable'));
+        }
+      },
+      onError: error => {
+        setSwitchNotice(
+          error instanceof ApiError
+            ? (error.problem?.detail ?? t('egress.switchFailed'))
+            : t('egress.switchFailed')
+        );
+      }
+    });
+  };
 
   return (
     <main className={styles.egress}>
@@ -188,35 +223,60 @@ export default function EgressPage() {
                       {timeOf(t, config.lastProbeAt, now)}
                     </td>
                     <td>
-                      <div className={styles.egress__probeWrap}>
-                        <span
-                          className={styles.egress__probeSizer}
-                          aria-hidden="true">
-                          {t('egress.probing')}
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.egress__probe}
-                          disabled={probe.isPending}
-                          aria-busy={
-                            probe.isPending && probe.variables === config.name
-                              ? true
-                              : undefined
-                          }
-                          onClick={() =>
-                            probe.mutate(config.name, {
-                              onSuccess: read => {
-                                if (!read.agentReachable) {
-                                  setProbeNotice('unreachable');
-                                }
-                              },
-                              onError: () => setProbeNotice('failed')
-                            })
-                          }>
-                          {probe.isPending && probe.variables === config.name
-                            ? t('egress.probing')
-                            : t('egress.probe')}
-                        </button>
+                      <div className={styles.egress__actions}>
+                        <div className={styles.egress__probeWrap}>
+                          <span
+                            className={styles.egress__probeSizer}
+                            aria-hidden="true">
+                            {t('egress.probing')}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.egress__probe}
+                            disabled={probe.isPending}
+                            aria-busy={
+                              probe.isPending && probe.variables === config.name
+                                ? true
+                                : undefined
+                            }
+                            onClick={() =>
+                              probe.mutate(config.name, {
+                                onSuccess: read => {
+                                  if (!read.agentReachable) {
+                                    setProbeNotice('unreachable');
+                                  }
+                                },
+                                onError: () => setProbeNotice('failed')
+                              })
+                            }>
+                            {probe.isPending && probe.variables === config.name
+                              ? t('egress.probing')
+                              : t('egress.probe')}
+                          </button>
+                        </div>
+                        <div className={styles.egress__switchWrap}>
+                          <span
+                            className={styles.egress__switchSizer}
+                            aria-hidden="true">
+                            {t('egress.switching')}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.egress__switch}
+                            disabled={config.active || switchExit.isPending}
+                            aria-busy={
+                              switchExit.isPending &&
+                              switchExit.variables === config.name
+                                ? true
+                                : undefined
+                            }
+                            onClick={() => switchTo(config.name)}>
+                            {switchExit.isPending &&
+                            switchExit.variables === config.name
+                              ? t('egress.switching')
+                              : t('egress.switch')}
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -229,6 +289,10 @@ export default function EgressPage() {
 
       {probeNotice === null ? null : (
         <NoticeToast message={probeMessage} durationMs={NOTICE_WINDOW_MS} />
+      )}
+
+      {switchNotice === null ? null : (
+        <NoticeToast message={switchNotice} durationMs={NOTICE_WINDOW_MS} />
       )}
     </main>
   );
