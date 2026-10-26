@@ -31,6 +31,8 @@ Ubuntu 25.04 and later ship AppArmor profiles for `wg-quick` and `wg`. They
 allow `/etc/wireguard`, not `/etc/playliberty/proton`. The build command and
 the agent use `wg-quick strip`, and the agent and the up script use
 `wg syncconf` on a temporary file, so both profiles need local allowances.
+`pnpm deploy:build-for-production` adds these local rules when the profiles
+exist; the commands below are for a host prepared by hand.
 
 Check the profiles and their local includes:
 
@@ -83,6 +85,43 @@ sudo dmesg | tail -20
 
 A remaining `apparmor="DENIED"` line names the profile and path to add.
 
+## Host firewall
+
+The namespace's WireGuard packets are forwarded from `pl-egress0` to the WAN
+interface. UFW's default routed policy is `deny`, and its `FORWARD` chain runs
+at the same hook as the `inet playliberty_egress` table, so the table's accept
+does not override it. `pnpm deploy:build-for-production` adds these rules when
+UFW is active. Use the loop below when repairing a host by hand.
+
+```sh
+sudo sh -c '
+wan="$(ip route show default | awk "{print \$5; exit}")"
+for conf in /etc/playliberty/proton/*.conf; do
+  endpoint="$(sed -n "s/^[[:space:]]*Endpoint[[:space:]]*=[[:space:]]*//p" "$conf" | head -n1 | tr -d "[:space:]")"
+  host="${endpoint%:*}"
+  port="${endpoint##*:}"
+  [ -n "$host" ] && [ -n "$port" ] || continue
+  ufw route allow in on pl-egress0 out on "$wan" to "$host" port "$port" proto udp
+  ufw route allow in on "$wan" out on pl-egress0 from "$host" port "$port" proto udp
+done
+'
+```
+
+Verify:
+
+```sh
+sudo ufw status verbose
+sudo dmesg | tail -20
+```
+
+A `[UFW BLOCK] IN=pl-egress0 OUT=<wan> ... DPT=51820` line means the routed
+policy is still dropping the handshake. The `inet playliberty_egress` table
+still restricts the namespace to the pool endpoints; the UFW rules only let
+those endpoint packets through.
+
+If UFW is not installed, the `inet playliberty_egress` table is the only
+forward filter and no route rules are needed.
+
 ## Build the host
 
 ```sh
@@ -96,10 +135,13 @@ pnpm deploy:build-for-production --public-origin https://playliberty.example.com
 ```
 
 `pnpm deploy:build-for-production` builds the images, creates
-`/srv/playliberty`, validates the pool read-only, extracts the server image's
-yt-dlp to `/usr/local/lib/playliberty/yt-dlp` and verifies it against the
-image's `org.playliberty.ytdlp.sha256` label, then ensures the Podman secrets.
-It never installs, starts or stops a unit, and it never writes a config.
+`/srv/playliberty`, checks that the unit's Node is available to root, validates
+the pool read-only, adds the AppArmor local rules when the profiles exist,
+allows the pool endpoints through UFW when UFW is active, extracts the server
+image's yt-dlp to `/usr/local/lib/playliberty/yt-dlp` and verifies it against
+the image's `org.playliberty.ytdlp.sha256` label, then ensures the Podman
+secrets. It never installs, starts or stops a unit, and it never writes an
+egress config.
 
 The agent's `dist` must exist before the pool check; `pnpm run build` provides
 it.
@@ -118,7 +160,8 @@ sudo install -m 0600 -o root -g root 02-CH-264.conf /etc/playliberty/proton/
 The file name is `NN-<slug>.conf`. The `NN-` prefix is the round-robin order;
 the interface shows the file stem. The config is never committed, copied into
 an image or stored in a Podman secret. The build command reads it, runs
-`wg-quick strip` on it and runs the agent's `--dry-run`; none of those write it.
+`wg-quick strip` on it, runs the agent's `--dry-run` and allows its endpoint
+through UFW when UFW is active; none of those write it.
 After adding or removing a config, restart the unit so the host's endpoint set
 matches the pool.
 
@@ -151,7 +194,9 @@ Environment=PATH=/path/to/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr
 ```
 
 The unit's `PATH` is fixed. Prefer a system-wide Node; a Node under `/home`
-works only if the drop-in adds its directory to `PATH`.
+works only if the drop-in adds its directory to `PATH`. The build command
+checks the unit's Node before it builds and prints the copy command when it is
+missing.
 
 ## Deployment layout
 
@@ -335,7 +380,7 @@ or set `PROTON_ACTIVE_CONFIG` after removing the state file.
 | `egress-up` fails on the pool          | `stat -c '%u:%a' /etc/playliberty/proton /etc/playliberty/proton/*.conf`; the directory is `0:700` and files are `0:600`.                                                         |
 | `ip -n` reports `Invalid argument`     | A mount-namespace protection hides `/run/netns`; remove `PrivateTmp`, `ProtectHome`, `ProtectKernelModules` or `ProtectControlGroups`, or use `nsenter` as above.                 |
 | `wg syncconf` fails                    | `sudo wg-quick strip /etc/playliberty/proton/<name>.conf`; the build command already runs it.                                                                                     |
-| No handshake                           | `sudo ip netns exec playliberty-egress wg show wg0`; check the endpoint route, the host NAT rules and the host firewall's forwarding policy.                                      |
+| No handshake                           | `sudo ip netns exec playliberty-egress wg show wg0`; check the endpoint route, the host NAT rules and the host firewall's routed policy. See [Host firewall](#host-firewall).     |
 | DNS fails in the namespace             | `sudo ip netns exec playliberty-egress cat /etc/resolv.conf`; it must be the config's `DNS`.                                                                                      |
 | The pod cannot reach the socket        | `ls -ld /run/playliberty`; it is `0700` owned by `EGRESS_AGENT_PEER_UID`, and the socket is `0600` owned by the same uid.                                                         |
 | The host yt-dlp differs from the image | Re-run `pnpm deploy:build-for-production`; it extracts and verifies the binary.                                                                                                   |

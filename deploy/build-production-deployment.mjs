@@ -10,6 +10,7 @@ import {
   readFileSync,
   rmSync
 } from 'node:fs';
+import { isIP } from 'node:net';
 import { homedir, tmpdir, userInfo } from 'node:os';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
@@ -30,8 +31,18 @@ const EGRESS = {
   pool: '/etc/playliberty/proton',
   binDirectory: '/usr/local/lib/playliberty',
   hostBinary: '/usr/local/lib/playliberty/yt-dlp',
+  vethHost: 'pl-egress0',
   ytdlpLabel: 'org.playliberty.ytdlp.sha256'
 };
+
+const APPARMOR = {
+  localDirectory: '/etc/apparmor.d/local',
+  wgQuickProfile: '/etc/apparmor.d/wg-quick',
+  wgProfile: '/etc/apparmor.d/wg'
+};
+
+const UNIT_PATH =
+  '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
 
 const EDGE = {
   name: 'playliberty_edge_assertion',
@@ -48,9 +59,11 @@ const ADMIN = {
 
 const USAGE = `Usage: pnpm deploy:build-for-production [options]
 
-Build the production images, create /srv/playliberty, validate the egress pool,
-extract the image's yt-dlp, and ensure the Podman secrets. This command never
-installs, removes or starts a unit.
+Build the production images, create /srv/playliberty, check the unit's Node,
+validate the egress pool, add the AppArmor local rules when the profiles exist,
+allow its endpoints through UFW when active, extract the image's yt-dlp, and
+ensure the Podman secrets. This command never installs, removes or starts a
+unit.
 
 Options:
   --public-origin <url>       Public browser origin (https://host)
@@ -160,6 +173,57 @@ function runOrPrint(command, args, options = {}) {
   }
 
   return run(command, args, options);
+}
+
+function ensureHostNode() {
+  console.log('\nHost Node');
+
+  if (dryRun) {
+    console.log(
+      "  Would check that node is available to root on the unit's PATH."
+    );
+    return;
+  }
+
+  const mise = readFileSync(path.join(repoRoot, 'mise.toml'), 'utf8');
+  const pinned = /^node\s*=\s*"([^"]+)"/m.exec(mise)?.[1];
+
+  if (pinned === undefined) {
+    throw new Error('mise.toml does not pin node.');
+  }
+
+  let resolved;
+
+  try {
+    resolved = run('sudo', [
+      'env',
+      `PATH=${UNIT_PATH}`,
+      'sh',
+      '-c',
+      'command -v node'
+    ]).stdout.trim();
+  } catch {
+    resolved = '';
+  }
+
+  if (resolved.length === 0) {
+    throw new Error(
+      `Node is not available to root on the unit's PATH. Make it visible to root, for example:\n` +
+        `  sudo install -D -m 0755 ${shellQuote(process.execPath)} /usr/local/lib/playliberty/node/${pinned}/bin/node\n` +
+        `  sudo ln -sfn /usr/local/lib/playliberty/node/${pinned}/bin/node /usr/local/bin/node\n` +
+        'Then rerun this command.'
+    );
+  }
+
+  const actual = run('sudo', [resolved, '--version']).stdout.trim();
+
+  if (actual !== `v${pinned}`) {
+    throw new Error(
+      `Node ${actual} is visible to root, but mise.toml pins v${pinned}. Make v${pinned} available to root.`
+    );
+  }
+
+  console.log(`  ${actual} is available to root at ${resolved}.`);
 }
 
 function podmanSecretExists(name) {
@@ -460,6 +524,230 @@ async function ensureAdmin() {
   console.log(dryRun ? '  Would prepare the secret.' : '  Secret prepared.');
 }
 
+/* The Ubuntu wg profiles allow /etc/wireguard only. Add the pool and the
+ * stripped temp file to their local includes, then reload them. */
+function ensureEgressAppArmor() {
+  console.log('\nAppArmor');
+
+  if (dryRun) {
+    console.log(
+      '  Would add the egress pool and temp-file allowances when the wg-quick and wg profiles are present.'
+    );
+    return;
+  }
+
+  const entries = [
+    {
+      profile: APPARMOR.wgQuickProfile,
+      local: path.join(APPARMOR.localDirectory, 'wg-quick'),
+      rules: [
+        '/etc/playliberty/ r,',
+        '/etc/playliberty/proton/ r,',
+        '/etc/playliberty/proton/** r,'
+      ]
+    },
+    {
+      profile: APPARMOR.wgProfile,
+      local: path.join(APPARMOR.localDirectory, 'wg'),
+      rules: [
+        '/tmp/playliberty-wg-*/ r,',
+        '/tmp/playliberty-wg-*/config.conf r,',
+        '/tmp/tmp.* r,'
+      ]
+    }
+  ].filter(entry => existsSync(entry.profile));
+
+  if (entries.length === 0) {
+    console.log(
+      '  The wg-quick and wg AppArmor profiles are not present; no local rules needed.'
+    );
+    return;
+  }
+
+  runOrPrint('sudo', ['install', '-d', '-m', '0755', APPARMOR.localDirectory]);
+
+  let changed = false;
+
+  for (const entry of entries) {
+    const include = `<local/${path.basename(entry.local)}>`;
+    const profile = spawnSync('sudo', ['cat', entry.profile], {
+      cwd: repoRoot,
+      encoding: 'utf8'
+    });
+
+    if (profile.error) {
+      throw new Error(`sudo: ${profile.error.message}`);
+    }
+
+    if (profile.status !== 0) {
+      throw new Error(`Could not read ${entry.profile}.`);
+    }
+
+    if (!profile.stdout.includes(include)) {
+      console.log(
+        `  Warning: ${entry.profile} does not include ${include}; add the rules inside the profile.`
+      );
+    }
+
+    const current = spawnSync('sudo', ['cat', entry.local], {
+      cwd: repoRoot,
+      encoding: 'utf8'
+    });
+
+    if (current.error) {
+      throw new Error(`sudo: ${current.error.message}`);
+    }
+
+    const content = current.status === 0 ? current.stdout : '';
+    const missing = entry.rules.filter(
+      rule => !content.split('\n').includes(rule)
+    );
+
+    if (missing.length === 0) {
+      console.log(`  ${entry.local} already has the egress allowances.`);
+      continue;
+    }
+
+    const separator = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
+
+    runOrPrint('sudo', ['tee', '-a', entry.local], {
+      input: `${separator}${missing.join('\n')}\n`
+    });
+    changed = true;
+    console.log(`  Added ${String(missing.length)} rule(s) to ${entry.local}.`);
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  for (const entry of entries) {
+    runOrPrint('sudo', ['apparmor_parser', '-r', entry.profile]);
+  }
+}
+
+function parseIpv4Endpoint(endpoint) {
+  const separator = endpoint.lastIndexOf(':');
+
+  if (separator <= 0) {
+    return null;
+  }
+
+  const host = endpoint.slice(0, separator);
+  const port = endpoint.slice(separator + 1);
+
+  if (isIP(host) !== 4 || !/^\d+$/.test(port)) {
+    return null;
+  }
+
+  const number = Number(port);
+
+  if (number < 1 || number > 65535) {
+    return null;
+  }
+
+  return { host, port };
+}
+
+/* UFW's routed policy is a second forward filter; the nftables table cannot
+ * override its drop. Add each pool endpoint and let UFW skip existing rules. */
+function ensureEgressFirewall(pool) {
+  console.log('\nEgress firewall');
+
+  const ufw = spawnSync('sudo', ['sh', '-c', 'command -v ufw'], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+  });
+
+  if (ufw.error) {
+    throw new Error(`sudo: ${ufw.error.message}`);
+  }
+
+  if (ufw.status !== 0) {
+    console.log(
+      '  UFW is not installed; the nftables table is the only forward filter.'
+    );
+    return;
+  }
+
+  const status = run('sudo', ['ufw', 'status']).stdout;
+
+  if (!/^Status:\s+active\s*$/m.test(status)) {
+    console.log('  UFW is inactive; no route rules needed.');
+    return;
+  }
+
+  const route = run('sudo', ['ip', 'route', 'show', 'default']).stdout;
+  const wan = /^\s*default\b[^\n]*\bdev\s+(\S+)/m.exec(route)?.[1];
+
+  if (wan === undefined) {
+    throw new Error('The host has no default route.');
+  }
+
+  const endpoints = new Map();
+
+  for (const config of pool) {
+    if (typeof config.endpoint !== 'string') {
+      continue;
+    }
+
+    const endpoint = parseIpv4Endpoint(config.endpoint);
+
+    if (endpoint === null) {
+      console.log(
+        `  Skipping ${config.name}: ${config.endpoint} is not an IPv4 endpoint.`
+      );
+      continue;
+    }
+
+    endpoints.set(`${endpoint.host}:${endpoint.port}`, endpoint);
+  }
+
+  if (endpoints.size === 0) {
+    console.log('  No IPv4 endpoints; no route rules needed.');
+    return;
+  }
+
+  for (const { host, port } of endpoints.values()) {
+    runOrPrint('sudo', [
+      'ufw',
+      'route',
+      'allow',
+      'in',
+      'on',
+      EGRESS.vethHost,
+      'out',
+      'on',
+      wan,
+      'to',
+      host,
+      'port',
+      port,
+      'proto',
+      'udp'
+    ]);
+    runOrPrint('sudo', [
+      'ufw',
+      'route',
+      'allow',
+      'in',
+      'on',
+      wan,
+      'out',
+      'on',
+      EGRESS.vethHost,
+      'from',
+      host,
+      'port',
+      port,
+      'proto',
+      'udp'
+    ]);
+  }
+
+  console.log(`  ${String(endpoints.size)} endpoint(s) allowed through UFW.`);
+}
+
 /*
  * The pool is root-owned and never written here. The agent's own parser is the
  * one that reads it, and `wg-quick strip` is the one the switch will run, so a
@@ -495,9 +783,11 @@ function ensureEgressHost() {
   runOrPrint('sudo', ['chown', 'root:root', EGRESS.pool]);
   runOrPrint('sudo', ['chmod', '0700', EGRESS.pool]);
 
+  ensureEgressAppArmor();
+
   if (dryRun) {
     console.log(
-      '  Would validate the pool read-only and keep its files at 0600.'
+      '  Would validate the pool read-only, keep its files at 0600, and allow the pool endpoints through UFW when active.'
     );
     return;
   }
@@ -630,6 +920,8 @@ function ensureEgressHost() {
           .join(', ')}.`
       );
     }
+
+    ensureEgressFirewall(status.pool);
   } finally {
     rmSync(temporaryState, { force: true });
   }
@@ -742,7 +1034,8 @@ function checkRepositoryInputs() {
     'deploy/egress/egress-up.sh',
     'deploy/egress/egress-down.sh',
     'deploy/egress/egress-run.sh',
-    'deploy/egress/egress.env.example'
+    'deploy/egress/egress.env.example',
+    'mise.toml'
   ];
 
   for (const relative of required) {
@@ -885,11 +1178,12 @@ async function main() {
 
   if (dryRun) {
     console.log(
-      'Dry run: no build, directory, pool, binary or secret mutation will run.'
+      'Dry run: no build, directory, pool, AppArmor, firewall, binary or secret mutation will run.'
     );
   }
 
   checkRepositoryInputs();
+  ensureHostNode();
   buildImages();
   ensureStorage();
   ensureEgressHost();

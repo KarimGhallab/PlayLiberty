@@ -28,10 +28,12 @@ now passes `--force-ipv4` on both the listing and the download. The server pod
 mounts `/run/playliberty` read-only, sets `YOUTUBE_TRANSPORT=egress-agent` and
 keeps its security context and netns.
 
-`pnpm deploy:build-for-production` now reads the pool read-only, runs
-`wg-quick strip` and the agent's `--dry-run`, keeps the directory `0700` and the
-files `0600`, extracts the server image's yt-dlp and verifies it against the
-image's `org.playliberty.ytdlp.sha256` label. The `.dockerignore` keeps the dev
+`pnpm deploy:build-for-production` now checks the unit's Node, reads the pool
+read-only, runs `wg-quick strip` and the agent's `--dry-run`, keeps the
+directory `0700` and the files `0600`, adds the AppArmor local rules when the
+profiles exist, allows the pool endpoints through UFW when UFW is active,
+extracts the server image's yt-dlp and verifies it against the image's
+`org.playliberty.ytdlp.sha256` label. The `.dockerignore` keeps the dev
 pool out of the image. The runbook is
 [`docs/runbooks/egress-agent.md`](../../../runbooks/egress-agent.md).
 
