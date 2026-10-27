@@ -13,18 +13,22 @@ import {
 
 /*
  * The one seam an end-to-end run fakes: a dynamic import behind the test
- * runtime and a scenario path, so production never carries or reaches the fake.
+ * harness and a scenario path, so production never carries or reaches the fake.
  */
 async function createYoutubeOverride(
   runtime: Runtime,
+  harness: boolean,
   scriptPath: string | null
 ): Promise<IYoutubeClient | undefined> {
-  if (runtime !== 'test' || scriptPath === null) {
+  if (runtime !== 'test' || !harness || scriptPath === null) {
     return undefined;
   }
 
-  const { createE2eYoutube } =
-    await import('./app/testing/e2eYoutube/e2eYoutube.js');
+  // Not a literal, so the production build does not compile the harness.
+  const modulePath: string = './app/testing/e2eYoutube/e2eYoutube.js';
+  const { createE2eYoutube } = (await import(modulePath)) as {
+    createE2eYoutube(scriptPath: string): IYoutubeClient;
+  };
 
   return createE2eYoutube(scriptPath);
 }
@@ -40,6 +44,7 @@ async function main(): Promise<void> {
 
   const youtube = await createYoutubeOverride(
     config.runtime,
+    config.e2eHarness,
     config.e2eFakeScript
   );
 

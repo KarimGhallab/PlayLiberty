@@ -10,7 +10,7 @@ import {
 
 /*
  * A real server and database driven through a browser; only the YouTube adapter
- * (`NODE_ENV=test`) and the edge identity (injected by the Vite dev proxy) are
+ * (test harness) and the edge identity (injected by the Vite dev proxy) are
  * faked. Every worker gets its own server, database, media root and scenario.
  */
 
@@ -71,12 +71,14 @@ export default defineConfig({
       }
     }
   ],
-  // The stack must be built first: `pnpm run build` produces the dist booted
-  // here and the workspace packages the dev server resolves.
+  // The stack must be built first: `pnpm run build` produces the workspace
+  // packages and the web bundle, and the root e2e script builds the server's
+  // harness output booted here.
   webServer: instances.flatMap(index => {
     const instance = instancePaths(index);
     const serverEnv: Record<string, string> = {
       NODE_ENV: 'test',
+      E2E_HARNESS: 'true',
       HOST: '127.0.0.1',
       PORT: String(instance.serverPort),
       LOG_LEVEL: 'warn',
@@ -97,7 +99,7 @@ export default defineConfig({
         name: `server-${index}`,
         command:
           `node -e "require('node:fs').mkdirSync(require('node:path').dirname(process.env.DATABASE_PATH),{recursive:true})" && ` +
-          'node apps/server/dist/main.js',
+          'node apps/server/dist-e2e/main.js',
         cwd: ROOT_DIR,
         url: `${instance.serverUrl}/healthz`,
         reuseExistingServer: false,

@@ -44,7 +44,10 @@ export interface Config {
   ffprobeBinary: string;
   downloadTimeoutMs: number;
   download: DownloadConfig;
-  /* The E2E fake adapter's scenario file, read only under the test runtime.
+  /* The explicit test-harness opt-in. The E2E routes and the fake adapter are
+   * unreachable without it, even under the test runtime. */
+  e2eHarness: boolean;
+  /* The E2E fake adapter's scenario file, read only under the test harness.
    * The fake is not even imported otherwise. */
   e2eFakeScript: string | null;
 }

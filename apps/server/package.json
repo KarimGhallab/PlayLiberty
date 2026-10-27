@@ -7,10 +7,11 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
-    "build": "tsc -p tsconfig.build.json && node ./scripts/copy-fixtures.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "build:e2e": "tsc -p tsconfig.e2e.json && node ./scripts/copy-fixtures.mjs dist-e2e",
     "dev": "tsc-watch --noClear -p tsconfig.build.json --onSuccess \"node --env-file=.env dist/main.js\"",
     "watch": "tsc-watch --noClear -p tsconfig.build.json",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist dist-e2e",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate"
   },

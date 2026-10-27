@@ -71,6 +71,12 @@ export interface AppOptions {
   loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
 
+/* The test harness module is resolved at runtime, so the production build does
+ * not pull it in; the harness build compiles it. */
+interface E2eRoutesModule {
+  registerE2eRoutes(app: FastifyInstance, context: AppContext): void;
+}
+
 function createYoutubeClient(
   config: AppContext['config'],
   egressAgent: AppContext['egressAgent']
@@ -211,11 +217,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         heartbeatMs: options.sseHeartbeatMs ?? DEFAULT_EVENT_HEARTBEAT_MS
       });
 
-      /* The E2E reset. Not API surface, only under the test runtime, under API
-       * prefix so the browser reaches it through the proxy. */
-      if (context.config.runtime === 'test') {
-        const { registerE2eRoutes } = await import('./testing/e2eRoutes.js');
-        registerE2eRoutes(api, context);
+      /* The E2E reset. Not API surface: it needs both the test runtime and the
+       * explicit harness flag, and the production build omits the module. */
+      if (context.config.runtime === 'test' && context.config.e2eHarness) {
+        // Not a literal, so the production build does not compile the module.
+        const modulePath: string = './testing/e2eRoutes.js';
+        const harness = (await import(modulePath)) as E2eRoutesModule;
+        harness.registerE2eRoutes(api, context);
       }
     },
     { prefix: '/api/v1' }

@@ -77,6 +77,10 @@ const EnvSchema = z.object({
   YOUTUBE_TRANSPORT: z.enum(['local', 'egress-agent']).default('local'),
   FFMPEG_BINARY: z.string().default('ffmpeg'),
   FFPROBE_BINARY: z.string().default('ffprobe'),
+  E2E_HARNESS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform(value => value === 'true'),
   E2E_FAKE_SCRIPT: optionalString
 });
 
@@ -143,6 +147,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       fileAccessRetries: value.DOWNLOAD_FILE_ACCESS_RETRIES,
       socketTimeout: value.DOWNLOAD_SOCKET_TIMEOUT
     },
+    e2eHarness: value.E2E_HARNESS,
     e2eFakeScript: value.E2E_FAKE_SCRIPT ?? null
   };
 }

@@ -111,7 +111,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`98-the-origin-refuses-an-open-identity-outside-the-test-harness`](98-the-origin-refuses-an-open-identity-outside-the-test-harness.md)                   | `resolved` | `bug`         | An open origin is a boot failure outside the test harness; the default bind is loopback.                                    |
 | [`99-the-egress-agent-rejects-a-non-video-id-before-it-becomes-a-path`](99-the-egress-agent-rejects-a-non-video-id-before-it-becomes-a-path.md)           | `resolved` | `bug`         | A non-video id is rejected at the socket and adapter; the download output stays in its temp directory.                      |
 | [`100-the-prune-deletes-a-track-only-while-it-is-still-an-orphan`](100-the-prune-deletes-a-track-only-while-it-is-still-an-orphan.md)                     | `resolved` | `bug`         | The prune deletes a track only while it is still an orphan; a new association survives.                                     |
-| [`101-a-deployable-server-cannot-expose-the-destructive-e2e-reset`](101-a-deployable-server-cannot-expose-the-destructive-e2e-reset.md)                   | `triaged`  | `bug`         | The destructive e2e reset is excluded from the production build and gated by the test harness.                              |
+| [`101-a-deployable-server-cannot-expose-the-destructive-e2e-reset`](101-a-deployable-server-cannot-expose-the-destructive-e2e-reset.md)                   | `resolved` | `bug`         | The destructive e2e reset is excluded from the production build and gated by the test harness.                              |
 
 ## Conventions
 
