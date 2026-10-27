@@ -1,5 +1,5 @@
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, relative } from 'node:path';
 
 import { finalizeAudio } from '../audio/audio.js';
 import {
@@ -147,6 +147,28 @@ async function findFetchedFile(
   }
 
   return paths[newest];
+}
+
+/* The video id is the only part of the output path the caller controls, so the
+ * template is validated and proven inside the temp directory before yt-dlp
+ * starts. */
+function downloadOutputTemplate(tempDir: string, videoId: string): string {
+  if (!isValidVideoId(videoId)) {
+    throw new Error(
+      `The video id "${videoId}" is not a valid YouTube video id.`
+    );
+  }
+
+  const template = join(tempDir, `${videoId}.%(ext)s`);
+  const relativeTemplate = relative(tempDir, template);
+
+  if (relativeTemplate.startsWith('..') || isAbsolute(relativeTemplate)) {
+    throw new Error(
+      `The video id "${videoId}" resolves outside the temp directory.`
+    );
+  }
+
+  return template;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -330,9 +352,13 @@ export class YtdlpFetcher implements ISourceFetcher {
   }
 
   public async fetchTrack(request: FetchTrackRequest): Promise<FetchedTrack> {
+    const outputTemplate = downloadOutputTemplate(
+      request.tempDir,
+      request.videoId
+    );
+
     await mkdir(request.tempDir, { recursive: true });
 
-    const outputTemplate = join(request.tempDir, `${request.videoId}.%(ext)s`);
     const url = `https://www.youtube.com/watch?v=${request.videoId}`;
 
     try {

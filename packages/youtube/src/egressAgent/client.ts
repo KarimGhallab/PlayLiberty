@@ -23,6 +23,7 @@ import type {
   YoutubeSourceEntry
 } from '../types.js';
 import { SourceFailureKind, YoutubeSourceKind } from '../types.js';
+import { isValidVideoId } from '../validateYoutubeUrl/validateYoutubeUrl.js';
 
 /* The read may not hang on a wedged agent: "unreachable" is an answer the page
  * can draw faster than a person gives up. A switch or a check is a yt-dlp run,
@@ -199,6 +200,7 @@ function parseEntry(value: unknown): YoutubeSourceEntry {
   if (
     !isRecord(value) ||
     typeof value.videoId !== 'string' ||
+    !isValidVideoId(value.videoId) ||
     typeof value.title !== 'string' ||
     (value.durationSeconds !== null &&
       typeof value.durationSeconds !== 'number') ||

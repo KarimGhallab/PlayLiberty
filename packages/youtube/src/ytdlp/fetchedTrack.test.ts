@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import {
   chmod,
   mkdir,
@@ -116,5 +117,21 @@ describe('YtdlpFetcher.fetchTrack', () => {
         skipNonMusic: false
       })
     ).rejects.toThrow(/wrote no file/);
+  });
+
+  it('refuses an id that would escape the temp directory', async () => {
+    const root = await workspace();
+    const tempDir = join(root, 'tmp');
+    const binary = await fakeBinary(root, 'webm');
+
+    await expect(
+      fetcher(binary).fetchTrack({
+        videoId: '../escaped',
+        tempDir,
+        skipNonMusic: false
+      })
+    ).rejects.toThrow(/valid YouTube video id/);
+
+    expect(existsSync(join(root, 'escaped.webm'))).toBe(false);
   });
 });

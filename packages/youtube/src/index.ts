@@ -25,7 +25,10 @@ export {
   EgressSwitchFailedError
 } from './egressAgent/client.js';
 export { EgressAgentFetcher } from './egressAgent/agentFetcher.js';
-export { validateYoutubeUrl } from './validateYoutubeUrl/validateYoutubeUrl.js';
+export {
+  isValidVideoId,
+  validateYoutubeUrl
+} from './validateYoutubeUrl/validateYoutubeUrl.js';
 export {
   buildDownloadArgs,
   buildListArgs,

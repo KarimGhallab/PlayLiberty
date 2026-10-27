@@ -237,6 +237,19 @@ describe('the download worker', () => {
     expect(response.body).toBe('downloaded-audio');
   });
 
+  it('fails one invalid id without rejecting the pass', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const invalid = seed(context.database, { videoId: '../escape' });
+    const valid = seed(context.database, { videoId: 'aaaaaaaaaaa' }, 'owner-2');
+
+    await expect(run(fake.youtube, 2)).resolves.toBeUndefined();
+
+    expect(trackRow(valid.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
+    expect(trackRow(invalid.trackId)?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(fake.downloads).toEqual(['aaaaaaaaaaa']);
+  });
+
   it('does not start the same download twice', async () => {
     const fake = fakeDownloader();
     context = await createTestContext({}, { youtube: fake.youtube });

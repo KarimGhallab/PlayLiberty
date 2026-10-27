@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   AgentFetchRequest,
@@ -210,6 +210,45 @@ describe('the egress agent', () => {
 
     expect(result.filePath.endsWith('.webm')).toBe(true);
     expect(await readFile(result.filePath, 'utf8')).toBe('fake-audio');
+  });
+
+  it('refuses a fetch whose video id is not a video id', async () => {
+    const fetch = vi.fn(writeFakeTrack);
+    const socketPath = await agent(process.getuid?.() ?? 1000, { fetch });
+
+    for (const videoId of ['../escape', 'a/b', 'abc#def', 'short']) {
+      await expect(
+        new EgressAgentClient(socketPath).fetchTrack({
+          videoId,
+          tempDir: join(dirname(socketPath), 'download'),
+          skipNonMusic: false,
+          download: DOWNLOAD,
+          timeoutMs: 5000
+        })
+      ).rejects.toMatchObject({ status: 400 });
+    }
+
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('refuses a listing entry whose id is not a video id', async () => {
+    const socketPath = await agent(process.getuid?.() ?? 1000, {
+      list: async () => ({
+        ...source,
+        entries: [
+          {
+            videoId: '../escape',
+            title: 'bad entry',
+            durationSeconds: null,
+            thumbnailUrl: null
+          }
+        ]
+      })
+    });
+
+    await expect(new EgressAgentClient(socketPath).list(URL)).rejects.toThrow(
+      /unexpected source entry/
+    );
   });
 
   it('turns a gone video into the terminal error the worker knows', async () => {

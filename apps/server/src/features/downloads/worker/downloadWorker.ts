@@ -116,16 +116,16 @@ async function processClaimedTrack(
   logger: FastifyBaseLogger,
   track: TrackRow
 ): Promise<void> {
-  // The adapter writes to temp and the move is one same-filesystem rename, so a
-  // crash leaves a temp file, never a half-written stored one.
-  const relativePath = mediaRelativePath(track.videoId, '.m4a');
-  const storedPath = join(context.mediaPaths.root, relativePath);
-  const tempPath = join(
-    context.mediaPaths.tempDir,
-    `${track.videoId}.stored.m4a`
-  );
-
   try {
+    // The adapter writes to temp and the move is one same-filesystem rename, so a
+    // crash leaves a temp file, never a half-written stored one.
+    const relativePath = mediaRelativePath(track.videoId, '.m4a');
+    const storedPath = join(context.mediaPaths.root, relativePath);
+    const tempPath = join(
+      context.mediaPaths.tempDir,
+      `${track.videoId}.stored.m4a`
+    );
+
     await mkdir(dirname(storedPath), { recursive: true });
 
     const result = await context.youtube.downloadTrack({
@@ -208,10 +208,10 @@ async function fetchThumbnail(
     return;
   }
 
-  const relativePath = thumbnailRelativePath(track.videoId);
-  const absolutePath = join(context.mediaPaths.root, relativePath);
-
   try {
+    const relativePath = thumbnailRelativePath(track.videoId);
+    const absolutePath = join(context.mediaPaths.root, relativePath);
+
     await context.youtube.fetchThumbnail(track.thumbnailUrl, absolutePath);
 
     storeThumbnail(context.database, track.id, relativePath);

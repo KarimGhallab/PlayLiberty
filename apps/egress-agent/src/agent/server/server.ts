@@ -16,6 +16,7 @@ import {
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError,
   classifySourceFailure,
+  isValidVideoId,
   validateYoutubeUrl
 } from '@playliberty/youtube';
 
@@ -138,7 +139,7 @@ function parseFetchBody(value: unknown): FetchBody | null {
   if (
     !isRecord(value) ||
     typeof value.videoId !== 'string' ||
-    value.videoId.length === 0 ||
+    !isValidVideoId(value.videoId) ||
     typeof value.skipNonMusic !== 'boolean' ||
     typeof value.timeoutMs !== 'number' ||
     !Number.isInteger(value.timeoutMs) ||
