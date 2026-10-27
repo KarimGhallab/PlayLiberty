@@ -10,6 +10,7 @@ import type {
 import {
   EgressCircuitOpenError,
   EgressSourceUnavailableError,
+  SourceFailureKind,
   YoutubeSourceKind,
   YoutubeVideoUnavailableError
 } from '@playliberty/youtube';
@@ -89,11 +90,11 @@ async function harness(
         return options.list();
       }
 
-      throw new EgressSourceUnavailableError('blocked');
+      throw new EgressSourceUnavailableError(SourceFailureKind.Blocked);
     },
     downloadTrack: async () => {
       counts.downloads += 1;
-      throw new EgressSourceUnavailableError('blocked');
+      throw new EgressSourceUnavailableError(SourceFailureKind.Blocked);
     },
     fetchThumbnail: async () => undefined
   };
@@ -161,7 +162,7 @@ describe('the egress rotation policy', () => {
         calls += 1;
 
         if (calls <= 4) {
-          throw new EgressSourceUnavailableError('blocked');
+          throw new EgressSourceUnavailableError(SourceFailureKind.Blocked);
         }
 
         return SOURCE;
@@ -261,7 +262,7 @@ describe('the egress rotation policy', () => {
   it('never counts an unavailable source as an exit failure', async () => {
     const h = await harness({
       list: async () => {
-        throw new EgressSourceUnavailableError('unavailable');
+        throw new EgressSourceUnavailableError(SourceFailureKind.Unavailable);
       }
     });
 

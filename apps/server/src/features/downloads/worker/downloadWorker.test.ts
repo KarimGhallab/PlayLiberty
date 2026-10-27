@@ -24,6 +24,7 @@ import {
   EgressStreamError,
   EgressSwitchFailedError,
   SPONSORBLOCK_FAILURE_REASON,
+  SourceFailureKind,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError
 } from '@playliberty/youtube';
@@ -342,7 +343,7 @@ describe('the download worker', () => {
   it('returns a track to pending when the exit refuses the download', async () => {
     const fake = fakeDownloader({
       failTimes: 1,
-      error: new EgressSourceUnavailableError('blocked')
+      error: new EgressSourceUnavailableError(SourceFailureKind.Blocked)
     });
     context = await createTestContext({}, { youtube: fake.youtube });
     const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });

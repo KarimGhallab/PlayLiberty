@@ -19,23 +19,32 @@ import type {
   EgressCheckFacts,
   FetchedTrack,
   IEgressAgentClient,
-  YoutubeSource,
-  YoutubeSourceEntry
+  YoutubeSource
 } from '../types.js';
-import { SourceFailureKind, YoutubeSourceKind } from '../types.js';
-import { isValidVideoId } from '../validateYoutubeUrl/validateYoutubeUrl.js';
+import { SourceFailureKind } from '../types.js';
+import {
+  AgentErrorCode,
+  AgentHeader,
+  AgentHttpStatus,
+  AgentMethod,
+  AgentRoute,
+  applyBody,
+  decodeReply,
+  fetchBody,
+  listBody,
+  parseAgentStatus,
+  parseCheckFacts,
+  parseSourceExtension,
+  parseYoutubeSource,
+  switchBody
+} from './protocol.js';
+import type { AgentWireReply, DecodedReply } from './protocol.js';
 
 /* The read may not hang on a wedged agent: "unreachable" is an answer the page
  * can draw faster than a person gives up. A switch or a check is a yt-dlp run,
  * so it gets the room one takes. */
 const STATUS_TIMEOUT_MS = 2000;
 const LIST_TIMEOUT_MS = 120_000;
-
-const FAILURES: ReadonlySet<string> = new Set(Object.values(SourceFailureKind));
-
-function isSourceFailureKind(value: string): value is SourceFailureKind {
-  return FAILURES.has(value);
-}
 
 /* A name the agent does not have is the caller's mistake, not an outage. */
 export class EgressConfigUnknownError extends Error {
@@ -103,18 +112,16 @@ export class EgressSwitchFailedError extends SourceFailureError {
   }
 }
 
-function switchFailureOf(body: unknown): EgressSwitchFailedError {
-  const detail = isRecord(body) ? body.detail : null;
-
+function switchFailureOf(detail: string | null): EgressSwitchFailedError {
   return new EgressSwitchFailedError(
-    typeof detail === 'string' && detail.length > 0
+    detail !== null && detail.length > 0
       ? detail
       : 'The exit could not be switched.'
   );
 }
 
-/* A non-200 the caller has to interpret: 400 is an unknown config or a bad
- * source, anything else is the agent failing. */
+/* A reply this route does not name is the agent failing, not an answer the
+ * caller can act on. */
 class AgentResponseError extends Error {
   readonly status: number;
 
@@ -125,132 +132,23 @@ class AgentResponseError extends Error {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function optionalString(value: unknown, field: string): string | null {
-  if (value === null) {
-    return null;
+function expectOk(reply: DecodedReply): unknown {
+  if (reply.outcome !== 'ok') {
+    throw new AgentResponseError(reply.status);
   }
 
-  if (typeof value !== 'string') {
-    throw new Error(`The egress agent's ${field} is not a string or null.`);
-  }
-
-  return value;
-}
-
-function sourceFailureKindOf(value: unknown): SourceFailureKind {
-  return typeof value === 'string' && isSourceFailureKind(value)
-    ? value
-    : SourceFailureKind.Unknown;
-}
-
-/* The agent is ours, but a malformed answer must fail here rather than reach a
- * page or a sync that trusts it. */
-function parseEgressAgentStatus(value: unknown): EgressAgentStatus {
-  if (!isRecord(value) || !Array.isArray(value.pool)) {
-    throw new Error('The egress agent answered an unexpected payload.');
-  }
-
-  const pool = value.pool.map(entry => {
-    if (
-      !isRecord(entry) ||
-      typeof entry.name !== 'string' ||
-      entry.name.length === 0
-    ) {
-      throw new Error('The egress agent reported a config without a name.');
-    }
-
-    return {
-      name: entry.name,
-      endpoint: optionalString(entry.endpoint, 'endpoint')
-    };
-  });
-
-  return {
-    pool,
-    active: optionalString(value.active, 'active config'),
-    loadedSince: optionalString(value.loadedSince, 'load time')
-  };
-}
-
-function parseCheckFacts(value: unknown): EgressCheckFacts {
-  if (
-    !isRecord(value) ||
-    typeof value.listing !== 'boolean' ||
-    (value.handshake !== null && typeof value.handshake !== 'boolean') ||
-    (value.reason !== null &&
-      (typeof value.reason !== 'string' || !isSourceFailureKind(value.reason)))
-  ) {
-    throw new Error('The egress agent answered an unexpected check result.');
-  }
-
-  return {
-    handshake: value.handshake as boolean | null,
-    listing: value.listing,
-    exitIp: optionalString(value.exitIp, 'exit address'),
-    reason: value.reason as SourceFailureKind | null,
-    active: optionalString(value.active, 'active config')
-  };
-}
-
-function parseEntry(value: unknown): YoutubeSourceEntry {
-  if (
-    !isRecord(value) ||
-    typeof value.videoId !== 'string' ||
-    !isValidVideoId(value.videoId) ||
-    typeof value.title !== 'string' ||
-    (value.durationSeconds !== null &&
-      typeof value.durationSeconds !== 'number') ||
-    (value.thumbnailUrl !== null && typeof value.thumbnailUrl !== 'string')
-  ) {
-    throw new Error('The egress agent reported an unexpected source entry.');
-  }
-
-  return {
-    videoId: value.videoId,
-    title: value.title,
-    durationSeconds: value.durationSeconds,
-    thumbnailUrl: value.thumbnailUrl
-  };
-}
-
-function parseYoutubeSource(value: unknown): YoutubeSource {
-  if (
-    !isRecord(value) ||
-    (value.kind !== YoutubeSourceKind.Playlist &&
-      value.kind !== YoutubeSourceKind.Video) ||
-    typeof value.sourceId !== 'string' ||
-    typeof value.title !== 'string' ||
-    !Array.isArray(value.entries)
-  ) {
-    throw new Error('The egress agent reported an unexpected source.');
-  }
-
-  return {
-    kind: value.kind,
-    sourceId: value.sourceId,
-    title: value.title,
-    entries: value.entries.map(parseEntry)
-  };
+  return reply.body;
 }
 
 interface AgentRequest {
   socketPath: string;
-  method: 'GET' | 'POST';
-  path: string;
+  method: AgentMethod;
+  path: AgentRoute;
   body?: unknown;
   timeoutMs: number;
 }
 
-interface AgentResult {
-  status: number;
-  body: unknown;
-}
-
-function requestJson(options: AgentRequest): Promise<AgentResult> {
+function requestJson(options: AgentRequest): Promise<AgentWireReply> {
   const payload =
     options.body === undefined ? null : JSON.stringify(options.body);
 
@@ -299,14 +197,6 @@ function requestJson(options: AgentRequest): Promise<AgentResult> {
 
     req.end();
   });
-}
-
-function expectOk(result: AgentResult): unknown {
-  if (result.status !== 200) {
-    throw new AgentResponseError(result.status);
-  }
-
-  return result.body;
 }
 
 /* A fetch answers with the file itself, so its non-200 body is read separately
@@ -365,97 +255,104 @@ export class EgressAgentClient implements IEgressAgentClient {
   constructor(private readonly _socketPath: string) {}
 
   public async status(): Promise<EgressAgentStatus> {
-    return parseEgressAgentStatus(
-      expectOk(
-        await requestJson({
-          socketPath: this._socketPath,
-          method: 'GET',
-          path: '/status',
-          timeoutMs: STATUS_TIMEOUT_MS
-        })
-      )
+    const reply = decodeReply(
+      await requestJson({
+        socketPath: this._socketPath,
+        method: AgentMethod.Get,
+        path: AgentRoute.Status,
+        timeoutMs: STATUS_TIMEOUT_MS
+      })
     );
+
+    return parseAgentStatus(expectOk(reply));
   }
 
   public async switch(name?: string): Promise<EgressCheckFacts> {
-    const result = await requestJson({
-      socketPath: this._socketPath,
-      method: 'POST',
-      path: '/switch',
-      body: name === undefined ? {} : { name },
-      timeoutMs: LIST_TIMEOUT_MS
-    });
+    const reply = decodeReply(
+      await requestJson({
+        socketPath: this._socketPath,
+        method: AgentMethod.Post,
+        path: AgentRoute.Switch,
+        body: switchBody(name),
+        timeoutMs: LIST_TIMEOUT_MS
+      })
+    );
 
-    if (result.status === 400) {
-      throw new EgressConfigUnknownError(name ?? 'unknown');
+    switch (reply.outcome) {
+      case 'ok':
+        return parseCheckFacts(reply.body);
+      case AgentErrorCode.UnknownConfig:
+        throw new EgressConfigUnknownError(name ?? 'unknown');
+      case AgentErrorCode.SwitchFailed:
+        throw switchFailureOf(reply.detail);
+      default:
+        throw new AgentResponseError(reply.status);
     }
-
-    if (result.status === 503) {
-      throw switchFailureOf(result.body);
-    }
-
-    return parseCheckFacts(expectOk(result));
   }
 
   public async check(): Promise<EgressCheckFacts> {
-    const result = await requestJson({
-      socketPath: this._socketPath,
-      method: 'POST',
-      path: '/check',
-      timeoutMs: LIST_TIMEOUT_MS
-    });
+    const reply = decodeReply(
+      await requestJson({
+        socketPath: this._socketPath,
+        method: AgentMethod.Post,
+        path: AgentRoute.Check,
+        timeoutMs: LIST_TIMEOUT_MS
+      })
+    );
 
-    return parseCheckFacts(expectOk(result));
+    return parseCheckFacts(expectOk(reply));
   }
 
   public async list(url: string): Promise<YoutubeSource> {
-    const result = await requestJson({
-      socketPath: this._socketPath,
-      method: 'POST',
-      path: '/list',
-      body: { url },
-      timeoutMs: LIST_TIMEOUT_MS
-    });
+    const reply = decodeReply(
+      await requestJson({
+        socketPath: this._socketPath,
+        method: AgentMethod.Post,
+        path: AgentRoute.List,
+        body: listBody(url),
+        timeoutMs: LIST_TIMEOUT_MS
+      })
+    );
 
-    if (result.status === 400) {
-      throw new EgressSourceInvalidError();
+    switch (reply.outcome) {
+      case 'ok':
+        return parseYoutubeSource(reply.body);
+      case AgentErrorCode.InvalidSource:
+        throw new EgressSourceInvalidError();
+      case AgentErrorCode.Switching:
+        throw new EgressSwitchError();
+      case AgentErrorCode.SourceUnavailable:
+        throw new EgressSourceUnavailableError(reply.reason);
+      default:
+        throw new AgentResponseError(reply.status);
     }
-
-    if (result.status === 503) {
-      throw new EgressSwitchError();
-    }
-
-    if (result.status === 502) {
-      throw new EgressSourceUnavailableError(
-        sourceFailureKindOf(isRecord(result.body) ? result.body.reason : null)
-      );
-    }
-
-    return parseYoutubeSource(expectOk(result));
   }
 
   public async applyConfig(
     name: string,
     drainTimeoutMs: number
   ): Promise<EgressAgentStatus> {
-    const result = await requestJson({
-      socketPath: this._socketPath,
-      method: 'POST',
-      path: '/apply',
-      body: { name, drainTimeoutMs },
-      /* The drain runs before the agent answers, so the wait is the bound. */
-      timeoutMs: drainTimeoutMs + 30_000
-    });
+    const reply = decodeReply(
+      await requestJson({
+        socketPath: this._socketPath,
+        method: AgentMethod.Post,
+        path: AgentRoute.Apply,
+        body: applyBody(name, drainTimeoutMs),
+        /* The drain runs before the agent answers, so the wait is the bound. */
+        timeoutMs: drainTimeoutMs + 30_000
+      })
+    );
 
-    if (result.status === 400) {
-      throw new EgressConfigUnknownError(name);
+    switch (reply.outcome) {
+      case 'ok':
+        return parseAgentStatus(reply.body);
+      case AgentErrorCode.UnknownConfig:
+        throw new EgressConfigUnknownError(name);
+      case AgentErrorCode.SwitchFailed:
+        throw switchFailureOf(reply.detail);
+      default:
+        throw new AgentResponseError(reply.status);
     }
-
-    if (result.status === 503) {
-      throw switchFailureOf(result.body);
-    }
-
-    return parseEgressAgentStatus(expectOk(result));
   }
 
   public async fetchTrack(request: AgentFetchRequest): Promise<FetchedTrack> {
@@ -467,14 +364,9 @@ export class EgressAgentClient implements IEgressAgentClient {
     try {
       ({ status, response } = await requestStream({
         socketPath: this._socketPath,
-        method: 'POST',
-        path: '/fetch',
-        body: {
-          videoId: request.videoId,
-          skipNonMusic: request.skipNonMusic,
-          download: request.download,
-          timeoutMs: request.timeoutMs
-        },
+        method: AgentMethod.Post,
+        path: AgentRoute.Fetch,
+        body: fetchBody(request),
         /* The agent answers only after yt-dlp finishes, so the socket is idle
          * for the length of the download; the agent's own timeout is the bound. */
         timeoutMs: request.timeoutMs + 60_000
@@ -483,35 +375,32 @@ export class EgressAgentClient implements IEgressAgentClient {
       throw new EgressStreamError();
     }
 
-    if (status !== 200) {
-      const body = await readSmallBody(response);
-      const error = isRecord(body) ? body.error : null;
+    if (status !== AgentHttpStatus.Ok) {
+      const reply = decodeReply({
+        status,
+        body: await readSmallBody(response)
+      });
 
-      if (status === 410) {
-        throw new YoutubeVideoUnavailableError(request.videoId);
+      switch (reply.outcome) {
+        case AgentErrorCode.Unavailable:
+          throw new YoutubeVideoUnavailableError(request.videoId);
+        /* A switch killed this download: the claim returns to pending. */
+        case AgentErrorCode.Switching:
+          throw new EgressStreamError();
+        case AgentErrorCode.SponsorBlock:
+          throw new YoutubeSponsorBlockError(request.videoId);
+        case AgentErrorCode.SourceUnavailable:
+          throw new EgressSourceUnavailableError(reply.reason);
+        default:
+          throw new AgentResponseError(reply.status);
       }
-
-      /* A switch killed this download: the claim returns to pending. */
-      if (status === 503) {
-        throw new EgressStreamError();
-      }
-
-      if (status === 502 && error === 'sponsorblock') {
-        throw new YoutubeSponsorBlockError(request.videoId);
-      }
-
-      if (status === 502) {
-        throw new EgressSourceUnavailableError(
-          sourceFailureKindOf(isRecord(body) ? body.reason : null)
-        );
-      }
-
-      throw new AgentResponseError(status);
     }
 
-    const extension = response.headers['x-source-extension'];
+    const extension = parseSourceExtension(
+      response.headers[AgentHeader.SourceExtension]
+    );
 
-    if (typeof extension !== 'string' || !/^[a-z0-9]+$/.test(extension)) {
+    if (extension === null) {
       response.destroy();
       throw new Error('The egress agent did not name the source format.');
     }

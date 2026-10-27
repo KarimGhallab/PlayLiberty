@@ -24,6 +24,36 @@ export {
   EgressSwitchError,
   EgressSwitchFailedError
 } from './egressAgent/client.js';
+export {
+  AgentErrorCode,
+  AgentHeader,
+  AgentHttpStatus,
+  AgentMethod,
+  AgentRoute,
+  applyBody,
+  decodeReply,
+  fetchBody,
+  listBody,
+  parseAgentStatus,
+  parseApplyBody,
+  parseCheckFacts,
+  parseFetchBody,
+  parseListBody,
+  parseSourceExtension,
+  parseSwitchBody,
+  parseYoutubeSource,
+  switchBody,
+  wireReply
+} from './egressAgent/protocol.js';
+export type {
+  AgentReply,
+  AgentWireReply,
+  ApplyBody,
+  DecodedReply,
+  FetchBody,
+  ListBody,
+  SwitchBody
+} from './egressAgent/protocol.js';
 export { EgressAgentFetcher } from './egressAgent/agentFetcher.js';
 export {
   isValidVideoId,

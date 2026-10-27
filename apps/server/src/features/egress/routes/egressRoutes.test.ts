@@ -9,7 +9,8 @@ import type {
 } from '@playliberty/youtube';
 import {
   EgressConfigUnknownError,
-  EgressSwitchFailedError
+  EgressSwitchFailedError,
+  SourceFailureKind
 } from '@playliberty/youtube';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
@@ -30,7 +31,7 @@ const CHECK_OK: EgressCheckFacts = {
   handshake: true,
   listing: true,
   exitIp: '185.0.0.9',
-  reason: null,
+  failure: null,
   active: '01-fr'
 };
 
@@ -249,7 +250,7 @@ describe('switching an exit', () => {
       handshake: true,
       listing: false,
       exitIp: '185.0.0.9',
-      reason: 'blocked',
+      failure: SourceFailureKind.Blocked,
       active: '01-fr'
     });
     const app = await adminApp(agent);
@@ -390,6 +391,30 @@ describe('checking the active exit', () => {
     });
     expect(response.json().configs[0].lastCheckAt).not.toBeNull();
     expect(response.json().configs[1].active).toBe(false);
+  });
+
+  it('derives a network failure when a working listing has no exit address', async () => {
+    const agent = fakeAgent();
+    agent.setCheck({
+      handshake: true,
+      listing: true,
+      exitIp: null,
+      failure: null,
+      active: '01-fr'
+    });
+    const app = await adminApp(agent);
+
+    const response = await app.app.inject({
+      method: 'POST',
+      url: '/api/v1/egress/check',
+      headers: ADMIN
+    });
+
+    expect(response.json().configs[0]).toMatchObject({
+      status: EgressStatus.Failed,
+      lastError: SourceFailureKind.Network,
+      lastExitIp: null
+    });
   });
 
   it('reports an unreachable agent without changing a row', async () => {

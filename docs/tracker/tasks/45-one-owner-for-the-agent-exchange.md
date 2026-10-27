@@ -1,47 +1,26 @@
 # 45: One owner for the agent exchange and its Check verdict
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 
-## Objective
+## Outcome
 
-The agent and the server share one description of their socket exchange, so a status, a body field or a decoding rule is written once. The agent returns Check facts and the server decides the verdict.
+`packages/youtube/src/egressAgent/protocol.ts` is the one description of the socket. It owns the routes and methods, the `x-source-extension` header, the HTTP statuses, the error codes, and one `ERROR_STATUSES` table from a code to its status. `wireReply` turns an outcome into the status and body the agent writes; `decodeReply` maps a status and body back to an outcome and refuses a pair the table does not allow. The request builders and parsers, the response parsers and the download-option validator live there too.
 
-## Context
+Both ends import it. The agent's routes return an `AgentReply` and one `sendReply` writes it through `wireReply`; no status code or body field is written by hand. The client asks for each route through the protocol, decodes every answer through `decodeReply`, and throws the error that route names. The three meanings that shared one status now survive as two error codes: a killed listing and a killed download both answer `switching` and become `EgressSwitchError` and `EgressStreamError` at their own route, while a refused switch answers `switch_failed` and becomes `EgressSwitchFailedError`.
 
-Architecture review, 2026-10-27, candidate 2. The recorded decision says the agent is stateless and policy-free and the server owns the policy; this ticket makes the Check obey that line. See [`ARCHITECTURE.md`](../../ARCHITECTURE.md#the-youtube-egress-runs-in-a-host-network-namespace).
+The fetch body's options validate against a table declared `satisfies Record<keyof DownloadOptions, ...>`, so a new option fails the wire parser at compile time. The server's config now carries `DownloadOptions` instead of a second copy of the shape.
 
-## Current state
+The Check is facts only. `EgressCheckFacts.reason` became `failure`, which is what the listing said, not a verdict. `checkActive` no longer computes `ok` or substitutes `network`; `egressService.applyCheckFacts` derives `ok` from the listing and the exit address and stores `failure ?? network`. The row the page reads is unchanged.
 
-- The agent writes status codes and body field names; the client decodes them with literals, per route. One status carries three client meanings: a killed listing, a killed download and a refused switch.
-- Each end parses bodies and responses privately, so the decoders are exercised only through a real socket.
-- The Check verdict is computed by the agent (ok and reason) and recomputed by the server from the same facts.
-- The download options are restated in the wire parser, the argv builder and the environment reader, so a new option can be dropped silently by the parser.
-
-## Scope
-
-- One protocol module in the YouTube package: the request and response shapes per route, and one table from status plus body to an outcome. Both ends import it; no status code or field name for the exchange is written outside it.
-- The fetch body's options derive from the one shared type.
-- The response decoders become pure and unit-tested without a socket.
-- The agent answers a Check with facts only; the server derives the verdict and stores it. The row the page reads is unchanged.
-- The socket assembly suite keeps proving the wire end to end.
-
-## Out of scope
-
-- The Check download's tuned values, which differ from the server's by design.
-- When to rotate, which stays the server's policy.
-- New routes and the stream's byte handling.
-
-## Blocking edges
-
-None. Can start immediately.
+The decoders are pure and unit-tested against every code and every malformed body. The socket assembly suite still proves the wire end to end.
 
 ## Verification
 
-- No status code or body field name for the exchange is written outside the protocol module.
-- The decoder tests cover every route outcome, including the three meanings that shared one status.
-- A refused listing, an interrupted download and a killed listing still become the same client errors.
-- A Check records the same row as before; the agent's answer carries facts only.
-- The egress agent, YouTube, server and egress route suites pass; `pnpm run build` and `pnpm run lint:check` pass.
+- The protocol's table test round-trips every error outcome, keeps the two 503 meanings and the two 502 meanings apart, and refuses a status that disagrees with its body.
+- The request and response parsers cover a valid body, a missing download option, an empty limit rate, a bad video id and a bad source entry.
+- A killed listing, a killed download and a refused switch still become their own client errors over a real socket.
+- A Check with a working listing and no exit address records the network failure; the agent's answer carries facts only.
+- `pnpm run test:unit` is 1200 passed across all packages and apps; `pnpm run build` and `pnpm run lint:check` pass.
 
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#the-youtube-egress-runs-in-a-host-network-namespace).

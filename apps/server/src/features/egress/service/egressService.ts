@@ -9,7 +9,8 @@ import type {
 } from '@playliberty/youtube';
 import {
   EgressConfigUnknownError,
-  EgressSwitchFailedError
+  EgressSwitchFailedError,
+  SourceFailureKind
 } from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
@@ -195,6 +196,8 @@ function applyCheckFacts(
   name: string,
   facts: EgressCheckFacts
 ): void {
+  /* The agent reports facts; the verdict is the server's policy. A working
+   * listing with no exit address is a network failure, not a source one. */
   const ok = facts.listing && facts.exitIp !== null;
   const now = new Date().toISOString();
   const previous = database.db
@@ -213,7 +216,7 @@ function applyCheckFacts(
         status: ok ? EgressStatus.Ok : EgressStatus.Failed,
         lastCheckAt: now,
         lastExitIp: facts.exitIp,
-        lastError: ok ? null : facts.reason,
+        lastError: ok ? null : (facts.failure ?? SourceFailureKind.Network),
         ...(ok || becameActive ? { consecutiveFailures: 0 } : {})
       })
       .where(eq(egressConfigs.name, name))

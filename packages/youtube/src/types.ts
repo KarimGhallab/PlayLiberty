@@ -87,11 +87,15 @@ export enum SourceFailureKind {
 
 /* The three facts a check measures, plus the active config. A null handshake
  * means no interface is configured, not a failure. */
+/*
+ * What a check measured. `failure` is what the listing said, not a verdict:
+ * the server decides whether the check passed and which reason to store.
+ */
 export interface EgressCheckFacts {
   handshake: boolean | null;
   listing: boolean;
   exitIp: string | null;
-  reason: SourceFailureKind | null;
+  failure: SourceFailureKind | null;
   active: string | null;
 }
 

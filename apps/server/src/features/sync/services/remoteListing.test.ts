@@ -13,6 +13,7 @@ import type { IEgressAgentClient, YoutubeSource } from '@playliberty/youtube';
 import {
   EGRESS_BLOCKED_REASON,
   EgressSourceUnavailableError,
+  SourceFailureKind,
   YoutubeSourceKind
 } from '@playliberty/youtube';
 
@@ -163,7 +164,7 @@ describe('listing through the egress agent', () => {
 
   it('records the source sentence when the exit is refused, not a transport fault', async () => {
     const { agent } = fakeAgent(async () => {
-      throw new EgressSourceUnavailableError('blocked');
+      throw new EgressSourceUnavailableError(SourceFailureKind.Blocked);
     });
     context = await createTestContext(
       { YOUTUBE_TRANSPORT: 'egress-agent' },
@@ -207,7 +208,7 @@ describe('listing through the egress agent', () => {
           return source(['aaaaaaaaaaa', 'bbbbbbbbbbb']);
         }
 
-        throw new EgressSourceUnavailableError('blocked');
+        throw new EgressSourceUnavailableError(SourceFailureKind.Blocked);
       },
       fetchTrack: async () => {
         throw new Error('this test does not fetch');

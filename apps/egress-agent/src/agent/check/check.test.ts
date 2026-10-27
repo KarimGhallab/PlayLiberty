@@ -24,14 +24,14 @@ function deps(overrides: Partial<CheckDeps> = {}): CheckDeps {
 }
 
 describe('checkActive', () => {
-  it('reports the three facts of the loaded config', async () => {
+  it('reports the facts of the loaded config without a verdict', async () => {
     const facts = await checkActive(deps());
 
     expect(facts).toMatchObject({
       handshake: true,
       listing: true,
       exitIp: '185.0.0.9',
-      reason: null,
+      failure: null,
       active: '01-fr'
     });
   });
@@ -47,7 +47,7 @@ describe('checkActive', () => {
 
     expect(facts).toMatchObject({
       listing: false,
-      reason: 'blocked',
+      failure: 'blocked',
       exitIp: '185.0.0.9'
     });
   });
@@ -61,23 +61,23 @@ describe('checkActive', () => {
       })
     );
 
-    expect(facts.reason).toBe('unavailable');
+    expect(facts.failure).toBe('unavailable');
   });
 
-  it('reports a network failure when the exit address cannot be read', async () => {
+  it('leaves the verdict to the server when the exit address cannot be read', async () => {
     const facts = await checkActive(deps({ readExitIp: async () => null }));
 
     expect(facts).toMatchObject({
       listing: true,
       exitIp: null,
-      reason: 'network'
+      failure: null
     });
   });
 
   it('does not fail a working check on a stale handshake', async () => {
     const facts = await checkActive(deps({ readHandshake: async () => false }));
 
-    expect(facts).toMatchObject({ handshake: false, reason: null });
+    expect(facts).toMatchObject({ handshake: false, failure: null });
   });
 
   it('treats an unconfigured interface as unmeasured', async () => {

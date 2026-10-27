@@ -7,23 +7,33 @@ import { extname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
 import type {
-  AgentFetchRequest,
   EgressAgentStatus,
   EgressCheckFacts,
+  FetchBody,
   YoutubeSource
 } from '@playliberty/youtube';
+import type { AgentReply } from '@playliberty/youtube';
 import {
+  AgentErrorCode,
+  AgentHeader,
+  AgentHttpStatus,
+  AgentMethod,
+  AgentRoute,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError,
   classifySourceFailure,
-  isValidVideoId,
-  validateYoutubeUrl
+  parseApplyBody,
+  parseFetchBody,
+  parseListBody,
+  parseSwitchBody,
+  validateYoutubeUrl,
+  wireReply
 } from '@playliberty/youtube';
 
-import { UnknownConfigError } from '../switch/switch.js';
 import {
   DEFAULT_DRAIN_TIMEOUT_MS,
-  SwitchInterruptedError
+  SwitchInterruptedError,
+  UnknownConfigError
 } from '../switch/switch.js';
 
 /* The socket is the gate: only the owner may connect, so the pod's uid is the
@@ -46,18 +56,13 @@ export interface AgentOptions {
   /* The route owns the temp directory; the fetcher writes into it and the
    * route removes it once the bytes have left. */
   fetch: (
-    request: AgentFetchRequest & { tempDir: string }
+    request: FetchBody & { tempDir: string }
   ) => Promise<{ filePath: string }>;
 }
 
 export interface AgentHandle {
   socketPath: string;
   close(): Promise<void>;
-}
-
-interface AgentResponse {
-  status: number;
-  body: unknown;
 }
 
 async function ownSocket(socketPath: string, peerUid: number): Promise<void> {
@@ -109,190 +114,121 @@ function readBody(request: IncomingMessage): Promise<unknown> {
   });
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+/* A body the transport could not read is the request's fault, not the
+ * agent's: the protocol turns the null into `invalid_request`. */
+async function bodyOf(request: IncomingMessage): Promise<unknown> {
+  try {
+    return await readBody(request);
+  } catch {
+    return null;
+  }
 }
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-interface FetchBody {
-  videoId: string;
-  skipNonMusic: boolean;
-  timeoutMs: number;
-  download: AgentFetchRequest['download'];
-}
+function sendReply(response: ServerResponse, reply: AgentReply): void {
+  const wired = wireReply(reply);
 
-const DOWNLOAD_NUMBERS = [
-  'concurrency',
-  'sleepRequests',
-  'sleepIntervalMin',
-  'sleepIntervalMax',
-  'retries',
-  'fragmentRetries',
-  'fileAccessRetries',
-  'socketTimeout'
-] as const;
-
-function parseFetchBody(value: unknown): FetchBody | null {
-  if (
-    !isRecord(value) ||
-    typeof value.videoId !== 'string' ||
-    !isValidVideoId(value.videoId) ||
-    typeof value.skipNonMusic !== 'boolean' ||
-    typeof value.timeoutMs !== 'number' ||
-    !Number.isInteger(value.timeoutMs) ||
-    value.timeoutMs <= 0 ||
-    !isRecord(value.download)
-  ) {
-    return null;
-  }
-
-  const download = value.download;
-
-  if (
-    DOWNLOAD_NUMBERS.some(field => typeof download[field] !== 'number') ||
-    typeof download.limitRate !== 'string' ||
-    download.limitRate.length === 0
-  ) {
-    return null;
-  }
-
-  return {
-    videoId: value.videoId,
-    skipNonMusic: value.skipNonMusic,
-    timeoutMs: value.timeoutMs,
-    download: download as unknown as FetchBody['download']
-  };
-}
-
-function sendJson(
-  response: ServerResponse,
-  status: number,
-  body: unknown
-): void {
-  response.writeHead(status, { 'content-type': 'application/json' });
-  response.end(JSON.stringify(body));
+  response.writeHead(wired.status, { 'content-type': 'application/json' });
+  response.end(JSON.stringify(wired.body));
 }
 
 async function route(
   request: IncomingMessage,
   options: AgentOptions
-): Promise<AgentResponse> {
+): Promise<AgentReply> {
   const path = request.url?.split('?')[0] ?? '';
 
-  if (request.method === 'GET' && path === '/status') {
-    return { status: 200, body: await options.status() };
+  if (request.method === AgentMethod.Get && path === AgentRoute.Status) {
+    return { outcome: 'ok', body: await options.status() };
   }
 
-  if (request.method === 'POST' && path === '/switch') {
-    const body = await readBody(request);
+  if (request.method === AgentMethod.Post && path === AgentRoute.Switch) {
+    const body = parseSwitchBody(await bodyOf(request));
 
-    if (!isRecord(body)) {
-      return { status: 400, body: { error: 'invalid_request' } };
-    }
-
-    const name = body.name;
-
-    if (name !== undefined && (typeof name !== 'string' || name.length === 0)) {
-      return { status: 400, body: { error: 'invalid_request' } };
+    if (body === null) {
+      return { outcome: AgentErrorCode.InvalidRequest };
     }
 
     try {
       return {
-        status: 200,
-        body: await options.switch(typeof name === 'string' ? name : undefined)
+        outcome: 'ok',
+        body: await options.switch(body.name)
       };
     } catch (error) {
       if (error instanceof UnknownConfigError) {
-        return { status: 400, body: { error: 'unknown_config' } };
+        return { outcome: AgentErrorCode.UnknownConfig };
       }
 
       return {
-        status: 503,
-        body: { error: 'switch_failed', detail: messageOf(error) }
+        outcome: AgentErrorCode.SwitchFailed,
+        detail: messageOf(error)
       };
     }
   }
 
-  if (request.method === 'POST' && path === '/check') {
-    return { status: 200, body: await options.check() };
+  if (request.method === AgentMethod.Post && path === AgentRoute.Check) {
+    return { outcome: 'ok', body: await options.check() };
   }
 
-  if (request.method === 'POST' && path === '/list') {
-    const body = await readBody(request);
+  if (request.method === AgentMethod.Post && path === AgentRoute.List) {
+    const body = parseListBody(await bodyOf(request));
 
-    if (
-      !isRecord(body) ||
-      typeof body.url !== 'string' ||
-      body.url.length === 0
-    ) {
-      return { status: 400, body: { error: 'invalid_request' } };
+    if (body === null) {
+      return { outcome: AgentErrorCode.InvalidRequest };
     }
 
     try {
       validateYoutubeUrl(body.url);
     } catch {
-      return { status: 400, body: { error: 'invalid_source' } };
+      return { outcome: AgentErrorCode.InvalidSource };
     }
 
     try {
-      return { status: 200, body: await options.list(body.url) };
+      return { outcome: 'ok', body: await options.list(body.url) };
     } catch (error) {
       if (error instanceof SwitchInterruptedError) {
-        return { status: 503, body: { error: 'switching' } };
+        return { outcome: AgentErrorCode.Switching };
       }
 
       /* A listing failure is the source's answer, not the agent failing: the
        * server records the classified reason and its own sentence. */
       return {
-        status: 502,
-        body: {
-          error: 'source_unavailable',
-          reason: classifySourceFailure(messageOf(error))
-        }
+        outcome: AgentErrorCode.SourceUnavailable,
+        reason: classifySourceFailure(messageOf(error))
       };
     }
   }
 
-  if (request.method === 'POST' && path === '/apply') {
-    const body = await readBody(request);
+  if (request.method === AgentMethod.Post && path === AgentRoute.Apply) {
+    const body = parseApplyBody(await bodyOf(request));
 
-    if (
-      !isRecord(body) ||
-      typeof body.name !== 'string' ||
-      body.name.length === 0 ||
-      (body.drainTimeoutMs !== undefined &&
-        (typeof body.drainTimeoutMs !== 'number' ||
-          !Number.isInteger(body.drainTimeoutMs) ||
-          body.drainTimeoutMs <= 0))
-    ) {
-      return { status: 400, body: { error: 'invalid_request' } };
+    if (body === null) {
+      return { outcome: AgentErrorCode.InvalidRequest };
     }
 
     try {
       await options.apply(
         body.name,
-        typeof body.drainTimeoutMs === 'number'
-          ? body.drainTimeoutMs
-          : DEFAULT_DRAIN_TIMEOUT_MS
+        body.drainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS
       );
     } catch (error) {
       if (error instanceof UnknownConfigError) {
-        return { status: 400, body: { error: 'unknown_config' } };
+        return { outcome: AgentErrorCode.UnknownConfig };
       }
 
       return {
-        status: 503,
-        body: { error: 'switch_failed', detail: messageOf(error) }
+        outcome: AgentErrorCode.SwitchFailed,
+        detail: messageOf(error)
       };
     }
 
-    return { status: 200, body: await options.status() };
+    return { outcome: 'ok', body: await options.status() };
   }
 
-  return { status: 404, body: { error: 'not_found' } };
+  return { outcome: AgentErrorCode.NotFound };
 }
 
 /* The one route that answers with bytes: the temp directory belongs to this
@@ -302,10 +238,10 @@ async function streamFetch(
   response: ServerResponse,
   options: AgentOptions
 ): Promise<void> {
-  const parsed = parseFetchBody(await readBody(request));
+  const parsed = parseFetchBody(await bodyOf(request));
 
   if (parsed === null) {
-    sendJson(response, 400, { error: 'invalid_request' });
+    sendReply(response, { outcome: AgentErrorCode.InvalidRequest });
     return;
   }
 
@@ -316,10 +252,10 @@ async function streamFetch(
     const extension = extname(result.filePath).slice(1);
     const size = (await stat(result.filePath)).size;
 
-    response.writeHead(200, {
+    response.writeHead(AgentHttpStatus.Ok, {
       'content-type': 'application/octet-stream',
       'content-length': size,
-      'x-source-extension': extension
+      [AgentHeader.SourceExtension]: extension
     });
 
     await pipeline(createReadStream(result.filePath), response);
@@ -327,14 +263,14 @@ async function streamFetch(
     if (response.headersSent) {
       response.destroy();
     } else if (error instanceof SwitchInterruptedError) {
-      sendJson(response, 503, { error: 'switching' });
+      sendReply(response, { outcome: AgentErrorCode.Switching });
     } else if (error instanceof YoutubeVideoUnavailableError) {
-      sendJson(response, 410, { error: 'unavailable' });
+      sendReply(response, { outcome: AgentErrorCode.Unavailable });
     } else if (error instanceof YoutubeSponsorBlockError) {
-      sendJson(response, 502, { error: 'sponsorblock' });
+      sendReply(response, { outcome: AgentErrorCode.SponsorBlock });
     } else {
-      sendJson(response, 502, {
-        error: 'source_unavailable',
+      sendReply(response, {
+        outcome: AgentErrorCode.SourceUnavailable,
         reason: classifySourceFailure(messageOf(error))
       });
     }
@@ -347,10 +283,10 @@ export async function startAgent(options: AgentOptions): Promise<AgentHandle> {
   const server = createServer((request, response) => {
     const path = request.url?.split('?')[0] ?? '';
 
-    if (request.method === 'POST' && path === '/fetch') {
+    if (request.method === AgentMethod.Post && path === AgentRoute.Fetch) {
       void streamFetch(request, response, options).catch(() => {
         if (!response.headersSent) {
-          sendJson(response, 500, { error: 'internal' });
+          sendReply(response, { outcome: AgentErrorCode.Internal });
         } else {
           response.destroy();
         }
@@ -359,8 +295,8 @@ export async function startAgent(options: AgentOptions): Promise<AgentHandle> {
     }
 
     void route(request, options).then(
-      result => sendJson(response, result.status, result.body),
-      () => sendJson(response, 500, { error: 'internal' })
+      reply => sendReply(response, reply),
+      () => sendReply(response, { outcome: AgentErrorCode.Internal })
     );
   });
 

@@ -42,7 +42,7 @@ const check: EgressCheckFacts = {
   handshake: true,
   listing: true,
   exitIp: '185.0.0.9',
-  reason: null,
+  failure: null,
   active: '01-fr'
 };
 

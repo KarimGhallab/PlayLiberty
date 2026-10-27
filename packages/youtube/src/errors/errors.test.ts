@@ -183,10 +183,12 @@ describe('the failure types', () => {
 
   it('reads the disposition of a source failure from its reason', () => {
     expect(
-      new EgressSourceUnavailableError('blocked').failure.disposition
+      new EgressSourceUnavailableError(SourceFailureKind.Blocked).failure
+        .disposition
     ).toBe(FailureDisposition.ExitFault);
     expect(
-      new EgressSourceUnavailableError('unavailable').failure.disposition
+      new EgressSourceUnavailableError(SourceFailureKind.Unavailable).failure
+        .disposition
     ).toBe(FailureDisposition.Terminal);
   });
 

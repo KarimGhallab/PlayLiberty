@@ -1,14 +1,4 @@
-export interface DownloadConfig {
-  concurrency: number;
-  sleepRequests: number;
-  sleepIntervalMin: number;
-  sleepIntervalMax: number;
-  limitRate: string;
-  retries: number;
-  fragmentRetries: number;
-  fileAccessRetries: number;
-  socketTimeout: number;
-}
+import type { DownloadOptions } from '@playliberty/youtube';
 
 /* Which process reads a source: the server's own yt-dlp, or the egress agent
  * inside the tunnel. The default keeps a workstation and the tests local. */
@@ -43,7 +33,7 @@ export interface Config {
   ffmpegBinary: string;
   ffprobeBinary: string;
   downloadTimeoutMs: number;
-  download: DownloadConfig;
+  download: DownloadOptions;
   /* The explicit test-harness opt-in. The E2E routes and the fake adapter are
    * unreachable without it, even under the test runtime. */
   e2eHarness: boolean;

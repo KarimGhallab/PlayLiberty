@@ -14,36 +14,30 @@ function messageOf(error: unknown): string {
 }
 
 /*
- * A check is three facts about the loaded config: the handshake, the exit
- * address, and one listing extraction. The listing and the address decide the
- * verdict; the handshake is evidence, because a tunnel that has just carried
- * traffic is up even when its last handshake looks old.
+ * A check is the facts the loaded config reports: the handshake, the exit
+ * address, and one listing extraction with what it said when it failed. The
+ * server decides the verdict. The handshake is evidence, because a tunnel that
+ * has just carried traffic is up even when its last handshake looks old.
  */
 export async function checkActive(deps: CheckDeps): Promise<EgressCheckFacts> {
   const handshake = await deps.readHandshake();
   const exitIp = await deps.readExitIp();
 
   let listing = true;
-  let reason: SourceFailureKind | null = null;
+  let failure: SourceFailureKind | null = null;
 
   try {
     await deps.listSource();
   } catch (error) {
     listing = false;
-    reason = classifySourceFailure(messageOf(error));
+    failure = classifySourceFailure(messageOf(error));
   }
-
-  if (listing && exitIp === null) {
-    reason = SourceFailureKind.Network;
-  }
-
-  const ok = listing && exitIp !== null;
 
   return {
     handshake,
     listing,
     exitIp,
-    reason: ok ? null : (reason ?? SourceFailureKind.Network),
+    failure,
     active: deps.active()
   };
 }
