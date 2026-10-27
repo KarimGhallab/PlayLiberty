@@ -1,6 +1,6 @@
 # Tunnel the YouTube egress
 
-Status: ready
+Status: resolved
 Labels: `enhancement`
 
 ## Problem Statement

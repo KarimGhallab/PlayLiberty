@@ -64,11 +64,13 @@ export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
 
 /* The only read that names the reader; the share picker omits its row, and
  * sharing with oneself is a route refusal. */
+export const currentAccountQuery = {
+  queryKey: ['me'],
+  queryFn: () => readEndpoint(endpoints.currentAccount)
+};
+
 export function useCurrentAccount(): UseQueryResult<Account, Error> {
-  return useQuery({
-    queryKey: ['me'],
-    queryFn: () => readEndpoint(endpoints.currentAccount)
-  });
+  return useQuery(currentAccountQuery);
 }
 
 /* The operator's pool: an admin-only read, so a 404 here is the gate, not a

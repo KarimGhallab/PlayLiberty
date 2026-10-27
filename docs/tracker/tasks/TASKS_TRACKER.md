@@ -49,7 +49,7 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`40-upload-a-playlist-cover`](14-upload-a-playlist-cover/TICKETS.md)                                                       | resolved | none                                       | none                                                      |
 | [`41-prepare-the-production-deployment`](15-prepare-the-production-deployment/TICKETS.md)                                   | resolved | none                                       | none                                                      |
 | [`42-crop-a-playlist-cover`](17-crop-a-playlist-cover/TICKETS.md)                                                           | resolved | none                                       | none                                                      |
-| [`43-tunnel-the-youtube-egress`](16-tunnel-the-youtube-egress/TICKETS.md)                                                   | open     | none                                       | none                                                      |
+| [`43-tunnel-the-youtube-egress`](16-tunnel-the-youtube-egress/TICKETS.md)                                                   | resolved | none                                       | none                                                      |
 
 Feature-scoped ticket sets live in a folder named for their spec:
 

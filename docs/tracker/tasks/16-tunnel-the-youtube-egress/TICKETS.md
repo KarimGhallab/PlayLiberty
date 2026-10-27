@@ -20,16 +20,15 @@ exists so the transport switch lands against one seam instead of two.
 | [`06-five-failures-rotate-the-exit`](06-five-failures-rotate-the-exit.md)                                           | resolved | [`04`](04-a-sync-lists-through-the-tunnel.md), [`05`](05-a-track-downloads-through-the-tunnel.md)                                                                                                                                                       | [`07`](07-an-operator-can-switch-an-exit-by-hand.md), [`09`](09-verify-the-tunnel-against-proton.md)                                            |
 | [`07-an-operator-can-switch-an-exit-by-hand`](07-an-operator-can-switch-an-exit-by-hand.md)                         | resolved | [`06`](06-five-failures-rotate-the-exit.md)                                                                                                                                                                                                             | [`09`](09-verify-the-tunnel-against-proton.md)                                                                                                  |
 | [`08-the-agent-runs-under-systemd-on-the-host`](08-the-agent-runs-under-systemd-on-the-host.md)                     | resolved | [`02`](02-the-egress-page-shows-the-pool-and-its-state.md)                                                                                                                                                                                              | [`09`](09-verify-the-tunnel-against-proton.md)                                                                                                  |
-| [`09-verify-the-tunnel-against-proton`](09-verify-the-tunnel-against-proton.md)                                     | open     | [`03`](03-an-admin-can-probe-an-exit.md), [`05`](05-a-track-downloads-through-the-tunnel.md), [`06`](06-five-failures-rotate-the-exit.md), [`07`](07-an-operator-can-switch-an-exit-by-hand.md), [`08`](08-the-agent-runs-under-systemd-on-the-host.md) | none                                                                                                                                            |
+| [`09-verify-the-tunnel-against-proton`](09-verify-the-tunnel-against-proton.md)                                     | resolved | [`03`](03-an-admin-can-probe-an-exit.md), [`05`](05-a-track-downloads-through-the-tunnel.md), [`06`](06-five-failures-rotate-the-exit.md), [`07`](07-an-operator-can-switch-an-exit-by-hand.md), [`08`](08-the-agent-runs-under-systemd-on-the-host.md) | none                                                                                                                                            |
 | [`10-one-action-per-egress-row`](10-one-action-per-egress-row.md)                                                   | resolved | none                                                                                                                                                                                                                                                    | none                                                                                                                                            |
 
 ## Conventions
 
 - One file per ticket, numbered from `01` in dependency order, blockers first.
-- The frontier is every ticket whose blockers are done. `01` to `08` and `10`
-  are resolved, so `09` is the frontier.
-- `09` is the only ticket labelled `ready-for-human`: it needs the VPS and a live
-  Proton account, and it is the integration check no test can replace.
+- Every ticket in this set is resolved.
+- `09` was the only ticket labelled `ready-for-human`: it needed the VPS and a
+  live Proton account, and it is the integration check no test can replace.
 - Resolve a ticket by recording its outcome in the ticket and updating its row
   here, then the set's row in [`TASKS_TRACKER.md`](../TASKS_TRACKER.md). Do not
   delete it.

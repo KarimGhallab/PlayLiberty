@@ -71,7 +71,6 @@ export const fr: Messages = {
     back: "Retour à l'accueil",
     loading: 'Chargement des configurations.',
     readFailed: 'Impossible de charger les configurations.',
-    notAvailable: 'Page indisponible.',
     empty: 'Aucune configuration installée.',
     agentUp: 'Agent egress joignable.',
     agentDown:
@@ -276,6 +275,12 @@ export const fr: Messages = {
     heading: "Cette playlist n'est pas ici",
     prose:
       "Elle a peut-être été supprimée, ou bien elle appartient à quelqu'un d'autre et ne vous est plus partagée.",
+    back: "Retour à l'accueil"
+  },
+  notFoundPage: {
+    code: '404',
+    heading: 'Page introuvable',
+    prose: "La page que vous cherchez n'existe pas.",
     back: "Retour à l'accueil"
   },
   header: {

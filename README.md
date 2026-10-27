@@ -13,6 +13,8 @@ Tooling lives at the root: TypeScript, ESLint, Prettier with import sorting, Hus
 ## Commands
 
 - `pnpm install` - install all workspace dependencies.
+- `pnpm dev` - build the workspace packages, then start the egress agent, server and web in parallel. The server downloads with local yt-dlp; the agent backs the egress page only, needs the dev pool at `apps/egress-agent/proton`, and has no WireGuard interface, so switching is unavailable.
+- `pnpm run dev:apps` - start the three dev processes without rebuilding the workspace packages.
 - `pnpm run build` - build every workspace package in dependency order.
 - `pnpm run lint` - lint the repository.
 - `pnpm run format` - format the repository.

@@ -69,7 +69,6 @@ export const en = {
     back: 'Back to home',
     loading: 'Loading the configurations.',
     readFailed: 'The configurations could not be loaded.',
-    notAvailable: 'This page is not available.',
     empty: 'No configuration is installed.',
     agentUp: 'Egress agent reachable.',
     agentDown:
@@ -271,6 +270,12 @@ export const en = {
     heading: 'This playlist is not here',
     prose:
       'It may have been deleted, or it may belong to someone else and no longer be shared with you.',
+    back: 'Back to home'
+  },
+  notFoundPage: {
+    code: '404',
+    heading: 'Page not found',
+    prose: 'The page you are looking for does not exist.',
     back: 'Back to home'
   },
   header: {

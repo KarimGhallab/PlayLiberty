@@ -16,6 +16,7 @@ import {
   useEgress,
   useSwitchEgress
 } from '../../../shared/api/queries/queries';
+import NotFoundPage from '../../../shared/components/NotFoundPage/NotFoundPage';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import ErrorToast from '../../../shared/components/Toast/ErrorToast';
 import SuccessToast from '../../../shared/components/Toast/SuccessToast';
@@ -98,6 +99,10 @@ export default function EgressPage() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  if (notAvailable) {
+    return <NotFoundPage />;
+  }
+
   const detailOf = (error: Error): string | null =>
     error instanceof ApiError ? (error.problem?.detail ?? null) : null;
 
@@ -178,17 +183,13 @@ export default function EgressPage() {
         <h1 className={styles.egress__title}>{t('egress.title')}</h1>
       </div>
 
-      {notAvailable ? (
-        <p className={styles.egress__say}>{t('egress.notAvailable')}</p>
-      ) : null}
-
       {egress.isPending ? (
         <p className={styles.egress__say} role="status">
           {t('egress.loading')}
         </p>
       ) : null}
 
-      {egress.isError && !notAvailable ? (
+      {egress.isError ? (
         <ReadFailure
           message={t('egress.readFailed')}
           error={egress.error}

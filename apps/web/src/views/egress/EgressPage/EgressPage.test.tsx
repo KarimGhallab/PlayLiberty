@@ -124,7 +124,7 @@ describe('the egress page', () => {
     expect(screen.getByText('01-fr')).toBeInTheDocument();
   });
 
-  it('answers a non-admin with the unavailable sentence and no pool', async () => {
+  it('answers a non-admin with the page-level not-found', async () => {
     server.use(
       http.get(mockUrl(endpoints.egress), () =>
         problemResponse({
@@ -138,9 +138,11 @@ describe('the egress page', () => {
     renderPage();
 
     expect(
-      await screen.findByText('This page is not available.')
+      await screen.findByRole('heading', { name: 'Page not found' })
     ).toBeInTheDocument();
+    expect(screen.getByText('404')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'VPN settings' })).toBeNull();
   });
 
   it('offers a retry when the read fails for another reason', async () => {
