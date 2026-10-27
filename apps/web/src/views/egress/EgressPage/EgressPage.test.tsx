@@ -25,7 +25,8 @@ import {
   respond
 } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
-import EgressPage from './EgressPage';
+import { stubViewport } from '../../../testing/viewport';
+import EgressPage, { CARD_QUERY } from './EgressPage';
 
 const TWO_HOURS_AGO = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
@@ -111,6 +112,38 @@ describe('the egress page', () => {
     expect(
       screen.getByRole('img', { name: 'Switzerland' })
     ).toBeInTheDocument();
+  });
+
+  it('gives every exit its own card when the table does not fit', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.egress), () => respond(endpoints.egress, READ))
+    );
+    const restore = stubViewport(CARD_QUERY);
+
+    try {
+      renderPage();
+
+      expect(
+        await screen.findByRole('list', { name: 'VPN settings' })
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+      const [first, second] = screen.getAllByRole('listitem');
+      expect(within(first).getByText('01-fr')).toBeInTheDocument();
+      expect(within(first).getByText('Endpoint')).toBeInTheDocument();
+      expect(within(first).getByText('185.0.0.1:51820')).toBeInTheDocument();
+      expect(within(first).getByText('OK')).toBeInTheDocument();
+      expect(within(first).getByText('Active')).toBeInTheDocument();
+      expect(within(first).getByText('2 hours ago')).toBeInTheDocument();
+      expect(
+        within(first).getByRole('button', { name: 'Check' })
+      ).toBeInTheDocument();
+      expect(
+        within(second).getByRole('button', { name: 'Switch' })
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 
   it('says the agent is unreachable while still drawing the last known pool', async () => {

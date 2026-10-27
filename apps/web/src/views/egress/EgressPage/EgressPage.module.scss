@@ -129,10 +129,17 @@
     tbody th {
       font-weight: var(--weight-medium);
     }
+
+    /* A long endpoint, an IPv6 one say, wraps inside its cell rather than
+     * widening the table past the page. */
+    td {
+      overflow-wrap: break-word;
+    }
   }
 
   &__name {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
@@ -163,6 +170,64 @@
     color: var(--muted);
     font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Below the strip's width a card takes over from the row: six columns cannot
+   * hold a phone, and the actions would sit off the right edge. */
+  &__configs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__config {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  &__config--active {
+    box-shadow: inset 2px 0 var(--egress);
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3) var(--space-4);
+    margin: 0;
+  }
+
+  &__fact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    dt {
+      color: var(--muted);
+      font-size: var(--text-xs);
+      line-height: var(--leading-normal);
+    }
+
+    dd {
+      margin: 0;
+      color: var(--ink);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+      line-height: var(--leading-normal);
+      overflow-wrap: break-word;
+    }
+  }
+
+  &__fact--wide {
+    grid-column: 1 / -1;
   }
 
   /* The measured address and the classified reason sit under their fact. */
@@ -237,6 +302,19 @@
 
   &__action:disabled &__switchIcon {
     color: inherit;
+  }
+
+  /* A card's control owns its row: no sizer to hold a column steady, the whole
+   * width, and the height a thumb is owed. */
+  &__actionWrap--full {
+    display: block;
+  }
+
+  &__action--full {
+    justify-content: center;
+    width: 100%;
+    height: auto;
+    min-height: var(--control-touch);
   }
 
   &__status {
