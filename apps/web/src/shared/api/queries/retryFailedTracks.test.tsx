@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PlaylistTrack } from '@playliberty/contracts';
 import {
   AssociationOrigin,
+  FailureKind,
   Provider,
   TrackFileStatus,
   TrackSourceStatus,
@@ -34,6 +35,7 @@ function failedTrack(index: number): PlaylistTrack {
       thumbnailPath: null,
       fileStatus: TrackFileStatus.Failed,
       sourceStatus: TrackSourceStatus.Available,
+      failureKind: FailureKind.Unknown,
       failureReason: 'The download failed.',
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-29T12:00:00.000Z'

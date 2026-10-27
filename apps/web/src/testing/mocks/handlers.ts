@@ -152,6 +152,7 @@ const TRACK_ONE: Track = {
   thumbnailPath: null,
   fileStatus: TrackFileStatus.Stored,
   sourceStatus: TrackSourceStatus.Available,
+  failureKind: null,
   failureReason: null,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-29T12:00:00.000Z'

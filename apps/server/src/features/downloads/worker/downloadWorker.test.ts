@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LiveEvent } from '@playliberty/contracts';
 import {
   AssociationOrigin,
+  FailureKind,
   LiveEventType,
   TrackFileStatus,
   TrackSourceStatus
@@ -441,6 +442,7 @@ describe('the download worker', () => {
     const row = trackRow(seeded.trackId);
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
     expect(row?.filePath).toBeNull();
+    expect(row?.failureKind).toBe(FailureKind.Unknown);
     expect(row?.failureReason).toBe(
       'yt-dlp exited with code 1: ERROR: something went wrong'
     );
@@ -510,6 +512,7 @@ describe('the download worker', () => {
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
     // Not terminal: the source is still there, so the next sync retries it.
     expect(row?.sourceStatus).toBe(TrackSourceStatus.Available);
+    expect(row?.failureKind).toBe(FailureKind.Unknown);
     expect(row?.failureReason).toBe(SPONSORBLOCK_FAILURE_REASON);
 
     // A later pass does not retry it on its own; the next sync does.

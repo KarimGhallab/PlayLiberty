@@ -12,6 +12,7 @@ import {
 import {
   AssociationOrigin,
   EgressStatus,
+  FailureKind,
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
@@ -99,6 +100,7 @@ export const tracks = sqliteTable(
       .notNull()
       .default(TrackSourceStatus.Available),
     filePath: text('file_path'),
+    failureKind: text('failure_kind').$type<FailureKind>(),
     failureReason: text('failure_reason'),
     createdAt: text('created_at').notNull().$defaultFn(createdAt),
     updatedAt: text('updated_at').notNull().$defaultFn(createdAt)

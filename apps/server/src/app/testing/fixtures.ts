@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 
 import {
   AssociationOrigin,
+  FailureKind,
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
@@ -89,6 +90,7 @@ export interface SeedTrackOptions {
   fileStatus?: TrackFileStatus;
   sourceStatus?: TrackSourceStatus;
   filePath?: string | null;
+  failureKind?: FailureKind | null;
   failureReason?: string | null;
 }
 
@@ -200,6 +202,7 @@ export function seedTrack(
       fileStatus: options.fileStatus ?? TrackFileStatus.Stored,
       sourceStatus: options.sourceStatus ?? TrackSourceStatus.Available,
       filePath: options.filePath ?? null,
+      failureKind: options.failureKind ?? null,
       failureReason: options.failureReason ?? null
     })
     .run();

@@ -75,7 +75,15 @@ export interface AgentFetchRequest extends FetchTrackRequest {
   timeoutMs: number;
 }
 
-export type EgressFailure = 'blocked' | 'unavailable' | 'network' | 'unknown';
+/* What a failed read meant. The contract mirrors these values, so the row can
+ * render the same meaning the server decided. */
+export enum SourceFailureKind {
+  Unavailable = 'unavailable',
+  Private = 'private',
+  Blocked = 'blocked',
+  Network = 'network',
+  Unknown = 'unknown'
+}
 
 /* The three facts a check measures, plus the active config. A null handshake
  * means no interface is configured, not a failure. */
@@ -83,7 +91,7 @@ export interface EgressCheckFacts {
   handshake: boolean | null;
   listing: boolean;
   exitIp: string | null;
-  reason: EgressFailure | null;
+  reason: SourceFailureKind | null;
   active: string | null;
 }
 

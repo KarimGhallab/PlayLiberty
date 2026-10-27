@@ -41,6 +41,16 @@ export enum TrackSourceStatus {
   Removed = 'removed'
 }
 
+/* What a failed read meant. The row renders this kind's sentence, never the
+ * vendor's own output. */
+export enum FailureKind {
+  Unavailable = 'unavailable',
+  Private = 'private',
+  Blocked = 'blocked',
+  Network = 'network',
+  Unknown = 'unknown'
+}
+
 export enum AssociationOrigin {
   Remote = 'remote',
   Manual = 'manual'

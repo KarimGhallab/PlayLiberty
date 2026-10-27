@@ -137,6 +137,7 @@ export function toTrackView(row: TrackRow): Track {
     thumbnailPath: row.thumbnailPath,
     fileStatus: row.fileStatus,
     sourceStatus: row.sourceStatus,
+    failureKind: row.failureKind,
     failureReason: row.failureReason,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt

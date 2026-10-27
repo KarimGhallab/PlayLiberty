@@ -109,6 +109,7 @@ function trackJson(
       thumbnailPath: null,
       fileStatus,
       sourceStatus: 'available',
+      failureKind: null,
       failureReason: null,
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-29T12:00:00.000Z'
@@ -597,6 +598,7 @@ describe('PlaylistDetailPage', () => {
                   thumbnailPath: null,
                   fileStatus: 'failed',
                   sourceStatus: 'available',
+                  failureKind: 'unknown',
                   failureReason:
                     'SponsorBlock lookup failed, will retry on the next sync',
                   createdAt: '2026-09-01T00:00:00.000Z',
@@ -627,6 +629,7 @@ describe('PlaylistDetailPage', () => {
             thumbnailPath: null,
             fileStatus: 'pending',
             sourceStatus: 'available',
+            failureKind: null,
             failureReason: null,
             createdAt: '2026-09-01T00:00:00.000Z',
             updatedAt: '2026-09-29T12:00:00.000Z'
@@ -1283,6 +1286,7 @@ describe('PlaylistDetailPage', () => {
                   thumbnailPath: null,
                   fileStatus: 'stored',
                   sourceStatus: 'available',
+                  failureKind: null,
                   failureReason: null,
                   createdAt: '2026-09-01T00:00:00.000Z',
                   updatedAt: '2026-09-29T12:00:00.000Z'

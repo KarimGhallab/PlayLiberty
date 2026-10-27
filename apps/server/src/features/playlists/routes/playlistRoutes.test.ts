@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   AssociationOrigin,
+  FailureKind,
   PlaylistSchema,
   PlaylistSort,
   PlaylistSyncStatus,
@@ -1386,6 +1387,7 @@ describe('GET /playlists/:id/tracks', () => {
       playlistId,
       seedTrack(context.database, {
         fileStatus: TrackFileStatus.Failed,
+        failureKind: FailureKind.Unknown,
         failureReason: 'yt-dlp exited with code 1'
       }).trackId
     );
@@ -1400,6 +1402,7 @@ describe('GET /playlists/:id/tracks', () => {
     );
 
     expect(page.items[0]?.track.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(page.items[0]?.track.failureKind).toBe(FailureKind.Unknown);
     expect(page.items[0]?.track.failureReason).toBe(
       'yt-dlp exited with code 1'
     );

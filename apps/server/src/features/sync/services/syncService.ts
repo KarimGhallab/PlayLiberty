@@ -11,10 +11,7 @@ import {
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
-import {
-  EGRESS_BLOCKED_REASON,
-  EgressCircuitOpenError
-} from '@playliberty/youtube';
+import { EgressCircuitOpenError, failureOf } from '@playliberty/youtube';
 import type { YoutubeUrlInfo } from '@playliberty/youtube';
 
 import {
@@ -335,7 +332,7 @@ async function reconcile(
      * one fixed sentence, and a state the gallery can name. */
     const blocked = error instanceof EgressCircuitOpenError;
     const message = blocked
-      ? EGRESS_BLOCKED_REASON
+      ? failureOf(error).sentence
       : error instanceof Error
         ? error.message
         : 'The sync failed.';

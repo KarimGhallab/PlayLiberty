@@ -3,18 +3,11 @@ import { dirname, join } from 'node:path';
 
 import type { FastifyBaseLogger } from 'fastify';
 
-import {
-  EgressCircuitOpenError,
-  EgressSourceUnavailableError,
-  EgressStreamError,
-  EgressSwitchError,
-  EgressSwitchFailedError,
-  YoutubeVideoUnavailableError,
-  isExitLevelFailure
-} from '@playliberty/youtube';
+import { FailureDisposition, failureOf } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
+import { exhaust } from '../../../shared/exhaust.js';
 
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { startIntervalJob } from '../../../platform/jobs/intervalJob.js';
@@ -28,7 +21,8 @@ import {
   markTrackSourceRemoved,
   releaseTrack,
   storeThumbnail,
-  storeTrack
+  storeTrack,
+  storedFailureKind
 } from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 /*
@@ -150,49 +144,53 @@ async function processClaimedTrack(
 
     logger.info({ trackId: track.id, videoId: track.videoId }, 'track stored');
   } catch (error) {
-    // A video reported gone is terminal, not a failure: marked removed, never
-    // retried, the same values the sync's retention pass produces.
-    if (error instanceof YoutubeVideoUnavailableError) {
-      markTrackSourceRemoved(context.database, track.id);
-      announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
-      logger.info(
-        { trackId: track.id, videoId: track.videoId },
-        'track source is gone'
-      );
-      return;
+    const failure = failureOf(error);
+
+    switch (failure.disposition) {
+      // Terminal is the sync's retention answer too: marked removed, never
+      // retried, and the file, if any, stays stored.
+      case FailureDisposition.Terminal:
+        markTrackSourceRemoved(context.database, track.id);
+        announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+        logger.info(
+          { trackId: track.id, videoId: track.videoId },
+          'track source is gone'
+        );
+        return;
+
+      // Neither the track nor a workable exit is to blame, so the claim goes
+      // back to pending and no row is blamed.
+      case FailureDisposition.Interrupted:
+      case FailureDisposition.ExitFault:
+        releaseTrack(context.database, track.id);
+        announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+        logger.warn(
+          { trackId: track.id, videoId: track.videoId, err: error },
+          'track fetch interrupted'
+        );
+        return;
+
+      // The reason is a bounded line, not the raw output, since the row carries
+      // it; the next sync retries the track.
+      case FailureDisposition.Retry:
+        failTrack(
+          context.database,
+          track.id,
+          storedFailureKind(failure.kind),
+          summarizeFailure(error)
+        );
+
+        announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+
+        logger.warn(
+          { trackId: track.id, videoId: track.videoId, err: error },
+          'track download failed'
+        );
+        return;
+
+      default:
+        return exhaust(failure.disposition);
     }
-
-    // An interrupted transport, a switch, an open circuit or a blocked exit is
-    // not the track's fault: the claim goes back to pending, so no row is
-    // blamed and the next pass retries it once an exit works.
-    if (
-      error instanceof EgressStreamError ||
-      error instanceof EgressSwitchError ||
-      error instanceof EgressSwitchFailedError ||
-      error instanceof EgressCircuitOpenError ||
-      (error instanceof EgressSourceUnavailableError &&
-        isExitLevelFailure(error.reason))
-    ) {
-      releaseTrack(context.database, track.id);
-      announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
-      logger.warn(
-        { trackId: track.id, videoId: track.videoId, err: error },
-        'track fetch interrupted'
-      );
-      return;
-    }
-
-    // Any other failure is transient. The reason is a bounded line, not the
-    // raw output, since the row carries it; the next sync retries the track.
-    failTrack(context.database, track.id, summarizeFailure(error));
-
-    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
-
-    logger.warn(
-      { trackId: track.id, videoId: track.videoId, err: error },
-      'track download failed'
-    );
-    return;
   }
 
   await fetchThumbnail(context, logger, track);

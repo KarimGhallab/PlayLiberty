@@ -2,7 +2,7 @@
 
 **State:** `ready-for-agent`
 **Category:** `bug`
-**Blocked by:** 98 (The origin refuses an open identity outside the test harness).
+**Blocked by:** None. 98 is resolved, and its runtime classification is in place.
 
 ## Observed
 

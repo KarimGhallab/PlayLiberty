@@ -1,9 +1,5 @@
-import type {
-  EgressCheckFacts,
-  EgressFailure,
-  YoutubeSource
-} from '@playliberty/youtube';
-import { classifyEgressFailure } from '@playliberty/youtube';
+import type { EgressCheckFacts, YoutubeSource } from '@playliberty/youtube';
+import { SourceFailureKind, classifySourceFailure } from '@playliberty/youtube';
 
 export interface CheckDeps {
   /* The loaded config; a check never changes it. */
@@ -28,17 +24,17 @@ export async function checkActive(deps: CheckDeps): Promise<EgressCheckFacts> {
   const exitIp = await deps.readExitIp();
 
   let listing = true;
-  let reason: EgressFailure | null = null;
+  let reason: SourceFailureKind | null = null;
 
   try {
     await deps.listSource();
   } catch (error) {
     listing = false;
-    reason = classifyEgressFailure(messageOf(error));
+    reason = classifySourceFailure(messageOf(error));
   }
 
   if (listing && exitIp === null) {
-    reason = 'network';
+    reason = SourceFailureKind.Network;
   }
 
   const ok = listing && exitIp !== null;
@@ -47,7 +43,7 @@ export async function checkActive(deps: CheckDeps): Promise<EgressCheckFacts> {
     handshake,
     listing,
     exitIp,
-    reason: ok ? null : (reason ?? 'network'),
+    reason: ok ? null : (reason ?? SourceFailureKind.Network),
     active: deps.active()
   };
 }

@@ -58,6 +58,7 @@ function reasonLabel(t: Translator<Messages>, reason: string): string {
     case 'blocked':
       return t('egress.reason.blocked');
     case 'unavailable':
+    case 'private':
       return t('egress.reason.unavailable');
     case 'network':
       return t('egress.reason.network');

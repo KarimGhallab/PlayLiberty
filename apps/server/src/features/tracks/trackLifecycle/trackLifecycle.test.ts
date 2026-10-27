@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { TrackFileStatus, TrackSourceStatus } from '@playliberty/contracts';
+import {
+  FailureKind,
+  TrackFileStatus,
+  TrackSourceStatus
+} from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
@@ -162,11 +166,17 @@ describe('storing and failing a claimed download', () => {
       durationSeconds: null
     });
 
-    const result = failTrack(database(), trackId, 'the download failed');
+    const result = failTrack(
+      database(),
+      trackId,
+      FailureKind.Unknown,
+      'the download failed'
+    );
 
     expect(result.outcome).toBe(TrackTransitionOutcome.Applied);
     const row = readTrack(trackId);
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(row?.failureKind).toBe(FailureKind.Unknown);
     expect(row?.failureReason).toBe('the download failed');
   });
 
@@ -178,7 +188,7 @@ describe('storing and failing a claimed download', () => {
       filePath: 'media/aa/video.m4a'
     });
 
-    const result = failTrack(database(), trackId, 'boom');
+    const result = failTrack(database(), trackId, FailureKind.Unknown, 'boom');
 
     expect(result.outcome).toBe(TrackTransitionOutcome.Refused);
     expect(readTrack(trackId)?.fileStatus).toBe(TrackFileStatus.Stored);

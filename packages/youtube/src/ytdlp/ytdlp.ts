@@ -3,10 +3,12 @@ import { dirname, join } from 'node:path';
 
 import { finalizeAudio } from '../audio/audio.js';
 import {
+  FailureDisposition,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError,
-  isSponsorBlockFailureMessage,
-  isVideoUnavailableMessage
+  classifySourceFailure,
+  failureMeaning,
+  isSponsorBlockFailureMessage
 } from '../errors/errors.js';
 import { runProcess } from '../process/runProcess.js';
 import type {
@@ -348,7 +350,10 @@ export class YtdlpFetcher implements ISourceFetcher {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
 
-      if (isVideoUnavailableMessage(message)) {
+      if (
+        failureMeaning(classifySourceFailure(message)).disposition ===
+        FailureDisposition.Terminal
+      ) {
         throw new YoutubeVideoUnavailableError(request.videoId);
       }
 

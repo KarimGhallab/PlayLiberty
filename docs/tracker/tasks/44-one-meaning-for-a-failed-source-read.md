@@ -1,47 +1,24 @@
 # 44: One meaning for a failed source read
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 
-## Objective
+## Outcome
 
-A source read that fails has one meaning in the product: one module classifies it, names its disposition (terminal, retry on the next pass, interrupted, or the Exit's fault), and holds its fixed sentence. A Track row stores that kind beside the raw message, so the row's sentence and the server's decision cannot disagree.
+`packages/youtube/src/errors/errors.ts` is the one vocabulary. `SourceFailureKind` names five kinds (`unavailable`, `private`, `blocked`, `network`, `unknown`); `classifySourceFailure` reads yt-dlp's phrases into one; `failureMeaning` maps a kind to one `FailureDisposition` (`terminal`, `retry`, `interrupted`, `exitFault`) and one fixed sentence; `failureOf` reads the meaning off any error. A private video is now its own kind rather than folded into `unavailable`.
 
-## Context
+Every error type that carries a failure extends `SourceFailureError` and carries its `failure`: the gone video is terminal, SponsorBlock is retry, the stream, switch and switch-failure errors are interrupted, the circuit is an interrupted block, and `EgressSourceUnavailableError` derives its disposition from the kind. An untyped error reads its kind from its message and stays retryable. `classifyEgressFailure` and `isExitLevelFailure` are gone. The client's sentence table moved into the vocabulary, and `EgressSourceUnavailableError` moved with it.
 
-Architecture review, 2026-10-27, candidate 1. Vocabulary: [`GLOSSARY.md`](../../GLOSSARY.md) (Download, Egress, Unavailable, Remote-removed). The egress decision in [`ARCHITECTURE.md`](../../ARCHITECTURE.md#the-youtube-egress-runs-in-a-host-network-namespace) fixes who counts a failure; this ticket fixes who names it.
+The download worker switches once on `failure.disposition`: terminal marks the source removed, interrupted and exit-fault release the claim, and retry writes the failed row with the kind and the bounded raw reason. The policy asks the disposition rather than enumerating reasons, and the Sync reads the circuit's sentence from the vocabulary. The egress service's outcomes stay: they name the agent exchange, which ticket 45 owns.
 
-## Current state
+A Track now stores `failure_kind` beside `failure_reason` (migration `0007_nervous_blade.sql`), the contract carries `failureKind`, and the failed row's sentence comes from that kind through the existing i18n keys. The browser's regex classifier is deleted; `TrackRow` renders `failureSentence(t, failureKind)` and keeps the raw reason behind the disclosure. A row written before this change has no kind and falls back to the unknown sentence until its next retry.
 
-- The YouTube package classifies a message (unavailable, blocked, network, unknown), decides whether a reason is the Exit's, and holds the fixed sentences.
-- Four server modules re-decide what a failure means: the download worker (terminal, release the claim, or fail the row), the egress policy (is this the Exit's fault), the Sync (blocked or failed), and the egress service (unknown config, refused switch, unreachable agent).
-- The Track row stores the raw tool message. The browser classifies that text again with its own five classes, so the row's sentence is a second opinion.
-- The agent client maps a reason to a fixed sentence in a table of its own.
-
-## Scope
-
-- One vocabulary in the YouTube package: classify a message, name the disposition, give the fixed sentence. The existing error types and the agent carry the disposition; no caller re-derives it from an error class.
-- The four server sites switch once on the disposition. Adding a failure type edits the vocabulary, not four sites.
-- A Track stores the failure kind beside the raw reason: schema, contract, server write. The row's sentence comes from the kind through the existing i18n keys; the raw text stays behind the disclosure.
-- The browser's classifier is deleted, and the client's sentence table moves into the vocabulary.
-- Tests: the vocabulary's table (owner), the worker's three dispositions, the policy's Exit-level rule, the Sync's blocked sentence, and the row's sentence from a stored kind.
-
-## Out of scope
-
-- The retry policy and the rotation limit.
-- The Sync run's stored error text.
-- The Check verdict; ticket 45 owns it.
-- French wording.
-
-## Blocking edges
-
-None. Can start immediately.
+The kind is declared in both the YouTube package and the contract because the adapter has no dependency on `@playliberty/contracts`; `storedFailureKind` in `trackLifecycle.ts` is the compile-checked projection between them.
 
 ## Verification
 
-- A blocked read, an Unavailable video, a SponsorBlock outage, an interrupted download and an open circuit each still reach the same user-visible end state.
-- A failed row shows the mapped sentence from its stored kind and still discloses the raw text.
-- A new failure type needs no edit outside the vocabulary; the compiler finds the one switch.
-- `pnpm --filter @playliberty/youtube test`, `pnpm --filter @playliberty/server test` and `pnpm --filter @playliberty/web test` pass; `pnpm run build` and `pnpm run lint:check` pass.
+- The vocabulary's table, the worker's terminal, retry and interrupted paths, the policy's exit-level rule, the Sync's blocked sentence and the row's stored-kind sentence each have a test.
+- `pnpm run test:unit` is 1173 passed across all packages and apps; `pnpm run build` and `pnpm run lint:check` pass.
+- A blocked read, an Unavailable video, a SponsorBlock outage, an interrupted download and an open circuit reach the same end state as before.
 
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#the-youtube-egress-runs-in-a-host-network-namespace).

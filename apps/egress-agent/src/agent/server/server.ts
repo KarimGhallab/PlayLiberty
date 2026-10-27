@@ -15,7 +15,7 @@ import type {
 import {
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError,
-  classifyEgressFailure,
+  classifySourceFailure,
   validateYoutubeUrl
 } from '@playliberty/youtube';
 
@@ -249,7 +249,7 @@ async function route(
         status: 502,
         body: {
           error: 'source_unavailable',
-          reason: classifyEgressFailure(messageOf(error))
+          reason: classifySourceFailure(messageOf(error))
         }
       };
     }
@@ -334,7 +334,7 @@ async function streamFetch(
     } else {
       sendJson(response, 502, {
         error: 'source_unavailable',
-        reason: classifyEgressFailure(messageOf(error))
+        reason: classifySourceFailure(messageOf(error))
       });
     }
   } finally {

@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import {
+  FailureKind,
   Provider,
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
+import { SourceFailureKind } from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
@@ -33,6 +35,7 @@ export interface StoreTrackInput {
 type TrackStateFields = Partial<{
   fileStatus: TrackFileStatus;
   sourceStatus: TrackSourceStatus;
+  failureKind: FailureKind | null;
   failureReason: string | null;
   filePath: string | null;
   durationSeconds: number | null;
@@ -91,6 +94,7 @@ export function createPendingTrack(
       fileStatus: TrackFileStatus.Pending,
       sourceStatus: TrackSourceStatus.Available,
       filePath: null,
+      failureKind: null,
       failureReason: null
     })
     .run();
@@ -148,6 +152,7 @@ export function storeTrack(
     fileStatus: TrackFileStatus.Stored,
     filePath: input.filePath,
     durationSeconds: input.durationSeconds,
+    failureKind: null,
     failureReason: null
   });
 }
@@ -155,12 +160,31 @@ export function storeTrack(
 export function failTrack(
   database: DatabaseHandle,
   trackId: string,
+  kind: FailureKind,
   reason: string
 ): TrackTransitionResult {
   return applyTransition(database, trackId, [TrackFileStatus.Downloading], {
     fileStatus: TrackFileStatus.Failed,
+    failureKind: kind,
     failureReason: reason
   });
+}
+
+/* The stored kind is the contract's projection of the vocabulary's kind, so a
+ * new kind fails this switch rather than reaching the row untyped. */
+export function storedFailureKind(kind: SourceFailureKind): FailureKind {
+  switch (kind) {
+    case SourceFailureKind.Unavailable:
+      return FailureKind.Unavailable;
+    case SourceFailureKind.Private:
+      return FailureKind.Private;
+    case SourceFailureKind.Blocked:
+      return FailureKind.Blocked;
+    case SourceFailureKind.Network:
+      return FailureKind.Network;
+    case SourceFailureKind.Unknown:
+      return FailureKind.Unknown;
+  }
 }
 
 /* A transport that died mid-stream is not the track's fault: the claim goes
@@ -171,6 +195,7 @@ export function releaseTrack(
 ): TrackTransitionResult {
   return applyTransition(database, trackId, [TrackFileStatus.Downloading], {
     fileStatus: TrackFileStatus.Pending,
+    failureKind: null,
     failureReason: null
   });
 }
@@ -181,6 +206,7 @@ export function retryTrack(
 ): TrackTransitionResult {
   return applyTransition(database, trackId, [TrackFileStatus.Failed], {
     fileStatus: TrackFileStatus.Pending,
+    failureKind: null,
     failureReason: null
   });
 }
@@ -198,6 +224,7 @@ export function fetchTrackWhole(
     {
       skipNonMusic: false,
       fileStatus: TrackFileStatus.Pending,
+      failureKind: null,
       failureReason: null
     }
   );

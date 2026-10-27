@@ -30,6 +30,7 @@ function association(
       thumbnailPath: null,
       fileStatus,
       sourceStatus,
+      failureKind: null,
       failureReason: null,
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-01T00:00:00.000Z'

@@ -11,7 +11,8 @@ import type {
 import {
   EgressCircuitOpenError,
   EgressSourceUnavailableError,
-  isExitLevelFailure
+  FailureDisposition,
+  failureOf
 } from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
@@ -165,7 +166,7 @@ export class EgressPolicyClient implements IYoutubeClient {
 function isExitFailure(error: unknown): error is EgressSourceUnavailableError {
   return (
     error instanceof EgressSourceUnavailableError &&
-    isExitLevelFailure(error.reason)
+    failureOf(error).disposition === FailureDisposition.ExitFault
   );
 }
 

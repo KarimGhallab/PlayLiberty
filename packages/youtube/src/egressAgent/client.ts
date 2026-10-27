@@ -6,20 +6,23 @@ import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
 import {
+  EgressSourceUnavailableError,
+  FailureDisposition,
+  SourceFailureError,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError
 } from '../errors/errors.js';
+import type { FailureMeaning } from '../errors/errors.js';
 import type {
   AgentFetchRequest,
   EgressAgentStatus,
   EgressCheckFacts,
-  EgressFailure,
   FetchedTrack,
   IEgressAgentClient,
   YoutubeSource,
   YoutubeSourceEntry
 } from '../types.js';
-import { YoutubeSourceKind } from '../types.js';
+import { SourceFailureKind, YoutubeSourceKind } from '../types.js';
 
 /* The read may not hang on a wedged agent: "unreachable" is an answer the page
  * can draw faster than a person gives up. A switch or a check is a yt-dlp run,
@@ -27,20 +30,11 @@ import { YoutubeSourceKind } from '../types.js';
 const STATUS_TIMEOUT_MS = 2000;
 const LIST_TIMEOUT_MS = 120_000;
 
-const FAILURES = new Set<EgressFailure>([
-  'blocked',
-  'unavailable',
-  'network',
-  'unknown'
-]);
+const FAILURES: ReadonlySet<string> = new Set(Object.values(SourceFailureKind));
 
-/* Fixed sentences: the sync run records one of these, never the tool's stderr. */
-const SOURCE_FAILURE_MESSAGES: Record<EgressFailure, string> = {
-  blocked: 'YouTube refused the request from the exit.',
-  unavailable: 'The source is not available.',
-  network: 'The exit could not be reached.',
-  unknown: 'The source could not be read.'
-};
+function isSourceFailureKind(value: string): value is SourceFailureKind {
+  return FAILURES.has(value);
+}
 
 /* A name the agent does not have is the caller's mistake, not an outage. */
 export class EgressConfigUnknownError extends Error {
@@ -61,21 +55,23 @@ export class EgressSourceInvalidError extends Error {
   }
 }
 
-/* The exit could not read the source. The reason is the classified code; the
- * message is a sentence a run can carry. */
-export class EgressSourceUnavailableError extends Error {
-  readonly reason: EgressFailure;
-
-  constructor(reason: EgressFailure) {
-    super(SOURCE_FAILURE_MESSAGES[reason]);
-    this.name = 'EgressSourceUnavailableError';
-    this.reason = reason;
-  }
+/* A transport failure is neither the track's nor the exit's: the claim goes
+ * back to pending and nothing counts. */
+function interruptedFailure(sentence: string): FailureMeaning {
+  return {
+    kind: SourceFailureKind.Unknown,
+    disposition: FailureDisposition.Interrupted,
+    sentence
+  };
 }
 
 /* The socket or the stream died mid-download. Not the track's fault: the claim
  * goes back to pending instead of becoming a failed row. */
-export class EgressStreamError extends Error {
+export class EgressStreamError extends SourceFailureError {
+  public readonly failure: FailureMeaning = interruptedFailure(
+    'The egress agent did not finish the download.'
+  );
+
   constructor() {
     super('The egress agent did not finish the download.');
     this.name = 'EgressStreamError';
@@ -84,7 +80,11 @@ export class EgressStreamError extends Error {
 
 /* A rotation drained this read. It is not an exit failure, so it must not
  * count; the next pass starts on the config that is now loaded. */
-export class EgressSwitchError extends Error {
+export class EgressSwitchError extends SourceFailureError {
+  public readonly failure: FailureMeaning = interruptedFailure(
+    'The exit switched while the source was being read.'
+  );
+
   constructor() {
     super('The exit switched while the source was being read.');
     this.name = 'EgressSwitchError';
@@ -92,10 +92,13 @@ export class EgressSwitchError extends Error {
 }
 
 /* The agent was asked to switch and could not. The active row is unchanged. */
-export class EgressSwitchFailedError extends Error {
+export class EgressSwitchFailedError extends SourceFailureError {
+  public readonly failure: FailureMeaning;
+
   constructor(message: string) {
     super(message);
     this.name = 'EgressSwitchFailedError';
+    this.failure = interruptedFailure(message);
   }
 }
 
@@ -137,10 +140,10 @@ function optionalString(value: unknown, field: string): string | null {
   return value;
 }
 
-function failureOf(value: unknown): EgressFailure {
-  return typeof value === 'string' && FAILURES.has(value as EgressFailure)
-    ? (value as EgressFailure)
-    : 'unknown';
+function sourceFailureKindOf(value: unknown): SourceFailureKind {
+  return typeof value === 'string' && isSourceFailureKind(value)
+    ? value
+    : SourceFailureKind.Unknown;
 }
 
 /* The agent is ours, but a malformed answer must fail here rather than reach a
@@ -178,8 +181,7 @@ function parseCheckFacts(value: unknown): EgressCheckFacts {
     typeof value.listing !== 'boolean' ||
     (value.handshake !== null && typeof value.handshake !== 'boolean') ||
     (value.reason !== null &&
-      (typeof value.reason !== 'string' ||
-        !FAILURES.has(value.reason as EgressFailure)))
+      (typeof value.reason !== 'string' || !isSourceFailureKind(value.reason)))
   ) {
     throw new Error('The egress agent answered an unexpected check result.');
   }
@@ -188,7 +190,7 @@ function parseCheckFacts(value: unknown): EgressCheckFacts {
     handshake: value.handshake as boolean | null,
     listing: value.listing,
     exitIp: optionalString(value.exitIp, 'exit address'),
-    reason: value.reason as EgressFailure | null,
+    reason: value.reason as SourceFailureKind | null,
     active: optionalString(value.active, 'active config')
   };
 }
@@ -423,7 +425,7 @@ export class EgressAgentClient implements IEgressAgentClient {
 
     if (result.status === 502) {
       throw new EgressSourceUnavailableError(
-        failureOf(isRecord(result.body) ? result.body.reason : null)
+        sourceFailureKindOf(isRecord(result.body) ? result.body.reason : null)
       );
     }
 
@@ -498,7 +500,7 @@ export class EgressAgentClient implements IEgressAgentClient {
 
       if (status === 502) {
         throw new EgressSourceUnavailableError(
-          failureOf(isRecord(body) ? body.reason : null)
+          sourceFailureKindOf(isRecord(body) ? body.reason : null)
         );
       }
 

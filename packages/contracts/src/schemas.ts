@@ -4,6 +4,7 @@ import {
   AddTrackOutcome,
   AssociationOrigin,
   EgressStatus,
+  FailureKind,
   LiveEventType,
   PlaylistSort,
   PlaylistSyncStatus,
@@ -45,6 +46,7 @@ export const TrackSchema = z.object({
   thumbnailPath: z.string().nullable(),
   fileStatus: z.enum(TrackFileStatus),
   sourceStatus: z.enum(TrackSourceStatus),
+  failureKind: z.enum(FailureKind).nullable(),
   failureReason: z.string().nullable(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime

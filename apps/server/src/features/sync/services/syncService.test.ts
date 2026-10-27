@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LiveEvent, SyncRun } from '@playliberty/contracts';
 import {
   AssociationOrigin,
+  FailureKind,
   PlaylistSchema,
   PlaylistSyncStatus,
   Provider,
@@ -1410,6 +1411,7 @@ describe('retrying a failed download', () => {
     // The sync returns it to pending and clears the stale reason.
     const retried = trackByVideoId('aaaaaaaaaaa');
     expect(retried?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(retried?.failureKind).toBeNull();
     expect(retried?.failureReason).toBeNull();
 
     await processPendingTracks(
@@ -1457,6 +1459,7 @@ describe('retrying a failed download', () => {
     expect(failed?.fileStatus).toBe(TrackFileStatus.Failed);
     // Not a gone video: the status stays available, so the sync retries it.
     expect(failed?.sourceStatus).toBe(TrackSourceStatus.Available);
+    expect(failed?.failureKind).toBe(FailureKind.Unknown);
     expect(failed?.failureReason).toBe(SPONSORBLOCK_FAILURE_REASON);
 
     // The next sync returns it to pending, and the next pass stores it.
