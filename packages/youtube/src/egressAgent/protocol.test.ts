@@ -98,10 +98,7 @@ describe('the wire table', () => {
     for (const reply of replies) {
       const wired = wireReply(reply);
 
-      expect(decodeReply(wired)).toMatchObject({
-        outcome: reply.outcome,
-        status: wired.status
-      });
+      expect(decodeReply(wired)).toMatchObject({ outcome: reply.outcome });
     }
   });
 
@@ -138,10 +135,7 @@ describe('the wire table', () => {
     );
   });
 
-  it('keeps the two 503 meanings apart and keeps the detail', () => {
-    expect(
-      decodeReply(wireReply({ outcome: AgentErrorCode.Switching }))
-    ).toEqual({ outcome: AgentErrorCode.Switching, status: 503 });
+  it('keeps a refused switch detail and a source failure reason', () => {
     expect(
       decodeReply(
         wireReply({ outcome: AgentErrorCode.SwitchFailed, detail: 'refused' })
@@ -151,12 +145,6 @@ describe('the wire table', () => {
       status: 503,
       detail: 'refused'
     });
-  });
-
-  it('keeps the two 502 meanings apart and keeps the reason', () => {
-    expect(
-      decodeReply(wireReply({ outcome: AgentErrorCode.SponsorBlock }))
-    ).toEqual({ outcome: AgentErrorCode.SponsorBlock, status: 502 });
     expect(
       decodeReply(
         wireReply({

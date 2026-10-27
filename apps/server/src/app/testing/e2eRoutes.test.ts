@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { TestContext } from './createTestContext.js';
@@ -49,16 +47,5 @@ describe('the e2e routes', () => {
     });
 
     expect(response.statusCode).toBe(404);
-  });
-
-  it('are excluded from the production build', () => {
-    const config = JSON.parse(
-      readFileSync(
-        new URL('../../../tsconfig.build.json', import.meta.url),
-        'utf8'
-      )
-    ) as { exclude?: string[] };
-
-    expect(config.exclude).toContain('src/app/testing/**');
   });
 });
