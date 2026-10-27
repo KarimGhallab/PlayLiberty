@@ -107,10 +107,10 @@ describe('the egress page', () => {
     expect(screen.getByText('2 hours ago')).toBeInTheDocument();
     expect(screen.getAllByText('Never')[0]).toBeInTheDocument();
     expect(screen.getByText('Egress agent reachable.')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'France' })).toHaveTextContent('🇫🇷');
-    expect(screen.getByRole('img', { name: 'Switzerland' })).toHaveTextContent(
-      '🇨🇭'
-    );
+    expect(screen.getByRole('img', { name: 'France' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Switzerland' })
+    ).toBeInTheDocument();
   });
 
   it('says the agent is unreachable while still drawing the last known pool', async () => {

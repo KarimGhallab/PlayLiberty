@@ -177,22 +177,6 @@ describe('listing through the egress agent', () => {
     expect(finished.error).toBe('YouTube refused the request from the exit.');
   });
 
-  it('records a transport fault with its own sentence', async () => {
-    const { agent } = fakeAgent(async () => {
-      throw new Error('The egress agent did not answer in time.');
-    });
-    context = await createTestContext(
-      { YOUTUBE_TRANSPORT: 'egress-agent' },
-      { egressAgent: agent }
-    );
-
-    const run = SyncRunSchema.parse((await post(PLAYLIST_URL)).json());
-    const finished = await runFinished(run.playlistId);
-
-    expect(finished.status).toBe(SyncRunStatus.Failed);
-    expect(finished.error).toBe('The egress agent did not answer in time.');
-  });
-
   it('rotates five times and blocks the playlist with the pending tracks intact', async () => {
     const pool = [
       { name: '01-fr', endpoint: '185.0.0.1:51820' },

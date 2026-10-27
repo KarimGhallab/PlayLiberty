@@ -32,13 +32,4 @@ describe('active state', () => {
 
     expect(await readActiveState(path)).toBe('02-CH-264');
   });
-
-  it('replaces the previous name', async () => {
-    const path = await statePath();
-
-    await writeActiveState(path, '01-FR-634');
-    await writeActiveState(path, '02-CH-264');
-
-    expect(await readActiveState(path)).toBe('02-CH-264');
-  });
 });

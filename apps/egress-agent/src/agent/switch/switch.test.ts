@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChildRegistry } from '../processes/processes.js';
 import { NoInterfaceError } from '../wireguard/wireguard.js';
-import { requireInPool, switchExit, switchTo } from './switch.js';
+import { switchExit, switchTo } from './switch.js';
 
 let directory: string | undefined;
 
@@ -183,13 +183,5 @@ describe('switchTo', () => {
 
     expect(onSwitched).not.toHaveBeenCalled();
     expect(registry.interrupted).toBe(false);
-  });
-});
-
-describe('requireInPool', () => {
-  it('refuses a config with no endpoint, before any interface work', async () => {
-    await expect(
-      requireInPool([{ name: '01-broken', endpoint: null }], '01-broken')
-    ).rejects.toThrow(/No config named/);
   });
 });

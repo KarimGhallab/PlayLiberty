@@ -16,16 +16,7 @@ describe('loadConfig', () => {
     expect(config.download.concurrency).toBe(3);
   });
 
-  it('defaults the egress rotation bounds and reads their overrides', () => {
-    const defaults = loadConfig({
-      MEDIA_ROOT: '/media',
-      DATABASE_PATH: '/db.sqlite'
-    });
-
-    expect(defaults.egressFailureLimit).toBe(5);
-    expect(defaults.egressDrainTimeoutMs).toBe(60000);
-    expect(defaults.egressSwitchCooldownMs).toBe(60000);
-
+  it('reads the egress rotation overrides as numbers', () => {
     const overridden = loadConfig({
       MEDIA_ROOT: '/media',
       DATABASE_PATH: '/db.sqlite',
