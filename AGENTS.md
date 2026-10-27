@@ -21,8 +21,8 @@ and consumed with `workspace:*`.
 - Do not commit or push unless explicitly asked; the human owns git history.
 - ESM everywhere (`"type": "module"`). The runtime is pinned in `mise.toml` (Node 26.5.0) and the package manager in `package.json` (`pnpm@12.15.0`); do not drift them.
 - Deployment is private, behind the Pangolin authenticating edge. A production origin must never publish a host port and must join the `pangolin_frontend` network declared `external`. See `docs/ARCHITECTURE.md` and the deployment guideline.
-- The YouTube egress is a system-scoped agent in the `playliberty-egress` network namespace. The pod never gets `NET_ADMIN`, never joins the tunnel, and reaches the agent only over `/run/playliberty/egress-agent.sock`. The pool is root-owned `0600` under `/etc/playliberty/proton`; the host yt-dlp is extracted from the server image. See `docs/ARCHITECTURE.md` and `docs/runbooks/egress-agent.md`.
-- The production host is prepared by `pnpm deploy:build-for-production`; it builds images and prepares storage, the egress pool check, the AppArmor local rules, the Node check, the UFW route rules, the host yt-dlp and secrets only. It never installs or starts the unit. See `docs/ARCHITECTURE.md`.
+- The YouTube egress is a system-scoped agent in its own network namespace. The pod never gets `NET_ADMIN`, never joins the tunnel, and reaches the agent only over its Unix socket. See `docs/ARCHITECTURE.md`; the host steps are in `docs/runbooks/egress-agent.md`.
+- The production host is prepared by `pnpm deploy:build-for-production`; it builds images and prepares the host only. It never installs or starts the unit. See `docs/ARCHITECTURE.md`.
 - No transcoding, ever. The stored AAC/M4A is served verbatim. See `docs/ARCHITECTURE.md`.
 - Identity comes from Pangolin's forwarded `Remote-*` headers and fails closed when they are absent. See `docs/ARCHITECTURE.md`.
 - Never use em dashes in generated text.

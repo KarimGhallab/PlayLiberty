@@ -1,14 +1,7 @@
 # 16: Tunnel the YouTube egress
 
-Tickets for [`16-tunnel-the-youtube-egress`](../../specs/16-tunnel-the-youtube-egress.md). One file per ticket,
-numbered in dependency order, each declaring its blocking edges.
-
-The cut is by vertical slice, not by the spec's task list: every ticket leaves a
-working end state, so the first three land an operator-visible page before any
-sync changes, and the sync changes land listing first and bytes second.
-
-`01` is a prefactor. It changes no behaviour except a latent Opus failure, and it
-exists so the transport switch lands against one seam instead of two.
+Tickets for [`16-tunnel-the-youtube-egress`](../../specs/16-tunnel-the-youtube-egress.md), in dependency order. Every
+ticket is resolved.
 
 | Ticket                                                                                                              | Status   | Blocked by                                                                                                                                                                                                                                              | Blocks                                                                                                                                          |
 | ------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,13 +15,3 @@ exists so the transport switch lands against one seam instead of two.
 | [`08-the-agent-runs-under-systemd-on-the-host`](08-the-agent-runs-under-systemd-on-the-host.md)                     | resolved | [`02`](02-the-egress-page-shows-the-pool-and-its-state.md)                                                                                                                                                                                              | [`09`](09-verify-the-tunnel-against-proton.md)                                                                                                  |
 | [`09-verify-the-tunnel-against-proton`](09-verify-the-tunnel-against-proton.md)                                     | resolved | [`03`](03-an-admin-can-probe-an-exit.md), [`05`](05-a-track-downloads-through-the-tunnel.md), [`06`](06-five-failures-rotate-the-exit.md), [`07`](07-an-operator-can-switch-an-exit-by-hand.md), [`08`](08-the-agent-runs-under-systemd-on-the-host.md) | none                                                                                                                                            |
 | [`10-one-action-per-egress-row`](10-one-action-per-egress-row.md)                                                   | resolved | none                                                                                                                                                                                                                                                    | none                                                                                                                                            |
-
-## Conventions
-
-- One file per ticket, numbered from `01` in dependency order, blockers first.
-- Every ticket in this set is resolved.
-- `09` was the only ticket labelled `ready-for-human`: it needed the VPS and a
-  live Proton account, and it is the integration check no test can replace.
-- Resolve a ticket by recording its outcome in the ticket and updating its row
-  here, then the set's row in [`TASKS_TRACKER.md`](../TASKS_TRACKER.md). Do not
-  delete it.

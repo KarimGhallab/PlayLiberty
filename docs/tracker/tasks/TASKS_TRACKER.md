@@ -77,5 +77,5 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - The table above links every ticket reference to its file, so a reader lands on the ticket from any row.
 - Each ticket declares its blocking edges: which tickets must land before it can start. A ticket with no edges can start immediately.
 - Each ticket is a tracer bullet: it reaches a working end state on its own, however thin, rather than being a layer of a larger change.
-- A ticket ends with its verification: the command or check that proves it is done.
+- A ticket ends with its verification while it is open: the command or check that proves it is done. A resolved ticket records its outcome and a pointer instead.
 - Resolve a ticket by recording the outcome in the ticket, then updating its row here. Do not delete it.
