@@ -12,7 +12,7 @@ import { SourceFailureKind } from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
-import { tracks } from '../../../platform/database/schema.js';
+import { associations, tracks } from '../../../platform/database/schema.js';
 import type { TrackSeed } from '../types.js';
 
 export enum TrackTransitionOutcome {
@@ -298,8 +298,24 @@ export function storeThumbnail(
     .run();
 }
 
-/* The caller removes the media first, calling this only on success: a row never
- * points at a file that is not there. */
-export function removeTrack(database: DatabaseHandle, trackId: string): void {
-  database.db.delete(tracks).where(eq(tracks.id, trackId)).run();
+/* The orphan check and the delete are one statement, so an association that
+ * arrives after a scan still keeps its track. True when the row was deleted. */
+export function removeOrphanTrack(
+  database: DatabaseHandle,
+  trackId: string
+): boolean {
+  const result = database.db
+    .delete(tracks)
+    .where(
+      and(
+        eq(tracks.id, trackId),
+        sql`not exists (
+          select 1 from ${associations}
+          where ${associations.trackId} = ${tracks.id}
+        )`
+      )
+    )
+    .run();
+
+  return result.changes > 0;
 }

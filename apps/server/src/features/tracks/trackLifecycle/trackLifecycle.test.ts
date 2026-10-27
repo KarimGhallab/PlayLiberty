@@ -22,7 +22,7 @@ import {
   failTrack,
   fetchTrackWhole,
   markTrackSourceRemoved,
-  removeTrack,
+  removeOrphanTrack,
   resetDownloadingTracks,
   retryTrack,
   storeThumbnail,
@@ -378,14 +378,14 @@ describe('the artwork and the row', () => {
     expect(readTrack(trackId)?.thumbnailPath).toBe('thumbnails/aa/video.jpg');
   });
 
-  it('removes a track row', async () => {
+  it('removes an unassociated track row', async () => {
     context = await createTestContext();
     const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Pending,
       durationSeconds: null
     });
 
-    removeTrack(database(), trackId);
+    expect(removeOrphanTrack(database(), trackId)).toBe(true);
 
     expect(readTrack(trackId)).toBeUndefined();
   });
