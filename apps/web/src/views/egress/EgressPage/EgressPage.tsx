@@ -250,22 +250,24 @@ export default function EgressPage() {
                           ? styles['egress__row--active']
                           : undefined
                       }>
-                      <th scope="row" className={styles.egress__name}>
-                        {flag === null ? null : (
-                          <span
-                            className={styles.egress__flag}
-                            role="img"
-                            aria-label={countryName ?? country ?? undefined}
-                            title={countryName ?? country ?? undefined}>
-                            {flag}
-                          </span>
-                        )}
-                        {config.name}
-                        {config.active ? (
-                          <span className={styles.egress__active}>
-                            {t('egress.active')}
-                          </span>
-                        ) : null}
+                      <th scope="row">
+                        <div className={styles.egress__name}>
+                          {flag === null ? null : (
+                            <span
+                              className={styles.egress__flag}
+                              role="img"
+                              aria-label={countryName ?? country ?? undefined}
+                              title={countryName ?? country ?? undefined}>
+                              {flag}
+                            </span>
+                          )}
+                          {config.name}
+                          {config.active ? (
+                            <span className={styles.egress__active}>
+                              {t('egress.active')}
+                            </span>
+                          ) : null}
+                        </div>
                       </th>
                       <td className={styles.egress__mono}>
                         {config.endpoint ?? '-'}
