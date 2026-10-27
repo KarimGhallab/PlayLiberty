@@ -7,8 +7,8 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 import { EgressStatus } from '@playliberty/contracts';
-import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 import type { Messages, Translator } from '@playliberty/i18n';
+import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../../shared/api/client/client';
 import {
@@ -24,6 +24,7 @@ import ToastStack from '../../../shared/components/Toast/ToastStack';
 import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePlayTransition';
 
 import styles from './EgressPage.module.scss';
+import { countryNameOf, countryOf, flagOf } from './countryFlag/countryFlag';
 
 interface ActionToast {
   readonly id: number;
@@ -80,7 +81,7 @@ function timeOf(
  * evidence. A non-admin gets the server's not-found, which is the gate.
  */
 export default function EgressPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const egress = useEgress();
   const switchExit = useSwitchEgress();
   const check = useCheckEgress();
@@ -236,6 +237,10 @@ export default function EgressPage() {
                   const pending = config.active
                     ? check.isPending
                     : switchPending;
+                  const country = countryOf(config.name);
+                  const countryName =
+                    country === null ? null : countryNameOf(country, language);
+                  const flag = country === null ? null : flagOf(country);
 
                   return (
                     <tr
@@ -246,6 +251,15 @@ export default function EgressPage() {
                           : undefined
                       }>
                       <th scope="row" className={styles.egress__name}>
+                        {flag === null ? null : (
+                          <span
+                            className={styles.egress__flag}
+                            role="img"
+                            aria-label={countryName ?? country ?? undefined}
+                            title={countryName ?? country ?? undefined}>
+                            {flag}
+                          </span>
+                        )}
                         {config.name}
                         {config.active ? (
                           <span className={styles.egress__active}>

@@ -132,6 +132,12 @@
     gap: var(--space-2);
   }
 
+  &__flag {
+    flex: none;
+    font-size: var(--text-md);
+    line-height: 1;
+  }
+
   &__active {
     padding: 1px var(--space-2);
     color: var(--egress);
