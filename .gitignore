@@ -82,6 +82,9 @@ web_modules/
 # Yarn Integrity file
 .yarn-integrity
 
+# The egress agent's dev pool: real Proton configs, never committed
+apps/egress-agent/proton
+
 # dotenv environment variable files
 .env
 .env.development.local
@@ -100,6 +103,7 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
+dist-e2e
 
 # Gatsby files
 .cache/

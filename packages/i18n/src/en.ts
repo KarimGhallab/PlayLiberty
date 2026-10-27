@@ -64,6 +64,46 @@ export const en = {
         'Paste a YouTube playlist link, then sync it. Every stored track is yours from then on, even if the video is taken down later.'
     }
   },
+  egress: {
+    title: 'VPN settings',
+    back: 'Back to home',
+    loading: 'Loading the configurations.',
+    readFailed: 'The configurations could not be loaded.',
+    empty: 'No configuration is installed.',
+    agentUp: 'Egress agent reachable.',
+    agentDown:
+      'Egress agent unreachable. The configurations below are the last known states.',
+    name: 'Name',
+    endpoint: 'Endpoint',
+    status: 'Status',
+    lastAttempt: 'Last attempt',
+    lastCheck: 'Last check',
+    switch: 'Switch',
+    switching: 'Switching...',
+    check: 'Check',
+    checking: 'Checking...',
+    checkUnreachable: 'The egress agent could not be reached.',
+    checkFailed: 'The check could not be completed.',
+    toast: {
+      switched: 'Switched to {name}.',
+      checked: '{name} is active.',
+      answered: 'The exit answered YouTube.',
+      switchFailed: 'The exit could not be switched.'
+    },
+    actions: 'Actions',
+    seen: 'Seen at {ip}',
+    reason: {
+      blocked: 'YouTube refused the exit.',
+      unavailable: 'The check video is unavailable.',
+      network: 'The exit could not be reached.',
+      unknown: 'The check failed.'
+    },
+    active: 'Active',
+    never: 'Never',
+    statusOk: 'OK',
+    statusFailed: 'Failed',
+    statusUnknown: 'Unknown'
+  },
   detail: {
     back: 'Back to home',
     addTrack: 'Add a track',
@@ -232,6 +272,12 @@ export const en = {
       'It may have been deleted, or it may belong to someone else and no longer be shared with you.',
     back: 'Back to home'
   },
+  notFoundPage: {
+    code: '404',
+    heading: 'Page not found',
+    prose: 'The page you are looking for does not exist.',
+    back: 'Back to home'
+  },
   header: {
     collab: 'You are a collaborator',
     shared: 'Shared playlist',
@@ -317,7 +363,8 @@ export const en = {
   syncState: {
     upToDate: 'Up to date',
     syncing: 'Syncing',
-    failed: 'Sync failed'
+    failed: 'Sync failed',
+    blocked: 'Source unreachable'
   },
   trackState: {
     removedFrom: 'Removed from {provider}',

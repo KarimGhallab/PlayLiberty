@@ -10,7 +10,16 @@ export enum UserRole {
 export enum PlaylistSyncStatus {
   Idle = 'idle',
   Syncing = 'syncing',
-  Error = 'error'
+  Error = 'error',
+  Blocked = 'blocked'
+}
+
+/* A config's last measured state: `unknown` until something checks or uses it,
+ * so nothing is assumed healthy by default. */
+export enum EgressStatus {
+  Ok = 'ok',
+  Failed = 'failed',
+  Unknown = 'unknown'
 }
 
 export enum PlaylistSort {
@@ -30,6 +39,16 @@ export enum TrackFileStatus {
 export enum TrackSourceStatus {
   Available = 'available',
   Removed = 'removed'
+}
+
+/* What a failed read meant. The row renders this kind's sentence, never the
+ * vendor's own output. */
+export enum FailureKind {
+  Unavailable = 'unavailable',
+  Private = 'private',
+  Blocked = 'blocked',
+  Network = 'network',
+  Unknown = 'unknown'
 }
 
 export enum AssociationOrigin {
@@ -85,6 +104,7 @@ export enum ProblemCode {
   Forbidden = 'forbidden',
   SelfShare = 'self_share',
   AccountNotFound = 'account_not_found',
+  EgressSwitchFailed = 'egress_switch_failed',
   NotFound = 'not_found',
   RequestError = 'request_error',
   InternalError = 'internal_error',

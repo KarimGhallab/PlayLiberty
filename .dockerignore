@@ -14,3 +14,4 @@
 !.env.example
 docs
 dependency-graph.svg
+apps/egress-agent/proton

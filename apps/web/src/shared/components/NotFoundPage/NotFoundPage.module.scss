@@ -1,0 +1,81 @@
+/*
+ * A page-level state, centred in the room the player bar leaves. The 404 is an
+ * eyebrow, not the heading: the heading says what happened, the code says which
+ * kind of answer it is.
+ */
+.not-found-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  max-width: calc(1056px + var(--space-4) * 2);
+  min-height: 60vh;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4)
+    calc(var(--player-bar-height) + var(--space-6));
+  text-align: center;
+
+  &__code {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.08em;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    max-width: 66ch;
+  }
+
+  &__head {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+  }
+
+  &__prose {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: var(--control-height);
+    padding: 0 var(--space-5);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--control-border);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__action-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+  }
+}

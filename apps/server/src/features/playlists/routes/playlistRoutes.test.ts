@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   AssociationOrigin,
+  FailureKind,
   PlaylistSchema,
   PlaylistSort,
   PlaylistSyncStatus,
@@ -691,6 +692,24 @@ describe('GET /playlists/:id', () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
+  });
+
+  it('answers a denial and a vanished playlist with the same document', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const denied = await get(
+      `/api/v1/playlists/${playlistId}`,
+      stranger.pangolinUserId
+    );
+    const missing = await get(
+      `/api/v1/playlists/${randomUUID()}`,
+      stranger.pangolinUserId
+    );
+
+    expect(denied.body).toBe(missing.body);
   });
 
   it('returns a shared playlist to a collaborator', async () => {
@@ -1386,6 +1405,7 @@ describe('GET /playlists/:id/tracks', () => {
       playlistId,
       seedTrack(context.database, {
         fileStatus: TrackFileStatus.Failed,
+        failureKind: FailureKind.Unknown,
         failureReason: 'yt-dlp exited with code 1'
       }).trackId
     );
@@ -1400,6 +1420,7 @@ describe('GET /playlists/:id/tracks', () => {
     );
 
     expect(page.items[0]?.track.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(page.items[0]?.track.failureKind).toBe(FailureKind.Unknown);
     expect(page.items[0]?.track.failureReason).toBe(
       'yt-dlp exited with code 1'
     );

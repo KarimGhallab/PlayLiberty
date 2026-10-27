@@ -14,15 +14,15 @@ import type { Playlist } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
-import { problemSentence } from '../api/problem/problem';
+import { useUpdatePin } from '../api/clients/libraryClient/libraryClient';
 import {
   useDeletePlaylist,
   useRemovePlaylistCover,
   useRenamePlaylist,
   useSetPlaylistCover,
-  useSyncPlaylist,
-  useUpdatePin
-} from '../api/queries/queries';
+  useSyncPlaylist
+} from '../api/clients/playlistClient/playlistClient';
+import { problemSentence } from '../api/problem/problem';
 import CoverDialog from '../components/CoverDialog/CoverDialog';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';

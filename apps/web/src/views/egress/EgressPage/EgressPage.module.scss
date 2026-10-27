@@ -1,0 +1,331 @@
+.egress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 var(--space-4) var(--space-6);
+
+  /* The detail page's way home: one row above the title, back on the left. */
+  &__wayhome {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-5) 0 0;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-semibold);
+
+    /* The page's role mark: egress is purple wherever it appears. */
+    &::after {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 2px;
+      margin-top: var(--space-2);
+      background: var(--egress);
+      border-radius: 2px;
+    }
+  }
+
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2) var(--space-2) 0;
+    color: var(--ink);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-normal);
+    text-decoration: none;
+    border-radius: var(--radius-control);
+
+    &:hover {
+      color: var(--accent);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__back-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+  }
+
+  &__say {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  /* A status line, not a field: the dot is the state and there is no box. */
+  &__agent {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-1) 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+
+    &::before {
+      content: '';
+      flex: none;
+      width: 7px;
+      height: 7px;
+      background: var(--egress);
+      border-radius: 50%;
+    }
+  }
+
+  &__agent--down {
+    color: var(--ink);
+
+    &::before {
+      background: var(--tone-failed);
+    }
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+
+    th,
+    td {
+      padding: var(--space-3);
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+
+    tbody th,
+    tbody td {
+      vertical-align: middle;
+    }
+
+    thead th {
+      color: var(--muted);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-medium);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    tbody th {
+      font-weight: var(--weight-medium);
+    }
+
+    /* A long endpoint, an IPv6 one say, wraps inside its cell rather than
+     * widening the table past the page. */
+    td {
+      overflow-wrap: break-word;
+    }
+  }
+
+  &__name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  &__flag {
+    flex: none;
+    font-size: var(--text-md);
+    line-height: 1;
+  }
+
+  &__active {
+    padding: 1px var(--space-2);
+    color: var(--egress);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    background: var(--egress-surface);
+    border: 1px solid var(--egress-border);
+    border-radius: var(--radius-chip);
+  }
+
+  &__row--active {
+    th:first-child {
+      box-shadow: inset 2px 0 var(--egress);
+    }
+  }
+
+  &__mono {
+    color: var(--muted);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Below the strip's width a card takes over from the row: six columns cannot
+   * hold a phone, and the actions would sit off the right edge. */
+  &__configs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__config {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  &__config--active {
+    box-shadow: inset 2px 0 var(--egress);
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3) var(--space-4);
+    margin: 0;
+  }
+
+  &__fact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    dt {
+      color: var(--muted);
+      font-size: var(--text-xs);
+      line-height: var(--leading-normal);
+    }
+
+    dd {
+      margin: 0;
+      color: var(--ink);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+      line-height: var(--leading-normal);
+      overflow-wrap: break-word;
+    }
+  }
+
+  &__fact--wide {
+    grid-column: 1 / -1;
+  }
+
+  /* The measured address and the classified reason sit under their fact. */
+  &__observed,
+  &__reason {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: var(--text-xs);
+  }
+
+  /* The cell reserves the wider label with its icon, padding included; the
+   * button keeps its own size inside it, so "Switching..." or "Checking..."
+   * never widens the column. */
+  &__actionWrap {
+    display: grid;
+    justify-items: start;
+
+    > * {
+      grid-area: 1 / 1;
+    }
+  }
+
+  &__actionSizer {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    visibility: hidden;
+    padding: 0 var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+  }
+
+  &__actionIcon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+  }
+
+  &__switchIcon {
+    color: var(--egress);
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: var(--control-height);
+    padding: 0 var(--space-4);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: var(--surface-raised);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--egress-border);
+    }
+
+    &:disabled {
+      color: var(--control-disabled-fg);
+      background: var(--control-disabled-bg);
+      border-color: var(--line);
+      cursor: default;
+    }
+  }
+
+  &__action:disabled &__switchIcon {
+    color: inherit;
+  }
+
+  /* A card's control owns its row: no sizer to hold a column steady, the whole
+   * width, and the height a thumb is owed. */
+  &__actionWrap--full {
+    display: block;
+  }
+
+  &__action--full {
+    justify-content: center;
+    width: 100%;
+    height: auto;
+    min-height: var(--control-touch);
+  }
+
+  &__status {
+    color: var(--muted);
+  }
+
+  &__status--ok {
+    color: var(--ink);
+  }
+
+  &__status--failed {
+    color: var(--tone-failed);
+  }
+}

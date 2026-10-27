@@ -33,6 +33,8 @@ import {
 import type { AppContext } from '../../shared/context.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
+import { Refusal } from '../../shared/refusal.js';
+import type { PlaylistRefusal } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type {
@@ -60,7 +62,13 @@ export enum PlaylistOutcome {
 
 export type ReadPlaylistResult =
   | { outcome: PlaylistOutcome.Ok; playlist: Playlist }
-  | { outcome: PlaylistOutcome.NotFound };
+  | { outcome: PlaylistOutcome.NotFound; refusal: PlaylistRefusal };
+
+/* A mutation has no body on success: the refusal is the only answer that
+ * carries a document. */
+export type PlaylistMutationResult =
+  | { outcome: PlaylistOutcome.Ok }
+  | { outcome: PlaylistOutcome.NotFound; refusal: PlaylistRefusal };
 
 export interface ListPlaylistsQuery {
   limit: number;
@@ -116,14 +124,11 @@ function readPlaylist(
 
 /* A denial and a vanished row are the same not-found, never distinguished. */
 function toReadPlaylistResult(
-  entry: Entry<Playlist | null>
+  entry: Entry<Playlist | null>,
+  refusal: PlaylistRefusal
 ): ReadPlaylistResult {
-  if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: PlaylistOutcome.NotFound };
-  }
-
-  if (entry.value === null) {
-    return { outcome: PlaylistOutcome.NotFound };
+  if (entry.outcome === EntryOutcome.Denied || entry.value === null) {
+    return { outcome: PlaylistOutcome.NotFound, refusal };
   }
 
   return { outcome: PlaylistOutcome.Ok, playlist: entry.value };
@@ -244,7 +249,8 @@ export function readPlaylistForAccount(
   return toReadPlaylistResult(
     playlistEntry(database, playlistId, accountId, AccessNeed.Read, access =>
       readPlaylist(database, playlistId, accountId, access)
-    )
+    ),
+    Refusal.PlaylistNotFoundRead
   );
 }
 
@@ -287,7 +293,8 @@ export function renamePlaylistForAccount(
 
         return readPlaylist(context.database, playlistId, accountId, access);
       }
-    )
+    ),
+    Refusal.PlaylistNotFoundManage
   );
 
   return announcePlaylistChanged(context, result, playlistId);
@@ -316,7 +323,8 @@ export function updateSkipNonMusicForAccount(
 
         return readPlaylist(context.database, playlistId, accountId, access);
       }
-    )
+    ),
+    Refusal.PlaylistNotFoundWrite
   );
 
   return announcePlaylistChanged(context, result, playlistId);
@@ -347,7 +355,8 @@ export function updateSortForAccount(
 
         return readPlaylist(context.database, playlistId, accountId, access);
       }
-    )
+    ),
+    Refusal.PlaylistNotFoundWrite
   );
 
   return announcePlaylistChanged(context, result, playlistId);
@@ -385,7 +394,8 @@ export function updatePinForAccount(
       }
 
       return readPlaylist(database, playlistId, accountId, access);
-    })
+    }),
+    Refusal.PlaylistNotFoundRead
   );
 }
 
@@ -409,8 +419,8 @@ export function deletePlaylistForAccount(
   context: Pick<AppContext, 'database' | 'events' | 'mediaPaths'>,
   playlistId: string,
   accountId: string
-): PlaylistOutcome {
-  const entry = playlistEntry(
+): PlaylistMutationResult {
+  const entry = playlistEntry<PlaylistMutationResult>(
     context.database,
     playlistId,
     accountId,
@@ -434,12 +444,15 @@ export function deletePlaylistForAccount(
         accountIds
       });
 
-      return PlaylistOutcome.Ok;
+      return { outcome: PlaylistOutcome.Ok };
     }
   );
 
   return entry.outcome === EntryOutcome.Denied
-    ? PlaylistOutcome.NotFound
+    ? {
+        outcome: PlaylistOutcome.NotFound,
+        refusal: Refusal.PlaylistNotFoundManage
+      }
     : entry.value;
 }
 
@@ -452,8 +465,8 @@ export function removeTrackForAccount(
   playlistId: string,
   trackId: string,
   accountId: string
-): PlaylistOutcome {
-  const entry = playlistEntry(
+): PlaylistMutationResult {
+  const entry = playlistEntry<PlaylistMutationResult>(
     context.database,
     playlistId,
     accountId,
@@ -466,7 +479,10 @@ export function removeTrackForAccount(
 
       // Only Absent is not a successful removal.
       if (outcome === AssociationOutcome.Absent) {
-        return PlaylistOutcome.NotFound;
+        return {
+          outcome: PlaylistOutcome.NotFound,
+          refusal: Refusal.PlaylistNotFoundTrack
+        };
       }
 
       announce(context, {
@@ -474,12 +490,15 @@ export function removeTrackForAccount(
         playlistIds: [playlistId]
       });
 
-      return PlaylistOutcome.Ok;
+      return { outcome: PlaylistOutcome.Ok };
     }
   );
 
   return entry.outcome === EntryOutcome.Denied
-    ? PlaylistOutcome.NotFound
+    ? {
+        outcome: PlaylistOutcome.NotFound,
+        refusal: Refusal.PlaylistNotFoundTrack
+      }
     : entry.value;
 }
 
@@ -491,7 +510,7 @@ export interface ListPlaylistTracksQuery {
 
 export type ReadPlaylistTracksResult =
   | { outcome: PlaylistOutcome.Ok; page: PlaylistTracksPage }
-  | { outcome: PlaylistOutcome.NotFound };
+  | { outcome: PlaylistOutcome.NotFound; refusal: PlaylistRefusal };
 
 /* Position first; a date sort falls back to it so equal-addedAt rows cannot
  * swap across a re-fetch. Rowid breaks ties, as positions can collide. */
@@ -641,11 +660,17 @@ export function listPlaylistTracksForAccount(
   );
 
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: PlaylistOutcome.NotFound };
+    return {
+      outcome: PlaylistOutcome.NotFound,
+      refusal: Refusal.PlaylistNotFoundRead
+    };
   }
 
   if (entry.value === null) {
-    return { outcome: PlaylistOutcome.NotFound };
+    return {
+      outcome: PlaylistOutcome.NotFound,
+      refusal: Refusal.PlaylistNotFoundRead
+    };
   }
 
   return { outcome: PlaylistOutcome.Ok, page: entry.value };
@@ -653,7 +678,7 @@ export function listPlaylistTracksForAccount(
 
 export type ReadPlaylistQueueResult =
   | { outcome: PlaylistOutcome.Ok; items: PlaylistTrack[] }
-  | { outcome: PlaylistOutcome.NotFound };
+  | { outcome: PlaylistOutcome.NotFound; refusal: PlaylistRefusal };
 
 export function listPlaylistQueueForAccount(
   database: DatabaseHandle,
@@ -685,7 +710,10 @@ export function listPlaylistQueueForAccount(
   );
 
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: PlaylistOutcome.NotFound };
+    return {
+      outcome: PlaylistOutcome.NotFound,
+      refusal: Refusal.PlaylistNotFoundRead
+    };
   }
 
   return { outcome: PlaylistOutcome.Ok, items: entry.value };

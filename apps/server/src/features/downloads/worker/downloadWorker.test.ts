@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LiveEvent } from '@playliberty/contracts';
 import {
   AssociationOrigin,
+  FailureKind,
   LiveEventType,
   TrackFileStatus,
   TrackSourceStatus
@@ -18,7 +19,12 @@ import type {
   IYoutubeClient
 } from '@playliberty/youtube';
 import {
+  EgressCircuitOpenError,
+  EgressSourceUnavailableError,
+  EgressStreamError,
+  EgressSwitchFailedError,
   SPONSORBLOCK_FAILURE_REASON,
+  SourceFailureKind,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError
 } from '@playliberty/youtube';
@@ -232,6 +238,19 @@ describe('the download worker', () => {
     expect(response.body).toBe('downloaded-audio');
   });
 
+  it('fails one invalid id without rejecting the pass', async () => {
+    const fake = fakeDownloader();
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const invalid = seed(context.database, { videoId: '../escape' });
+    const valid = seed(context.database, { videoId: 'aaaaaaaaaaa' }, 'owner-2');
+
+    await expect(run(fake.youtube, 2)).resolves.toBeUndefined();
+
+    expect(trackRow(valid.trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
+    expect(trackRow(invalid.trackId)?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(fake.downloads).toEqual(['aaaaaaaaaaa']);
+  });
+
   it('does not start the same download twice', async () => {
     const fake = fakeDownloader();
     context = await createTestContext({}, { youtube: fake.youtube });
@@ -290,6 +309,65 @@ describe('the download worker', () => {
     // No probe ran, so no file duration was written and the row keeps its
     // source value.
     expect(row?.durationSeconds).toBe(180);
+  });
+
+  it('returns a track to pending when the fetch is interrupted', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressStreamError()
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    const row = trackRow(seeded.trackId);
+    expect(row?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(row?.failureReason).toBeNull();
+  });
+
+  it('returns a track to pending when every exit is failed', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressCircuitOpenError()
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(trackRow(seeded.trackId)?.failureReason).toBeNull();
+  });
+
+  it('returns a track to pending when the exit refuses the download', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressSourceUnavailableError(SourceFailureKind.Blocked)
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(trackRow(seeded.trackId)?.failureReason).toBeNull();
+  });
+
+  it('returns a track to pending when the switch itself fails', async () => {
+    const fake = fakeDownloader({
+      failTimes: 1,
+      error: new EgressSwitchFailedError(
+        'The WireGuard interface could not be updated.'
+      )
+    });
+    context = await createTestContext({}, { youtube: fake.youtube });
+    const seeded = seed(context.database, { videoId: 'aaaaaaaaaaa' });
+
+    await run(fake.youtube);
+
+    expect(trackRow(seeded.trackId)?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(trackRow(seeded.trackId)?.failureReason).toBeNull();
   });
 
   it('fetches a track whole after the route flips its policy', async () => {
@@ -378,6 +456,7 @@ describe('the download worker', () => {
     const row = trackRow(seeded.trackId);
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
     expect(row?.filePath).toBeNull();
+    expect(row?.failureKind).toBe(FailureKind.Unknown);
     expect(row?.failureReason).toBe(
       'yt-dlp exited with code 1: ERROR: something went wrong'
     );
@@ -447,6 +526,7 @@ describe('the download worker', () => {
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
     // Not terminal: the source is still there, so the next sync retries it.
     expect(row?.sourceStatus).toBe(TrackSourceStatus.Available);
+    expect(row?.failureKind).toBe(FailureKind.Unknown);
     expect(row?.failureReason).toBe(SPONSORBLOCK_FAILURE_REASON);
 
     // A later pass does not retry it on its own; the next sync does.

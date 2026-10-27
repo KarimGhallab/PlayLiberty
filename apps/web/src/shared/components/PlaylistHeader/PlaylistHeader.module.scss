@@ -314,7 +314,8 @@
       }
     }
 
-    &[data-state='error'] {
+    &[data-state='error'],
+    &[data-state='blocked'] {
       color: var(--tone-failed);
     }
   }
@@ -744,7 +745,10 @@
 
   &:has(&__state[data-state='error']) &__cover,
   &:has(&__state[data-state='error']) &__mart,
-  &:has(&__state[data-state='error']) &__tart {
+  &:has(&__state[data-state='error']) &__tart,
+  &:has(&__state[data-state='blocked']) &__cover,
+  &:has(&__state[data-state='blocked']) &__mart,
+  &:has(&__state[data-state='blocked']) &__tart {
     border-color: var(--tone-failed);
   }
 

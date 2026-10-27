@@ -66,6 +66,16 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 | Queue         | Per-client playback state. Not stored on the server.                    |
 | Offline       | A client-side copy for playback without the server. Out of scope in v1. |
 
+## Egress
+
+| Term   | Meaning                                                                                 |
+| ------ | --------------------------------------------------------------------------------------- |
+| Egress | The address a source read or download leaves through.                                   |
+| Exit   | The remote endpoint a WireGuard config routes through.                                  |
+| Switch | The user-facing action: apply the config if needed, then check it. The exit changes.    |
+| Check  | Read the active config's handshake, exit address and one listing. Never switches.       |
+| Apply  | The internal rotation primitive: apply a config without checking it. Not a user action. |
+
 ## Language
 
 | Term     | Meaning                                                                                                                                                                                                                                                                                                |

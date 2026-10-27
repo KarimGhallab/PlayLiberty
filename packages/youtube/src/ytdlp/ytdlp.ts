@@ -1,22 +1,28 @@
-import type { ChildProcess } from 'node:child_process';
-import { spawn } from 'node:child_process';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative } from 'node:path';
 
+import { finalizeAudio } from '../audio/audio.js';
 import {
+  FailureDisposition,
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError,
-  isSponsorBlockFailureMessage,
-  isVideoUnavailableMessage
+  classifySourceFailure,
+  failureMeaning,
+  isSponsorBlockFailureMessage
 } from '../errors/errors.js';
+import { runProcess } from '../process/runProcess.js';
 import type {
   DownloadOptions,
   DownloadTrackRequest,
   DownloadTrackResult,
+  FetchTrackRequest,
+  FetchedTrack,
+  ISourceFetcher,
   IYoutubeClient,
   YoutubeSource,
   YoutubeSourceEntry,
   YoutubeUrlInfo,
+  YtdlpFetcherOptions,
   YtdlpOptions
 } from '../types.js';
 import { YoutubeSourceKind } from '../types.js';
@@ -43,6 +49,10 @@ const DEFAULT_THUMBNAIL_MAX_BYTES = 5 * 1024 * 1024;
 const THUMBNAIL_MAX_REDIRECTS = 3;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
+/* yt-dlp writes these beside a finished file while it works; they are never a
+ * download. */
+const PARTIAL_SUFFIXES = ['.part', '.ytdl'];
+
 export function buildListArgs(info: YoutubeUrlInfo): string[] {
   return [
     '--ignore-config',
@@ -50,6 +60,7 @@ export function buildListArgs(info: YoutubeUrlInfo): string[] {
     YOUTUBE_EXTRACTORS,
     '--js-runtimes',
     'node',
+    '--force-ipv4',
     '--flat-playlist',
     '--no-warnings',
     '--dump-single-json',
@@ -73,6 +84,7 @@ export function buildDownloadArgs(
     YOUTUBE_EXTRACTORS,
     '--js-runtimes',
     'node',
+    '--force-ipv4',
     '-f',
     'bestaudio[ext=m4a]/bestaudio',
     ...(skipNonMusic ? ['--sponsorblock-remove', SPONSORBLOCK_CATEGORIES] : []),
@@ -102,52 +114,61 @@ export function buildDownloadArgs(
   ];
 }
 
-export function buildFaststartArgs(
-  inputPath: string,
-  outputPath: string
-): string[] {
-  return [
-    '-y',
-    '-i',
-    inputPath,
-    '-c',
-    'copy',
-    '-movflags',
-    '+faststart',
-    '-f',
-    'mp4',
-    outputPath
-  ];
-}
+/* The extension is not knowable before the run, because the format selection
+ * can fall back, so the file is discovered rather than assumed. A leftover from
+ * an earlier attempt loses to the newest. */
+async function findFetchedFile(
+  tempDir: string,
+  videoId: string
+): Promise<string> {
+  const prefix = `${videoId}.`;
+  const names = (await readdir(tempDir, { withFileTypes: true }))
+    .filter(entry => entry.isFile() && entry.name.startsWith(prefix))
+    .map(entry => entry.name)
+    .filter(name => !PARTIAL_SUFFIXES.some(suffix => name.endsWith(suffix)));
 
-/* ffprobe reports the container duration as a bare number; ffmpeg's
- * human-readable banner would break on a version or a locale. */
-export function buildProbeArgs(filePath: string): string[] {
-  return [
-    '-v',
-    'error',
-    '-show_entries',
-    'format=duration',
-    '-of',
-    'default=noprint_wrappers=1:nokey=1',
-    filePath
-  ];
-}
-
-interface RunResult {
-  stdout: string;
-  stderr: string;
-}
-
-function killProcessTree(child: ChildProcess): void {
-  if (child.pid === undefined) {
-    return;
+  if (names.length === 0) {
+    throw new Error(`yt-dlp wrote no file for ${videoId}.`);
   }
-  try {
-    process.kill(-child.pid, 'SIGKILL');
-  } catch {
-    child.kill('SIGKILL');
+
+  const paths = names.map(name => join(tempDir, name));
+
+  if (paths.length === 1) {
+    return paths[0];
   }
+
+  const stats = await Promise.all(paths.map(path => stat(path)));
+  let newest = 0;
+
+  for (let index = 1; index < stats.length; index += 1) {
+    if (stats[index].mtimeMs > stats[newest].mtimeMs) {
+      newest = index;
+    }
+  }
+
+  return paths[newest];
+}
+
+/* The video id is the only part of the output path the caller controls, so the
+ * template is validated and proven inside the temp directory before yt-dlp
+ * starts. */
+function downloadOutputTemplate(tempDir: string, videoId: string): string {
+  if (!isValidVideoId(videoId)) {
+    throw new Error(
+      `The video id "${videoId}" is not a valid YouTube video id.`
+    );
+  }
+
+  const template = join(tempDir, `${videoId}.%(ext)s`);
+  const relativeTemplate = relative(tempDir, template);
+
+  if (relativeTemplate.startsWith('..') || isAbsolute(relativeTemplate)) {
+    throw new Error(
+      `The video id "${videoId}" resolves outside the temp directory.`
+    );
+  }
+
+  return template;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -207,81 +228,6 @@ function parseSourceJson(stdout: string, info: YoutubeUrlInfo): YoutubeSource {
     title,
     entries: rawEntries.map(entry => toEntry(entry))
   };
-}
-
-/* A non-numeric probe fails the download rather than storing a track with a
- * duration nobody can trust. */
-async function probeDuration(
-  binary: string,
-  filePath: string,
-  timeoutMs: number
-): Promise<number> {
-  const { stdout } = await runProcess(
-    binary,
-    buildProbeArgs(filePath),
-    timeoutMs
-  );
-  const seconds = Number.parseFloat(stdout.trim());
-
-  if (!Number.isFinite(seconds)) {
-    throw new Error(`The duration probe returned no number for ${filePath}.`);
-  }
-
-  return Math.round(seconds);
-}
-
-function runProcess(
-  command: string,
-  args: string[],
-  timeoutMs: number
-): Promise<RunResult> {
-  return new Promise<RunResult>((resolve, reject) => {
-    const child = spawn(command, args, {
-      detached: true,
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    let stdout = '';
-    let stderr = '';
-    let settled = false;
-
-    const timer = setTimeout(() => {
-      settled = true;
-      killProcessTree(child);
-      reject(new Error(`${command} timed out after ${timeoutMs}ms.`));
-    }, timeoutMs);
-
-    child.stdout?.on('data', chunk => {
-      stdout += String(chunk);
-    });
-    child.stderr?.on('data', chunk => {
-      stderr += String(chunk);
-    });
-    child.on('error', error => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.on('close', code => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-      reject(
-        new Error(
-          `${command} exited with code ${String(code)}: ${stderr.trim()}`
-        )
-      );
-    });
-  });
 }
 
 function isAllowedThumbnailHost(host: string): boolean {
@@ -390,26 +336,29 @@ async function fetchThumbnailImage(
   throw new Error('The thumbnail request redirected too many times.');
 }
 
-export class YtdlpClient implements IYoutubeClient {
-  constructor(private readonly _options: YtdlpOptions) {}
+/* Source access only: what the tool returns, before the store shapes it. */
+export class YtdlpFetcher implements ISourceFetcher {
+  constructor(private readonly _options: YtdlpFetcherOptions) {}
 
   public async listSource(url: string): Promise<YoutubeSource> {
     const info = validateYoutubeUrl(url);
     const { stdout } = await runProcess(
       this._options.binary,
       buildListArgs(info),
-      this._options.timeoutMs
+      this._options.timeoutMs,
+      this._options.trackProcess
     );
     return parseSourceJson(stdout, info);
   }
 
-  public async downloadTrack(
-    request: DownloadTrackRequest
-  ): Promise<DownloadTrackResult> {
-    await mkdir(request.tempDir, { recursive: true });
-    await mkdir(dirname(request.outputPath), { recursive: true });
+  public async fetchTrack(request: FetchTrackRequest): Promise<FetchedTrack> {
+    const outputTemplate = downloadOutputTemplate(
+      request.tempDir,
+      request.videoId
+    );
 
-    const outputTemplate = join(request.tempDir, `${request.videoId}.%(ext)s`);
+    await mkdir(request.tempDir, { recursive: true });
+
     const url = `https://www.youtube.com/watch?v=${request.videoId}`;
 
     try {
@@ -421,12 +370,16 @@ export class YtdlpClient implements IYoutubeClient {
           this._options.download,
           request.skipNonMusic
         ),
-        this._options.timeoutMs
+        this._options.timeoutMs,
+        this._options.trackProcess
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
 
-      if (isVideoUnavailableMessage(message)) {
+      if (
+        failureMeaning(classifySourceFailure(message)).disposition ===
+        FailureDisposition.Terminal
+      ) {
         throw new YoutubeVideoUnavailableError(request.videoId);
       }
 
@@ -439,27 +392,59 @@ export class YtdlpClient implements IYoutubeClient {
       throw error;
     }
 
-    const downloadedPath = join(request.tempDir, `${request.videoId}.m4a`);
-    await runProcess(
-      this._options.ffmpegBinary,
-      buildFaststartArgs(downloadedPath, request.outputPath),
-      this._options.timeoutMs
-    );
-    await rm(downloadedPath, { force: true });
-
-    // The file is the truth: a trimmed file is shorter than its source, so the
-    // duration is read back from what was written, trimmed or not.
-    const durationSeconds = await probeDuration(
-      this._options.ffprobeBinary,
-      request.outputPath,
-      this._options.timeoutMs
-    );
-
     return {
       videoId: request.videoId,
-      filePath: request.outputPath,
-      durationSeconds
+      filePath: await findFetchedFile(request.tempDir, request.videoId)
     };
+  }
+}
+
+/* The stored file, from source access plus the audio pipeline. The fetcher is
+ * injectable so a transport that is not this binary can supply the bytes. */
+export class YtdlpClient implements IYoutubeClient {
+  private readonly _options: YtdlpOptions;
+  private readonly _fetcher: ISourceFetcher;
+
+  constructor(options: YtdlpOptions, fetcher?: ISourceFetcher) {
+    this._options = options;
+    this._fetcher = fetcher ?? new YtdlpFetcher(options);
+  }
+
+  public async listSource(url: string): Promise<YoutubeSource> {
+    return this._fetcher.listSource(url);
+  }
+
+  public async downloadTrack(
+    request: DownloadTrackRequest
+  ): Promise<DownloadTrackResult> {
+    const fetched = await this._fetcher.fetchTrack({
+      videoId: request.videoId,
+      tempDir: request.tempDir,
+      skipNonMusic: request.skipNonMusic
+    });
+
+    try {
+      const durationSeconds = await finalizeAudio(
+        {
+          ffmpegBinary: this._options.ffmpegBinary,
+          ffprobeBinary: this._options.ffprobeBinary,
+          timeoutMs: this._options.timeoutMs
+        },
+        { inputPath: fetched.filePath, outputPath: request.outputPath }
+      );
+
+      return {
+        videoId: request.videoId,
+        filePath: request.outputPath,
+        durationSeconds
+      };
+    } finally {
+      /* The raw download is scratch: the stored file is the remuxed one. A
+       * fetcher that already writes the output path keeps it. */
+      if (fetched.filePath !== request.outputPath) {
+        await rm(fetched.filePath, { force: true });
+      }
+    }
   }
 
   public async fetchThumbnail(url: string, outputPath: string): Promise<void> {

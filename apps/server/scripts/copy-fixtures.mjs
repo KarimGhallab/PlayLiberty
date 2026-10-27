@@ -4,11 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 /*
  * `tsc` copies `.ts` and nothing else, so the fake's fixtures would be missing
- * from `dist`. It runs on every build, not just E2E, because a conditional step
- * is one more thing to forget; the files are two kilobytes.
+ * from the output. Only the E2E build needs them, because the production build
+ * omits the test harness.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
+const output = process.argv[2] ?? 'dist';
 const source = join(
   here,
   '..',
@@ -21,7 +22,7 @@ const source = join(
 const destination = join(
   here,
   '..',
-  'dist',
+  output,
   'app',
   'testing',
   'e2eYoutube',

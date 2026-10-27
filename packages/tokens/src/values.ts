@@ -41,6 +41,13 @@ export const colors = {
   'shared-border': { kind: TokenKind.Color, value: '#44779c' },
   'shared-muted': { kind: TokenKind.Color, value: '#87adcb' },
 
+  /* The egress role: the operator's tunnel and its pool. Kept off the accent,
+   * so an operator control is not read as a playback or sharing action. */
+  egress: { kind: TokenKind.Color, value: '#a78bfa' },
+  'egress-muted': { kind: TokenKind.Color, value: '#8f7bc4' },
+  'egress-surface': { kind: TokenKind.Color, value: '#241d33' },
+  'egress-border': { kind: TokenKind.Color, value: '#7a63b0' },
+
   'control-disabled-fg': { kind: TokenKind.Color, value: '#888b8d' },
   'control-disabled-bg': { kind: TokenKind.Color, value: '#1e2229' },
   scrim: { kind: TokenKind.Color, value: 'rgb(0 0 0 / 0.6)' },

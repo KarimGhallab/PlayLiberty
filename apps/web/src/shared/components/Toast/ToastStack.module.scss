@@ -1,0 +1,11 @@
+.toasts {
+  position: fixed;
+  left: var(--space-4);
+  bottom: calc(var(--space-4) + var(--player-bar-height));
+  z-index: calc(var(--z-overlay) + 1);
+  display: flex;
+  /* Newest first in the DOM, so the newest sits at the top of the stack. */
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: min(420px, calc(100vw - var(--space-4) * 2));
+}

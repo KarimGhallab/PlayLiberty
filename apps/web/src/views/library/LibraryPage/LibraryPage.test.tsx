@@ -20,6 +20,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   PinPlaylistInputSchema,
   ProblemCode,
+  UserRole,
   endpoints
 } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
@@ -31,7 +32,8 @@ import { MOBILE_QUERY } from '../../../shared/useMediaQuery/useMediaQuery';
 import {
   EMPTY_COUNTS,
   mockUrl,
-  problemResponse
+  problemResponse,
+  respond
 } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
 import { stubViewport } from '../../../testing/viewport';
@@ -340,8 +342,13 @@ function renderLibraryPage() {
     path: '/',
     component: LibraryPage
   });
+  const egressRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/egress',
+    component: () => <p>egress</p>
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, detailRoute]),
+    routeTree: rootRoute.addChildren([indexRoute, detailRoute, egressRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] })
   });
   const queryClient = new QueryClient({
@@ -1202,6 +1209,7 @@ describe('LibraryPage', () => {
         thumbnailPath: null,
         fileStatus: 'stored',
         sourceStatus: 'available',
+        failureKind: null,
         failureReason: null,
         createdAt: '2026-09-01T00:00:00.000Z',
         updatedAt: '2026-09-29T12:00:00.000Z'
@@ -1359,6 +1367,7 @@ describe('LibraryPage', () => {
         thumbnailPath: null,
         fileStatus: 'stored',
         sourceStatus: 'available',
+        failureKind: null,
         failureReason: null,
         createdAt: '2026-09-01T00:00:00.000Z',
         updatedAt: '2026-09-29T12:00:00.000Z'
@@ -1388,6 +1397,7 @@ describe('LibraryPage', () => {
                   thumbnailPath: null,
                   fileStatus: 'pending',
                   sourceStatus: 'available',
+                  failureKind: null,
                   failureReason: null,
                   createdAt: '2026-09-01T00:00:00.000Z',
                   updatedAt: '2026-09-29T12:00:00.000Z'
@@ -1848,5 +1858,36 @@ describe('LibraryPage', () => {
 
     expect(await screen.findByText('Started 2 syncs')).toBeInTheDocument();
     expect(screen.getByText('1 is already running')).toBeInTheDocument();
+  });
+});
+
+describe('the egress link', () => {
+  it('is offered to an admin', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.currentAccount), () =>
+        respond(endpoints.currentAccount, {
+          id: 'account-1',
+          displayName: 'You',
+          avatarUrl: null,
+          email: 'you@example.com',
+          role: UserRole.Admin
+        })
+      )
+    );
+    renderLibraryPage();
+
+    expect(
+      await screen.findByRole('link', { name: 'VPN settings' })
+    ).toBeInTheDocument();
+  });
+
+  it('is absent for everyone else', async () => {
+    renderLibraryPage();
+
+    await screen.findByRole('heading', { name: 'PlayLiberty' });
+
+    expect(
+      screen.queryByRole('link', { name: 'VPN settings' })
+    ).not.toBeInTheDocument();
   });
 });

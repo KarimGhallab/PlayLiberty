@@ -5,8 +5,10 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ProblemCode, UserRole, endpoints } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import { EventStreamContext } from './shared/api/useEventStream/useEventStream';
@@ -15,6 +17,8 @@ import type { PlayerTrack } from './shared/player/types';
 
 import { routeTree } from './router';
 import { createFakeEventStream } from './testing/fakeEventStream';
+import { mockUrl, problemResponse, respond } from './testing/mocks/handlers';
+import { server } from './testing/mocks/server';
 
 const PLAYLIST = 'playlist-1';
 
@@ -31,12 +35,13 @@ const TRACK: PlayerTrack = {
 };
 
 function renderShell(initialEntry: string) {
-  const router = createRouter({
-    routeTree,
-    history: createMemoryHistory({ initialEntries: [initialEntry] })
-  });
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } }
+  });
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+    context: { queryClient }
   });
   const eventStream = createFakeEventStream();
 
@@ -82,6 +87,62 @@ describe('AppShell', () => {
     expect(screen.getByLabelText('Player')).toBeInTheDocument();
     expect(screen.getByText('Blue In Green')).toBeInTheDocument();
     expect(playMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the page-level 404 for an unknown path', async () => {
+    renderShell('/not-a-page');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Page not found' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('404')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to home' })).toHaveAttribute(
+      'href',
+      '/'
+    );
+  });
+
+  it('does not mount the egress page for a non-admin', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.egress), () =>
+        problemResponse({
+          code: ProblemCode.InternalError,
+          status: 500,
+          title: 'Internal Server Error'
+        })
+      )
+    );
+
+    renderShell('/egress');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Page not found' })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'VPN settings' })).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('mounts the egress page for an admin', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.currentAccount), () =>
+        respond(endpoints.currentAccount, {
+          id: 'account-1',
+          displayName: 'You',
+          email: 'you@example.com',
+          avatarUrl: null,
+          role: UserRole.Admin
+        })
+      ),
+      http.get(mockUrl(endpoints.egress), () =>
+        respond(endpoints.egress, { agentReachable: true, configs: [] })
+      )
+    );
+
+    renderShell('/egress');
+
+    expect(
+      await screen.findByRole('heading', { name: 'VPN settings' })
+    ).toBeInTheDocument();
   });
 
   /*

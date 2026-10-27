@@ -66,6 +66,46 @@ export const fr: Messages = {
         "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste stockée vous appartient ensuite, même si la vidéo est retirée plus tard."
     }
   },
+  egress: {
+    title: 'Paramètres VPN',
+    back: "Retour à l'accueil",
+    loading: 'Chargement des configurations.',
+    readFailed: 'Impossible de charger les configurations.',
+    empty: 'Aucune configuration installée.',
+    agentUp: 'Agent egress joignable.',
+    agentDown:
+      'Agent egress injoignable. Les configurations ci-dessous sont les derniers états connus.',
+    name: 'Nom',
+    endpoint: 'Point de terminaison',
+    status: 'État',
+    lastAttempt: 'Dernière tentative',
+    lastCheck: 'Dernière vérification',
+    switch: 'Changer',
+    switching: 'Changement...',
+    check: 'Vérifier',
+    checking: 'Vérification...',
+    checkUnreachable: "L'agent egress est injoignable.",
+    checkFailed: "La vérification n'a pas pu être effectuée.",
+    toast: {
+      switched: 'Changement vers {name}.',
+      checked: '{name} est active.',
+      answered: 'La sortie a répondu à YouTube.',
+      switchFailed: "La sortie n'a pas pu être changée."
+    },
+    actions: 'Actions',
+    seen: 'Vu à {ip}',
+    reason: {
+      blocked: 'YouTube a refusé la sortie.',
+      unavailable: 'La vidéo de vérification est indisponible.',
+      network: 'La sortie est injoignable.',
+      unknown: 'La vérification a échoué.'
+    },
+    active: 'Active',
+    never: 'Jamais',
+    statusOk: 'OK',
+    statusFailed: 'Échec',
+    statusUnknown: 'Inconnu'
+  },
   detail: {
     back: "Retour à l'accueil",
     addTrack: 'Ajouter une piste',
@@ -237,6 +277,12 @@ export const fr: Messages = {
       "Elle a peut-être été supprimée, ou bien elle appartient à quelqu'un d'autre et ne vous est plus partagée.",
     back: "Retour à l'accueil"
   },
+  notFoundPage: {
+    code: '404',
+    heading: 'Page introuvable',
+    prose: "La page que vous cherchez n'existe pas.",
+    back: "Retour à l'accueil"
+  },
   header: {
     collab: 'Vous êtes collaborateur',
     shared: 'Playlist partagée',
@@ -322,7 +368,8 @@ export const fr: Messages = {
   syncState: {
     upToDate: 'À jour',
     syncing: 'Synchronisation',
-    failed: 'Échec de la synchronisation'
+    failed: 'Échec de la synchronisation',
+    blocked: 'Source inaccessible'
   },
   trackState: {
     removedFrom: 'Retirée de {provider}',

@@ -3,17 +3,24 @@ pnpm-lock.yaml
 # ignore files
 .gitignore
 .prettierignore
+.dockerignore
 
-.husky/
+.github/assets/
 
-# Database migration scripts
-apps/server/drizzle/
+*.sh
 
+# configuration files
 *.conf.template
 *.toml
 
 *.conf
 
+*.env*
 # Deployment files
 ContainerFile
 *.kube
+*.service
+
+.husky/
+# Database migration scripts
+apps/server/drizzle/

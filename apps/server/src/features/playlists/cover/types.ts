@@ -1,5 +1,7 @@
 import type { Playlist } from '@playliberty/contracts';
 
+import type { Refused, Succeeded } from '../../../shared/refusal.js';
+
 /* Fractions of the oriented image, so a crop means the same rectangle whatever
  * the stored pixel size is. */
 export interface CoverCrop {
@@ -9,23 +11,10 @@ export interface CoverCrop {
   readonly height: number;
 }
 
-export enum PlaylistCoverOutcome {
-  Ok = 'ok',
-  PlaylistNotFound = 'playlist_not_found',
-  CoverNotFound = 'cover_not_found',
-  InvalidImage = 'invalid_image'
-}
-
 export type SetPlaylistCoverResult =
-  | { outcome: PlaylistCoverOutcome.Ok; playlist: Playlist }
-  | { outcome: PlaylistCoverOutcome.PlaylistNotFound }
-  | { outcome: PlaylistCoverOutcome.InvalidImage };
+  { outcome: 'ok'; playlist: Playlist } | Refused;
 
 export type ReadPlaylistCoverResult =
-  | { outcome: PlaylistCoverOutcome.Ok; coverPath: string }
-  | { outcome: PlaylistCoverOutcome.PlaylistNotFound }
-  | { outcome: PlaylistCoverOutcome.CoverNotFound };
+  { outcome: 'ok'; coverPath: string } | Refused;
 
-export type RemovePlaylistCoverResult =
-  | { outcome: PlaylistCoverOutcome.Ok }
-  | { outcome: PlaylistCoverOutcome.PlaylistNotFound };
+export type RemovePlaylistCoverResult = Succeeded | Refused;

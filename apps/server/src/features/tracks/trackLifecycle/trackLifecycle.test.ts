@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { TrackFileStatus, TrackSourceStatus } from '@playliberty/contracts';
+import {
+  FailureKind,
+  TrackFileStatus,
+  TrackSourceStatus
+} from '@playliberty/contracts';
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
@@ -18,7 +22,7 @@ import {
   failTrack,
   fetchTrackWhole,
   markTrackSourceRemoved,
-  removeTrack,
+  removeOrphanTrack,
   resetDownloadingTracks,
   retryTrack,
   storeThumbnail,
@@ -162,11 +166,17 @@ describe('storing and failing a claimed download', () => {
       durationSeconds: null
     });
 
-    const result = failTrack(database(), trackId, 'the download failed');
+    const result = failTrack(
+      database(),
+      trackId,
+      FailureKind.Unknown,
+      'the download failed'
+    );
 
     expect(result.outcome).toBe(TrackTransitionOutcome.Applied);
     const row = readTrack(trackId);
     expect(row?.fileStatus).toBe(TrackFileStatus.Failed);
+    expect(row?.failureKind).toBe(FailureKind.Unknown);
     expect(row?.failureReason).toBe('the download failed');
   });
 
@@ -178,7 +188,7 @@ describe('storing and failing a claimed download', () => {
       filePath: 'media/aa/video.m4a'
     });
 
-    const result = failTrack(database(), trackId, 'boom');
+    const result = failTrack(database(), trackId, FailureKind.Unknown, 'boom');
 
     expect(result.outcome).toBe(TrackTransitionOutcome.Refused);
     expect(readTrack(trackId)?.fileStatus).toBe(TrackFileStatus.Stored);
@@ -368,14 +378,14 @@ describe('the artwork and the row', () => {
     expect(readTrack(trackId)?.thumbnailPath).toBe('thumbnails/aa/video.jpg');
   });
 
-  it('removes a track row', async () => {
+  it('removes an unassociated track row', async () => {
     context = await createTestContext();
     const { trackId } = seedTrack(database(), {
       fileStatus: TrackFileStatus.Pending,
       durationSeconds: null
     });
 
-    removeTrack(database(), trackId);
+    expect(removeOrphanTrack(database(), trackId)).toBe(true);
 
     expect(readTrack(trackId)).toBeUndefined();
   });

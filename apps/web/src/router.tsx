@@ -1,15 +1,23 @@
+import type { QueryClient } from '@tanstack/react-query';
 import {
   Outlet,
-  createRootRoute,
+  createRootRouteWithContext,
   createRoute,
-  createRouter
+  createRouter,
+  notFound
 } from '@tanstack/react-router';
 
+import { UserRole } from '@playliberty/contracts';
+
+import { currentAccountQuery } from './shared/api/clients/accountClient/accountClient';
+import { queryClient } from './shared/api/queryClient';
 import { useEventStream } from './shared/api/useEventStream/useEventStream';
+import NotFoundPage from './shared/components/NotFoundPage/NotFoundPage';
 import PlayerAudio from './shared/player/PlayerAudio/PlayerAudio';
 import PlayerBar from './shared/player/PlayerBar/PlayerBar';
 import { useDocumentTitle } from './shared/useDocumentTitle/useDocumentTitle';
 
+import EgressPage from './views/egress/EgressPage/EgressPage';
 import LibraryPage from './views/library/LibraryPage/LibraryPage';
 import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage';
 
@@ -32,7 +40,13 @@ export function AppShell() {
   );
 }
 
-const rootRoute = createRootRoute({ component: AppShell });
+interface RouterContext {
+  queryClient: QueryClient;
+}
+
+const rootRoute = createRootRouteWithContext<RouterContext>()({
+  component: AppShell
+});
 
 const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -46,12 +60,39 @@ const playlistDetailRoute = createRoute({
   component: PlaylistDetailPage
 });
 
+const egressRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/egress',
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient
+      .query(currentAccountQuery)
+      .catch(() => null);
+
+    if (me !== null && me.role !== UserRole.Admin) {
+      throw notFound();
+    }
+  },
+  component: EgressPage,
+  notFoundComponent: NotFoundPage
+});
+
+const notFoundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '$',
+  component: NotFoundPage
+});
+
 export const routeTree = rootRoute.addChildren([
   libraryRoute,
-  playlistDetailRoute
+  playlistDetailRoute,
+  egressRoute,
+  notFoundRoute
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  context: { queryClient }
+});
 
 declare module '@tanstack/react-router' {
   interface Register {

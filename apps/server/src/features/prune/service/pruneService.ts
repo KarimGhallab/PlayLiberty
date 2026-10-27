@@ -16,7 +16,7 @@ import {
 } from '../../../platform/database/schema.js';
 import type { MediaPaths } from '../../../platform/media/mediaPaths.js';
 import { COVERS_DIRECTORY } from '../../../platform/media/mediaPaths.js';
-import { removeTrack } from '../../tracks/trackLifecycle/trackLifecycle.js';
+import { removeOrphanTrack } from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 export interface PruneOptions {
   database: DatabaseHandle;
@@ -26,8 +26,8 @@ export interface PruneOptions {
 }
 
 /* An orphan is a track with zero associations and nothing else, so a removed
- * held track is never a candidate. Its media is removed before its row.
- */
+ * held track is never a candidate. The row is deleted first, conditionally, and
+ * its media only then. */
 export async function pruneOrphanTracks(
   options: PruneOptions
 ): Promise<number> {
@@ -56,13 +56,15 @@ export async function pruneOrphanTracks(
       break;
     }
 
-    const gone = await removeTrackMedia(options, track);
+    // The conditional delete re-checks the orphan state, so an association
+    // added after the scan keeps the track and its media.
+    const deleted = removeOrphanTrack(options.database, track.id);
 
-    if (!gone) {
+    if (!deleted) {
       continue;
     }
 
-    removeTrack(options.database, track.id);
+    await removeTrackMedia(options, track);
     removed += 1;
   }
 
@@ -154,12 +156,12 @@ export async function pruneOrphanCovers(
   return removed;
 }
 
-/* The audio and thumbnail, or false if either could not go. The row is removed
- * only once both are gone, so a later run can finish a failed removal. */
+/* The audio and thumbnail, once the row is gone. A removal that fails is logged
+ * and left: the row is already deleted, so nothing points at a missing file. */
 async function removeTrackMedia(
   options: PruneOptions,
   track: TrackRow
-): Promise<boolean> {
+): Promise<void> {
   const paths: string[] = [];
 
   if (track.filePath !== null) {
@@ -175,14 +177,10 @@ async function removeTrackMedia(
       // force, because a file already gone is the state wanted, not an error.
       await rm(path, { force: true });
     }
-
-    return true;
   } catch (error) {
     options.logger.warn(
       { trackId: track.id, err: error },
       'orphan prune could not remove media'
     );
-
-    return false;
   }
 }

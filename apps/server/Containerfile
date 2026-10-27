@@ -44,6 +44,9 @@ ARG YTDLP_VERSION=2026.08.19
 # The SHA2-256 of `yt-dlp_linux` for that version, committed here so the check
 # does not trust the release that served the binary. Bump both together.
 ARG YTDLP_SHA256=58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a
+# The host copies this binary out of the image; the label is the digest the
+# build command checks, so there is no second yt-dlp pin on the host.
+LABEL org.playliberty.ytdlp.sha256="${YTDLP_SHA256}"
 
 # ffmpeg ships ffprobe and is pinned to the exact Debian build, so the audio
 # toolchain does not drift under a rebuild. The pin is updated deliberately.

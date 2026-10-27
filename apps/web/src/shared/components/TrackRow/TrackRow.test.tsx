@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PlaylistTrack } from '@playliberty/contracts';
 import {
   AssociationOrigin,
+  FailureKind,
   Provider,
   TrackFileStatus,
   TrackSourceStatus
@@ -26,6 +27,7 @@ function association(
       thumbnailPath: null,
       fileStatus: TrackFileStatus.Stored,
       sourceStatus: TrackSourceStatus.Available,
+      failureKind: null,
       failureReason: null,
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-01T00:00:00.000Z',
@@ -176,6 +178,7 @@ describe('TrackRow', () => {
     renderRow({
       association: association({
         fileStatus: TrackFileStatus.Failed,
+        failureKind: FailureKind.Unknown,
         failureReason: 'Download failed, will retry on the next sync'
       }),
       onRetry,
@@ -286,6 +289,7 @@ describe('TrackRow', () => {
     renderRow({
       association: association({
         fileStatus: TrackFileStatus.Failed,
+        failureKind: FailureKind.Blocked,
         failureReason:
           'yt-dlp exited with code 1: ERROR: unable to download video data: HTTP Error 403: Forbidden'
       })

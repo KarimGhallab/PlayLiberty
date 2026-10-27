@@ -13,28 +13,33 @@ import {
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
-  TrackFileStatus
+  TrackFileStatus,
+  UserRole
 } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
-import { problemSentence } from '../../../shared/api/problem/problem';
 import {
   ownerNameFrom,
   useAccountDirectory,
+  useCurrentAccount
+} from '../../../shared/api/clients/accountClient/accountClient';
+import { usePlaylists } from '../../../shared/api/clients/libraryClient/libraryClient';
+import {
   useAddTrack,
   useFetchTrackWhole,
   useLatestSyncRun,
   usePlaylist,
   usePlaylistQueue,
   usePlaylistTracks,
-  usePlaylists,
   useRemoveTrack,
   useRetryFailedTracks,
   useRetryTrack,
   useUpdateSkipNonMusic,
   useUpdateSort
-} from '../../../shared/api/queries/queries';
+} from '../../../shared/api/clients/playlistClient/playlistClient';
+import { problemSentence } from '../../../shared/api/problem/problem';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
+import EgressLink from '../../../shared/components/EgressLink/EgressLink';
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';
 import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
 import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
@@ -91,6 +96,8 @@ export default function PlaylistDetailPage() {
   const playlist = usePlaylist(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
+  /* The reader's own role: the egress door is admin-only on both surfaces. */
+  const me = useCurrentAccount();
   /* The library read: the add dialog's writable playlists come from here. */
   const playlists = usePlaylists();
   const retry = useRetryTrack(playlistId);
@@ -409,6 +416,7 @@ export default function PlaylistDetailPage() {
           {t('detail.back')}
         </Link>
         <div className={styles.playlistDetail__actions}>
+          {me.data?.role === UserRole.Admin ? <EgressLink /> : null}
           <LanguageMenu />
           {canWrite && !emptyStateSync && !syncErrorShown ? (
             <SyncControl

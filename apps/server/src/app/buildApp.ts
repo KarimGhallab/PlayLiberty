@@ -10,7 +10,12 @@ import Fastify from 'fastify';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import { ProblemCode } from '@playliberty/contracts';
-import { YtdlpClient } from '@playliberty/youtube';
+import {
+  EgressAgentClient,
+  EgressAgentFetcher,
+  YtdlpClient,
+  YtdlpFetcher
+} from '@playliberty/youtube';
 
 import type { AppContext } from '../shared/context.js';
 import { EventBus } from '../shared/events/eventBus/EventBus.js';
@@ -20,6 +25,9 @@ import { registerAccountRoutes } from '../features/accounts/routes/accountRoutes
 import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
+import { registerEgressRoutes } from '../features/egress/routes/egressRoutes.js';
+import { EgressPolicyClient } from '../features/egress/service/egressPolicy.js';
+import { reconcileEgress } from '../features/egress/service/egressService.js';
 import {
   DEFAULT_EVENT_HEARTBEAT_MS,
   registerEventRoutes
@@ -46,6 +54,8 @@ export interface AppOptions {
   database: AppContext['database'];
   mediaPaths: AppContext['mediaPaths'];
   youtube?: AppContext['youtube'];
+  /* The egress agent's client; a test passes a fake, a real process builds it. */
+  egressAgent?: AppContext['egressAgent'];
   /* A test's replacement for the worker wake-up; real `onReady` swaps in the
    * worker's own kick. */
   kickDownloads?: () => void;
@@ -61,16 +71,33 @@ export interface AppOptions {
   loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
 
+/* The test harness module is resolved at runtime, so the production build does
+ * not pull it in; the harness build compiles it. */
+interface E2eRoutesModule {
+  registerE2eRoutes(app: FastifyInstance, context: AppContext): void;
+}
+
 function createYoutubeClient(
-  config: AppContext['config']
+  config: AppContext['config'],
+  egressAgent: AppContext['egressAgent']
 ): AppContext['youtube'] {
-  return new YtdlpClient({
+  const options = {
     binary: config.ytdlpBinary,
     ffmpegBinary: config.ffmpegBinary,
     ffprobeBinary: config.ffprobeBinary,
     timeoutMs: config.downloadTimeoutMs,
     download: config.download
-  });
+  };
+  const fetcher =
+    config.youtubeTransport === 'egress-agent'
+      ? new EgressAgentFetcher(
+          egressAgent,
+          config.download,
+          config.downloadTimeoutMs
+        )
+      : new YtdlpFetcher(options);
+
+  return new YtdlpClient(options, fetcher);
 }
 /* Colored logs in a terminal, JSON elsewhere. `pino-pretty` is a devDependency
  * named only as a transport target, which is why knip leaves it alone. */
@@ -78,7 +105,7 @@ function createLoggerOptions(
   config: AppContext['config']
 ): FastifyServerOptions['logger'] {
   const pretty =
-    config.nodeEnv === 'development' && process.stdout.isTTY === true;
+    config.runtime === 'development' && process.stdout.isTTY === true;
 
   if (!pretty) {
     return { level: config.logLevel };
@@ -98,11 +125,32 @@ function createLoggerOptions(
 }
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
+  const egressAgent =
+    options.egressAgent ??
+    new EgressAgentClient(options.config.egressAgentSocket);
+
+  const baseYoutube =
+    options.youtube ?? createYoutubeClient(options.config, egressAgent);
+  /* A test's fake already answers for itself; the policy only wraps the real
+   * transport, where an exit can actually be blamed. */
+  const youtube =
+    options.youtube === undefined &&
+    options.config.youtubeTransport === 'egress-agent'
+      ? new EgressPolicyClient(baseYoutube, {
+          database: options.database,
+          agent: egressAgent,
+          failureLimit: options.config.egressFailureLimit,
+          switchCooldownMs: options.config.egressSwitchCooldownMs,
+          drainTimeoutMs: options.config.egressDrainTimeoutMs
+        })
+      : baseYoutube;
+
   const context: AppContext = {
     config: options.config,
     database: options.database,
     mediaPaths: options.mediaPaths,
-    youtube: options.youtube ?? createYoutubeClient(options.config),
+    youtube,
+    egressAgent,
     kickDownloads: options.kickDownloads ?? (() => undefined),
     events: options.events ?? new EventBus<LiveEvent>()
   };
@@ -159,6 +207,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(
     async api => {
       registerAccountRoutes(api, context);
+      registerEgressRoutes(api, context);
       registerPlaylistRoutes(api, context);
       registerCoverRoutes(api, context);
       registerShareRoutes(api, context);
@@ -168,11 +217,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         heartbeatMs: options.sseHeartbeatMs ?? DEFAULT_EVENT_HEARTBEAT_MS
       });
 
-      /* The E2E reset. Not API surface, only under `NODE_ENV=test`, under API
-       * prefix so the browser reaches it through the proxy. */
-      if (context.config.nodeEnv === 'test') {
-        const { registerE2eRoutes } = await import('./testing/e2eRoutes.js');
-        registerE2eRoutes(api, context);
+      /* The E2E reset. Not API surface: it needs both the test runtime and the
+       * explicit harness flag, and the production build omits the module. */
+      if (context.config.runtime === 'test' && context.config.e2eHarness) {
+        // Not a literal, so the production build does not compile the module.
+        const modulePath: string = './testing/e2eRoutes.js';
+        const harness = (await import(modulePath)) as E2eRoutesModule;
+        harness.registerE2eRoutes(api, context);
       }
     },
     { prefix: '/api/v1' }
@@ -182,6 +233,16 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   let scheduler: JobHandle | null = null;
 
   app.addHook('onReady', async () => {
+    const reachable = await reconcileEgress(
+      context.database,
+      context.egressAgent
+    );
+
+    if (!reachable) {
+      // The host may start the agent after the server; the first read retries.
+      app.log.warn('the egress agent is unreachable at boot');
+    }
+
     const sweep = await runStartupSweep(context.mediaPaths, context.database);
     app.log.info({ ...sweep }, 'startup sweep finished');
 

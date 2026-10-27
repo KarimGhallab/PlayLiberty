@@ -3,10 +3,11 @@ import { dirname, join } from 'node:path';
 
 import type { FastifyBaseLogger } from 'fastify';
 
-import { YoutubeVideoUnavailableError } from '@playliberty/youtube';
+import { FailureDisposition, failureOf } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
+import { exhaust } from '../../../shared/exhaust.js';
 
 import type { TrackRow } from '../../../platform/database/schema.js';
 import { startIntervalJob } from '../../../platform/jobs/intervalJob.js';
@@ -18,8 +19,10 @@ import {
   claimPendingTracks,
   failTrack,
   markTrackSourceRemoved,
+  releaseTrack,
   storeThumbnail,
-  storeTrack
+  storeTrack,
+  storedFailureKind
 } from '../../tracks/trackLifecycle/trackLifecycle.js';
 
 /*
@@ -113,16 +116,16 @@ async function processClaimedTrack(
   logger: FastifyBaseLogger,
   track: TrackRow
 ): Promise<void> {
-  // The adapter writes to temp and the move is one same-filesystem rename, so a
-  // crash leaves a temp file, never a half-written stored one.
-  const relativePath = mediaRelativePath(track.videoId, '.m4a');
-  const storedPath = join(context.mediaPaths.root, relativePath);
-  const tempPath = join(
-    context.mediaPaths.tempDir,
-    `${track.videoId}.stored.m4a`
-  );
-
   try {
+    // The adapter writes to temp and the move is one same-filesystem rename, so a
+    // crash leaves a temp file, never a half-written stored one.
+    const relativePath = mediaRelativePath(track.videoId, '.m4a');
+    const storedPath = join(context.mediaPaths.root, relativePath);
+    const tempPath = join(
+      context.mediaPaths.tempDir,
+      `${track.videoId}.stored.m4a`
+    );
+
     await mkdir(dirname(storedPath), { recursive: true });
 
     const result = await context.youtube.downloadTrack({
@@ -141,29 +144,53 @@ async function processClaimedTrack(
 
     logger.info({ trackId: track.id, videoId: track.videoId }, 'track stored');
   } catch (error) {
-    // A video reported gone is terminal, not a failure: marked removed, never
-    // retried, the same values the sync's retention pass produces.
-    if (error instanceof YoutubeVideoUnavailableError) {
-      markTrackSourceRemoved(context.database, track.id);
-      announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
-      logger.info(
-        { trackId: track.id, videoId: track.videoId },
-        'track source is gone'
-      );
-      return;
+    const failure = failureOf(error);
+
+    switch (failure.disposition) {
+      // Terminal is the sync's retention answer too: marked removed, never
+      // retried, and the file, if any, stays stored.
+      case FailureDisposition.Terminal:
+        markTrackSourceRemoved(context.database, track.id);
+        announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+        logger.info(
+          { trackId: track.id, videoId: track.videoId },
+          'track source is gone'
+        );
+        return;
+
+      // Neither the track nor a workable exit is to blame, so the claim goes
+      // back to pending and no row is blamed.
+      case FailureDisposition.Interrupted:
+      case FailureDisposition.ExitFault:
+        releaseTrack(context.database, track.id);
+        announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+        logger.warn(
+          { trackId: track.id, videoId: track.videoId, err: error },
+          'track fetch interrupted'
+        );
+        return;
+
+      // The reason is a bounded line, not the raw output, since the row carries
+      // it; the next sync retries the track.
+      case FailureDisposition.Retry:
+        failTrack(
+          context.database,
+          track.id,
+          storedFailureKind(failure.kind),
+          summarizeFailure(error)
+        );
+
+        announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
+
+        logger.warn(
+          { trackId: track.id, videoId: track.videoId, err: error },
+          'track download failed'
+        );
+        return;
+
+      default:
+        return exhaust(failure.disposition);
     }
-
-    // Any other failure is transient. The reason is a bounded line, not the
-    // raw output, since the row carries it; the next sync retries the track.
-    failTrack(context.database, track.id, summarizeFailure(error));
-
-    announce(context, { kind: ChangeKind.TrackChanged, trackId: track.id });
-
-    logger.warn(
-      { trackId: track.id, videoId: track.videoId, err: error },
-      'track download failed'
-    );
-    return;
   }
 
   await fetchThumbnail(context, logger, track);
@@ -181,10 +208,10 @@ async function fetchThumbnail(
     return;
   }
 
-  const relativePath = thumbnailRelativePath(track.videoId);
-  const absolutePath = join(context.mediaPaths.root, relativePath);
-
   try {
+    const relativePath = thumbnailRelativePath(track.videoId);
+    const absolutePath = join(context.mediaPaths.root, relativePath);
+
     await context.youtube.fetchThumbnail(track.thumbnailUrl, absolutePath);
 
     storeThumbnail(context.database, track.id, relativePath);

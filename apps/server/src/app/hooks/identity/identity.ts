@@ -79,12 +79,17 @@ export function registerIdentityHook(
       return;
     }
 
-    if (context.config.edgeAssertion !== null) {
+    /* Outside the test harness the assertion is mandatory; inside it, an
+     * assertion that is present is still enforced. */
+    const expectedAssertion = context.config.edgeAssertion;
+
+    if (expectedAssertion !== null || context.config.runtime !== 'test') {
       const assertion = readStringHeader(request, EDGE_ASSERTION_HEADER);
 
       if (
+        expectedAssertion === null ||
         assertion === null ||
-        !matchesEdgeAssertion(assertion, context.config.edgeAssertion)
+        !matchesEdgeAssertion(assertion, expectedAssertion)
       ) {
         auditIdentityRefusal(request, 'edge_assertion_missing');
         sendProblem(reply, {

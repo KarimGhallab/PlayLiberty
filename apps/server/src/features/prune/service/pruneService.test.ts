@@ -251,7 +251,7 @@ describe('pruning orphaned tracks', () => {
     expect(trackRow(trackId)?.fileStatus).toBe(TrackFileStatus.Downloading);
   });
 
-  it('keeps the row when the media cannot be removed, and removes it on a later run once gone', async () => {
+  it('removes the row even when the media cannot be removed, and logs it', async () => {
     context = await createTestContext();
     const { logger, warnings } = recordingLogger();
     const relativePath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
@@ -262,19 +262,14 @@ describe('pruning orphaned tracks', () => {
     // it stays readable to the process.
     await chmod(dirname(audio), 0o500);
 
-    const firstRun = await prune(logger);
+    const removed = await prune(logger);
 
-    expect(firstRun).toBe(0);
-    expect(trackRow(trackId)).toBeDefined();
+    expect(removed).toBe(1);
+    expect(trackRow(trackId)).toBeUndefined();
     expect(warnings.length).toBeGreaterThan(0);
 
-    // The directory is writable again and the file is gone, so the next run
-    // reclaims the row it could not touch.
     await chmod(dirname(audio), 0o700);
-    const secondRun = await prune(logger);
-
-    expect(secondRun).toBe(1);
-    expect(trackRow(trackId)).toBeUndefined();
+    await expect(exists(audio)).resolves.toBe(true);
   });
 
   it('removes a failed track with no associations', async () => {
@@ -316,6 +311,52 @@ describe('pruning orphaned tracks', () => {
     expect(removed).toBe(1);
     expect(trackRow(trackId)).toBeUndefined();
     await expect(exists(audio)).resolves.toBe(false);
+  });
+
+  it('keeps a track that gains an association while the run is in progress', async () => {
+    context = await createTestContext();
+
+    // The first orphan's media cannot be removed, so its warning is the hook
+    // that associates the second track between the scan and its delete.
+    const firstPath = mediaRelativePath('aaaaaaaaaaa', '.m4a');
+    const { trackId: first } = seedTrack(database(), { filePath: firstPath });
+    const firstAudio = await writeBytes(firstPath);
+    await chmod(dirname(firstAudio), 0o500);
+
+    const laterPath = mediaRelativePath('bbbbbbbbbbb', '.m4a');
+    const { trackId: later } = seedTrack(database(), {
+      filePath: laterPath
+    });
+    const laterAudio = await writeBytes(laterPath);
+
+    const playlistId = seedPlaylist(
+      database(),
+      seedAccount(database()).accountId
+    ).playlistId;
+
+    let associated = false;
+    const logger = {
+      info: (): void => undefined,
+      debug: (): void => undefined,
+      warn: (): void => {
+        if (!associated) {
+          associated = true;
+          associate(database(), playlistId, later);
+        }
+      },
+      error: (): void => undefined,
+      child: (): unknown => logger
+    } as unknown as FastifyBaseLogger;
+
+    const removed = await prune(logger);
+
+    expect(associated).toBe(true);
+    expect(removed).toBe(1);
+    expect(trackRow(first)).toBeUndefined();
+    expect(trackRow(later)).toBeDefined();
+    await expect(exists(laterAudio)).resolves.toBe(true);
+
+    await chmod(dirname(firstAudio), 0o700);
   });
 
   it('removes nothing and returns zero when there is nothing to prune', async () => {
@@ -410,29 +451,29 @@ describe('pruning orphaned tracks', () => {
 
     const removed = await prune(logger, controller.signal);
 
-    // Nothing was removed: the first track could not, and the abort stopped the
-    // run before it reached the others.
-    expect(removed).toBe(0);
-    expect(trackRow(first)).toBeDefined();
+    // The first row was deleted before its media failed, and the abort stopped
+    // the run before it reached the others.
+    expect(removed).toBe(1);
+    expect(trackRow(first)).toBeUndefined();
     expect(trackRow(second)).toBeDefined();
     expect(trackRow(third)).toBeDefined();
 
     await chmod(dirname(firstAudio), 0o700);
 
-    // A later run with no signal reclaims everything the stopped one left.
+    // A later run with no signal reclaims the two the stopped one left.
     const secondRun = await prune(recordingLogger().logger);
 
-    expect(secondRun).toBe(3);
-    expect(trackRow(first)).toBeUndefined();
+    expect(secondRun).toBe(2);
     expect(trackRow(second)).toBeUndefined();
     expect(trackRow(third)).toBeUndefined();
+    await expect(exists(firstAudio)).resolves.toBe(true);
   });
 
-  it('finishes the removal in progress when the signal arrives during it', async () => {
+  it('finishes the deletion in progress when the signal arrives during it', async () => {
     context = await createTestContext();
 
-    // The first track fails to remove its media, warning and aborting; the run
-    // stops before the second, which is untouched, not half removed.
+    // The first track's row is deleted, its media removal fails and aborts; the
+    // run stops before the second, which is untouched.
     const controller = new AbortController();
     const { trackId: blocked } = seedTrack(database(), {
       filePath: mediaRelativePath('aaaaaaaaaaa', '.m4a')
@@ -447,10 +488,10 @@ describe('pruning orphaned tracks', () => {
 
     const removed = await prune(logger, controller.signal);
 
-    expect(removed).toBe(0);
-    expect(trackRow(blocked)).toBeDefined();
+    expect(removed).toBe(1);
+    expect(trackRow(blocked)).toBeUndefined();
     expect(trackRow(untouched)).toBeDefined();
-    // The file the run could not remove is still there, so the row is honest.
+    // The row went first, so the file it could not remove is left behind.
     await chmod(dirname(blockedAudio), 0o700);
     await expect(exists(blockedAudio)).resolves.toBe(true);
   });

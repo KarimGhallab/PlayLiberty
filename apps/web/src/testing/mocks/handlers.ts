@@ -1,6 +1,22 @@
-import { HttpResponse, http } from 'msw';
 import type { HttpHandler, HttpResponseResolver } from 'msw';
+import { HttpResponse, http } from 'msw';
 
+import type {
+  Account,
+  AccountSummary,
+  AccountSummaryPage,
+  AddTrackResult,
+  EndpointParams,
+  Playlist,
+  PlaylistPage,
+  PlaylistTrack,
+  PlaylistTracksPage,
+  Problem,
+  Share,
+  SyncRun,
+  Track,
+  TrackFileStatusCounts
+} from '@playliberty/contracts';
 import {
   AddTrackOutcome,
   AssociationOrigin,
@@ -16,26 +32,12 @@ import {
   SyncRunStatus,
   TrackFileStatus,
   TrackSourceStatus,
+  UserRole,
   endpointPattern,
   endpoints
 } from '@playliberty/contracts';
-import type {
-  AccountSummary,
-  AccountSummaryPage,
-  AddTrackResult,
-  EndpointParams,
-  Playlist,
-  PlaylistPage,
-  PlaylistTrack,
-  PlaylistTracksPage,
-  Problem,
-  Share,
-  SyncRun,
-  Track,
-  TrackFileStatusCounts
-} from '@playliberty/contracts';
 
-import { API_PREFIX } from '../../shared/api/client/client';
+import { API_PREFIX } from '../../shared/api/clients/apiClient/apiClient';
 
 /*
  * The harness the tests run against: two valid playlists, one owned and one
@@ -150,6 +152,7 @@ const TRACK_ONE: Track = {
   thumbnailPath: null,
   fileStatus: TrackFileStatus.Stored,
   sourceStatus: TrackSourceStatus.Available,
+  failureKind: null,
   failureReason: null,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-29T12:00:00.000Z'
@@ -214,6 +217,14 @@ const ACCOUNT_ONE: AccountSummary = {
   id: 'account-1',
   displayName: 'You',
   avatarUrl: null
+};
+
+/* The reader's own account: the one read that carries the role, which the
+ * library uses to decide whether the egress link exists. */
+const CURRENT_ACCOUNT: Account = {
+  ...ACCOUNT_ONE,
+  email: 'you@example.com',
+  role: UserRole.User
 };
 
 const ACCOUNT_TWO: AccountSummary = {
@@ -343,7 +354,7 @@ export const handlers = [
   ),
   /* The reader, which the share picker uses to leave the reader's own row out. */
   mockEndpoint(endpoints.currentAccount, () =>
-    respond(endpoints.currentAccount, ACCOUNT_ONE)
+    respond(endpoints.currentAccount, CURRENT_ACCOUNT)
   ),
   mockEndpoint(
     endpoints.playlistShares,

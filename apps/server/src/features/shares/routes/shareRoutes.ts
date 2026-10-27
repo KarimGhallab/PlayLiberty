@@ -1,26 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 
-import {
-  PlaylistNotFoundReason,
-  ProblemCode,
-  SharePlaylistInputSchema,
-  endpoints
-} from '@playliberty/contracts';
+import { SharePlaylistInputSchema, endpoints } from '@playliberty/contracts';
 
 import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
-import { exhaust } from '../../../shared/exhaust.js';
-import {
-  parseBody,
-  sendPlaylistNotFound,
-  sendProblem,
-  sendValidationFailed
-} from '../../../shared/problem.js';
+import { parseBody, sendValidationFailed } from '../../../shared/problem.js';
+import { sendRefusal } from '../../../shared/refusal.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
 import {
-  GrantShareOutcome,
-  ShareRevokeOutcome,
   grantShareForAccount,
   listSharesForAccount,
   revokeShareForAccount
@@ -34,17 +22,17 @@ export function registerShareRoutes(
     app,
     endpoints.playlistShares,
     async (request, reply) => {
-      const shares = listSharesForAccount(
+      const result = listSharesForAccount(
         context.database,
         request.params.playlistId,
         request.account.id
       );
 
-      if (shares === null) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
       }
 
-      return reply.send(shares);
+      return reply.send(result.shares);
     }
   );
 
@@ -66,41 +54,19 @@ export function registerShareRoutes(
         parsed.data.level
       );
 
-      if (result.outcome === GrantShareOutcome.PlaylistNotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
       }
 
-      if (result.outcome === GrantShareOutcome.TargetNotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: ProblemCode.AccountNotFound,
-          title: 'Account Not Found',
-          detail: 'The account this share names does not exist.'
-        });
-      }
-
-      if (result.outcome === GrantShareOutcome.SelfShare) {
-        return sendProblem(reply, {
-          status: 422,
-          code: ProblemCode.SelfShare,
-          title: 'Cannot Share With Yourself',
-          detail: 'The playlist already belongs to this account.'
-        });
-      }
-
-      if (result.outcome === GrantShareOutcome.Ok) {
-        audit(request.log, {
-          action: 'share_granted',
-          outcome: 'allowed',
-          actor: request.account.id,
-          playlist: request.params.playlistId,
-          account: parsed.data.accountId,
-          level: parsed.data.level
-        });
-        return reply.send(result.share);
-      }
-
-      return exhaust(result);
+      audit(request.log, {
+        action: 'share_granted',
+        outcome: 'allowed',
+        actor: request.account.id,
+        playlist: request.params.playlistId,
+        account: parsed.data.accountId,
+        level: parsed.data.level
+      });
+      return reply.send(result.share);
     }
   );
 
@@ -108,15 +74,15 @@ export function registerShareRoutes(
     app,
     endpoints.revokeShare,
     async (request, reply) => {
-      const outcome = revokeShareForAccount(
+      const result = revokeShareForAccount(
         context,
         request.params.playlistId,
         request.account.id,
         request.params.accountId
       );
 
-      if (outcome === ShareRevokeOutcome.PlaylistNotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
       }
 
       /* The revoked account is told the playlist is gone, so its screen reads

@@ -5,7 +5,10 @@ import {
   TrackSourceStatus
 } from '@playliberty/contracts';
 
-import type { Translator } from '../createTranslator/createTranslator.js';
+import type {
+  MessageKey,
+  Translator
+} from '../createTranslator/createTranslator.js';
 import type { Messages } from '../en.js';
 
 /*
@@ -84,6 +87,15 @@ export function formatLastSynced(
   });
 }
 
+/* A record over the enum, not a fallback: a new sync state is a missing key,
+ * not a silent `Up to date`. */
+const SYNC_STATE_KEYS: Record<PlaylistSyncStatus, MessageKey<Messages>> = {
+  [PlaylistSyncStatus.Idle]: 'syncState.upToDate',
+  [PlaylistSyncStatus.Syncing]: 'syncState.syncing',
+  [PlaylistSyncStatus.Error]: 'syncState.failed',
+  [PlaylistSyncStatus.Blocked]: 'syncState.blocked'
+};
+
 /**
  * The word survives a tone that cannot be seen. A never-synced playlist still
  * reads `Up to date`; `formatLastSynced` carries that state.
@@ -92,15 +104,7 @@ export function syncStateLabel(
   t: Translator<Messages>,
   status: PlaylistSyncStatus
 ): string {
-  if (status === PlaylistSyncStatus.Syncing) {
-    return t('syncState.syncing');
-  }
-
-  if (status === PlaylistSyncStatus.Error) {
-    return t('syncState.failed');
-  }
-
-  return t('syncState.upToDate');
+  return t(SYNC_STATE_KEYS[status]);
 }
 
 /**

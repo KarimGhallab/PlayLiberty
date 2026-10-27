@@ -3,6 +3,9 @@
     "apps/server": {
       "ignoreDependencies": ["pino-pretty"]
     },
+    "apps/egress-agent": {
+      "ignoreDependencies": ["pino-pretty"]
+    },
     "packages/tokens": {
       "entry": ["src/emitTokens.ts"]
     }

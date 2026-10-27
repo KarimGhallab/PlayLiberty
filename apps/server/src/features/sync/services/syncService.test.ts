@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LiveEvent, SyncRun } from '@playliberty/contracts';
 import {
   AssociationOrigin,
+  FailureKind,
   PlaylistSchema,
   PlaylistSyncStatus,
   Provider,
@@ -24,6 +25,8 @@ import type {
   YoutubeSource
 } from '@playliberty/youtube';
 import {
+  EGRESS_BLOCKED_REASON,
+  EgressCircuitOpenError,
   SPONSORBLOCK_FAILURE_REASON,
   YoutubeSponsorBlockError
 } from '@playliberty/youtube';
@@ -1133,6 +1136,38 @@ describe('a failed sync changes nothing', () => {
       TrackSourceStatus.Removed
     );
   });
+
+  it('blocks the playlist and keeps the pending tracks when every exit is failed', async () => {
+    context = await createTestContext(
+      {},
+      {
+        youtube: scriptedYoutube([
+          source([entry('aaaaaaaaaaa'), entry('bbbbbbbbbbb')]),
+          new EgressCircuitOpenError()
+        ])
+      }
+    );
+
+    const first = SyncRunSchema.parse(
+      (await post(PLAYLIST_URL, 'owner-1')).json()
+    );
+    await runFinished(first.playlistId, 'owner-1');
+
+    await postSync(first.playlistId, 'owner-1');
+    const blocked = await runFinished(first.playlistId, 'owner-1');
+
+    expect(blocked.status).toBe(SyncRunStatus.Failed);
+    expect(blocked.error).toBe(EGRESS_BLOCKED_REASON);
+
+    const playlist = await readPlaylist(first.playlistId, 'owner-1');
+    expect(playlist.syncStatus).toBe(PlaylistSyncStatus.Blocked);
+    expect(trackByVideoId('aaaaaaaaaaa')?.fileStatus).toBe(
+      TrackFileStatus.Pending
+    );
+    expect(trackByVideoId('bbbbbbbbbbb')?.fileStatus).toBe(
+      TrackFileStatus.Pending
+    );
+  });
 });
 
 describe('a single video source', () => {
@@ -1376,6 +1411,7 @@ describe('retrying a failed download', () => {
     // The sync returns it to pending and clears the stale reason.
     const retried = trackByVideoId('aaaaaaaaaaa');
     expect(retried?.fileStatus).toBe(TrackFileStatus.Pending);
+    expect(retried?.failureKind).toBeNull();
     expect(retried?.failureReason).toBeNull();
 
     await processPendingTracks(
@@ -1423,6 +1459,7 @@ describe('retrying a failed download', () => {
     expect(failed?.fileStatus).toBe(TrackFileStatus.Failed);
     // Not a gone video: the status stays available, so the sync retries it.
     expect(failed?.sourceStatus).toBe(TrackSourceStatus.Available);
+    expect(failed?.failureKind).toBe(FailureKind.Unknown);
     expect(failed?.failureReason).toBe(SPONSORBLOCK_FAILURE_REASON);
 
     // The next sync returns it to pending, and the next pass stores it.

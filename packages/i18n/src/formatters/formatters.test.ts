@@ -108,10 +108,13 @@ describe('formatLastSynced', () => {
 });
 
 describe('syncStateLabel', () => {
-  it('names the three states', () => {
+  it('names every state, the blocked one as an unreachable source', () => {
     expect(syncStateLabel(t, PlaylistSyncStatus.Syncing)).toBe('Syncing');
     expect(syncStateLabel(t, PlaylistSyncStatus.Error)).toBe('Sync failed');
     expect(syncStateLabel(t, PlaylistSyncStatus.Idle)).toBe('Up to date');
+    expect(syncStateLabel(t, PlaylistSyncStatus.Blocked)).toBe(
+      'Source unreachable'
+    );
   });
 });
 

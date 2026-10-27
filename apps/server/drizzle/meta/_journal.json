@@ -29,6 +29,34 @@
       "when": 1792491412900,
       "tag": "0003_absent_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792771969408,
+      "tag": "0004_living_expediter",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793006065724,
+      "tag": "0005_living_hitman",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793010991151,
+      "tag": "0006_rename_last_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793116422378,
+      "tag": "0007_nervous_blade",
+      "breakpoints": true
     }
   ]
 }

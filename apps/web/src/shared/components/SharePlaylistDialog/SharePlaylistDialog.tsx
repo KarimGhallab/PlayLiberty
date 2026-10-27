@@ -1,18 +1,20 @@
 import { useEffect, useId, useState } from 'react';
 
-import { ShareLevel } from '@playliberty/contracts';
 import type { AccountSummary } from '@playliberty/contracts';
+import { ShareLevel } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
-import { problemSentence } from '../../api/problem/problem';
 import {
   useAccountDirectory,
-  useCurrentAccount,
+  useCurrentAccount
+} from '../../api/clients/accountClient/accountClient';
+import {
   useGrantShare,
   usePlaylistShares,
   useRevokeShare
-} from '../../api/queries/queries';
+} from '../../api/clients/playlistClient/playlistClient';
+import { problemSentence } from '../../api/problem/problem';
 import { NOTICE_WINDOW_MS } from '../../player/usePlayTransition/usePlayTransition';
 import Dialog from '../Dialog/Dialog';
 import styles from '../Dialog/Dialog.module.scss';

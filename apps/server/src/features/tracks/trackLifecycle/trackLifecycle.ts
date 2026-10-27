@@ -3,14 +3,16 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import {
+  FailureKind,
   Provider,
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
+import { SourceFailureKind } from '@playliberty/youtube';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
-import { tracks } from '../../../platform/database/schema.js';
+import { associations, tracks } from '../../../platform/database/schema.js';
 import type { TrackSeed } from '../types.js';
 
 export enum TrackTransitionOutcome {
@@ -33,6 +35,7 @@ export interface StoreTrackInput {
 type TrackStateFields = Partial<{
   fileStatus: TrackFileStatus;
   sourceStatus: TrackSourceStatus;
+  failureKind: FailureKind | null;
   failureReason: string | null;
   filePath: string | null;
   durationSeconds: number | null;
@@ -91,6 +94,7 @@ export function createPendingTrack(
       fileStatus: TrackFileStatus.Pending,
       sourceStatus: TrackSourceStatus.Available,
       filePath: null,
+      failureKind: null,
       failureReason: null
     })
     .run();
@@ -148,6 +152,7 @@ export function storeTrack(
     fileStatus: TrackFileStatus.Stored,
     filePath: input.filePath,
     durationSeconds: input.durationSeconds,
+    failureKind: null,
     failureReason: null
   });
 }
@@ -155,11 +160,43 @@ export function storeTrack(
 export function failTrack(
   database: DatabaseHandle,
   trackId: string,
+  kind: FailureKind,
   reason: string
 ): TrackTransitionResult {
   return applyTransition(database, trackId, [TrackFileStatus.Downloading], {
     fileStatus: TrackFileStatus.Failed,
+    failureKind: kind,
     failureReason: reason
+  });
+}
+
+/* The stored kind is the contract's projection of the vocabulary's kind, so a
+ * new kind fails this switch rather than reaching the row untyped. */
+export function storedFailureKind(kind: SourceFailureKind): FailureKind {
+  switch (kind) {
+    case SourceFailureKind.Unavailable:
+      return FailureKind.Unavailable;
+    case SourceFailureKind.Private:
+      return FailureKind.Private;
+    case SourceFailureKind.Blocked:
+      return FailureKind.Blocked;
+    case SourceFailureKind.Network:
+      return FailureKind.Network;
+    case SourceFailureKind.Unknown:
+      return FailureKind.Unknown;
+  }
+}
+
+/* A transport that died mid-stream is not the track's fault: the claim goes
+ * back to pending, so the next pass retries it without a failed row. */
+export function releaseTrack(
+  database: DatabaseHandle,
+  trackId: string
+): TrackTransitionResult {
+  return applyTransition(database, trackId, [TrackFileStatus.Downloading], {
+    fileStatus: TrackFileStatus.Pending,
+    failureKind: null,
+    failureReason: null
   });
 }
 
@@ -169,6 +206,7 @@ export function retryTrack(
 ): TrackTransitionResult {
   return applyTransition(database, trackId, [TrackFileStatus.Failed], {
     fileStatus: TrackFileStatus.Pending,
+    failureKind: null,
     failureReason: null
   });
 }
@@ -186,6 +224,7 @@ export function fetchTrackWhole(
     {
       skipNonMusic: false,
       fileStatus: TrackFileStatus.Pending,
+      failureKind: null,
       failureReason: null
     }
   );
@@ -259,8 +298,24 @@ export function storeThumbnail(
     .run();
 }
 
-/* The caller removes the media first, calling this only on success: a row never
- * points at a file that is not there. */
-export function removeTrack(database: DatabaseHandle, trackId: string): void {
-  database.db.delete(tracks).where(eq(tracks.id, trackId)).run();
+/* The orphan check and the delete are one statement, so an association that
+ * arrives after a scan still keeps its track. True when the row was deleted. */
+export function removeOrphanTrack(
+  database: DatabaseHandle,
+  trackId: string
+): boolean {
+  const result = database.db
+    .delete(tracks)
+    .where(
+      and(
+        eq(tracks.id, trackId),
+        sql`not exists (
+          select 1 from ${associations}
+          where ${associations.trackId} = ${tracks.id}
+        )`
+      )
+    )
+    .run();
+
+  return result.changes > 0;
 }

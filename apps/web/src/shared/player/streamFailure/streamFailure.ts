@@ -1,6 +1,9 @@
 import { endpoints } from '@playliberty/contracts';
 
-import { ApiError, probeStreamStatus } from '../../api/client/client';
+import {
+  ApiError,
+  probeStreamStatus
+} from '../../api/clients/apiClient/apiClient';
 import { mediaPath } from '../../api/endpoints/endpoints';
 
 /*

@@ -1,0 +1,156 @@
+/*
+ * The toast surface. The ring is a sweep, not a number, and one animation over
+ * the duration handed in, so the ring and the host's timer cannot drift.
+ */
+.toast {
+  --toast-tone: var(--accent);
+  --toast-tone-hover: var(--accent-hover);
+
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 280px;
+  max-width: 100%;
+  padding: var(--space-3);
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  animation: pl-toast-in var(--motion-base) var(--ease-standard);
+
+  &[data-tone='success'] {
+    --toast-tone: var(--accent);
+    --toast-tone-hover: var(--accent-hover);
+  }
+
+  &[data-tone='failed'] {
+    --toast-tone: var(--tone-failed);
+    --toast-tone-hover: color-mix(in srgb, var(--tone-failed) 80%, var(--ink));
+  }
+
+  &__ring {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 2px solid var(--toast-tone);
+    border-top-color: transparent;
+    border-radius: var(--radius-chip);
+    animation-name: pl-toast-ring;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--toast-tone);
+
+    svg {
+      width: var(--icon-sm);
+      height: var(--icon-sm);
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__detail {
+    color: var(--muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__action {
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--toast-tone);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--toast-tone-hover);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__dismiss {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    color: var(--muted);
+    font-size: var(--text-lg);
+    line-height: 1;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ink);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+}
+
+@keyframes pl-toast-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-2);
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes pl-toast-ring {
+  from {
+    rotate: 0deg;
+  }
+
+  to {
+    rotate: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast__ring {
+    /* The sweep is decoration; the window itself is the host's timer. */
+    border-top-color: var(--toast-tone);
+    opacity: 0.6;
+  }
+}

@@ -13,13 +13,13 @@ import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
 import { trackTone } from '@playliberty/ui-foundation';
 
 import { mediaUrl } from '../../api/endpoints/endpoints';
-import { failureSentence } from '../../api/problem/problem';
 import { isPlayable } from '../../player/playable';
 import Menu from '../Menu/Menu';
 import Spinner from '../Spinner/Spinner';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
+import { failureSentence } from './failureSentence/failureSentence';
 
 /*
  * The whole row plays the track; the lane at its end opens the menu above it.
@@ -252,27 +252,29 @@ function TrackRow({
               {t('trackRow.fullLength')}
             </span>
           )}
-          {/* The mapped failure leads; the vendor's diagnostic waits behind the
+          {/* The stored kind leads; the vendor's diagnostic waits behind the
            * disclosure, reachable by touch and keyboard. */}
-          {track.failureReason === null ? null : (
+          {track.failureKind === null && track.failureReason === null ? null : (
             <>
               <span className={styles.trackRow__sentence}>
-                {failureSentence(t, track.failureReason)}
+                {failureSentence(t, track.failureKind)}
               </span>
-              <button
-                type="button"
-                className={styles.trackRow__reveal}
-                aria-label={
-                  revealed
-                    ? t('trackRow.hideDetailsFor', { title: track.title })
-                    : t('trackRow.showDetailsFor', { title: track.title })
-                }
-                aria-expanded={revealed}
-                onClick={() => setRevealed(current => !current)}>
-                {revealed
-                  ? t('trackRow.hideDetails')
-                  : t('trackRow.showDetails')}
-              </button>
+              {track.failureReason === null ? null : (
+                <button
+                  type="button"
+                  className={styles.trackRow__reveal}
+                  aria-label={
+                    revealed
+                      ? t('trackRow.hideDetailsFor', { title: track.title })
+                      : t('trackRow.showDetailsFor', { title: track.title })
+                  }
+                  aria-expanded={revealed}
+                  onClick={() => setRevealed(current => !current)}>
+                  {revealed
+                    ? t('trackRow.hideDetails')
+                    : t('trackRow.showDetails')}
+                </button>
+              )}
             </>
           )}
         </span>
