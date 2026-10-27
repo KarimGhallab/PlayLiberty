@@ -14,6 +14,10 @@ const devIdentity: Readonly<Record<string, string>> = {
   'Remote-Email': 'dev@playliberty.local'
 };
 
+/* The edge assertion every non-test runtime requires; the server's `.env`
+ * carries the same default. A caller never gets to choose it. */
+const devEdgeAssertion = process.env.EDGE_ASSERTION ?? 'dev-edge';
+
 export default defineConfig({
   /* Sharded E2E runs get one optimizer cache each. */
   cacheDir: process.env.VITE_CACHE_DIR,
@@ -27,6 +31,8 @@ export default defineConfig({
         changeOrigin: false,
         configure: proxy => {
           proxy.on('proxyReq', (proxyReq, request) => {
+            proxyReq.setHeader('X-PlayLiberty-Edge', devEdgeAssertion);
+
             for (const [name, value] of Object.entries(devIdentity)) {
               const supplied = request.headers[name.toLowerCase()];
               const headerValue =

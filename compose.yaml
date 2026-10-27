@@ -7,6 +7,8 @@ services:
     environment:
       LOG_LEVEL: debug
       ADMIN_PANGOLIN_USER_IDS: ${ADMIN_PANGOLIN_USER_IDS:-}
+      HOST: 0.0.0.0
+      ALLOW_NON_LOOPBACK_BIND: 'true'
       # The server image runs NODE_ENV=production, so the assertion is required.
       # The web service below sends the same value. Development only.
       EDGE_ASSERTION: dev-edge

@@ -99,7 +99,7 @@ function createLoggerOptions(
   config: AppContext['config']
 ): FastifyServerOptions['logger'] {
   const pretty =
-    config.nodeEnv === 'development' && process.stdout.isTTY === true;
+    config.runtime === 'development' && process.stdout.isTTY === true;
 
   if (!pretty) {
     return { level: config.logLevel };
@@ -211,9 +211,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         heartbeatMs: options.sseHeartbeatMs ?? DEFAULT_EVENT_HEARTBEAT_MS
       });
 
-      /* The E2E reset. Not API surface, only under `NODE_ENV=test`, under API
+      /* The E2E reset. Not API surface, only under the test runtime, under API
        * prefix so the browser reaches it through the proxy. */
-      if (context.config.nodeEnv === 'test') {
+      if (context.config.runtime === 'test') {
         const { registerE2eRoutes } = await import('./testing/e2eRoutes.js');
         registerE2eRoutes(api, context);
       }

@@ -3,6 +3,7 @@ import type { IYoutubeClient } from '@playliberty/youtube';
 import { buildApp } from './app/buildApp.js';
 
 import { loadConfig } from './platform/config/loadConfig/loadConfig.js';
+import type { Runtime } from './platform/config/types.js';
 import { createDatabase } from './platform/database/client.js';
 import { runMigrations } from './platform/database/migrate/migrate.js';
 import {
@@ -11,14 +12,14 @@ import {
 } from './platform/media/mediaPaths.js';
 
 /*
- * The one seam an end-to-end run fakes: a dynamic import behind `NODE_ENV=test`
- * and a scenario path, so production never carries or reaches the fake.
+ * The one seam an end-to-end run fakes: a dynamic import behind the test
+ * runtime and a scenario path, so production never carries or reaches the fake.
  */
 async function createYoutubeOverride(
-  nodeEnv: string,
+  runtime: Runtime,
   scriptPath: string | null
 ): Promise<IYoutubeClient | undefined> {
-  if (nodeEnv !== 'test' || scriptPath === null) {
+  if (runtime !== 'test' || scriptPath === null) {
     return undefined;
   }
 
@@ -38,7 +39,7 @@ async function main(): Promise<void> {
   await ensureMediaDirectories(mediaPaths);
 
   const youtube = await createYoutubeOverride(
-    config.nodeEnv,
+    config.runtime,
     config.e2eFakeScript
   );
 

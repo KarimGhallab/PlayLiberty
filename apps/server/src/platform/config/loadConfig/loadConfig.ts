@@ -1,6 +1,8 @@
+import { isIP } from 'node:net';
+
 import { z } from 'zod';
 
-import type { Config } from '../types.js';
+import type { Config, Runtime } from '../types.js';
 
 const optionalString = z.preprocess(
   value => (value === '' ? undefined : value),
@@ -12,10 +14,31 @@ const optionalUrl = z.preprocess(
   z.url().optional()
 );
 
+const LOOPBACK_HOSTS = new Set(['localhost', '::1', '0:0:0:0:0:0:0:1']);
+
+function isLoopbackHost(host: string): boolean {
+  return (
+    LOOPBACK_HOSTS.has(host) || (isIP(host) === 4 && host.startsWith('127.'))
+  );
+}
+
+/* An unrecognised environment is production, so a typo cannot relax a rule. */
+function classifyRuntime(nodeEnv: string): Runtime {
+  if (nodeEnv === 'test' || nodeEnv === 'development') {
+    return nodeEnv;
+  }
+
+  return 'production';
+}
+
 const EnvSchema = z.object({
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
-  HOST: z.string().min(1).default('0.0.0.0'),
+  HOST: z.string().min(1).default('127.0.0.1'),
+  ALLOW_NON_LOOPBACK_BIND: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform(value => value === 'true'),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
@@ -68,18 +91,27 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   const value = parsed.data;
+  const runtime = classifyRuntime(value.NODE_ENV);
   const edgeAssertion = value.EDGE_ASSERTION ?? null;
 
   /* Without the assertion a directly reachable origin trusts whatever
    * `Remote-*` a caller sent; running open is a boot failure, not a choice. */
-  if (value.NODE_ENV === 'production' && edgeAssertion === null) {
+  if (runtime !== 'test' && edgeAssertion === null) {
     throw new Error(
-      'Invalid environment configuration: EDGE_ASSERTION is required in production so the origin can tell the edge apart from a direct caller.'
+      'Invalid environment configuration: EDGE_ASSERTION is required outside the test harness so the origin can tell the edge apart from a direct caller.'
+    );
+  }
+
+  /* A bind beyond loopback is reachable from the network, so it takes a
+   * deliberate opt-in. */
+  if (!isLoopbackHost(value.HOST) && !value.ALLOW_NON_LOOPBACK_BIND) {
+    throw new Error(
+      `Invalid environment configuration: HOST ${value.HOST} is not loopback; use a loopback address or set ALLOW_NON_LOOPBACK_BIND=true.`
     );
   }
 
   return {
-    nodeEnv: value.NODE_ENV,
+    runtime,
     port: value.PORT,
     host: value.HOST,
     logLevel: value.LOG_LEVEL,

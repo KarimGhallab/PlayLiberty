@@ -14,8 +14,12 @@ export interface DownloadConfig {
  * inside the tunnel. The default keeps a workstation and the tests local. */
 export type YoutubeListTransport = 'local' | 'egress-agent';
 
+/* The only three shapes a process runs in. Anything unrecognised is treated as
+ * production, so an unknown NODE_ENV cannot relax a boot rule. */
+export type Runtime = 'test' | 'development' | 'production';
+
 export interface Config {
-  nodeEnv: string;
+  runtime: Runtime;
   port: number;
   host: string;
   logLevel: string;
@@ -23,7 +27,7 @@ export interface Config {
   databasePath: string;
   publicOrigin: string | null;
   /* The secret the edge injects, required so a request at the port directly
-   * cannot forge the identity headers. Required in production, else null. */
+   * cannot forge the identity headers. Required outside the test harness. */
   edgeAssertion: string | null;
   adminPangolinUserIds: string[];
   /* The egress agent's socket: the host owns it, the pod only connects. */
@@ -40,7 +44,7 @@ export interface Config {
   ffprobeBinary: string;
   downloadTimeoutMs: number;
   download: DownloadConfig;
-  /* The E2E fake adapter's scenario file, read only under `NODE_ENV=test`.
+  /* The E2E fake adapter's scenario file, read only under the test runtime.
    * The fake is not even imported otherwise. */
   e2eFakeScript: string | null;
 }

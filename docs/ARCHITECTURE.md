@@ -132,7 +132,7 @@ Audio is served verbatim; images are the one kind of media the server re-encodes
 
 ### Identity comes from Pangolin's forwarded headers
 
-The server takes the account from the `Remote-User`, `Remote-Email`, `Remote-Name`, and `Remote-Role` headers the edge injects, auto-provisions an account on first sight, and fails closed when the headers are absent. The app runs no login and stores no password; the admin list is the optional `pangolin_admin_user` secret, whose values match exact `Remote-User` values. Because reachability alone proved too implicit a guarantee, the origin also requires the edge to inject a secret `X-PlayLiberty-Edge` assertion on every request it proxies and refuses one without it, even a request carrying `Remote-*`; a production process refuses to start when the assertion is not configured. The network rule stays as the second layer.
+The server takes the account from the `Remote-User`, `Remote-Email`, `Remote-Name`, and `Remote-Role` headers the edge injects, auto-provisions an account on first sight, and fails closed when the headers are absent. The app runs no login and stores no password; the admin list is the optional `pangolin_admin_user` secret, whose values match exact `Remote-User` values. Because reachability alone proved too implicit a guarantee, the origin also requires the edge to inject a secret `X-PlayLiberty-Edge` assertion on every request it proxies and refuses one without it, even a request carrying `Remote-*`; every process outside the test harness refuses to start when the assertion is not configured, and the bind defaults to loopback, with a non-loopback address requiring the explicit `ALLOW_NON_LOOPBACK_BIND` opt-in. The network rule stays as the second layer.
 
 ### The server stack
 
