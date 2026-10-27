@@ -31,6 +31,7 @@ Environment=EGRESS_VETH_NS=pl-egress1
 Environment=EGRESS_VETH_HOST_IP=10.200.0.1
 Environment=YTDLP_BINARY=/usr/local/lib/playliberty/yt-dlp
 Environment=EGRESS_AGENT_PEER_UID=1000
+Environment=LOG_LEVEL=info
 EnvironmentFile=-/etc/playliberty/egress.env
 
 ExecStart=/usr/local/lib/playliberty/egress-run
