@@ -5,6 +5,8 @@ pnpm-lock.yaml
 .prettierignore
 .dockerignore
 
+.github/assets/
+
 *.sh
 
 # configuration files
