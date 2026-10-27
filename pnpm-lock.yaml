@@ -211,10 +211,16 @@ importers:
       '@playliberty/youtube':
         specifier: workspace:*
         version: link:../../packages/youtube
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
     devDependencies:
       '@types/node':
         specifier: 26.6.5
         version: 26.6.5
+      pino-pretty:
+        specifier: ^13.2.0
+        version: 13.2.0
       tsc-watch:
         specifier: ^7.2.1
         version: 7.2.1(typescript@6.0.3)

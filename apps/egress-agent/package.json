@@ -16,10 +16,12 @@
   "license": "ISC",
   "packageManager": "pnpm@12.15.0",
   "dependencies": {
-    "@playliberty/youtube": "workspace:*"
+    "@playliberty/youtube": "workspace:*",
+    "pino": "^10.3.1"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
+    "pino-pretty": "^13.2.0",
     "tsc-watch": "^7.2.1",
     "typescript": "^6.0.3",
     "vitest": "^5.0.5"

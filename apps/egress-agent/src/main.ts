@@ -24,6 +24,7 @@ import {
   switchTo
 } from './agent/switch/switch.js';
 import { applyConfig } from './agent/wireguard/wireguard.js';
+import { logger } from './logging/logger.js';
 import { readPool } from './pool/pool.js';
 
 const DEFAULT_SOCKET = '/run/playliberty/egress-agent.sock';
@@ -116,12 +117,9 @@ async function main(): Promise<void> {
     try {
       await writeActiveState(stateFile, name);
     } catch (error) {
-      console.error(
-        JSON.stringify({
-          at: new Date().toISOString(),
-          event: 'active_state_write_failed',
-          detail: error instanceof Error ? error.message : String(error)
-        })
+      logger.error(
+        { err: error, event: 'active_state_write_failed' },
+        'active state write failed'
       );
     }
   };
@@ -216,6 +214,7 @@ async function main(): Promise<void> {
   await status();
 
   if (process.argv.includes('--dry-run')) {
+    /* The deployment command parses this stdout, so it is data, not a log. */
     console.log(JSON.stringify(await status(), null, 2));
     return;
   }
@@ -263,13 +262,7 @@ async function main(): Promise<void> {
     fetch: fetchTrack
   });
 
-  const log = (event: string): void => {
-    console.log(
-      JSON.stringify({ at: new Date().toISOString(), event, socketPath })
-    );
-  };
-
-  log('agent_started');
+  logger.info({ socketPath }, 'agent_started');
 
   const stop = (): void => {
     void handle.close().then(() => process.exit(0));
@@ -280,6 +273,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  logger.fatal({ err: error }, 'agent_failed');
   process.exit(1);
 });
