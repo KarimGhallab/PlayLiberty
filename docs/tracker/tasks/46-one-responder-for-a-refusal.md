@@ -1,44 +1,23 @@
 # 46: One responder for a refusal, across the Playlist and Track endpoints
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 
-## Objective
+## Outcome
 
-A refusal is answered in one place: a handler produces an outcome, one responder maps it to the problem document, and the Playlist and Track endpoints are the first to use it. A denial and a vanished Playlist stay indistinguishable.
+`apps/server/src/shared/refusal.ts` is the one responder. `Refusal` names every document the migrated routes answer with; one `Record<Refusal, ProblemInput>` owns its status, problem code, title and detail or params; `sendRefusal` renders it through `sendProblem`, so the cache header, content type and problem URL are unchanged.
 
-## Context
+The modules now declare the refusal their outcome carries. `PlaylistRefusal` holds the four playlist reasons, and each playlist function names its own at the point it asks the entry seam: the reads and the pin say `read`, rename and delete say `manage`, the settings writes say `write`, and removing a track says `track`. The track results carry their own refusal for not-found, forbidden, not-stored, not-retryable and not-fetchable, and both sync starts carry `sync_already_running` or the playlist write refusal. The outcome enums stay; ticket 47 deletes the ones nothing renders once the remaining groups move.
 
-Architecture review, 2026-10-27, candidate 3. The access rule itself is already centralised (issues 22, 36, 65); this ticket centralises what a refusal answers. See [`ARCHITECTURE.md`](../../ARCHITECTURE.md#layer-boundaries-normative).
+The Playlist and Track routes call `sendRefusal(reply, result.refusal)` and no longer choose a reason, a status or a copy. `sendPlaylistNotFound`, `sendProblem` and `ProblemCode` are gone from both route files. The batch add keeps its per-item `refused`, and the input helpers (validation, invalid request, unprocessable) are untouched.
 
-## Current state
-
-- The entry seam returns Granted or Denied; each module then re-encodes a denial into its own outcome type. The server carries fifteen outcome types for the same decision.
-- Each route chooses the not-found reason at the call site, and the Playlist routes repeat the frame parse, call, not-found, ok, exhaust nine times.
-- A refusal's copy, status and problem code are therefore authored per endpoint.
-
-## Scope
-
-- One responder in the shared layer: an outcome declares its reply (status, problem code, detail), or one table maps the outcome and the need to a problem. The route registrar renders it; a handler may still send a body directly.
-- The Playlist endpoints cross it first, then the Track endpoints. The modules keep their decisions; the routes stop authoring refusals.
-- Every status, problem code and response shape is unchanged. A denied Playlist and a Playlist that does not exist answer the same not-found.
-- The batch add keeps its per-item `refused`, which is a result item, not a refusal document.
-
-## Out of scope
-
-- The cover, share and Sync endpoints; ticket 47.
-- The Egress routes: an unreachable agent answers a 200 body with the last known pool, not a refusal.
-- What owner, write and read mean.
-
-## Blocking edges
-
-None. Can start immediately.
+A denial and a vanished Playlist answer the same bytes: the new route test compares the two documents directly.
 
 ## Verification
 
-- Each migrated route's refusal is byte-identical to today's problem document.
-- No migrated route chooses a not-found reason by hand.
-- The existing Playlist and Track route suites pass unchanged.
-- `pnpm --filter @playliberty/server test` passes; `pnpm run build` and `pnpm run lint:check` pass.
+- Every migrated refusal is built from the same table as before, so its status, code, title, detail and params are unchanged.
+- No migrated route names a not-found reason or authors a problem document.
+- The existing Playlist and Track route suites pass unchanged; the only new test compares a denied and a missing playlist.
+- `pnpm --filter @playliberty/server test` is 437 passed; `pnpm run test:unit` is 1201 passed; `pnpm run build` and `pnpm run lint:check` pass.
 
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#layer-boundaries-normative).

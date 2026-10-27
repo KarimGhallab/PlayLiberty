@@ -5,10 +5,10 @@ import {
   EntryOutcome,
   playlistEntry
 } from '../../shared/access/entry.js';
+import { Refusal } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import { syncRuns } from '../../platform/database/schema.js';
-import { SyncRunOutcome } from './types.js';
 import type { SyncRunResult } from './types.js';
 
 export function resolveLatestSyncRun(
@@ -36,12 +36,12 @@ export function resolveLatestSyncRun(
   // Existence and visibility collapse to a 404, unlike the track route's 403.
   // A playlist screen has no such case, and a route must not confirm existence.
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: SyncRunOutcome.PlaylistNotFound };
+    return { outcome: 'refused', refusal: Refusal.PlaylistNotFoundRead };
   }
 
   if (entry.value === undefined) {
-    return { outcome: SyncRunOutcome.RunAbsent };
+    return { outcome: 'refused', refusal: Refusal.SyncRunAbsent };
   }
 
-  return { outcome: SyncRunOutcome.Ok, run: entry.value };
+  return { outcome: 'ok', run: entry.value };
 }

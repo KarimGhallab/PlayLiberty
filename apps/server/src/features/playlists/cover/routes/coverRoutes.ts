@@ -1,18 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 
-import {
-  PlaylistNotFoundReason,
-  ProblemCode,
-  endpoints
-} from '@playliberty/contracts';
+import { ProblemCode, endpoints } from '@playliberty/contracts';
 
 import type { AppContext } from '../../../../shared/context.js';
-import { exhaust } from '../../../../shared/exhaust.js';
-import {
-  sendPlaylistNotFound,
-  sendProblem,
-  sendUnprocessable
-} from '../../../../shared/problem.js';
+import { sendProblem, sendUnprocessable } from '../../../../shared/problem.js';
+import { sendRefusal } from '../../../../shared/refusal.js';
 import { registerEndpoint } from '../../../../shared/registerEndpoint.js';
 
 import {
@@ -23,7 +15,6 @@ import {
 import { MAX_COVER_BYTES } from '../normalizeCoverImage.js';
 import { InvalidCoverCropError, readCoverCrop } from '../readCoverCrop.js';
 import type { CoverCrop } from '../types.js';
-import { PlaylistCoverOutcome } from '../types.js';
 
 /* The stored cover is content-stable because its URL carries the version. */
 const COVER_CACHE_CONTROL = 'private, max-age=2592000';
@@ -90,19 +81,11 @@ export function registerCoverRoutes(
       crop
     );
 
-    if (result.outcome === PlaylistCoverOutcome.PlaylistNotFound) {
-      return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+    if (result.outcome === 'refused') {
+      return sendRefusal(reply, result.refusal);
     }
 
-    if (result.outcome === PlaylistCoverOutcome.InvalidImage) {
-      return sendUnprocessable(reply);
-    }
-
-    if (result.outcome === PlaylistCoverOutcome.Ok) {
-      return reply.send(result.playlist);
-    }
-
-    return exhaust(result);
+    return reply.send(result.playlist);
   });
 
   registerEndpoint<{ Params: { playlistId: string } }>(
@@ -115,29 +98,17 @@ export function registerCoverRoutes(
         request.account.id
       );
 
-      if (result.outcome === PlaylistCoverOutcome.PlaylistNotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
       }
 
-      if (result.outcome === PlaylistCoverOutcome.CoverNotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: ProblemCode.CoverNotFound,
-          title: 'Cover Not Found'
+      return reply
+        .header('Cache-Control', COVER_CACHE_CONTROL)
+        .type('image/webp')
+        .sendFile(result.coverPath, {
+          contentType: false,
+          cacheControl: false
         });
-      }
-
-      if (result.outcome === PlaylistCoverOutcome.Ok) {
-        return reply
-          .header('Cache-Control', COVER_CACHE_CONTROL)
-          .type('image/webp')
-          .sendFile(result.coverPath, {
-            contentType: false,
-            cacheControl: false
-          });
-      }
-
-      return exhaust(result);
     }
   );
 
@@ -151,15 +122,11 @@ export function registerCoverRoutes(
         request.account.id
       );
 
-      if (result.outcome === PlaylistCoverOutcome.PlaylistNotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
       }
 
-      if (result.outcome === PlaylistCoverOutcome.Ok) {
-        return reply.code(204).send();
-      }
-
-      return exhaust(result);
+      return reply.code(204).send();
     }
   );
 }

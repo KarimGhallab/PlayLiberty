@@ -21,6 +21,8 @@ import {
 } from '../../../shared/access/entry.js';
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
+import { Refusal } from '../../../shared/refusal.js';
+import type { Refused } from '../../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { PlaylistRow } from '../../../platform/database/schema.js';
@@ -46,30 +48,20 @@ import { markTrackSourceRemoved } from '../../tracks/trackLifecycle/trackLifecyc
  * reconcile cannot finish inside a request, so it runs in the background.
  */
 
-export enum StartSyncOutcome {
-  Started = 'started',
-  AlreadyRunning = 'already_running',
-  PlaylistNotFound = 'playlist_not_found'
-}
-
-export type StartOrConflict =
-  | { outcome: StartSyncOutcome.Started; playlistId: string; run: SyncRun }
-  | { outcome: StartSyncOutcome.AlreadyRunning };
-
 export type StartSyncResult =
-  StartOrConflict | { outcome: StartSyncOutcome.PlaylistNotFound };
+  { outcome: 'ok'; playlistId: string; run: SyncRun } | Refused;
 
 export function startSyncForSource(
   context: AppContext,
   accountId: string,
   info: YoutubeUrlInfo,
   skipNonMusic: boolean
-): StartOrConflict {
+): StartSyncResult {
   const database = context.database;
 
   const begun = database.unitOfWork(
     (): {
-      started: StartOrConflict;
+      started: StartSyncResult;
       playlist: PlaylistRow;
     } => {
       // Conflict-no-op, not check-then-insert, so two simultaneous pastes of one
@@ -124,7 +116,7 @@ export function startSyncForSource(
     }
   );
 
-  if (begun.started.outcome === StartSyncOutcome.Started) {
+  if (begun.started.outcome === 'ok') {
     announce(context, {
       kind: ChangeKind.PlaylistChanged,
       playlistId: begun.playlist.id
@@ -156,20 +148,20 @@ export function startSyncForPlaylist(
   // A read collaborator and a stranger answer not-found alike, so the route
   // confirms nothing. A write collaborator may sync; owner ops stay owner-only.
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: StartSyncOutcome.PlaylistNotFound };
+    return { outcome: 'refused', refusal: Refusal.PlaylistNotFoundWrite };
   }
 
   const playlist = entry.value;
 
   if (playlist === null) {
-    return { outcome: StartSyncOutcome.PlaylistNotFound };
+    return { outcome: 'refused', refusal: Refusal.PlaylistNotFoundWrite };
   }
 
   const started = context.database.unitOfWork(() =>
     beginRun(context.database, playlist)
   );
 
-  if (started.outcome === StartSyncOutcome.Started) {
+  if (started.outcome === 'ok') {
     announce(context, {
       kind: ChangeKind.PlaylistChanged,
       playlistId: playlist.id
@@ -185,7 +177,7 @@ export function startSyncForPlaylist(
 function beginRun(
   database: DatabaseHandle,
   playlist: PlaylistRow
-): StartOrConflict {
+): StartSyncResult {
   const running = database.db
     .select({ id: syncRuns.id })
     .from(syncRuns)
@@ -198,7 +190,7 @@ function beginRun(
     .get();
 
   if (running !== undefined) {
-    return { outcome: StartSyncOutcome.AlreadyRunning };
+    return { outcome: 'refused', refusal: Refusal.SyncAlreadyRunning };
   }
 
   database.db
@@ -225,7 +217,7 @@ function beginRun(
 
   database.db.insert(syncRuns).values(run).run();
 
-  return { outcome: StartSyncOutcome.Started, playlistId: playlist.id, run };
+  return { outcome: 'ok', playlistId: playlist.id, run };
 }
 
 /* One pass adding, never subtracting: an already-associated video is untouched,

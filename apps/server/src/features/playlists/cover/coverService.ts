@@ -11,6 +11,7 @@ import {
 } from '../../../shared/access/entry.js';
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
+import { Refusal } from '../../../shared/refusal.js';
 
 import { playlists } from '../../../platform/database/schema.js';
 import { coverRelativePath } from '../../../platform/media/mediaPaths.js';
@@ -25,7 +26,6 @@ import type {
   RemovePlaylistCoverResult,
   SetPlaylistCoverResult
 } from './types.js';
-import { PlaylistCoverOutcome } from './types.js';
 
 /* Every upload gets a later version than the one it replaces, even when two
  * happen inside the same millisecond. */
@@ -58,7 +58,7 @@ export async function setPlaylistCoverForAccount(
   );
 
   if (entry.outcome === EntryOutcome.Denied || entry.value === null) {
-    return { outcome: PlaylistCoverOutcome.PlaylistNotFound };
+    return { outcome: 'refused', refusal: Refusal.PlaylistNotFoundWrite };
   }
 
   const previous = entry.value;
@@ -69,7 +69,7 @@ export async function setPlaylistCoverForAccount(
     normalized = await normalizeCoverImage(image, crop);
   } catch (error) {
     if (error instanceof InvalidCoverImageError) {
-      return { outcome: PlaylistCoverOutcome.InvalidImage };
+      return { outcome: 'refused', refusal: Refusal.CoverInvalidImage };
     }
 
     throw error;
@@ -119,7 +119,7 @@ export async function setPlaylistCoverForAccount(
 
   announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
 
-  return { outcome: PlaylistCoverOutcome.Ok, playlist: playlist.playlist };
+  return { outcome: 'ok', playlist: playlist.playlist };
 }
 
 export async function removePlaylistCoverForAccount(
@@ -141,7 +141,7 @@ export async function removePlaylistCoverForAccount(
   );
 
   if (entry.outcome === EntryOutcome.Denied || entry.value === null) {
-    return { outcome: PlaylistCoverOutcome.PlaylistNotFound };
+    return { outcome: 'refused', refusal: Refusal.PlaylistNotFoundWrite };
   }
 
   const coverPath = entry.value.coverPath;
@@ -149,7 +149,7 @@ export async function removePlaylistCoverForAccount(
   /* No cover is the state the caller asked for, so the delete is a no-op and
    * publishes nothing. */
   if (coverPath === null) {
-    return { outcome: PlaylistCoverOutcome.Ok };
+    return { outcome: 'ok' };
   }
 
   context.database.db
@@ -166,7 +166,7 @@ export async function removePlaylistCoverForAccount(
 
   announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
 
-  return { outcome: PlaylistCoverOutcome.Ok };
+  return { outcome: 'ok' };
 }
 
 export async function readPlaylistCoverForAccount(
@@ -188,11 +188,11 @@ export async function readPlaylistCoverForAccount(
   );
 
   if (entry.outcome === EntryOutcome.Denied || entry.value === null) {
-    return { outcome: PlaylistCoverOutcome.PlaylistNotFound };
+    return { outcome: 'refused', refusal: Refusal.PlaylistNotFoundRead };
   }
 
   if (entry.value.coverPath === null) {
-    return { outcome: PlaylistCoverOutcome.CoverNotFound };
+    return { outcome: 'refused', refusal: Refusal.CoverNotFound };
   }
 
   const file = await stat(
@@ -200,11 +200,11 @@ export async function readPlaylistCoverForAccount(
   ).catch(() => null);
 
   if (file === null || !file.isFile()) {
-    return { outcome: PlaylistCoverOutcome.CoverNotFound };
+    return { outcome: 'refused', refusal: Refusal.CoverNotFound };
   }
 
   return {
-    outcome: PlaylistCoverOutcome.Ok,
+    outcome: 'ok',
     coverPath: entry.value.coverPath
   };
 }

@@ -1,43 +1,21 @@
 # 47: The remaining refusals cross the responder, and the old outcomes go
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 
-## Objective
+## Outcome
 
-The cover, share and Sync endpoints answer refusals through the one responder, and the per-module outcome types no caller renders are deleted, so a refusal reason is named in one table.
+The cover, share and Sync endpoints now return the shared `Refused` outcome, and `sendRefusal` renders every one. The refusal table gained the cover's missing and invalid-image documents, the share's missing account and self-share, and the sync run's absent document; each keeps the status, code, title and detail it had.
 
-## Context
+The per-module outcome types are gone. `PlaylistCoverOutcome`, `GrantShareOutcome`, `ShareRevokeOutcome`, `SyncRunOutcome`, `StartSyncOutcome` and `StartOrConflict` are deleted. Cover results are an ok payload or a refusal; the share list, grant and revoke are the same; the latest sync run is the same; and both sync starts are one `StartSyncResult`, an ok run or a refusal. `sendPlaylistNotFound` is deleted with them, so no route imports a not-found helper or names a reason.
 
-Architecture review, 2026-10-27, candidate 3, second half. Ticket 46 settles the responder's shape with the Playlist and Track endpoints.
-
-## Current state
-
-- The cover, share and Sync modules each carry their own outcome type (cover outcome, grant and revoke outcomes, start-sync and sync-run outcomes) and their routes choose the refusal reply per call site.
-- The same decision (denied, vanished, refused) is named differently in each module, so a new reason touches every group.
-
-## Scope
-
-- The cover, share and Sync endpoints cross the responder.
-- Delete the outcome types the responder replaced. Keep those that still name an internal decision, such as the batch add's per-item result and a Track transition.
-- Every status, problem code and response shape is unchanged.
-- Tests: one refusal per group, including a denied share grant and a sync on a Playlist the account cannot write.
-
-## Out of scope
-
-- The Egress routes, whose unreachable answer is a 200 body, not a refusal.
-- The access rule and the audit lines.
-- New endpoints.
-
-## Blocking edges
-
-Blocked by 46. The responder and its first two groups settle the shape before the remaining groups move.
+The batch add's per-item `refused` and the Track transition outcomes stay, as they name internal decisions rather than problem documents. The Egress routes stay out; their unreachable answer is a 200 body.
 
 ## Verification
 
-- A new refusal reason edits one table, not one module per group.
-- No route file chooses a not-found reason by hand or imports a not-found helper directly.
-- The existing cover, share and Sync suites pass unchanged.
-- `pnpm --filter @playliberty/server test` passes; `pnpm run build` and `pnpm run lint:check` pass.
+- The cover's missing playlist, missing cover and invalid image; a share list, grant and revoke by an account that cannot manage the playlist; a grant naming an unknown account; a self-share; and a latest run that does not exist all answer the same documents as before.
+- A denied share grant and a sync on a playlist the account cannot write are covered by the existing suites, which pass unchanged.
+- No route file imports a not-found helper or chooses a not-found reason.
+- `pnpm --filter @playliberty/server test` is 437 passed; `pnpm run test:unit` is 1201 passed; `pnpm run build` and `pnpm run lint:check` pass.
 
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#layer-boundaries-normative).

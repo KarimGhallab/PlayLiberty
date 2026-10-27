@@ -1,5 +1,7 @@
 import type { Track } from '@playliberty/contracts';
 
+import type { Refusal } from '../../shared/refusal.js';
+
 export enum TrackStreamOutcome {
   Ok = 'ok',
   NotFound = 'not_found',
@@ -9,9 +11,9 @@ export enum TrackStreamOutcome {
 
 export type TrackStreamResult =
   | { outcome: TrackStreamOutcome.Ok; filePath: string }
-  | { outcome: TrackStreamOutcome.NotFound }
-  | { outcome: TrackStreamOutcome.Forbidden }
-  | { outcome: TrackStreamOutcome.NotStored };
+  | { outcome: TrackStreamOutcome.NotFound; refusal: Refusal.TrackNotFound }
+  | { outcome: TrackStreamOutcome.Forbidden; refusal: Refusal.Forbidden }
+  | { outcome: TrackStreamOutcome.NotStored; refusal: Refusal.TrackNotStored };
 
 export enum TrackThumbnailOutcome {
   Ok = 'ok',
@@ -21,8 +23,11 @@ export enum TrackThumbnailOutcome {
 
 export type TrackThumbnailResult =
   | { outcome: TrackThumbnailOutcome.Ok; thumbnailPath: string }
-  | { outcome: TrackThumbnailOutcome.NotFound }
-  | { outcome: TrackThumbnailOutcome.Forbidden };
+  | {
+      outcome: TrackThumbnailOutcome.NotFound;
+      refusal: Refusal.ThumbnailNotFound;
+    }
+  | { outcome: TrackThumbnailOutcome.Forbidden; refusal: Refusal.Forbidden };
 
 /* The fields a track is created from: the video id is the identity and dedup
  * key, so a held track is never created twice. */
@@ -42,8 +47,11 @@ export enum RetryTrackOutcome {
 
 export type RetryTrackResult =
   | { outcome: RetryTrackOutcome.Ok; track: Track }
-  | { outcome: RetryTrackOutcome.NotFound }
-  | { outcome: RetryTrackOutcome.NotRetryable };
+  | { outcome: RetryTrackOutcome.NotFound; refusal: Refusal.TrackNotFound }
+  | {
+      outcome: RetryTrackOutcome.NotRetryable;
+      refusal: Refusal.TrackNotRetryable;
+    };
 
 /* `NotEligible` covers every state the bypass cannot act on: stored is shared,
  * downloading is already fetching, unavailable is gone. */
@@ -55,5 +63,8 @@ export enum FetchWholeOutcome {
 
 export type FetchWholeResult =
   | { outcome: FetchWholeOutcome.Ok; track: Track }
-  | { outcome: FetchWholeOutcome.NotFound }
-  | { outcome: FetchWholeOutcome.NotEligible };
+  | { outcome: FetchWholeOutcome.NotFound; refusal: Refusal.TrackNotFound }
+  | {
+      outcome: FetchWholeOutcome.NotEligible;
+      refusal: Refusal.TrackNotFetchable;
+    };

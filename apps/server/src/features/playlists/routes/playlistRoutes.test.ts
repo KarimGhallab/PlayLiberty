@@ -694,6 +694,24 @@ describe('GET /playlists/:id', () => {
     expect(response.json()).toMatchObject({ code: 'playlist_not_found' });
   });
 
+  it('answers a denial and a vanished playlist with the same document', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const stranger = seedAccount(context.database);
+
+    const denied = await get(
+      `/api/v1/playlists/${playlistId}`,
+      stranger.pangolinUserId
+    );
+    const missing = await get(
+      `/api/v1/playlists/${randomUUID()}`,
+      stranger.pangolinUserId
+    );
+
+    expect(denied.body).toBe(missing.body);
+  });
+
   it('returns a shared playlist to a collaborator', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);

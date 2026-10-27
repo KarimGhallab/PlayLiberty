@@ -4,9 +4,7 @@ import {
   CreatePlaylistInputSchema,
   PageQuerySchema,
   PinPlaylistInputSchema,
-  PlaylistNotFoundReason,
   PlaylistTracksQuerySchema,
-  ProblemCode,
   RenamePlaylistInputSchema,
   SkipNonMusicInputSchema,
   SortPlaylistInputSchema,
@@ -19,15 +17,13 @@ import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
   sendInvalidRequest,
-  sendPlaylistNotFound,
-  sendProblem,
   sendValidationFailed
 } from '../../../shared/problem.js';
+import { sendRefusal } from '../../../shared/refusal.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
 import {
-  StartSyncOutcome,
   startSyncForPlaylist,
   startSyncForSource
 } from '../../sync/services/syncService.js';
@@ -86,13 +82,8 @@ export function registerPlaylistRoutes(
       parsed.data.skipNonMusic
     );
 
-    if (started.outcome === StartSyncOutcome.AlreadyRunning) {
-      return sendProblem(reply, {
-        status: 409,
-        code: ProblemCode.SyncAlreadyRunning,
-        title: 'Sync Already Running',
-        detail: 'A sync is already running for this playlist.'
-      });
+    if (started.outcome === 'refused') {
+      return sendRefusal(reply, started.refusal);
     }
 
     return reply.code(202).send(started.run);
@@ -109,7 +100,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -142,7 +133,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -164,7 +155,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -193,7 +184,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -224,7 +215,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -255,7 +246,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -286,7 +277,7 @@ export function registerPlaylistRoutes(
       );
 
       if (result.outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === PlaylistOutcome.Ok) {
@@ -301,17 +292,17 @@ export function registerPlaylistRoutes(
     app,
     endpoints.deletePlaylist,
     async (request, reply) => {
-      const outcome = deletePlaylistForAccount(
+      const result = deletePlaylistForAccount(
         context,
         request.params.playlistId,
         request.account.id
       );
 
-      if (outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Manage);
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendRefusal(reply, result.refusal);
       }
 
-      if (outcome === PlaylistOutcome.Ok) {
+      if (result.outcome === PlaylistOutcome.Ok) {
         audit(request.log, {
           action: 'playlist_deleted',
           outcome: 'allowed',
@@ -321,7 +312,7 @@ export function registerPlaylistRoutes(
         return reply.code(204).send();
       }
 
-      return exhaust(outcome);
+      return exhaust(result);
     }
   );
 
@@ -335,17 +326,8 @@ export function registerPlaylistRoutes(
         request.account.id
       );
 
-      if (result.outcome === StartSyncOutcome.PlaylistNotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Write);
-      }
-
-      if (result.outcome === StartSyncOutcome.AlreadyRunning) {
-        return sendProblem(reply, {
-          status: 409,
-          code: ProblemCode.SyncAlreadyRunning,
-          title: 'Sync Already Running',
-          detail: 'A sync is already running for this playlist.'
-        });
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
       }
 
       return reply.code(202).send(result.run);
@@ -356,22 +338,22 @@ export function registerPlaylistRoutes(
     app,
     endpoints.removeTrack,
     async (request, reply) => {
-      const outcome = removeTrackForAccount(
+      const result = removeTrackForAccount(
         context,
         request.params.playlistId,
         request.params.trackId,
         request.account.id
       );
 
-      if (outcome === PlaylistOutcome.NotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Track);
+      if (result.outcome === PlaylistOutcome.NotFound) {
+        return sendRefusal(reply, result.refusal);
       }
 
-      if (outcome === PlaylistOutcome.Ok) {
+      if (result.outcome === PlaylistOutcome.Ok) {
         return reply.code(204).send();
       }
 
-      return exhaust(outcome);
+      return exhaust(result);
     }
   );
 }

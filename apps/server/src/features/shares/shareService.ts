@@ -9,6 +9,8 @@ import {
 } from '../../shared/access/entry.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
+import { Refusal } from '../../shared/refusal.js';
+import type { Refused, Succeeded } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type { AccountRow, ShareRow } from '../../platform/database/schema.js';
@@ -30,13 +32,15 @@ function toShareView(share: ShareRow, account: AccountRow): Share {
   };
 }
 
+export type ShareListResult = { outcome: 'ok'; shares: Share[] } | Refused;
+
 /* The owner's view of who holds a playlist; not-owner and missing are the same
- * null. Ordered by display name with a rowid tiebreak for equal names. */
+ * refusal. Ordered by display name with a rowid tiebreak for equal names. */
 export function listSharesForAccount(
   database: DatabaseHandle,
   playlistId: string,
   accountId: string
-): Share[] | null {
+): ShareListResult {
   const entry = playlistEntry(
     database,
     playlistId,
@@ -55,26 +59,14 @@ export function listSharesForAccount(
     }
   );
 
-  return entry.outcome === EntryOutcome.Granted ? entry.value : null;
+  return entry.outcome === EntryOutcome.Granted
+    ? { outcome: 'ok', shares: entry.value }
+    : { outcome: 'refused', refusal: Refusal.PlaylistNotFoundManage };
 }
 
-export enum GrantShareOutcome {
-  Ok = 'ok',
-  PlaylistNotFound = 'playlist_not_found',
-  TargetNotFound = 'target_not_found',
-  SelfShare = 'self_share'
-}
+export type GrantShareResult = { outcome: 'ok'; share: Share } | Refused;
 
-export type GrantShareResult =
-  | { outcome: GrantShareOutcome.Ok; share: Share }
-  | { outcome: GrantShareOutcome.PlaylistNotFound }
-  | { outcome: GrantShareOutcome.TargetNotFound }
-  | { outcome: GrantShareOutcome.SelfShare };
-
-export enum ShareRevokeOutcome {
-  Ok = 'ok',
-  PlaylistNotFound = 'playlist_not_found'
-}
+export type ShareRevokeResult = Succeeded | Refused;
 
 /* An upsert on the (playlist, account) index: a regrant changes the level; the
  * first created time stays. Every other refusal is the same not-found. */
@@ -92,7 +84,7 @@ export function grantShareForAccount(
     AccessNeed.Owner,
     (): GrantShareResult => {
       if (targetAccountId === accountId) {
-        return { outcome: GrantShareOutcome.SelfShare };
+        return { outcome: 'refused', refusal: Refusal.SelfShare };
       }
 
       const target = context.database.db
@@ -102,7 +94,7 @@ export function grantShareForAccount(
         .get();
 
       if (target === undefined) {
-        return { outcome: GrantShareOutcome.TargetNotFound };
+        return { outcome: 'refused', refusal: Refusal.AccountNotFound };
       }
 
       const share = context.database.db
@@ -122,7 +114,7 @@ export function grantShareForAccount(
       announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
 
       return {
-        outcome: GrantShareOutcome.Ok,
+        outcome: 'ok',
         share: toShareView(share, target)
       };
     }
@@ -130,7 +122,7 @@ export function grantShareForAccount(
 
   return entry.outcome === EntryOutcome.Granted
     ? entry.value
-    : { outcome: GrantShareOutcome.PlaylistNotFound };
+    : { outcome: 'refused', refusal: Refusal.PlaylistNotFoundManage };
 }
 
 /* A collaborator and a stranger get one not-found. The delete is idempotent, so
@@ -140,13 +132,13 @@ export function revokeShareForAccount(
   playlistId: string,
   accountId: string,
   targetAccountId: string
-): ShareRevokeOutcome {
+): ShareRevokeResult {
   const entry = playlistEntry(
     context.database,
     playlistId,
     accountId,
     AccessNeed.Owner,
-    (): ShareRevokeOutcome => {
+    (): ShareRevokeResult => {
       context.database.db
         .delete(shares)
         .where(
@@ -164,11 +156,11 @@ export function revokeShareForAccount(
       });
       announce(context, { kind: ChangeKind.PlaylistChanged, playlistId });
 
-      return ShareRevokeOutcome.Ok;
+      return { outcome: 'ok' };
     }
   );
 
   return entry.outcome === EntryOutcome.Granted
     ? entry.value
-    : ShareRevokeOutcome.PlaylistNotFound;
+    : { outcome: 'refused', refusal: Refusal.PlaylistNotFoundManage };
 }

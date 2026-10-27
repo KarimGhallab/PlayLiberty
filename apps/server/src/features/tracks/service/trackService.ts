@@ -10,6 +10,7 @@ import {
 } from '../../../shared/access/entry.js';
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
+import { Refusal } from '../../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
@@ -49,7 +50,10 @@ export function resolveTrackForStream(
   const track = loadTrack(database, trackId);
 
   if (track === undefined) {
-    return { outcome: TrackStreamOutcome.NotFound };
+    return {
+      outcome: TrackStreamOutcome.NotFound,
+      refusal: Refusal.TrackNotFound
+    };
   }
 
   const entry = trackEntry<TrackStreamResult>(
@@ -62,7 +66,10 @@ export function resolveTrackForStream(
         track.fileStatus !== TrackFileStatus.Stored ||
         track.filePath === null
       ) {
-        return { outcome: TrackStreamOutcome.NotStored };
+        return {
+          outcome: TrackStreamOutcome.NotStored,
+          refusal: Refusal.TrackNotStored
+        };
       }
 
       return { outcome: TrackStreamOutcome.Ok, filePath: track.filePath };
@@ -70,7 +77,10 @@ export function resolveTrackForStream(
   );
 
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: TrackStreamOutcome.Forbidden };
+    return {
+      outcome: TrackStreamOutcome.Forbidden,
+      refusal: Refusal.Forbidden
+    };
   }
 
   return entry.value;
@@ -84,13 +94,19 @@ export function resolveTrackForThumbnail(
   const track = loadTrack(database, trackId);
 
   if (track === undefined) {
-    return { outcome: TrackThumbnailOutcome.NotFound };
+    return {
+      outcome: TrackThumbnailOutcome.NotFound,
+      refusal: Refusal.ThumbnailNotFound
+    };
   }
 
   const thumbnailPath = track.thumbnailPath;
 
   if (thumbnailPath === null) {
-    return { outcome: TrackThumbnailOutcome.NotFound };
+    return {
+      outcome: TrackThumbnailOutcome.NotFound,
+      refusal: Refusal.ThumbnailNotFound
+    };
   }
 
   const entry = trackEntry<TrackThumbnailResult>(
@@ -105,7 +121,10 @@ export function resolveTrackForThumbnail(
   );
 
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: TrackThumbnailOutcome.Forbidden };
+    return {
+      outcome: TrackThumbnailOutcome.Forbidden,
+      refusal: Refusal.Forbidden
+    };
   }
 
   return entry.value;
@@ -154,7 +173,10 @@ export function retryTrackForAccount(
   const track = loadTrack(context.database, trackId);
 
   if (track === undefined) {
-    return { outcome: RetryTrackOutcome.NotFound };
+    return {
+      outcome: RetryTrackOutcome.NotFound,
+      refusal: Refusal.TrackNotFound
+    };
   }
 
   const entry = trackEntry<RetryTrackResult>(
@@ -167,11 +189,17 @@ export function retryTrackForAccount(
         const transition = queue.retry(track.id);
 
         if (transition.outcome === TrackTransitionOutcome.Refused) {
-          return { outcome: RetryTrackOutcome.NotRetryable };
+          return {
+            outcome: RetryTrackOutcome.NotRetryable,
+            refusal: Refusal.TrackNotRetryable
+          };
         }
 
         if (transition.outcome === TrackTransitionOutcome.Missing) {
-          return { outcome: RetryTrackOutcome.NotFound };
+          return {
+            outcome: RetryTrackOutcome.NotFound,
+            refusal: Refusal.TrackNotFound
+          };
         }
 
         return {
@@ -182,7 +210,10 @@ export function retryTrackForAccount(
   );
 
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: RetryTrackOutcome.NotFound };
+    return {
+      outcome: RetryTrackOutcome.NotFound,
+      refusal: Refusal.TrackNotFound
+    };
   }
 
   if (entry.value.outcome === RetryTrackOutcome.Ok) {
@@ -202,7 +233,10 @@ export function fetchTrackWholeForAccount(
   const track = loadTrack(context.database, trackId);
 
   if (track === undefined) {
-    return { outcome: FetchWholeOutcome.NotFound };
+    return {
+      outcome: FetchWholeOutcome.NotFound,
+      refusal: Refusal.TrackNotFound
+    };
   }
 
   const entry = trackEntry<FetchWholeResult>(
@@ -217,11 +251,17 @@ export function fetchTrackWholeForAccount(
         const transition = queue.fetchWhole(track.id);
 
         if (transition.outcome === TrackTransitionOutcome.Refused) {
-          return { outcome: FetchWholeOutcome.NotEligible };
+          return {
+            outcome: FetchWholeOutcome.NotEligible,
+            refusal: Refusal.TrackNotFetchable
+          };
         }
 
         if (transition.outcome === TrackTransitionOutcome.Missing) {
-          return { outcome: FetchWholeOutcome.NotFound };
+          return {
+            outcome: FetchWholeOutcome.NotFound,
+            refusal: Refusal.TrackNotFound
+          };
         }
 
         return {
@@ -232,7 +272,10 @@ export function fetchTrackWholeForAccount(
   );
 
   if (entry.outcome === EntryOutcome.Denied) {
-    return { outcome: FetchWholeOutcome.NotFound };
+    return {
+      outcome: FetchWholeOutcome.NotFound,
+      refusal: Refusal.TrackNotFound
+    };
   }
 
   if (entry.value.outcome === FetchWholeOutcome.Ok) {

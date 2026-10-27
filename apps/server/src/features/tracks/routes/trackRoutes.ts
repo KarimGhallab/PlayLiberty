@@ -1,20 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 
-import {
-  AddTrackInputSchema,
-  ProblemCode,
-  endpoints
-} from '@playliberty/contracts';
+import { AddTrackInputSchema, endpoints } from '@playliberty/contracts';
 import { YoutubeSourceKind } from '@playliberty/youtube';
 
 import type { AppContext } from '../../../shared/context.js';
 import { exhaust } from '../../../shared/exhaust.js';
 import {
   parseBody,
-  sendProblem,
   sendUnprocessable,
   sendValidationFailed
 } from '../../../shared/problem.js';
+import { sendRefusal } from '../../../shared/refusal.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
@@ -76,28 +72,15 @@ export function registerTrackRoutes(
       );
 
       if (result.outcome === TrackStreamOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: ProblemCode.TrackNotFound,
-          title: 'Track Not Found'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === TrackStreamOutcome.Forbidden) {
-        return sendProblem(reply, {
-          status: 403,
-          code: ProblemCode.Forbidden,
-          title: 'Forbidden'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === TrackStreamOutcome.NotStored) {
-        return sendProblem(reply, {
-          status: 409,
-          code: ProblemCode.TrackNotStored,
-          title: 'Track Not Stored',
-          detail: 'The track has no stored media to stream.'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === TrackStreamOutcome.Ok) {
@@ -125,19 +108,11 @@ export function registerTrackRoutes(
       );
 
       if (result.outcome === TrackThumbnailOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: ProblemCode.ThumbnailNotFound,
-          title: 'Thumbnail Not Found'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === TrackThumbnailOutcome.Forbidden) {
-        return sendProblem(reply, {
-          status: 403,
-          code: ProblemCode.Forbidden,
-          title: 'Forbidden'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === TrackThumbnailOutcome.Ok) {
@@ -165,20 +140,11 @@ export function registerTrackRoutes(
       );
 
       if (result.outcome === RetryTrackOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: ProblemCode.TrackNotFound,
-          title: 'Track Not Found'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === RetryTrackOutcome.NotRetryable) {
-        return sendProblem(reply, {
-          status: 409,
-          code: ProblemCode.TrackNotRetryable,
-          title: 'Track Not Retryable',
-          detail: 'Only a failed track can be retried.'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === RetryTrackOutcome.Ok) {
@@ -200,21 +166,11 @@ export function registerTrackRoutes(
       );
 
       if (result.outcome === FetchWholeOutcome.NotFound) {
-        return sendProblem(reply, {
-          status: 404,
-          code: ProblemCode.TrackNotFound,
-          title: 'Track Not Found'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === FetchWholeOutcome.NotEligible) {
-        return sendProblem(reply, {
-          status: 409,
-          code: ProblemCode.TrackNotFetchable,
-          title: 'Track Not Fetchable',
-          detail:
-            'Only a track that is waiting to be fetched can be fetched whole.'
-        });
+        return sendRefusal(reply, result.refusal);
       }
 
       if (result.outcome === FetchWholeOutcome.Ok) {

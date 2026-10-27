@@ -2,7 +2,7 @@ import type { FastifyReply } from 'fastify';
 import type { z } from 'zod';
 
 import { ProblemCode } from '@playliberty/contracts';
-import type { PlaylistNotFoundReason, Problem } from '@playliberty/contracts';
+import type { Problem } from '@playliberty/contracts';
 
 /* The values a problem carries for the copy that varies under one code. */
 export type ProblemParams = Readonly<Record<string, string | number>>;
@@ -49,20 +49,6 @@ export function sendNotImplemented(
     code: ProblemCode.NotImplemented,
     title: 'Not Implemented',
     detail
-  });
-}
-
-/* One code plus the scope it was refused in; the client maps the reason to its
- * own sentence, so the server keeps no second copy of that English. */
-export function sendPlaylistNotFound(
-  reply: FastifyReply,
-  reason: PlaylistNotFoundReason
-): FastifyReply {
-  return sendProblem(reply, {
-    status: 404,
-    code: ProblemCode.PlaylistNotFound,
-    title: 'Playlist Not Found',
-    params: { reason }
   });
 }
 

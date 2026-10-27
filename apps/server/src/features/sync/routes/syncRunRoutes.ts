@@ -1,18 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 
-import {
-  PlaylistNotFoundReason,
-  ProblemCode,
-  endpoints
-} from '@playliberty/contracts';
+import { endpoints } from '@playliberty/contracts';
 
 import type { AppContext } from '../../../shared/context.js';
-import { exhaust } from '../../../shared/exhaust.js';
-import { sendPlaylistNotFound, sendProblem } from '../../../shared/problem.js';
+import { sendRefusal } from '../../../shared/refusal.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
 import { resolveLatestSyncRun } from '../syncRunService.js';
-import { SyncRunOutcome } from '../types.js';
 
 export function registerSyncRunRoutes(
   app: FastifyInstance,
@@ -28,26 +22,13 @@ export function registerSyncRunRoutes(
         request.account.id
       );
 
-      if (result.outcome === SyncRunOutcome.PlaylistNotFound) {
-        return sendPlaylistNotFound(reply, PlaylistNotFoundReason.Read);
+      // Both a vanished playlist and a playlist with no run answer 404; the
+      // code is what tells them apart.
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
       }
 
-      // Same 404 as above; the code is what tells them apart. "no run" and a
-      // "failed run" must stay distinguishable.
-      if (result.outcome === SyncRunOutcome.RunAbsent) {
-        return sendProblem(reply, {
-          status: 404,
-          code: ProblemCode.SyncRunAbsent,
-          title: 'No Sync Run',
-          detail: 'This playlist has never been synced.'
-        });
-      }
-
-      if (result.outcome === SyncRunOutcome.Ok) {
-        return reply.send(result.run);
-      }
-
-      return exhaust(result);
+      return reply.send(result.run);
     }
   );
 }
