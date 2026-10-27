@@ -14,7 +14,7 @@ import {
   apiPatch,
   apiPost,
   apiUpload
-} from '../client/client';
+} from '../clients/apiClient/apiClient';
 
 /*
  * The query module's side of an endpoint declaration: the path is substituted,

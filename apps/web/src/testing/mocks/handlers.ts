@@ -1,6 +1,22 @@
-import { HttpResponse, http } from 'msw';
 import type { HttpHandler, HttpResponseResolver } from 'msw';
+import { HttpResponse, http } from 'msw';
 
+import type {
+  Account,
+  AccountSummary,
+  AccountSummaryPage,
+  AddTrackResult,
+  EndpointParams,
+  Playlist,
+  PlaylistPage,
+  PlaylistTrack,
+  PlaylistTracksPage,
+  Problem,
+  Share,
+  SyncRun,
+  Track,
+  TrackFileStatusCounts
+} from '@playliberty/contracts';
 import {
   AddTrackOutcome,
   AssociationOrigin,
@@ -20,24 +36,8 @@ import {
   endpointPattern,
   endpoints
 } from '@playliberty/contracts';
-import type {
-  Account,
-  AccountSummary,
-  AccountSummaryPage,
-  AddTrackResult,
-  EndpointParams,
-  Playlist,
-  PlaylistPage,
-  PlaylistTrack,
-  PlaylistTracksPage,
-  Problem,
-  Share,
-  SyncRun,
-  Track,
-  TrackFileStatusCounts
-} from '@playliberty/contracts';
 
-import { API_PREFIX } from '../../shared/api/client/client';
+import { API_PREFIX } from '../../shared/api/clients/apiClient/apiClient';
 
 /*
  * The harness the tests run against: two valid playlists, one owned and one

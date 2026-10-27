@@ -3,10 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { AccountSummarySchema, endpoints } from '@playliberty/contracts';
 
-import { restoreLocation, stubLocationAssign } from '../../../testing/location';
-import { mockUrl } from '../../../testing/mocks/handlers';
-import { server } from '../../../testing/mocks/server';
-import { ApiError, apiGet } from './client';
+import {
+  restoreLocation,
+  stubLocationAssign
+} from '../../../../testing/location';
+import { mockUrl } from '../../../../testing/mocks/handlers';
+import { server } from '../../../../testing/mocks/server';
+import { ApiError, apiGet } from './apiClient';
 
 /*
  * The re-auth guard. A `401` needs a top-level navigation so the edge can

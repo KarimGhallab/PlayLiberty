@@ -1,11 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect } from 'react';
 
-import { LiveEventSchema, endpoints } from '@playliberty/contracts';
 import type { LiveEvent } from '@playliberty/contracts';
+import { LiveEventSchema, endpoints } from '@playliberty/contracts';
 
 import { cacheEffects } from '../cacheEffects/cacheEffects';
-import { API_PREFIX, ApiError } from '../client/client';
+import { API_PREFIX, ApiError } from '../clients/apiClient/apiClient';
 import { readEndpoint } from '../endpoints/endpoints';
 import { invalidateForLiveEvent } from '../liveEvents/liveEvents';
 

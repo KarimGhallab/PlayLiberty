@@ -1,7 +1,7 @@
-import { problemDetail } from '@playliberty/i18n';
 import type { Messages, Translator } from '@playliberty/i18n';
+import { problemDetail } from '@playliberty/i18n';
 
-import { ApiError } from '../client/client';
+import { ApiError } from '../clients/apiClient/apiClient';
 
 /*
  * The one seam where a refusal becomes a sentence: the client's `ApiError`

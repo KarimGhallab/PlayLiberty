@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Playlist } from '@playliberty/contracts';
 import type { Messages, Translator } from '@playliberty/i18n';
 
-import { playlistQueueKey, readPlaylistQueue } from '../../api/queries/queries';
+import {
+  cancelPlaylistQueue,
+  readPlaylistQueue
+} from '../../api/clients/playlistClient/playlistClient';
 import { startPlaylistQueue } from '../playerQueue/playerQueue';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { queuePlaylistId } from '../types';
@@ -142,10 +145,7 @@ export function usePlayTransition({
         } catch {
           /* A timed-out read is still the query's in-flight one; cancel it so
            * the retry asks the queue again rather than joining the hung read. */
-          await queryClient.cancelQueries({
-            queryKey: playlistQueueKey(press.playlist.id),
-            exact: true
-          });
+          await cancelPlaylistQueue(queryClient, press.playlist.id);
 
           setRefusal({
             name: press.playlist.name,

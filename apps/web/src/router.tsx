@@ -9,7 +9,7 @@ import {
 
 import { UserRole } from '@playliberty/contracts';
 
-import { currentAccountQuery } from './shared/api/queries/queries';
+import { currentAccountQuery } from './shared/api/clients/accountClient/accountClient';
 import { queryClient } from './shared/api/queryClient';
 import { useEventStream } from './shared/api/useEventStream/useEventStream';
 import NotFoundPage from './shared/components/NotFoundPage/NotFoundPage';

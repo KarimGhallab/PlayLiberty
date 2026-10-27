@@ -1,28 +1,30 @@
 import { IconPlus } from '@tabler/icons-react';
 import { Fragment, useEffect, useId, useState } from 'react';
 
+import type {
+  PlaylistWithCounts,
+  TrackFileStatusCounts
+} from '@playliberty/contracts';
 import {
   PlaylistSyncStatus,
   TrackFileStatus,
   UserRole
 } from '@playliberty/contracts';
-import type {
-  PlaylistWithCounts,
-  TrackFileStatusCounts
-} from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
 import type { Messages, Translator } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
 
-import { problemSentence } from '../../../shared/api/problem/problem';
 import {
   ownerNameFrom,
   useAccountDirectory,
+  useCurrentAccount
+} from '../../../shared/api/clients/accountClient/accountClient';
+import type { SyncAllOutcome } from '../../../shared/api/clients/libraryClient/libraryClient';
+import {
   useCreatePlaylist,
-  useCurrentAccount,
   usePlaylists,
   useSyncAllPlaylists
-} from '../../../shared/api/queries/queries';
-import type { SyncAllOutcome } from '../../../shared/api/queries/queries';
+} from '../../../shared/api/clients/libraryClient/libraryClient';
+import { problemSentence } from '../../../shared/api/problem/problem';
 import EgressLink from '../../../shared/components/EgressLink/EgressLink';
 import FloatingAction from '../../../shared/components/FloatingAction/FloatingAction';
 import LanguageMenu from '../../../shared/components/LanguageMenu/LanguageMenu';
@@ -50,8 +52,8 @@ import {
 
 import AddPlaylistDialog from '../AddPlaylistDialog/AddPlaylistDialog';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
-import LibraryFilterBar from '../LibraryFilterBar/LibraryFilterBar';
 import type { LibraryScope } from '../LibraryFilterBar/LibraryFilterBar';
+import LibraryFilterBar from '../LibraryFilterBar/LibraryFilterBar';
 import LibrarySkeleton from '../LibrarySkeleton/LibrarySkeleton';
 import PlaylistItem from '../PlaylistItem';
 import styles from './LibraryPage.module.scss';

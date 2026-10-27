@@ -10,12 +10,12 @@ import { EgressStatus } from '@playliberty/contracts';
 import type { Messages, Translator } from '@playliberty/i18n';
 import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 
-import { ApiError } from '../../../shared/api/client/client';
+import { ApiError } from '../../../shared/api/clients/apiClient/apiClient';
 import {
   useCheckEgress,
   useEgress,
   useSwitchEgress
-} from '../../../shared/api/queries/queries';
+} from '../../../shared/api/clients/egressClient/egressClient';
 import NotFoundPage from '../../../shared/components/NotFoundPage/NotFoundPage';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import ErrorToast from '../../../shared/components/Toast/ErrorToast';

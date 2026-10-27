@@ -6,9 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ShareLevel } from '@playliberty/contracts';
 
 import { cacheEffects } from '../cacheEffects/cacheEffects';
+import { useCreatePlaylist, useUpdatePin } from './libraryClient/libraryClient';
 import {
   useAddTrack,
-  useCreatePlaylist,
   useDeletePlaylist,
   useFetchTrackWhole,
   useGrantShare,
@@ -19,9 +19,8 @@ import {
   useRevokeShare,
   useSetPlaylistCover,
   useSyncPlaylist,
-  useUpdatePin,
   useUpdateSkipNonMusic
-} from './queries';
+} from './playlistClient/playlistClient';
 
 /*
  * Each mutation names one cache fact (reads pinned in `cacheEffects.test.ts`);

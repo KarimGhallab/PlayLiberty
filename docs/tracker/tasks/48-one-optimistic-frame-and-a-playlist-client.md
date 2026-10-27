@@ -1,44 +1,23 @@
 # 48: One optimistic frame, and a Playlist client for the detail
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 
-## Objective
+## Outcome
 
-Server state reaches the detail page through one Playlist client that owns its keys, its invalidation and its optimistic frame. The page names no key, and the optimistic frame exists once.
+`shared/api/optimisticPatch/optimisticPatch.ts` is the one optimistic frame: cancel the read in flight, snapshot it, apply the change, and restore the snapshot on a refused write. The skip-non-music switch, the sort control and the pin all use it; no mutation copies the frame by hand.
 
-## Context
+`shared/api/clients/playlistClient.ts` is the Playlist client. It owns the playlist read, the latest sync run, the paginated track read and its queue, the sync start, the batch add, cover set and remove, rename, skip and sort, delete, retry, fetch-whole and remove, and the shares read, grant and revoke. Its key builders are private; the queue read is reached through `readPlaylistQueue` and `cancelPlaylistQueue`, so the play transition names no key either.
 
-Architecture review, 2026-10-27, candidate 5, first half. Issue 19 gave the client one cache-effect map and issue 60 gave both sides one endpoint table; this ticket gives each domain its own client. See [`ARCHITECTURE.md`](../../ARCHITECTURE.md#the-web-stack).
+The detail page, the playlist actions menu, the share dialog, the tab title and the play transition import from the client. The page's playlist and track state no longer comes from the old module, and no detail module names a key. The account directory, the current account and the library read still come from the old module; ticket 49 gives them their own clients. The pin mutation stays there too, because it writes the library page, but it already uses the shared frame.
 
-## Current state
-
-- The web's server state is one module of 780 lines: 28 hooks, 5 interfaces and 4 helpers. The detail page imports 14 hooks by name.
-- The cache-effect module says it is the one place a key is written, yet the Playlist key is written in six hooks and read directly by the play transition.
-- The optimistic frame (cancel, snapshot, apply, restore, invalidate) is pasted in three mutations.
-
-## Scope
-
-- One optimistic patch helper: cancel, snapshot, apply, restore on failure. The three optimistic mutations use it.
-- A Playlist client for the detail: the Playlist read, the Track list and queue, settings, cover, shares, Sync and Track actions, with their keys and change effects. The page and the play transition stop naming a key.
-- Optimistic behaviour is unchanged: a control moves on the press and restores when the write fails.
-- Tests: each mutation's invalidation, and the detail suite unchanged.
-
-## Out of scope
-
-- The library, the account and the Egress; ticket 49.
-- The live event stream, which keeps invalidating through the same change effects.
-- The page's derived view model.
-
-## Blocking edges
-
-None. Can start immediately.
+The old module now carries only the library, account and Egress reads plus the library's create, sync-all and pin actions. The mutation invalidation suite was split at the import line, and the detail suite is unchanged.
 
 ## Verification
 
-- No detail module imports a query key or a raw read hook.
-- The optimistic frame is written once.
-- The detail page suite passes unchanged.
-- `pnpm --filter @playliberty/web test` passes; `pnpm run build` and `pnpm run lint:check` pass.
+- The optimistic frame has its own test: it cancels, snapshots, applies, restores, and leaves an absent read absent.
+- Each mutation still names its one cache fact.
+- The detail suite passes unchanged; the page moves an optimistic control on the press and restores it on a refused write.
+- `pnpm --filter @playliberty/web test` is 606 passed; `pnpm run test:unit` is 1204 passed; `pnpm run build` and `pnpm run lint:check` pass.
 
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#the-web-stack).

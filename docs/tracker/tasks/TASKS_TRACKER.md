@@ -54,8 +54,8 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`45-one-owner-for-the-agent-exchange`](45-one-owner-for-the-agent-exchange.md)                                             | resolved | none                                                     | none                                                      |
 | [`46-one-responder-for-a-refusal`](46-one-responder-for-a-refusal.md)                                                       | resolved | none                                                     | [`47`](47-the-remaining-refusals-and-the-old-outcomes.md) |
 | [`47-the-remaining-refusals-and-the-old-outcomes`](47-the-remaining-refusals-and-the-old-outcomes.md)                       | resolved | [`46`](46-one-responder-for-a-refusal.md)                | none                                                      |
-| [`48-one-optimistic-frame-and-a-playlist-client`](48-one-optimistic-frame-and-a-playlist-client.md)                         | open     | none                                                     | [`49`](49-clients-for-the-library-account-and-egress.md)  |
-| [`49-clients-for-the-library-account-and-egress`](49-clients-for-the-library-account-and-egress.md)                         | open     | [`48`](48-one-optimistic-frame-and-a-playlist-client.md) | none                                                      |
+| [`48-one-optimistic-frame-and-a-playlist-client`](48-one-optimistic-frame-and-a-playlist-client.md)                         | resolved | none                                                     | [`49`](49-clients-for-the-library-account-and-egress.md)  |
+| [`49-clients-for-the-library-account-and-egress`](49-clients-for-the-library-account-and-egress.md)                         | resolved | [`48`](48-one-optimistic-frame-and-a-playlist-client.md) | none                                                      |
 
 Feature-scoped ticket sets live in a folder named for their spec:
 

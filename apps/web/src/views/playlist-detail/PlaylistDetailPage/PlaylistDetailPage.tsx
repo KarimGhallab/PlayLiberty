@@ -18,24 +18,26 @@ import {
 } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
-import { problemSentence } from '../../../shared/api/problem/problem';
 import {
   ownerNameFrom,
   useAccountDirectory,
+  useCurrentAccount
+} from '../../../shared/api/clients/accountClient/accountClient';
+import { usePlaylists } from '../../../shared/api/clients/libraryClient/libraryClient';
+import {
   useAddTrack,
-  useCurrentAccount,
   useFetchTrackWhole,
   useLatestSyncRun,
   usePlaylist,
   usePlaylistQueue,
   usePlaylistTracks,
-  usePlaylists,
   useRemoveTrack,
   useRetryFailedTracks,
   useRetryTrack,
   useUpdateSkipNonMusic,
   useUpdateSort
-} from '../../../shared/api/queries/queries';
+} from '../../../shared/api/clients/playlistClient/playlistClient';
+import { problemSentence } from '../../../shared/api/problem/problem';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EgressLink from '../../../shared/components/EgressLink/EgressLink';
 import EmptyState from '../../../shared/components/EmptyState/EmptyState';

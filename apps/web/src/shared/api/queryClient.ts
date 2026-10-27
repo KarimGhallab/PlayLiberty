@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 
-import { ApiError } from './client/client';
+import { ApiError } from './clients/apiClient/apiClient';
 
 /*
  * A 4xx is the server's answer, not a transient fault: a revoked share's `404`

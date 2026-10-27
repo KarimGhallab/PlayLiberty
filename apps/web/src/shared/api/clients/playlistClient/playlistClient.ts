@@ -13,12 +13,8 @@ import {
 import { useCallback, useMemo } from 'react';
 
 import type {
-  Account,
-  AccountSummary,
   AddTrackResult,
-  EgressRead,
   Playlist,
-  PlaylistPage,
   PlaylistTrack,
   PlaylistTracksPage,
   Share,
@@ -28,14 +24,12 @@ import type {
 } from '@playliberty/contracts';
 import {
   PlaylistSort,
-  ProblemCode,
   TrackFileStatus,
   endpoints
 } from '@playliberty/contracts';
 
-import type { CoverCrop } from '../../coverCrop/coverCrop';
-import { cacheEffects } from '../cacheEffects/cacheEffects';
-import { ApiError } from '../client/client';
+import type { CoverCrop } from '../../../coverCrop/coverCrop';
+import { cacheEffects } from '../../cacheEffects/cacheEffects';
 import {
   commandEndpoint,
   deleteEndpoint,
@@ -43,143 +37,75 @@ import {
   postEndpoint,
   readEndpoint,
   uploadEndpoint
-} from '../endpoints/endpoints';
+} from '../../endpoints/endpoints';
+import {
+  optimisticPatch,
+  restoreOptimistic
+} from '../../optimisticPatch/optimisticPatch';
+import { ApiError } from '../apiClient/apiClient';
 
-export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
+/*
+ * The Playlist client: one owner for a playlist's reads, actions and the keys
+ * they use. A page names a hook, never a key, and the invalidation it triggers
+ * is the one in `cacheEffects`.
+ */
+
+const playlistKey = (playlistId: string | null) =>
+  ['playlist', playlistId] as const;
+
+const playlistTracksKey = (playlistId: string, state?: TrackFileStatus) =>
+  ['playlist', playlistId, 'tracks', state ?? 'all'] as const;
+
+const playlistQueueKey = (playlistId: string) =>
+  ['playlist', playlistId, 'queue'] as const;
+
+const latestSyncRunKey = (playlistId: string) =>
+  ['playlist', playlistId, 'sync-runs', 'latest'] as const;
+
+const playlistSharesKey = (playlistId: string) =>
+  ['playlist', playlistId, 'shares'] as const;
+
+/*
+ * The playlist's name, separate from the tracks read because the name belongs
+ * to the playlist. `null` disables it, the tab title's case at home.
+ */
+export function usePlaylist(
+  playlistId: string | null
+): UseQueryResult<Playlist, Error> {
   return useQuery({
-    queryKey: ['playlists'],
-    queryFn: () => readEndpoint(endpoints.playlists)
+    queryKey: playlistKey(playlistId),
+    queryFn: () => {
+      if (playlistId === null) {
+        throw new Error('A playlist read needs an id.');
+      }
+
+      return readEndpoint(endpoints.playlist, { playlistId });
+    },
+    enabled: playlistId !== null
   });
 }
 
-/* The only source of another account's display name: a shared item carries an
- * `ownerAccountId` only, and an owner past the first page is a miss. */
-export function useAccountDirectory(): UseQueryResult<AccountSummary[], Error> {
+/*
+ * The latest sync run, the only place a playlist's counts live. A `404` means
+ * never synced and maps to `null`; any other status is an error.
+ */
+export function useLatestSyncRun(
+  playlistId: string
+): UseQueryResult<SyncRun | null, Error> {
   return useQuery({
-    queryKey: ['accounts'],
-    queryFn: () => readEndpoint(endpoints.accounts),
-    select: page => page.items
-  });
-}
+    queryKey: latestSyncRunKey(playlistId),
+    queryFn: async () => {
+      try {
+        return await readEndpoint(endpoints.latestSyncRun, { playlistId });
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          return null;
+        }
 
-/* The only read that names the reader; the share picker omits its row, and
- * sharing with oneself is a route refusal. */
-export const currentAccountQuery = {
-  queryKey: ['me'],
-  queryFn: () => readEndpoint(endpoints.currentAccount)
-};
-
-export function useCurrentAccount(): UseQueryResult<Account, Error> {
-  return useQuery(currentAccountQuery);
-}
-
-/* The operator's pool: an admin-only read, so a 404 here is the gate, not a
- * fault. */
-export function useEgress(): UseQueryResult<EgressRead, Error> {
-  return useQuery({
-    queryKey: ['egress'],
-    queryFn: () => readEndpoint(endpoints.egress)
-  });
-}
-
-/* The switch action answers the whole read, so the page updates in one
- * response. */
-export function useSwitchEgress(): UseMutationResult<
-  EgressRead,
-  Error,
-  string
-> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (name: string) =>
-      commandEndpoint(endpoints.switchEgress, { name }),
-    onSuccess: read => {
-      queryClient.setQueryData(['egress'], read);
+        throw error;
+      }
     }
   });
-}
-
-/* The check action answers the whole read and never changes the exit. */
-export function useCheckEgress(): UseMutationResult<EgressRead, Error, void> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => commandEndpoint(endpoints.checkEgress),
-    onSuccess: read => {
-      queryClient.setQueryData(['egress'], read);
-    }
-  });
-}
-
-/*
- * The name an owner id resolves to, or null when absent. Null is a real answer
- * and must not be confused with an empty string, which renders a blank line.
- */
-export function ownerNameFrom(
-  directory: AccountSummary[],
-  ownerAccountId: string
-): string | null {
-  return (
-    directory.find(account => account.id === ownerAccountId)?.displayName ??
-    null
-  );
-}
-
-/*
- * A `202` with the started `SyncRun`; the playlist arrives on the next read,
- * `syncing`. No optimistic row; a refusal is the caller's to show.
- */
-export function useCreatePlaylist(): UseMutationResult<
-  SyncRun,
-  Error,
-  { url: string; skipNonMusic: boolean }
-> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: { url: string; skipNonMusic: boolean }) =>
-      postEndpoint(endpoints.createPlaylist, input),
-    onSuccess: () => {
-      cacheEffects.libraryChanged(queryClient);
-    }
-  });
-}
-
-/*
- * One request, one outcome per playlist: a batch can be part added, part
- * present or refused, so both reads are invalidated after.
- */
-export function useAddTrack(): UseMutationResult<
-  AddTrackResult,
-  Error,
-  { url: string; playlistIds: string[] }
-> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: { url: string; playlistIds: string[] }) =>
-      postEndpoint(endpoints.addTrack, input),
-    onSuccess: () => {
-      cacheEffects.everyPlaylistChanged(queryClient);
-    }
-  });
-}
-
-/*
- * The id scopes invalidation to one playlist; the filter caches each state
- * under its own read, which a playlist-prefix invalidation still catches.
- */
-export function playlistTracksKey(playlistId: string, state?: TrackFileStatus) {
-  return ['playlist', playlistId, 'tracks', state ?? 'all'] as const;
-}
-
-/*
- * The playlist's whole association list, what a queue is built from. Separate
- * from the tracks key: this is every association in one response.
- */
-export function playlistQueueKey(playlistId: string) {
-  return ['playlist', playlistId, 'queue'] as const;
 }
 
 const PLAYLIST_TRACKS_PAGE_SIZE = 100;
@@ -305,46 +231,14 @@ export function readPlaylistQueue(
   });
 }
 
-/*
- * The playlist's name, separate from the tracks read because the name belongs
- * to the playlist. `null` disables it, the tab title's case at home.
- */
-export function usePlaylist(
-  playlistId: string | null
-): UseQueryResult<Playlist, Error> {
-  return useQuery({
-    queryKey: ['playlist', playlistId],
-    queryFn: () => {
-      if (playlistId === null) {
-        throw new Error('A playlist read needs an id.');
-      }
-
-      return readEndpoint(endpoints.playlist, { playlistId });
-    },
-    enabled: playlistId !== null
-  });
-}
-
-/*
- * The latest sync run, the only place a playlist's counts live. A `404` means
- * never synced and maps to `null`; any other status is an error.
- */
-export function useLatestSyncRun(
+/* The transition cancels a queue read it timed out on; the key stays here. */
+export function cancelPlaylistQueue(
+  queryClient: QueryClient,
   playlistId: string
-): UseQueryResult<SyncRun | null, Error> {
-  return useQuery({
-    queryKey: ['playlist', playlistId, 'sync-runs', 'latest'],
-    queryFn: async () => {
-      try {
-        return await readEndpoint(endpoints.latestSyncRun, { playlistId });
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          return null;
-        }
-
-        throw error;
-      }
-    }
+): Promise<void> {
+  return queryClient.cancelQueries({
+    queryKey: playlistQueueKey(playlistId),
+    exact: true
   });
 }
 
@@ -364,52 +258,21 @@ export function useSyncPlaylist(): UseMutationResult<SyncRun, Error, string> {
   });
 }
 
-export interface SyncAllOutcome {
-  readonly started: number;
-  readonly alreadyRunning: number;
-  /** The refusal that ended the loop, `null` when every playlist took it. */
-  readonly stopped: unknown;
-}
-
 /*
- * Start every playlist in the frozen set, one at a time. `409` is a fact about
- * the set rather than a failure, so it is counted and the loop goes on; any
- * other refusal stops it, since repeating a fault for every remaining playlist
- * helps nobody.
+ * One request, one outcome per playlist: a batch can be part added, part
+ * present or refused, so both reads are invalidated after.
  */
-export function useSyncAllPlaylists(): UseMutationResult<
-  SyncAllOutcome,
+export function useAddTrack(): UseMutationResult<
+  AddTrackResult,
   Error,
-  readonly string[]
+  { url: string; playlistIds: string[] }
 > {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (playlistIds: readonly string[]) => {
-      let started = 0;
-      let alreadyRunning = 0;
-
-      for (const playlistId of playlistIds) {
-        try {
-          await commandEndpoint(endpoints.syncPlaylist, { playlistId });
-          started += 1;
-        } catch (error) {
-          if (
-            error instanceof ApiError &&
-            error.problem?.code === ProblemCode.SyncAlreadyRunning
-          ) {
-            alreadyRunning += 1;
-            continue;
-          }
-
-          return { started, alreadyRunning, stopped: error };
-        }
-      }
-
-      return { started, alreadyRunning, stopped: null };
-    },
-    /* One invalidation for the batch: the settle events arrive per playlist. */
-    onSettled: () => {
+    mutationFn: (input: { url: string; playlistIds: string[] }) =>
+      postEndpoint(endpoints.addTrack, input),
+    onSuccess: () => {
       cacheEffects.everyPlaylistChanged(queryClient);
     }
   });
@@ -457,7 +320,7 @@ export function useSetPlaylistCover(): UseMutationResult<
         coverCropQuery(crop)
       ),
     onSuccess: (playlist, { playlistId }) => {
-      queryClient.setQueryData(['playlist', playlistId], playlist);
+      queryClient.setQueryData(playlistKey(playlistId), playlist);
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
   });
@@ -474,7 +337,7 @@ export function useRemovePlaylistCover(): UseMutationResult<
     mutationFn: (playlistId: string) =>
       deleteEndpoint(endpoints.removePlaylistCover, { playlistId }),
     onSuccess: (_void, playlistId) => {
-      queryClient.setQueryData<Playlist>(['playlist', playlistId], previous =>
+      queryClient.setQueryData<Playlist>(playlistKey(playlistId), previous =>
         previous === undefined
           ? undefined
           : { ...previous, coverUpdatedAt: null }
@@ -514,28 +377,21 @@ export function useUpdateSkipNonMusic(
   playlistId: string
 ): UseMutationResult<Playlist, Error, boolean> {
   const queryClient = useQueryClient();
-  const key = ['playlist', playlistId];
 
   return useMutation({
     mutationFn: (skipNonMusic: boolean) =>
       patchEndpoint(endpoints.skipNonMusic, { skipNonMusic }, { playlistId }),
-    onMutate: async (skipNonMusic: boolean) => {
-      await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<Playlist>(key);
-
-      if (previous !== undefined) {
-        queryClient.setQueryData<Playlist>(key, { ...previous, skipNonMusic });
-      }
-
-      return { previous };
-    },
+    onMutate: skipNonMusic =>
+      optimisticPatch<Playlist>(
+        queryClient,
+        playlistKey(playlistId),
+        previous => ({ ...previous, skipNonMusic })
+      ),
     onError: (_error, _skipNonMusic, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(key, context.previous);
-      }
+      restoreOptimistic(queryClient, playlistKey(playlistId), context);
     },
     onSuccess: playlist => {
-      queryClient.setQueryData(key, playlist);
+      queryClient.setQueryData(playlistKey(playlistId), playlist);
       cacheEffects.libraryChanged(queryClient);
     }
   });
@@ -549,75 +405,22 @@ export function useUpdateSort(
   playlistId: string
 ): UseMutationResult<Playlist, Error, PlaylistSort> {
   const queryClient = useQueryClient();
-  const key = ['playlist', playlistId];
 
   return useMutation({
     mutationFn: (sort: PlaylistSort) =>
       patchEndpoint(endpoints.sortPlaylist, { sort }, { playlistId }),
-    onMutate: async (sort: PlaylistSort) => {
-      await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<Playlist>(key);
-
-      if (previous !== undefined) {
-        queryClient.setQueryData<Playlist>(key, { ...previous, sort });
-      }
-
-      return { previous };
-    },
+    onMutate: sort =>
+      optimisticPatch<Playlist>(
+        queryClient,
+        playlistKey(playlistId),
+        previous => ({ ...previous, sort })
+      ),
     onError: (_error, _sort, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(key, context.previous);
-      }
+      restoreOptimistic(queryClient, playlistKey(playlistId), context);
     },
     onSuccess: playlist => {
-      queryClient.setQueryData(key, playlist);
+      queryClient.setQueryData(playlistKey(playlistId), playlist);
       cacheEffects.playlistChanged(queryClient, playlistId);
-    }
-  });
-}
-
-/*
- * Pin flips the flag on the cached library page, which regroups: grouping is
- * the client's part, the server owns order, and no event carries it.
- */
-export interface PinPlaylistVariables {
-  readonly playlistId: string;
-  readonly pinned: boolean;
-}
-
-export function useUpdatePin(): UseMutationResult<
-  Playlist,
-  Error,
-  PinPlaylistVariables
-> {
-  const queryClient = useQueryClient();
-  const key = ['playlists'];
-
-  return useMutation({
-    mutationFn: ({ playlistId, pinned }: PinPlaylistVariables) =>
-      patchEndpoint(endpoints.pinPlaylist, { pinned }, { playlistId }),
-    onMutate: async ({ playlistId, pinned }: PinPlaylistVariables) => {
-      await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<PlaylistPage>(key);
-
-      if (previous !== undefined) {
-        queryClient.setQueryData<PlaylistPage>(key, {
-          ...previous,
-          items: previous.items.map(item =>
-            item.id === playlistId ? { ...item, pinned } : item
-          )
-        });
-      }
-
-      return { previous };
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(key, context.previous);
-      }
-    },
-    onSuccess: () => {
-      cacheEffects.libraryChanged(queryClient);
     }
   });
 }
@@ -740,7 +543,7 @@ export function usePlaylistShares(
   enabled: boolean
 ): UseQueryResult<Share[], Error> {
   return useQuery({
-    queryKey: ['playlist', playlistId, 'shares'],
+    queryKey: playlistSharesKey(playlistId),
     queryFn: () => readEndpoint(endpoints.playlistShares, { playlistId }),
     enabled
   });
