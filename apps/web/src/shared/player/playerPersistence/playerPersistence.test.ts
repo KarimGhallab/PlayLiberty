@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
@@ -17,6 +17,8 @@ const track: PlayerTrack = {
   durationSeconds: 180,
   thumbnailPath: null
 };
+const second: PlayerTrack = { ...track, id: 'track-2', title: 'Second' };
+const third: PlayerTrack = { ...track, id: 'track-3', title: 'Third' };
 
 function attach(): () => void {
   return attachPlayerPersistence({
@@ -34,12 +36,15 @@ beforeEach(() => {
 
 afterEach(() => {
   window.sessionStorage.clear();
+  vi.restoreAllMocks();
 });
 
 describe('player persistence', () => {
   it('round-trips the persisted slice and rejects junk', () => {
     writePlayerState(window.sessionStorage, {
       sourceQueue: [track],
+      orderIds: [track.id],
+      shuffle: true,
       currentId: track.id,
       positionSeconds: 12,
       volume: 0.4
@@ -47,6 +52,8 @@ describe('player persistence', () => {
 
     expect(readPlayerState(window.sessionStorage)).toEqual({
       sourceQueue: [track],
+      orderIds: [track.id],
+      shuffle: true,
       currentId: track.id,
       positionSeconds: 12,
       volume: 0.4
@@ -69,6 +76,8 @@ describe('player persistence', () => {
 
     expect(readPlayerState(window.sessionStorage)).toEqual({
       sourceQueue: [track],
+      orderIds: [],
+      shuffle: false,
       currentId: track.id,
       positionSeconds: 12,
       volume: 0.8
@@ -87,6 +96,8 @@ describe('player persistence', () => {
 
     expect(readPlayerState(window.sessionStorage)).toEqual({
       sourceQueue: [track],
+      orderIds: [],
+      shuffle: false,
       currentId: track.id,
       positionSeconds: 12,
       volume: 1
@@ -96,6 +107,8 @@ describe('player persistence', () => {
   it('hydrates once and never autoplays', () => {
     writePlayerState(window.sessionStorage, {
       sourceQueue: [track],
+      orderIds: [],
+      shuffle: false,
       currentId: track.id,
       positionSeconds: 12,
       volume: 1
@@ -111,19 +124,48 @@ describe('player persistence', () => {
     detach();
   });
 
-  it('persists the playlist order, not the order the shuffle left', () => {
+  it('persists the shuffled order beside the playlist order', () => {
+    /* A fixed draw, so the written order is asserted rather than sampled. */
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     const detach = attach();
 
     usePlayerStore
       .getState()
-      .startQueue(track.playlistId, [track], track.id, true);
+      .startQueue(track.playlistId, [track, second, third], track.id, true);
     window.dispatchEvent(new Event('pagehide'));
 
-    expect(readPlayerState(window.sessionStorage)?.sourceQueue).toEqual([
-      track
-    ]);
+    const persisted = readPlayerState(window.sessionStorage);
+
+    expect(persisted?.sourceQueue).toEqual([track, second, third]);
+    expect(persisted?.shuffle).toBe(true);
+    expect(persisted?.orderIds).toEqual([track.id, third.id, second.id]);
 
     detach();
+  });
+
+  it('resumes a shuffled queue as it was left, on the same track and offset', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const detachFirst = attach();
+
+    usePlayerStore
+      .getState()
+      .startQueue(track.playlistId, [track, second, third], track.id, true);
+    usePlayerStore.getState().setPosition(37);
+    window.dispatchEvent(new Event('pagehide'));
+    detachFirst();
+
+    /* A relaunch: a fresh store, then the persistence hydrates it. */
+    usePlayerStore.getState().clear();
+    const detachSecond = attach();
+    const state = usePlayerStore.getState();
+
+    expect(state.shuffle).toBe(true);
+    expect(state.queue).toEqual([track, third, second]);
+    expect(state.currentId).toBe(track.id);
+    expect(state.positionSeconds).toBe(37);
+    expect(state.isPlaying).toBe(false);
+
+    detachSecond();
   });
 
   it('flushes a pending write when the page is hidden', () => {

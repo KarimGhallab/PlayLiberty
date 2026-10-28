@@ -160,6 +160,31 @@
     min-width: 0;
   }
 
+  /* The list's own flow, so the sheet can cover it while the sort above stays. */
+  &__flow {
+    position: relative;
+  }
+
+  /*
+   * The sheet over the list while the queue's order is exchanged: the rows keep
+   * their place underneath, so the scroll and the height never move with it.
+   */
+  &__rebuild {
+    position: absolute;
+    inset: 0;
+    /* Above the row lanes, which carry a stacking order of their own. */
+    z-index: 2;
+  }
+
+  /* Pinned to the viewport, so a reader deep in the list sees the skeleton
+   * where they are rather than at the top of the page. */
+  &__rebuild-panel {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    background: var(--bg);
+  }
+
   &__note {
     margin: 0;
     color: var(--muted);

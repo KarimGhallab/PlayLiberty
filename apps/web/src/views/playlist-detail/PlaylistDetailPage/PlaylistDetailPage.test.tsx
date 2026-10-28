@@ -14,7 +14,7 @@ import {
   within
 } from '@testing-library/react';
 import axe from 'axe-core';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -154,6 +154,25 @@ describe('PlaylistDetailPage', () => {
     ).toHaveAttribute('href', '/');
   });
 
+  it('holds the list with a skeleton while the first page loads', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        async () => {
+          await delay('infinite');
+
+          return HttpResponse.json({});
+        }
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('link', { name: 'Back to home' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading tracks.');
+  });
+
   it('lists the playlist tracks that are playable', async () => {
     renderDetail();
 
@@ -202,6 +221,64 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('holds the list with the skeleton while unshuffling a long queue', async () => {
+    const many = Array.from({ length: 60 }, (_, index) =>
+      trackJson(`track-${index}`, `Track ${index}`, index)
+    );
+    const playerTracks = many.map(association => ({
+      id: association.track.id,
+      title: association.track.title,
+      playlistId: PLAYLIST_ID,
+      playlistName: 'Rain On The Window',
+      durationSeconds: association.track.durationSeconds,
+      thumbnailPath: null
+    }));
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: many.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: many,
+            total: many.length,
+            limit: 100,
+            offset: 0,
+            counts: countsOf(many)
+          })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: many })
+      )
+    );
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST_ID, playerTracks, 'track-0', true);
+    renderDetail();
+
+    await waitFor(() => expect(listTitles()).toHaveLength(many.length));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    /* The skeleton stands before the order is exchanged, and the list under it
+     * is no longer offered a press. */
+    expect(screen.getByRole('status')).toHaveTextContent('Loading tracks.');
+    expect(
+      screen.getByRole('button', { name: 'Pause Track 0' }).closest('[inert]')
+    ).not.toBeNull();
+    expect(usePlayerStore.getState().shuffle).toBe(true);
+
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(false));
+    expect(listTitles()).toEqual(
+      many.map(association => association.track.title)
+    );
   });
 
   it('leaves the header shuffle unpressed while the queue is another playlist', async () => {
@@ -320,6 +397,71 @@ describe('PlaylistDetailPage', () => {
     const row = scrollIntoView.mock.instances[0] as unknown as HTMLElement;
 
     expect(row).toHaveTextContent('Naima');
+  });
+
+  it('lands on the current track when the shuffle starts the queue', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+
+    const { queue, currentId } = usePlayerStore.getState();
+    const current = queue.find(track => track.id === currentId);
+
+    expect(scrollIntoView.mock.instances[0]).toHaveTextContent(
+      current?.title ?? ''
+    );
+  });
+
+  it('lands on the current track when the shuffled queue is unshuffled', async () => {
+    usePlayerStore.getState().startQueue(
+      PLAYLIST_ID,
+      [
+        {
+          id: 'track-1',
+          title: 'Blue In Green',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 337,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-2',
+          title: 'Naima',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 273,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-3',
+          title: 'Flamenco Sketches',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 565,
+          thumbnailPath: null
+        }
+      ],
+      'track-2',
+      true
+    );
+    renderDetail();
+
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    scrollIntoView.mockClear();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(false));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+
+    expect(scrollIntoView.mock.instances[0]).toHaveTextContent('Naima');
   });
 
   it('leaves the page at the top when another playlist is the queue', async () => {

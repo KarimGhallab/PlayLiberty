@@ -24,9 +24,14 @@ export enum SeekDirection {
  * never persisted, so a relaunch never starts audio or jumps the playhead.
  */
 export interface PersistedPlayerState {
-  /* The playlist's own order, not the order last heard; the playback order is
-   * derived from it on hydrate, so turning shuffle off restores it. */
+  /* The playlist's own order, so turning shuffle off after a relaunch restores
+   * the order somebody chose. */
   readonly sourceQueue: readonly PlayerTrack[];
+  /* The order last heard, as ids into `sourceQueue`; empty while unshuffled,
+   * where the source order is the order. */
+  readonly orderIds: readonly string[];
+  /* Whether that order is a shuffle rather than the playlist's own. */
+  readonly shuffle: boolean;
   /* Held as an id, not an index: a refetch merges by id and a drop shifts every
    * index after it, so an index would point at the wrong track. */
   readonly currentId: string | null;
@@ -46,8 +51,8 @@ export interface PlayerState {
   readonly isPlaying: boolean;
   readonly seekTo: number | null;
   /*
-   * Whether the queue is shuffled: a client fact like the queue, never
-   * persisted, so a relaunch starts on the source order.
+   * Whether the queue is shuffled: a client fact like the queue, persisted with
+   * the order it produced, so a relaunch resumes the shuffled queue.
    */
   readonly shuffle: boolean;
   readonly muted: boolean;

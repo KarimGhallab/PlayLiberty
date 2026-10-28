@@ -8,6 +8,7 @@ import {
   useRef,
   useState
 } from 'react';
+import { flushSync } from 'react-dom';
 
 import {
   PlaylistSort,
@@ -85,9 +86,16 @@ import {
 } from '../../../shared/useMediaQuery/useMediaQuery';
 
 import styles from './PlaylistDetailPage.module.scss';
+import TrackListSkeleton from './TrackListSkeleton/TrackListSkeleton';
 
 /* Every association is drawn, playable or not: a vanished track would make
  * "why is this missing" unanswerable. */
+
+/*
+ * A list this long swaps its order slower than a frame, so the skeleton stands
+ * in front of the exchange; a shorter one lands before the skeleton could paint.
+ */
+const REORDER_HOLD_ROWS = 50;
 
 export default function PlaylistDetailPage() {
   const { t } = useI18n();
@@ -140,6 +148,8 @@ export default function PlaylistDetailPage() {
    * queue is on screen; the choice survives until the shuffle is turned off.
    */
   const [trackState, setTrackState] = useState<TrackFileStatus | null>(null);
+  /* The exchange of the queue's order, which is held behind the skeleton. */
+  const [rebuilding, setRebuilding] = useState(false);
   /*
    * The route reuses this component across ids, so the filter is cleared with
    * the playlist rather than carried onto the next screen.
@@ -157,14 +167,36 @@ export default function PlaylistDetailPage() {
 
   const listRef = useRef<HTMLUListElement>(null);
   const scrollHandledFor = useRef<string | null>(null);
+  /* A shuffle toggle earns the landing the open already took. */
+  const landAfterToggle = useRef(false);
+  const orderFrames = useRef<number[]>([]);
+
+  const currentLoaded =
+    currentId !== null &&
+    tracks.tracks.some(association => association.track.id === currentId);
 
   /*
-   * Opening the queue's playlist lands on its current row, not the top. The jump
-   * waits one task because the router resets a cached navigation to the top, and
-   * is made once per open; pages load until the row exists.
+   * The list has no place to stand while the pages that hold the current row
+   * arrive; the skeleton holds its geometry rather than a list about to jump.
+   * The sort, the chips and Load more belong to that list, so they wait too.
+   */
+  const landing =
+    isQueue &&
+    currentId !== null &&
+    activeState === null &&
+    tracks.isSuccess &&
+    !currentLoaded &&
+    tracks.hasMore &&
+    !tracks.moreFailed;
+
+  /*
+   * Opening the queue's playlist lands on its current row, not the top, and a
+   * shuffle toggle lands again: the row it draws changed places with the order.
+   * The jump waits one task because the router resets a cached navigation to the
+   * top, and pages load until the row exists.
    */
   useLayoutEffect(() => {
-    if (scrollHandledFor.current === playlistId) {
+    if (scrollHandledFor.current === playlistId && !landAfterToggle.current) {
       return;
     }
 
@@ -184,6 +216,7 @@ export default function PlaylistDetailPage() {
         tracks.loadMore();
       } else if (!tracks.hasMore) {
         scrollHandledFor.current = playlistId;
+        landAfterToggle.current = false;
       }
 
       return;
@@ -192,6 +225,7 @@ export default function PlaylistDetailPage() {
     const timer = window.setTimeout(() => {
       row.scrollIntoView({ behavior: 'instant', block: 'center' });
       scrollHandledFor.current = playlistId;
+      landAfterToggle.current = false;
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -199,6 +233,7 @@ export default function PlaylistDetailPage() {
     activeState,
     currentId,
     isQueue,
+    listShuffled,
     playlistId,
     tracks.hasMore,
     tracks.isPlaceholderData,
@@ -208,6 +243,24 @@ export default function PlaylistDetailPage() {
     tracks.moreFailed,
     tracks.tracks
   ]);
+
+  /* Both frames are cancelled on the way out, so a route change mid-exchange
+   * leaves the store alone. */
+  useEffect(
+    () => () => {
+      for (const frame of orderFrames.current) {
+        cancelAnimationFrame(frame);
+      }
+    },
+    []
+  );
+
+  /* A press that never became a queue leaves no landing owed. */
+  useEffect(() => {
+    if (!transition.starting && !isQueue) {
+      landAfterToggle.current = false;
+    }
+  }, [transition.starting, isQueue]);
 
   const ownerName =
     playlist.data !== undefined && directory.data !== undefined
@@ -234,6 +287,41 @@ export default function PlaylistDetailPage() {
     (trackId: string) => transition.playTrack(playlistView, trackId),
     [transition.playTrack, playlistView]
   );
+
+  /* The exchange freezes the frame it lands on, so the skeleton is painted first
+   * and stands through it; the list stays mounted under it, keeping scroll and
+   * height. */
+  const toggleShuffle = useCallback(() => {
+    landAfterToggle.current = true;
+
+    const hold =
+      isQueue && !rebuilding && tracks.tracks.length >= REORDER_HOLD_ROWS;
+
+    if (!hold) {
+      transition.shuffle(playlistView);
+      return;
+    }
+
+    flushSync(() => setRebuilding(true));
+
+    orderFrames.current = [
+      requestAnimationFrame(() => {
+        orderFrames.current.push(
+          requestAnimationFrame(() => {
+            transition.shuffle(playlistView);
+            setRebuilding(false);
+            orderFrames.current = [];
+          })
+        );
+      })
+    ];
+  }, [
+    isQueue,
+    rebuilding,
+    tracks.tracks.length,
+    transition.shuffle,
+    playlistView
+  ]);
 
   /* The whole playlist's counts, read before the header so its play control
    * and the queue cannot disagree about whether anything is stored. */
@@ -383,7 +471,7 @@ export default function PlaylistDetailPage() {
     onSkipBack: skipPrevious,
     onSkipNext: skipNext,
     hasNext: canSkipNext,
-    onShuffle: () => transition.shuffle(playlistView),
+    onShuffle: toggleShuffle,
     shuffled,
     menu: actions.menuFor(playlist.data),
     /* The window claim is made only while the list is the whole playlist: a
@@ -541,20 +629,7 @@ export default function PlaylistDetailPage() {
         </div>
 
         <div className={styles.playlistDetail__tracks}>
-          {tracks.isPending ? (
-            <p className={styles.playlistDetail__note}>
-              {t('detail.loadingTracks')}
-            </p>
-          ) : null}
-          {tracks.isError ? (
-            <ReadFailure
-              message={t('detail.readFailed')}
-              error={tracks.error}
-              onRetry={tracks.retry}
-              retrying={tracks.retrying}
-            />
-          ) : null}
-          {tracks.isSuccess && counts !== undefined && hasTracks ? (
+          {tracks.isSuccess && counts !== undefined && hasTracks && !landing ? (
             <div className={styles.playlistDetail__controls}>
               <PlaylistSortControl
                 sort={playlist.data?.sort ?? PlaylistSort.Playlist}
@@ -578,90 +653,117 @@ export default function PlaylistDetailPage() {
               />
             </div>
           ) : null}
-          {activeState === TrackFileStatus.Failed &&
-          tracks.isSuccess &&
-          canWrite &&
-          failedCount > 0 ? (
-            <div className={styles.playlistDetail__bulkRetry}>
-              <RetryFailedControl
-                count={failedCount}
-                retrying={retryAllFailed.isPending}
-                onRetry={retryFailedTracks}
-              />
-            </div>
-          ) : null}
-          {emptyStateSync ? (
-            <EmptyState
-              onSync={canWrite ? () => actions.syncNow(playlistId) : undefined}
-              syncing={syncInFlight}
-            />
-          ) : null}
-          {!neverSynced && tracks.isSuccess && !hasTracks ? (
-            <p className={styles.playlistDetail__note}>
-              {t('detail.noTracks')}
-            </p>
-          ) : null}
-          {tracks.isSuccess &&
-          hasTracks &&
-          filterEmpty &&
-          filterEmptyMessage !== null ? (
-            <div className={styles.playlistDetail__filterEmpty} role="status">
-              <p className={styles.playlistDetail__filterEmptyText}>
-                {filterEmptyMessage}
-              </p>
-              <button
-                type="button"
-                className={styles.playlistDetail__filterReset}
-                onClick={() => setTrackState(null)}>
-                {t('detail.filterShowAll')}
-              </button>
-            </div>
-          ) : null}
-          {tracks.isSuccess && tracks.tracks.length > 0 ? (
-            <ul className={styles.playlistDetail__list} ref={listRef}>
-              {(listShuffled
-                ? orderTracksByQueue(tracks.tracks, queue)
-                : tracks.tracks
-              ).map(association => {
-                /*
-                 * A non-current row is told `playing: false`; the global
-                 * `isPlaying` would re-render every row on a play or a pause.
-                 */
-                const isCurrent = association.track.id === currentId;
-
-                return (
-                  <TrackRow
-                    key={association.track.id}
-                    association={association}
-                    current={isCurrent}
-                    playing={isCurrent && isPlaying}
-                    pending={
-                      playlistPending ||
-                      deferred.windows.some(
-                        entry => entry.id === association.track.id
-                      )
-                    }
-                    onPlay={playTrack}
-                    onRetry={canWrite ? retryTrack : undefined}
-                    onFetchWhole={canWrite ? fetchWholeTrack : undefined}
-                    onRemove={canWrite ? removeTrackDeferred : undefined}
-                    busy={busyTrackId === association.track.id}
-                    starting={
-                      startingThisPlaylist?.startTrackId ===
-                      association.track.id
-                    }
+          <div className={styles.playlistDetail__flow}>
+            {rebuilding ? (
+              <div className={styles.playlistDetail__rebuild}>
+                <div className={styles.playlistDetail__rebuildPanel}>
+                  <TrackListSkeleton />
+                </div>
+              </div>
+            ) : null}
+            {/* Inert while the order is exchanged, so the sheet is all that is offered. */}
+            <div inert={rebuilding}>
+              {!rebuilding && (tracks.isPending || landing) ? (
+                <TrackListSkeleton />
+              ) : null}
+              {tracks.isError ? (
+                <ReadFailure
+                  message={t('detail.readFailed')}
+                  error={tracks.error}
+                  onRetry={tracks.retry}
+                  retrying={tracks.retrying}
+                />
+              ) : null}
+              {activeState === TrackFileStatus.Failed &&
+              tracks.isSuccess &&
+              canWrite &&
+              failedCount > 0 ? (
+                <div className={styles.playlistDetail__bulkRetry}>
+                  <RetryFailedControl
+                    count={failedCount}
+                    retrying={retryAllFailed.isPending}
+                    onRetry={retryFailedTracks}
                   />
-                );
-              })}
-            </ul>
-          ) : null}
-          {tracks.isSuccess && tracks.hasMore ? (
-            <LoadMoreControl
-              loading={tracks.loadingMore}
-              failed={tracks.moreFailed}
-              onLoadMore={tracks.loadMore}
-            />
-          ) : null}
+                </div>
+              ) : null}
+              {emptyStateSync ? (
+                <EmptyState
+                  onSync={
+                    canWrite ? () => actions.syncNow(playlistId) : undefined
+                  }
+                  syncing={syncInFlight}
+                />
+              ) : null}
+              {!neverSynced && tracks.isSuccess && !hasTracks ? (
+                <p className={styles.playlistDetail__note}>
+                  {t('detail.noTracks')}
+                </p>
+              ) : null}
+              {tracks.isSuccess &&
+              hasTracks &&
+              filterEmpty &&
+              filterEmptyMessage !== null ? (
+                <div
+                  className={styles.playlistDetail__filterEmpty}
+                  role="status">
+                  <p className={styles.playlistDetail__filterEmptyText}>
+                    {filterEmptyMessage}
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.playlistDetail__filterReset}
+                    onClick={() => setTrackState(null)}>
+                    {t('detail.filterShowAll')}
+                  </button>
+                </div>
+              ) : null}
+              {tracks.isSuccess && tracks.tracks.length > 0 && !landing ? (
+                <ul className={styles.playlistDetail__list} ref={listRef}>
+                  {(listShuffled
+                    ? orderTracksByQueue(tracks.tracks, queue)
+                    : tracks.tracks
+                  ).map(association => {
+                    /*
+                     * A non-current row is told `playing: false`; the global
+                     * `isPlaying` would re-render every row on a play or a pause.
+                     */
+                    const isCurrent = association.track.id === currentId;
+
+                    return (
+                      <TrackRow
+                        key={association.track.id}
+                        association={association}
+                        current={isCurrent}
+                        playing={isCurrent && isPlaying}
+                        pending={
+                          playlistPending ||
+                          deferred.windows.some(
+                            entry => entry.id === association.track.id
+                          )
+                        }
+                        onPlay={playTrack}
+                        onRetry={canWrite ? retryTrack : undefined}
+                        onFetchWhole={canWrite ? fetchWholeTrack : undefined}
+                        onRemove={canWrite ? removeTrackDeferred : undefined}
+                        busy={busyTrackId === association.track.id}
+                        starting={
+                          startingThisPlaylist?.startTrackId ===
+                          association.track.id
+                        }
+                      />
+                    );
+                  })}
+                </ul>
+              ) : null}
+              {tracks.isSuccess && tracks.hasMore && !landing ? (
+                <LoadMoreControl
+                  loading={tracks.loadingMore}
+                  failed={tracks.moreFailed}
+                  onLoadMore={tracks.loadMore}
+                />
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 

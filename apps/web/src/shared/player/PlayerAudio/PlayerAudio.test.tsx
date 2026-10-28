@@ -115,6 +115,8 @@ describe('PlayerAudio', () => {
     act(() => {
       usePlayerStore.getState().hydrate({
         sourceQueue: [first],
+        orderIds: [],
+        shuffle: false,
         currentId: first.id,
         positionSeconds: 42,
         volume: 1
@@ -135,6 +137,8 @@ describe('PlayerAudio', () => {
     act(() => {
       usePlayerStore.getState().hydrate({
         sourceQueue: [first],
+        orderIds: [],
+        shuffle: false,
         currentId: first.id,
         positionSeconds: 42,
         volume: 1

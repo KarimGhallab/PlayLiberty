@@ -252,6 +252,8 @@ describe('hydrate', () => {
   it('restores the queue and offset without autoplay', () => {
     usePlayerStore.getState().hydrate({
       sourceQueue: [first],
+      orderIds: [],
+      shuffle: false,
       currentId: first.id,
       positionSeconds: 12,
       volume: 0.5
@@ -267,6 +269,8 @@ describe('hydrate', () => {
   it('starts at zero when the stored position does not fit the track', () => {
     usePlayerStore.getState().hydrate({
       sourceQueue: [first],
+      orderIds: [],
+      shuffle: false,
       currentId: first.id,
       positionSeconds: 180,
       volume: 1
@@ -276,9 +280,41 @@ describe('hydrate', () => {
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
+  it('resumes the shuffled order the payload was written with', () => {
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [first, second, third],
+      orderIds: [third.id, first.id, second.id],
+      shuffle: true,
+      currentId: first.id,
+      positionSeconds: 12,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().queue).toEqual([third, first, second]);
+    expect(usePlayerStore.getState().shuffle).toBe(true);
+    expect(usePlayerStore.getState().currentId).toBe(first.id);
+    expect(usePlayerStore.getState().positionSeconds).toBe(12);
+  });
+
+  it('falls back to the playlist order when the saved order is not a permutation', () => {
+    usePlayerStore.getState().hydrate({
+      sourceQueue: [first, second],
+      orderIds: [second.id],
+      shuffle: true,
+      currentId: first.id,
+      positionSeconds: 0,
+      volume: 1
+    });
+
+    expect(usePlayerStore.getState().queue).toEqual([first, second]);
+    expect(usePlayerStore.getState().shuffle).toBe(false);
+  });
+
   it('drops a current track the restored queue no longer holds', () => {
     usePlayerStore.getState().hydrate({
       sourceQueue: [second],
+      orderIds: [],
+      shuffle: false,
       currentId: first.id,
       positionSeconds: 42,
       volume: 1
@@ -294,6 +330,8 @@ describe('hydrate', () => {
 
     usePlayerStore.getState().hydrate({
       sourceQueue: [unknown],
+      orderIds: [],
+      shuffle: false,
       currentId: unknown.id,
       positionSeconds: 42,
       volume: 1

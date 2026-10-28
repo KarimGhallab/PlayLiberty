@@ -33,6 +33,36 @@ export function mergeQueue(
   return [...kept, ...incoming.filter(track => !keptIds.has(track.id))];
 }
 
+/*
+ * The order last heard, or null unless the ids are exactly the source's: a stale
+ * or foreign payload falls back to the playlist order rather than dropping a
+ * track or repeating one.
+ */
+function restoredQueue(
+  sourceQueue: readonly PlayerTrack[],
+  orderIds: readonly string[]
+): PlayerTrack[] | null {
+  if (orderIds.length !== sourceQueue.length) {
+    return null;
+  }
+
+  const byId = new Map(sourceQueue.map(track => [track.id, track] as const));
+  const queue: PlayerTrack[] = [];
+
+  for (const id of orderIds) {
+    const track = byId.get(id);
+
+    if (track === undefined) {
+      return null;
+    }
+
+    byId.delete(id);
+    queue.push(track);
+  }
+
+  return queue;
+}
+
 function clampVolume(volume: number): number {
   if (Number.isNaN(volume)) {
     return 1;
@@ -150,7 +180,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   muted: false,
   hydrate: (state: PersistedPlayerState) =>
     set(() => {
-      const queue = [...state.sourceQueue];
+      const restored = state.shuffle
+        ? restoredQueue(state.sourceQueue, state.orderIds)
+        : null;
+      const queue = restored ?? [...state.sourceQueue];
       const current = queue.find(track => track.id === state.currentId);
 
       return {
@@ -160,7 +193,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         positionSeconds: restoredPosition(current, state.positionSeconds),
         seekTo: null,
         volume: clampVolume(state.volume),
-        shuffle: false
+        shuffle: restored !== null
       };
     }),
   startQueue: (
