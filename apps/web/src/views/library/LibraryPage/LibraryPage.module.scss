@@ -86,6 +86,14 @@
    * would widen the track it sits in rather than truncate inside it. */
   &__cell {
     min-width: 0;
+
+    /* A card whose mark wraps to a second line ends above the row its
+     * neighbour set; filling the cell keeps the row's surfaces level. */
+    @media (max-width: 767px) {
+      > * {
+        height: 100%;
+      }
+    }
   }
 
   &__section-title {
