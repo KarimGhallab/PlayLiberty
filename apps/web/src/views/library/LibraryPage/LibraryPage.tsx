@@ -221,6 +221,13 @@ export default function LibraryPage() {
 
   const syncAllCount = batchBusy ? batch.ids.length : syncable.length;
 
+  const startSyncAll = (): void => {
+    const ids = syncable.map(playlist => playlist.id);
+
+    setBatch({ ids, at: playlists.dataUpdatedAt });
+    syncAll.mutate(ids, { onSuccess: setSyncAllNotice });
+  };
+
   /*
    * The page filters and never sorts, so every group keeps the server's order.
    * A pin outranks a running first sync, so the transient group holds the
@@ -344,15 +351,15 @@ export default function LibraryPage() {
           <LanguageMenu />
           {syncAllCount === 0 ? null : (
             <SyncControl
-              label={t('library.syncAll', { count: syncAllCount })}
+              label={
+                isMobile
+                  ? t('library.syncAllShort')
+                  : t('library.syncAll', { count: syncAllCount })
+              }
+              visibleLabel={isMobile ? t('library.syncAllShort') : undefined}
               workingLabel={t('library.syncingAll', { count: syncAllCount })}
               working={batchBusy}
-              onPress={() => {
-                const ids = syncable.map(playlist => playlist.id);
-
-                setBatch({ ids, at: playlists.dataUpdatedAt });
-                syncAll.mutate(ids, { onSuccess: setSyncAllNotice });
-              }}
+              onPress={startSyncAll}
             />
           )}
           {isEmpty || isMobile ? null : (

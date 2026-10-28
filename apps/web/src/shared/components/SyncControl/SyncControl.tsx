@@ -12,6 +12,7 @@ import styles from './SyncControl.module.scss';
 
 interface SyncControlProps {
   readonly label: string;
+  readonly visibleLabel?: string;
   readonly workingLabel: string;
   readonly working: boolean;
   /* A control the page cannot offer right now, without claiming a run. */
@@ -21,24 +22,26 @@ interface SyncControlProps {
 
 export default function SyncControl({
   label,
+  visibleLabel,
   workingLabel,
   working,
   disabled = false,
   onPress
 }: SyncControlProps) {
-  const shown = working ? workingLabel : label;
+  const name = working ? workingLabel : label;
+  const words = visibleLabel ?? name;
 
   return (
     <button
       type="button"
       className={styles.sync}
-      aria-label={shown}
+      aria-label={name}
       aria-busy={working ? true : undefined}
       disabled={working || disabled}
       onClick={onPress}>
-      {/* The name is the label, so the copy the pill clips is decoration. */}
+      {/* The button is named by its `aria-label`, so what it draws is decoration. */}
       <span className={styles.sync__word} aria-hidden="true">
-        {shown}
+        {words}
       </span>
       <span className={styles.sync__glyph}>
         {working ? (

@@ -413,14 +413,21 @@ export default function PlaylistDetailPage() {
             aria-hidden="true"
             focusable="false"
           />
-          {t('detail.back')}
+          {isMobile ? t('detail.backShort') : t('detail.back')}
         </Link>
         <div className={styles.playlistDetail__actions}>
           {me.data?.role === UserRole.Admin ? <EgressLink /> : null}
           <LanguageMenu />
           {canWrite && !emptyStateSync && !syncErrorShown ? (
             <SyncControl
-              label={t('detail.syncPlaylist')}
+              label={
+                isMobile
+                  ? t('detail.syncPlaylistShort')
+                  : t('detail.syncPlaylist')
+              }
+              visibleLabel={
+                isMobile ? t('detail.syncPlaylistShort') : undefined
+              }
               workingLabel={t('detail.syncingPlaylist')}
               working={syncInFlight}
               disabled={playlistPending}

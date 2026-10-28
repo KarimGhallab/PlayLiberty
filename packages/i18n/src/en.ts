@@ -40,6 +40,7 @@ export const en = {
       one: 'Sync 1 playlist',
       other: 'Sync all {count} playlists'
     },
+    syncAllShort: 'Synchronize all',
     syncingAll: {
       one: 'Syncing 1 playlist...',
       other: 'Syncing {count} playlists...'
@@ -106,8 +107,10 @@ export const en = {
   },
   detail: {
     back: 'Back to home',
+    backShort: 'Back',
     addTrack: 'Add a track',
     syncPlaylist: 'Sync the playlist',
+    syncPlaylistShort: 'Synchronize',
     syncingPlaylist: 'Syncing the playlist...',
     loadingTracks: 'Loading tracks.',
     readFailed: 'Tracks could not be loaded.',

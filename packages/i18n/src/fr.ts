@@ -42,6 +42,7 @@ export const fr: Messages = {
       one: 'Synchroniser 1 playlist',
       other: 'Synchroniser les {count} playlists'
     },
+    syncAllShort: 'Tout synchroniser',
     syncingAll: {
       one: 'Synchronisation de 1 playlist...',
       other: 'Synchronisation de {count} playlists...'
@@ -108,8 +109,12 @@ export const fr: Messages = {
   },
   detail: {
     back: "Retour à l'accueil",
+    /* The phone's row holds one line, so the way home and the sync drop the
+     * words it cannot carry. */
+    backShort: 'Retour',
     addTrack: 'Ajouter une piste',
     syncPlaylist: 'Synchroniser la playlist',
+    syncPlaylistShort: 'Synchroniser',
     syncingPlaylist: 'Synchronisation de la playlist...',
     loadingTracks: 'Chargement des pistes.',
     readFailed: 'Impossible de charger les pistes.',
