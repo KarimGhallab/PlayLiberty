@@ -152,9 +152,13 @@
     white-space: nowrap;
   }
 
-  &__hint:hover &__tip,
-  &__hint:focus-within &__tip {
-    display: inline-flex;
+  /* Guarded by hover: a tap would otherwise pin the chord on screen, and the
+   * device that tapped it has no key to press. */
+  @media (hover: hover) {
+    &__hint:hover &__tip,
+    &__hint:focus-within &__tip {
+      display: inline-flex;
+    }
   }
 
   &__key {
