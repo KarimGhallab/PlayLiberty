@@ -7,7 +7,7 @@ export { SessionStatus };
 
 export interface Session {
   readonly status: SessionStatus;
-  readonly refresh: () => void;
+  readonly signOut: () => void;
 }
 
 /** Whether the app holds a token. It re-reads whenever the screen regains
@@ -15,6 +15,7 @@ export interface Session {
 export function useSession(): Session {
   const status = useSessionStore(state => state.status);
   const read = useSessionStore(state => state.refresh);
+  const expire = useSessionStore(state => state.expire);
 
   useFocusEffect(
     useCallback(() => {
@@ -22,9 +23,9 @@ export function useSession(): Session {
     }, [read])
   );
 
-  const refresh = useCallback(() => {
-    void read();
-  }, [read]);
+  const signOut = useCallback(() => {
+    void expire();
+  }, [expire]);
 
-  return { status, refresh };
+  return { status, signOut };
 }

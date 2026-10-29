@@ -24,12 +24,11 @@ import {
   ProvisioningError,
   beginProvisioning
 } from '../src/auth/provisioning/provisioning';
-import { tokenStore } from '../src/auth/tokenStore';
 import { SessionStatus, useSession } from '../src/auth/useSession';
 
 export default function LibraryRoute() {
   const { t } = useI18n();
-  const { status, refresh } = useSession();
+  const { status, signOut } = useSession();
   const [accountOpen, setAccountOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -106,7 +105,7 @@ export default function LibraryRoute() {
         failure={readFailure}
         onClose={() => setAccountOpen(false)}
         onSignOut={() => {
-          void tokenStore.clear().then(refresh);
+          signOut();
         }}
         onOpenEgress={() => {
           setAccountOpen(false);

@@ -8,6 +8,7 @@ import { createAppQueryClient } from '../api/queryClient/queryClient';
 import { useSessionStore } from '../auth/sessionStore/sessionStore';
 import { deviceLanguages } from '../i18n/deviceLanguages';
 import { secureLanguageStore } from '../i18n/languageStorage';
+import SessionCache from './SessionCache/SessionCache';
 
 export interface AppProvidersProps {
   readonly children: ReactNode;
@@ -23,6 +24,7 @@ export default function AppProviders({ children }: AppProvidersProps) {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
+        <SessionCache />
         <I18nProvider
           preferred={deviceLanguages()}
           storage={secureLanguageStore}>

@@ -5,19 +5,16 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState
+  useState,
+  useSyncExternalStore
 } from 'react';
 
 import { catalogs } from './catalogs.js';
 import { createTranslator } from './createTranslator/createTranslator.js';
 import type { Translator } from './createTranslator/createTranslator.js';
 import type { Messages } from './en.js';
-import {
-  readLanguage,
-  writeLanguage
-} from './languageStorage/languageStorage.js';
+import { createLanguageController } from './languageController/languageController.js';
 import type { LanguageStore } from './languageStorage/languageStorage.js';
-import { resolveLanguage } from './resolveLanguage/resolveLanguage.js';
 import type { Language } from './types.js';
 
 /* The React binding. The client decides what a language change does to its own
@@ -66,25 +63,30 @@ export default function I18nProvider({
   initialLanguage
 }: I18nProviderProps) {
   const store = storage ?? window.localStorage;
-  const [language, setLanguageState] = useState<Language>(
-    () =>
-      initialLanguage ??
-      resolveLanguage(readLanguage(store), preferred ?? browserLanguages())
+  const apply = applyLanguage ?? applyToDocument;
+  const [controller] = useState(() =>
+    createLanguageController({
+      storage: store,
+      preferred: preferred ?? browserLanguages(),
+      apply,
+      initial: initialLanguage
+    })
   );
+  const language = useSyncExternalStore(
+    controller.subscribe,
+    controller.getLanguage
+  );
+
+  useEffect(() => {
+    controller.start();
+  }, [controller]);
 
   const setLanguage = useCallback(
     (next: Language): void => {
-      setLanguageState(next);
-      writeLanguage(store, next);
+      controller.setLanguage(next);
     },
-    [store]
+    [controller]
   );
-
-  const apply = applyLanguage ?? applyToDocument;
-
-  useEffect(() => {
-    apply(language);
-  }, [apply, language]);
 
   const value = useMemo<I18nValue>(
     () => ({
