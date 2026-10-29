@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 
-import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
+import type {
+  BareTrack,
+  PersistedPlayerState,
+  PlayerState,
+  PlayerTrack
+} from '../types';
 import {
   SeekDirection,
   currentIndex,
@@ -226,6 +231,24 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         seekTo: null,
         isPlaying: true,
         shuffle
+      };
+    }),
+  startBareTrack: (track: BareTrack) =>
+    set(() => {
+      const bare: PlayerTrack = {
+        ...track,
+        playlistId: null,
+        playlistName: null
+      };
+
+      return {
+        queue: [bare],
+        sourceQueue: [bare],
+        currentId: bare.id,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: true,
+        shuffle: false
       };
     }),
   applyRefetch: (playlistId: string, tracks: readonly PlayerTrack[]) =>

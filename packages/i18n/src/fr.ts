@@ -9,7 +9,8 @@ export const fr: Messages = {
     name: 'PlayLiberté',
     title: {
       playlist: '{app} - {name}',
-      track: '{app} - {playlist} ({track})'
+      track: '{app} - {playlist} ({track})',
+      bareTrack: '{app} - {track}'
     }
   },
   language: {

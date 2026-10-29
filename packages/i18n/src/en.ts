@@ -7,7 +7,8 @@ export const en = {
     name: 'PlayLiberty',
     title: {
       playlist: '{app} - {name}',
-      track: '{app} - {playlist} ({track})'
+      track: '{app} - {playlist} ({track})',
+      bareTrack: '{app} - {track}'
     }
   },
   language: {

@@ -215,7 +215,7 @@ export default function PlayerAudio() {
     publishMetadata({
       title: current.title,
       artist: '',
-      album: current.playlistName,
+      album: current.playlistName ?? '',
       artwork
     });
   }, [current]);

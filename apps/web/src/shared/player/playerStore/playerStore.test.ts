@@ -76,6 +76,35 @@ describe('startQueue', () => {
   });
 });
 
+describe('startBareTrack', () => {
+  it('starts one track on its own with no playlist context', () => {
+    usePlayerStore.getState().startBareTrack({
+      id: 'track-1',
+      title: 'Blue In Green',
+      durationSeconds: 180,
+      thumbnailPath: null
+    });
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual([
+      {
+        id: 'track-1',
+        title: 'Blue In Green',
+        playlistId: null,
+        playlistName: null,
+        durationSeconds: 180,
+        thumbnailPath: null
+      }
+    ]);
+    expect(state.sourceQueue).toEqual(state.queue);
+    expect(state.currentId).toBe('track-1');
+    expect(state.positionSeconds).toBe(0);
+    expect(state.isPlaying).toBe(true);
+    expect(state.shuffle).toBe(false);
+    expect(queuePlaylistId(state)).toBeNull();
+  });
+});
+
 describe('applyRefetch', () => {
   afterEach(() => {
     vi.restoreAllMocks();

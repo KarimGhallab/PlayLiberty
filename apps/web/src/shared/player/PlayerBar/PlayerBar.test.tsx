@@ -108,6 +108,20 @@ describe('PlayerBar', () => {
     expect(screen.getByRole('button', { name: 'Mute' })).toBeInTheDocument();
   });
 
+  it('draws a track started on its own without a playlist', async () => {
+    usePlayerStore.getState().startBareTrack({
+      id: 'track-1',
+      title: 'Blue In Green',
+      durationSeconds: 180,
+      thumbnailPath: null
+    });
+    await renderBar();
+
+    expect(screen.getByText('Blue In Green')).toBeInTheDocument();
+    expect(screen.queryAllByRole('link')).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  });
+
   it('leaves the level to the OS on a device that cannot hover', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     const restore = stubViewport(TOUCH_QUERY);

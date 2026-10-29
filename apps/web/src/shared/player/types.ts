@@ -1,17 +1,24 @@
 /*
  * The player state, shared by the store, the persistence and the components.
  * The queue is client state that never reaches the database and names the
- * playlist it was built from.
+ * playlist it was built from, or nothing for a track started on its own.
  */
 
 export interface PlayerTrack {
   readonly id: string;
   readonly title: string;
-  readonly playlistId: string;
-  readonly playlistName: string;
+  /* Null for a track started on its own: the queue carries no playlist. */
+  readonly playlistId: string | null;
+  readonly playlistName: string | null;
   readonly durationSeconds: number | null;
   readonly thumbnailPath: string | null;
 }
+
+/** The fields a bare track needs; it has no playlist context to carry. */
+export type BareTrack = Pick<
+  PlayerTrack,
+  'id' | 'title' | 'durationSeconds' | 'thumbnailPath'
+>;
 
 /** The direction a seek step takes. */
 export enum SeekDirection {
@@ -67,6 +74,8 @@ export interface PlayerState {
     startTrackId: string,
     shuffle?: boolean
   ) => void;
+  /* Start one track on its own; the queue carries no playlist context. */
+  readonly startBareTrack: (track: BareTrack) => void;
   readonly applyRefetch: (
     playlistId: string,
     tracks: readonly PlayerTrack[]
@@ -128,8 +137,8 @@ export function nextIndex(state: PlayerState): number {
   return index + 1 < state.queue.length ? index + 1 : -1;
 }
 
-/* The playlist the queue plays: the first entry names it, an empty queue names
- * none. Single owner, so the refetch guard and every surface agree. */
+/* The playlist the queue plays: the first entry names it, an empty or bare
+ * queue names none. Single owner, so the refetch guard and every surface agree. */
 export function queuePlaylistId(state: PlayerState): string | null {
   return state.queue[0]?.playlistId ?? null;
 }

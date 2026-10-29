@@ -36,12 +36,6 @@ export default function PlayerBar() {
   const { t } = useI18n();
   const current = usePlayerStore(currentTrack);
   const matchRoute = useMatchRoute();
-  const onCurrentPlaylist =
-    current !== null &&
-    matchRoute({
-      to: '/playlists/$playlistId',
-      params: { playlistId: current.playlistId }
-    }) !== false;
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
@@ -135,6 +129,19 @@ export default function PlayerBar() {
     return null;
   }
 
+  /* A bare track has no playlist to name or link to; the bar keeps its title
+   * and artwork and loses every way into a playlist. */
+  const playlist =
+    current.playlistId === null || current.playlistName === null
+      ? null
+      : { id: current.playlistId, name: current.playlistName };
+  const onCurrentPlaylist =
+    playlist !== null &&
+    matchRoute({
+      to: '/playlists/$playlistId',
+      params: { playlistId: playlist.id }
+    }) !== false;
+
   const duration = current.durationSeconds ?? 0;
   const elapsed = Math.min(positionSeconds, duration);
   const fraction = duration > 0 ? elapsed / duration : 0;
@@ -147,6 +154,15 @@ export default function PlayerBar() {
     current.thumbnailPath === null
       ? null
       : mediaUrl(endpoints.trackThumbnail, { trackId: current.id });
+  const artworkImage =
+    artwork === null ? null : (
+      <img
+        className={styles.playerBar__image}
+        src={artwork}
+        alt=""
+        decoding="async"
+      />
+    );
 
   /* The pointer's x as a fraction of the track's own box, bounded: the store
    * owns the fraction-to-seconds conversion. */
@@ -220,34 +236,38 @@ export default function PlayerBar() {
       className={styles.playerBar}
       aria-label={t('playerBar.label')}
       data-state={isPlaying ? 'playing' : 'paused'}>
-      <Link
-        to="/playlists/$playlistId"
-        params={{ playlistId: current.playlistId }}
-        className={styles.playerBar__art}
-        data-art={artwork === null ? 'no-art' : 'art'}
-        aria-hidden="true"
-        tabIndex={-1}
-        disabled={onCurrentPlaylist}>
-        {artwork === null ? null : (
-          <img
-            className={styles.playerBar__image}
-            src={artwork}
-            alt=""
-            decoding="async"
-          />
-        )}
-      </Link>
+      {playlist === null ? (
+        <span
+          className={styles.playerBar__art}
+          data-art={artwork === null ? 'no-art' : 'art'}
+          aria-hidden="true">
+          {artworkImage}
+        </span>
+      ) : (
+        <Link
+          to="/playlists/$playlistId"
+          params={{ playlistId: playlist.id }}
+          className={styles.playerBar__art}
+          data-art={artwork === null ? 'no-art' : 'art'}
+          aria-hidden="true"
+          tabIndex={-1}
+          disabled={onCurrentPlaylist}>
+          {artworkImage}
+        </Link>
+      )}
       <div className={styles.playerBar__top}>
         <div className={styles.playerBar__id}>
           <span className={styles.playerBar__name}>
             <span className={styles.playerBar__title}>{current.title}</span>
-            <Link
-              to="/playlists/$playlistId"
-              params={{ playlistId: current.playlistId }}
-              className={styles.playerBar__source}
-              disabled={onCurrentPlaylist}>
-              {current.playlistName}
-            </Link>
+            {playlist === null ? null : (
+              <Link
+                to="/playlists/$playlistId"
+                params={{ playlistId: playlist.id }}
+                className={styles.playerBar__source}
+                disabled={onCurrentPlaylist}>
+                {playlist.name}
+              </Link>
+            )}
           </span>
         </div>
         <div className={styles.playerBar__transport}>

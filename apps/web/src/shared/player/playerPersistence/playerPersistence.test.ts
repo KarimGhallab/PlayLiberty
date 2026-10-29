@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePlayerStore } from '../playerStore/playerStore';
+import { queuePlaylistId } from '../types';
 import type { PlayerTrack } from '../types';
 import {
   PLAYER_STORAGE_KEY,
@@ -9,6 +10,7 @@ import {
   writePlayerState
 } from './playerPersistence';
 
+const PLAYLIST = 'playlist-1';
 const track: PlayerTrack = {
   id: 'track-1',
   title: 'First',
@@ -16,6 +18,11 @@ const track: PlayerTrack = {
   playlistName: 'The Queue Playlist',
   durationSeconds: 180,
   thumbnailPath: null
+};
+const bare: PlayerTrack = {
+  ...track,
+  playlistId: null,
+  playlistName: null
 };
 const second: PlayerTrack = { ...track, id: 'track-2', title: 'Second' };
 const third: PlayerTrack = { ...track, id: 'track-3', title: 'Third' };
@@ -131,7 +138,7 @@ describe('player persistence', () => {
 
     usePlayerStore
       .getState()
-      .startQueue(track.playlistId, [track, second, third], track.id, true);
+      .startQueue(PLAYLIST, [track, second, third], track.id, true);
     window.dispatchEvent(new Event('pagehide'));
 
     const persisted = readPlayerState(window.sessionStorage);
@@ -149,7 +156,7 @@ describe('player persistence', () => {
 
     usePlayerStore
       .getState()
-      .startQueue(track.playlistId, [track, second, third], track.id, true);
+      .startQueue(PLAYLIST, [track, second, third], track.id, true);
     usePlayerStore.getState().setPosition(37);
     window.dispatchEvent(new Event('pagehide'));
     detachFirst();
@@ -171,7 +178,7 @@ describe('player persistence', () => {
   it('flushes a pending write when the page is hidden', () => {
     const detach = attach();
 
-    usePlayerStore.getState().startQueue(track.playlistId, [track], track.id);
+    usePlayerStore.getState().startQueue(PLAYLIST, [track], track.id);
     expect(readPlayerState(window.sessionStorage)).toBeNull();
 
     window.dispatchEvent(new Event('pagehide'));
@@ -182,9 +189,56 @@ describe('player persistence', () => {
     detach();
   });
 
+  it('round-trips a track started on its own', () => {
+    writePlayerState(window.sessionStorage, {
+      sourceQueue: [bare],
+      orderIds: [],
+      shuffle: false,
+      currentId: bare.id,
+      positionSeconds: 4,
+      volume: 1
+    });
+
+    expect(readPlayerState(window.sessionStorage)).toEqual({
+      sourceQueue: [bare],
+      orderIds: [],
+      shuffle: false,
+      currentId: bare.id,
+      positionSeconds: 4,
+      volume: 1
+    });
+  });
+
+  it('restores a bare queue paused at its position', () => {
+    const detachFirst = attach();
+
+    usePlayerStore.getState().startBareTrack({
+      id: bare.id,
+      title: bare.title,
+      durationSeconds: bare.durationSeconds,
+      thumbnailPath: bare.thumbnailPath
+    });
+    usePlayerStore.getState().setPosition(37);
+    window.dispatchEvent(new Event('pagehide'));
+    detachFirst();
+
+    /* A relaunch: a fresh store, then the persistence hydrates it. */
+    usePlayerStore.getState().clear();
+    const detachSecond = attach();
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual([bare]);
+    expect(state.currentId).toBe(bare.id);
+    expect(state.positionSeconds).toBe(37);
+    expect(state.isPlaying).toBe(false);
+    expect(queuePlaylistId(state)).toBeNull();
+
+    detachSecond();
+  });
+
   it('restores the queue and the offset on a relaunch', () => {
     const detachFirst = attach();
-    usePlayerStore.getState().startQueue(track.playlistId, [track], track.id);
+    usePlayerStore.getState().startQueue(PLAYLIST, [track], track.id);
     usePlayerStore.getState().setPosition(37);
     window.dispatchEvent(new Event('pagehide'));
     detachFirst();

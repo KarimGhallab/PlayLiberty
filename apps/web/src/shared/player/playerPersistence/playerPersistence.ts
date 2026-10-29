@@ -43,8 +43,8 @@ function isPlayerTrack(value: unknown): value is PlayerTrack {
   return (
     typeof id === 'string' &&
     typeof title === 'string' &&
-    typeof playlistId === 'string' &&
-    typeof playlistName === 'string' &&
+    (playlistId === null || typeof playlistId === 'string') &&
+    (playlistName === null || typeof playlistName === 'string') &&
     (durationSeconds === null || typeof durationSeconds === 'number') &&
     (thumbnailPath === null || typeof thumbnailPath === 'string')
   );
