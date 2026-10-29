@@ -1,3 +1,5 @@
+import type { APIRequestContext, Browser, Page } from '@playwright/test';
+
 import { mutePlayback } from '../support/audio';
 import { drainDownloads } from '../support/instance';
 import { addPlaylist, openPlaylist } from '../support/playlists';
@@ -25,6 +27,91 @@ const PARTNER_HEADERS = {
   'Remote-Name': PARTNER.name,
   'Remote-Email': PARTNER.email
 };
+
+async function partnerAccount(request: APIRequestContext): Promise<string> {
+  const partner = await request.get('/api/v1/me', {
+    headers: PARTNER_HEADERS
+  });
+  expect(partner.ok()).toBe(true);
+
+  return (await partner.json()).id;
+}
+
+async function shareRead(
+  request: APIRequestContext,
+  playlistId: string,
+  partnerId: string
+): Promise<void> {
+  const granted = await request.post(`/api/v1/playlists/${playlistId}/shares`, {
+    headers: { 'X-PlayLiberty-Client': 'web' },
+    data: { accountId: partnerId, level: 'read' }
+  });
+  expect(granted.ok()).toBe(true);
+}
+
+async function openAsPartner(
+  browser: Browser,
+  baseURL: string | undefined
+): Promise<{
+  context: Awaited<ReturnType<Browser['newContext']>>;
+  page: Page;
+}> {
+  const context = await browser.newContext({
+    baseURL,
+    extraHTTPHeaders: PARTNER_HEADERS
+  });
+  const page = await context.newPage();
+  await mutePlayback(page);
+
+  return { context, page };
+}
+
+function playlistIdOf(page: Page): string {
+  const playlistId = new URL(page.url()).pathname.split('/').at(-1);
+
+  if (playlistId === undefined) {
+    throw new Error('The playlist page has no id in its address.');
+  }
+
+  return playlistId;
+}
+
+async function playAndPause(page: Page, title: string): Promise<string> {
+  await page.getByRole('button', { name: `Play ${title}` }).click();
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get('track'))
+    .toBeTruthy();
+
+  const trackId = new URL(page.url()).searchParams.get('track');
+
+  if (trackId === null) {
+    throw new Error('The playlist link names no track.');
+  }
+
+  return trackId;
+}
+
+async function trackIdOf(
+  request: APIRequestContext,
+  playlistId: string,
+  videoId: string
+): Promise<string> {
+  const response = await request.get(`/api/v1/playlists/${playlistId}/tracks`, {
+    headers: { 'Remote-User': 'dev-user' }
+  });
+  expect(response.ok()).toBe(true);
+  const body = (await response.json()) as {
+    items: { track: { id: string; videoId: string } }[];
+  };
+  const item = body.items.find(entry => entry.track.videoId === videoId);
+
+  if (item === undefined) {
+    throw new Error(`The playlist read answered no track for ${videoId}.`);
+  }
+
+  return item.track.id;
+}
 
 test('a read share opens the playlist at the shared track', async ({
   page,
@@ -174,4 +261,164 @@ test('a track URL plays it alone and yields to the gallery', async ({
   await page.getByRole('button', { name: `Play ${title}` }).click();
   await expect.poll(() => new URL(page.url()).pathname).toBe('/');
   await expect(page.getByLabel('Player').getByText(title)).toBeVisible();
+});
+
+test('a track link without the playlist plays the track alone', async ({
+  page,
+  request,
+  browser,
+  baseURL
+}) => {
+  const source = 'E2EshareTrack03';
+  const title = 'Hidden Set';
+  const track = { videoId: 'e2eshares21', title: 'Naima' };
+
+  await mutePlayback(page);
+  await addPlaylist(page, { sourceId: source, title, entries: [track] });
+  await drainDownloads(page);
+  await page.reload();
+  await openPlaylist(page, title);
+
+  const playlistId = playlistIdOf(page);
+  const trackId = await playAndPause(page, track.title);
+  await partnerAccount(request);
+
+  const { context, page: partnerPage } = await openAsPartner(browser, baseURL);
+
+  try {
+    await partnerPage.goto(`/playlists/${playlistId}?track=${trackId}`);
+
+    const bar = partnerPage.getByLabel('Player');
+    await expect(bar).toBeVisible();
+
+    const pause = partnerPage.getByRole('button', {
+      name: 'Pause',
+      exact: true
+    });
+
+    if (await pause.isVisible()) {
+      await pause.click();
+    }
+
+    expect(new URL(partnerPage.url()).pathname).toBe(`/tracks/${trackId}`);
+    await expect(bar.getByText(track.title)).toBeVisible();
+    await expect(partnerPage.getByText(title)).toHaveCount(0);
+    await expect(
+      partnerPage.getByRole('button', { name: 'Add a playlist', exact: true })
+    ).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test('a track link whose track left the playlist says so', async ({
+  page,
+  request,
+  browser,
+  baseURL
+}) => {
+  const keptSource = 'E2EshareTrack04';
+  const keptTitle = 'Evening Set';
+  const kept = { videoId: 'e2eshares31', title: 'Blue In Green' };
+  const otherSource = 'E2EshareTrack05';
+  const otherTitle = 'Late Set';
+  const other = { videoId: 'e2eshares32', title: 'Naima' };
+
+  await mutePlayback(page);
+  await addPlaylist(page, {
+    sourceId: keptSource,
+    title: keptTitle,
+    entries: [kept]
+  });
+  await addPlaylist(page, {
+    sourceId: otherSource,
+    title: otherTitle,
+    entries: [other]
+  });
+  await drainDownloads(page);
+  await page.reload();
+  await openPlaylist(page, otherTitle);
+  const absentTrackId = await playAndPause(page, other.title);
+  await page.goto('/');
+  await openPlaylist(page, keptTitle);
+  const playlistId = playlistIdOf(page);
+  const partnerId = await partnerAccount(request);
+  await shareRead(request, playlistId, partnerId);
+
+  const { context, page: partnerPage } = await openAsPartner(browser, baseURL);
+
+  try {
+    await partnerPage.goto(`/playlists/${playlistId}?track=${absentTrackId}`);
+
+    const bar = partnerPage.getByLabel('Player');
+    await expect(bar).toBeVisible();
+
+    const pause = partnerPage.getByRole('button', {
+      name: 'Pause',
+      exact: true
+    });
+
+    if (await pause.isVisible()) {
+      await pause.click();
+    }
+
+    expect(new URL(partnerPage.url()).pathname).toBe(
+      `/tracks/${absentTrackId}`
+    );
+    await expect(bar.getByText(other.title)).toBeVisible();
+    await expect(
+      partnerPage.getByText(`${other.title} is no longer in that playlist.`)
+    ).toBeVisible();
+    await expect(
+      partnerPage.getByText('It is playing on its own.')
+    ).toBeVisible();
+    await expect(
+      partnerPage.getByRole('link', { name: keptTitle })
+    ).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test('a track link whose track cannot play explains it on the playlist', async ({
+  page,
+  request,
+  browser,
+  baseURL
+}) => {
+  const source = 'E2EshareTrack06';
+  const title = 'Broken Set';
+  const track = { videoId: 'e2eshares41', title: 'Naima' };
+
+  await mutePlayback(page);
+  await addPlaylist(page, {
+    sourceId: source,
+    title,
+    entries: [track],
+    downloads: { [track.videoId]: 'fail' as const }
+  });
+  await drainDownloads(page);
+  await page.reload();
+  await openPlaylist(page, title);
+  const playlistId = playlistIdOf(page);
+  const failedTrackId = await trackIdOf(request, playlistId, track.videoId);
+  const partnerId = await partnerAccount(request);
+  await shareRead(request, playlistId, partnerId);
+
+  const { context, page: partnerPage } = await openAsPartner(browser, baseURL);
+
+  try {
+    await partnerPage.goto(`/playlists/${playlistId}?track=${failedTrackId}`);
+
+    await expect(
+      partnerPage.getByText(`${track.title} cannot play.`)
+    ).toBeVisible();
+    await expect(partnerPage.getByText('Its download failed.')).toBeVisible();
+    expect(new URL(partnerPage.url()).pathname).toBe(
+      `/playlists/${playlistId}`
+    );
+    await expect(partnerPage.getByLabel('Player')).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
 });

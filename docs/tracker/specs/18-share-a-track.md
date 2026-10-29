@@ -1,7 +1,7 @@
 # Share a track
 
-Status: ready
-Labels: `ready-for-agent`, `enhancement`
+Status: resolved
+Labels: `enhancement`
 
 ## Problem Statement
 

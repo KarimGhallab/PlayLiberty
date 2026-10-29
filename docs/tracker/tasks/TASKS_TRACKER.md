@@ -56,7 +56,7 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`47-the-remaining-refusals-and-the-old-outcomes`](47-the-remaining-refusals-and-the-old-outcomes.md)                       | resolved | [`46`](46-one-responder-for-a-refusal.md)                | none                                                      |
 | [`48-one-optimistic-frame-and-a-playlist-client`](48-one-optimistic-frame-and-a-playlist-client.md)                         | resolved | none                                                     | [`49`](49-clients-for-the-library-account-and-egress.md)  |
 | [`49-clients-for-the-library-account-and-egress`](49-clients-for-the-library-account-and-egress.md)                         | resolved | [`48`](48-one-optimistic-frame-and-a-playlist-client.md) | none                                                      |
-| [`50-share-a-track`](18-share-a-track/TICKETS.md)                                                                           | open     | none                                                     | none                                                      |
+| [`50-share-a-track`](18-share-a-track/TICKETS.md)                                                                           | resolved | none                                                     | none                                                      |
 
 Feature-scoped ticket sets live in a folder named for their spec:
 

@@ -64,7 +64,7 @@ function serveTrack(track: Track): void {
   );
 }
 
-function renderTrack(trackId = TRACK.id) {
+function renderTrack(trackId = TRACK.id, state?: Record<string, unknown>) {
   const rootRoute = createRootRoute();
   const trackRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -85,6 +85,10 @@ function renderTrack(trackId = TRACK.id) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } }
   });
+
+  if (state !== undefined) {
+    router.history.replace(`/tracks/${trackId}`, state);
+  }
 
   const view = render(
     <QueryClientProvider client={queryClient}>
@@ -262,5 +266,20 @@ describe('TrackPage', () => {
       expect(router.state.location.pathname).toBe(`/tracks/${TRACK.id}`)
     );
     expect(usePlayerStore.getState().currentId).toBe('other-track');
+  });
+});
+
+describe('shared links', () => {
+  it('says the track left the playlist when the redirect says so', async () => {
+    serveTrack(TRACK);
+    renderTrack(TRACK.id, { leftPlaylist: true });
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().currentId).toBe(TRACK.id)
+    );
+    expect(
+      await screen.findByText('Blue In Green is no longer in that playlist.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('It is playing on its own.')).toBeInTheDocument();
   });
 });

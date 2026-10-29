@@ -1,15 +1,18 @@
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 
-import { TrackFileStatus } from '@playliberty/contracts';
-import type { Track } from '@playliberty/contracts';
-import type { Messages, Translator } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
 import { useTrack } from '../../../shared/api/clients/trackClient/trackClient';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
 import { isPlayable } from '../../../shared/player/playable';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
+import type { TrackLinkNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+import {
+  cannotPlayNotice,
+  leftPlaylistNotice,
+  unknownTrackNotice
+} from '../../../shared/player/trackLinkNotice/trackLinkNotice';
 import { queuePlaylistId } from '../../../shared/player/types';
 import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePlayTransition';
 
@@ -19,25 +22,6 @@ import LibraryPage from '../../library/LibraryPage/LibraryPage';
  * A bare track link: the gallery stays the page, and the player holds one track
  * with no playlist. A track that cannot play leaves the gallery and explains.
  */
-
-interface TrackNotice {
-  readonly message: string;
-  readonly detail: string;
-}
-
-function cannotPlayNotice(track: Track, t: Translator<Messages>): TrackNotice {
-  const detail =
-    track.fileStatus === TrackFileStatus.Failed
-      ? t('trackLink.downloadFailed')
-      : track.fileStatus === TrackFileStatus.Unavailable
-        ? t('trackLink.unavailableDetail')
-        : t('trackLink.notStored');
-
-  return {
-    message: t('trackLink.cannotPlay', { title: track.title }),
-    detail
-  };
-}
 
 /* What the queue holds now, coarse enough that an advance inside a playlist is
  * not mistaken for a start from this page. */
@@ -55,9 +39,15 @@ function queueIdentity(): string | null {
 export default function TrackPage() {
   const { t } = useI18n();
   const { trackId } = useParams({ from: '/tracks/$trackId' });
+  const location = useLocation();
   const navigate = useNavigate();
   const track = useTrack(trackId);
-  const [notice, setNotice] = useState<TrackNotice | null>(null);
+  const [notice, setNotice] = useState<TrackLinkNotice | null>(null);
+  const leftPlaylist =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'leftPlaylist' in location.state &&
+    location.state.leftPlaylist === true;
   const decided = useRef(false);
   const baseline = useRef<string | null>(null);
   const currentId = usePlayerStore(state => state.currentId);
@@ -78,10 +68,7 @@ export default function TrackPage() {
     if (track.isError) {
       decided.current = true;
       baseline.current = queueIdentity();
-      setNotice({
-        message: t('trackLink.unknown'),
-        detail: t('trackLink.unknownDetail')
-      });
+      setNotice(unknownTrackNotice(t));
       return;
     }
 
@@ -95,6 +82,10 @@ export default function TrackPage() {
       baseline.current = queueIdentity();
       setNotice(cannotPlayNotice(track.data, t));
       return;
+    }
+
+    if (leftPlaylist) {
+      setNotice(leftPlaylistNotice(track.data.title, t));
     }
 
     const player = usePlayerStore.getState();
@@ -114,7 +105,7 @@ export default function TrackPage() {
       thumbnailPath: track.data.thumbnailPath
     });
     baseline.current = queueIdentity();
-  }, [t, track.data, track.isError]);
+  }, [leftPlaylist, t, track.data, track.isError]);
 
   useEffect(() => {
     if (notice === null) {

@@ -177,7 +177,10 @@ export const en = {
     downloadFailed: 'Its download failed.',
     unavailableDetail: 'Its video is gone and no file was stored.',
     unknown: 'This track is not available.',
-    unknownDetail: 'The link may be broken, or the track may have been deleted.'
+    unknownDetail:
+      'The link may be broken, or the track may have been deleted.',
+    leftPlaylist: '{title} is no longer in that playlist.',
+    leftPlaylistDetail: 'It is playing on its own.'
   },
   skipSetting: {
     label: 'Skip non-music parts'

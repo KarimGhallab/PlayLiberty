@@ -183,7 +183,9 @@ export const fr: Messages = {
     unavailableDetail: "Sa vidéo a disparu et aucun fichier n'a été stocké.",
     unknown: "Cette piste n'est pas disponible.",
     unknownDetail:
-      'Le lien est peut-être rompu, ou la piste a peut-être été supprimée.'
+      'Le lien est peut-être rompu, ou la piste a peut-être été supprimée.',
+    leftPlaylist: "{title} n'est plus dans cette playlist.",
+    leftPlaylistDetail: 'Elle est lue seule.'
   },
   skipSetting: {
     label: 'Ignorer les parties non musicales'

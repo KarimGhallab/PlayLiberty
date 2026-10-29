@@ -3,6 +3,7 @@ import {
   Link,
   useNavigate,
   useParams,
+  useRouter,
   useSearch
 } from '@tanstack/react-router';
 import {
@@ -29,6 +30,7 @@ import {
   useAccountDirectory,
   useCurrentAccount
 } from '../../../shared/api/clients/accountClient/accountClient';
+import { ApiError } from '../../../shared/api/clients/apiClient/apiClient';
 import { usePlaylists } from '../../../shared/api/clients/libraryClient/libraryClient';
 import {
   useAddTrack,
@@ -68,10 +70,12 @@ import SuccessToast from '../../../shared/components/Toast/SuccessToast';
 import ToastStack from '../../../shared/components/Toast/ToastStack';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
-import { hasPlayableTrack } from '../../../shared/player/playable';
+import { hasPlayableTrack, isPlayable } from '../../../shared/player/playable';
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
+import type { TrackLinkNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+import { cannotPlayNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
 import {
   currentTrack,
   hasNext,
@@ -118,6 +122,7 @@ export default function PlaylistDetailPage() {
     from: '/playlists/$playlistId'
   });
   const navigate = useNavigate();
+  const router = useRouter();
   const playlist = usePlaylist(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
@@ -135,6 +140,7 @@ export default function PlaylistDetailPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
   const [copyResult, setCopyResult] = useState<CopyLinkResult | null>(null);
+  const [linkNotice, setLinkNotice] = useState<TrackLinkNotice | null>(null);
   const deferred = useDeferredAction();
 
   const actions = usePlaylistActions({
@@ -169,15 +175,21 @@ export default function PlaylistDetailPage() {
   /* The exchange of the queue's order, which is held behind the skeleton. */
   const [rebuilding, setRebuilding] = useState(false);
   /*
-   * The route reuses this component across ids, so the filter is cleared with
-   * the playlist rather than carried onto the next screen.
+   * The route reuses this component across ids, so the filter, the link notice
+   * and its decision are cleared with the playlist.
    */
   useEffect(() => {
     setTrackState(null);
+    setLinkNotice(null);
+    inspectedLink.current = null;
+    redirectingLink.current = null;
   }, [playlistId]);
   const activeState = listShuffled ? null : trackState;
   const tracks = usePlaylistTracks(playlistId, activeState ?? undefined);
-  const queueRead = usePlaylistQueue(playlistId, isQueue);
+  const queueRead = usePlaylistQueue(
+    playlistId,
+    isQueue || trackParam !== null
+  );
   useQueueRefetch(playlist.data, queueRead.data);
   /* The queue's own derivation, so a shuffled queue goes dead at its last entry
    * exactly as an unshuffled one does. */
@@ -188,6 +200,8 @@ export default function PlaylistDetailPage() {
   /* A shuffle toggle earns the landing the open already took. */
   const landAfterToggle = useRef(false);
   const orderFrames = useRef<number[]>([]);
+  const inspectedLink = useRef<string | null>(null);
+  const redirectingLink = useRef<string | null>(null);
 
   const currentLoaded =
     currentId !== null &&
@@ -306,10 +320,56 @@ export default function PlaylistDetailPage() {
     [transition.playTrack, playlistView]
   );
 
-  /* A link naming a track starts this playlist at it, once; the mirror below
-   * keeps the address true after the queue answers. */
+  /* A 404 on an open playlist with a track param is the bare track, silently;
+   * the open playlist without one keeps the not-found body. */
+  useEffect(() => {
+    if (
+      trackParam === null ||
+      !playlist.isError ||
+      !(playlist.error instanceof ApiError) ||
+      playlist.error.status !== 404
+    ) {
+      return;
+    }
+
+    void navigate({
+      to: '/tracks/$trackId',
+      params: { trackId: trackParam },
+      replace: true
+    });
+  }, [navigate, playlist.error, playlist.isError, trackParam]);
+
+  /* A link naming a track is resolved against the whole queue before anything
+   * starts: absent hops to the bare track, unplayable explains itself here. */
   useEffect(() => {
     if (trackParam === null || playlist.data === undefined) {
+      return;
+    }
+
+    if (queueRead.isError || queueRead.data === undefined) {
+      return;
+    }
+
+    if (inspectedLink.current === trackParam) {
+      return;
+    }
+
+    const association = queueRead.data.find(
+      entry => entry.track.id === trackParam
+    );
+
+    inspectedLink.current = trackParam;
+
+    if (association === undefined) {
+      redirectingLink.current = trackParam;
+      router.history.replace(`/tracks/${encodeURIComponent(trackParam)}`, {
+        leftPlaylist: true
+      });
+      return;
+    }
+
+    if (!isPlayable(association.track)) {
+      setLinkNotice(cannotPlayNotice(association.track, t));
       return;
     }
 
@@ -323,12 +383,31 @@ export default function PlaylistDetailPage() {
     }
 
     playTrack(trackParam);
-  }, [playTrack, playlist.data, playlistId, trackParam]);
+  }, [
+    navigate,
+    playTrack,
+    playlist.data,
+    playlistId,
+    queueRead.data,
+    queueRead.isError,
+    router,
+    t,
+    trackParam
+  ]);
 
   /* While this playlist is the queue, the address bar names its current track;
-   * another queue leaves no track on this page. */
+   * another queue leaves no track on this page. The mirror never moves the
+   * reader, and a link whose entry has not decided yet is not its to remove. */
   useEffect(() => {
     if (playlist.data === undefined) {
+      return;
+    }
+
+    if (
+      trackParam !== null &&
+      (inspectedLink.current !== trackParam ||
+        redirectingLink.current === trackParam)
+    ) {
       return;
     }
 
@@ -346,7 +425,8 @@ export default function PlaylistDetailPage() {
       to: '/playlists/$playlistId',
       params: { playlistId },
       search: target === null ? {} : { track: target },
-      replace: true
+      replace: true,
+      resetScroll: false
     });
   }, [
     currentId,
@@ -354,6 +434,7 @@ export default function PlaylistDetailPage() {
     playlist.data,
     playlistId,
     playingPlaylistId,
+    queueRead.data,
     trackParam
   ]);
 
@@ -489,6 +570,17 @@ export default function PlaylistDetailPage() {
     }
   }, [addTrack.isSuccess, batchRefused]);
 
+  /* The link's refusal withdraws on the notice window. */
+  useEffect(() => {
+    if (linkNotice === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setLinkNotice(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [linkNotice]);
+
   /* The copy result withdraws on the same window; the toast owns no timer. */
   useEffect(() => {
     if (copyResult === null) {
@@ -543,13 +635,34 @@ export default function PlaylistDetailPage() {
   const failedCount = counts?.[TrackFileStatus.Failed] ?? 0;
 
   /*
-   * A 404, whether the playlist is gone or no longer visible, is the not-found
-   * state rather than an error: the whole body is replaced by the way back.
+   * A 404 on an open playlist is the not-found state, or a silent hop to the
+   * bare track when the link named one. Any other failure is a read to retry.
    */
   if (playlist.isError) {
+    if (
+      trackParam !== null &&
+      playlist.error instanceof ApiError &&
+      playlist.error.status === 404
+    ) {
+      return null;
+    }
+
+    if (playlist.error instanceof ApiError && playlist.error.status === 404) {
+      return (
+        <main className={styles.playlistDetail}>
+          <PlaylistNotFound />
+        </main>
+      );
+    }
+
     return (
       <main className={styles.playlistDetail}>
-        <PlaylistNotFound />
+        <ReadFailure
+          message={t('detail.readFailed')}
+          error={playlist.error}
+          onRetry={() => void playlist.refetch()}
+          retrying={playlist.isFetching}
+        />
       </main>
     );
   }
@@ -643,6 +756,15 @@ export default function PlaylistDetailPage() {
           ) : null}
         </div>
       </nav>
+
+      {trackParam !== null && queueRead.isError ? (
+        <ReadFailure
+          message={t('detail.readFailed')}
+          error={queueRead.error}
+          onRetry={() => void queueRead.refetch()}
+          retrying={queueRead.isFetching}
+        />
+      ) : null}
 
       {canWrite && isMobile ? (
         <FloatingAction
@@ -894,6 +1016,13 @@ export default function PlaylistDetailPage() {
         <NoticeToast
           message={t('detail.settingNotice')}
           detail={settingRefused}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {linkNotice === null ? null : (
+        <NoticeToast
+          message={linkNotice.message}
+          detail={linkNotice.detail}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

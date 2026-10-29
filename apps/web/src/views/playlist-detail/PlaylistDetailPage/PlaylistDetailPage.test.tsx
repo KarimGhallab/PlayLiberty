@@ -57,8 +57,13 @@ function renderDetail(playlistId = PLAYLIST_ID, track?: string) {
     }),
     component: PlaylistDetailPage
   });
+  const trackRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/tracks/$trackId',
+    component: () => <p>track</p>
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([detailRoute]),
+    routeTree: rootRoute.addChildren([detailRoute, trackRoute]),
     history: createMemoryHistory({
       initialEntries: [
         track === undefined
@@ -174,6 +179,7 @@ beforeEach(() => {
 
 afterEach(() => {
   window.localStorage.clear();
+  vi.unstubAllGlobals();
   Object.defineProperty(navigator, 'clipboard', {
     value: originalClipboard,
     configurable: true
@@ -519,6 +525,22 @@ describe('PlaylistDetailPage', () => {
     await screen.findByText('Naima');
 
     expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('keeps the list where it stands when a row starts the queue', async () => {
+    const scrollTo = vi.fn();
+
+    vi.stubGlobal('scrollTo', scrollTo);
+    const { router } = renderDetail();
+    const row = await screen.findByRole('button', { name: 'Play Naima' });
+
+    scrollTo.mockClear();
+    fireEvent.click(row);
+
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
   /*
@@ -2314,5 +2336,113 @@ describe('PlaylistDetailPage filter chips', () => {
     expect(
       await screen.findByText('The link could not be copied.')
     ).toBeInTheDocument();
+  });
+});
+
+describe('shared links', () => {
+  it('hops to the bare track when the playlist is unreachable', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        problemResponse({
+          title: 'Playlist not found',
+          status: 404,
+          code: ProblemCode.PlaylistNotFound,
+          detail: 'The playlist is not here.'
+        })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/tracks/track-2')
+    );
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('offers a retry when the playlist read fails for another reason', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        problemResponse({
+          title: 'Server error',
+          status: 500,
+          code: ProblemCode.InternalError,
+          detail: 'The server had a problem.'
+        })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/playlists/${PLAYLIST_ID}`);
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('offers a retry when the queue read fails for a shared link', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            title: 'Server error',
+            status: 500,
+            code: ProblemCode.InternalError,
+            detail: 'The server had a problem.'
+          })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/playlists/${PLAYLIST_ID}`);
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('hops to the bare track when the playlist no longer holds it', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: [
+              trackJson('track-1', 'Blue In Green', 0),
+              trackJson('track-3', 'Flamenco Sketches', 2)
+            ]
+          })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/tracks/track-2')
+    );
+    expect(router.state.location.state).toMatchObject({ leftPlaylist: true });
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('keeps the playlist and explains a track that cannot play', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: [
+              trackJson('track-1', 'Blue In Green', 0),
+              trackJson('track-2', 'Naima', 1, TrackFileStatus.Pending)
+            ]
+          })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(await screen.findByText('Naima cannot play.')).toBeInTheDocument();
+    expect(screen.getByText('It is not stored yet.')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/playlists/${PLAYLIST_ID}`);
+    expect(usePlayerStore.getState().queue).toEqual([]);
   });
 });
