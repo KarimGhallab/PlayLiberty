@@ -18,8 +18,18 @@ export const fr: Messages = {
     english: 'English',
     french: 'Français'
   },
+  account: {
+    title: 'Compte',
+    signOut: 'Se déconnecter'
+  },
+  signedOut: {
+    title: "Connectez-vous pour entrer dans l'application",
+    body: 'Cette application demande un compte sur votre instance.',
+    action: 'Se connecter'
+  },
   common: {
     cancel: 'Annuler',
+    close: 'Fermer',
     discardPrompt: 'Abandonner ce lien ? Le lien collé sera perdu.',
     keepEditing: 'Continuer la saisie',
     discard: 'Abandonner'

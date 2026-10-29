@@ -16,11 +16,13 @@ import {
   readLanguage,
   writeLanguage
 } from './languageStorage/languageStorage.js';
+import type { LanguageStore } from './languageStorage/languageStorage.js';
 import { resolveLanguage } from './resolveLanguage/resolveLanguage.js';
 import type { Language } from './types.js';
 
-/* The React binding. The page's `lang` attribute follows the language, so a
- * screen reader and the browser's typography agree. */
+/* The React binding. The client decides what a language change does to its own
+ * chrome: the web writes the document's `lang`, and a native client writes
+ * nothing. */
 
 export interface I18nValue {
   readonly language: Language;
@@ -33,11 +35,21 @@ const I18nContext = createContext<I18nValue | null>(null);
 interface I18nProviderProps {
   readonly children: ReactNode;
   /** Where the choice is remembered. Defaults to the browser's local storage. */
-  readonly storage?: Storage;
+  readonly storage?: LanguageStore;
   /** The browser's preferred locales, in order. Defaults to `navigator`. */
   readonly preferred?: readonly string[];
+  /** What a language change does to the client's chrome. */
+  readonly applyLanguage?: (language: Language) => void;
   /** A language to start in, overriding resolution. For tests. */
   readonly initialLanguage?: Language;
+}
+
+function applyToDocument(language: Language): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.documentElement.lang = language;
 }
 
 function browserLanguages(): readonly string[] {
@@ -50,6 +62,7 @@ export default function I18nProvider({
   children,
   storage,
   preferred,
+  applyLanguage,
   initialLanguage
 }: I18nProviderProps) {
   const store = storage ?? window.localStorage;
@@ -67,9 +80,11 @@ export default function I18nProvider({
     [store]
   );
 
+  const apply = applyLanguage ?? applyToDocument;
+
   useEffect(() => {
-    document.documentElement.lang = language;
-  }, [language]);
+    apply(language);
+  }, [apply, language]);
 
   const value = useMemo<I18nValue>(
     () => ({

@@ -16,8 +16,18 @@ export const en = {
     english: 'English',
     french: 'Français'
   },
+  account: {
+    title: 'Account',
+    signOut: 'Sign out'
+  },
+  signedOut: {
+    title: 'Sign in to enter the app',
+    body: 'This app needs an account on your instance.',
+    action: 'Sign in'
+  },
   common: {
     cancel: 'Cancel',
+    close: 'Close',
     discardPrompt: 'Discard this link? The link you pasted will be lost.',
     keepEditing: 'Keep editing',
     discard: 'Discard'

@@ -5,7 +5,12 @@ pnpm-lock.yaml
 .prettierignore
 .dockerignore
 
+# assets
 .github/assets/
+*.png
+*.jepg
+*.jpg
+*.gif
 
 *.sh
 

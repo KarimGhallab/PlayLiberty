@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "PlayLiberty",
+    "slug": "playliberty",
+    "version": "0.1.0",
+    "scheme": "dev.playliberty.app",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "backgroundColor": "#0b0d10",
+    "android": {
+      "package": "dev.playliberty.app",
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "playliberty.example",
+              "pathPrefix": "/playlists"
+            },
+            {
+              "scheme": "https",
+              "host": "playliberty.example",
+              "pathPrefix": "/tracks"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "dev.playliberty.app",
+      "supportsTablet": false,
+      "associatedDomains": ["applinks:playliberty.example"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": true
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0b0d10",
+          "image": "./assets/splash-icon.png"
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000"
+    }
+  }
+}
