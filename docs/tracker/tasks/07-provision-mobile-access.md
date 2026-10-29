@@ -9,7 +9,8 @@ Implement the mobile provisioning flow from [`Mobile provisioning`](../../ARCHIT
 
 ## Context
 
-Read `docs/ARCHITECTURE.md` first.
+Read `docs/ARCHITECTURE.md` first, then
+[`20-provision-mobile-access`](../specs/20-provision-mobile-access.md), which is this ticket's decision record.
 
 ## Scope
 

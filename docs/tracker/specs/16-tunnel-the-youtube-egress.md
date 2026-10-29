@@ -118,7 +118,7 @@ interface.
   refreshes the row, because it is the same evidence. _Decided here,_ because
   the user's trigger is traffic, and a schedule would be a second failure
   source with no consumer.
-- **The interface is one admin route in the existing web client.** `/egress`
+- **The interface is one admin route in the web client and one screen in the mobile client.** `/egress`
   lists every config with its name, endpoint, status (`ok`, `failed`, `unknown`),
   last attempt date, and one action per row: `Switch` on a standby (applies and
   checks) and `Check` on the active row (checks only). It is gated on
@@ -126,7 +126,9 @@ interface.
   everyone else, and is absent from navigation for non-admins. The unverified
   apply stays available to rotation, with no page control. The switch action
   runs the check, so the check's verdict is what the row stores; there is no
-  blind reset. _Decided here,_ because the egress is operator information and a
+  blind reset. The mobile screen is
+  [`31-manage-the-egress`](31-manage-the-egress.md)'s: the same pool and the same two actions, drawn as cards.
+  _Decided here,_ because the egress is operator information and a
   household account has no action to take.
 - **The server owns the pool settings.** `EGRESS_AGENT_SOCKET`, `EGRESS_AGENT_PEER_UID`,
   `EGRESS_FAILURE_LIMIT` (5), `EGRESS_DRAIN_TIMEOUT_MS` (60000) and
@@ -154,10 +156,10 @@ The ticket set and its cut are [`TICKETS.md`](../tasks/16-tunnel-the-youtube-egr
   own client on the host.
 - Cookies, PO tokens, a proxy, or a second VPS or exit host.
 - Check history, charts, metrics, alerting or a notification when an exit dies.
-- Making the egress page visible to non-admins, or exposing it in the mobile
-  client.
+- Making the egress page visible to non-admins.
 - Rotating on gone videos, 404s, SponsorBlock outages or malformed URLs.
 - Any change to the audio pipeline, the stored container or the no-transcoding
   rule.
 - Changes to the pod's security context, its netns or its deployment unit.
-- The mobile client.
+- The mobile client beyond the console, which
+  [`31-manage-the-egress`](31-manage-the-egress.md) owns.

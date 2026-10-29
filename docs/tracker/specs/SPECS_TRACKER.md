@@ -2,8 +2,9 @@
 
 Feature specs, written by `/to-spec`. One file per spec, named `NN-slug.md` and numbered in creation order.
 
-This corpus is the web and server MVP. Every client clause is the web client. Mobile, the provisioning flow
-and [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) are out of scope, and no spec in this set is written to leave room for them.
+This tracker holds two corpora. Specs `01` to `18` are the web and server MVP, where every client clause is the web
+client. Specs `19` to `32` are the mobile client, one per client-bearing verb of the first corpus, and their runtime
+is Android. [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) is the second corpus's first subject.
 
 ## Specs
 
@@ -28,6 +29,29 @@ and [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) are out of 
 | [`17-crop-a-playlist-cover`](17-crop-a-playlist-cover.md)                         | resolved | [`14`](14-upload-a-playlist-cover.md)                                                                                         | none                                                                                                                                                                                                                                 |
 | [`18-share-a-track`](18-share-a-track.md)                                         | resolved | [`03`](03-read-a-playlist.md), [`05`](05-share-a-playlist.md), [`07`](07-play-stored-audio.md), [`08`](08-see-the-library.md) | none                                                                                                                                                                                                                                 |
 
+## The mobile corpus
+
+Every spec here is one user-visible verb of the web corpus on the mobile client. Each references its web counterpart
+by anchor for the decisions already made and marks `Decided here` only for the mobile-only decisions. Four verbs fold
+instead of taking a spec: `09` and `11` into `19`, `10` into `25`, and `17` into `29`.
+
+| Spec                                                                        | Status | Blocked by                                                            | Blocks                                                                                                                                                                             |
+| --------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`19-the-mobile-shell`](19-the-mobile-shell.md)                             | ready  | none                                                                  | [`20`](20-provision-mobile-access.md), [`21`](21-see-the-library.md), [`31`](31-manage-the-egress.md)                                                                              |
+| [`20-provision-mobile-access`](20-provision-mobile-access.md)               | ready  | [`19`](19-the-mobile-shell.md)                                        | [`21`](21-see-the-library.md)                                                                                                                                                      |
+| [`21-see-the-library`](21-see-the-library.md)                               | ready  | [`19`](19-the-mobile-shell.md), [`20`](20-provision-mobile-access.md) | [`22`](22-read-a-playlist.md), [`28`](28-pin-a-playlist.md), [`31`](31-manage-the-egress.md)                                                                                       |
+| [`22-read-a-playlist`](22-read-a-playlist.md)                               | ready  | [`21`](21-see-the-library.md)                                         | [`23`](23-play-stored-audio.md), [`25`](25-curate-a-playlist.md), [`26`](26-share-a-playlist.md), [`27`](27-sort-and-filter-the-track-list.md), [`29`](29-set-a-playlist-cover.md) |
+| [`23-play-stored-audio`](23-play-stored-audio.md)                           | ready  | [`22`](22-read-a-playlist.md)                                         | [`24`](24-play-in-the-background.md), [`25`](25-curate-a-playlist.md), [`30`](30-share-a-track.md)                                                                                 |
+| [`24-play-in-the-background`](24-play-in-the-background.md)                 | ready  | [`23`](23-play-stored-audio.md)                                       | none                                                                                                                                                                               |
+| [`25-curate-a-playlist`](25-curate-a-playlist.md)                           | ready  | [`22`](22-read-a-playlist.md), [`23`](23-play-stored-audio.md)        | none                                                                                                                                                                               |
+| [`26-share-a-playlist`](26-share-a-playlist.md)                             | ready  | [`22`](22-read-a-playlist.md)                                         | none                                                                                                                                                                               |
+| [`27-sort-and-filter-the-track-list`](27-sort-and-filter-the-track-list.md) | ready  | [`22`](22-read-a-playlist.md)                                         | none                                                                                                                                                                               |
+| [`28-pin-a-playlist`](28-pin-a-playlist.md)                                 | ready  | [`21`](21-see-the-library.md)                                         | none                                                                                                                                                                               |
+| [`29-set-a-playlist-cover`](29-set-a-playlist-cover.md)                     | ready  | [`22`](22-read-a-playlist.md)                                         | none                                                                                                                                                                               |
+| [`30-share-a-track`](30-share-a-track.md)                                   | ready  | [`23`](23-play-stored-audio.md)                                       | [`32`](32-release-the-android-app.md)                                                                                                                                              |
+| [`31-manage-the-egress`](31-manage-the-egress.md)                           | ready  | [`19`](19-the-mobile-shell.md), [`21`](21-see-the-library.md)         | none                                                                                                                                                                               |
+| [`32-release-the-android-app`](32-release-the-android-app.md)               | ready  | [`30`](30-share-a-track.md)                                           | none                                                                                                                                                                               |
+
 ## Conventions
 
 - One file per spec, named `NN-slug.md`, numbered in creation order.
@@ -38,10 +62,24 @@ and [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) are out of 
 - Blocking edges order the cut, not the code. A spec blocked by another is one whose tickets would otherwise invent a decision the other spec owns.
 - A decision the repository has not already made is marked `Decided here` in the spec's implementation
   decisions, so a reader can tell at a glance which decisions are the spec's own and overturn any o them before its tickets are cut.
-- Because this corpus is web only, a client clause names the web client rather than the two runtimes. The token layer and the shared UI decisions are still client-neutral; the behavior is not.
+- In the web corpus a client clause names the web client rather than the two runtimes; the token layer and the shared
+  UI decisions are client-neutral and the behaviour is not.
+- In the mobile corpus a spec's subject is one user-visible verb, its runtime is Android, and it references the web
+  spec by anchor for every decision already made. A mobile spec exists only where the client half adds a decision the
+  web spec did not make; a verb whose arrangement is fully inherited is a clause in the spec that owns the screen.
+- The mobile corpus tracks no parity matrix and no per-spec completeness line. The one-to-one mapping with the web
+  corpus is the only structural guard, and a missing verb is discovered and specified rather than proven absent.
 
 ## Out of scope in this corpus
 
 - The permanent non-goals: sharing outside the instance, public or unauthenticated access, casting, social features, scrobbling, transcoding, video, file export or download endpoints, ratings, play counts, and search.
 - Offline playback and a service worker.
 - Reordering a playlist.
+
+## Out of scope in the mobile corpus
+
+- Offline playback, downloads, and any client-side copy of a track.
+- iOS builds and iOS verification; the code stays cross-platform and the claim is Android's.
+- A UI component library, a styling runtime, and a light theme.
+- Tablet and landscape arrangements.
+- A parity matrix, and any per-verb completeness bookkeeping.

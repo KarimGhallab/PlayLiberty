@@ -64,6 +64,36 @@ The shapes are decisions, and the screens implement them:
 - **The two widths are 1056 and 390.** The content column is 1056, the phone frame is 390, and the single breakpoint between them is the first width at which a 320px identity column beside a track list still leaves the list a usable title column. It is stated once in `useMediaQuery` and mirrored in each stylesheet that branches on it, because a custom property cannot carry a media query.
 - **A track row is one target.** The whole row plays; the lane at its end is the row's own control and sits above that layer. A row that cannot be played has no play layer but keeps its lane, because a failed download has something to be done about.
 
+## The mobile client
+
+The app is the phone frame the web client already draws at 390, at whatever width the device has. It has one column
+at every width: the web's content column and its breakpoint are the browser's and do not exist here. The token set,
+the type family, the space scale, the radii, the durations and the one curve are the same values.
+
+- **Four routes and one sheet.** The library is the root, the playlist detail is pushed, a bare track and the egress
+  console are routes of their own, and the account sheet is a modal over whatever is open. There is no tab bar, no
+  drawer and no sidebar; the platform's back gesture is the way back.
+- **The gallery is a two-column card grid.** The card is the detail's hero arrangement: cover above the identity,
+  with the play and overflow controls on the scrim. The pinned section is a heading above the grid, and the ownership
+  scope and the status chips are one row that scrolls. The bulk sync keeps its count in the header; the web's phone
+  arrangement drops it because the browser's header cannot hold the sentence, and the app's header can.
+- **The detail scrolls its identity away and keeps its controls.** The cover, the name and the sync line are the
+  list's first item; the sort and the chips stay under the top inset. The transport is the player bar's, not the
+  header's, and the header keeps Play and Shuffle. This is where the app departs from the web's phone arrangement,
+  which keeps its whole header sticky: a native screen already has a system bar, and a second pinned block would
+  spend a third of the screen.
+- **The player bar is the only persistent chrome and the only transport.** The queue is a sheet above it. There is no
+  volume rail, no mute and no keyboard chord: the device's buttons are the volume, and the operating system's
+  controls are the transport when the app is in the background.
+- **The account sheet is the app's one settings surface.** It holds the display name, the admin mark, the language
+  control, Sign out and the egress door for an admin.
+- **A target is 44 points, and every control has a name and a role.** Dynamic Type is respected, with a capped
+  multiplier only where a fixed layout would break, and reduced motion is read from the system. The focus ring and
+  the keyboard contract are the web's and have no analogue.
+- **A web-only affordance is either drawn or dropped, never ported.** A hover tip becomes a word in the row, the
+  volume rail becomes the device's buttons, a keyboard chord becomes a bar control, the document title becomes the
+  screen's heading, and the breakpoint becomes nothing.
+
 ## Where a change goes
 
 | Changing                                               | Change it in                                                              |
@@ -75,3 +105,6 @@ The shapes are decisions, and the screens implement them:
 | The breakpoint                                         | `apps/web/src/shared/useMediaQuery` and the stylesheets that branch on it |
 | The focus ring, the reduced-motion rule, the font face | `apps/web/src/shared/styles/base.scss`                                    |
 | A screen's layout or copy                              | That screen's view module and its stylesheet                              |
+| A mobile screen's layout or copy                       | That screen's module under `apps/mobile/src`, and its sheet               |
+| The mobile routes                                      | `apps/mobile/app`                                                         |
+| The mobile style helpers over the tokens               | The app's shared style module under `apps/mobile/src`                     |

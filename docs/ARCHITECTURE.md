@@ -1,6 +1,6 @@
 # Architecture
 
-PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, shared contracts, design tokens, shared UI decisions, localization package, and YouTube adapter exist; the mobile client is planned. The non-obvious choices are stated in [Decisions](#decisions).
+PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, shared contracts, design tokens, shared UI decisions, localization package, and YouTube adapter exist; the mobile client is specified by specs `19` to `32` and not yet built. The non-obvious choices are stated in [Decisions](#decisions).
 
 ## Components
 
@@ -9,7 +9,7 @@ PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspa
 - `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See [The server stack](#the-server-stack) and [The server's folder boundaries](#the-servers-folder-boundaries).
 - `apps/web` - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
 - `apps/egress-agent` - the system-scoped host agent that runs yt-dlp in the `playliberty-egress` network namespace. See [The YouTube egress runs in a host network namespace](#the-youtube-egress-runs-in-a-host-network-namespace).
-- `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
+- `apps/mobile` (specified, not built) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
 
 ### The packages
 
@@ -87,7 +87,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `docs/runbooks/egress-agent.md` - the host install, verification and reboot runbook.
 - `apps/web/src/` - the web SPA, views under `src/views/` and shared pieces under `src/shared/`. A module split across two or more files is one folder named after it, holding the module, its test and its stylesheet; a single-file module stays flat.
 - `apps/web/deploy/nginx.conf.template` - the static serving and `/api` proxy configuration, rendered by the nginx entrypoint at container start.
-- `apps/mobile/src/` and `apps/mobile/app/` (planned) - the Expo app, routes and feature modules.
+- `apps/mobile/src/` and `apps/mobile/app/` (specified, not built) - the Expo app, routes and feature modules.
 - `packages/contracts/src/` - the API Zod schemas and inferred types.
 - `packages/youtube/src/` - the yt-dlp adapter.
 - `scripts/validate-tsconfig-paths.cjs` - keeps `tsconfig.depcruise.json` paths aligned with the workspace.

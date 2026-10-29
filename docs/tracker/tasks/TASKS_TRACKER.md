@@ -12,8 +12,7 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`04-scaffold-server`](04-scaffold-server.md)                                                                               | resolved | none                                                     | none                                                      |
 | [`05-scaffold-web`](05-scaffold-web.md)                                                                                     | resolved | none                                                     | none                                                      |
 | [`06-scaffold-mobile`](06-scaffold-mobile.md)                                                                               | open     | none                                                     | [`07`](07-provision-mobile-access.md)                     |
-| [`07-provision-mobile-access`](07-provision-mobile-access.md)                                                               | open     | [`06`](06-scaffold-mobile.md)                            | none                                                      |
-| [`08-define-design-system`](08-define-design-system.md)                                                                     | resolved | none                                                     | [`09`](09-design-scheme-and-components.md)                |
+| [`07-provision-mobile-access`](07-provision-mobile-access.md)                                                               | open     | [`06`](06-scaffold-mobile.md)                            | none                                                      |     | [`08-define-design-system`](08-define-design-system.md) | resolved | none | [`09`](09-design-scheme-and-components.md) |
 | [`09-design-scheme-and-components`](09-design-scheme-and-components.md)                                                     | resolved | none                                                     | [`10`](10-build-design-foundation.md)                     |
 | [`10-build-design-foundation`](10-build-design-foundation.md)                                                               | resolved | [`09`](09-design-scheme-and-components.md)               | [`05`](05-scaffold-web.md), [`06`](06-scaffold-mobile.md) |
 | [`11-form-controls`](11-form-controls.md)                                                                                   | resolved | none                                                     | none                                                      |
@@ -57,6 +56,8 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`48-one-optimistic-frame-and-a-playlist-client`](48-one-optimistic-frame-and-a-playlist-client.md)                         | resolved | none                                                     | [`49`](49-clients-for-the-library-account-and-egress.md)  |
 | [`49-clients-for-the-library-account-and-egress`](49-clients-for-the-library-account-and-egress.md)                         | resolved | [`48`](48-one-optimistic-frame-and-a-playlist-client.md) | none                                                      |
 | [`50-share-a-track`](18-share-a-track/TICKETS.md)                                                                           | resolved | none                                                     | none                                                      |
+
+Tickets `06` and `07` are the implementation tickets of mobile specs [`19`](../specs/19-the-mobile-shell.md) and [`20`](../specs/20-provision-mobile-access.md); the specs are their decision records.
 
 Feature-scoped ticket sets live in a folder named for their spec:
 
