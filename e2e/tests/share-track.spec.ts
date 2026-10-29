@@ -122,3 +122,56 @@ test('a read share opens the playlist at the shared track', async ({
     await partnerContext.close();
   }
 });
+
+test('a track URL plays it alone and yields to the gallery', async ({
+  page
+}) => {
+  const source = 'E2EshareTrack02';
+  const title = 'Late Night';
+  const track = { videoId: 'e2eshares11', title: 'Naima' };
+
+  await mutePlayback(page);
+  await addPlaylist(page, { sourceId: source, title, entries: [track] });
+  await drainDownloads(page);
+  await page.reload();
+  await openPlaylist(page, title);
+
+  /* The playlist's mirror gives the track id the bare route resolves. */
+  await page.getByRole('button', { name: `Play ${track.title}` }).click();
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get('track'))
+    .toBeTruthy();
+
+  const trackId = new URL(page.url()).searchParams.get('track');
+
+  if (trackId === null) {
+    throw new Error('The playlist link names no track.');
+  }
+
+  await page.goto(`/tracks/${trackId}`);
+
+  const bar = page.getByLabel('Player');
+  await expect(bar).toBeVisible();
+
+  /* The fake is two seconds; hold the track before the queue moves. */
+  const pause = page.getByRole('button', { name: 'Pause', exact: true });
+
+  if (await pause.isVisible()) {
+    await pause.click();
+  }
+
+  await expect(bar.getByText(track.title)).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe(`/tracks/${trackId}`);
+  await expect(page.getByRole('link', { name: title })).toBeVisible();
+
+  /* A reload keeps the bare queue paused and the address on the track. */
+  await page.reload();
+  await expect(page.getByLabel('Player').getByText(track.title)).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe(`/tracks/${trackId}`);
+
+  /* Starting the gallery's playlist makes the address the gallery's. */
+  await page.getByRole('button', { name: `Play ${title}` }).click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+  await expect(page.getByLabel('Player').getByText(title)).toBeVisible();
+});

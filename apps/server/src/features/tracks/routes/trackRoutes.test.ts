@@ -852,3 +852,75 @@ describe('media cache headers', () => {
     expect(response.headers['cache-control']).toBe('no-store');
   });
 });
+
+describe('GET /tracks/:id', () => {
+  it('reads a stored track for an account with no association', async () => {
+    context = await createTestContext();
+    const {
+      track: { trackId }
+    } = await seedStoredTrack(context, { videoId: 'shared-read' });
+    const stranger = seedAccount(database());
+
+    const response = await get(
+      `/api/v1/tracks/${trackId}`,
+      stranger.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(200);
+    const track = TrackSchema.parse(response.json());
+    expect(track.id).toBe(trackId);
+    expect(track.fileStatus).toBe(TrackFileStatus.Stored);
+    /* The media path stays off the wire. */
+    expect(response.json()).not.toHaveProperty('filePath');
+    expect(response.json()).not.toHaveProperty('thumbnailUrl');
+  });
+
+  it('answers 404 for a missing track', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(database());
+
+    const response = await get(
+      `/api/v1/tracks/${randomUUID()}`,
+      owner.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: 'track_not_found' });
+  });
+
+  it('streams and thumbnails a stored track for an account with no association', async () => {
+    context = await createTestContext();
+    const {
+      track: { trackId }
+    } = await seedStoredTrack(context, { videoId: 'shared-media' });
+    const stranger = seedAccount(database());
+
+    const stream = await get(
+      `/api/v1/tracks/${trackId}/stream`,
+      stranger.pangolinUserId
+    );
+    expect(stream.statusCode).toBe(200);
+
+    const thumbnail = await get(
+      `/api/v1/tracks/${trackId}/thumbnail`,
+      stranger.pangolinUserId
+    );
+    expect(thumbnail.statusCode).toBe(200);
+  });
+
+  it('refuses the stream of a track with no stored media, whatever the access', async () => {
+    context = await createTestContext();
+    const { trackId } = seedTrack(database(), {
+      fileStatus: TrackFileStatus.Pending
+    });
+    const stranger = seedAccount(database());
+
+    const response = await get(
+      `/api/v1/tracks/${trackId}/stream`,
+      stranger.pangolinUserId
+    );
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ code: 'track_not_stored' });
+  });
+});

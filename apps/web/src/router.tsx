@@ -20,6 +20,7 @@ import { useDocumentTitle } from './shared/useDocumentTitle/useDocumentTitle';
 import EgressPage from './views/egress/EgressPage/EgressPage';
 import LibraryPage from './views/library/LibraryPage/LibraryPage';
 import PlaylistDetailPage from './views/playlist-detail/PlaylistDetailPage/PlaylistDetailPage';
+import TrackPage from './views/track/TrackPage/TrackPage';
 
 /*
  * The bar and the audio element are siblings of the outlet, not children of a
@@ -66,6 +67,12 @@ const playlistDetailRoute = createRoute({
   component: PlaylistDetailPage
 });
 
+const trackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tracks/$trackId',
+  component: TrackPage
+});
+
 const egressRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/egress',
@@ -91,6 +98,7 @@ const notFoundRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   libraryRoute,
   playlistDetailRoute,
+  trackRoute,
   egressRoute,
   notFoundRoute
 ]);

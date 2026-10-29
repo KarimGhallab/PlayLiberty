@@ -171,6 +171,14 @@ export const en = {
     showDetailsFor: 'Show details for {title}',
     hideDetailsFor: 'Hide details for {title}'
   },
+  trackLink: {
+    cannotPlay: '{title} cannot play.',
+    notStored: 'It is not stored yet.',
+    downloadFailed: 'Its download failed.',
+    unavailableDetail: 'Its video is gone and no file was stored.',
+    unknown: 'This track is not available.',
+    unknownDetail: 'The link may be broken, or the track may have been deleted.'
+  },
   skipSetting: {
     label: 'Skip non-music parts'
   },

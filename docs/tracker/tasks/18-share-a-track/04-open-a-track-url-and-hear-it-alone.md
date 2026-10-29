@@ -1,25 +1,15 @@
 # 04: Open a track's own URL and hear it alone
 
-**Status:** open
-**Labels:** `enhancement`, `ready-for-agent`
+**Status:** resolved
 
-## What to build
+## Outcome
 
-`/tracks/T` renders the gallery with `T` playing alone, with no playlist context. Any authenticated account may read a track by id, stream it and read its thumbnail, because the track id is the capability; retry and fetch-whole stay gated behind write access to an associating playlist. The route attempts autoplay, restores paused on reload, replaces the address to `/` when another queue starts, and explains a track that cannot play.
+`/tracks/T` now renders the gallery and plays `T` alone. The route resolves the track through the new authenticated read, starts a one-track queue with no playlist context, and tries to autoplay; a refused play leaves it paused. A reload keeps the queue paused at its position and the address on the track. Starting another queue from the gallery replaces the address with `/`, while a failed entry keeps `/tracks/T`.
 
-## Acceptance criteria
+The server read is instance-wide: the track metadata, the stream and the thumbnail answer for any authenticated account, because the id is the capability. Retry and fetch-whole stay write-gated behind an associating playlist share, and a track with no stored media still answers 409. The read sends the Track fields only, never the media path.
 
-- [ ] The contracts declare and the server serves an authenticated track read by id, returning the track's fields only; an unknown id answers 404.
-- [ ] The stream and thumbnail answer for an account with no playlist association; retry and fetch-whole still refuse it; a track with no stored media answers 409.
-- [ ] `/tracks/T` renders the gallery and starts a one-track bare queue for a stored track, attempting autoplay and falling back to paused.
-- [ ] Entry is idempotent when `T` is already the bare current track; a reload restores the queue paused at its position and keeps `/tracks/T`.
-- [ ] Starting another queue from the gallery replaces the address to `/`; a failed entry keeps `/tracks/T`.
-- [ ] A not-stored, unavailable or unknown track shows the matching notice, starts no queue and leaves the gallery drawn.
-- [ ] The track route, server route, player and document title tests cover these; the bare-route e2e journey passes.
+A track that cannot play starts no queue and leaves the gallery drawn. The notice names the track and its reason: not stored, failed download, or a video gone with no file; an unknown id gets its own sentence. The notice withdraws on the same window as the other refusals.
 
-## Verification
-
-- `pnpm run build` and `pnpm run lint:check` pass.
-- The server track route tests, the track route tests and the bare-route e2e journey pass.
+Verification: `pnpm run build`, `pnpm run lint:check`, the unit suites (web 639, server 438, egress agent 54, UI foundation 5) and the e2e typecheck pass. The new bare-route e2e journey passes in Chromium: the track URL plays over the gallery, a reload holds it paused, and the gallery's playlist takes the address back. The server route tests cover the no-association read, stream and thumbnail, the write refusals, the 409 and the 404; the track page tests cover the start, the idempotence, the three unplayable notices, the unknown id, the exit and the failed-entry baseline.
 
 See [`18-share-a-track`](../../specs/18-share-a-track.md).

@@ -120,43 +120,6 @@ describe('the playlist entry seam', () => {
 });
 
 describe('the track entry seam', () => {
-  it('runs a read handler for every account the holding playlist reaches', async () => {
-    context = await createTestContext();
-    const cast = seedCast();
-    const handler = vi.fn(() => 'streamed');
-
-    for (const accountId of [cast.owner, cast.reader, cast.writer]) {
-      expect(
-        trackEntry(
-          database(),
-          cast.trackId,
-          accountId,
-          AccessNeed.Read,
-          handler
-        ).outcome
-      ).toBe(EntryOutcome.Granted);
-    }
-
-    expect(handler).toHaveBeenCalledTimes(3);
-  });
-
-  it('does not run a read handler for a stranger', async () => {
-    context = await createTestContext();
-    const cast = seedCast();
-    const handler = vi.fn(() => 'never');
-
-    const entry = trackEntry(
-      database(),
-      cast.trackId,
-      cast.stranger,
-      AccessNeed.Read,
-      handler
-    );
-
-    expect(entry.outcome).toBe(EntryOutcome.Denied);
-    expect(handler).not.toHaveBeenCalled();
-  });
-
   it('runs a write handler for the owner and a write collaborator and no one else', async () => {
     context = await createTestContext();
     const cast = seedCast();
@@ -164,25 +127,13 @@ describe('the track entry seam', () => {
 
     for (const accountId of [cast.owner, cast.writer]) {
       expect(
-        trackEntry(
-          database(),
-          cast.trackId,
-          accountId,
-          AccessNeed.Write,
-          handler
-        ).outcome
+        trackEntry(database(), cast.trackId, accountId, handler).outcome
       ).toBe(EntryOutcome.Granted);
     }
 
     for (const accountId of [cast.reader, cast.stranger]) {
       expect(
-        trackEntry(
-          database(),
-          cast.trackId,
-          accountId,
-          AccessNeed.Write,
-          handler
-        ).outcome
+        trackEntry(database(), cast.trackId, accountId, handler).outcome
       ).toBe(EntryOutcome.Denied);
     }
 

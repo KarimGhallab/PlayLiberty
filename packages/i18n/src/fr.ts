@@ -176,6 +176,15 @@ export const fr: Messages = {
     showDetailsFor: 'Afficher les détails de {title}',
     hideDetailsFor: 'Masquer les détails de {title}'
   },
+  trackLink: {
+    cannotPlay: 'Impossible de lire {title}.',
+    notStored: "La piste n'est pas encore stockée.",
+    downloadFailed: 'Son téléchargement a échoué.',
+    unavailableDetail: "Sa vidéo a disparu et aucun fichier n'a été stocké.",
+    unknown: "Cette piste n'est pas disponible.",
+    unknownDetail:
+      'Le lien est peut-être rompu, ou la piste a peut-être été supprimée.'
+  },
   skipSetting: {
     label: 'Ignorer les parties non musicales'
   },

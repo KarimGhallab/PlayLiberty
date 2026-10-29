@@ -3,7 +3,7 @@ import type { PlaylistAccess } from '@playliberty/contracts';
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import { resolvePlaylistAccess } from './playlistAccess.js';
 import { AccessNeed, satisfies } from './rule.js';
-import { canAccountAccessTrack, canAccountWriteTrack } from './trackAccess.js';
+import { canAccountWriteTrack } from './trackAccess.js';
 
 export { AccessNeed };
 
@@ -39,20 +39,14 @@ export function playlistEntry<Result>(
   return { outcome: EntryOutcome.Granted, value: handler(access) };
 }
 
-/* A track has no level of its own, so the handler takes nothing. */
+/* A track has no level of its own, so a write is the only need it asks for. */
 export function trackEntry<Result>(
   database: DatabaseHandle,
   trackId: string,
   accountId: string,
-  need: AccessNeed.Read | AccessNeed.Write,
   handler: () => Result
 ): Entry<Result> {
-  const allowed =
-    need === AccessNeed.Read
-      ? canAccountAccessTrack(database, trackId, accountId)
-      : canAccountWriteTrack(database, trackId, accountId);
-
-  return allowed
+  return canAccountWriteTrack(database, trackId, accountId)
     ? { outcome: EntryOutcome.Granted, value: handler() }
     : { outcome: EntryOutcome.Denied };
 }

@@ -1,15 +1,15 @@
 # 18: Share a track
 
 Tickets for [`18-share-a-track`](../../specs/18-share-a-track.md). One file per ticket, numbered in
-dependency order, each declaring its blocking edges. `01`, `02` and `03` are resolved. The frontier is
-`04`; `05` waits on `04`.
+dependency order, each declaring its blocking edges. `01`, `02`, `03` and `04` are resolved. The frontier
+is `05`.
 
 | Ticket                                                                                                                | Status   | Blocked by                                                                                          | Blocks                                                            |
 | --------------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | [`01-let-the-player-hold-a-queue-with-no-playlist`](01-let-the-player-hold-a-queue-with-no-playlist.md)               | resolved | none                                                                                                | [`04`](04-open-a-track-url-and-hear-it-alone.md)                  |
 | [`02-open-a-playlist-at-the-shared-track`](02-open-a-playlist-at-the-shared-track.md)                                 | resolved | none                                                                                                | [`05`](05-resolve-a-shared-link-that-cannot-open-its-playlist.md) |
 | [`03-copy-a-track-link-from-its-row`](03-copy-a-track-link-from-its-row.md)                                           | resolved | none                                                                                                | none                                                              |
-| [`04-open-a-track-url-and-hear-it-alone`](04-open-a-track-url-and-hear-it-alone.md)                                   | open     | [`01`](01-let-the-player-hold-a-queue-with-no-playlist.md)                                          | [`05`](05-resolve-a-shared-link-that-cannot-open-its-playlist.md) |
+| [`04-open-a-track-url-and-hear-it-alone`](04-open-a-track-url-and-hear-it-alone.md)                                   | resolved | [`01`](01-let-the-player-hold-a-queue-with-no-playlist.md)                                          | [`05`](05-resolve-a-shared-link-that-cannot-open-its-playlist.md) |
 | [`05-resolve-a-shared-link-that-cannot-open-its-playlist`](05-resolve-a-shared-link-that-cannot-open-its-playlist.md) | open     | [`02`](02-open-a-playlist-at-the-shared-track.md), [`04`](04-open-a-track-url-and-hear-it-alone.md) | none                                                              |
 
 ## Conventions

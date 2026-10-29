@@ -329,14 +329,15 @@ describe('DELETE /playlists/:id/shares/:accountId', () => {
     );
     expect(listedTracks.statusCode).toBe(404);
 
-    // The stream and the thumbnail are track routes and keep their own rule: a
-    // track the account can no longer reach is forbidden, not missing.
-    expect(
-      (await get(`/api/v1/tracks/${trackId}/stream`, target)).statusCode
-    ).toBe(403);
-    expect(
-      (await get(`/api/v1/tracks/${trackId}/thumbnail`, target)).statusCode
-    ).toBe(403);
+    /* The track routes are instance-wide reads: the id is the capability, so a
+     * revoked playlist share no longer hides the track itself. */
+    for (const path of [
+      `/api/v1/tracks/${trackId}`,
+      `/api/v1/tracks/${trackId}/stream`,
+      `/api/v1/tracks/${trackId}/thumbnail`
+    ]) {
+      expect((await get(path, target)).statusCode).toBe(200);
+    }
   });
 
   it('revokes a share that is not there, and a target account that does not exist, without changing the playlist', async () => {
