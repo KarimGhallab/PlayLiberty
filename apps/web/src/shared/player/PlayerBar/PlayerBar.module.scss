@@ -298,6 +298,13 @@
     border-radius: var(--radius-chip);
     background: var(--control-border);
     cursor: pointer;
+    /* The drag is the seeker's, not the page's: without this a touch gesture is
+     * claimed by the browser's scroll and cancelled before the release. */
+    touch-action: none;
+
+    &[data-dragging='true'] {
+      cursor: grabbing;
+    }
 
     /*
      * The track stays 4px and the target grows to 44px through a box that
@@ -322,6 +329,11 @@
     background: var(--accent);
     transform-origin: left center;
     transition: transform var(--motion-slow) var(--ease-standard);
+  }
+
+  /* The knob and the fill follow the finger, so they must not ease behind it. */
+  &__scrub[data-dragging='true'] &__fill {
+    transition: none;
   }
 
   &__knob {
