@@ -160,6 +160,7 @@ function playerTrack(
 }
 
 const scrollIntoView = vi.fn();
+const originalClipboard = navigator.clipboard;
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
@@ -173,6 +174,10 @@ beforeEach(() => {
 
 afterEach(() => {
   window.localStorage.clear();
+  Object.defineProperty(navigator, 'clipboard', {
+    value: originalClipboard,
+    configurable: true
+  });
 });
 
 describe('PlaylistDetailPage', () => {
@@ -858,7 +863,7 @@ describe('PlaylistDetailPage', () => {
     ).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    ).toBeDisabled();
+    ).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -2270,5 +2275,44 @@ describe('PlaylistDetailPage filter chips', () => {
 
     await screen.findByRole('button', { name: 'Play Blue In Green' });
     expect(router.state.location.search.track).toBeUndefined();
+  });
+
+  it('copies a row link and confirms it', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true
+    });
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Naima' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/playlists/${PLAYLIST_ID}?track=track-2`
+      )
+    );
+    expect(await screen.findByText('Link copied')).toBeInTheDocument();
+  });
+
+  it('reports a copy the browser refuses', async () => {
+    const writeText = vi.fn(() => Promise.reject(new Error('denied')));
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true
+    });
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Naima' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
+
+    expect(
+      await screen.findByText('The link could not be copied.')
+    ).toBeInTheDocument();
   });
 });

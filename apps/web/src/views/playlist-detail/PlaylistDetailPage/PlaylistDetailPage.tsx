@@ -63,6 +63,9 @@ import RetryFailedControl from '../../../shared/components/RetryFailedControl/Re
 import SyncControl from '../../../shared/components/SyncControl/SyncControl';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
+import ErrorToast from '../../../shared/components/Toast/ErrorToast';
+import SuccessToast from '../../../shared/components/Toast/SuccessToast';
+import ToastStack from '../../../shared/components/Toast/ToastStack';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
 import { hasPlayableTrack } from '../../../shared/player/playable';
@@ -102,6 +105,12 @@ import TrackListSkeleton from './TrackListSkeleton/TrackListSkeleton';
  */
 const REORDER_HOLD_ROWS = 50;
 
+/** The result of the row's copy, which chooses the toast. */
+enum CopyLinkResult {
+  Copied = 'copied',
+  Failed = 'failed'
+}
+
 export default function PlaylistDetailPage() {
   const { t } = useI18n();
   const { playlistId } = useParams({ from: '/playlists/$playlistId' });
@@ -125,6 +134,7 @@ export default function PlaylistDetailPage() {
   const addTrack = useAddTrack();
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
+  const [copyResult, setCopyResult] = useState<CopyLinkResult | null>(null);
   const deferred = useDeferredAction();
 
   const actions = usePlaylistActions({
@@ -387,6 +397,25 @@ export default function PlaylistDetailPage() {
   const counts = tracks.counts;
   const playable = counts === undefined || hasPlayableTrack({ counts });
 
+  /* The link is absolute so it survives a paste into a chat; an insecure
+   * origin has no clipboard, which reports the failure rather than silence. */
+  const copyTrackLink = useCallback(
+    (trackId: string): void => {
+      const url = new URL(`/playlists/${playlistId}`, window.location.origin);
+      url.searchParams.set('track', trackId);
+
+      void (async () => {
+        try {
+          await navigator.clipboard.writeText(url.href);
+          setCopyResult(CopyLinkResult.Copied);
+        } catch {
+          setCopyResult(CopyLinkResult.Failed);
+        }
+      })();
+    },
+    [playlistId]
+  );
+
   /*
    * Deferred like the playlist delete: the toast's Cancel is the only place a
    * removal is still reversible, so the track is named in it.
@@ -459,6 +488,17 @@ export default function PlaylistDetailPage() {
       addTrack.reset();
     }
   }, [addTrack.isSuccess, batchRefused]);
+
+  /* The copy result withdraws on the same window; the toast owns no timer. */
+  useEffect(() => {
+    if (copyResult === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setCopyResult(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [copyResult]);
 
   /* The refusal withdraws on the window the shuffle notice uses. */
   useEffect(() => {
@@ -804,6 +844,7 @@ export default function PlaylistDetailPage() {
                         onRetry={canWrite ? retryTrack : undefined}
                         onFetchWhole={canWrite ? fetchWholeTrack : undefined}
                         onRemove={canWrite ? removeTrackDeferred : undefined}
+                        onCopyLink={copyTrackLink}
                         busy={busyTrackId === association.track.id}
                         starting={
                           startingThisPlaylist?.startTrackId ===
@@ -855,6 +896,23 @@ export default function PlaylistDetailPage() {
           detail={settingRefused}
           durationMs={NOTICE_WINDOW_MS}
         />
+      )}
+      {copyResult === null ? null : (
+        <ToastStack>
+          {copyResult === CopyLinkResult.Copied ? (
+            <SuccessToast
+              message={t('trackRow.linkCopied')}
+              durationMs={NOTICE_WINDOW_MS}
+              onDismiss={() => setCopyResult(null)}
+            />
+          ) : (
+            <ErrorToast
+              message={t('trackRow.linkCopyFailed')}
+              durationMs={NOTICE_WINDOW_MS}
+              onDismiss={() => setCopyResult(null)}
+            />
+          )}
+        </ToastStack>
       )}
     </main>
   );

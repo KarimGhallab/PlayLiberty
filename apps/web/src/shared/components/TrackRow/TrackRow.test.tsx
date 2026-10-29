@@ -45,17 +45,20 @@ function renderRow(options: {
   readonly onRetry?: (trackId: string) => void;
   readonly onFetchWhole?: (trackId: string) => void;
   readonly onRemove?: ((trackId: string) => void) | null;
+  readonly onCopyLink?: (trackId: string) => void;
   readonly busy?: boolean;
   readonly starting?: boolean;
   readonly pending?: boolean;
 }): {
   onPlay: ReturnType<typeof vi.fn>;
   onRemove: ReturnType<typeof vi.fn>;
+  onCopyLink: ReturnType<typeof vi.fn>;
   unmount: () => void;
   container: HTMLElement;
 } {
   const onPlay = vi.fn();
   const onRemove = vi.fn();
+  const onCopyLink = vi.fn();
   const resolvedRemove =
     options.onRemove === null ? undefined : (options.onRemove ?? onRemove);
 
@@ -70,6 +73,7 @@ function renderRow(options: {
           onRetry={options.onRetry}
           onFetchWhole={options.onFetchWhole}
           onRemove={resolvedRemove}
+          onCopyLink={options.onCopyLink ?? onCopyLink}
           busy={options.busy ?? false}
           starting={options.starting ?? false}
           pending={options.pending ?? false}
@@ -78,11 +82,11 @@ function renderRow(options: {
     </I18nProvider>
   );
 
-  return { onPlay, onRemove, unmount, container };
+  return { onPlay, onRemove, onCopyLink, unmount, container };
 }
 
 describe('TrackRow', () => {
-  it('marks a pending row and disables its lane and play', () => {
+  it('marks a pending row, keeps Copy link and disables play', () => {
     const { container } = renderRow({ pending: true });
 
     const row = container.querySelector('li');
@@ -90,12 +94,21 @@ describe('TrackRow', () => {
     expect(
       screen.getByRole('button', { name: 'Play Blue In Green' })
     ).toBeDisabled();
+
+    const actions = screen.getByRole('button', {
+      name: 'Actions for Blue In Green'
+    });
+    expect(actions).toBeEnabled();
+    fireEvent.click(actions);
     expect(
-      screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    ).toBeDisabled();
+      screen.getByRole('menuitem', { name: 'Copy link' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Remove from playlist' })
+    ).not.toBeInTheDocument();
   });
 
-  it('marks the pressed row while its queue read is in flight', () => {
+  it('marks the pressed row and keeps Copy link while its read is in flight', () => {
     const { container } = renderRow({ starting: true, onRemove: vi.fn() });
 
     const row = container.querySelector('li');
@@ -103,9 +116,18 @@ describe('TrackRow', () => {
     expect(
       screen.getByRole('button', { name: 'Play Blue In Green' })
     ).toBeDisabled();
+
+    const actions = screen.getByRole('button', {
+      name: 'Actions for Blue In Green'
+    });
+    expect(actions).toBeEnabled();
+    fireEvent.click(actions);
     expect(
-      screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    ).toBeDisabled();
+      screen.getByRole('menuitem', { name: 'Copy link' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Remove from playlist' })
+    ).not.toBeInTheDocument();
   });
 
   it('plays the track when the row is pressed', () => {
@@ -163,12 +185,33 @@ describe('TrackRow', () => {
     expect(onRemove).toHaveBeenCalledWith('track-1');
   });
 
-  it('draws no menu when the caller cannot curate', () => {
+  it('offers Copy link when the caller cannot curate', () => {
     renderRow({ onRemove: null });
 
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+
     expect(
-      screen.queryByRole('button', { name: 'Actions for Blue In Green' })
+      screen.getByRole('menuitem', { name: 'Copy link' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Remove from playlist' })
     ).not.toBeInTheDocument();
+  });
+
+  it('copies the row track from the menu, first in the lane', () => {
+    const { onCopyLink } = renderRow({});
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+
+    const items = screen.getAllByRole('menuitem');
+    expect(items[0]).toHaveTextContent('Copy link');
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
+    expect(onCopyLink).toHaveBeenCalledWith('track-1');
   });
 
   it('offers retry, fetch whole and remove in the menu on a failed track', () => {
@@ -251,26 +294,47 @@ describe('TrackRow', () => {
     ).toBeInTheDocument();
   });
 
-  it('disables the menu while a row action is in flight', () => {
+  it('keeps only Copy link while a row action is in flight', () => {
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Failed }),
       onRetry: vi.fn(),
       busy: true
     });
 
+    const actions = screen.getByRole('button', {
+      name: 'Actions for Blue In Green'
+    });
+    expect(actions).toBeEnabled();
+    fireEvent.click(actions);
+
     expect(
-      screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    ).toBeDisabled();
+      screen.getByRole('menuitem', { name: 'Copy link' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Retry' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Remove from playlist' })
+    ).not.toBeInTheDocument();
   });
 
-  it('disables the menu while the track is downloading', () => {
+  it('keeps only Copy link while the track is downloading', () => {
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Downloading })
     });
 
+    const actions = screen.getByRole('button', {
+      name: 'Actions for Blue In Green'
+    });
+    expect(actions).toBeEnabled();
+    fireEvent.click(actions);
+
     expect(
-      screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    ).toBeDisabled();
+      screen.getByRole('menuitem', { name: 'Copy link' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Remove from playlist' })
+    ).not.toBeInTheDocument();
   });
 
   it('says full length for a track recorded without trimming', () => {
