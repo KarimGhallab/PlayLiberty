@@ -90,7 +90,7 @@ test('the skip switch flips both ways on the detail and survives a reload', asyn
   await expect(control).toHaveAttribute('aria-checked', 'false');
 
   // The value survives a reload, so it is the server's fact and not local state.
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(
     page.getByRole('switch', { name: 'Skip non-music parts' })
   ).toHaveAttribute('aria-checked', 'false');
@@ -100,7 +100,7 @@ test('the skip switch flips both ways on the detail and survives a reload', asyn
     page.getByRole('switch', { name: 'Skip non-music parts' })
   ).toHaveAttribute('aria-checked', 'true');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(
     page.getByRole('switch', { name: 'Skip non-music parts' })
   ).toHaveAttribute('aria-checked', 'true');

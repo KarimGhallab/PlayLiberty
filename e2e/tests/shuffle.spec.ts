@@ -70,7 +70,7 @@ async function seed(page: Page): Promise<void> {
   });
   await openPlaylist(page, TITLE);
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await expect(
     page.getByRole('button', {

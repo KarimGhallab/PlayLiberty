@@ -66,7 +66,8 @@ export async function openHeaderMenu(page: Page): Promise<void> {
 }
 
 /* Nothing polls: a state the server reaches on its own is read again only when
- * something asks, and a reload is that ask rather than a fixed sleep. */
+ * something asks, and a reload is that ask rather than a fixed sleep. The wait
+ * is the document, not every resource: the reads land after it. */
 export async function reloadUntil(
   page: Page,
   locator: Locator,
@@ -75,10 +76,10 @@ export async function reloadUntil(
   const deadline = Date.now() + timeout;
 
   for (;;) {
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     try {
-      // The reads land after the load event, so wait rather than look at once.
+      // The reads land after the document, so wait rather than look at once.
       await locator.waitFor({ state: 'visible', timeout: 5_000 });
       return;
     } catch (error) {

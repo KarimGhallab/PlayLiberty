@@ -71,7 +71,7 @@ test('an added video moves through the download states to playable without a rel
     entries: [STORED]
   });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await openPlaylist(page, TRACK_TITLE);
   await expect(
     page.getByRole('button', { name: `Play ${STORED.title}` })

@@ -122,7 +122,7 @@ async function seed(page: Page): Promise<void> {
   }
 
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await expect(page.getByRole('button', { name: 'Stored 3' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Failed 1' })).toBeVisible();
@@ -152,7 +152,7 @@ test('the saved sort re-orders the list, survives a reload and is the order the 
     .toEqual([FAILED.title, C.title, B.title, A.title]);
 
   // Server-owned: a reload opens the list in the saved order again.
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(
     page.getByRole('button', { name: 'Sort by: Newest first' })
   ).toBeVisible();

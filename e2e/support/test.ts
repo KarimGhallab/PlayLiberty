@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test';
 import { test as base } from '@playwright/test';
 
+import { mutePlayback } from './audio';
 import { resetInstance } from './instance';
 import { instanceForWorker, instancePaths } from './paths';
 
@@ -10,6 +11,10 @@ import { instanceForWorker, instancePaths } from './paths';
  * one stack and one account.
  */
 export const test = base.extend<{ reset: void; request: APIRequestContext }>({
+  page: async ({ page }, use) => {
+    await mutePlayback(page);
+    await use(page);
+  },
   baseURL: async ({ baseURL: configured }, use, testInfo) => {
     const instance = instancePaths(instanceForWorker(testInfo.parallelIndex));
     const url = new URL(configured ?? instance.webUrl);

@@ -119,14 +119,13 @@ test('a read share opens the playlist at the shared track', async ({
   browser,
   baseURL
 }) => {
-  await mutePlayback(page);
   await addPlaylist(page, {
     sourceId: SOURCE,
     title: TITLE,
     entries: [FIRST, SHARED, LAST]
   });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await openPlaylist(page, TITLE);
 
   const playlistId = new URL(page.url()).pathname.split('/').at(-1);
@@ -217,10 +216,9 @@ test('a track URL plays it alone and yields to the gallery', async ({
   const title = 'Late Night';
   const track = { videoId: 'e2eshares11', title: 'Naima' };
 
-  await mutePlayback(page);
   await addPlaylist(page, { sourceId: source, title, entries: [track] });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await openPlaylist(page, title);
 
   /* The playlist's mirror gives the track id the bare route resolves. */
@@ -253,7 +251,7 @@ test('a track URL plays it alone and yields to the gallery', async ({
   await expect(page.getByRole('link', { name: title })).toBeVisible();
 
   /* A reload keeps the bare queue paused and the address on the track. */
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByLabel('Player').getByText(track.title)).toBeVisible();
   expect(new URL(page.url()).pathname).toBe(`/tracks/${trackId}`);
 
@@ -273,10 +271,9 @@ test('a track link without the playlist plays the track alone', async ({
   const title = 'Hidden Set';
   const track = { videoId: 'e2eshares21', title: 'Naima' };
 
-  await mutePlayback(page);
   await addPlaylist(page, { sourceId: source, title, entries: [track] });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await openPlaylist(page, title);
 
   const playlistId = playlistIdOf(page);
@@ -324,7 +321,6 @@ test('a track link whose track left the playlist says so', async ({
   const otherTitle = 'Late Set';
   const other = { videoId: 'e2eshares32', title: 'Naima' };
 
-  await mutePlayback(page);
   await addPlaylist(page, {
     sourceId: keptSource,
     title: keptTitle,
@@ -336,7 +332,7 @@ test('a track link whose track left the playlist says so', async ({
     entries: [other]
   });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await openPlaylist(page, otherTitle);
   const absentTrackId = await playAndPause(page, other.title);
   await page.goto('/');
@@ -390,7 +386,6 @@ test('a track link whose track cannot play explains it on the playlist', async (
   const title = 'Broken Set';
   const track = { videoId: 'e2eshares41', title: 'Naima' };
 
-  await mutePlayback(page);
   await addPlaylist(page, {
     sourceId: source,
     title,
@@ -398,7 +393,7 @@ test('a track link whose track cannot play explains it on the playlist', async (
     downloads: { [track.videoId]: 'fail' as const }
   });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await openPlaylist(page, title);
   const playlistId = playlistIdOf(page);
   const failedTrackId = await trackIdOf(request, playlistId, track.videoId);
