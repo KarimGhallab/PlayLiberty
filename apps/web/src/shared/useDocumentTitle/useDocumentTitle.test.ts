@@ -41,6 +41,21 @@ describe('documentTitle', () => {
     );
   });
 
+  it('names a track started on its own without a playlist', () => {
+    const bare: PlayerTrack = {
+      ...TRACK,
+      playlistId: null,
+      playlistName: null
+    };
+
+    expect(documentTitle(english, null, bare)).toBe(
+      'PlayLiberty - Blue In Green'
+    );
+    expect(documentTitle(french, null, bare)).toBe(
+      'PlayLiberté - Blue In Green'
+    );
+  });
+
   it('carries the active language into the name', () => {
     expect(documentTitle(french, null, null)).toBe('PlayLiberté');
     expect(documentTitle(french, null, TRACK)).toBe(

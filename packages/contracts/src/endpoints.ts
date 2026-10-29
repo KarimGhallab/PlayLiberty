@@ -273,6 +273,12 @@ export const endpoints = {
     path: '/playlists/:playlistId',
     errors: [ProblemCode.PlaylistNotFound, ...WRITE_ERRORS]
   }),
+  track: defineEndpoint({
+    method: HttpMethod.Get,
+    path: '/tracks/:trackId',
+    response: TrackSchema,
+    errors: [ProblemCode.TrackNotFound, ...READ_ERRORS]
+  }),
   retryTrack: defineEndpoint({
     method: HttpMethod.Post,
     path: '/tracks/:trackId/retry',
@@ -298,7 +304,6 @@ export const endpoints = {
     path: '/tracks/:trackId/stream',
     errors: [
       ProblemCode.TrackNotFound,
-      ProblemCode.Forbidden,
       ProblemCode.TrackNotStored,
       ...READ_ERRORS
     ]
@@ -306,11 +311,7 @@ export const endpoints = {
   trackThumbnail: defineMediaEndpoint({
     method: HttpMethod.Get,
     path: '/tracks/:trackId/thumbnail',
-    errors: [
-      ProblemCode.ThumbnailNotFound,
-      ProblemCode.Forbidden,
-      ...READ_ERRORS
-    ]
+    errors: [ProblemCode.ThumbnailNotFound, ...READ_ERRORS]
   }),
   removeTrack: defineCommandEndpoint({
     method: HttpMethod.Delete,

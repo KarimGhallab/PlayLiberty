@@ -6,10 +6,17 @@ export const PLAYER_STORAGE_KEY = 'playliberty.player';
 function persistedSlice(state: PlayerState): PersistedPlayerState {
   return {
     sourceQueue: state.sourceQueue,
+    /* Only a shuffle needs its own copy of the order: the source is the other. */
+    orderIds: state.shuffle ? state.queue.map(track => track.id) : [],
+    shuffle: state.shuffle,
     currentId: state.currentId,
     positionSeconds: state.positionSeconds,
     volume: state.volume
   };
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
 }
 
 function isPlayerTrack(value: unknown): value is PlayerTrack {
@@ -36,8 +43,8 @@ function isPlayerTrack(value: unknown): value is PlayerTrack {
   return (
     typeof id === 'string' &&
     typeof title === 'string' &&
-    typeof playlistId === 'string' &&
-    typeof playlistName === 'string' &&
+    (playlistId === null || typeof playlistId === 'string') &&
+    (playlistName === null || typeof playlistName === 'string') &&
     (durationSeconds === null || typeof durationSeconds === 'number') &&
     (thumbnailPath === null || typeof thumbnailPath === 'string')
   );
@@ -82,8 +89,23 @@ function parsePersistedPlayerState(
     return null;
   }
 
+  const rawShuffle = 'shuffle' in stored ? stored.shuffle : false;
+
+  if (typeof rawShuffle !== 'boolean') {
+    return null;
+  }
+
+  /* A payload written before the shuffle was kept has no order of its own. */
+  const rawOrderIds = 'orderIds' in stored ? stored.orderIds : [];
+
+  if (!isStringArray(rawOrderIds)) {
+    return null;
+  }
+
   return {
     sourceQueue,
+    orderIds: rawOrderIds,
+    shuffle: rawShuffle,
     currentId,
     positionSeconds,
     volume: rawVolume

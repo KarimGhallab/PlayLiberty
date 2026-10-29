@@ -7,6 +7,7 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -14,7 +15,7 @@ import {
   within
 } from '@testing-library/react';
 import axe from 'axe-core';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -28,6 +29,8 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
+import { queuePlaylistId } from '../../../shared/player/types';
+import type { PlayerTrack } from '../../../shared/player/types';
 
 import {
   EMPTY_COUNTS,
@@ -41,24 +44,39 @@ import PlaylistDetailPage from './PlaylistDetailPage';
 
 const PLAYLIST_ID = 'playlist-1';
 
-function renderDetail(playlistId = PLAYLIST_ID) {
+function renderDetail(playlistId = PLAYLIST_ID, track?: string) {
   const rootRoute = createRootRoute();
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/playlists/$playlistId',
+    validateSearch: (search: Record<string, unknown>): { track?: string } => ({
+      track:
+        typeof search.track === 'string' && search.track.length > 0
+          ? search.track
+          : undefined
+    }),
     component: PlaylistDetailPage
   });
+  const trackRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/tracks/$trackId',
+    component: () => <p>track</p>
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([detailRoute]),
+    routeTree: rootRoute.addChildren([detailRoute, trackRoute]),
     history: createMemoryHistory({
-      initialEntries: [`/playlists/${playlistId}`]
+      initialEntries: [
+        track === undefined
+          ? `/playlists/${playlistId}`
+          : `/playlists/${playlistId}?track=${track}`
+      ]
     })
   });
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } }
   });
 
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <I18nProvider preferred={['en']}>
         <RouterProvider router={router} />
@@ -66,6 +84,8 @@ function renderDetail(playlistId = PLAYLIST_ID) {
       </I18nProvider>
     </QueryClientProvider>
   );
+
+  return { ...view, router };
 }
 
 /* The playlist read a handler echoes a value into, without the whole shape. */
@@ -129,7 +149,23 @@ function listTitles(): string[] {
     .filter(title => title !== 'this playlist');
 }
 
+function playerTrack(
+  id: string,
+  title: string,
+  durationSeconds: number
+): PlayerTrack {
+  return {
+    id,
+    title,
+    playlistId: PLAYLIST_ID,
+    playlistName: 'Rain On The Window',
+    durationSeconds,
+    thumbnailPath: null
+  };
+}
+
 const scrollIntoView = vi.fn();
+const originalClipboard = navigator.clipboard;
 
 beforeEach(() => {
   usePlayerStore.getState().clear();
@@ -143,6 +179,11 @@ beforeEach(() => {
 
 afterEach(() => {
   window.localStorage.clear();
+  vi.unstubAllGlobals();
+  Object.defineProperty(navigator, 'clipboard', {
+    value: originalClipboard,
+    configurable: true
+  });
 });
 
 describe('PlaylistDetailPage', () => {
@@ -152,6 +193,25 @@ describe('PlaylistDetailPage', () => {
     expect(
       await screen.findByRole('link', { name: 'Back to home' })
     ).toHaveAttribute('href', '/');
+  });
+
+  it('holds the list with a skeleton while the first page loads', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        async () => {
+          await delay('infinite');
+
+          return HttpResponse.json({});
+        }
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('link', { name: 'Back to home' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading tracks.');
   });
 
   it('lists the playlist tracks that are playable', async () => {
@@ -202,6 +262,64 @@ describe('PlaylistDetailPage', () => {
     expect(
       screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('holds the list with the skeleton while unshuffling a long queue', async () => {
+    const many = Array.from({ length: 60 }, (_, index) =>
+      trackJson(`track-${index}`, `Track ${index}`, index)
+    );
+    const playerTracks = many.map(association => ({
+      id: association.track.id,
+      title: association.track.title,
+      playlistId: PLAYLIST_ID,
+      playlistName: 'Rain On The Window',
+      durationSeconds: association.track.durationSeconds,
+      thumbnailPath: null
+    }));
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: many.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: many,
+            total: many.length,
+            limit: 100,
+            offset: 0,
+            counts: countsOf(many)
+          })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: many })
+      )
+    );
+    usePlayerStore
+      .getState()
+      .startQueue(PLAYLIST_ID, playerTracks, 'track-0', true);
+    renderDetail();
+
+    await waitFor(() => expect(listTitles()).toHaveLength(many.length));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    /* The skeleton stands before the order is exchanged, and the list under it
+     * is no longer offered a press. */
+    expect(screen.getByRole('status')).toHaveTextContent('Loading tracks.');
+    expect(
+      screen.getByRole('button', { name: 'Pause Track 0' }).closest('[inert]')
+    ).not.toBeNull();
+    expect(usePlayerStore.getState().shuffle).toBe(true);
+
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(false));
+    expect(listTitles()).toEqual(
+      many.map(association => association.track.title)
+    );
   });
 
   it('leaves the header shuffle unpressed while the queue is another playlist', async () => {
@@ -322,6 +440,71 @@ describe('PlaylistDetailPage', () => {
     expect(row).toHaveTextContent('Naima');
   });
 
+  it('lands on the current track when the shuffle starts the queue', async () => {
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(true));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+
+    const { queue, currentId } = usePlayerStore.getState();
+    const current = queue.find(track => track.id === currentId);
+
+    expect(scrollIntoView.mock.instances[0]).toHaveTextContent(
+      current?.title ?? ''
+    );
+  });
+
+  it('lands on the current track when the shuffled queue is unshuffled', async () => {
+    usePlayerStore.getState().startQueue(
+      PLAYLIST_ID,
+      [
+        {
+          id: 'track-1',
+          title: 'Blue In Green',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 337,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-2',
+          title: 'Naima',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 273,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-3',
+          title: 'Flamenco Sketches',
+          playlistId: PLAYLIST_ID,
+          playlistName: 'Rain On The Window',
+          durationSeconds: 565,
+          thumbnailPath: null
+        }
+      ],
+      'track-2',
+      true
+    );
+    renderDetail();
+
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    scrollIntoView.mockClear();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    await waitFor(() => expect(usePlayerStore.getState().shuffle).toBe(false));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+
+    expect(scrollIntoView.mock.instances[0]).toHaveTextContent('Naima');
+  });
+
   it('leaves the page at the top when another playlist is the queue', async () => {
     usePlayerStore.getState().startQueue(
       'other-playlist',
@@ -342,6 +525,22 @@ describe('PlaylistDetailPage', () => {
     await screen.findByText('Naima');
 
     expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('keeps the list where it stands when a row starts the queue', async () => {
+    const scrollTo = vi.fn();
+
+    vi.stubGlobal('scrollTo', scrollTo);
+    const { router } = renderDetail();
+    const row = await screen.findByRole('button', { name: 'Play Naima' });
+
+    scrollTo.mockClear();
+    fireEvent.click(row);
+
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
   /*
@@ -686,7 +885,7 @@ describe('PlaylistDetailPage', () => {
     ).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Actions for Blue In Green' })
-    ).toBeDisabled();
+    ).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -1950,5 +2149,301 @@ describe('PlaylistDetailPage filter chips', () => {
       'Blue In Green',
       'Naima'
     ]);
+  });
+
+  it('lands on the track a link starts the queue at', async () => {
+    renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().currentId).toBe('track-2')
+    );
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    expect(scrollIntoView.mock.instances[0]).toHaveTextContent('Naima');
+  });
+
+  it('starts the playlist at the shared track', async () => {
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().currentId).toBe('track-2')
+    );
+    const state = usePlayerStore.getState();
+
+    expect(state.positionSeconds).toBe(0);
+    expect(state.isPlaying).toBe(true);
+    expect(state.shuffle).toBe(false);
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('leaves a queue already at the shared track alone', async () => {
+    usePlayerStore
+      .getState()
+      .startQueue(
+        PLAYLIST_ID,
+        [
+          playerTrack('track-1', 'Blue In Green', 337),
+          playerTrack('track-2', 'Naima', 273)
+        ],
+        'track-2'
+      );
+    usePlayerStore.getState().setPosition(12);
+    usePlayerStore.getState().setPlaying(false);
+
+    renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(
+      await screen.findByRole('button', { name: 'Play Naima' })
+    ).toBeInTheDocument();
+    expect(usePlayerStore.getState().positionSeconds).toBe(12);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('jumps a loaded playlist to the shared track', async () => {
+    usePlayerStore
+      .getState()
+      .startQueue(
+        PLAYLIST_ID,
+        [
+          playerTrack('track-1', 'Blue In Green', 337),
+          playerTrack('track-2', 'Naima', 273)
+        ],
+        'track-1'
+      );
+    usePlayerStore.getState().setPosition(30);
+
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().currentId).toBe('track-2')
+    );
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('starts the shared playlist over another queue', async () => {
+    usePlayerStore.getState().startQueue(
+      'other-playlist',
+      [
+        {
+          id: 'other-track',
+          title: 'Elsewhere',
+          playlistId: 'other-playlist',
+          playlistName: 'Elsewhere',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      'other-track'
+    );
+
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(queuePlaylistId(usePlayerStore.getState())).toBe(PLAYLIST_ID)
+    );
+    const state = usePlayerStore.getState();
+
+    expect(state.currentId).toBe('track-2');
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('mirrors the current track as the queue moves', async () => {
+    usePlayerStore
+      .getState()
+      .startQueue(
+        PLAYLIST_ID,
+        [
+          playerTrack('track-1', 'Blue In Green', 337),
+          playerTrack('track-2', 'Naima', 273)
+        ],
+        'track-1'
+      );
+    const { router } = renderDetail();
+
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-1' })
+    );
+
+    act(() => usePlayerStore.getState().skipNext());
+
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('leaves the address bar free of a track while another playlist is the queue', async () => {
+    usePlayerStore.getState().startQueue(
+      'other-playlist',
+      [
+        {
+          id: 'other-track',
+          title: 'Elsewhere',
+          playlistId: 'other-playlist',
+          playlistName: 'Elsewhere',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      'other-track'
+    );
+
+    const { router } = renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+    expect(router.state.location.search.track).toBeUndefined();
+  });
+
+  it('copies a row link and confirms it', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true
+    });
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Naima' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/playlists/${PLAYLIST_ID}?track=track-2`
+      )
+    );
+    expect(await screen.findByText('Link copied')).toBeInTheDocument();
+  });
+
+  it('reports a copy the browser refuses', async () => {
+    const writeText = vi.fn(() => Promise.reject(new Error('denied')));
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true
+    });
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Actions for Naima' })
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
+
+    expect(
+      await screen.findByText('The link could not be copied.')
+    ).toBeInTheDocument();
+  });
+});
+
+describe('shared links', () => {
+  it('hops to the bare track when the playlist is unreachable', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        problemResponse({
+          title: 'Playlist not found',
+          status: 404,
+          code: ProblemCode.PlaylistNotFound,
+          detail: 'The playlist is not here.'
+        })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/tracks/track-2')
+    );
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('offers a retry when the playlist read fails for another reason', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        problemResponse({
+          title: 'Server error',
+          status: 500,
+          code: ProblemCode.InternalError,
+          detail: 'The server had a problem.'
+        })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/playlists/${PLAYLIST_ID}`);
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('offers a retry when the queue read fails for a shared link', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            title: 'Server error',
+            status: 500,
+            code: ProblemCode.InternalError,
+            detail: 'The server had a problem.'
+          })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/playlists/${PLAYLIST_ID}`);
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('hops to the bare track when the playlist no longer holds it', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: [
+              trackJson('track-1', 'Blue In Green', 0),
+              trackJson('track-3', 'Flamenco Sketches', 2)
+            ]
+          })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/tracks/track-2')
+    );
+    expect(router.state.location.state).toMatchObject({ leftPlaylist: true });
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
+  it('keeps the playlist and explains a track that cannot play', async () => {
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: [
+              trackJson('track-1', 'Blue In Green', 0),
+              trackJson('track-2', 'Naima', 1, TrackFileStatus.Pending)
+            ]
+          })
+      )
+    );
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(await screen.findByText('Naima cannot play.')).toBeInTheDocument();
+    expect(screen.getByText('It is not stored yet.')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/playlists/${PLAYLIST_ID}`);
+    expect(usePlayerStore.getState().queue).toEqual([]);
   });
 });

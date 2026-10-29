@@ -1,4 +1,5 @@
 import {
+  IconCopy,
   IconDotsVertical,
   IconRotate,
   IconScissorsOff,
@@ -23,8 +24,8 @@ import { failureSentence } from './failureSentence/failureSentence';
 
 /*
  * The whole row plays the track; the lane at its end opens the menu above it.
- * Only the current row draws a playback word, the lane is inert without curate
- * rights, and no state rests on colour alone.
+ * Only the current row draws a playback word, Copy link is always in the lane,
+ * and no state rests on colour alone.
  */
 
 interface TrackRowProps {
@@ -42,7 +43,9 @@ interface TrackRowProps {
   readonly onFetchWhole?: (trackId: string) => void;
   /** Remove the track from the playlist. Absent when the caller cannot curate. */
   readonly onRemove?: (trackId: string) => void;
-  /** Whether a row action is in flight, so the menu is not opened onto a no-op. */
+  /** Copy this row's link. Always available, even without curate rights. */
+  readonly onCopyLink: (trackId: string) => void;
+  /** Whether a row action is in flight; it gates the mutating items, not Copy link. */
   readonly busy?: boolean;
   /** Whether this row's press is waiting on its queue read. */
   readonly starting?: boolean;
@@ -64,6 +67,7 @@ function TrackRow({
   onRetry,
   onFetchWhole,
   onRemove,
+  onCopyLink,
   busy = false,
   starting = false,
   pending = false
@@ -106,10 +110,22 @@ function TrackRow({
     onClose: () => setMenuOpen(false)
   });
 
-  /* The lane's items: a failed fileless track gets Retry and Fetch whole beside
-   * the remove; a downloading row keeps the menu but disables it. */
+  /* Copy link is always in the lane; a row whose download, action or read is
+   * in flight drops the mutating items rather than the menu. */
+  const locked = downloading || busy || pending || starting;
   const laneItems: LaneItem[] = [
-    ...(failed && onRetry !== undefined
+    {
+      label: t('trackRow.copyLink'),
+      icon: (
+        <IconCopy
+          className={styles.trackRow__menuIcon}
+          aria-hidden="true"
+          focusable="false"
+        />
+      ),
+      run: () => onCopyLink(track.id)
+    },
+    ...(!locked && failed && onRetry !== undefined
       ? [
           {
             label: t('trackRow.retry'),
@@ -124,7 +140,7 @@ function TrackRow({
           }
         ]
       : []),
-    ...(failed && onFetchWhole !== undefined
+    ...(!locked && failed && onFetchWhole !== undefined
       ? [
           {
             label: t('trackRow.fetchWhole'),
@@ -139,7 +155,7 @@ function TrackRow({
           }
         ]
       : []),
-    ...(onRemove === undefined
+    ...(locked || onRemove === undefined
       ? []
       : [
           {
@@ -157,42 +173,38 @@ function TrackRow({
         ])
   ];
 
-  const lane =
-    laneItems.length === 0 ? (
-      <span className={styles.trackRow__lane} aria-hidden="true" />
-    ) : (
-      <span className={styles.trackRow__menuAnchor} ref={menuAnchorRef}>
-        <button
-          ref={menuButtonRef}
-          type="button"
-          className={styles.trackRow__action}
-          aria-label={t('trackRow.actions', { title: track.title })}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          disabled={downloading || busy || pending || starting}
-          onClick={() => setMenuOpen(open => !open)}>
-          <IconDotsVertical
-            className={styles.trackRow__actionIcon}
-            aria-hidden="true"
-            focusable="false"
-          />
-        </button>
-        <Menu
-          open={menuOpen}
-          items={laneItems.map(item => ({
-            key: item.label,
-            label: item.label,
-            icon: item.icon,
-            destructive: item.destructive === true,
-            onSelect: item.run
-          }))}
-          triggerRef={menuButtonRef}
-          onClose={() => setMenuOpen(false)}
-          className={styles.trackRow__menu}
-          itemClassName={styles.trackRow__menuItem}
+  const lane = (
+    <span className={styles.trackRow__menuAnchor} ref={menuAnchorRef}>
+      <button
+        ref={menuButtonRef}
+        type="button"
+        className={styles.trackRow__action}
+        aria-label={t('trackRow.actions', { title: track.title })}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen(open => !open)}>
+        <IconDotsVertical
+          className={styles.trackRow__actionIcon}
+          aria-hidden="true"
+          focusable="false"
         />
-      </span>
-    );
+      </button>
+      <Menu
+        open={menuOpen}
+        items={laneItems.map(item => ({
+          key: item.label,
+          label: item.label,
+          icon: item.icon,
+          destructive: item.destructive === true,
+          onSelect: item.run
+        }))}
+        triggerRef={menuButtonRef}
+        onClose={() => setMenuOpen(false)}
+        className={styles.trackRow__menu}
+        itemClassName={styles.trackRow__menuItem}
+      />
+    </span>
+  );
 
   return (
     <li

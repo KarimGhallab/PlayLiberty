@@ -22,6 +22,10 @@ export function documentTitle(
   const app = t('app.name');
 
   if (track !== null) {
+    if (track.playlistName === null) {
+      return t('app.title.bareTrack', { app, track: track.title });
+    }
+
     return t('app.title.track', {
       app,
       playlist: track.playlistName,

@@ -1,5 +1,11 @@
 import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useRouter,
+  useSearch
+} from '@tanstack/react-router';
 import {
   useCallback,
   useEffect,
@@ -8,6 +14,7 @@ import {
   useRef,
   useState
 } from 'react';
+import { flushSync } from 'react-dom';
 
 import {
   PlaylistSort,
@@ -23,6 +30,7 @@ import {
   useAccountDirectory,
   useCurrentAccount
 } from '../../../shared/api/clients/accountClient/accountClient';
+import { ApiError } from '../../../shared/api/clients/apiClient/apiClient';
 import { usePlaylists } from '../../../shared/api/clients/libraryClient/libraryClient';
 import {
   useAddTrack,
@@ -57,12 +65,17 @@ import RetryFailedControl from '../../../shared/components/RetryFailedControl/Re
 import SyncControl from '../../../shared/components/SyncControl/SyncControl';
 import SyncError from '../../../shared/components/SyncError/SyncError';
 import SyncSummary from '../../../shared/components/SyncSummary/SyncSummary';
+import ErrorToast from '../../../shared/components/Toast/ErrorToast';
+import SuccessToast from '../../../shared/components/Toast/SuccessToast';
+import ToastStack from '../../../shared/components/Toast/ToastStack';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
-import { hasPlayableTrack } from '../../../shared/player/playable';
+import { hasPlayableTrack, isPlayable } from '../../../shared/player/playable';
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
+import type { TrackLinkNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+import { cannotPlayNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
 import {
   currentTrack,
   hasNext,
@@ -85,14 +98,31 @@ import {
 } from '../../../shared/useMediaQuery/useMediaQuery';
 
 import styles from './PlaylistDetailPage.module.scss';
+import TrackListSkeleton from './TrackListSkeleton/TrackListSkeleton';
 
 /* Every association is drawn, playable or not: a vanished track would make
  * "why is this missing" unanswerable. */
 
+/*
+ * A list this long swaps its order slower than a frame, so the skeleton stands
+ * in front of the exchange; a shorter one lands before the skeleton could paint.
+ */
+const REORDER_HOLD_ROWS = 50;
+
+/** The result of the row's copy, which chooses the toast. */
+enum CopyLinkResult {
+  Copied = 'copied',
+  Failed = 'failed'
+}
+
 export default function PlaylistDetailPage() {
   const { t } = useI18n();
   const { playlistId } = useParams({ from: '/playlists/$playlistId' });
+  const { track: trackParam = null } = useSearch({
+    from: '/playlists/$playlistId'
+  });
   const navigate = useNavigate();
+  const router = useRouter();
   const playlist = usePlaylist(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
@@ -109,6 +139,8 @@ export default function PlaylistDetailPage() {
   const addTrack = useAddTrack();
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
+  const [copyResult, setCopyResult] = useState<CopyLinkResult | null>(null);
+  const [linkNotice, setLinkNotice] = useState<TrackLinkNotice | null>(null);
   const deferred = useDeferredAction();
 
   const actions = usePlaylistActions({
@@ -140,16 +172,24 @@ export default function PlaylistDetailPage() {
    * queue is on screen; the choice survives until the shuffle is turned off.
    */
   const [trackState, setTrackState] = useState<TrackFileStatus | null>(null);
+  /* The exchange of the queue's order, which is held behind the skeleton. */
+  const [rebuilding, setRebuilding] = useState(false);
   /*
-   * The route reuses this component across ids, so the filter is cleared with
-   * the playlist rather than carried onto the next screen.
+   * The route reuses this component across ids, so the filter, the link notice
+   * and its decision are cleared with the playlist.
    */
   useEffect(() => {
     setTrackState(null);
+    setLinkNotice(null);
+    inspectedLink.current = null;
+    redirectingLink.current = null;
   }, [playlistId]);
   const activeState = listShuffled ? null : trackState;
   const tracks = usePlaylistTracks(playlistId, activeState ?? undefined);
-  const queueRead = usePlaylistQueue(playlistId, isQueue);
+  const queueRead = usePlaylistQueue(
+    playlistId,
+    isQueue || trackParam !== null
+  );
   useQueueRefetch(playlist.data, queueRead.data);
   /* The queue's own derivation, so a shuffled queue goes dead at its last entry
    * exactly as an unshuffled one does. */
@@ -157,14 +197,44 @@ export default function PlaylistDetailPage() {
 
   const listRef = useRef<HTMLUListElement>(null);
   const scrollHandledFor = useRef<string | null>(null);
+  /* A shuffle toggle earns the landing the open already took. */
+  const landAfterToggle = useRef(false);
+  /* A link that starts the queue earns the landing the open could not take. */
+  const landAfterLink = useRef(false);
+  const orderFrames = useRef<number[]>([]);
+  const inspectedLink = useRef<string | null>(null);
+  const redirectingLink = useRef<string | null>(null);
+
+  const currentLoaded =
+    currentId !== null &&
+    tracks.tracks.some(association => association.track.id === currentId);
 
   /*
-   * Opening the queue's playlist lands on its current row, not the top. The jump
-   * waits one task because the router resets a cached navigation to the top, and
-   * is made once per open; pages load until the row exists.
+   * The list has no place to stand while the pages that hold the current row
+   * arrive; the skeleton holds its geometry rather than a list about to jump.
+   * The sort, the chips and Load more belong to that list, so they wait too.
+   */
+  const landing =
+    isQueue &&
+    currentId !== null &&
+    activeState === null &&
+    tracks.isSuccess &&
+    !currentLoaded &&
+    tracks.hasMore &&
+    !tracks.moreFailed;
+
+  /*
+   * Opening the queue's playlist lands on its current row, not the top, and a
+   * shuffle toggle lands again: the row it draws changed places with the order.
+   * The jump waits one task because the router resets a cached navigation to the
+   * top, and pages load until the row exists.
    */
   useLayoutEffect(() => {
-    if (scrollHandledFor.current === playlistId) {
+    if (
+      scrollHandledFor.current === playlistId &&
+      !landAfterToggle.current &&
+      !landAfterLink.current
+    ) {
       return;
     }
 
@@ -184,6 +254,8 @@ export default function PlaylistDetailPage() {
         tracks.loadMore();
       } else if (!tracks.hasMore) {
         scrollHandledFor.current = playlistId;
+        landAfterToggle.current = false;
+        landAfterLink.current = false;
       }
 
       return;
@@ -192,6 +264,8 @@ export default function PlaylistDetailPage() {
     const timer = window.setTimeout(() => {
       row.scrollIntoView({ behavior: 'instant', block: 'center' });
       scrollHandledFor.current = playlistId;
+      landAfterToggle.current = false;
+      landAfterLink.current = false;
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -199,6 +273,7 @@ export default function PlaylistDetailPage() {
     activeState,
     currentId,
     isQueue,
+    listShuffled,
     playlistId,
     tracks.hasMore,
     tracks.isPlaceholderData,
@@ -208,6 +283,25 @@ export default function PlaylistDetailPage() {
     tracks.moreFailed,
     tracks.tracks
   ]);
+
+  /* Both frames are cancelled on the way out, so a route change mid-exchange
+   * leaves the store alone. */
+  useEffect(
+    () => () => {
+      for (const frame of orderFrames.current) {
+        cancelAnimationFrame(frame);
+      }
+    },
+    []
+  );
+
+  /* A press that never became a queue leaves no landing owed. */
+  useEffect(() => {
+    if (!transition.starting && !isQueue) {
+      landAfterToggle.current = false;
+      landAfterLink.current = false;
+    }
+  }, [transition.starting, isQueue]);
 
   const ownerName =
     playlist.data !== undefined && directory.data !== undefined
@@ -235,10 +329,183 @@ export default function PlaylistDetailPage() {
     [transition.playTrack, playlistView]
   );
 
+  /* A 404 on an open playlist with a track param is the bare track, silently;
+   * the open playlist without one keeps the not-found body. */
+  useEffect(() => {
+    if (
+      trackParam === null ||
+      !playlist.isError ||
+      !(playlist.error instanceof ApiError) ||
+      playlist.error.status !== 404
+    ) {
+      return;
+    }
+
+    void navigate({
+      to: '/tracks/$trackId',
+      params: { trackId: trackParam },
+      replace: true
+    });
+  }, [navigate, playlist.error, playlist.isError, trackParam]);
+
+  /* A link naming a track is resolved against the whole queue before anything
+   * starts: absent hops to the bare track, unplayable explains itself here. */
+  useEffect(() => {
+    if (trackParam === null || playlist.data === undefined) {
+      return;
+    }
+
+    if (queueRead.isError || queueRead.data === undefined) {
+      return;
+    }
+
+    if (inspectedLink.current === trackParam) {
+      return;
+    }
+
+    const association = queueRead.data.find(
+      entry => entry.track.id === trackParam
+    );
+
+    inspectedLink.current = trackParam;
+
+    if (association === undefined) {
+      redirectingLink.current = trackParam;
+      router.history.replace(`/tracks/${encodeURIComponent(trackParam)}`, {
+        leftPlaylist: true
+      });
+      return;
+    }
+
+    if (!isPlayable(association.track)) {
+      setLinkNotice(cannotPlayNotice(association.track, t));
+      return;
+    }
+
+    const player = usePlayerStore.getState();
+
+    if (
+      queuePlaylistId(player) === playlistId &&
+      player.currentId === trackParam
+    ) {
+      return;
+    }
+
+    landAfterLink.current = true;
+    playTrack(trackParam);
+  }, [
+    navigate,
+    playTrack,
+    playlist.data,
+    playlistId,
+    queueRead.data,
+    queueRead.isError,
+    router,
+    t,
+    trackParam
+  ]);
+
+  /* While this playlist is the queue, the address bar names its current track;
+   * another queue leaves no track on this page. The mirror never moves the
+   * reader, and a link whose entry has not decided yet is not its to remove. */
+  useEffect(() => {
+    if (playlist.data === undefined) {
+      return;
+    }
+
+    if (
+      trackParam !== null &&
+      (inspectedLink.current !== trackParam ||
+        redirectingLink.current === trackParam)
+    ) {
+      return;
+    }
+
+    const player = usePlayerStore.getState();
+    const target =
+      queuePlaylistId(player) === playlistId && player.currentId !== null
+        ? player.currentId
+        : null;
+
+    if (trackParam === target) {
+      return;
+    }
+
+    void navigate({
+      to: '/playlists/$playlistId',
+      params: { playlistId },
+      search: target === null ? {} : { track: target },
+      replace: true,
+      resetScroll: false
+    });
+  }, [
+    currentId,
+    navigate,
+    playlist.data,
+    playlistId,
+    playingPlaylistId,
+    queueRead.data,
+    trackParam
+  ]);
+
+  /* The exchange freezes the frame it lands on, so the skeleton is painted first
+   * and stands through it; the list stays mounted under it, keeping scroll and
+   * height. */
+  const toggleShuffle = useCallback(() => {
+    landAfterToggle.current = true;
+
+    const hold =
+      isQueue && !rebuilding && tracks.tracks.length >= REORDER_HOLD_ROWS;
+
+    if (!hold) {
+      transition.shuffle(playlistView);
+      return;
+    }
+
+    flushSync(() => setRebuilding(true));
+
+    orderFrames.current = [
+      requestAnimationFrame(() => {
+        orderFrames.current.push(
+          requestAnimationFrame(() => {
+            transition.shuffle(playlistView);
+            setRebuilding(false);
+            orderFrames.current = [];
+          })
+        );
+      })
+    ];
+  }, [
+    isQueue,
+    rebuilding,
+    tracks.tracks.length,
+    transition.shuffle,
+    playlistView
+  ]);
+
   /* The whole playlist's counts, read before the header so its play control
    * and the queue cannot disagree about whether anything is stored. */
   const counts = tracks.counts;
   const playable = counts === undefined || hasPlayableTrack({ counts });
+
+  /* The link is absolute so it survives a paste into a chat; an insecure
+   * origin has no clipboard, which reports the failure rather than silence. */
+  const copyTrackLink = useCallback(
+    (trackId: string): void => {
+      const url = new URL(`/playlists/${playlistId}`, window.location.origin);
+      url.searchParams.set('track', trackId);
+
+      void (async () => {
+        try {
+          await navigator.clipboard.writeText(url.href);
+          setCopyResult(CopyLinkResult.Copied);
+        } catch {
+          setCopyResult(CopyLinkResult.Failed);
+        }
+      })();
+    },
+    [playlistId]
+  );
 
   /*
    * Deferred like the playlist delete: the toast's Cancel is the only place a
@@ -313,6 +580,28 @@ export default function PlaylistDetailPage() {
     }
   }, [addTrack.isSuccess, batchRefused]);
 
+  /* The link's refusal withdraws on the notice window. */
+  useEffect(() => {
+    if (linkNotice === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setLinkNotice(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [linkNotice]);
+
+  /* The copy result withdraws on the same window; the toast owns no timer. */
+  useEffect(() => {
+    if (copyResult === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setCopyResult(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [copyResult]);
+
   /* The refusal withdraws on the window the shuffle notice uses. */
   useEffect(() => {
     if (settingRefused === null) {
@@ -356,13 +645,34 @@ export default function PlaylistDetailPage() {
   const failedCount = counts?.[TrackFileStatus.Failed] ?? 0;
 
   /*
-   * A 404, whether the playlist is gone or no longer visible, is the not-found
-   * state rather than an error: the whole body is replaced by the way back.
+   * A 404 on an open playlist is the not-found state, or a silent hop to the
+   * bare track when the link named one. Any other failure is a read to retry.
    */
   if (playlist.isError) {
+    if (
+      trackParam !== null &&
+      playlist.error instanceof ApiError &&
+      playlist.error.status === 404
+    ) {
+      return null;
+    }
+
+    if (playlist.error instanceof ApiError && playlist.error.status === 404) {
+      return (
+        <main className={styles.playlistDetail}>
+          <PlaylistNotFound />
+        </main>
+      );
+    }
+
     return (
       <main className={styles.playlistDetail}>
-        <PlaylistNotFound />
+        <ReadFailure
+          message={t('detail.readFailed')}
+          error={playlist.error}
+          onRetry={() => void playlist.refetch()}
+          retrying={playlist.isFetching}
+        />
       </main>
     );
   }
@@ -383,7 +693,7 @@ export default function PlaylistDetailPage() {
     onSkipBack: skipPrevious,
     onSkipNext: skipNext,
     hasNext: canSkipNext,
-    onShuffle: () => transition.shuffle(playlistView),
+    onShuffle: toggleShuffle,
     shuffled,
     menu: actions.menuFor(playlist.data),
     /* The window claim is made only while the list is the whole playlist: a
@@ -413,14 +723,21 @@ export default function PlaylistDetailPage() {
             aria-hidden="true"
             focusable="false"
           />
-          {t('detail.back')}
+          {isMobile ? t('detail.backShort') : t('detail.back')}
         </Link>
         <div className={styles.playlistDetail__actions}>
           {me.data?.role === UserRole.Admin ? <EgressLink /> : null}
           <LanguageMenu />
           {canWrite && !emptyStateSync && !syncErrorShown ? (
             <SyncControl
-              label={t('detail.syncPlaylist')}
+              label={
+                isMobile
+                  ? t('detail.syncPlaylistShort')
+                  : t('detail.syncPlaylist')
+              }
+              visibleLabel={
+                isMobile ? t('detail.syncPlaylistShort') : undefined
+              }
               workingLabel={t('detail.syncingPlaylist')}
               working={syncInFlight}
               disabled={playlistPending}
@@ -449,6 +766,15 @@ export default function PlaylistDetailPage() {
           ) : null}
         </div>
       </nav>
+
+      {trackParam !== null && queueRead.isError ? (
+        <ReadFailure
+          message={t('detail.readFailed')}
+          error={queueRead.error}
+          onRetry={() => void queueRead.refetch()}
+          retrying={queueRead.isFetching}
+        />
+      ) : null}
 
       {canWrite && isMobile ? (
         <FloatingAction
@@ -534,20 +860,7 @@ export default function PlaylistDetailPage() {
         </div>
 
         <div className={styles.playlistDetail__tracks}>
-          {tracks.isPending ? (
-            <p className={styles.playlistDetail__note}>
-              {t('detail.loadingTracks')}
-            </p>
-          ) : null}
-          {tracks.isError ? (
-            <ReadFailure
-              message={t('detail.readFailed')}
-              error={tracks.error}
-              onRetry={tracks.retry}
-              retrying={tracks.retrying}
-            />
-          ) : null}
-          {tracks.isSuccess && counts !== undefined && hasTracks ? (
+          {tracks.isSuccess && counts !== undefined && hasTracks && !landing ? (
             <div className={styles.playlistDetail__controls}>
               <PlaylistSortControl
                 sort={playlist.data?.sort ?? PlaylistSort.Playlist}
@@ -571,90 +884,118 @@ export default function PlaylistDetailPage() {
               />
             </div>
           ) : null}
-          {activeState === TrackFileStatus.Failed &&
-          tracks.isSuccess &&
-          canWrite &&
-          failedCount > 0 ? (
-            <div className={styles.playlistDetail__bulkRetry}>
-              <RetryFailedControl
-                count={failedCount}
-                retrying={retryAllFailed.isPending}
-                onRetry={retryFailedTracks}
-              />
-            </div>
-          ) : null}
-          {emptyStateSync ? (
-            <EmptyState
-              onSync={canWrite ? () => actions.syncNow(playlistId) : undefined}
-              syncing={syncInFlight}
-            />
-          ) : null}
-          {!neverSynced && tracks.isSuccess && !hasTracks ? (
-            <p className={styles.playlistDetail__note}>
-              {t('detail.noTracks')}
-            </p>
-          ) : null}
-          {tracks.isSuccess &&
-          hasTracks &&
-          filterEmpty &&
-          filterEmptyMessage !== null ? (
-            <div className={styles.playlistDetail__filterEmpty} role="status">
-              <p className={styles.playlistDetail__filterEmptyText}>
-                {filterEmptyMessage}
-              </p>
-              <button
-                type="button"
-                className={styles.playlistDetail__filterReset}
-                onClick={() => setTrackState(null)}>
-                {t('detail.filterShowAll')}
-              </button>
-            </div>
-          ) : null}
-          {tracks.isSuccess && tracks.tracks.length > 0 ? (
-            <ul className={styles.playlistDetail__list} ref={listRef}>
-              {(listShuffled
-                ? orderTracksByQueue(tracks.tracks, queue)
-                : tracks.tracks
-              ).map(association => {
-                /*
-                 * A non-current row is told `playing: false`; the global
-                 * `isPlaying` would re-render every row on a play or a pause.
-                 */
-                const isCurrent = association.track.id === currentId;
-
-                return (
-                  <TrackRow
-                    key={association.track.id}
-                    association={association}
-                    current={isCurrent}
-                    playing={isCurrent && isPlaying}
-                    pending={
-                      playlistPending ||
-                      deferred.windows.some(
-                        entry => entry.id === association.track.id
-                      )
-                    }
-                    onPlay={playTrack}
-                    onRetry={canWrite ? retryTrack : undefined}
-                    onFetchWhole={canWrite ? fetchWholeTrack : undefined}
-                    onRemove={canWrite ? removeTrackDeferred : undefined}
-                    busy={busyTrackId === association.track.id}
-                    starting={
-                      startingThisPlaylist?.startTrackId ===
-                      association.track.id
-                    }
+          <div className={styles.playlistDetail__flow}>
+            {rebuilding ? (
+              <div className={styles.playlistDetail__rebuild}>
+                <div className={styles.playlistDetail__rebuildPanel}>
+                  <TrackListSkeleton />
+                </div>
+              </div>
+            ) : null}
+            {/* Inert while the order is exchanged, so the sheet is all that is offered. */}
+            <div inert={rebuilding}>
+              {!rebuilding && (tracks.isPending || landing) ? (
+                <TrackListSkeleton />
+              ) : null}
+              {tracks.isError ? (
+                <ReadFailure
+                  message={t('detail.readFailed')}
+                  error={tracks.error}
+                  onRetry={tracks.retry}
+                  retrying={tracks.retrying}
+                />
+              ) : null}
+              {activeState === TrackFileStatus.Failed &&
+              tracks.isSuccess &&
+              canWrite &&
+              failedCount > 0 ? (
+                <div className={styles.playlistDetail__bulkRetry}>
+                  <RetryFailedControl
+                    count={failedCount}
+                    retrying={retryAllFailed.isPending}
+                    onRetry={retryFailedTracks}
                   />
-                );
-              })}
-            </ul>
-          ) : null}
-          {tracks.isSuccess && tracks.hasMore ? (
-            <LoadMoreControl
-              loading={tracks.loadingMore}
-              failed={tracks.moreFailed}
-              onLoadMore={tracks.loadMore}
-            />
-          ) : null}
+                </div>
+              ) : null}
+              {emptyStateSync ? (
+                <EmptyState
+                  onSync={
+                    canWrite ? () => actions.syncNow(playlistId) : undefined
+                  }
+                  syncing={syncInFlight}
+                />
+              ) : null}
+              {!neverSynced && tracks.isSuccess && !hasTracks ? (
+                <p className={styles.playlistDetail__note}>
+                  {t('detail.noTracks')}
+                </p>
+              ) : null}
+              {tracks.isSuccess &&
+              hasTracks &&
+              filterEmpty &&
+              filterEmptyMessage !== null ? (
+                <div
+                  className={styles.playlistDetail__filterEmpty}
+                  role="status">
+                  <p className={styles.playlistDetail__filterEmptyText}>
+                    {filterEmptyMessage}
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.playlistDetail__filterReset}
+                    onClick={() => setTrackState(null)}>
+                    {t('detail.filterShowAll')}
+                  </button>
+                </div>
+              ) : null}
+              {tracks.isSuccess && tracks.tracks.length > 0 && !landing ? (
+                <ul className={styles.playlistDetail__list} ref={listRef}>
+                  {(listShuffled
+                    ? orderTracksByQueue(tracks.tracks, queue)
+                    : tracks.tracks
+                  ).map(association => {
+                    /*
+                     * A non-current row is told `playing: false`; the global
+                     * `isPlaying` would re-render every row on a play or a pause.
+                     */
+                    const isCurrent = association.track.id === currentId;
+
+                    return (
+                      <TrackRow
+                        key={association.track.id}
+                        association={association}
+                        current={isCurrent}
+                        playing={isCurrent && isPlaying}
+                        pending={
+                          playlistPending ||
+                          deferred.windows.some(
+                            entry => entry.id === association.track.id
+                          )
+                        }
+                        onPlay={playTrack}
+                        onRetry={canWrite ? retryTrack : undefined}
+                        onFetchWhole={canWrite ? fetchWholeTrack : undefined}
+                        onRemove={canWrite ? removeTrackDeferred : undefined}
+                        onCopyLink={copyTrackLink}
+                        busy={busyTrackId === association.track.id}
+                        starting={
+                          startingThisPlaylist?.startTrackId ===
+                          association.track.id
+                        }
+                      />
+                    );
+                  })}
+                </ul>
+              ) : null}
+              {tracks.isSuccess && tracks.hasMore && !landing ? (
+                <LoadMoreControl
+                  loading={tracks.loadingMore}
+                  failed={tracks.moreFailed}
+                  onLoadMore={tracks.loadMore}
+                />
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -687,6 +1028,30 @@ export default function PlaylistDetailPage() {
           detail={settingRefused}
           durationMs={NOTICE_WINDOW_MS}
         />
+      )}
+      {linkNotice === null ? null : (
+        <NoticeToast
+          message={linkNotice.message}
+          detail={linkNotice.detail}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {copyResult === null ? null : (
+        <ToastStack>
+          {copyResult === CopyLinkResult.Copied ? (
+            <SuccessToast
+              message={t('trackRow.linkCopied')}
+              durationMs={NOTICE_WINDOW_MS}
+              onDismiss={() => setCopyResult(null)}
+            />
+          ) : (
+            <ErrorToast
+              message={t('trackRow.linkCopyFailed')}
+              durationMs={NOTICE_WINDOW_MS}
+              onDismiss={() => setCopyResult(null)}
+            />
+          )}
+        </ToastStack>
       )}
     </main>
   );

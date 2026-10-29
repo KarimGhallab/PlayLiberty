@@ -1,4 +1,3 @@
-import { mutePlayback } from '../support/audio';
 import { playlistUrl, writeScenario } from '../support/instance';
 import { expect, test } from '../support/test';
 
@@ -13,8 +12,6 @@ const PLAYLIST_ID = 'E2Eplaylist';
 test('a stored track plays and the seeker moves the real playhead', async ({
   page
 }) => {
-  await mutePlayback(page);
-
   writeScenario({
     sources: {
       [PLAYLIST_ID]: {

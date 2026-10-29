@@ -115,6 +115,8 @@ describe('PlayerAudio', () => {
     act(() => {
       usePlayerStore.getState().hydrate({
         sourceQueue: [first],
+        orderIds: [],
+        shuffle: false,
         currentId: first.id,
         positionSeconds: 42,
         volume: 1
@@ -135,6 +137,8 @@ describe('PlayerAudio', () => {
     act(() => {
       usePlayerStore.getState().hydrate({
         sourceQueue: [first],
+        orderIds: [],
+        shuffle: false,
         currentId: first.id,
         positionSeconds: 42,
         volume: 1
@@ -392,6 +396,43 @@ describe('PlayerAudio', () => {
     });
 
     expect(published.at(-1)?.init.album).toBe('Rain On The Window');
+  });
+
+  it('publishes no album for a track started on its own', () => {
+    class FakeMetadata {
+      constructor(readonly init: { album?: string }) {}
+    }
+    vi.stubGlobal('MediaMetadata', FakeMetadata);
+
+    const published: FakeMetadata[] = [];
+
+    Object.defineProperty(navigator, 'mediaSession', {
+      value: {
+        get metadata() {
+          return published.at(-1) ?? null;
+        },
+        set metadata(value: FakeMetadata | null) {
+          if (value !== null) {
+            published.push(value);
+          }
+        },
+        setActionHandler: () => undefined
+      },
+      configurable: true
+    });
+
+    render(<PlayerAudio />);
+
+    act(() => {
+      usePlayerStore.getState().startBareTrack({
+        id: first.id,
+        title: first.title,
+        durationSeconds: first.durationSeconds,
+        thumbnailPath: first.thumbnailPath
+      });
+    });
+
+    expect(published.at(-1)?.init.album).toBe('');
   });
 
   it('drops a track the stream says is gone and advances', async () => {

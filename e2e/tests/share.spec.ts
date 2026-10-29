@@ -42,7 +42,7 @@ test('an owner grants and revokes a share with another account', async ({
 
   // The directory is read on mount, so the reload brings the partner into the
   // dialog's list.
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await openHeaderMenu(page);
   await page.getByRole('menuitem', { name: 'Share' }).click();
 
@@ -63,7 +63,7 @@ test('an owner grants and revokes a share with another account', async ({
   ).toBeVisible();
 
   // The grant survives a reload, so it is the server's fact and not local state.
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(
     page.getByRole('img', { name: 'Shared playlist' })
   ).toBeVisible();

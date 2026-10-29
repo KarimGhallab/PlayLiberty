@@ -1,6 +1,5 @@
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
-import { mutePlayback } from '../support/audio';
 import { drainDownloads, writeScenario } from '../support/instance';
 import {
   addPlaylist,
@@ -138,7 +137,7 @@ test('the card keeps the name clear of the failed mark', async ({ page }) => {
     downloads: { e2ephonename1: 'fail' }
   });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   /* The failed count is the badge's reason to be drawn. */
   await expect(
@@ -154,7 +153,6 @@ test('the card keeps the name clear of the failed mark', async ({ page }) => {
 });
 
 test('a tap above the seeker moves the playhead', async ({ page, request }) => {
-  await mutePlayback(page);
   await seed(page, request);
 
   await page.getByRole('button', { name: `Play ${TRACK.title}` }).tap();

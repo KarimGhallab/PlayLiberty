@@ -108,6 +108,20 @@ describe('PlayerBar', () => {
     expect(screen.getByRole('button', { name: 'Mute' })).toBeInTheDocument();
   });
 
+  it('draws a track started on its own without a playlist', async () => {
+    usePlayerStore.getState().startBareTrack({
+      id: 'track-1',
+      title: 'Blue In Green',
+      durationSeconds: 180,
+      thumbnailPath: null
+    });
+    await renderBar();
+
+    expect(screen.getByText('Blue In Green')).toBeInTheDocument();
+    expect(screen.queryAllByRole('link')).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  });
+
   it('leaves the level to the OS on a device that cannot hover', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     const restore = stubViewport(TOUCH_QUERY);
@@ -470,7 +484,7 @@ describe('PlayerBar', () => {
     expect(slider).toHaveAttribute('aria-valuetext', '1:12 of 3:00');
   });
 
-  it('seeks to the pointer against the track box', async () => {
+  it('seeks once on release and silences the drag', async () => {
     usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
     await renderBar();
 
@@ -482,6 +496,34 @@ describe('PlayerBar', () => {
 
     fireEvent.pointerDown(slider, { clientX: 200, pointerId: 1 });
 
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(slider).toHaveAttribute('aria-valuenow', '90');
+
+    fireEvent.pointerMove(slider, { clientX: 300, pointerId: 1 });
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+
+    fireEvent.pointerUp(slider, { clientX: 300, pointerId: 1 });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(180);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('leaves a paused player paused after a drag', async () => {
+    usePlayerStore.getState().startQueue(PLAYLIST, [first], first.id);
+    usePlayerStore.getState().setPlaying(false);
+    await renderBar();
+
+    const slider = screen.getByRole('slider', { name: 'Position in track' });
+    vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      width: 200
+    } as DOMRect);
+
+    fireEvent.pointerDown(slider, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerUp(slider, { clientX: 200, pointerId: 1 });
+
     expect(usePlayerStore.getState().positionSeconds).toBe(90);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
   });
 });

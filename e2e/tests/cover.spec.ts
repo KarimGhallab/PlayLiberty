@@ -292,7 +292,7 @@ test('a custom cover reaches the detail and the gallery, survives a reload, and 
   await expect(galleryDialog).toBeHidden();
 
   /* A reload reads the server, so the cover is durable. */
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(
     customCoverIn(galleryItem(page, OWN_TITLE), ownedId)
   ).toBeVisible();
@@ -405,7 +405,7 @@ test('an owner crops a new cover and the stored square survives a reload', async
   await expect(cardCover).toBeVisible();
   await expectSquareCover(cardCover);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(cardCover).toBeVisible();
   await expectSquareCover(cardCover);
 
@@ -516,7 +516,7 @@ test('a write collaborator replaces the cover from the gallery', async ({
   /* A replacement is a new version, so a cached image cannot hide it. */
   await expect.poll(() => cardCover.getAttribute('src')).not.toBe(before);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(cardCover).toBeVisible();
 
   await openPlaylist(page, WRITE_TITLE);
@@ -562,7 +562,7 @@ test('the 390px arrangement opens the cover dialog and saves', async ({
 
   await expect(coverImage(page, playlistId)).toBeVisible();
 
-  await page.getByRole('link', { name: 'Back to home' }).click();
+  await page.getByRole('link', { name: /^Back( to home)?$/ }).click();
   await expect(
     customCoverIn(galleryItem(page, PHONE_TITLE), playlistId)
   ).toBeVisible();

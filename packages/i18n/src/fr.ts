@@ -9,7 +9,8 @@ export const fr: Messages = {
     name: 'PlayLiberté',
     title: {
       playlist: '{app} - {name}',
-      track: '{app} - {playlist} ({track})'
+      track: '{app} - {playlist} ({track})',
+      bareTrack: '{app} - {track}'
     }
   },
   language: {
@@ -42,6 +43,7 @@ export const fr: Messages = {
       one: 'Synchroniser 1 playlist',
       other: 'Synchroniser les {count} playlists'
     },
+    syncAllShort: 'Tout synchroniser',
     syncingAll: {
       one: 'Synchronisation de 1 playlist...',
       other: 'Synchronisation de {count} playlists...'
@@ -108,8 +110,12 @@ export const fr: Messages = {
   },
   detail: {
     back: "Retour à l'accueil",
+    /* The phone's row holds one line, so the way home and the sync drop the
+     * words it cannot carry. */
+    backShort: 'Retour',
     addTrack: 'Ajouter une piste',
     syncPlaylist: 'Synchroniser la playlist',
+    syncPlaylistShort: 'Synchroniser',
     syncingPlaylist: 'Synchronisation de la playlist...',
     loadingTracks: 'Chargement des pistes.',
     readFailed: 'Impossible de charger les pistes.',
@@ -151,6 +157,9 @@ export const fr: Messages = {
     play: 'Lire {title}',
     pause: 'Mettre en pause {title}',
     actions: 'Actions pour {title}',
+    copyLink: 'Copier le lien',
+    linkCopied: 'Lien copié',
+    linkCopyFailed: "Le lien n'a pas pu être copié.",
     retry: 'Réessayer',
     fetchWhole: 'Récupérer en entier',
     remove: 'Retirer de la playlist',
@@ -166,6 +175,17 @@ export const fr: Messages = {
     hideDetails: 'Masquer les détails',
     showDetailsFor: 'Afficher les détails de {title}',
     hideDetailsFor: 'Masquer les détails de {title}'
+  },
+  trackLink: {
+    cannotPlay: 'Impossible de lire {title}.',
+    notStored: "La piste n'est pas encore stockée.",
+    downloadFailed: 'Son téléchargement a échoué.',
+    unavailableDetail: "Sa vidéo a disparu et aucun fichier n'a été stocké.",
+    unknown: "Cette piste n'est pas disponible.",
+    unknownDetail:
+      'Le lien est peut-être rompu, ou la piste a peut-être été supprimée.',
+    leftPlaylist: "{title} n'est plus dans cette playlist.",
+    leftPlaylistDetail: 'Elle est lue seule.'
   },
   skipSetting: {
     label: 'Ignorer les parties non musicales'

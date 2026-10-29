@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 
-import type { PersistedPlayerState, PlayerState, PlayerTrack } from '../types';
+import type {
+  BareTrack,
+  PersistedPlayerState,
+  PlayerState,
+  PlayerTrack
+} from '../types';
 import {
   SeekDirection,
   currentIndex,
@@ -31,6 +36,36 @@ export function mergeQueue(
   const keptIds = new Set(kept.map(track => track.id));
 
   return [...kept, ...incoming.filter(track => !keptIds.has(track.id))];
+}
+
+/*
+ * The order last heard, or null unless the ids are exactly the source's: a stale
+ * or foreign payload falls back to the playlist order rather than dropping a
+ * track or repeating one.
+ */
+function restoredQueue(
+  sourceQueue: readonly PlayerTrack[],
+  orderIds: readonly string[]
+): PlayerTrack[] | null {
+  if (orderIds.length !== sourceQueue.length) {
+    return null;
+  }
+
+  const byId = new Map(sourceQueue.map(track => [track.id, track] as const));
+  const queue: PlayerTrack[] = [];
+
+  for (const id of orderIds) {
+    const track = byId.get(id);
+
+    if (track === undefined) {
+      return null;
+    }
+
+    byId.delete(id);
+    queue.push(track);
+  }
+
+  return queue;
 }
 
 function clampVolume(volume: number): number {
@@ -150,7 +185,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   muted: false,
   hydrate: (state: PersistedPlayerState) =>
     set(() => {
-      const queue = [...state.sourceQueue];
+      const restored = state.shuffle
+        ? restoredQueue(state.sourceQueue, state.orderIds)
+        : null;
+      const queue = restored ?? [...state.sourceQueue];
       const current = queue.find(track => track.id === state.currentId);
 
       return {
@@ -160,7 +198,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         positionSeconds: restoredPosition(current, state.positionSeconds),
         seekTo: null,
         volume: clampVolume(state.volume),
-        shuffle: false
+        shuffle: restored !== null
       };
     }),
   startQueue: (
@@ -193,6 +231,24 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         seekTo: null,
         isPlaying: true,
         shuffle
+      };
+    }),
+  startBareTrack: (track: BareTrack) =>
+    set(() => {
+      const bare: PlayerTrack = {
+        ...track,
+        playlistId: null,
+        playlistName: null
+      };
+
+      return {
+        queue: [bare],
+        sourceQueue: [bare],
+        currentId: bare.id,
+        positionSeconds: 0,
+        seekTo: null,
+        isPlaying: true,
+        shuffle: false
       };
     }),
   applyRefetch: (playlistId: string, tracks: readonly PlayerTrack[]) =>

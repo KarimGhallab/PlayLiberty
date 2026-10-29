@@ -3,11 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { Track } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 
-import {
-  AccessNeed,
-  EntryOutcome,
-  trackEntry
-} from '../../../shared/access/entry.js';
+import { EntryOutcome, trackEntry } from '../../../shared/access/entry.js';
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 import { Refusal } from '../../../shared/refusal.js';
@@ -42,10 +38,19 @@ function loadTrack(
   return database.db.select().from(tracks).where(eq(tracks.id, trackId)).get();
 }
 
+/* Reading a track is the instance's; the id is the capability. */
+export function resolveTrack(
+  database: DatabaseHandle,
+  trackId: string
+): Track | undefined {
+  const track = loadTrack(database, trackId);
+
+  return track === undefined ? undefined : toTrackView(track);
+}
+
 export function resolveTrackForStream(
   database: DatabaseHandle,
-  trackId: string,
-  accountId: string
+  trackId: string
 ): TrackStreamResult {
   const track = loadTrack(database, trackId);
 
@@ -56,78 +61,33 @@ export function resolveTrackForStream(
     };
   }
 
-  const entry = trackEntry<TrackStreamResult>(
-    database,
-    track.id,
-    accountId,
-    AccessNeed.Read,
-    () => {
-      if (
-        track.fileStatus !== TrackFileStatus.Stored ||
-        track.filePath === null
-      ) {
-        return {
-          outcome: TrackStreamOutcome.NotStored,
-          refusal: Refusal.TrackNotStored
-        };
-      }
-
-      return { outcome: TrackStreamOutcome.Ok, filePath: track.filePath };
-    }
-  );
-
-  if (entry.outcome === EntryOutcome.Denied) {
+  if (track.fileStatus !== TrackFileStatus.Stored || track.filePath === null) {
     return {
-      outcome: TrackStreamOutcome.Forbidden,
-      refusal: Refusal.Forbidden
+      outcome: TrackStreamOutcome.NotStored,
+      refusal: Refusal.TrackNotStored
     };
   }
 
-  return entry.value;
+  return { outcome: TrackStreamOutcome.Ok, filePath: track.filePath };
 }
 
 export function resolveTrackForThumbnail(
   database: DatabaseHandle,
-  trackId: string,
-  accountId: string
+  trackId: string
 ): TrackThumbnailResult {
   const track = loadTrack(database, trackId);
 
-  if (track === undefined) {
+  if (track === undefined || track.thumbnailPath === null) {
     return {
       outcome: TrackThumbnailOutcome.NotFound,
       refusal: Refusal.ThumbnailNotFound
     };
   }
 
-  const thumbnailPath = track.thumbnailPath;
-
-  if (thumbnailPath === null) {
-    return {
-      outcome: TrackThumbnailOutcome.NotFound,
-      refusal: Refusal.ThumbnailNotFound
-    };
-  }
-
-  const entry = trackEntry<TrackThumbnailResult>(
-    database,
-    track.id,
-    accountId,
-    AccessNeed.Read,
-    () => ({
-      outcome: TrackThumbnailOutcome.Ok,
-      thumbnailPath
-    })
-  );
-
-  if (entry.outcome === EntryOutcome.Denied) {
-    return {
-      outcome: TrackThumbnailOutcome.Forbidden,
-      refusal: Refusal.Forbidden
-    };
-  }
-
-  return entry.value;
+  return {
+    outcome: TrackThumbnailOutcome.Ok,
+    thumbnailPath: track.thumbnailPath
+  };
 }
 
 /* The dedup read: a track is keyed by video id, so sync and batch add call it
@@ -183,7 +143,6 @@ export function retryTrackForAccount(
     context.database,
     track.id,
     accountId,
-    AccessNeed.Write,
     () =>
       withDownloadQueue<RetryTrackResult>(context, queue => {
         const transition = queue.retry(track.id);
@@ -243,7 +202,6 @@ export function fetchTrackWholeForAccount(
     context.database,
     track.id,
     accountId,
-    AccessNeed.Write,
     () =>
       withDownloadQueue<FetchWholeResult>(context, queue => {
         /* Eligibility lives in the lifecycle: stored has a file, downloading

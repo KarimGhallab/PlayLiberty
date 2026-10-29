@@ -7,7 +7,8 @@ export const en = {
     name: 'PlayLiberty',
     title: {
       playlist: '{app} - {name}',
-      track: '{app} - {playlist} ({track})'
+      track: '{app} - {playlist} ({track})',
+      bareTrack: '{app} - {track}'
     }
   },
   language: {
@@ -40,6 +41,7 @@ export const en = {
       one: 'Sync 1 playlist',
       other: 'Sync all {count} playlists'
     },
+    syncAllShort: 'Synchronize all',
     syncingAll: {
       one: 'Syncing 1 playlist...',
       other: 'Syncing {count} playlists...'
@@ -106,8 +108,10 @@ export const en = {
   },
   detail: {
     back: 'Back to home',
+    backShort: 'Back',
     addTrack: 'Add a track',
     syncPlaylist: 'Sync the playlist',
+    syncPlaylistShort: 'Synchronize',
     syncingPlaylist: 'Syncing the playlist...',
     loadingTracks: 'Loading tracks.',
     readFailed: 'Tracks could not be loaded.',
@@ -148,6 +152,9 @@ export const en = {
     play: 'Play {title}',
     pause: 'Pause {title}',
     actions: 'Actions for {title}',
+    copyLink: 'Copy link',
+    linkCopied: 'Link copied',
+    linkCopyFailed: 'The link could not be copied.',
     retry: 'Retry',
     fetchWhole: 'Fetch whole',
     remove: 'Remove from playlist',
@@ -163,6 +170,17 @@ export const en = {
     hideDetails: 'Hide details',
     showDetailsFor: 'Show details for {title}',
     hideDetailsFor: 'Hide details for {title}'
+  },
+  trackLink: {
+    cannotPlay: '{title} cannot play.',
+    notStored: 'It is not stored yet.',
+    downloadFailed: 'Its download failed.',
+    unavailableDetail: 'Its video is gone and no file was stored.',
+    unknown: 'This track is not available.',
+    unknownDetail:
+      'The link may be broken, or the track may have been deleted.',
+    leftPlaylist: '{title} is no longer in that playlist.',
+    leftPlaylistDetail: 'It is playing on its own.'
   },
   skipSetting: {
     label: 'Skip non-music parts'

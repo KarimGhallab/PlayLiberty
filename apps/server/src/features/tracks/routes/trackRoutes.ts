@@ -10,13 +10,14 @@ import {
   sendUnprocessable,
   sendValidationFailed
 } from '../../../shared/problem.js';
-import { sendRefusal } from '../../../shared/refusal.js';
+import { Refusal, sendRefusal } from '../../../shared/refusal.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
 import { addTrackToPlaylists } from '../addTrackToPlaylists.js';
 import {
   fetchTrackWholeForAccount,
+  resolveTrack,
   resolveTrackForStream,
   resolveTrackForThumbnail,
   retryTrackForAccount
@@ -63,19 +64,28 @@ export function registerTrackRoutes(
 
   registerEndpoint<{ Params: { trackId: string } }>(
     app,
+    endpoints.track,
+    async (request, reply) => {
+      const track = resolveTrack(context.database, request.params.trackId);
+
+      if (track === undefined) {
+        return sendRefusal(reply, Refusal.TrackNotFound);
+      }
+
+      return reply.send(track);
+    }
+  );
+
+  registerEndpoint<{ Params: { trackId: string } }>(
+    app,
     endpoints.trackStream,
     async (request, reply) => {
       const result = resolveTrackForStream(
         context.database,
-        request.params.trackId,
-        request.account.id
+        request.params.trackId
       );
 
       if (result.outcome === TrackStreamOutcome.NotFound) {
-        return sendRefusal(reply, result.refusal);
-      }
-
-      if (result.outcome === TrackStreamOutcome.Forbidden) {
         return sendRefusal(reply, result.refusal);
       }
 
@@ -103,15 +113,10 @@ export function registerTrackRoutes(
     async (request, reply) => {
       const result = resolveTrackForThumbnail(
         context.database,
-        request.params.trackId,
-        request.account.id
+        request.params.trackId
       );
 
       if (result.outcome === TrackThumbnailOutcome.NotFound) {
-        return sendRefusal(reply, result.refusal);
-      }
-
-      if (result.outcome === TrackThumbnailOutcome.Forbidden) {
         return sendRefusal(reply, result.refusal);
       }
 

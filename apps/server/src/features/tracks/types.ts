@@ -5,20 +5,17 @@ import type { Refusal } from '../../shared/refusal.js';
 export enum TrackStreamOutcome {
   Ok = 'ok',
   NotFound = 'not_found',
-  Forbidden = 'forbidden',
   NotStored = 'not_stored'
 }
 
 export type TrackStreamResult =
   | { outcome: TrackStreamOutcome.Ok; filePath: string }
   | { outcome: TrackStreamOutcome.NotFound; refusal: Refusal.TrackNotFound }
-  | { outcome: TrackStreamOutcome.Forbidden; refusal: Refusal.Forbidden }
   | { outcome: TrackStreamOutcome.NotStored; refusal: Refusal.TrackNotStored };
 
 export enum TrackThumbnailOutcome {
   Ok = 'ok',
-  NotFound = 'not_found',
-  Forbidden = 'forbidden'
+  NotFound = 'not_found'
 }
 
 export type TrackThumbnailResult =
@@ -26,8 +23,7 @@ export type TrackThumbnailResult =
   | {
       outcome: TrackThumbnailOutcome.NotFound;
       refusal: Refusal.ThumbnailNotFound;
-    }
-  | { outcome: TrackThumbnailOutcome.Forbidden; refusal: Refusal.Forbidden };
+    };
 
 /* The fields a track is created from: the video id is the identity and dedup
  * key, so a held track is never created twice. */

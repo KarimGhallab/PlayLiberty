@@ -10,13 +10,13 @@ import {
   associate,
   seedAccount,
   seedPlaylist,
-  seedShare,
   seedTrack
 } from '../../../app/testing/fixtures.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import { TrackStreamOutcome, TrackThumbnailOutcome } from '../types.js';
 import {
+  resolveTrack,
   resolveTrackForStream,
   resolveTrackForThumbnail
 } from './trackService.js';
@@ -64,46 +64,43 @@ function seedOwnedTrack(
 }
 
 describe('trackService', () => {
+  it('reads a track by id without an association', async () => {
+    context = await createTestContext();
+    const track = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Stored,
+      filePath: 'media/ab/video.m4a'
+    });
+
+    const result = resolveTrack(context.database, track.trackId);
+
+    expect(result?.id).toBe(track.trackId);
+    expect(result?.fileStatus).toBe(TrackFileStatus.Stored);
+    /* The media path stays off the wire. */
+    expect(result).not.toHaveProperty('filePath');
+  });
+
+  it('reports an unknown track id as undefined', async () => {
+    context = await createTestContext();
+
+    expect(resolveTrack(context.database, randomUUID())).toBeUndefined();
+  });
+
   it('reports an unknown track as not found', async () => {
     context = await createTestContext();
 
-    const result = resolveTrackForStream(
-      context.database,
-      randomUUID(),
-      randomUUID()
-    );
+    const result = resolveTrackForStream(context.database, randomUUID());
 
     expect(result.outcome).toBe(TrackStreamOutcome.NotFound);
   });
 
-  it('forbids an account with no association to the track', async () => {
+  it('returns the file path for a stored track', async () => {
     context = await createTestContext();
     const seeded = seedOwnedTrack(context.database, {
       fileStatus: TrackFileStatus.Stored,
       filePath: 'media/ab/video.m4a'
     });
 
-    const result = resolveTrackForStream(
-      context.database,
-      seeded.trackId,
-      randomUUID()
-    );
-
-    expect(result.outcome).toBe(TrackStreamOutcome.Forbidden);
-  });
-
-  it('returns the file path for a stored track the account owns', async () => {
-    context = await createTestContext();
-    const seeded = seedOwnedTrack(context.database, {
-      fileStatus: TrackFileStatus.Stored,
-      filePath: 'media/ab/video.m4a'
-    });
-
-    const result = resolveTrackForStream(
-      context.database,
-      seeded.trackId,
-      seeded.accountId
-    );
+    const result = resolveTrackForStream(context.database, seeded.trackId);
 
     expect(result).toEqual({
       outcome: TrackStreamOutcome.Ok,
@@ -111,63 +108,33 @@ describe('trackService', () => {
     });
   });
 
-  it('reports an associated track that is not stored yet', async () => {
+  it('reports a track that is not stored yet', async () => {
     context = await createTestContext();
     const seeded = seedOwnedTrack(context.database, {
       fileStatus: TrackFileStatus.Pending
     });
 
-    const result = resolveTrackForStream(
-      context.database,
-      seeded.trackId,
-      seeded.accountId
-    );
+    const result = resolveTrackForStream(context.database, seeded.trackId);
 
     expect(result.outcome).toBe(TrackStreamOutcome.NotStored);
-  });
-
-  it('grants access through a share', async () => {
-    context = await createTestContext();
-    const seeded = seedOwnedTrack(context.database, {
-      fileStatus: TrackFileStatus.Stored,
-      filePath: 'media/ab/video.m4a'
-    });
-    const viewer = seedAccount(context.database);
-    seedShare(context.database, seeded.playlistId, viewer.accountId);
-
-    const result = resolveTrackForStream(
-      context.database,
-      seeded.trackId,
-      viewer.accountId
-    );
-
-    expect(result.outcome).toBe(TrackStreamOutcome.Ok);
   });
 
   it('reports a thumbnail as not found when the track has none', async () => {
     context = await createTestContext();
     const seeded = seedOwnedTrack(context.database);
 
-    const result = resolveTrackForThumbnail(
-      context.database,
-      seeded.trackId,
-      seeded.accountId
-    );
+    const result = resolveTrackForThumbnail(context.database, seeded.trackId);
 
     expect(result.outcome).toBe(TrackThumbnailOutcome.NotFound);
   });
 
-  it('returns the thumbnail path to an authorized account', async () => {
+  it('returns the thumbnail path', async () => {
     context = await createTestContext();
     const seeded = seedOwnedTrack(context.database, {
       thumbnailPath: 'thumbnails/ab/video.jpg'
     });
 
-    const result = resolveTrackForThumbnail(
-      context.database,
-      seeded.trackId,
-      seeded.accountId
-    );
+    const result = resolveTrackForThumbnail(context.database, seeded.trackId);
 
     expect(result).toEqual({
       outcome: TrackThumbnailOutcome.Ok,

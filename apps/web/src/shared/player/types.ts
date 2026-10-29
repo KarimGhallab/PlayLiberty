@@ -1,17 +1,24 @@
 /*
  * The player state, shared by the store, the persistence and the components.
  * The queue is client state that never reaches the database and names the
- * playlist it was built from.
+ * playlist it was built from, or nothing for a track started on its own.
  */
 
 export interface PlayerTrack {
   readonly id: string;
   readonly title: string;
-  readonly playlistId: string;
-  readonly playlistName: string;
+  /* Null for a track started on its own: the queue carries no playlist. */
+  readonly playlistId: string | null;
+  readonly playlistName: string | null;
   readonly durationSeconds: number | null;
   readonly thumbnailPath: string | null;
 }
+
+/** The fields a bare track needs; it has no playlist context to carry. */
+export type BareTrack = Pick<
+  PlayerTrack,
+  'id' | 'title' | 'durationSeconds' | 'thumbnailPath'
+>;
 
 /** The direction a seek step takes. */
 export enum SeekDirection {
@@ -24,9 +31,14 @@ export enum SeekDirection {
  * never persisted, so a relaunch never starts audio or jumps the playhead.
  */
 export interface PersistedPlayerState {
-  /* The playlist's own order, not the order last heard; the playback order is
-   * derived from it on hydrate, so turning shuffle off restores it. */
+  /* The playlist's own order, so turning shuffle off after a relaunch restores
+   * the order somebody chose. */
   readonly sourceQueue: readonly PlayerTrack[];
+  /* The order last heard, as ids into `sourceQueue`; empty while unshuffled,
+   * where the source order is the order. */
+  readonly orderIds: readonly string[];
+  /* Whether that order is a shuffle rather than the playlist's own. */
+  readonly shuffle: boolean;
   /* Held as an id, not an index: a refetch merges by id and a drop shifts every
    * index after it, so an index would point at the wrong track. */
   readonly currentId: string | null;
@@ -46,8 +58,8 @@ export interface PlayerState {
   readonly isPlaying: boolean;
   readonly seekTo: number | null;
   /*
-   * Whether the queue is shuffled: a client fact like the queue, never
-   * persisted, so a relaunch starts on the source order.
+   * Whether the queue is shuffled: a client fact like the queue, persisted with
+   * the order it produced, so a relaunch resumes the shuffled queue.
    */
   readonly shuffle: boolean;
   readonly muted: boolean;
@@ -62,6 +74,8 @@ export interface PlayerState {
     startTrackId: string,
     shuffle?: boolean
   ) => void;
+  /* Start one track on its own; the queue carries no playlist context. */
+  readonly startBareTrack: (track: BareTrack) => void;
   readonly applyRefetch: (
     playlistId: string,
     tracks: readonly PlayerTrack[]
@@ -123,8 +137,8 @@ export function nextIndex(state: PlayerState): number {
   return index + 1 < state.queue.length ? index + 1 : -1;
 }
 
-/* The playlist the queue plays: the first entry names it, an empty queue names
- * none. Single owner, so the refetch guard and every surface agree. */
+/* The playlist the queue plays: the first entry names it, an empty or bare
+ * queue names none. Single owner, so the refetch guard and every surface agree. */
 export function queuePlaylistId(state: PlayerState): string | null {
   return state.queue[0]?.playlistId ?? null;
 }

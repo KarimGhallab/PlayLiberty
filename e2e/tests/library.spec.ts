@@ -80,7 +80,7 @@ test('the gallery marks what is not stored', async ({ page }) => {
     downloads: { e2egallery03: 'fail' }
   });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   /* The count is over the whole playlist, not one page of it. */
   await expect(
@@ -104,7 +104,7 @@ test('a playlist’s action menu covers the docked bar', async ({ page }) => {
     ]
   });
   await drainDownloads(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   /* The bar docks when a playlist plays, which is what puts it under the menu. */
   await page.getByRole('button', { name: 'Play Evening Jazz' }).first().click();
@@ -221,7 +221,7 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
   );
   expect(granted.ok()).toBe(true);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('link', { name: PIN_OWN_TITLE })).toBeVisible();
   await expect(
     page.getByRole('link', { name: PIN_SHARED_TITLE })
@@ -237,7 +237,7 @@ test('a pinned playlist leaves the list for a section above, and a reader can pi
   ).toHaveCount(0);
 
   /* The pin is the server's fact and not the tab's. */
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(
     page
       .getByRole('region', { name: 'Pinned' })
