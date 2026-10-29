@@ -1,9 +1,7 @@
-# 106: Open a track's own URL and hear it alone
+# 04: Open a track's own URL and hear it alone
 
-**State:** `ready-for-agent`
-**Category:** `enhancement`
-**Spec:** [18-share-a-track](../specs/18-share-a-track.md)
-**Blocked by:** [103](103-let-the-player-hold-a-queue-with-no-playlist.md).
+**Status:** open
+**Labels:** `enhancement`, `ready-for-agent`
 
 ## What to build
 
@@ -18,3 +16,10 @@
 - [ ] Starting another queue from the gallery replaces the address to `/`; a failed entry keeps `/tracks/T`.
 - [ ] A not-stored, unavailable or unknown track shows the matching notice, starts no queue and leaves the gallery drawn.
 - [ ] The track route, server route, player and document title tests cover these; the bare-route e2e journey passes.
+
+## Verification
+
+- `pnpm run build` and `pnpm run lint:check` pass.
+- The server track route tests, the track route tests and the bare-route e2e journey pass.
+
+See [`18-share-a-track`](../../specs/18-share-a-track.md).

@@ -1,9 +1,7 @@
-# 105: Copy a track's link from its row
+# 03: Copy a track's link from its row
 
-**State:** `ready-for-agent`
-**Category:** `enhancement`
-**Spec:** [18-share-a-track](../specs/18-share-a-track.md)
-**Blocked by:** None. Can start immediately.
+**Status:** open
+**Labels:** `enhancement`, `ready-for-agent`
 
 ## What to build
 
@@ -17,3 +15,10 @@ Every track row offers Copy link as the first lane item, with the share icon, an
 - [ ] Success shows "Link copied"; a rejected clipboard shows "The link could not be copied." Neither is the refusal notice.
 - [ ] The row test covers the universal item and the gated menu; the playlist detail page test covers the URL and both toasts with the Clipboard API stubbed.
 - [ ] Keyboard focus, the accessible name and the touch target are unchanged.
+
+## Verification
+
+- `pnpm run build` and `pnpm run lint:check` pass.
+- The track row tests and the playlist detail page copy tests pass.
+
+See [`18-share-a-track`](../../specs/18-share-a-track.md).

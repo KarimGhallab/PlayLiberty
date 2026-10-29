@@ -1,9 +1,7 @@
-# 107: Resolve a shared link that cannot open its playlist
+# 05: Resolve a shared link that cannot open its playlist
 
-**State:** `ready-for-agent`
-**Category:** `enhancement`
-**Spec:** [18-share-a-track](../specs/18-share-a-track.md)
-**Blocked by:** [104](104-open-a-playlist-at-the-shared-track.md) and [106](106-open-a-track-url-and-hear-it-alone.md).
+**Status:** open
+**Labels:** `enhancement`, `ready-for-agent`
 
 ## What to build
 
@@ -17,3 +15,10 @@ A shared link always resolves. An unreachable `P` replaces silently to `/tracks/
 - [ ] A network or 5xx playlist or queue failure shows the normal error and retry and never downgrades to the bare track.
 - [ ] The e2e journeys cover no access, an absent track and a failed track in the recipient's context; the page tests cover the branches and the notice copy.
 - [ ] The link-entry notices use the app's refusal surface and never interrupt playback.
+
+## Verification
+
+- `pnpm run build` and `pnpm run lint:check` pass.
+- The playlist detail page tests and the e2e journeys for no access, an absent track and a failed track pass.
+
+See [`18-share-a-track`](../../specs/18-share-a-track.md).
