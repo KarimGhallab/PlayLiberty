@@ -1,5 +1,11 @@
-import { describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor
+} from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { type Account, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
@@ -7,6 +13,10 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 import AccountSheet, { type AccountSheetProps } from './AccountSheet';
 
 const store = { getItem: () => null, setItem: () => {} };
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 const account: Account = {
   id: 'account-1',
@@ -27,13 +37,13 @@ async function renderSheet(overrides: Partial<AccountSheetProps> = {}) {
     ...overrides
   };
 
-  await render(
+  const view = await render(
     <I18nProvider initialLanguage={Language.English} storage={store}>
       <AccountSheet {...props} />
     </I18nProvider>
   );
 
-  return props;
+  return { props, view };
 }
 
 describe('the account sheet', () => {
@@ -54,7 +64,7 @@ describe('the account sheet', () => {
   });
 
   it('marks an admin and offers the egress console', async () => {
-    const props = await renderSheet({
+    const { props } = await renderSheet({
       account: { ...account, role: UserRole.Admin }
     });
 
@@ -73,8 +83,36 @@ describe('the account sheet', () => {
     ).not.toBeOnTheScreen();
   });
 
+  it('names its heading', async () => {
+    await renderSheet();
+
+    expect(screen.getByRole('header', { name: 'Account' })).toBeOnTheScreen();
+  });
+
+  it('announces the language in force as selected', async () => {
+    await renderSheet();
+
+    expect(screen.getByRole('button', { name: 'English' })).toBeSelected();
+    expect(screen.getByRole('button', { name: 'Français' })).not.toBeSelected();
+  });
+
+  it('does not slide when the system asks for less motion', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+    const { view } = await renderSheet();
+
+    await waitFor(() => {
+      const [modal] = view.container.queryAll(
+        node => 'animationType' in node.props
+      );
+
+      expect(modal?.props.animationType).toBe('none');
+    });
+  });
+
   it('signs out', async () => {
-    const props = await renderSheet();
+    const { props } = await renderSheet();
 
     fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
     expect(props.onSignOut).toHaveBeenCalledTimes(1);

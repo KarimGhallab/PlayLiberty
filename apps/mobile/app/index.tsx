@@ -1,17 +1,12 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import AccountSheet from '../src/shared/components/AccountSheet/AccountSheet';
+import LibraryHeader from '../src/shared/components/LibraryHeader/LibraryHeader';
 import Screen from '../src/shared/components/Screen/Screen';
-import {
-  tokenColor,
-  tokenLength,
-  tokenNumber,
-  touchTarget
-} from '../src/shared/styles/tokens';
+import SignedOut from '../src/shared/components/SignedOut/SignedOut';
 
 import { apiBaseUrl } from '../src/api/apiBaseUrl';
 import { ApiError } from '../src/api/apiClient/ApiClient';
@@ -67,37 +62,19 @@ export default function LibraryRoute() {
 
   if (status === SessionStatus.SignedOut) {
     return (
-      <Screen title={t('signedOut.title')} subtitle={t('signedOut.body')}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: busy }}
-          disabled={busy}
-          style={[styles.action, busy && styles.actionDisabled]}
-          onPress={() => {
-            void signIn();
-          }}>
-          <Text style={styles.actionLabel}>
-            {busy ? t('signedOut.busy') : t('signedOut.action')}
-          </Text>
-        </Pressable>
-        {failure === null ? null : (
-          <Text style={styles.failure}>{failure}</Text>
-        )}
-      </Screen>
+      <SignedOut
+        busy={busy}
+        failure={failure}
+        onSignIn={() => {
+          void signIn();
+        }}
+      />
     );
   }
 
   return (
     <Screen title={t('app.name')}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('account.title')}
-          style={styles.action}
-          onPress={() => setAccountOpen(true)}>
-          <Text style={styles.actionLabel}>{t('account.title')}</Text>
-        </Pressable>
-      </View>
+      <LibraryHeader onOpenAccount={() => setAccountOpen(true)} />
 
       <AccountSheet
         visible={accountOpen}
@@ -105,6 +82,7 @@ export default function LibraryRoute() {
         failure={readFailure}
         onClose={() => setAccountOpen(false)}
         onSignOut={() => {
+          setAccountOpen(false);
           signOut();
         }}
         onOpenEgress={() => {
@@ -115,29 +93,3 @@ export default function LibraryRoute() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end'
-  },
-  action: {
-    minHeight: touchTarget,
-    justifyContent: 'center',
-    paddingHorizontal: tokenLength('space-4'),
-    borderRadius: tokenLength('radius-control'),
-    borderWidth: 1,
-    borderColor: tokenColor('control-border')
-  },
-  actionDisabled: {
-    opacity: tokenNumber('opacity-disabled')
-  },
-  actionLabel: {
-    color: tokenColor('ink'),
-    fontSize: tokenLength('text-md')
-  },
-  failure: {
-    color: tokenColor('tone-failed'),
-    fontSize: tokenLength('text-sm')
-  }
-});

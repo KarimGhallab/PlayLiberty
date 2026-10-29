@@ -1,15 +1,13 @@
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 
-import { useI18n } from '@playliberty/i18n';
-
-import Screen from '../src/shared/components/Screen/Screen';
+import NotFound from '../src/shared/components/NotFound/NotFound';
 
 export default function NotFoundRoute() {
-  const { t } = useI18n();
-
   return (
-    <Screen title={t('notFound.heading')} subtitle={t('notFound.prose')}>
-      <Link href="/">{t('notFound.back')}</Link>
-    </Screen>
+    <NotFound
+      onBack={() => {
+        router.replace('/');
+      }}
+    />
   );
 }

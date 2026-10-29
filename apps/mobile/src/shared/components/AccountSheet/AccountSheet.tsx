@@ -178,6 +178,7 @@ const styles = StyleSheet.create({
   },
   action: {
     minHeight: touchTarget,
+    minWidth: touchTarget,
     justifyContent: 'center',
     paddingHorizontal: tokenLength('space-4'),
     borderRadius: tokenLength('radius-control'),
