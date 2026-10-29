@@ -4,6 +4,14 @@ import type { DownloadOptions } from '@playliberty/youtube';
  * inside the tunnel. The default keeps a workstation and the tests local. */
 export type YoutubeListTransport = 'local' | 'egress-agent';
 
+/* The Integration API that mints a mobile token: the base including `/v1`, the
+ * resource the token authorises, and the API key. */
+export interface PangolinConfig {
+  apiUrl: string;
+  resourceId: number;
+  apiKey: string;
+}
+
 /* The only three shapes a process runs in. Anything unrecognised is treated as
  * production, so an unknown NODE_ENV cannot relax a boot rule. */
 export type Runtime = 'test' | 'development' | 'production';
@@ -20,6 +28,11 @@ export interface Config {
    * cannot forge the identity headers. Required outside the test harness. */
   edgeAssertion: string | null;
   adminPangolinUserIds: string[];
+  /* The mobile client's token issuer, or null when the instance does not serve
+   * the app. */
+  pangolin: PangolinConfig | null;
+  /* The exact callbacks provisioning may redirect to. */
+  mobileRedirectUris: string[];
   /* The egress agent's socket: the host owns it, the pod only connects. */
   egressAgentSocket: string;
   /* The rotation policy: failures before a switch, the drain bound, and the

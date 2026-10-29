@@ -25,6 +25,11 @@
               "scheme": "https",
               "host": "playliberty.example",
               "pathPrefix": "/tracks"
+            },
+            {
+              "scheme": "https",
+              "host": "playliberty.example",
+              "pathPrefix": "/auth"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

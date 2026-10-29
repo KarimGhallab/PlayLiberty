@@ -234,6 +234,30 @@ export const PageQuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().default(0)
 });
 
+/* The app's provisioning entry: a PKCE challenge and the callback it will
+ * accept a code on. `state` is opaque and echoed back. */
+export const ProvisionQuerySchema = z.object({
+  code_challenge: z.string().min(43).max(128),
+  code_challenge_method: z.literal('S256'),
+  redirect_uri: z.url(),
+  state: z.string().min(16).max(128)
+});
+
+/* The credential-less exchange: the code, its verifier, and the same callback
+ * the code was minted for. */
+export const ExchangeInputSchema = z.object({
+  code: z.string().min(1),
+  code_verifier: z.string().min(43).max(128),
+  redirect_uri: z.url()
+});
+
+/* The token pair the app stores: the id and the secret Pangolin expects in its
+ * two headers. */
+export const MobileTokenSchema = z.object({
+  id: identifier,
+  secret: z.string().min(1)
+});
+
 export const PlaylistTracksQuerySchema = PageQuerySchema.extend({
   state: z.enum(TrackFileStatus).optional()
 });

@@ -109,6 +109,10 @@ export enum ProblemCode {
   RequestError = 'request_error',
   InternalError = 'internal_error',
   Unauthenticated = 'unauthenticated',
+  InvalidGrant = 'invalid_grant',
+  ProvisioningUnavailable = 'provisioning_unavailable',
+  ProvisioningFailed = 'provisioning_failed',
+  RateLimited = 'rate_limited',
   CsrfHeaderMissing = 'csrf_header_missing',
   CsrfCrossSite = 'csrf_cross_site',
   CsrfOriginMismatch = 'csrf_origin_mismatch'

@@ -23,7 +23,9 @@ export const en = {
   signedOut: {
     title: 'Sign in to enter the app',
     body: 'This app needs an account on your instance.',
-    action: 'Sign in'
+    action: 'Sign in',
+    busy: 'Signing in…',
+    failed: 'Sign-in could not finish.'
   },
   common: {
     cancel: 'Cancel',
@@ -354,7 +356,11 @@ export const en = {
     invalidRequest:
       'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...',
     unprocessableRequest: 'The URL is not a YouTube video URL.',
-    validationFailed: 'The request contained an invalid value.'
+    validationFailed: 'The request contained an invalid value.',
+    invalidGrant: 'The sign-in link is no longer valid. Start again.',
+    provisioningUnavailable: 'Sign-in is not configured on this instance.',
+    provisioningFailed: 'The instance could not issue a token. Try again.',
+    rateLimited: 'Too many attempts. Wait a minute and try again.'
   },
   relative: {
     justNow: 'just now',

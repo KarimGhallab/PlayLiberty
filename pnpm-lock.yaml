@@ -269,6 +269,9 @@ importers:
       expo-constants:
         specifier: ~57.0.22
         version: 57.0.22(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(supports-color@7.2.0)
+      expo-crypto:
+        specifier: ~57.0.4
+        version: 57.0.4(expo@57.0.31)
       expo-dev-client:
         specifier: ~57.0.20
         version: 57.0.20(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))
@@ -293,6 +296,9 @@ importers:
       expo-system-ui:
         specifier: ~57.0.4
         version: 57.0.4(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(supports-color@7.2.0)
+      expo-web-browser:
+        specifier: ~57.0.3
+        version: 57.0.3(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -4452,6 +4458,11 @@ packages:
       expo: '*'
       react-native: 0.86.3
 
+  expo-crypto@57.0.4:
+    resolution: {integrity: sha512-LqMMs/N6wvwZyw4deVmcl3AgXgqMwCVQ9WyWf2eaWyrk99TXSKk5da3QspiLOOjnn5Qv9f8C50cDNuoyLThpdw==}
+    peerDependencies:
+      expo: '*'
+
   expo-dev-client@57.0.20:
     resolution: {integrity: sha512-ko5FzWsUPuG4aiQfmqxQA5yAdmal6SSICB70KJLChQYzWo+XDoTpXRgEpzQSr1Ku8KyKW0lkEa48xbnKSgd1xQ==}
     peerDependencies:
@@ -4614,6 +4625,12 @@ packages:
     resolution: {integrity: sha512-x3SA5toiHZEkW+5oeNdUM1Rvt6M3ExegQsSwS3Z1+S9gn9utGYTGBkb8MBQivhjIZiRlQYDIhauxA8kySQEWtQ==}
     peerDependencies:
       expo: '*'
+
+  expo-web-browser@57.0.3:
+    resolution: {integrity: sha512-+ecvhyS/PdWkpv4ai6FF1Trd6Y/4kn/eQ3O86mie2ecU3w+I8bKZh13kppY/jw1uSL7yikt03L5W/iiHojrFwQ==}
+    peerDependencies:
+      expo: '*'
+      react-native: 0.86.3
 
   expo@57.0.31:
     resolution: {integrity: sha512-+9AJvHZMLIY/Tv6r5Tpu84vWfI75FBTnineYqjjlHAU138IPg2gYQKn9FQFetCB9YScwyc7STk7WGHSCHAdTiQ==}
@@ -11414,6 +11431,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  expo-crypto@57.0.4(expo@57.0.31):
+    dependencies:
+      expo: 57.0.31(085169a7462e851b04cd0aa2518fc86e)
+
   expo-dev-client@57.0.20(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0)):
     dependencies:
       expo: 57.0.31(085169a7462e851b04cd0aa2518fc86e)
@@ -11604,6 +11625,11 @@ snapshots:
   expo-updates-interface@57.0.2(expo@57.0.31):
     dependencies:
       expo: 57.0.31(085169a7462e851b04cd0aa2518fc86e)
+
+  expo-web-browser@57.0.3(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0)):
+    dependencies:
+      expo: 57.0.31(085169a7462e851b04cd0aa2518fc86e)
+      react-native: 0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0)
 
   expo@57.0.31(085169a7462e851b04cd0aa2518fc86e):
     dependencies:

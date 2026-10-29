@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 
 import { tokenStore } from './tokenStore';
 
@@ -13,31 +14,32 @@ export interface Session {
   readonly refresh: () => void;
 }
 
-/** Whether the app holds a token. Provisioning is spec `20`'s; this only reads. */
+/** Whether the app holds a token. It re-reads whenever the screen regains
+ * focus, so the callback's write is seen on the way back. */
 export function useSession(): Session {
   const [status, setStatus] = useState(SessionStatus.Loading);
   const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => {
-    let active = true;
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
 
-    void tokenStore.read().then(token => {
-      if (!active) {
-        return;
-      }
+      setStatus(SessionStatus.Loading);
+      void tokenStore.read().then(token => {
+        if (active) {
+          setStatus(
+            token === null ? SessionStatus.SignedOut : SessionStatus.SignedIn
+          );
+        }
+      });
 
-      setStatus(
-        token === null ? SessionStatus.SignedOut : SessionStatus.SignedIn
-      );
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [attempt]);
+      return () => {
+        active = false;
+      };
+    }, [attempt])
+  );
 
   const refresh = useCallback(() => {
-    setStatus(SessionStatus.Loading);
     setAttempt(value => value + 1);
   }, []);
 

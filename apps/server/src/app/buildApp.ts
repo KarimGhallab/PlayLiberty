@@ -34,6 +34,9 @@ import {
 } from '../features/events/routes/eventRoutes.js';
 import { registerCoverRoutes } from '../features/playlists/cover/routes/coverRoutes.js';
 import { registerPlaylistRoutes } from '../features/playlists/routes/playlistRoutes.js';
+import { PangolinClient } from '../features/provisioning/pangolin/PangolinClient.js';
+import { registerProvisioningRoutes } from '../features/provisioning/routes/provisioningRoutes.js';
+import { ProvisioningService } from '../features/provisioning/service/ProvisioningService.js';
 import {
   pruneOrphanCovers,
   pruneOrphanTracks
@@ -67,6 +70,12 @@ export interface AppOptions {
   sseHeartbeatMs?: number;
   /* The live bus: a real process gets one built here, a test passes its own. */
   events?: AppContext['events'];
+  /* The token issuer: a test passes a fake, a real process builds it from
+   * config. */
+  pangolin?: AppContext['pangolin'];
+  /* The provisioning clock; a test moves it to reach expiry and the rate
+   * limit's window without waiting. */
+  provisioningNow?: () => number;
   /* A test's logger, so it can read the audit lines the app writes. */
   loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
@@ -152,7 +161,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     youtube,
     egressAgent,
     kickDownloads: options.kickDownloads ?? (() => undefined),
-    events: options.events ?? new EventBus<LiveEvent>()
+    events: options.events ?? new EventBus<LiveEvent>(),
+    pangolin:
+      options.pangolin ??
+      (options.config.pangolin === null
+        ? null
+        : new PangolinClient(options.config.pangolin)),
+    provisioning: new ProvisioningService(options.provisioningNow)
   };
 
   const loggerOptions =
@@ -203,6 +218,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   registerHealthRoutes(app, context);
+  registerProvisioningRoutes(app, context);
 
   await app.register(
     async api => {

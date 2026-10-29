@@ -33,6 +33,8 @@ export default function RootLayout() {
         <Stack.Screen name="playlists/[playlistId]" />
         <Stack.Screen name="tracks/[trackId]" />
         <Stack.Screen name="egress" />
+        <Stack.Screen name="provision" />
+        <Stack.Screen name="auth/callback" />
       </Stack>
     </AppProviders>
   );

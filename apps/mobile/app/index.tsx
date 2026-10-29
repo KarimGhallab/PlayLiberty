@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useI18n } from '@playliberty/i18n';
+import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import AccountSheet from '../src/shared/components/AccountSheet';
 import Screen from '../src/shared/components/Screen/Screen';
 import {
   tokenColor,
   tokenLength,
+  tokenNumber,
   touchTarget
 } from '../src/shared/styles/tokens';
 
+import { apiBaseUrl } from '../src/api/apiBaseUrl';
+import {
+  expoProvisioningDeps,
+  provisioningRedirectUris
+} from '../src/auth/expoProvisioning';
+import {
+  ProvisioningError,
+  beginProvisioning
+} from '../src/auth/provisioning/provisioning';
 import { tokenStore } from '../src/auth/tokenStore';
 import { SessionStatus, useSession } from '../src/auth/useSession';
 
@@ -18,6 +28,29 @@ export default function LibraryRoute() {
   const { t } = useI18n();
   const { status, refresh } = useSession();
   const [accountOpen, setAccountOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const signIn = useCallback(async () => {
+    setBusy(true);
+    setFailure(null);
+
+    try {
+      await beginProvisioning({
+        baseUrl: apiBaseUrl(),
+        redirectUris: provisioningRedirectUris(),
+        deps: expoProvisioningDeps
+      });
+    } catch (error) {
+      setFailure(
+        error instanceof ProvisioningError
+          ? (problemDetail(t, error.problem) ?? t('signedOut.failed'))
+          : t('signedOut.failed')
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [t]);
 
   if (status === SessionStatus.Loading) {
     return <Screen title={t('app.name')} subtitle={t('library.loading')} />;
@@ -28,12 +61,19 @@ export default function LibraryRoute() {
       <Screen title={t('signedOut.title')} subtitle={t('signedOut.body')}>
         <Pressable
           accessibilityRole="button"
-          style={styles.action}
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          style={[styles.action, busy && styles.actionDisabled]}
           onPress={() => {
-            // Provisioning is spec 20's; the skeleton offers the state only.
+            void signIn();
           }}>
-          <Text style={styles.actionLabel}>{t('signedOut.action')}</Text>
+          <Text style={styles.actionLabel}>
+            {busy ? t('signedOut.busy') : t('signedOut.action')}
+          </Text>
         </Pressable>
+        {failure === null ? null : (
+          <Text style={styles.failure}>{failure}</Text>
+        )}
       </Screen>
     );
   }
@@ -74,8 +114,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokenColor('control-border')
   },
+  actionDisabled: {
+    opacity: tokenNumber('opacity-disabled')
+  },
   actionLabel: {
     color: tokenColor('ink'),
     fontSize: tokenLength('text-md')
+  },
+  failure: {
+    color: tokenColor('tone-failed'),
+    fontSize: tokenLength('text-sm')
   }
 });

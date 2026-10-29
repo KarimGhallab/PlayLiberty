@@ -8,6 +8,7 @@ import type { LiveEvent } from '@playliberty/contracts';
 import type { IEgressAgentClient, IYoutubeClient } from '@playliberty/youtube';
 
 import { EventBus } from '../../shared/events/eventBus/EventBus.js';
+import type { IPangolinClient } from '../../shared/pangolin.js';
 
 import { loadConfig } from '../../platform/config/loadConfig/loadConfig.js';
 import type { DatabaseHandle } from '../../platform/database/client.js';
@@ -44,6 +45,11 @@ export interface TestContextOptions {
   /* A logger to read the audit lines; absent, the app builds one, silenced by
    * config. */
   loggerInstance?: FastifyServerOptions['loggerInstance'];
+  /* The token issuer: a test passes a fake so no Pangolin instance is needed. */
+  pangolin?: IPangolinClient;
+  /* The provisioning clock: a test moves it to reach expiry and the rate
+   * limit's window without waiting. */
+  provisioningNow?: () => number;
 }
 
 export async function createTestContext(
@@ -77,6 +83,8 @@ export async function createTestContext(
     startBackgroundJobs: options.startBackgroundJobs ?? false,
     sseHeartbeatMs: options.sseHeartbeatMs,
     loggerInstance: options.loggerInstance,
+    pangolin: options.pangolin,
+    provisioningNow: options.provisioningNow,
     events
   });
   await app.ready();

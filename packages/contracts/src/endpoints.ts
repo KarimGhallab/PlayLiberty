@@ -4,6 +4,7 @@ import {
   AccountSummaryPageSchema,
   AddTrackResultSchema,
   EgressReadSchema,
+  MobileTokenSchema,
   PlaylistPageSchema,
   PlaylistSchema,
   PlaylistTrackListSchema,
@@ -137,6 +138,26 @@ export const endpoints = {
     path: '/me',
     response: AccountSchema,
     errors: READ_ERRORS
+  }),
+  /* The app's provisioning entry, behind SSO: it answers a redirect to the app,
+   * so it has no body. */
+  provision: defineCommandEndpoint({
+    method: HttpMethod.Get,
+    path: '/provision',
+    errors: [ProblemCode.InvalidGrant, ProblemCode.ProvisioningUnavailable]
+  }),
+  /* The one credential-less mutation: the code and its verifier for a token. */
+  exchange: defineEndpoint({
+    method: HttpMethod.Post,
+    path: '/auth/exchange',
+    response: MobileTokenSchema,
+    errors: [
+      ProblemCode.InvalidGrant,
+      ProblemCode.ProvisioningUnavailable,
+      ProblemCode.ProvisioningFailed,
+      ProblemCode.RateLimited,
+      ...VALIDATED_WRITE_ERRORS
+    ]
   }),
   /* The caller's own role is part of the account read, so the client can gate
    * an admin surface without asking a second route. */

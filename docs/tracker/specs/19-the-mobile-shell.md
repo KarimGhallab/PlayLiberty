@@ -189,9 +189,9 @@ device instead of a browser.
 
 ## Further Notes
 
-- The two packages the app needs and does not yet have installed are `expo-localization` here, and
-  `expo-clipboard` and `expo-image-picker` in specs `30` and `29`. They are named in the spec that needs them and
-  installed by the human, not by an agent.
+- The packages the app installs as its capabilities land: `expo-localization` here, `expo-crypto` and
+  `expo-web-browser` in spec `20`, `expo-clipboard` in spec `30` and `expo-image-picker` in spec `29`. They are
+  named in the spec that needs them and installed by the human, not by an agent.
 - The signed-out state is the only screen a person sees before provisioning, so its copy is part of the product's
   first impression and is written in both catalogues.
 - The account sheet's existence is the one place the mobile client is a superset of the web. That is recorded here

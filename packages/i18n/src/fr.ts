@@ -25,7 +25,9 @@ export const fr: Messages = {
   signedOut: {
     title: "Connectez-vous pour entrer dans l'application",
     body: 'Cette application demande un compte sur votre instance.',
-    action: 'Se connecter'
+    action: 'Se connecter',
+    busy: 'Connexion…',
+    failed: "La connexion n'a pas abouti."
   },
   common: {
     cancel: 'Annuler',
@@ -361,7 +363,12 @@ export const fr: Messages = {
     invalidRequest:
       "Collez le lien d'une playlist YouTube, par exemple https://youtube.com/playlist?list=...",
     unprocessableRequest: "L'URL n'est pas une URL de vidéo YouTube.",
-    validationFailed: 'La requête contient une valeur invalide.'
+    validationFailed: 'La requête contient une valeur invalide.',
+    invalidGrant: "Le lien de connexion n'est plus valide. Recommencez.",
+    provisioningUnavailable:
+      "La connexion n'est pas configurée sur cette instance.",
+    provisioningFailed: "L'instance n'a pas pu délivrer de jeton. Réessayez.",
+    rateLimited: 'Trop de tentatives. Attendez une minute et réessayez.'
   },
   relative: {
     justNow: "à l'instant",

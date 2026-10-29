@@ -47,6 +47,13 @@ const EnvSchema = z.object({
   PUBLIC_ORIGIN: optionalUrl,
   EDGE_ASSERTION: optionalString,
   ADMIN_PANGOLIN_USER_IDS: z.string().default(''),
+  /* The Integration API that mints the mobile client's token. All three or
+   * none: a partial set is a misconfiguration, not a feature switch. */
+  PANGOLIN_API_URL: optionalUrl,
+  PANGOLIN_RESOURCE_ID: optionalString,
+  PANGOLIN_INTEGRATION_API_KEY: optionalString,
+  /* The callbacks the provisioning route may redirect to, comma-separated. */
+  MOBILE_REDIRECT_URIS: z.string().default(''),
   EGRESS_AGENT_SOCKET: z
     .string()
     .min(1)
@@ -114,6 +121,25 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     );
   }
 
+  const pangolinValues = [
+    value.PANGOLIN_API_URL,
+    value.PANGOLIN_RESOURCE_ID,
+    value.PANGOLIN_INTEGRATION_API_KEY
+  ];
+  const pangolinSet = pangolinValues.filter(entry => entry !== undefined);
+  const resourceId = Number(value.PANGOLIN_RESOURCE_ID ?? '');
+
+  if (
+    pangolinSet.length > 0 &&
+    (pangolinSet.length < pangolinValues.length ||
+      !Number.isInteger(resourceId) ||
+      resourceId <= 0)
+  ) {
+    throw new Error(
+      'Invalid environment configuration: PANGOLIN_API_URL, PANGOLIN_RESOURCE_ID and PANGOLIN_INTEGRATION_API_KEY must be set together, and the resource id must be a positive integer.'
+    );
+  }
+
   return {
     runtime,
     port: value.PORT,
@@ -124,6 +150,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     publicOrigin: value.PUBLIC_ORIGIN ?? null,
     edgeAssertion,
     adminPangolinUserIds: value.ADMIN_PANGOLIN_USER_IDS.split(',')
+      .map(entry => entry.trim())
+      .filter(entry => entry.length > 0),
+    pangolin:
+      value.PANGOLIN_API_URL !== undefined &&
+      value.PANGOLIN_RESOURCE_ID !== undefined &&
+      value.PANGOLIN_INTEGRATION_API_KEY !== undefined
+        ? {
+            apiUrl: value.PANGOLIN_API_URL,
+            resourceId,
+            apiKey: value.PANGOLIN_INTEGRATION_API_KEY
+          }
+        : null,
+    mobileRedirectUris: value.MOBILE_REDIRECT_URIS.split(',')
       .map(entry => entry.trim())
       .filter(entry => entry.length > 0),
     egressAgentSocket: value.EGRESS_AGENT_SOCKET,
