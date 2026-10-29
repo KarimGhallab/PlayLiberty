@@ -15,6 +15,7 @@ export default function LibraryHeader({ onOpenAccount }: LibraryHeaderProps) {
   return (
     <View style={styles.header}>
       <Pressable
+        testID="account-door"
         accessibilityRole="button"
         accessibilityLabel={t('account.title')}
         style={styles.action}

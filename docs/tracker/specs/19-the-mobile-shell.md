@@ -1,6 +1,6 @@
 # The mobile shell
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
@@ -169,10 +169,10 @@ device instead of a browser.
   sheet for its items and their gating, the signed-out state for the absence of reads, and the stream reader for
   open, close on background, refetch and reconnect on return. Prior art is the web's router tests and its
   `useEventStream` tests.
-- **The critical journeys are Maestro flows on a physical Android device**: the app opens on the gallery and the
-  account sheet opens and closes; a signed-out app shows one action; a deep link to a track opens the track route;
-  the language switch renders French after a restart. This is the seam that exercises the real app, the real
-  secure store and the real router.
+- **The critical journeys are Maestro flows on a device**: the app opens on the library and the account sheet opens
+  and closes; a signed-out app shows one action; the language switch renders French after a restart. The gallery, the
+  track link and the egress door belong to the specs that build them (`21`, `30` and `31`), so a flow never asserts
+  a placeholder. This is the seam that exercises the real app, the real secure store and the real router.
 - **Cut tests:** no test of the sheet's gesture, the token's encryption, the exact copy of the signed-out sentence,
   or the backoff's timings.
 

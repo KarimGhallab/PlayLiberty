@@ -23,6 +23,7 @@ export default function SignedOut({ busy, failure, onSignIn }: SignedOutProps) {
   return (
     <Screen title={t('signedOut.title')} subtitle={t('signedOut.body')}>
       <Pressable
+        testID="sign-in"
         accessibilityRole="button"
         accessibilityState={{ disabled: busy }}
         disabled={busy}

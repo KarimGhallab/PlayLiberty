@@ -1,0 +1,45 @@
+appId: dev.playliberty.app
+name: The language survives a restart
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 20000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+# The dev client's floating gear sits over the door's centre.
+- tapOn:
+    id: account-door
+    point: '10%,50%'
+- tapOn:
+    id: language-fr
+- assertVisible: 'Se déconnecter'
+- tapOn:
+    id: account-close
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 60000
+- assertVisible: 'Compte'
+- tapOn:
+    id: account-door
+    point: '10%,50%'
+- tapOn:
+    id: language-en
+- tapOn:
+    id: account-close
+- assertVisible: 'Account'

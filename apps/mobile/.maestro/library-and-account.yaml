@@ -1,0 +1,33 @@
+appId: dev.playliberty.app
+name: The library and the account sheet
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 20000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+# The dev client's floating gear sits over the door's centre.
+- tapOn:
+    id: account-door
+    point: '10%,50%'
+- assertVisible:
+    id: account-sign-out
+- tapOn:
+    id: account-close
+- assertNotVisible:
+    id: account-sign-out

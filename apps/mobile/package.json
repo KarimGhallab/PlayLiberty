@@ -10,7 +10,8 @@
     "android": "expo run:android",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "clean": "rm -rf .expo"
+    "clean": "rm -rf .expo",
+    "e2e": "maestro test .maestro"
   },
   "keywords": [],
   "license": "ISC",

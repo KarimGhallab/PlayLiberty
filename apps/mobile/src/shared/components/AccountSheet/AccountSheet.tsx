@@ -47,7 +47,7 @@ export default function AccountSheet({
       animationType={reduceMotion ? 'none' : 'slide'}
       transparent>
       <View style={styles.scrim}>
-        <View style={styles.sheet}>
+        <View style={styles.sheet} testID="account-sheet">
           <Text accessibilityRole="header" style={styles.title}>
             {t('account.title')}
           </Text>
@@ -80,6 +80,7 @@ export default function AccountSheet({
             {LANGUAGES.map(option => (
               <Pressable
                 key={option.value}
+                testID={`language-${option.value}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: language === option.value }}
                 style={styles.action}
@@ -91,6 +92,7 @@ export default function AccountSheet({
 
           {isAdmin ? (
             <Pressable
+              testID="account-egress"
               accessibilityRole="button"
               style={styles.action}
               onPress={onOpenEgress}>
@@ -99,6 +101,7 @@ export default function AccountSheet({
           ) : null}
 
           <Pressable
+            testID="account-sign-out"
             accessibilityRole="button"
             style={styles.action}
             onPress={onSignOut}>
@@ -106,6 +109,7 @@ export default function AccountSheet({
           </Pressable>
 
           <Pressable
+            testID="account-close"
             accessibilityRole="button"
             style={styles.action}
             onPress={onClose}>
