@@ -1,36 +1,40 @@
 # 01: The account sheet names you
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
-## What to build
+## Outcome
 
-The app's server state gets its one owner: a single query client configured with the web's retry rule, where a
-4xx is the server's answer and is final, and only a 5xx or an unreached server retries. The account sheet reads the
-caller's own account through it and draws the display name, the avatar and the admin mark. The egress door appears
-only when the account's role is admin, and it opens the egress route.
+The app now has one server-state owner. `createAppQueryClient` builds the client with the web's retry rule, where a
+4xx is final and only a 5xx or an unreached server retries, and its query cache reports a `NeedsProvisioningError`
+once, without retrying. `AppProviders` wires that report to the session store's `expire`.
 
-A read refused with `401` clears the stored token and shows the signed-out state. No browser opens, and no screen
-draws a broken state over a credential it no longer holds. This is the recovery the app already draws, and it is
-the only one.
+The session moved into a store, because a `401` has to reach the root without a focus change. `refresh` re-reads the
+token behind a generation guard, so a read started before a sign-out cannot resurrect the session, and `expire`
+clears the token and marks the app signed out. `useSession` keeps its shape and still re-reads on focus, so the
+callback's write is seen on the way back.
 
-The sheet's copy is added to both catalogues.
-
-## Acceptance criteria
-
-- [ ] Opening the sheet on a signed-in app shows the account's display name and avatar.
-- [ ] An account with the `user` role sees no egress door; the `admin` role sees it, and it opens the egress route.
-- [ ] A `401` from the account read clears the stored token and leaves the root showing the signed-out state with its
-      single action.
-- [ ] No screen issues its own request: the account read goes through the one query client.
-- [ ] A `400`, a `403` or a `404` is not retried; a `500` retries to the web's limit.
-- [ ] The sheet's new copy exists in English and French.
+The account read goes through the one client on the web's `['me']` key. The sheet draws the display name, the avatar
+when the account has one, and the admin mark, and it offers the egress door only to an admin role; the door is a
+callback the root answers with `/egress`, which keeps the sheet free of routing. A failed read draws the problem's
+title under the identity. The new copy is `account.admin` and `account.egress` in both catalogues.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run test` covers the sheet's items and their gating, and a refused read landing
-on the signed-out state. `pnpm run build` and `pnpm run lint:check` pass. On `emulator-5554`: open the sheet signed
-in and read the name, then replace the stored token with a refused one and open the sheet again.
+- Mobile 36 tests across 8 suites: the retry rule, the refusal reported once, `expire` clearing the token, and the
+  sheet's name, avatar, admin mark, door gating, sign-out and refusal line.
+- i18n 37, web 648, all green.
+- `pnpm run build` and `pnpm run lint:check` pass.
+- On `emulator-5554` the sheet reads `Milloser` for the `user` account, with no admin mark and no egress door, and
+  the read came from the running server through the dev proxy.
+
+## Notes
+
+- The ticket's second device step, replacing the stored token with a refused one, cannot be exercised in the dev
+  topology: Vite injects a valid identity, so the server never answers `401` to the app. The raw server does answer
+  `401` to a direct caller, verified, and the refusal chain is covered at both of its seams. The device pass for a
+  refused token belongs with a run against the public origin, where the edge validates the token.
+- The account has no avatar URL, so the device drew no image. Both branches are covered by the sheet test.
 
 See [`19-the-mobile-shell`](../../specs/19-the-mobile-shell.md).

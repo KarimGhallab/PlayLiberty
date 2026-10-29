@@ -1,19 +1,23 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { type Account, UserRole } from '@playliberty/contracts';
 import { Language, useI18n } from '@playliberty/i18n';
 
-import { useReduceMotion } from '../a11y/useReduceMotion';
+import { useReduceMotion } from '../../a11y/useReduceMotion';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
   touchTarget
-} from '../styles/tokens';
+} from '../../styles/tokens';
 
 export interface AccountSheetProps {
   readonly visible: boolean;
+  readonly account: Account | null;
+  readonly failure: string | null;
   readonly onClose: () => void;
   readonly onSignOut: () => void;
+  readonly onOpenEgress: () => void;
 }
 
 const LANGUAGES = [
@@ -21,16 +25,20 @@ const LANGUAGES = [
   { value: Language.French, label: 'language.french' }
 ] as const;
 
-/* The app's one settings surface. Sign out forgets the token on the device; the
- * edge has no revocation call in this app's scope. */
+/* The app's one settings surface. The egress door is drawn from the account's
+ * role, so a normal account is never offered a screen it cannot use. */
 
 export default function AccountSheet({
   visible,
+  account,
+  failure,
   onClose,
-  onSignOut
+  onSignOut,
+  onOpenEgress
 }: AccountSheetProps) {
   const { t, language, setLanguage } = useI18n();
   const reduceMotion = useReduceMotion();
+  const isAdmin = account?.role === UserRole.Admin;
 
   return (
     <Modal
@@ -43,6 +51,29 @@ export default function AccountSheet({
           <Text accessibilityRole="header" style={styles.title}>
             {t('account.title')}
           </Text>
+
+          {account === null ? null : (
+            <View style={styles.identity}>
+              {account.avatarUrl === null ? null : (
+                <Image
+                  accessible={false}
+                  source={{ uri: account.avatarUrl }}
+                  style={styles.avatar}
+                  testID="account-avatar"
+                />
+              )}
+              <View style={styles.who}>
+                <Text style={styles.name}>{account.displayName}</Text>
+                {isAdmin ? (
+                  <Text style={styles.mark}>{t('account.admin')}</Text>
+                ) : null}
+              </View>
+            </View>
+          )}
+
+          {failure === null ? null : (
+            <Text style={styles.failure}>{failure}</Text>
+          )}
 
           <Text style={styles.label}>{t('language.label')}</Text>
           <View style={styles.row}>
@@ -57,6 +88,15 @@ export default function AccountSheet({
               </Pressable>
             ))}
           </View>
+
+          {isAdmin ? (
+            <Pressable
+              accessibilityRole="button"
+              style={styles.action}
+              onPress={onOpenEgress}>
+              <Text style={styles.actionLabel}>{t('account.egress')}</Text>
+            </Pressable>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
@@ -95,6 +135,37 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-lg'),
     fontWeight: '600'
+  },
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-3')
+  },
+  avatar: {
+    width: tokenLength('space-8'),
+    height: tokenLength('space-8'),
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface-raised')
+  },
+  who: {
+    flexShrink: 1,
+    gap: tokenLength('space-1')
+  },
+  name: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-md'),
+    fontWeight: '600'
+  },
+  mark: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-xs')
+  },
+  failure: {
+    color: tokenColor('tone-failed'),
+    fontFamily,
+    fontSize: tokenLength('text-sm')
   },
   label: {
     color: tokenColor('muted'),

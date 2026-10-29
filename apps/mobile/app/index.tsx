@@ -1,9 +1,10 @@
+import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
-import AccountSheet from '../src/shared/components/AccountSheet';
+import AccountSheet from '../src/shared/components/AccountSheet/AccountSheet';
 import Screen from '../src/shared/components/Screen/Screen';
 import {
   tokenColor,
@@ -13,6 +14,8 @@ import {
 } from '../src/shared/styles/tokens';
 
 import { apiBaseUrl } from '../src/api/apiBaseUrl';
+import { ApiError } from '../src/api/apiClient/ApiClient';
+import { useAccount } from '../src/api/useAccount';
 import {
   expoProvisioningDeps,
   provisioningRedirectUris
@@ -30,6 +33,13 @@ export default function LibraryRoute() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const { data: account, error: accountError } = useAccount(
+    status === SessionStatus.SignedIn
+  );
+  const readFailure =
+    accountError instanceof ApiError
+      ? problemDetail(t, accountError.problem)
+      : null;
 
   const signIn = useCallback(async () => {
     setBusy(true);
@@ -92,9 +102,15 @@ export default function LibraryRoute() {
 
       <AccountSheet
         visible={accountOpen}
+        account={account ?? null}
+        failure={readFailure}
         onClose={() => setAccountOpen(false)}
         onSignOut={() => {
           void tokenStore.clear().then(refresh);
+        }}
+        onOpenEgress={() => {
+          setAccountOpen(false);
+          router.push('/egress');
         }}
       />
     </Screen>

@@ -18,6 +18,8 @@ export const en = {
   },
   account: {
     title: 'Account',
+    admin: 'Admin',
+    egress: 'VPN settings',
     signOut: 'Sign out'
   },
   signedOut: {

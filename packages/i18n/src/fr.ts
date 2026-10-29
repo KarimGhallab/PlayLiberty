@@ -20,6 +20,8 @@ export const fr: Messages = {
   },
   account: {
     title: 'Compte',
+    admin: 'Admin',
+    egress: 'Paramètres VPN',
     signOut: 'Se déconnecter'
   },
   signedOut: {
