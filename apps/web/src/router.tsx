@@ -57,6 +57,12 @@ const libraryRoute = createRoute({
 const playlistDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/playlists/$playlistId',
+  validateSearch: (search: Record<string, unknown>): { track?: string } => ({
+    track:
+      typeof search.track === 'string' && search.track.length > 0
+        ? search.track
+        : undefined
+  }),
   component: PlaylistDetailPage
 });
 

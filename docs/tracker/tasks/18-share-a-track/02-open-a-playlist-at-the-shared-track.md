@@ -1,25 +1,13 @@
 # 02: Open a playlist at the shared track
 
-**Status:** open
-**Labels:** `enhancement`, `ready-for-agent`
+**Status:** resolved
 
-## What to build
+## Outcome
 
-Opening `/playlists/P?track=T` starts the playlist unshuffled with `T` at its own place in the order, whether the recipient owns the playlist or holds a read or write share on it. The address bar mirrors the playing track while `P` is the queue, so copying it shares the track now playing. Entry is idempotent, a reload restores the queue paused, and the degraded links are left to ticket 05.
+Opening `/playlists/P?track=T` starts the playlist unshuffled with `T` at its own place in the order. The whole queue comes through the existing play transition, the current track is `T` at position zero, and shuffle is false. The entry is idempotent: the same target does not restart or seek, a loaded queue at another track moves to `T`, and another queue is replaced by `P` at `T`. While `P` is the queue, the address bar replaces `?track` with the current track on every change; when `P` is not the queue the param is absent, and the gallery stays `/`. A reload restores the persisted queue paused because the entry treats the same target as already done.
 
-## Acceptance criteria
+The `track` search param is validated on the playlist route and ignored when empty. Degraded links remain ticket 05: an unreachable playlist still draws the not-found body, and a present but unplayable track still uses the existing refusal.
 
-- [ ] The playlist route accepts a non-empty `track` search param; without it the page behaves exactly as it does today.
-- [ ] With access and a playable `T`, entry starts the whole playlist in source order, shuffle off, at position zero on `T`; the tracks before `T` stay before it and playback stops at the playlist's end.
-- [ ] Entry is idempotent: `P` already at `T` does not restart or seek, `P` at another track jumps to `T`, and another queue starts `P` at `T`.
-- [ ] While `P` is the queue, the address bar replaces `?track` with the current track on every change; when `P` is not the queue the param is absent, and `/` stays `/` while music plays.
-- [ ] A reload restores the persisted queue paused at its position and does not start audio.
-- [ ] The playlist detail page tests cover the entry, its idempotence and the mirror; the new two-context e2e journey proves a read share opens the playlist at the shared track.
-- [ ] No-access, absent-track and unplayable branches are not claimed here; ticket 05 owns them.
-
-## Verification
-
-- `pnpm run build` and `pnpm run lint:check` pass.
-- The playlist detail page tests and the new two-context e2e journey pass.
+Verification: `pnpm run build`, `pnpm run lint:check`, the unit suites (web 627, server 436, egress agent 54, UI foundation 5) and the e2e typecheck pass. The new two-context e2e journey, a read share opening the playlist at the shared track, passes in Chromium. The page tests cover the start, the three idempotent cases, the address bar mirror and the page with another queue.
 
 See [`18-share-a-track`](../../specs/18-share-a-track.md).

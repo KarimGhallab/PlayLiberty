@@ -7,6 +7,7 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -28,6 +29,8 @@ import { I18nProvider } from '@playliberty/i18n';
 
 import DeferredToasts from '../../../shared/components/UndoToast/DeferredToasts';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
+import { queuePlaylistId } from '../../../shared/player/types';
+import type { PlayerTrack } from '../../../shared/player/types';
 
 import {
   EMPTY_COUNTS,
@@ -41,24 +44,34 @@ import PlaylistDetailPage from './PlaylistDetailPage';
 
 const PLAYLIST_ID = 'playlist-1';
 
-function renderDetail(playlistId = PLAYLIST_ID) {
+function renderDetail(playlistId = PLAYLIST_ID, track?: string) {
   const rootRoute = createRootRoute();
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/playlists/$playlistId',
+    validateSearch: (search: Record<string, unknown>): { track?: string } => ({
+      track:
+        typeof search.track === 'string' && search.track.length > 0
+          ? search.track
+          : undefined
+    }),
     component: PlaylistDetailPage
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([detailRoute]),
     history: createMemoryHistory({
-      initialEntries: [`/playlists/${playlistId}`]
+      initialEntries: [
+        track === undefined
+          ? `/playlists/${playlistId}`
+          : `/playlists/${playlistId}?track=${track}`
+      ]
     })
   });
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } }
   });
 
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <I18nProvider preferred={['en']}>
         <RouterProvider router={router} />
@@ -66,6 +79,8 @@ function renderDetail(playlistId = PLAYLIST_ID) {
       </I18nProvider>
     </QueryClientProvider>
   );
+
+  return { ...view, router };
 }
 
 /* The playlist read a handler echoes a value into, without the whole shape. */
@@ -127,6 +142,21 @@ function listTitles(): string[] {
         button.getAttribute('aria-label')?.replace(/^(Play|Pause)\s+/, '') ?? ''
     )
     .filter(title => title !== 'this playlist');
+}
+
+function playerTrack(
+  id: string,
+  title: string,
+  durationSeconds: number
+): PlayerTrack {
+  return {
+    id,
+    title,
+    playlistId: PLAYLIST_ID,
+    playlistName: 'Rain On The Window',
+    durationSeconds,
+    thumbnailPath: null
+  };
 }
 
 const scrollIntoView = vi.fn();
@@ -2092,5 +2122,153 @@ describe('PlaylistDetailPage filter chips', () => {
       'Blue In Green',
       'Naima'
     ]);
+  });
+
+  it('starts the playlist at the shared track', async () => {
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().currentId).toBe('track-2')
+    );
+    const state = usePlayerStore.getState();
+
+    expect(state.queue.map(track => track.id)).toEqual(['track-1', 'track-2']);
+    expect(state.positionSeconds).toBe(0);
+    expect(state.isPlaying).toBe(true);
+    expect(state.shuffle).toBe(false);
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('leaves a queue already at the shared track alone', async () => {
+    usePlayerStore
+      .getState()
+      .startQueue(
+        PLAYLIST_ID,
+        [
+          playerTrack('track-1', 'Blue In Green', 337),
+          playerTrack('track-2', 'Naima', 273)
+        ],
+        'track-2'
+      );
+    usePlayerStore.getState().setPosition(12);
+    usePlayerStore.getState().setPlaying(false);
+
+    renderDetail(PLAYLIST_ID, 'track-2');
+
+    expect(
+      await screen.findByRole('button', { name: 'Play Naima' })
+    ).toBeInTheDocument();
+    expect(usePlayerStore.getState().positionSeconds).toBe(12);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('jumps a loaded playlist to the shared track', async () => {
+    usePlayerStore
+      .getState()
+      .startQueue(
+        PLAYLIST_ID,
+        [
+          playerTrack('track-1', 'Blue In Green', 337),
+          playerTrack('track-2', 'Naima', 273)
+        ],
+        'track-1'
+      );
+    usePlayerStore.getState().setPosition(30);
+
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().currentId).toBe('track-2')
+    );
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().queue.map(track => track.id)).toEqual([
+      'track-1',
+      'track-2'
+    ]);
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('starts the shared playlist over another queue', async () => {
+    usePlayerStore.getState().startQueue(
+      'other-playlist',
+      [
+        {
+          id: 'other-track',
+          title: 'Elsewhere',
+          playlistId: 'other-playlist',
+          playlistName: 'Elsewhere',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      'other-track'
+    );
+
+    const { router } = renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(queuePlaylistId(usePlayerStore.getState())).toBe(PLAYLIST_ID)
+    );
+    const state = usePlayerStore.getState();
+
+    expect(state.queue.map(track => track.id)).toEqual(['track-1', 'track-2']);
+    expect(state.currentId).toBe('track-2');
+    expect(state.positionSeconds).toBe(0);
+    expect(state.isPlaying).toBe(true);
+    expect(state.shuffle).toBe(false);
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('mirrors the current track as the queue moves', async () => {
+    usePlayerStore
+      .getState()
+      .startQueue(
+        PLAYLIST_ID,
+        [
+          playerTrack('track-1', 'Blue In Green', 337),
+          playerTrack('track-2', 'Naima', 273)
+        ],
+        'track-1'
+      );
+    const { router } = renderDetail();
+
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-1' })
+    );
+
+    act(() => usePlayerStore.getState().skipNext());
+
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ track: 'track-2' })
+    );
+  });
+
+  it('leaves the address bar free of a track while another playlist is the queue', async () => {
+    usePlayerStore.getState().startQueue(
+      'other-playlist',
+      [
+        {
+          id: 'other-track',
+          title: 'Elsewhere',
+          playlistId: 'other-playlist',
+          playlistName: 'Elsewhere',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      'other-track'
+    );
+
+    const { router } = renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Blue In Green' });
+    expect(router.state.location.search.track).toBeUndefined();
   });
 });

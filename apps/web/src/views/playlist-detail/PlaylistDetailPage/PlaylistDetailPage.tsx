@@ -1,5 +1,10 @@
 import { IconChevronLeft, IconPlus } from '@tabler/icons-react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearch
+} from '@tanstack/react-router';
 import {
   useCallback,
   useEffect,
@@ -100,6 +105,9 @@ const REORDER_HOLD_ROWS = 50;
 export default function PlaylistDetailPage() {
   const { t } = useI18n();
   const { playlistId } = useParams({ from: '/playlists/$playlistId' });
+  const { track: trackParam = null } = useSearch({
+    from: '/playlists/$playlistId'
+  });
   const navigate = useNavigate();
   const playlist = usePlaylist(playlistId);
   const latestRun = useLatestSyncRun(playlistId);
@@ -287,6 +295,57 @@ export default function PlaylistDetailPage() {
     (trackId: string) => transition.playTrack(playlistView, trackId),
     [transition.playTrack, playlistView]
   );
+
+  /* A link naming a track starts this playlist at it, once; the mirror below
+   * keeps the address true after the queue answers. */
+  useEffect(() => {
+    if (trackParam === null || playlist.data === undefined) {
+      return;
+    }
+
+    const player = usePlayerStore.getState();
+
+    if (
+      queuePlaylistId(player) === playlistId &&
+      player.currentId === trackParam
+    ) {
+      return;
+    }
+
+    playTrack(trackParam);
+  }, [playTrack, playlist.data, playlistId, trackParam]);
+
+  /* While this playlist is the queue, the address bar names its current track;
+   * another queue leaves no track on this page. */
+  useEffect(() => {
+    if (playlist.data === undefined) {
+      return;
+    }
+
+    const player = usePlayerStore.getState();
+    const target =
+      queuePlaylistId(player) === playlistId && player.currentId !== null
+        ? player.currentId
+        : null;
+
+    if (trackParam === target) {
+      return;
+    }
+
+    void navigate({
+      to: '/playlists/$playlistId',
+      params: { playlistId },
+      search: target === null ? {} : { track: target },
+      replace: true
+    });
+  }, [
+    currentId,
+    navigate,
+    playlist.data,
+    playlistId,
+    playingPlaylistId,
+    trackParam
+  ]);
 
   /* The exchange freezes the frame it lands on, so the skeleton is painted first
    * and stands through it; the list stays mounted under it, keeping scroll and
