@@ -199,6 +199,8 @@ export default function PlaylistDetailPage() {
   const scrollHandledFor = useRef<string | null>(null);
   /* A shuffle toggle earns the landing the open already took. */
   const landAfterToggle = useRef(false);
+  /* A link that starts the queue earns the landing the open could not take. */
+  const landAfterLink = useRef(false);
   const orderFrames = useRef<number[]>([]);
   const inspectedLink = useRef<string | null>(null);
   const redirectingLink = useRef<string | null>(null);
@@ -228,7 +230,11 @@ export default function PlaylistDetailPage() {
    * top, and pages load until the row exists.
    */
   useLayoutEffect(() => {
-    if (scrollHandledFor.current === playlistId && !landAfterToggle.current) {
+    if (
+      scrollHandledFor.current === playlistId &&
+      !landAfterToggle.current &&
+      !landAfterLink.current
+    ) {
       return;
     }
 
@@ -249,6 +255,7 @@ export default function PlaylistDetailPage() {
       } else if (!tracks.hasMore) {
         scrollHandledFor.current = playlistId;
         landAfterToggle.current = false;
+        landAfterLink.current = false;
       }
 
       return;
@@ -258,6 +265,7 @@ export default function PlaylistDetailPage() {
       row.scrollIntoView({ behavior: 'instant', block: 'center' });
       scrollHandledFor.current = playlistId;
       landAfterToggle.current = false;
+      landAfterLink.current = false;
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -291,6 +299,7 @@ export default function PlaylistDetailPage() {
   useEffect(() => {
     if (!transition.starting && !isQueue) {
       landAfterToggle.current = false;
+      landAfterLink.current = false;
     }
   }, [transition.starting, isQueue]);
 
@@ -382,6 +391,7 @@ export default function PlaylistDetailPage() {
       return;
     }
 
+    landAfterLink.current = true;
     playTrack(trackParam);
   }, [
     navigate,

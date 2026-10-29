@@ -2151,6 +2151,16 @@ describe('PlaylistDetailPage filter chips', () => {
     ]);
   });
 
+  it('lands on the track a link starts the queue at', async () => {
+    renderDetail(PLAYLIST_ID, 'track-2');
+
+    await waitFor(() =>
+      expect(usePlayerStore.getState().currentId).toBe('track-2')
+    );
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    expect(scrollIntoView.mock.instances[0]).toHaveTextContent('Naima');
+  });
+
   it('starts the playlist at the shared track', async () => {
     const { router } = renderDetail(PLAYLIST_ID, 'track-2');
 
