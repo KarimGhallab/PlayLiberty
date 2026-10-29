@@ -440,6 +440,58 @@ describe('PlaylistDetailPage', () => {
     expect(row).toHaveTextContent('Naima');
   });
 
+  /*
+   * The first landing is not the last: a playhead that steps past the loaded
+   * pages still needs them, or the skeleton stands in front of a list that
+   * never arrives.
+   */
+  it('loads the pages in when the playhead advances past the loaded rows', async () => {
+    const all = [
+      trackJson('track-1', 'Blue In Green', 0),
+      trackJson('track-2', 'Naima', 1),
+      trackJson('track-3', 'Flamenco Sketches', 2)
+    ];
+    server.use(
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        ({ request }) => {
+          const offset = Number(
+            new URL(request.url).searchParams.get('offset') ?? '0'
+          );
+
+          return HttpResponse.json({
+            items: all.slice(offset, offset + 1),
+            total: all.length,
+            limit: 1,
+            offset,
+            counts: countsOf(all)
+          });
+        }
+      )
+    );
+    usePlayerStore.getState().startQueue(
+      PLAYLIST_ID,
+      all.map(association =>
+        playerTrack(
+          association.track.id,
+          association.track.title,
+          association.track.durationSeconds
+        )
+      ),
+      'track-1'
+    );
+    renderDetail();
+
+    await waitFor(() => expect(listTitles()).toEqual(['Blue In Green']));
+
+    act(() => {
+      usePlayerStore.getState().skipNext();
+    });
+
+    await waitFor(() => expect(listTitles()).toContain('Naima'));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('lands on the current track when the shuffle starts the queue', async () => {
     renderDetail();
 

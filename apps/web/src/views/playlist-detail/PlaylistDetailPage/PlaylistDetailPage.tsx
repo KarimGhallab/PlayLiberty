@@ -230,14 +230,6 @@ export default function PlaylistDetailPage() {
    * top, and pages load until the row exists.
    */
   useLayoutEffect(() => {
-    if (
-      scrollHandledFor.current === playlistId &&
-      !landAfterToggle.current &&
-      !landAfterLink.current
-    ) {
-      return;
-    }
-
     if (!isQueue || currentId === null) {
       scrollHandledFor.current = playlistId;
       return;
@@ -249,6 +241,8 @@ export default function PlaylistDetailPage() {
 
     const row = listRef.current?.querySelector<HTMLElement>('li[data-state]');
 
+    /* A playhead that moved outside the loaded pages still needs them, even
+     * after this visit has landed, or the skeleton would stand forever. */
     if (row === null || row === undefined) {
       if (tracks.hasMore && !tracks.loadingMore && !tracks.moreFailed) {
         tracks.loadMore();
@@ -258,6 +252,14 @@ export default function PlaylistDetailPage() {
         landAfterLink.current = false;
       }
 
+      return;
+    }
+
+    if (
+      scrollHandledFor.current === playlistId &&
+      !landAfterToggle.current &&
+      !landAfterLink.current
+    ) {
       return;
     }
 
