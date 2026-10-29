@@ -27,9 +27,16 @@ import {
   TrackFileStatus,
   endpoints
 } from '@playliberty/contracts';
+import {
+  cacheEffects,
+  latestSyncRunKey,
+  playlistKey,
+  playlistQueueKey,
+  playlistSharesKey,
+  playlistTracksKey
+} from '@playliberty/query';
 
 import type { CoverCrop } from '../../../coverCrop/coverCrop';
-import { cacheEffects } from '../../cacheEffects/cacheEffects';
 import {
   commandEndpoint,
   deleteEndpoint,
@@ -45,25 +52,10 @@ import {
 import { ApiError } from '../apiClient/apiClient';
 
 /*
- * The Playlist client: one owner for a playlist's reads, actions and the keys
- * they use. A page names a hook, never a key, and the invalidation it triggers
- * is the one in `cacheEffects`.
+ * The Playlist client: one owner for a playlist's reads and actions. A page
+ * names a hook, never a key, and the invalidation it triggers is the one in
+ * `cacheEffects`.
  */
-
-const playlistKey = (playlistId: string | null) =>
-  ['playlist', playlistId] as const;
-
-const playlistTracksKey = (playlistId: string, state?: TrackFileStatus) =>
-  ['playlist', playlistId, 'tracks', state ?? 'all'] as const;
-
-const playlistQueueKey = (playlistId: string) =>
-  ['playlist', playlistId, 'queue'] as const;
-
-const latestSyncRunKey = (playlistId: string) =>
-  ['playlist', playlistId, 'sync-runs', 'latest'] as const;
-
-const playlistSharesKey = (playlistId: string) =>
-  ['playlist', playlistId, 'shares'] as const;
 
 /*
  * The playlist's name, separate from the tracks read because the name belongs

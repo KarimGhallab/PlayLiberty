@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, waitFor } from '@testing-library/react-native';
 
+import { currentAccountKey, libraryKey } from '@playliberty/query';
+
 import {
   SessionStatus,
   useSessionStore
@@ -10,8 +12,8 @@ import SessionCache from './SessionCache';
 
 function seeded(): QueryClient {
   const queryClient = new QueryClient();
-  queryClient.setQueryData(['me'], { id: 'account-1' });
-  queryClient.setQueryData(['playlists'], [{ id: 'playlist-1' }]);
+  queryClient.setQueryData(currentAccountKey, { id: 'account-1' });
+  queryClient.setQueryData(libraryKey, [{ id: 'playlist-1' }]);
 
   return queryClient;
 }
@@ -38,9 +40,9 @@ describe('the session cache', () => {
     });
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(['me'])).toBeUndefined();
+      expect(queryClient.getQueryData(currentAccountKey)).toBeUndefined();
     });
-    expect(queryClient.getQueryData(['playlists'])).toBeUndefined();
+    expect(queryClient.getQueryData(libraryKey)).toBeUndefined();
     queryClient.clear();
   });
 
@@ -53,8 +55,10 @@ describe('the session cache', () => {
       useSessionStore.setState({ status: SessionStatus.SignedIn });
     });
 
-    expect(queryClient.getQueryData(['me'])).toEqual({ id: 'account-1' });
-    expect(queryClient.getQueryData(['playlists'])).toEqual([
+    expect(queryClient.getQueryData(currentAccountKey)).toEqual({
+      id: 'account-1'
+    });
+    expect(queryClient.getQueryData(libraryKey)).toEqual([
       { id: 'playlist-1' }
     ]);
     queryClient.clear();

@@ -1,30 +1,38 @@
 # 03: One owner for the invalidation map
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately, and must land before `04`.
 
-## What to build
+## Outcome
 
-The cache-effect map and the live-event invalidation leave the web app and become a package both clients consume:
-`@playliberty/query`. The map stays the one place a query key is written, so the mobile stream cannot drift from
-the keys the web already reads. Copying the map into the app was rejected for that reason.
+`@playliberty/query` is the one owner of the keys and the map. It exports the key builders (`libraryKey`,
+`playlistKey`, `playlistPrefix`, `playlistTracksKey`, `playlistQueueKey`, `latestSyncRunKey`,
+`playlistSharesKey`, `currentAccountKey`, `accountsKey`, `egressKey`, `trackKey`), the cache-effect map, and the
+live-event invalidation. The map and its tests moved with the keys, so the assertions that pin the key shapes now
+run in the package instead of the web app.
 
-The web repoints its import sites at the package. Nothing else about its behaviour changes, and its suite passing
-untouched is the proof. The package is wired into the workspace the way the other packages are, including the
-tsconfig paths, syncpack and the build.
-
-## Acceptance criteria
-
-- [ ] The package exports the cache effects and the live-event invalidation.
-- [ ] The web imports both from the package, and its suite passes with no behavioural change.
-- [ ] No client writes a query-key literal outside the package.
-- [ ] `depcruise` reports no violation, and no package imports an app.
-- [ ] `pnpm run build`, `syncpack` and the tsconfig path check pass.
+The five web clients import the builders and no longer declare a key. The mobile client consumes the same builders
+for its account read and its session-cache guard, which is what keeps the stream in `04` from drifting. The package
+is wired like the others: a workspace dependency in both clients, a path in `tsconfig.depcruise.json`, and a place
+in the root `build:packages` list.
 
 ## Verification
 
-`pnpm run build`, `pnpm run lint:check`, `npx --no-install depcruise .`, `syncpack` and
-`pnpm --filter @playliberty/web run test` all pass.
+- `pnpm run build` and `pnpm run lint:check` pass.
+- `npx --no-install depcruise .` reports no violation over 428 modules, so no package imports an app.
+- `syncpack lint` reports no issue, and the tsconfig path check passes.
+- Web 638, query 10, mobile 38, i18n 42, all green. The web's count dropped by exactly the ten tests that moved
+  into the package.
+
+## Notes
+
+- A key builder passed as a value instead of called collapses the hash to `undefined`, because `JSON.stringify`
+  drops functions, and every query then shares one cache entry. The web suite caught two such call sites during
+  this work, and the type check caught two more where a key is a required argument. Ticket `07` removes the
+  remaining chance of it by making the parameterless keys constants.
+- `pnpm install` links the new package but exits non-zero on `ERR_PNPM_IGNORED_BUILDS` for `unrs-resolver`. That
+  comes from the placeholder value in `pnpm-workspace.yaml` and is older than this ticket. Approving a build script
+  is the human's call, so it was left alone.
 
 See [`19-the-mobile-shell`](../../specs/19-the-mobile-shell.md).

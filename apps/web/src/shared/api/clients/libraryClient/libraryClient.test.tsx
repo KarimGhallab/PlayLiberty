@@ -5,10 +5,10 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProblemCode, endpoints } from '@playliberty/contracts';
+import { cacheEffects } from '@playliberty/query';
 
 import { mockUrl, problemResponse } from '../../../../testing/mocks/handlers';
 import { server } from '../../../../testing/mocks/server';
-import { cacheEffects } from '../../cacheEffects/cacheEffects';
 import { useSyncAllPlaylists } from './libraryClient';
 
 const RUNNING_RUN = {

@@ -3,16 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 
 import type { Account, AccountSummary } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
+import { accountsKey, currentAccountKey } from '@playliberty/query';
 
 import { readEndpoint } from '../../endpoints/endpoints';
 
 /*
- * The account client: the reader, the directory another account's display name
- * resolves through, and the one key each is read under.
+ * The account client: the reader and the directory another account's display
+ * name resolves through.
  */
-
-const accountsKey = ['accounts'] as const;
-const currentAccountKey = ['me'] as const;
 
 /* The only source of another account's display name: a shared item carries an
  * `ownerAccountId` only, and an owner past the first page is a miss. */

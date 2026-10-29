@@ -3,13 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { EgressRead } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
+import { egressKey } from '@playliberty/query';
 
 import { commandEndpoint, readEndpoint } from '../../endpoints/endpoints';
 
 /* The Egress client: the operator's pool read and the two actions that answer
- * it whole. The key is the client's. */
-
-const egressKey = ['egress'] as const;
+ * it whole. */
 
 /* The operator's pool: an admin-only read, so a 404 here is the gate, not a
  * fault. */

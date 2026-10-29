@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { Playlist, PlaylistPage, SyncRun } from '@playliberty/contracts';
 import { ProblemCode, endpoints } from '@playliberty/contracts';
+import { cacheEffects, libraryKey } from '@playliberty/query';
 
-import { cacheEffects } from '../../cacheEffects/cacheEffects';
 import {
   commandEndpoint,
   patchEndpoint,
@@ -18,11 +18,9 @@ import {
 import { ApiError } from '../apiClient/apiClient';
 
 /*
- * The library client: the gallery read, create, Sync all and the pin, with the
- * key they share. A playlist's own reads and actions live in `playlistClient`.
+ * The library client: the gallery read, create, Sync all and the pin. A
+ * playlist's own reads and actions live in `playlistClient`.
  */
-
-const libraryKey = ['playlists'] as const;
 
 export function usePlaylists(): UseQueryResult<PlaylistPage, Error> {
   return useQuery({

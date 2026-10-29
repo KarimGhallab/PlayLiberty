@@ -3,11 +3,10 @@ import { createContext, useContext, useEffect } from 'react';
 
 import type { LiveEvent } from '@playliberty/contracts';
 import { LiveEventSchema, endpoints } from '@playliberty/contracts';
+import { cacheEffects, invalidateForLiveEvent } from '@playliberty/query';
 
-import { cacheEffects } from '../cacheEffects/cacheEffects';
 import { API_PREFIX, ApiError } from '../clients/apiClient/apiClient';
 import { readEndpoint } from '../endpoints/endpoints';
-import { invalidateForLiveEvent } from '../liveEvents/liveEvents';
 
 /*
  * The tab's one live connection, mounted in the shell and reopened on a

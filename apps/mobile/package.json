@@ -20,6 +20,7 @@
     "@expo/metro-runtime": "^57.0.17",
     "@playliberty/contracts": "workspace:*",
     "@playliberty/i18n": "workspace:*",
+    "@playliberty/query": "workspace:*",
     "@playliberty/tokens": "workspace:*",
     "@playliberty/ui-foundation": "workspace:*",
     "@tabler/icons-react-native": "3.50.0",

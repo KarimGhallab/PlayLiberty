@@ -13,10 +13,10 @@ import {
   TrackSourceStatus,
   endpoints
 } from '@playliberty/contracts';
+import { cacheEffects } from '@playliberty/query';
 
 import { EMPTY_COUNTS, mockUrl } from '../../../../testing/mocks/handlers';
 import { server } from '../../../../testing/mocks/server';
-import { cacheEffects } from '../../cacheEffects/cacheEffects';
 import { coverCropQuery, useRetryFailedTracks } from './playlistClient';
 
 const PLAYLIST = 'playlist-1';

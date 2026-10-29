@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { LiveEventType } from '@playliberty/contracts';
 import type { LiveEvent } from '@playliberty/contracts';
 
-import { cacheEffects } from '../cacheEffects/cacheEffects';
+import { cacheEffects } from '../cacheEffects/cacheEffects.js';
 
 /*
  * What a live event invalidates. An event is a hint, never data: TanStack Query

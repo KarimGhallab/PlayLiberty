@@ -1,5 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+import { libraryKey, playlistKey, playlistPrefix } from '../keys/keys.js';
+
 /*
  * One map from a domain fact to the reads it asks again, shared by a mutation
  * and live event so keys cannot drift. The one place a key is written:
@@ -12,22 +14,24 @@ export const cacheEffects = {
    * setting change writes the playlist's own cache from the response.
    */
   libraryChanged(queryClient: QueryClient): void {
-    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    void queryClient.invalidateQueries({ queryKey: libraryKey });
   },
 
   playlistChanged(queryClient: QueryClient, playlistId: string): void {
-    void queryClient.invalidateQueries({ queryKey: ['playlist', playlistId] });
-    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    void queryClient.invalidateQueries({
+      queryKey: playlistKey(playlistId)
+    });
+    void queryClient.invalidateQueries({ queryKey: libraryKey });
   },
 
   trackChanged(queryClient: QueryClient, playlistIds: readonly string[]): void {
     for (const playlistId of playlistIds) {
       void queryClient.invalidateQueries({
-        queryKey: ['playlist', playlistId]
+        queryKey: playlistKey(playlistId)
       });
     }
 
-    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    void queryClient.invalidateQueries({ queryKey: libraryKey });
   },
 
   /*
@@ -35,8 +39,8 @@ export const cacheEffects = {
    * playlist read rather than working out which ids took the track.
    */
   everyPlaylistChanged(queryClient: QueryClient): void {
-    void queryClient.invalidateQueries({ queryKey: ['playlist'] });
-    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    void queryClient.invalidateQueries({ queryKey: playlistPrefix });
+    void queryClient.invalidateQueries({ queryKey: libraryKey });
   },
 
   /*
@@ -44,8 +48,8 @@ export const cacheEffects = {
    * active observer a removed query would leave with nothing to read.
    */
   playlistRemoved(queryClient: QueryClient, playlistId: string): void {
-    void queryClient.resetQueries({ queryKey: ['playlist', playlistId] });
-    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    void queryClient.resetQueries({ queryKey: playlistKey(playlistId) });
+    void queryClient.invalidateQueries({ queryKey: libraryKey });
   },
 
   everythingChanged(queryClient: QueryClient): void {

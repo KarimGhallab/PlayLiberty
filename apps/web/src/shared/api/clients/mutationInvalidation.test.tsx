@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ShareLevel } from '@playliberty/contracts';
+import { cacheEffects } from '@playliberty/query';
 
-import { cacheEffects } from '../cacheEffects/cacheEffects';
 import { useCreatePlaylist, useUpdatePin } from './libraryClient/libraryClient';
 import {
   useAddTrack,

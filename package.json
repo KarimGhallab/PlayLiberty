@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "pnpm run build:packages && pnpm run dev:apps",
     "dev:apps": "pnpm -r --parallel --filter @playliberty/egress-agent --filter @playliberty/server --filter @playliberty/web run dev",
-    "build:packages": "pnpm -r --filter @playliberty/contracts --filter @playliberty/i18n --filter @playliberty/tokens --filter @playliberty/ui-foundation --filter @playliberty/youtube run build",
+    "build:packages": "pnpm -r --filter @playliberty/contracts --filter @playliberty/i18n --filter @playliberty/query --filter @playliberty/tokens --filter @playliberty/ui-foundation --filter @playliberty/youtube run build",
     "server:start": "pnpm --filter @playliberty/server run start",
     "server:dev": "pnpm --filter @playliberty/server run dev",
     "web:dev": "pnpm --filter @playliberty/web run dev",
