@@ -6,6 +6,7 @@ import { tokenColor } from '../src/shared/styles/tokens';
 
 import { streamSource } from '../src/api/streamSource';
 import { useApiConfig } from '../src/auth/useApiConfig';
+import LiveEvents from '../src/live/LiveEvents';
 import { usePlayerAudio } from '../src/player/usePlayerAudio';
 import AppProviders from '../src/providers/AppProviders';
 
@@ -24,6 +25,7 @@ export default function RootLayout() {
   return (
     <AppProviders>
       <StatusBar style="light" />
+      <LiveEvents config={config} />
       <Stack
         screenOptions={{
           headerShown: false,
