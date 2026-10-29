@@ -562,7 +562,7 @@ test('the 390px arrangement opens the cover dialog and saves', async ({
 
   await expect(coverImage(page, playlistId)).toBeVisible();
 
-  await page.getByRole('link', { name: 'Back to home' }).click();
+  await page.getByRole('link', { name: /^Back( to home)?$/ }).click();
   await expect(
     customCoverIn(galleryItem(page, PHONE_TITLE), playlistId)
   ).toBeVisible();
