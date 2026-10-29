@@ -58,7 +58,9 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`49-clients-for-the-library-account-and-egress`](49-clients-for-the-library-account-and-egress.md)                         | resolved | [`48`](48-one-optimistic-frame-and-a-playlist-client.md) | none                                                      |
 | [`50-share-a-track`](18-share-a-track/TICKETS.md)                                                                           | resolved | none                                                     | none                                                      |
 
-Tickets `06` and `07` are the implementation tickets of mobile specs [`19`](../specs/19-the-mobile-shell.md) and [`20`](../specs/20-provision-mobile-access.md); the specs are their decision records.
+Tickets `06` and `07` scaffolded the mobile app and provisioned its access. The rest of spec
+[`19`](../specs/19-the-mobile-shell.md) is in [`19-the-mobile-shell/TICKETS.md`](19-the-mobile-shell/TICKETS.md),
+and `07` stays the implementation ticket of spec [`20`](../specs/20-provision-mobile-access.md).
 
 Feature-scoped ticket sets live in a folder named for their spec:
 
@@ -80,6 +82,7 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`17-crop-a-playlist-cover/TICKETS.md`](17-crop-a-playlist-cover/TICKETS.md).
 - [`16-tunnel-the-youtube-egress/TICKETS.md`](16-tunnel-the-youtube-egress/TICKETS.md).
 - [`18-share-a-track/TICKETS.md`](18-share-a-track/TICKETS.md).
+- [`19-the-mobile-shell/TICKETS.md`](19-the-mobile-shell/TICKETS.md).
 
 ## Conventions
 

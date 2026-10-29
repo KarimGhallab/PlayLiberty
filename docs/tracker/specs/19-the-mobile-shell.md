@@ -117,9 +117,10 @@ device instead of a browser.
   parses the same event framing the server already sends and reconnects from a backoff timer, so a session the edge
   keeps refusing stops retrying. `Decided here:` a polyfill dependency would add a second transport to secure and
   test for one endpoint.
-- **A missing or refused token at launch runs provisioning.** A `401` mid-session clears the token and shows the
-  signed-out state; it never opens the browser over a playing track. `Decided here:` the web's re-auth navigation
-  has no mobile equivalent, and the signed-out state is the recovery the app already draws.
+- **A missing or refused token shows the signed-out state, and provisioning runs only from its Sign in action, at
+  launch or later.** A `401` mid-session clears the token and shows the same state; it never opens the browser over
+  a playing track. `Decided here:` the web's re-auth navigation has no mobile equivalent, and the signed-out state
+  is the recovery the app already draws.
 - **Every request carries the access token headers and every mutation carries the client header.** Reads carry no
   client header, and nothing mutates on a `GET`. The stream carries the token headers too.
 - **A refusal shows the problem's title, mapped through the catalog by its code.** The app never prints a status
