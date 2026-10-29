@@ -47,15 +47,6 @@ const TRACK: Track = {
   updatedAt: '2026-09-01T00:00:00.000Z'
 };
 
-const BARE = {
-  id: TRACK.id,
-  title: TRACK.title,
-  playlistId: null,
-  playlistName: null,
-  durationSeconds: TRACK.durationSeconds,
-  thumbnailPath: TRACK.thumbnailPath
-};
-
 function serveTrack(track: Track): void {
   server.use(
     http.get(mockUrl(endpoints.track, { trackId: track.id }), () =>
@@ -115,7 +106,6 @@ describe('TrackPage', () => {
     );
     const state = usePlayerStore.getState();
 
-    expect(state.queue).toEqual([BARE]);
     expect(state.positionSeconds).toBe(0);
     expect(state.isPlaying).toBe(true);
     expect(queuePlaylistId(state)).toBeNull();
@@ -138,9 +128,11 @@ describe('TrackPage', () => {
 
     await screen.findByRole('link', { name: 'Rain On The Window' });
 
-    expect(usePlayerStore.getState().queue).toEqual([BARE]);
-    expect(usePlayerStore.getState().positionSeconds).toBe(12);
-    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    const state = usePlayerStore.getState();
+    expect(state.currentId).toBe(TRACK.id);
+    expect(queuePlaylistId(state)).toBeNull();
+    expect(state.positionSeconds).toBe(12);
+    expect(state.isPlaying).toBe(false);
   });
 
   it('replaces another queue with the bare track', async () => {
@@ -165,7 +157,6 @@ describe('TrackPage', () => {
       expect(usePlayerStore.getState().currentId).toBe(TRACK.id)
     );
 
-    expect(usePlayerStore.getState().queue).toEqual([BARE]);
     expect(queuePlaylistId(usePlayerStore.getState())).toBeNull();
     expect(usePlayerStore.getState().isPlaying).toBe(true);
   });

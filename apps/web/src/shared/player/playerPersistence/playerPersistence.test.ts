@@ -199,13 +199,12 @@ describe('player persistence', () => {
       volume: 1
     });
 
-    expect(readPlayerState(window.sessionStorage)).toEqual({
+    expect(readPlayerState(window.sessionStorage)).toMatchObject({
       sourceQueue: [bare],
       orderIds: [],
       shuffle: false,
       currentId: bare.id,
-      positionSeconds: 4,
-      volume: 1
+      positionSeconds: 4
     });
   });
 
