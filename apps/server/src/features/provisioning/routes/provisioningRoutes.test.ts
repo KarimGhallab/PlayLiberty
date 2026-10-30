@@ -1,14 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ProblemCode } from '@playliberty/contracts';
-
-import type { TestContext } from '../../../app/testing/createTestContext.js';
-import { createTestContext } from '../../../app/testing/createTestContext.js';
+import { ProblemCode, UserRole } from '@playliberty/contracts';
 
 import type {
   IPangolinClient,
   MintResourceAccessTokenInput
-} from '../pangolin/PangolinClient.js';
+} from '../../../shared/pangolin.js';
+
+import type { TestContext } from '../../../app/testing/createTestContext.js';
+import { createTestContext } from '../../../app/testing/createTestContext.js';
+
+import { accounts } from '../../../platform/database/schema.js';
 import { PangolinError } from '../pangolin/PangolinClient.js';
 import { challengeFor } from '../service/ProvisioningService.js';
 
@@ -112,6 +114,10 @@ function mintedCode(response: Injected): { code: string; state: string } {
   };
 }
 
+function accountRows(testContext: TestContext) {
+  return testContext.database.db.select().from(accounts).all();
+}
+
 describe('GET /provision', () => {
   it('redirects to the app with a code and the same state', async () => {
     const testContext = await start();
@@ -124,6 +130,43 @@ describe('GET /provision', () => {
     expect(state).toBe(STATE);
   });
 
+  it('mints a code without creating an account', async () => {
+    const testContext = await start();
+
+    const response = await provision(testContext);
+
+    expect(response.statusCode).toBe(302);
+    expect(accountRows(testContext)).toEqual([]);
+  });
+
+  it('does not refresh an existing account', async () => {
+    const testContext = await start();
+    testContext.database.db
+      .insert(accounts)
+      .values({
+        id: 'account-1',
+        pangolinUserId: 'p-alice',
+        displayName: 'Old name',
+        email: 'old@example.com',
+        avatarUrl: null,
+        role: UserRole.User,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z'
+      })
+      .run();
+
+    await provision(testContext);
+
+    expect(accountRows(testContext)).toEqual([
+      expect.objectContaining({
+        displayName: 'Old name',
+        email: 'old@example.com',
+        role: UserRole.User,
+        updatedAt: '2026-01-01T00:00:00.000Z'
+      })
+    ]);
+  });
+
   it('refuses a callback that is not on the allowlist', async () => {
     const testContext = await start();
 
@@ -133,6 +176,16 @@ describe('GET /provision', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json().code).toBe(ProblemCode.InvalidGrant);
+    expect(accountRows(testContext)).toEqual([]);
+  });
+
+  it('answers 503 without creating an account when no callback is configured', async () => {
+    const testContext = await start({ MOBILE_REDIRECT_URIS: '' });
+
+    const response = await provision(testContext);
+
+    expect(response.statusCode).toBe(503);
+    expect(accountRows(testContext)).toEqual([]);
   });
 
   it('refuses a caller the edge has not authenticated', async () => {
@@ -173,6 +226,7 @@ describe('POST /auth/exchange', () => {
     expect(pangolin.calls).toHaveLength(1);
     expect(pangolin.calls[0]?.pangolinUserId).toBe('p-alice');
     expect(pangolin.calls[0]?.validForSeconds).toBe(180 * 24 * 60 * 60);
+    expect(accountRows(testContext)).toEqual([]);
   });
 
   it('refuses a wrong verifier and burns the code', async () => {

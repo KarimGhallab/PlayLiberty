@@ -19,6 +19,7 @@ import type { AuthAccount } from '../../../features/accounts/types.js';
 declare module 'fastify' {
   interface FastifyRequest {
     account: AuthAccount;
+    forwardedPangolinUserId: string | null;
   }
 }
 
@@ -27,6 +28,7 @@ declare module 'fastify' {
 // yet, but the request still has to come through the edge.
 const EXEMPT_PATHS = new Set(['/healthz', '/readyz']);
 const ASSERTION_ONLY_PATHS = new Set(['/auth/exchange']);
+const PROVISIONING_PATHS = new Set(['/provision', '/auth/exchange']);
 
 /* The edge assertion header, compared in constant time so timing cannot
  * leak the secret a byte at a time. */
@@ -77,7 +79,10 @@ export function registerIdentityHook(
   context: AppContext
 ): void {
   app.addHook('onRequest', async (request, reply) => {
-    if (EXEMPT_PATHS.has(requestPath(request))) {
+    const path = requestPath(request);
+    request.forwardedPangolinUserId = null;
+
+    if (EXEMPT_PATHS.has(path)) {
       return;
     }
 
@@ -108,7 +113,7 @@ export function registerIdentityHook(
     const pangolinUserId = readStringHeader(request, 'remote-user');
 
     if (pangolinUserId === null) {
-      if (ASSERTION_ONLY_PATHS.has(requestPath(request))) {
+      if (ASSERTION_ONLY_PATHS.has(path)) {
         return;
       }
 
@@ -121,6 +126,12 @@ export function registerIdentityHook(
           'The request is missing the identity headers injected by the edge.'
       });
       return reply;
+    }
+
+    request.forwardedPangolinUserId = pangolinUserId;
+
+    if (PROVISIONING_PATHS.has(path)) {
+      return;
     }
 
     const resolved = resolveAccount(

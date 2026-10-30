@@ -55,8 +55,20 @@ export function registerProvisioningRoutes(
       return sendInvalidGrant(reply);
     }
 
+    const pangolinUserId = request.forwardedPangolinUserId;
+
+    /* The identity hook refuses this path without an id; the guard keeps the
+     * route from minting a code for nobody if that contract changes. */
+    if (pangolinUserId === null) {
+      return sendProblem(reply, {
+        status: 401,
+        code: ProblemCode.Unauthenticated,
+        title: 'Unauthenticated'
+      });
+    }
+
     const code = context.provisioning.mintCode({
-      pangolinUserId: request.account.pangolinUserId,
+      pangolinUserId,
       redirectUri: redirect_uri,
       codeChallenge: code_challenge
     });

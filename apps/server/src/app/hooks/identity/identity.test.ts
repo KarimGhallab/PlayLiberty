@@ -55,6 +55,34 @@ describe('the identity hook', () => {
     expect(total?.value).toBe(1);
   });
 
+  it('refreshes an existing account on a later request', async () => {
+    context = await createTestContext();
+    const first = {
+      'remote-user': 'pangolin-user-1',
+      'remote-name': 'Ada'
+    };
+
+    await context.app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: first
+    });
+    const second = await context.app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: {
+        ...first,
+        'remote-name': 'Ada Lovelace',
+        'remote-email': 'ada@example.com'
+      }
+    });
+
+    expect(second.json()).toMatchObject({
+      displayName: 'Ada Lovelace',
+      email: 'ada@example.com'
+    });
+  });
+
   it('grants the admin role from the configured list', async () => {
     context = await createTestContext({
       ADMIN_PANGOLIN_USER_IDS: 'pangolin-user-1'
