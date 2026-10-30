@@ -52,11 +52,13 @@ const playlist: PlaylistWithCounts = {
 
 async function renderCard(overrides: Partial<PlaylistCardProps> = {}) {
   const onOpen = jest.fn();
+  const onOpenActions = jest.fn();
   const props: PlaylistCardProps = {
     playlist,
     ownerName: null,
     config,
     onOpen,
+    onOpenActions,
     ...overrides
   };
 
@@ -66,7 +68,7 @@ async function renderCard(overrides: Partial<PlaylistCardProps> = {}) {
     </I18nProvider>
   );
 
-  return { onOpen };
+  return { onOpen, onOpenActions };
 }
 
 describe('the playlist card', () => {
@@ -115,6 +117,18 @@ describe('the playlist card', () => {
     expect(
       screen.getByRole('button', { name: 'Play Rain On The Window' })
     ).toBeDisabled();
+  });
+
+  it('opens the actions from its overflow control', async () => {
+    const { onOpenActions } = await renderCard();
+
+    fireEvent.press(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+
+    expect(onOpenActions).toHaveBeenCalledTimes(1);
   });
 
   it('names the owner of a shared playlist', async () => {

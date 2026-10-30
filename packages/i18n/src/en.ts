@@ -32,9 +32,13 @@ export const en = {
   },
   common: {
     cancel: 'Cancel',
+    undo: 'Undo',
     discardPrompt: 'Discard this link? The link you pasted will be lost.',
     keepEditing: 'Keep editing',
     discard: 'Discard'
+  },
+  playlistActions: {
+    arriving: 'This surface arrives later.'
   },
   library: {
     add: 'Add a playlist',
@@ -47,6 +51,7 @@ export const en = {
     scopeLabel: 'Filter by owner',
     allTracks: 'All tracks',
     pinFailed: 'The pin could not be changed.',
+    deleteFailed: 'The playlist could not be deleted.',
     notDownloaded: {
       one: '{count} track is not stored',
       other: '{count} tracks are not stored'

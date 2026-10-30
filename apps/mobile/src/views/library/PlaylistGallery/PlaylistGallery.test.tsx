@@ -25,7 +25,10 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
+import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists';
+import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
+import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import PlaylistGallery from './PlaylistGallery';
@@ -36,6 +39,18 @@ jest.mock('../../../api/usePlaylists', () => ({
 
 jest.mock('../../../api/useCreatePlaylist', () => ({
   useCreatePlaylist: jest.fn()
+}));
+
+jest.mock('../../../api/useUpdatePin', () => ({
+  useUpdatePin: jest.fn()
+}));
+
+jest.mock('../../../api/useSyncPlaylist', () => ({
+  useSyncPlaylist: jest.fn()
+}));
+
+jest.mock('../../../api/useDeletePlaylist', () => ({
+  useDeletePlaylist: jest.fn()
 }));
 
 jest.mock('../../../api/useAccountDirectory', () => {
@@ -160,6 +175,10 @@ function mutationResult(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function hasErrorHandler(value: unknown): value is { onError?: () => void } {
+  return typeof value === 'object' && value !== null;
+}
+
 function GalleryHarness({
   onOpenPlaylist
 }: {
@@ -189,6 +208,12 @@ async function renderPlaylists(
   jest.mocked(usePlaylists).mockReturnValue(result as never);
   jest.mocked(useAccountDirectory).mockReturnValue(queryResult(accounts));
   jest.mocked(useCreatePlaylist).mockReturnValue(mutationResult() as never);
+  const pin = mutationResult();
+  const syncNow = mutationResult();
+  const remove = mutationResult();
+  jest.mocked(useUpdatePin).mockReturnValue(pin as never);
+  jest.mocked(useSyncPlaylist).mockReturnValue(syncNow as never);
+  jest.mocked(useDeletePlaylist).mockReturnValue(remove as never);
 
   const onOpenPlaylist = jest.fn();
 
@@ -200,7 +225,7 @@ async function renderPlaylists(
     </SafeAreaProvider>
   );
 
-  return { onOpenPlaylist, view };
+  return { onOpenPlaylist, view, pin, syncNow, remove };
 }
 
 async function renderGallery(
@@ -259,6 +284,136 @@ describe('the gallery', () => {
     await fireEvent.press(screen.getAllByTestId('playlist-card')[0]!);
 
     expect(onOpenPlaylist).toHaveBeenCalledWith('playlist-pinned');
+  });
+
+  it('opens the owner actions sheet from a card', async () => {
+    await renderGallery([base]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+    });
+
+    for (const key of ['pin', 'share', 'rename', 'cover', 'sync', 'delete']) {
+      expect(screen.getByTestId(`playlist-action-${key}`)).toBeOnTheScreen();
+    }
+    expect(
+      within(screen.getByTestId('playlist-action-delete')).getByText('Delete')
+    ).toBeOnTheScreen();
+  });
+
+  it('offers a reader the pin alone', async () => {
+    await renderGallery([shared], directory);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Shared Mix' })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
+    });
+    expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
+    expect(
+      screen.queryByTestId('playlist-action-delete')
+    ).not.toBeOnTheScreen();
+  });
+
+  it('reads Unpin on a pinned card', async () => {
+    await renderGallery([pinned]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Pinned Mix' })
+    );
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByTestId('playlist-action-pin')).getByText('Unpin')
+      ).toBeOnTheScreen();
+    });
+  });
+
+  it('pins from the sheet and hands the refusal to the notice', async () => {
+    const { pin } = await renderGallery([base]);
+    pin.mutate.mockImplementation((...args: unknown[]) => {
+      const options = args[1];
+
+      if (hasErrorHandler(options)) {
+        options.onError?.();
+      }
+    });
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-pin'));
+
+    expect(pin.mutate).toHaveBeenCalledWith(
+      { playlistId: 'playlist-rest', pinned: true },
+      expect.anything()
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText('The pin could not be changed.')
+      ).toBeOnTheScreen();
+    });
+  });
+
+  it('removes a card on delete and restores it on Undo without sending', async () => {
+    const { remove } = await renderGallery([base]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-delete')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('playlist-card')).not.toBeOnTheScreen();
+    });
+    expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+    expect(remove.mutate).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('undo-snackbar-action'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-card')).toBeOnTheScreen();
+    });
+    expect(remove.mutate).not.toHaveBeenCalled();
+  });
+
+  it('opens the Share, Rename and Cover placeholders', async () => {
+    await renderGallery([base]);
+
+    for (const [key, title] of [
+      ['share', 'Share'],
+      ['rename', 'Rename'],
+      ['cover', 'Update the cover']
+    ] as const) {
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'More actions for Rest Mix' })
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId(`playlist-action-${key}`)).toBeOnTheScreen();
+      });
+      await fireEvent.press(screen.getByTestId(`playlist-action-${key}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
+      });
+      expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+
+      await fireEvent.press(
+        screen.getByTestId('playlist-placeholder-backdrop')
+      );
+    }
   });
 
   it('draws the scope and the chips with their counts', async () => {

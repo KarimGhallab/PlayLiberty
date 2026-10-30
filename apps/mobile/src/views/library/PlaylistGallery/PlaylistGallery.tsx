@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,7 +9,9 @@ import type {
 } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
+import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
 import {
   fontFamily,
   tokenColor,
@@ -22,7 +24,10 @@ import {
   useAccountDirectory
 } from '../../../api/useAccountDirectory';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
+import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists';
+import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
+import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
@@ -32,8 +37,20 @@ import GalleryAddAction, {
 import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
+import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
+import PlaylistPlaceholderSheet from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
+import type { PlaceholderAction } from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import { scopedPlaylists, visiblePlaylists } from '../bulkSync/bulkSync';
+import {
+  UNDO_WINDOW_MS,
+  deleteIntentFor,
+  playlistActionsFor
+} from '../playlistActions/playlistActions';
+import type {
+  DeleteIntent,
+  PlaylistActionKey
+} from '../playlistActions/playlistActions';
 
 const TRACK_STATUSES: readonly TrackFileStatus[] =
   Object.values(TrackFileStatus);
@@ -84,8 +101,22 @@ export default function PlaylistGallery({
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
   const create = useCreatePlaylist();
+  const pin = useUpdatePin();
+  const syncNow = useSyncPlaylist();
+  const remove = useDeletePlaylist();
   const [addOpen, setAddOpen] = useState(false);
-  const items = playlists.data?.items ?? [];
+  const [actionTargetId, setActionTargetId] = useState<string | null>(null);
+  const [placeholder, setPlaceholder] = useState<{
+    readonly action: PlaceholderAction;
+    readonly name: string;
+  } | null>(null);
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const items = (playlists.data?.items ?? []).filter(
+    item => !hidden.has(item.id)
+  );
   const directoryItems = directory.data ?? [];
   const sharedItems = items.filter(item => item.access !== 'owner');
   const hasShared = sharedItems.length > 0;
@@ -155,6 +186,140 @@ export default function PlaylistGallery({
       }}
     />
   );
+  const actionTarget =
+    actionTargetId === null
+      ? null
+      : (items.find(item => item.id === actionTargetId) ?? null);
+  const actions = actionTarget === null ? [] : playlistActionsFor(actionTarget);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimer.current !== null) {
+        clearTimeout(deleteTimer.current);
+      }
+    };
+  }, []);
+
+  const commitDelete = (intent: DeleteIntent): void => {
+    remove.mutate(intent.id, {
+      onError: () => {
+        setHidden(previous => {
+          const next = new Set(previous);
+          next.delete(intent.id);
+          return next;
+        });
+        setNotice(t('library.deleteFailed'));
+      }
+    });
+  };
+
+  const undoDelete = (): void => {
+    if (deleteTimer.current !== null) {
+      clearTimeout(deleteTimer.current);
+      deleteTimer.current = null;
+    }
+
+    if (pendingDelete !== null) {
+      setHidden(previous => {
+        const next = new Set(previous);
+        next.delete(pendingDelete.id);
+        return next;
+      });
+    }
+
+    setPendingDelete(null);
+  };
+
+  /* One window at a time: a second delete sends the first now rather than
+   * losing its request, then opens its own undo window. */
+  const startDelete = (target: PlaylistWithCounts): void => {
+    if (pendingDelete !== null) {
+      if (deleteTimer.current !== null) {
+        clearTimeout(deleteTimer.current);
+        deleteTimer.current = null;
+      }
+
+      commitDelete(pendingDelete);
+    }
+
+    const intent = deleteIntentFor(t, target);
+
+    setHidden(previous => new Set(previous).add(target.id));
+    setPendingDelete(intent);
+    deleteTimer.current = setTimeout(() => {
+      commitDelete(intent);
+      setPendingDelete(null);
+      deleteTimer.current = null;
+    }, UNDO_WINDOW_MS);
+  };
+
+  const chooseAction = (key: PlaylistActionKey): void => {
+    const target = actionTarget;
+    setActionTargetId(null);
+
+    if (target === null) {
+      return;
+    }
+
+    if (key === 'pin') {
+      pin.mutate(
+        { playlistId: target.id, pinned: !target.pinned },
+        { onError: () => setNotice(t('library.pinFailed')) }
+      );
+      return;
+    }
+
+    if (key === 'sync') {
+      syncNow.mutate(target.id);
+      return;
+    }
+
+    if (key === 'delete') {
+      startDelete(target);
+      return;
+    }
+
+    setPlaceholder({ action: key, name: target.name });
+  };
+
+  const actionsSheet = (
+    <PlaylistActionsSheet
+      playlistName={actionTarget?.name ?? null}
+      actions={actions}
+      onSelect={chooseAction}
+      onClose={() => setActionTargetId(null)}
+    />
+  );
+  const placeholderSheet = (
+    <PlaylistPlaceholderSheet
+      action={placeholder?.action ?? null}
+      playlistName={placeholder?.name ?? ''}
+      onClose={() => setPlaceholder(null)}
+    />
+  );
+  const undoSnackbar =
+    pendingDelete === null ? null : (
+      <UndoSnackbar
+        message={pendingDelete.message}
+        detail={pendingDelete.detail}
+        onUndo={undoDelete}
+        bottomOffset={galleryAddActionSize + tokenLength('space-3')}
+      />
+    );
+  const noticeNode =
+    notice === null ? null : (
+      <Notice
+        message={notice}
+        onDismiss={() => setNotice(null)}
+        bottomOffset={
+          galleryAddActionSize +
+          tokenLength('space-3') +
+          (pendingDelete === null
+            ? 0
+            : tokenLength('space-9') + tokenLength('space-4'))
+        }
+      />
+    );
 
   if (playlists.isPending) {
     return (
@@ -197,6 +362,8 @@ export default function PlaylistGallery({
           <EmptyGallery onAdd={() => setAddOpen(true)} />
         </View>
         {addSheet}
+        {undoSnackbar}
+        {noticeNode}
       </>
     );
   }
@@ -243,6 +410,7 @@ export default function PlaylistGallery({
                     )}
                     config={config}
                     onOpen={() => onOpenPlaylist(playlist.id)}
+                    onOpenActions={() => setActionTargetId(playlist.id)}
                   />
                 </View>
               ))}
@@ -255,6 +423,10 @@ export default function PlaylistGallery({
         onPress={() => setAddOpen(true)}
       />
       {addSheet}
+      {actionsSheet}
+      {placeholderSheet}
+      {undoSnackbar}
+      {noticeNode}
     </View>
   );
 }

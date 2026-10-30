@@ -35,9 +35,13 @@ export const fr: Messages = {
   },
   common: {
     cancel: 'Annuler',
+    undo: 'Annuler',
     discardPrompt: 'Abandonner ce lien ? Le lien collé sera perdu.',
     keepEditing: 'Continuer la saisie',
     discard: 'Abandonner'
+  },
+  playlistActions: {
+    arriving: 'Cet écran arrive plus tard.'
   },
   library: {
     add: 'Ajouter une playlist',
@@ -50,6 +54,7 @@ export const fr: Messages = {
     scopeLabel: 'Filtrer par propriétaire',
     allTracks: 'Toutes les pistes',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
+    deleteFailed: "La playlist n'a pas pu être supprimée.",
     notDownloaded: {
       one: "{count} piste n'est pas stockée",
       other: '{count} pistes ne sont pas stockées'

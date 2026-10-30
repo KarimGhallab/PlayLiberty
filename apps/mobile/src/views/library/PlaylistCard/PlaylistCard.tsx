@@ -1,4 +1,5 @@
 import {
+  IconDots,
   IconDownload,
   IconLock,
   IconLockShare,
@@ -29,6 +30,7 @@ export interface PlaylistCardProps {
   readonly ownerName: string | null;
   readonly config: ApiConfig | null;
   readonly onOpen: () => void;
+  readonly onOpenActions: () => void;
 }
 
 type MissingState =
@@ -119,7 +121,8 @@ export default function PlaylistCard({
   playlist,
   ownerName,
   config,
-  onOpen
+  onOpen,
+  onOpenActions
 }: PlaylistCardProps) {
   const { t } = useI18n();
   const cover = usePlaylistCover(playlist, config);
@@ -221,6 +224,15 @@ export default function PlaylistCard({
           color={tokenColor('ink')}
         />
       </Pressable>
+
+      <Pressable
+        testID="playlist-actions"
+        accessibilityRole="button"
+        accessibilityLabel={t('header.actions', { name: playlist.name })}
+        style={[styles.actions, { top: playTop }]}
+        onPress={onOpenActions}>
+        <IconDots size={tokenLength('icon-md')} color={tokenColor('ink')} />
+      </Pressable>
     </View>
   );
 }
@@ -300,7 +312,7 @@ const styles = StyleSheet.create({
   },
   play: {
     position: 'absolute',
-    right: tokenLength('space-2'),
+    left: tokenLength('space-2'),
     width: touchTarget,
     height: touchTarget,
     alignItems: 'center',
@@ -310,5 +322,15 @@ const styles = StyleSheet.create({
   },
   playDisabled: {
     opacity: tokenNumber('opacity-disabled')
+  },
+  actions: {
+    position: 'absolute',
+    right: tokenLength('space-2'),
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface')
   }
 });

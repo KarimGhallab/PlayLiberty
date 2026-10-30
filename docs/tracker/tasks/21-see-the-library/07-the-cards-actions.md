@@ -1,26 +1,25 @@
 # 07: The card's actions
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-one-sheet-frame-for-the-app.md), [`02`](02-the-gallery-draws-the-playlists.md)
 
-## What to build
+## Outcome
 
-The card's scrim carries an overflow control named for its playlist. It opens the app's actions sheet, filtered by access: an owner sees Pin or Unpin, Share, Rename, Cover, Sync now and Delete; a write collaborator sees Pin or Unpin, Cover and Sync now; a reader sees Pin or Unpin. Pin reads Pin while unpinned and Unpin while pinned.
+The card's scrim now carries an overflow control at its bottom-left, named "More actions for {name}". It opens one `PlaylistActionsSheet` for the pressed playlist, on the shared `Sheet` frame. The shared actions model gates the items by access: an owner sees Pin or Unpin, Share, Rename, Cover, Sync now and Delete; a write collaborator sees Pin or Unpin, Cover and Sync now; a reader sees Pin or Unpin. The pin's label follows the state.
 
-Pin is optimistic: the card moves on the press, the gallery is invalidated on the answer, and a refusal restores the card and shows the pin-failure notice. Delete is deferred: the card leaves the gallery immediately, the delete is sent after six seconds, and the app's undo snackbar offers Undo for that window; Undo restores the card and sends nothing, and a committed delete invalidates the gallery.
+Pin is optimistic through `useUpdatePin`: the pin patch lands on the cached library page, so the card regroups on the press. A refusal restores the previous page and the gallery shows `library.pinFailed` on the notice. A success invalidates the library.
 
-Share, Rename and Cover open placeholder sheets that name the action and say the surface arrives later. Specs `26`, `25` and `29` replace their bodies.
+Delete leaves the gallery immediately. The delete intent carries the playlist name, a six-second window opens, and `UndoSnackbar` offers Undo. Undo restores the card and sends nothing; the commit sends the delete and invalidates the library. A failed commit restores the card and shows `library.deleteFailed`. A second delete sends the first one immediately rather than losing it.
 
-## Acceptance criteria
+Share, Rename and Cover open `PlaylistPlaceholderSheet`, which names the action and says the surface arrives later; specs `26`, `25` and `29` replace those bodies.
 
-- [ ] Each access level produces the item set above.
-- [ ] Pin reads Pin while unpinned and Unpin while pinned.
-- [ ] The pin moves the card on the press and restores it on a refusal, with the pin-failure notice.
-- [ ] Delete removes the card immediately, sends after six seconds, and Undo restores it without sending.
-- [ ] A committed delete invalidates the gallery.
-- [ ] Share, Rename and Cover open their placeholder sheets.
+The actions model's tests cover the item sets, the pin label, the optimistic pin patch and the delete intent. The card's tests cover the overflow control; the gallery's tests cover opening the sheet, the reader's item set, the pin and its refusal notice, the delete and Undo, and the three placeholders.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run test` and `pnpm --filter @playliberty/mobile run typecheck`. The shared actions model's tests cover the item set, the pin label, the optimistic move and the delete deferral.
+- Mobile 152 tests across 25 suites, including the actions model's 6 and the gallery's new action tests.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run build` and `pnpm run lint:check` pass.
+
+See [`21-see-the-library`](../../specs/21-see-the-library.md).
