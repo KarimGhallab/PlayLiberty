@@ -74,6 +74,16 @@ describe('the API client', () => {
     expect(headers.get(CLIENT_HEADER)).toBeNull();
   });
 
+  it('appends the query it is given', async () => {
+    fetchMock.mockResolvedValue(json({ status: 'ok' }));
+
+    await client().send(health, {}, {}, { limit: 200 });
+
+    const [url] = fetchMock.mock.calls[0] ?? [];
+
+    expect(url).toBe(`${BASE}/api/v1/healthz?limit=200`);
+  });
+
   it('marks a mutation with the client header', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 

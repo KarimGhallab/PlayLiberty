@@ -1,7 +1,12 @@
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PlaylistSyncStatus } from '@playliberty/contracts';
+import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
+import type {
+  PlaylistWithCounts,
+  TrackFileStatusCounts
+} from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
@@ -19,8 +24,35 @@ import {
 import { usePlaylists } from '../../../api/usePlaylists';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
+import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
+import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
+
+const TRACK_STATUSES: readonly TrackFileStatus[] =
+  Object.values(TrackFileStatus);
+
+/* The chips read the scope they are drawn over: one total per status over every
+ * playlist in that scope. */
+function totalStatusCounts(
+  items: readonly PlaylistWithCounts[]
+): TrackFileStatusCounts {
+  const totals: TrackFileStatusCounts = {
+    [TrackFileStatus.Stored]: 0,
+    [TrackFileStatus.Pending]: 0,
+    [TrackFileStatus.Downloading]: 0,
+    [TrackFileStatus.Failed]: 0,
+    [TrackFileStatus.Unavailable]: 0
+  };
+
+  for (const item of items) {
+    for (const status of TRACK_STATUSES) {
+      totals[status] += item.counts[status];
+    }
+  }
+
+  return totals;
+}
 
 export interface PlaylistGalleryProps {
   readonly config: ApiConfig | null;
@@ -39,10 +71,39 @@ export default function PlaylistGallery({
   const insets = useSafeAreaInsets();
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
+  const [scope, setScope] = useState<LibraryScope>('all');
+  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
+    null
+  );
   const items = playlists.data?.items ?? [];
   const directoryItems = directory.data ?? [];
-  const pinned = items.filter(item => item.pinned);
-  const unpinned = items.filter(item => !item.pinned);
+  const sharedItems = items.filter(item => item.access !== 'owner');
+  const hasShared = sharedItems.length > 0;
+  const scopedItems = scope === 'shared' ? sharedItems : items;
+  const statusCounts = totalStatusCounts(scopedItems);
+  const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
+  const visibleItems =
+    statusFilter === null
+      ? scopedItems
+      : scopedItems.filter(item => item.counts[statusFilter] > 0);
+
+  /* A status the scope no longer carries cannot stay in force; a live read that
+   * drops the last track in it returns the rail to All. */
+  useEffect(() => {
+    if (statusFilter !== null && activeCount === 0) {
+      setStatusFilter(null);
+    }
+  }, [statusFilter, activeCount]);
+
+  /* The scope cannot outlive the last share: its pair leaves the rail. */
+  useEffect(() => {
+    if (scope === 'shared' && !hasShared) {
+      setScope('all');
+    }
+  }, [scope, hasShared]);
+
+  const pinned = visibleItems.filter(item => item.pinned);
+  const unpinned = visibleItems.filter(item => !item.pinned);
   const syncing = unpinned.filter(
     item => item.syncStatus === PlaylistSyncStatus.Syncing
   );
@@ -103,43 +164,59 @@ export default function PlaylistGallery({
   }
 
   return (
-    <ScrollView
-      style={styles.gallery}
-      contentContainerStyle={[
-        styles.content,
-        { paddingBottom: insets.bottom + tokenLength('space-4') }
-      ]}>
-      {groups.map(group => (
-        <View key={group.key} style={styles.group}>
-          {group.heading === null ? null : (
-            <Text accessibilityRole="header" style={styles.heading}>
-              {group.heading}
-            </Text>
-          )}
-          <View style={styles.grid}>
-            {group.items.map(playlist => (
-              <View key={playlist.id} style={styles.cell}>
-                <PlaylistCard
-                  playlist={playlist}
-                  ownerName={ownerNameFrom(
-                    directoryItems,
-                    playlist.ownerAccountId
-                  )}
-                  config={config}
-                  onOpen={() => onOpenPlaylist(playlist.id)}
-                />
-              </View>
-            ))}
+    <View style={styles.list}>
+      <GalleryFilterBar
+        hasShared={hasShared}
+        totalCount={items.length}
+        sharedCount={sharedItems.length}
+        scope={scope}
+        onScopeChange={setScope}
+        counts={statusCounts}
+        activeStatus={statusFilter}
+        onStatusChange={setStatusFilter}
+      />
+      <ScrollView
+        style={styles.gallery}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + tokenLength('space-4') }
+        ]}>
+        {groups.map(group => (
+          <View key={group.key} style={styles.group}>
+            {group.heading === null ? null : (
+              <Text accessibilityRole="header" style={styles.heading}>
+                {group.heading}
+              </Text>
+            )}
+            <View style={styles.grid}>
+              {group.items.map(playlist => (
+                <View key={playlist.id} style={styles.cell}>
+                  <PlaylistCard
+                    playlist={playlist}
+                    ownerName={ownerNameFrom(
+                      directoryItems,
+                      playlist.ownerAccountId
+                    )}
+                    config={config}
+                    onOpen={() => onOpenPlaylist(playlist.id)}
+                  />
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
-      ))}
-    </ScrollView>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   state: {
     flex: 1
+  },
+  list: {
+    flex: 1,
+    gap: tokenLength('space-3')
   },
   gallery: {
     flex: 1

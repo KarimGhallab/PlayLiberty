@@ -1,5 +1,10 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within
+} from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -94,6 +99,19 @@ const shared: PlaylistWithCounts = {
   access: ShareLevel.Read
 };
 
+const storedItem: PlaylistWithCounts = {
+  ...base,
+  id: 'playlist-stored',
+  name: 'Stored Mix',
+  counts: {
+    stored: 3,
+    pending: 0,
+    downloading: 0,
+    failed: 0,
+    unavailable: 0
+  }
+};
+
 const directory: AccountSummary[] = [
   { id: 'account-2', displayName: 'Bea', avatarUrl: null }
 ];
@@ -132,7 +150,7 @@ async function renderPlaylists(
   const onOpenPlaylist = jest.fn();
   const onAddPlaylist = jest.fn();
 
-  await render(
+  const view = await render(
     <SafeAreaProvider initialMetrics={metrics}>
       <I18nProvider initialLanguage={Language.English} storage={store}>
         <PlaylistGallery
@@ -144,7 +162,7 @@ async function renderPlaylists(
     </SafeAreaProvider>
   );
 
-  return { onOpenPlaylist, onAddPlaylist };
+  return { onOpenPlaylist, onAddPlaylist, view };
 }
 
 async function renderGallery(
@@ -189,7 +207,12 @@ describe('the gallery', () => {
   it('draws the incomplete count', async () => {
     await renderGallery([base]);
 
-    expect(screen.getByText('3', hidden)).toBeOnTheScreen();
+    expect(
+      within(screen.getByTestId('playlist-incomplete', hidden)).getByText(
+        '3',
+        hidden
+      )
+    ).toBeOnTheScreen();
   });
 
   it('opens the playlist a card is pressed for', async () => {
@@ -198,6 +221,89 @@ describe('the gallery', () => {
     await fireEvent.press(screen.getAllByTestId('playlist-card')[0]!);
 
     expect(onOpenPlaylist).toHaveBeenCalledWith('playlist-pinned');
+  });
+
+  it('draws the scope and the chips with their counts', async () => {
+    await renderGallery([shared, base], directory);
+
+    expect(screen.getByRole('button', { name: 'All 2' })).toBeSelected();
+    expect(
+      screen.getByRole('button', { name: 'Shared with me 1' })
+    ).not.toBeSelected();
+    expect(screen.getByRole('button', { name: 'All tracks 6' })).toBeSelected();
+    expect(screen.getByRole('button', { name: 'Pending 2' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Failed 4' })).toBeOnTheScreen();
+    expect(
+      screen.queryByRole('button', { name: /Stored/ })
+    ).not.toBeOnTheScreen();
+    expect(
+      screen.queryByRole('button', { name: /Downloading/ })
+    ).not.toBeOnTheScreen();
+    expect(
+      screen.queryByRole('button', { name: /Unavailable/ })
+    ).not.toBeOnTheScreen();
+  });
+
+  it('hides the scope pair when nothing is shared', async () => {
+    await renderGallery([base]);
+
+    expect(
+      screen.queryByRole('button', { name: 'Shared with me 1' })
+    ).not.toBeOnTheScreen();
+    expect(
+      screen.queryByRole('button', { name: 'All 1' })
+    ).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'All 3' })).toBeOnTheScreen();
+  });
+
+  it('filters the grid to the shared scope', async () => {
+    await renderGallery([shared, base], directory);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Shared with me 1' })
+    );
+
+    expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
+    expect(screen.getByTestId('playlist-card').props.accessibilityLabel).toBe(
+      'Shared Mix'
+    );
+    expect(
+      screen.getByRole('button', { name: 'All tracks 3' })
+    ).toBeOnTheScreen();
+  });
+
+  it('filters the grid by a status chip', async () => {
+    await renderGallery([storedItem, base]);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Failed 2' }));
+
+    expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
+    expect(screen.getByTestId('playlist-card').props.accessibilityLabel).toBe(
+      'Rest Mix'
+    );
+  });
+
+  it('clears the scope and the chip when the screen is left', async () => {
+    const { view } = await renderGallery([shared, base], directory);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Shared with me 1' })
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Failed 2' }));
+
+    await view.unmount();
+    await renderGallery([shared, base], directory);
+
+    expect(screen.getByRole('button', { name: 'All 2' })).toBeSelected();
+    expect(screen.getByRole('button', { name: 'All tracks 6' })).toBeSelected();
+  });
+
+  it('scrolls the filter row horizontally', async () => {
+    await renderGallery([shared, base], directory);
+
+    expect(screen.getByTestId('gallery-filter-bar').props.horizontal).toBe(
+      true
+    );
   });
 
   it('draws the skeleton while the read is pending', async () => {

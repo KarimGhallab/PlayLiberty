@@ -25,6 +25,8 @@ export interface AccessToken {
   readonly secret: string;
 }
 
+export type QueryParams = Readonly<Record<string, string | number>>;
+
 export interface ApiClientOptions {
   readonly baseUrl: string;
   readonly readToken: () => Promise<AccessToken | null>;
@@ -56,19 +58,37 @@ async function readProblem(response: Response): Promise<Problem | null> {
   return problem.success ? problem.data : null;
 }
 
+/* A read's query is built here, so no caller writes a path with a `?` in it. */
+function queryString(query: QueryParams): string {
+  const entries = Object.entries(query);
+
+  if (entries.length === 0) {
+    return '';
+  }
+
+  return `?${entries
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`
+    )
+    .join('&')}`;
+}
+
 export class ApiClient {
   constructor(private readonly _options: ApiClientOptions) {}
 
   async send<T>(
     endpoint: ApiEndpoint<T>,
     params: EndpointParams = {},
-    init: RequestInit = {}
+    init: RequestInit = {},
+    query: QueryParams = {}
   ): Promise<T> {
     const response = await this._send(
       endpoint.method,
       endpoint.path,
       params,
-      init
+      init,
+      query
     );
     const body: unknown = await response.json();
 
@@ -87,7 +107,8 @@ export class ApiClient {
     method: HttpMethod,
     path: string,
     params: EndpointParams,
-    init: RequestInit
+    init: RequestInit,
+    query: QueryParams = {}
   ): Promise<Response> {
     const token = await this._options.readToken();
 
@@ -104,7 +125,7 @@ export class ApiClient {
     }
 
     const response = await fetch(
-      `${this._baseUrl()}${API_PREFIX}${endpointPath(path, params)}`,
+      `${this._baseUrl()}${API_PREFIX}${endpointPath(path, params)}${queryString(query)}`,
       { ...init, method, headers }
     );
 
