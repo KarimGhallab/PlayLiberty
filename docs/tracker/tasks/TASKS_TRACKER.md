@@ -85,6 +85,7 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`18-share-a-track/TICKETS.md`](18-share-a-track/TICKETS.md).
 - [`19-the-mobile-shell/TICKETS.md`](19-the-mobile-shell/TICKETS.md).
 - [`20-provision-mobile-access/TICKETS.md`](20-provision-mobile-access/TICKETS.md).
+- [`21-see-the-library/TICKETS.md`](21-see-the-library/TICKETS.md).
 
 ## Conventions
 
