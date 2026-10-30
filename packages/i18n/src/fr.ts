@@ -80,7 +80,7 @@ export const fr: Messages = {
     empty: {
       heading: 'Aucune playlist',
       promise:
-        "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste stockée vous appartient ensuite, même si la vidéo est retirée plus tard."
+        "Collez le lien d'une playlist YouTube, puis synchronisez-la pour écouter ses pistes."
     }
   },
   egress: {

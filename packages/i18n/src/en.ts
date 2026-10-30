@@ -77,7 +77,7 @@ export const en = {
     empty: {
       heading: 'No playlists yet',
       promise:
-        'Paste a YouTube playlist link, then sync it. Every stored track is yours from then on, even if the video is taken down later.'
+        'Paste a YouTube playlist link, then sync it to listen to its tracks.'
     }
   },
   egress: {

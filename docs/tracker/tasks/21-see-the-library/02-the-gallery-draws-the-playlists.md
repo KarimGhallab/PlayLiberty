@@ -1,29 +1,25 @@
 # 02: The gallery draws the playlists
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
-## What to build
+## Outcome
 
-The library route becomes the gallery: the app's name, the account door and, for an admin, the egress door in one header row, then a two-column grid of playlist cards. The read is the paged playlist route with the account directory for the owner line. Each card draws its cover, its name, the owner line only when the playlist is shared with the account, the count, the sync state word, the share mark, the incomplete count and a play control that is named for its playlist and disabled until the player arrives. The whole card opens the playlist route.
+The library route is now the gallery. `Screen` takes an optional title, so the route draws no second heading, and `LibraryHeader` carries the app's name as the screen heading beside the account door and the admin's egress door. The route passes the API config and the playlist route's push to `PlaylistGallery`.
 
-The cover falls back from the custom cover, to the first track's thumbnail, to the playlist's sleeve hue, and every image request carries the session's token headers. The grid groups pinned playlists under a Pinned heading, a playlist whose first sync is running under a Syncing heading, and the rest with no heading; an empty group draws no heading. A card is announced once, with its name.
+The gallery reads the paged playlist route through `usePlaylists` and the account directory through `useAccountDirectory`, with `ownerNameFrom` resolving the owner line. The items are grouped pinned first, then unpinned first-sync playlists, then the rest; an empty group draws no heading. The grid is two columns.
 
-The route keeps the account sheet it already has. The bulk sync slot is `06`'s, and the disabled play control is enabled by spec `23`.
+The card draws the cover, the name, the owner line only for a shared playlist, the count, the sync state word, the share mark, the incomplete count and a disabled play control named for its playlist. The whole card opens the playlist. The card is one accessible door labelled with its name; the visual content is hidden from the accessibility tree, and the play is a separate disabled control.
 
-## Acceptance criteria
+The cover seam falls back from the custom cover, to the first track's thumbnail, to the playlist's sleeve hue, and each image request carries the session's token headers. The six sleeve names moved into one `sleeveColor` helper, which the account sheet's monogram now shares.
 
-- [ ] The gallery draws one card per visible playlist, in two columns.
-- [ ] Pinned items come first under a Pinned heading, first-sync items under a Syncing heading, the rest with no heading, and an empty group draws no heading.
-- [ ] A shared card names its owner; an owned card draws no owner line.
-- [ ] The incomplete mark carries the count of pending, downloading, failed and unavailable tracks, and no breakdown.
-- [ ] The cover falls back from the custom cover to the first track's thumbnail to the sleeve, and each image request carries the token headers.
-- [ ] A press anywhere on a card opens the playlist route.
-- [ ] The play control is present, named for its playlist and disabled.
-- [ ] Each card is announced once with its name.
-- [ ] The header keeps the account door and, for an admin, the egress door.
+The card's tests cover the cover chain and headers, the disabled play, the owner line, the incomplete count, the count and state, the share mark, and the single announced name with its navigation. The gallery's tests cover the three groups and their order, the empty group's absent heading, the owner line, the incomplete count, and the card's navigation.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run test` and `pnpm --filter @playliberty/mobile run typecheck`. The gallery test mocks the read and the directory and covers the three groups, the owner line, the incomplete count, the cover fallback and the navigation.
+- Mobile 97 tests across 18 suites, including the card's 8 and the gallery's 5.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run build` and `pnpm run lint:check` pass.
+
+See [`21-see-the-library`](../../specs/21-see-the-library.md).

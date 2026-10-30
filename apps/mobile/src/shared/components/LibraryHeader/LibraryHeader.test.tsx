@@ -27,6 +27,14 @@ async function renderHeader(overrides: Partial<LibraryHeaderProps> = {}) {
 }
 
 describe('the library header', () => {
+  it('names the app as its heading', async () => {
+    await renderHeader();
+
+    expect(
+      screen.getByRole('header', { name: 'PlayLiberty' })
+    ).toBeOnTheScreen();
+  });
+
   it('offers one named door to the account that meets the touch target', async () => {
     const { onOpenAccount } = await renderHeader();
 

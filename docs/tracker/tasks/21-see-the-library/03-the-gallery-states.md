@@ -1,21 +1,21 @@
 # 03: The gallery's three other states
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`02`](02-the-gallery-draws-the-playlists.md)
 
-## What to build
+## Outcome
 
-The gallery's non-list states. A pending read draws a grid of skeleton cards, not an empty gallery. A failed read draws the read-failure body with the problem's title and a retry that refetches the gallery. A successful read with no playlists draws the empty gallery with its heading, its promise and one labelled action. The action's callback is supplied by the route; the add sheet that answers it lands in `05`.
+The gallery now draws its three non-list states before the grid. A pending read draws `GallerySkeleton`: six card placeholders in two columns, announced once as "Loading playlists." with the placeholders hidden from the accessibility tree. A failed read draws `ReadFailure`: the problem's sentence from `problemDetail` with `library.readFailed` as the fallback, and a Try again control that refetches the read and reports its in-flight state. A successful read with no playlists draws `EmptyGallery`: the heading, the promise and one labelled Add a playlist action.
 
-## Acceptance criteria
+The empty action calls the route's `onAddPlaylist`. The route supplies it as a no-op for now; the add sheet that answers it lands in `05`.
 
-- [ ] A pending read draws the skeleton grid, not the empty gallery.
-- [ ] A failed read draws the failure body with the problem's title and a retry, never the empty gallery.
-- [ ] A successful empty read draws the empty gallery and its one labelled action.
-- [ ] The retry refetches the gallery.
-- [ ] The empty action calls the route's add callback.
+The gallery's tests cover the skeleton instead of the empty body, the failure body instead of the empty body, the retry calling the refetch, the empty body's heading, promise and action, and the action calling the add callback.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run test` and `pnpm --filter @playliberty/mobile run typecheck`.
+- Mobile 108 tests across 19 suites, including the gallery's 8.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run build` and `pnpm run lint:check` pass.
+
+See [`21-see-the-library`](../../specs/21-see-the-library.md).

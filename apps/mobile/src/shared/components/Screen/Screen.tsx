@@ -10,7 +10,7 @@ import {
 } from '../../styles/tokens';
 
 export interface ScreenProps {
-  readonly title: string;
+  readonly title?: string;
   readonly subtitle?: string;
   readonly children?: ReactNode;
 }
@@ -20,9 +20,11 @@ export default function Screen({ title, subtitle, children }: ScreenProps) {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {title}
-        </Text>
+        {title === undefined ? null : (
+          <Text accessibilityRole="header" style={styles.title}>
+            {title}
+          </Text>
+        )}
         {subtitle === undefined ? null : (
           <Text style={styles.subtitle}>{subtitle}</Text>
         )}

@@ -6,6 +6,7 @@ import {
   fontFamily,
   tokenColor,
   tokenLength,
+  tokenNumber,
   touchTarget
 } from '../../styles/tokens';
 
@@ -25,23 +26,28 @@ export default function LibraryHeader({
 
   return (
     <View style={styles.header}>
-      {isAdmin ? (
+      <Text accessibilityRole="header" style={styles.brand}>
+        {t('app.name')}
+      </Text>
+      <View style={styles.actions}>
+        {isAdmin ? (
+          <Pressable
+            testID="egress-door"
+            accessibilityRole="button"
+            style={styles.action}
+            onPress={onOpenEgress}>
+            <Text style={styles.label}>{t('account.egress')}</Text>
+          </Pressable>
+        ) : null}
         <Pressable
-          testID="egress-door"
+          testID="account-door"
           accessibilityRole="button"
+          accessibilityLabel={t('account.title')}
           style={styles.action}
-          onPress={onOpenEgress}>
-          <Text style={styles.label}>{t('account.egress')}</Text>
+          onPress={onOpenAccount}>
+          <Text style={styles.label}>{t('account.title')}</Text>
         </Pressable>
-      ) : null}
-      <Pressable
-        testID="account-door"
-        accessibilityRole="button"
-        accessibilityLabel={t('account.title')}
-        style={styles.action}
-        onPress={onOpenAccount}>
-        <Text style={styles.label}>{t('account.title')}</Text>
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -49,7 +55,20 @@ export default function LibraryHeader({
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokenLength('space-2')
+  },
+  brand: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-xl'),
+    fontWeight: '600',
+    lineHeight: tokenLength('text-xl') * tokenNumber('leading-tight')
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: tokenLength('space-2')
   },
   action: {

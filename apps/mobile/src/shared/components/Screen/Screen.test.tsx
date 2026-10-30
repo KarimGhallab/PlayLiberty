@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import Screen from './Screen';
@@ -24,5 +25,17 @@ describe('Screen', () => {
 
     expect(screen.getByRole('header', { name: 'Library' })).toBeOnTheScreen();
     expect(screen.getByText('Your playlists')).toBeOnTheScreen();
+  });
+
+  it('draws no heading when it has no title', async () => {
+    await render(
+      <Screen>
+        <Text>Body</Text>
+      </Screen>,
+      { wrapper }
+    );
+
+    expect(screen.queryByRole('header')).not.toBeOnTheScreen();
+    expect(screen.getByText('Body')).toBeOnTheScreen();
   });
 });

@@ -11,9 +11,10 @@ import {
 
 import { type Account, UserRole } from '@playliberty/contracts';
 import { Language, useI18n } from '@playliberty/i18n';
-import { sleeveIndex, standardEasingBezier } from '@playliberty/ui-foundation';
+import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { sleeveColor } from '../../styles/sleeve';
 import {
   fontFamily,
   tokenColor,
@@ -35,15 +36,6 @@ export interface AccountSheetProps {
 const LANGUAGES = [
   { value: Language.English, label: 'language.english' },
   { value: Language.French, label: 'language.french' }
-] as const;
-
-const SLEEVES = [
-  'sleeve-1',
-  'sleeve-2',
-  'sleeve-3',
-  'sleeve-4',
-  'sleeve-5',
-  'sleeve-6'
 ] as const;
 
 /* The account's one settings surface. The egress console is an instance-level
@@ -183,10 +175,10 @@ function Avatar({ account }: { readonly account: Account }) {
 
 function Monogram({ account }: { readonly account: Account }) {
   const initial = account.displayName.trim().charAt(0).toUpperCase() || '?';
-  const tone = SLEEVES[sleeveIndex(account.id) - 1] ?? 'sleeve-1';
+  const tone = sleeveColor(account.id);
 
   return (
-    <View style={[styles.monogram, { backgroundColor: tokenColor(tone) }]}>
+    <View style={[styles.monogram, { backgroundColor: tone }]}>
       <Text style={styles.monogramLabel}>{initial}</Text>
     </View>
   );

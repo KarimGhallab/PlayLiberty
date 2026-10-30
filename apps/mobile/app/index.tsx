@@ -14,11 +14,14 @@ import { ApiError } from '../src/api/apiClient/ApiClient';
 import { useAccount } from '../src/api/useAccount';
 import { provisioningFailure } from '../src/auth/provisioningFailure';
 import { startProvisioning } from '../src/auth/startProvisioning';
+import { useApiConfig } from '../src/auth/useApiConfig';
 import { SessionStatus, useSession } from '../src/auth/useSession';
+import PlaylistGallery from '../src/views/library/PlaylistGallery/PlaylistGallery';
 
 export default function LibraryRoute() {
   const { t } = useI18n();
   const { status, signOut } = useSession();
+  const config = useApiConfig();
   const [accountOpen, setAccountOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -60,12 +63,23 @@ export default function LibraryRoute() {
   }
 
   return (
-    <Screen title={t('app.name')}>
+    <Screen>
       <LibraryHeader
         isAdmin={account?.role === UserRole.Admin}
         onOpenAccount={() => setAccountOpen(true)}
         onOpenEgress={() => {
           router.push('/egress');
+        }}
+      />
+
+      <PlaylistGallery
+        config={config}
+        onAddPlaylist={() => {}}
+        onOpenPlaylist={playlistId => {
+          router.push({
+            pathname: '/playlists/[playlistId]',
+            params: { playlistId }
+          });
         }}
       />
 
