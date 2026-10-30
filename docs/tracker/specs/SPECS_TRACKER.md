@@ -3,8 +3,9 @@
 Feature specs, written by `/to-spec`. One file per spec, named `NN-slug.md` and numbered in creation order.
 
 This tracker holds two corpora. Specs `01` to `18` are the web and server MVP, where every client clause is the web
-client. Specs `19` to `32` are the mobile client, one per client-bearing verb of the first corpus, and their runtime
-is Android. [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) is the second corpus's first subject.
+client. Specs `19` to `33` are the mobile client, one per client-bearing verb of the first corpus, and their runtime
+is Android. [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) is the second corpus's first subject;
+[`33`](33-refresh-mobile-access.md) extends its credential lifecycle with a refresh token.
 
 ## Specs
 
@@ -39,8 +40,8 @@ instead of taking a spec: `09` and `11` into `19`, `10` into `25`, and `17` into
 | ------------------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`19-the-mobile-shell`](19-the-mobile-shell.md) · [tickets](../tasks/19-the-mobile-shell/TICKETS.md)                      | resolved | none                                                                  | [`20`](20-provision-mobile-access.md), [`21`](21-see-the-library.md), [`31`](31-manage-the-egress.md)                                                                              |
 | [`20-provision-mobile-access`](20-provision-mobile-access.md) · [tickets](../tasks/20-provision-mobile-access/TICKETS.md) | resolved | [`19`](19-the-mobile-shell.md)                                        | [`21`](21-see-the-library.md)                                                                                                                                                      |
-| [`21-see-the-library`](21-see-the-library.md) · [tickets](../tasks/21-see-the-library/TICKETS.md)                         | ready    | [`19`](19-the-mobile-shell.md), [`20`](20-provision-mobile-access.md) | [`22`](22-read-a-playlist.md), [`28`](28-pin-a-playlist.md), [`31`](31-manage-the-egress.md)                                                                                       |
-| [`22-read-a-playlist`](22-read-a-playlist.md)                                                                             | ready    | [`21`](21-see-the-library.md)                                         | [`23`](23-play-stored-audio.md), [`25`](25-curate-a-playlist.md), [`26`](26-share-a-playlist.md), [`27`](27-sort-and-filter-the-track-list.md), [`29`](29-set-a-playlist-cover.md) |
+| [`21-see-the-library`](21-see-the-library.md) · [tickets](../tasks/21-see-the-library/TICKETS.md)                         | resolved | [`19`](19-the-mobile-shell.md), [`20`](20-provision-mobile-access.md) | [`22`](22-read-a-playlist.md), [`28`](28-pin-a-playlist.md), [`31`](31-manage-the-egress.md)                                                                                       |
+| [`22-read-a-playlist`](22-read-a-playlist.md) · [tickets](../tasks/22-read-a-playlist/TICKETS.md)                         | ready    | [`21`](21-see-the-library.md)                                         | [`23`](23-play-stored-audio.md), [`25`](25-curate-a-playlist.md), [`26`](26-share-a-playlist.md), [`27`](27-sort-and-filter-the-track-list.md), [`29`](29-set-a-playlist-cover.md) |
 | [`23-play-stored-audio`](23-play-stored-audio.md)                                                                         | ready    | [`22`](22-read-a-playlist.md)                                         | [`24`](24-play-in-the-background.md), [`25`](25-curate-a-playlist.md), [`30`](30-share-a-track.md)                                                                                 |
 | [`24-play-in-the-background`](24-play-in-the-background.md)                                                               | ready    | [`23`](23-play-stored-audio.md)                                       | none                                                                                                                                                                               |
 | [`25-curate-a-playlist`](25-curate-a-playlist.md)                                                                         | ready    | [`22`](22-read-a-playlist.md), [`23`](23-play-stored-audio.md)        | none                                                                                                                                                                               |
@@ -51,6 +52,10 @@ instead of taking a spec: `09` and `11` into `19`, `10` into `25`, and `17` into
 | [`30-share-a-track`](30-share-a-track.md)                                                                                 | ready    | [`23`](23-play-stored-audio.md)                                       | [`32`](32-release-the-android-app.md)                                                                                                                                              |
 | [`31-manage-the-egress`](31-manage-the-egress.md)                                                                         | ready    | [`19`](19-the-mobile-shell.md), [`21`](21-see-the-library.md)         | none                                                                                                                                                                               |
 | [`32-release-the-android-app`](32-release-the-android-app.md)                                                             | ready    | [`30`](30-share-a-track.md)                                           | none                                                                                                                                                                               |
+| [`33-refresh-mobile-access`](33-refresh-mobile-access.md)                                                                 | ready    | [`20`](20-provision-mobile-access.md)                                 | none                                                                                                                                                                               |
+
+`33` supersedes `20`'s 180-day lifetime and its refresh and revocation out-of-scope clauses; every other provisioning
+decision stands.
 
 ## Conventions
 
