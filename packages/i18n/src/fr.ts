@@ -28,6 +28,7 @@ export const fr: Messages = {
     title: "Connectez-vous pour entrer dans l'application",
     body: 'Cette application demande un compte sur votre instance.',
     action: 'Se connecter',
+    retry: 'Se connecter à nouveau',
     busy: 'Connexion…',
     failed: "La connexion n'a pas abouti."
   },

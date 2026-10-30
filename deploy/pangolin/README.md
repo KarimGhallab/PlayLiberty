@@ -22,6 +22,8 @@ no auth method, Pangolin does not evaluate path rules at all (Pangolin issue 255
 
 - **No identity, but the assertion.** The bypass removes `Remote-*` from the exchange, which is why the server treats
   it as assertion-only: nginx still injects `X-PlayLiberty-Edge`, and the server refuses the exchange without it.
+- **One method on one path.** The server's assertion-only exemption is `POST /auth/exchange`. A different method on
+  the same path still needs identity and fails closed with `401`, so the path bypass is not a method bypass.
 - **The code and PKCE.** A single-use 60-second code, bound to the user, the redirect URI and the S256 challenge.
   An app that intercepts the callback still cannot exchange the code.
 - **The rate limit.** Ten attempts per caller per minute.

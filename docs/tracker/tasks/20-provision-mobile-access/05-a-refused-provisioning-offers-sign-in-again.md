@@ -1,37 +1,34 @@
 # 05: A refused provisioning offers Sign in again
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `bug`, `ready-for-agent`
 **Source:** [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md), "A failure closes the browser
 and returns to the app with one sentence", and user stories 24 and 26.
 **Blocked by:** None. Can start immediately.
 
-## Observed
+## Outcome
 
-The callback route draws the failure sentence and no action. A person whose exchange is refused has to press back to
-reach the signed-out state, where the one Sign in action lives.
+The callback's failure state now draws the signed-out screen with the localized problem sentence and one action
+labelled "Sign in again" in English and "Se connecter à nouveau" in French. The action starts a new provisioning flow,
+is disabled while it starts, and shows the busy label. The sentence stays visible until the new flow replaces the
+screen.
 
-## Expected
+A state mismatch, a callback with no flow in progress, and a callback with no code or state each show the generic
+sentence and the same action. The success path still writes the token and returns to the library.
 
-The failure state draws the localized problem sentence and one action that starts a new provisioning flow, labelled
-"Sign in again" in both languages. The sentence stays visible until the new flow starts, and the action is disabled
-while it starts. A state mismatch and a callback with no flow in progress show the generic sentence and the same
-action.
-
-## Evidence
-
-The callback renders the screen with the sentence and no child action.
-
-## Acceptance criteria
-
-- [ ] A refusal draws the localized problem sentence.
-- [ ] The failure state offers one action that starts a new provisioning flow.
-- [ ] The action's label is in both catalogues.
-- [ ] The action is a 44pt target and is disabled while the flow starts.
-- [ ] A state mismatch and a callback with no flow in progress draw the generic sentence and the same action.
+The browser start and the failure mapping moved to shared helpers used by the library route and the callback, so the
+two entry points cannot drift. The signed-out action accepts an optional label, and the callback module moved into
+its own folder with its test.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run test`. The component test stubs the provisioning module and the browser,
-renders a refusal, asserts the sentence, and asserts the action starts the flow. The i18n tests assert the new key in
-both catalogues.
+- Mobile 69 tests across 15 suites, `tsc --noEmit`, i18n 42 tests, `pnpm run build` and `pnpm run lint:check` pass.
+- Six callback tests cover the refusal sentence and action, the pending disabled state, the state mismatch, the
+  missing flow, the missing code or state, the French label, and the success path.
+
+## Notes
+
+- The failure state reuses the signed-out screen rather than drawing a second action surface, so the 44pt target and
+  the disabled state have one owner.
+
+See [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md).

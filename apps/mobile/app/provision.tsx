@@ -1,1 +1,1 @@
-export { default } from '../src/auth/ProvisionCallback';
+export { default } from '../src/auth/ProvisionCallback/ProvisionCallback';

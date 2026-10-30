@@ -153,6 +153,21 @@ describe('the identity hook', () => {
     expect(response.json()).toMatchObject({ displayName: 'Ada' });
   });
 
+  it.each(['GET', 'PUT'] as const)(
+    'refuses %s on the exchange path without identity',
+    async method => {
+      context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+      const response = await context.app.inject({
+        method,
+        url: '/auth/exchange',
+        headers: { 'x-playliberty-edge': 'the-edge-secret' }
+      });
+
+      expect(response.statusCode).toBe(401);
+    }
+  );
+
   it('still exempts the health endpoints when an assertion is configured', async () => {
     context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
 

@@ -177,6 +177,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   const app = Fastify({
     ...loggerOptions,
+    trustProxy: 'loopback',
     genReqId: request => {
       const header = request.headers['x-request-id'];
 

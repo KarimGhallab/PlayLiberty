@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import type { FastifyBaseLogger } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ShareLevel } from '@playliberty/contracts';
@@ -8,38 +7,8 @@ import { ShareLevel } from '@playliberty/contracts';
 import type { TestContext } from './testing/createTestContext.js';
 import { createTestContext } from './testing/createTestContext.js';
 import { seedAccount, seedPlaylist } from './testing/fixtures.js';
-
-type Line = Record<string, unknown>;
-
-/*
- * A logger recording app output, injected as Fastify's logger so hooks
- * and routes logging on `request.log` land here.
- */
-function recordingLogger(): {
-  logger: FastifyBaseLogger;
-  lines: Line[];
-} {
-  const lines: Line[] = [];
-
-  const record =
-    (level: string) =>
-    (payload: Record<string, unknown>, message?: string): void => {
-      lines.push({ level, message, ...payload });
-    };
-
-  const logger = {
-    level: 'info',
-    info: record('info'),
-    warn: record('warn'),
-    error: record('error'),
-    debug: record('debug'),
-    fatal: record('fatal'),
-    trace: record('trace'),
-    child: (): unknown => logger
-  } as unknown as FastifyBaseLogger;
-
-  return { logger, lines };
-}
+import type { LogLine } from './testing/recordingLogger.js';
+import { recordingLogger } from './testing/recordingLogger.js';
 
 let context: TestContext | undefined;
 
@@ -56,7 +25,7 @@ function database(): NonNullable<TestContext>['database'] {
   return context.database;
 }
 
-function lineFor(lines: Line[], action: string): Line | undefined {
+function lineFor(lines: LogLine[], action: string): LogLine | undefined {
   return lines.find(line => line.action === action);
 }
 

@@ -24,10 +24,10 @@ declare module 'fastify' {
 }
 
 // Readiness must answer before a caller is known, so it is exempt from both
-// checks. The exchange is exempt from identity alone: the app has no session
-// yet, but the request still has to come through the edge.
+// checks. The exchange's POST is exempt from identity alone: the app has no
+// session yet, but the request still has to come through the edge.
 const EXEMPT_PATHS = new Set(['/healthz', '/readyz']);
-const ASSERTION_ONLY_PATHS = new Set(['/auth/exchange']);
+const ASSERTION_ONLY_ROUTES = new Set(['POST /auth/exchange']);
 const PROVISIONING_PATHS = new Set(['/provision', '/auth/exchange']);
 
 /* The edge assertion header, compared in constant time so timing cannot
@@ -113,7 +113,7 @@ export function registerIdentityHook(
     const pangolinUserId = readStringHeader(request, 'remote-user');
 
     if (pangolinUserId === null) {
-      if (ASSERTION_ONLY_PATHS.has(path)) {
+      if (ASSERTION_ONLY_ROUTES.has(`${request.method} ${path}`)) {
         return;
       }
 

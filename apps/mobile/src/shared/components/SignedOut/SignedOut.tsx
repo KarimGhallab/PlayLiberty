@@ -13,12 +13,21 @@ import Screen from '../Screen/Screen';
 export interface SignedOutProps {
   readonly busy: boolean;
   readonly failure: string | null;
+  readonly actionLabel?: string;
   readonly onSignIn: () => void;
 }
 
 /** The one screen a person sees before provisioning, with its one action. */
-export default function SignedOut({ busy, failure, onSignIn }: SignedOutProps) {
+export default function SignedOut({
+  busy,
+  failure,
+  actionLabel,
+  onSignIn
+}: SignedOutProps) {
   const { t } = useI18n();
+  const label = busy
+    ? t('signedOut.busy')
+    : (actionLabel ?? t('signedOut.action'));
 
   return (
     <Screen title={t('signedOut.title')} subtitle={t('signedOut.body')}>
@@ -29,9 +38,7 @@ export default function SignedOut({ busy, failure, onSignIn }: SignedOutProps) {
         disabled={busy}
         style={[styles.action, busy && styles.actionDisabled]}
         onPress={onSignIn}>
-        <Text style={styles.label}>
-          {busy ? t('signedOut.busy') : t('signedOut.action')}
-        </Text>
+        <Text style={styles.label}>{label}</Text>
       </Pressable>
       {failure === null ? null : <Text style={styles.failure}>{failure}</Text>}
     </Screen>

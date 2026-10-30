@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 
 import {
   ExchangeInputSchema,
@@ -7,6 +7,7 @@ import {
   endpoints
 } from '@playliberty/contracts';
 
+import { audit } from '../../../shared/audit.js';
 import type { AppContext } from '../../../shared/context.js';
 import {
   parseBody,
@@ -25,6 +26,29 @@ function sendInvalidGrant(reply: Parameters<typeof sendProblem>[0]) {
     status: 400,
     code: ProblemCode.InvalidGrant,
     title: 'Invalid Grant'
+  });
+}
+
+/* One audit line per exchange attempt: the outcome, the reason, and the
+ * Pangolin user the code named. Never the code, verifier or token. */
+function auditAllowed(request: FastifyRequest, pangolinUserId: string): void {
+  audit(request.log, {
+    action: 'provisioning_exchange',
+    outcome: 'allowed',
+    account: pangolinUserId
+  });
+}
+
+function auditRefused(
+  request: FastifyRequest,
+  reason: string,
+  pangolinUserId: string | null
+): void {
+  audit(request.log, {
+    action: 'provisioning_exchange',
+    outcome: 'refused',
+    reason,
+    ...(pangolinUserId === null ? {} : { account: pangolinUserId })
   });
 }
 
@@ -83,6 +107,8 @@ export function registerProvisioningRoutes(
   /* The one credential-less mutation: the code and its verifier for a token. */
   registerEndpoint(app, endpoints.exchange, async (request, reply) => {
     if (context.pangolin === null) {
+      auditRefused(request, 'provisioning_unavailable', null);
+
       return sendProblem(reply, {
         status: 503,
         code: ProblemCode.ProvisioningUnavailable,
@@ -91,6 +117,8 @@ export function registerProvisioningRoutes(
     }
 
     if (!context.provisioning.allowExchange(request.ip)) {
+      auditRefused(request, 'rate_limited', null);
+
       return sendProblem(reply, {
         status: 429,
         code: ProblemCode.RateLimited,
@@ -101,6 +129,8 @@ export function registerProvisioningRoutes(
     const parsed = parseBody(ExchangeInputSchema, request.body);
 
     if (!parsed.success) {
+      auditRefused(request, 'validation_failed', null);
+
       return sendValidationFailed(reply, parsed.issues);
     }
 
@@ -109,12 +139,27 @@ export function registerProvisioningRoutes(
 
     /* One refusal for a missing, used, expired, mismatched or unverified code:
      * the caller learns nothing about which. */
-    if (
-      entry === null ||
-      context.provisioning.isExpired(entry) ||
-      entry.redirectUri !== redirect_uri ||
-      !context.provisioning.verifyPkce(code_verifier, entry.codeChallenge)
-    ) {
+    if (entry === null) {
+      auditRefused(request, 'code_missing_or_used', null);
+
+      return sendInvalidGrant(reply);
+    }
+
+    if (context.provisioning.isExpired(entry)) {
+      auditRefused(request, 'code_expired', entry.pangolinUserId);
+
+      return sendInvalidGrant(reply);
+    }
+
+    if (entry.redirectUri !== redirect_uri) {
+      auditRefused(request, 'redirect_mismatch', entry.pangolinUserId);
+
+      return sendInvalidGrant(reply);
+    }
+
+    if (!context.provisioning.verifyPkce(code_verifier, entry.codeChallenge)) {
+      auditRefused(request, 'verifier_mismatch', entry.pangolinUserId);
+
       return sendInvalidGrant(reply);
     }
 
@@ -125,9 +170,12 @@ export function registerProvisioningRoutes(
         title: TOKEN_TITLE
       });
 
+      auditAllowed(request, entry.pangolinUserId);
+
       return reply.send(token);
     } catch (error) {
       request.log.error({ err: error }, 'the token could not be minted');
+      auditRefused(request, 'token_mint_failed', entry.pangolinUserId);
 
       return sendProblem(reply, {
         status: 502,

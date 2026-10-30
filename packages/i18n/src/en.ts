@@ -26,6 +26,7 @@ export const en = {
     title: 'Sign in to enter the app',
     body: 'This app needs an account on your instance.',
     action: 'Sign in',
+    retry: 'Sign in again',
     busy: 'Signing in…',
     failed: 'Sign-in could not finish.'
   },

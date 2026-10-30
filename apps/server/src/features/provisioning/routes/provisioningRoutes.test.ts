@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ProblemCode, UserRole } from '@playliberty/contracts';
@@ -9,6 +10,8 @@ import type {
 
 import type { TestContext } from '../../../app/testing/createTestContext.js';
 import { createTestContext } from '../../../app/testing/createTestContext.js';
+import type { LogLine } from '../../../app/testing/recordingLogger.js';
+import { recordingLogger } from '../../../app/testing/recordingLogger.js';
 
 import { accounts } from '../../../platform/database/schema.js';
 import { PangolinError } from '../pangolin/PangolinClient.js';
@@ -54,6 +57,19 @@ async function start(
   context = await createTestContext(
     { MOBILE_REDIRECT_URIS: REDIRECT_URI, ...env },
     { pangolin, provisioningNow }
+  );
+
+  return context;
+}
+
+async function startWithLogger(
+  logger: FastifyBaseLogger,
+  pangolin: IPangolinClient = new FakePangolin(),
+  provisioningNow?: () => number
+): Promise<TestContext> {
+  context = await createTestContext(
+    { MOBILE_REDIRECT_URIS: REDIRECT_URI },
+    { pangolin, loggerInstance: logger, provisioningNow }
   );
 
   return context;
@@ -105,6 +121,25 @@ function exchange(
   });
 }
 
+function exchangeFrom(
+  testContext: TestContext,
+  body: unknown,
+  remoteAddress: string,
+  forwardedFor: string
+): Promise<Injected> {
+  return testContext.app.inject({
+    method: 'POST',
+    url: '/auth/exchange',
+    remoteAddress,
+    headers: {
+      'content-type': 'application/json',
+      'x-playliberty-client': 'mobile',
+      'x-forwarded-for': forwardedFor
+    },
+    payload: JSON.stringify(body)
+  });
+}
+
 function mintedCode(response: Injected): { code: string; state: string } {
   const url = new URL(String(response.headers['location']));
 
@@ -116,6 +151,27 @@ function mintedCode(response: Injected): { code: string; state: string } {
 
 function accountRows(testContext: TestContext) {
   return testContext.database.db.select().from(accounts).all();
+}
+
+function exchangeLines(lines: LogLine[]): LogLine[] {
+  return lines.filter(line => line.action === 'provisioning_exchange');
+}
+
+function expectNoSecrets(lines: LogLine[], code: string): void {
+  /* The recording logger keeps Fastify's raw request objects; the guarantee is
+   * about the lines the exchange writes. */
+  const logged = JSON.stringify(
+    lines.filter(
+      line =>
+        line.action === 'provisioning_exchange' ||
+        line.message === 'the token could not be minted'
+    )
+  );
+
+  expect(logged).not.toContain(code);
+  expect(logged).not.toContain(VERIFIER);
+  expect(logged).not.toContain('token-id');
+  expect(logged).not.toContain('token-secret');
 }
 
 describe('GET /provision', () => {
@@ -340,6 +396,27 @@ describe('POST /auth/exchange', () => {
     expect(withAssertion.statusCode).toBe(200);
   });
 
+  it('keeps the exchange exempt with a query string', async () => {
+    const testContext = await start();
+    const { code } = mintedCode(await provision(testContext));
+
+    const response = await testContext.app.inject({
+      method: 'POST',
+      url: '/auth/exchange?source=app',
+      headers: {
+        'content-type': 'application/json',
+        'x-playliberty-client': 'mobile'
+      },
+      payload: JSON.stringify({
+        code,
+        code_verifier: VERIFIER,
+        redirect_uri: REDIRECT_URI
+      })
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
   it('rate limits the eleventh attempt from one caller', async () => {
     const testContext = await start();
     const body = {
@@ -357,6 +434,226 @@ describe('POST /auth/exchange', () => {
 
     expect(statuses.slice(0, 10)).toEqual(Array(10).fill(400));
     expect(statuses[10]).toBe(429);
+  });
+
+  it('counts two callers behind the proxy separately', async () => {
+    const testContext = await start();
+    const body = {
+      code: 'not-a-code',
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    };
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await exchangeFrom(
+        testContext,
+        body,
+        '127.0.0.1',
+        '203.0.113.1'
+      );
+
+      expect(response.statusCode).toBe(400);
+    }
+
+    const spent = await exchangeFrom(
+      testContext,
+      body,
+      '127.0.0.1',
+      '203.0.113.1'
+    );
+    const other = await exchangeFrom(
+      testContext,
+      body,
+      '127.0.0.1',
+      '203.0.113.2'
+    );
+
+    expect(spent.statusCode).toBe(429);
+    expect(other.statusCode).toBe(400);
+  });
+
+  it('ignores a forwarded header from a peer that is not the proxy', async () => {
+    const testContext = await start();
+    const body = {
+      code: 'not-a-code',
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    };
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await exchangeFrom(
+        testContext,
+        body,
+        '198.51.100.5',
+        `203.0.113.${attempt}`
+      );
+
+      expect(response.statusCode).toBe(400);
+    }
+
+    const response = await exchangeFrom(
+      testContext,
+      body,
+      '198.51.100.5',
+      '203.0.113.99'
+    );
+
+    expect(response.statusCode).toBe(429);
+  });
+});
+
+describe('the exchange audit', () => {
+  it('records an allowed exchange with the Pangolin user id', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await startWithLogger(logger);
+    const { code } = mintedCode(await provision(testContext));
+
+    const response = await exchange(testContext, {
+      code,
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(exchangeLines(lines)[0]).toMatchObject({
+      audit: true,
+      outcome: 'allowed',
+      account: 'p-alice'
+    });
+    expectNoSecrets(lines, code);
+  });
+
+  it('records a wrong verifier with the user id', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await startWithLogger(logger);
+    const { code } = mintedCode(await provision(testContext));
+
+    const response = await exchange(testContext, {
+      code,
+      code_verifier: `${VERIFIER}x`,
+      redirect_uri: REDIRECT_URI
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(exchangeLines(lines)[0]).toMatchObject({
+      outcome: 'refused',
+      reason: 'verifier_mismatch',
+      account: 'p-alice'
+    });
+    expectNoSecrets(lines, code);
+  });
+
+  it('records a reused code without a user id', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await startWithLogger(logger);
+    const { code } = mintedCode(await provision(testContext));
+    const body = {
+      code,
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    };
+
+    await exchange(testContext, body);
+    const response = await exchange(testContext, body);
+
+    expect(response.statusCode).toBe(400);
+    expect(exchangeLines(lines)[1]).toMatchObject({
+      outcome: 'refused',
+      reason: 'code_missing_or_used'
+    });
+    expect(exchangeLines(lines)[1]?.account).toBeUndefined();
+    expectNoSecrets(lines, code);
+  });
+
+  it('records an expired code with the user id', async () => {
+    const { logger, lines } = recordingLogger();
+    let now = 1_000_000;
+    const testContext = await startWithLogger(
+      logger,
+      new FakePangolin(),
+      () => now
+    );
+    const { code } = mintedCode(await provision(testContext));
+    now += 60_001;
+
+    const response = await exchange(testContext, {
+      code,
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(exchangeLines(lines)[0]).toMatchObject({
+      outcome: 'refused',
+      reason: 'code_expired',
+      account: 'p-alice'
+    });
+    expectNoSecrets(lines, code);
+  });
+
+  it('records a redirect mismatch with the user id', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await startWithLogger(logger);
+    const { code } = mintedCode(await provision(testContext));
+
+    const response = await exchange(testContext, {
+      code,
+      code_verifier: VERIFIER,
+      redirect_uri: 'dev.playliberty.app://other'
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(exchangeLines(lines)[0]).toMatchObject({
+      outcome: 'refused',
+      reason: 'redirect_mismatch',
+      account: 'p-alice'
+    });
+    expectNoSecrets(lines, code);
+  });
+
+  it('records a rate-limit refusal without a user id', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await startWithLogger(logger);
+    const body = {
+      code: 'not-a-code',
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    };
+
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      await exchange(testContext, body);
+    }
+
+    const refused = lines.find(line => line.reason === 'rate_limited');
+
+    expect(refused).toMatchObject({ outcome: 'refused' });
+    expect(refused?.account).toBeUndefined();
+    expectNoSecrets(lines, 'not-a-code');
+  });
+
+  it('records a token-mint failure and keeps the error line', async () => {
+    const { logger, lines } = recordingLogger();
+    const pangolin = new FakePangolin();
+    pangolin.fail = true;
+    const testContext = await startWithLogger(logger, pangolin);
+    const { code } = mintedCode(await provision(testContext));
+
+    const response = await exchange(testContext, {
+      code,
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    });
+
+    expect(response.statusCode).toBe(502);
+    expect(exchangeLines(lines)[0]).toMatchObject({
+      outcome: 'refused',
+      reason: 'token_mint_failed',
+      account: 'p-alice'
+    });
+    expect(
+      lines.find(line => line.message === 'the token could not be minted')
+    ).toMatchObject({ level: 'error' });
+    expectNoSecrets(lines, code);
   });
 });
 

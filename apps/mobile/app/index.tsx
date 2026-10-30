@@ -8,17 +8,10 @@ import LibraryHeader from '../src/shared/components/LibraryHeader/LibraryHeader'
 import Screen from '../src/shared/components/Screen/Screen';
 import SignedOut from '../src/shared/components/SignedOut/SignedOut';
 
-import { apiBaseUrl } from '../src/api/apiBaseUrl';
 import { ApiError } from '../src/api/apiClient/ApiClient';
 import { useAccount } from '../src/api/useAccount';
-import {
-  expoProvisioningDeps,
-  provisioningRedirectUris
-} from '../src/auth/expoProvisioning';
-import {
-  ProvisioningError,
-  beginProvisioning
-} from '../src/auth/provisioning/provisioning';
+import { provisioningFailure } from '../src/auth/provisioningFailure';
+import { startProvisioning } from '../src/auth/startProvisioning';
 import { SessionStatus, useSession } from '../src/auth/useSession';
 
 export default function LibraryRoute() {
@@ -40,17 +33,9 @@ export default function LibraryRoute() {
     setFailure(null);
 
     try {
-      await beginProvisioning({
-        baseUrl: apiBaseUrl(),
-        redirectUris: provisioningRedirectUris(),
-        deps: expoProvisioningDeps
-      });
+      await startProvisioning();
     } catch (error) {
-      setFailure(
-        error instanceof ProvisioningError
-          ? (problemDetail(t, error.problem) ?? t('signedOut.failed'))
-          : t('signedOut.failed')
-      );
+      setFailure(provisioningFailure(t, error));
     } finally {
       setBusy(false);
     }
