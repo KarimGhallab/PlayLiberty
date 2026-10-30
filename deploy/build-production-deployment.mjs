@@ -56,6 +56,18 @@ const ADMIN = {
   name: 'pangolin_admin_user',
   key: 'ADMIN_PANGOLIN_USER_IDS'
 };
+const PANGOLIN = {
+  name: 'playliberty_pangolin',
+  keys: {
+    apiUrl: 'PANGOLIN_API_URL',
+    resourceId: 'PANGOLIN_RESOURCE_ID',
+    integrationKey: 'PANGOLIN_INTEGRATION_API_KEY',
+    redirectUris: 'MOBILE_REDIRECT_URIS'
+  }
+};
+
+const MOBILE_CALLBACK_PATH = '/auth/callback';
+const MOBILE_SCHEME_REDIRECT = 'dev.playliberty.app://provision';
 
 const USAGE = `Usage: pnpm deploy:build-for-production [options]
 
@@ -68,17 +80,27 @@ unit.
 Options:
   --public-origin <url>       Public browser origin (https://host)
   --admin-ids <ids>           Comma-separated Pangolin Remote-User values
+  --pangolin-api-url <url>    Integration API base, including /v1
+  --pangolin-resource-id <id> Pangolin resource id
+  --mobile-redirect-uris <uris>
+                              Callbacks the app may use, comma-separated
   --replace-public-origin     Replace an existing public-origin secret
   --replace-admin             Replace an existing admin secret
+  --replace-pangolin          Replace an existing Pangolin secret
   --dry-run                   Prompt, validate and print the plan without changes
   -h, --help                  Show this help
 
 Environment:
   PLAYLIBERTY_PUBLIC_ORIGIN   Same as --public-origin
   PLAYLIBERTY_ADMIN_IDS       Same as --admin-ids
+  PLAYLIBERTY_PANGOLIN_API_URL
+  PLAYLIBERTY_PANGOLIN_RESOURCE_ID
+  PLAYLIBERTY_PANGOLIN_INTEGRATION_API_KEY
+  PLAYLIBERTY_MOBILE_REDIRECT_URIS
 
 The edge assertion is generated when missing and is never accepted on the
-command line.`;
+command line. The Pangolin integration key is read from the environment or
+prompted; it is never accepted on the command line.`;
 
 let values;
 
@@ -87,8 +109,12 @@ try {
     options: {
       'public-origin': { type: 'string' },
       'admin-ids': { type: 'string' },
+      'pangolin-api-url': { type: 'string' },
+      'pangolin-resource-id': { type: 'string' },
+      'mobile-redirect-uris': { type: 'string' },
       'replace-public-origin': { type: 'boolean', default: false },
       'replace-admin': { type: 'boolean', default: false },
+      'replace-pangolin': { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false }
     }
@@ -105,6 +131,20 @@ const publicOriginInput =
   values['public-origin'] ?? process.env.PLAYLIBERTY_PUBLIC_ORIGIN ?? null;
 const adminInput =
   values['admin-ids'] ?? process.env.PLAYLIBERTY_ADMIN_IDS ?? null;
+const pangolinApiUrlInput =
+  values['pangolin-api-url'] ??
+  process.env.PLAYLIBERTY_PANGOLIN_API_URL ??
+  null;
+const pangolinResourceIdInput =
+  values['pangolin-resource-id'] ??
+  process.env.PLAYLIBERTY_PANGOLIN_RESOURCE_ID ??
+  null;
+const pangolinKeyInput =
+  process.env.PLAYLIBERTY_PANGOLIN_INTEGRATION_API_KEY ?? null;
+const mobileRedirectUrisInput =
+  values['mobile-redirect-uris'] ??
+  process.env.PLAYLIBERTY_MOBILE_REDIRECT_URIS ??
+  null;
 
 let readline;
 
@@ -264,23 +304,36 @@ function inspectSecret(spec) {
   try {
     const outer = JSON.parse(result.stdout);
     const secret = JSON.parse(outer.SecretData);
-    const encoded = secret?.data?.[spec.key];
 
     if (secret?.apiVersion !== 'v1' || secret?.kind !== 'Secret') {
       throw new Error('not a v1 Kubernetes Secret document');
     }
 
-    if (typeof encoded !== 'string' || encoded.length === 0) {
-      throw new Error(`missing data.${spec.key}`);
+    const keys =
+      spec.keys === undefined ? [spec.key] : Object.values(spec.keys);
+    const values = {};
+
+    for (const key of keys) {
+      const encoded = secret?.data?.[key];
+
+      if (typeof encoded !== 'string' || encoded.length === 0) {
+        throw new Error(`missing data.${key}`);
+      }
+
+      const value = Buffer.from(encoded, 'base64').toString('utf8');
+
+      if (value.length === 0) {
+        throw new Error(`data.${key} is empty`);
+      }
+
+      values[key] = value;
     }
 
-    const value = Buffer.from(encoded, 'base64').toString('utf8');
-
-    if (value.length === 0) {
-      throw new Error(`data.${spec.key} is empty`);
-    }
-
-    return { state: 'valid', value };
+    return {
+      state: 'valid',
+      value: spec.keys === undefined ? values[spec.key] : undefined,
+      values
+    };
   } catch (error) {
     return {
       state: 'malformed',
@@ -289,18 +342,26 @@ function inspectSecret(spec) {
   }
 }
 
-function secretDocument(spec, value) {
+function secretDocument(spec, values) {
+  const entries =
+    typeof values === 'string' ? [[spec.key, values]] : Object.entries(values);
+
   return JSON.stringify({
     apiVersion: 'v1',
     kind: 'Secret',
     metadata: { name: spec.name },
-    data: { [spec.key]: Buffer.from(value, 'utf8').toString('base64') }
+    data: Object.fromEntries(
+      entries.map(([key, value]) => [
+        key,
+        Buffer.from(value, 'utf8').toString('base64')
+      ])
+    )
   });
 }
 
-function createSecret(spec, value) {
+function createSecret(spec, values) {
   runOrPrint('podman', ['secret', 'create', '--replace', spec.name, '-'], {
-    input: secretDocument(spec, value)
+    input: secretDocument(spec, values)
   });
 
   if (!dryRun) {
@@ -419,17 +480,19 @@ async function ensurePublicOrigin() {
   if (current.state === 'valid') {
     if (!values['replace-public-origin']) {
       console.log('  Existing secret is valid; keeping it.');
-      return;
+      return current.value;
     }
 
-    value ??= await promptPublicOrigin();
-    createSecret(PUBLIC_ORIGIN, normalizePublicOrigin(value));
+    const normalized = normalizePublicOrigin(
+      value ?? (await promptPublicOrigin())
+    );
+    createSecret(PUBLIC_ORIGIN, normalized);
     console.log(
       dryRun
         ? '  Would replace the existing secret.'
         : '  Existing secret replaced.'
     );
-    return;
+    return normalized;
   }
 
   if (current.state === 'malformed') {
@@ -444,9 +507,13 @@ async function ensurePublicOrigin() {
     console.log('  Missing; a value is required.');
   }
 
-  value ??= await promptPublicOrigin();
-  createSecret(PUBLIC_ORIGIN, normalizePublicOrigin(value));
+  const normalized = normalizePublicOrigin(
+    value ?? (await promptPublicOrigin())
+  );
+  createSecret(PUBLIC_ORIGIN, normalized);
   console.log(dryRun ? '  Would prepare the secret.' : '  Secret prepared.');
+
+  return normalized;
 }
 
 async function ensureAdmin() {
@@ -521,6 +588,167 @@ async function ensureAdmin() {
   }
 
   createSecret(ADMIN, normalized);
+  console.log(dryRun ? '  Would prepare the secret.' : '  Secret prepared.');
+}
+
+function normalizePangolinApiUrl(input) {
+  let url;
+
+  try {
+    url = new URL(input);
+  } catch {
+    throw new Error('The Pangolin API URL must be a valid URL.');
+  }
+
+  if (url.protocol !== 'https:') {
+    throw new Error('The Pangolin API URL must use https.');
+  }
+
+  if (
+    url.username !== '' ||
+    url.password !== '' ||
+    url.search !== '' ||
+    url.hash !== ''
+  ) {
+    throw new Error(
+      'The Pangolin API URL must be a base URL with no credentials, query or fragment.'
+    );
+  }
+
+  if (!url.pathname.endsWith('/v1') && !url.pathname.endsWith('/v1/')) {
+    throw new Error('The Pangolin API URL must end in /v1.');
+  }
+
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+}
+
+function normalizePangolinResourceId(input) {
+  const value = Number(input);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error('The Pangolin resource id must be a positive integer.');
+  }
+
+  return String(value);
+}
+
+function normalizePangolinKey(input) {
+  const value = input.trim();
+
+  if (value.length === 0) {
+    throw new Error('The Pangolin integration key must not be empty.');
+  }
+
+  return value;
+}
+
+function defaultMobileRedirectUris(publicOrigin) {
+  return `${publicOrigin}${MOBILE_CALLBACK_PATH},${MOBILE_SCHEME_REDIRECT}`;
+}
+
+function normalizeMobileRedirectUris(input, publicOrigin) {
+  const entries = input
+    .split(',')
+    .map(entry => entry.trim())
+    .filter(entry => entry.length > 0);
+
+  if (entries.length === 0) {
+    throw new Error('The mobile redirect URIs must not be empty.');
+  }
+
+  for (const entry of entries) {
+    let parsed;
+
+    try {
+      parsed = new URL(entry);
+    } catch {
+      throw new Error(`The mobile redirect URI ${entry} is not a valid URL.`);
+    }
+
+    if (
+      parsed.protocol !== 'https:' &&
+      parsed.protocol !== 'dev.playliberty.app:'
+    ) {
+      throw new Error(
+        `The mobile redirect URI ${entry} must use https or the app scheme.`
+      );
+    }
+  }
+
+  const https = `${publicOrigin}${MOBILE_CALLBACK_PATH}`;
+
+  if (!entries.includes(https)) {
+    throw new Error(`The mobile redirect URIs must include ${https}.`);
+  }
+
+  if (!entries.includes(MOBILE_SCHEME_REDIRECT)) {
+    throw new Error(
+      `The mobile redirect URIs must include ${MOBILE_SCHEME_REDIRECT}.`
+    );
+  }
+
+  return entries.join(',');
+}
+
+function validatePangolinInputs() {
+  const supplied = [
+    pangolinApiUrlInput,
+    pangolinResourceIdInput,
+    pangolinKeyInput
+  ].filter(entry => entry !== null);
+
+  if (supplied.length > 0 && supplied.length < 3) {
+    throw new Error(
+      'PANGOLIN_API_URL, PANGOLIN_RESOURCE_ID and PANGOLIN_INTEGRATION_API_KEY must be supplied together.'
+    );
+  }
+}
+
+async function ensurePangolin(publicOrigin) {
+  console.log('\nPangolin integration');
+
+  validatePangolinInputs();
+
+  const current = inspectSecret(PANGOLIN);
+
+  if (current.state === 'valid' && !values['replace-pangolin']) {
+    console.log('  Existing secret is valid; keeping it.');
+    return;
+  }
+
+  if (current.state === 'malformed') {
+    console.log(`  Existing secret is malformed: ${current.reason}`);
+
+    if (!(await confirm('  Replace it?'))) {
+      throw new Error(`${PANGOLIN.name} is malformed and was not replaced.`);
+    }
+  } else if (current.state === 'missing') {
+    console.log(
+      '  Missing; the three values and the callback allowlist are required.'
+    );
+  }
+
+  const apiUrl = normalizePangolinApiUrl(
+    pangolinApiUrlInput ?? (await ask('Pangolin API URL (https://host/v1): '))
+  );
+  const resourceId = normalizePangolinResourceId(
+    pangolinResourceIdInput ?? (await ask('Pangolin resource id: '))
+  );
+  const integrationKey = normalizePangolinKey(
+    pangolinKeyInput ?? (await ask('Pangolin integration API key: '))
+  );
+  const redirectUris = normalizeMobileRedirectUris(
+    mobileRedirectUrisInput ?? defaultMobileRedirectUris(publicOrigin),
+    publicOrigin
+  );
+
+  createSecret(PANGOLIN, {
+    [PANGOLIN.keys.apiUrl]: apiUrl,
+    [PANGOLIN.keys.resourceId]: resourceId,
+    [PANGOLIN.keys.integrationKey]: integrationKey,
+    [PANGOLIN.keys.redirectUris]: redirectUris
+  });
+
   console.log(dryRun ? '  Would prepare the secret.' : '  Secret prepared.');
 }
 
@@ -1176,6 +1404,8 @@ async function main() {
     return;
   }
 
+  validatePangolinInputs();
+
   if (dryRun) {
     console.log(
       'Dry run: no build, directory, pool, AppArmor, firewall, binary or secret mutation will run.'
@@ -1189,8 +1419,9 @@ async function main() {
   ensureEgressHost();
   ensureHostYtdlp();
   await ensureEdge();
-  await ensurePublicOrigin();
+  const publicOrigin = await ensurePublicOrigin();
   await ensureAdmin();
+  await ensurePangolin(publicOrigin);
   printNextSteps();
 
   if (dryRun) {

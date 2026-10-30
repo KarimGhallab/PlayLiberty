@@ -1,6 +1,6 @@
 # Provision mobile access
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement

@@ -50,5 +50,14 @@ the server:
 | `PANGOLIN_INTEGRATION_API_KEY` | The API key, supplied as a secret and never baked in |
 | `MOBILE_REDIRECT_URIS`         | The callbacks the app may use, comma-separated       |
 
+In production the four values live in one Podman secret, `playliberty_pangolin`, with the keys
+`PANGOLIN_API_URL`, `PANGOLIN_RESOURCE_ID`, `PANGOLIN_INTEGRATION_API_KEY` and `MOBILE_REDIRECT_URIS`.
+`pnpm deploy:build-for-production` creates and validates the secret; `--replace-pangolin` replaces an existing one.
+The integration key is read from `PLAYLIBERTY_PANGOLIN_INTEGRATION_API_KEY` or prompted, never accepted on the
+command line.
+
+`MOBILE_REDIRECT_URIS` must include `https://<origin>/auth/callback` and `dev.playliberty.app://provision`. The
+build script derives the HTTPS callback from the public origin and adds the scheme.
+
 All three `PANGOLIN_*` values are set together or not at all; a partial set fails the boot. With none of them, the
 exchange answers `503 provisioning_unavailable` and the rest of the instance is unaffected.

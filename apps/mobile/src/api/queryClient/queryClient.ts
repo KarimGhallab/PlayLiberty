@@ -1,4 +1,4 @@
-import { QueryCache, QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 
 import { ApiError, NeedsProvisioningError } from '../apiClient/ApiClient';
 
@@ -17,14 +17,15 @@ export function shouldRetry(failureCount: number, error: Error): boolean {
 /** The app's one server-state owner. A refused credential ends the session
  * rather than leaving a broken screen over a token the app no longer holds. */
 export function createAppQueryClient(onRefused: () => void): QueryClient {
+  const refuse = (error: Error): void => {
+    if (error instanceof NeedsProvisioningError) {
+      onRefused();
+    }
+  };
+
   return new QueryClient({
     defaultOptions: { queries: { retry: shouldRetry } },
-    queryCache: new QueryCache({
-      onError: error => {
-        if (error instanceof NeedsProvisioningError) {
-          onRefused();
-        }
-      }
-    })
+    queryCache: new QueryCache({ onError: refuse }),
+    mutationCache: new MutationCache({ onError: refuse })
   });
 }

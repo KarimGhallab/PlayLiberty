@@ -59,4 +59,34 @@ describe('the app query client', () => {
     expect(onRefused).not.toHaveBeenCalled();
     client.clear();
   });
+
+  it('reports a refused credential from a mutation once', async () => {
+    const onRefused = jest.fn();
+    const client = createAppQueryClient(onRefused);
+    const mutation = client.getMutationCache().build(client, {
+      mutationFn: failing(new NeedsProvisioningError()),
+      retry: 0,
+      gcTime: Infinity
+    });
+
+    await expect(mutation.execute(undefined)).rejects.toBeInstanceOf(
+      NeedsProvisioningError
+    );
+    expect(onRefused).toHaveBeenCalledTimes(1);
+    client.clear();
+  });
+
+  it('does not report an ordinary mutation failure', async () => {
+    const onRefused = jest.fn();
+    const client = createAppQueryClient(onRefused);
+    const mutation = client.getMutationCache().build(client, {
+      mutationFn: failing(new ApiError(500, null)),
+      retry: 0,
+      gcTime: Infinity
+    });
+
+    await expect(mutation.execute(undefined)).rejects.toBeInstanceOf(ApiError);
+    expect(onRefused).not.toHaveBeenCalled();
+    client.clear();
+  });
 });
