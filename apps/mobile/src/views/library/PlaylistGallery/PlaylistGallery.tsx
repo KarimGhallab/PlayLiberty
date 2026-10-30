@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
   RefreshControl,
   ScrollView,
@@ -7,14 +8,13 @@ import {
   View,
   useWindowDimensions
 } from 'react-native';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
 import type {
   PlaylistWithCounts,
   TrackFileStatusCounts
 } from '@playliberty/contracts';
+import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import Notice from '../../../shared/components/Notice/Notice';
@@ -31,7 +31,10 @@ import {
   ownerNameFrom,
   useAccountDirectory
 } from '../../../api/useAccountDirectory';
-import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
+import {
+  SYNCING_HOLD_MS,
+  useCreatePlaylist
+} from '../../../api/useCreatePlaylist/useCreatePlaylist';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
@@ -42,22 +45,22 @@ import EmptyGallery from '../EmptyGallery/EmptyGallery';
 import GalleryAddAction, {
   galleryAddActionSize
 } from '../GalleryAddAction/GalleryAddAction';
-import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
+import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
 import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
-import PlaylistPlaceholderSheet from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import type { PlaceholderAction } from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
+import PlaylistPlaceholderSheet from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import { scopedPlaylists, visiblePlaylists } from '../bulkSync/bulkSync';
+import type {
+  DeleteIntent,
+  PlaylistActionKey
+} from '../playlistActions/playlistActions';
 import {
   UNDO_WINDOW_MS,
   deleteIntentFor,
   playlistActionsFor
-} from '../playlistActions/playlistActions';
-import type {
-  DeleteIntent,
-  PlaylistActionKey
 } from '../playlistActions/playlistActions';
 
 const TRACK_STATUSES: readonly TrackFileStatus[] =
@@ -125,11 +128,23 @@ export default function PlaylistGallery({
   } | null>(null);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
+  const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const items = (playlists.data?.items ?? []).filter(
+  const createTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadedItems = (playlists.data?.items ?? []).filter(
     item => !hidden.has(item.id)
   );
+  /* A just-created row reads as syncing even if the server's quick reconcile
+   * has already finished by the time the gallery reads it. */
+  const items =
+    justCreatedId === null
+      ? loadedItems
+      : loadedItems.map(item =>
+          item.id === justCreatedId
+            ? { ...item, syncStatus: PlaylistSyncStatus.Syncing }
+            : item
+        );
   const directoryItems = directory.data ?? [];
   const sharedItems = items.filter(item => item.access !== 'owner');
   const hasShared = sharedItems.length > 0;
@@ -189,24 +204,42 @@ export default function PlaylistGallery({
       void playlists.fetchNextPage();
     }
   };
-  const cardFor = (playlist: PlaylistWithCounts) => (
+  const cardFor = (playlist: PlaylistWithCounts, groupKey: string) => (
     <PlaylistCard
       playlist={playlist}
       ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
       config={config}
       onOpen={() => onOpenPlaylist(playlist.id)}
       onOpenActions={() => setActionTargetId(playlist.id)}
+      actionsTestID={`playlist-actions-${groupKey}`}
     />
   );
 
   /* The server accepts the link by starting the sync, so the sheet closes and
-   * the gallery reads again; the new row arrives already syncing. */
+   * the new row reads as syncing until its own read replaces the flag. */
   useEffect(() => {
-    if (create.isSuccess) {
-      setAddOpen(false);
-      create.reset();
+    if (!create.isSuccess) {
+      return;
     }
-  }, [create.isSuccess, create.reset]);
+
+    const createdId = create.data?.playlistId;
+
+    if (createdId !== undefined) {
+      setJustCreatedId(createdId);
+
+      if (createTimer.current !== null) {
+        clearTimeout(createTimer.current);
+      }
+
+      createTimer.current = setTimeout(() => {
+        setJustCreatedId(null);
+        createTimer.current = null;
+      }, SYNCING_HOLD_MS);
+    }
+
+    setAddOpen(false);
+    create.reset();
+  }, [create.data, create.isSuccess, create.reset]);
 
   const addSheet = (
     <AddPlaylistSheet
@@ -232,6 +265,10 @@ export default function PlaylistGallery({
     return () => {
       if (deleteTimer.current !== null) {
         clearTimeout(deleteTimer.current);
+      }
+
+      if (createTimer.current !== null) {
+        clearTimeout(createTimer.current);
       }
     };
   }, []);
@@ -447,7 +484,10 @@ export default function PlaylistGallery({
         {groups.map(group => (
           <View key={group.key} style={styles.group}>
             {group.heading === null ? null : (
-              <Text accessibilityRole="header" style={styles.heading}>
+              <Text
+                accessibilityRole="header"
+                testID={`gallery-heading-${group.key}`}
+                style={styles.heading}>
                 {group.heading}
               </Text>
             )}
@@ -460,7 +500,7 @@ export default function PlaylistGallery({
                 contentContainerStyle={styles.pinnedContent}>
                 {group.items.map(playlist => (
                   <View key={playlist.id} style={{ width: pinnedCardWidth }}>
-                    {cardFor(playlist)}
+                    {cardFor(playlist, group.key)}
                   </View>
                 ))}
               </ScrollView>
@@ -468,7 +508,7 @@ export default function PlaylistGallery({
               <View style={styles.grid}>
                 {group.items.map(playlist => (
                   <View key={playlist.id} style={styles.cell}>
-                    {cardFor(playlist)}
+                    {cardFor(playlist, group.key)}
                   </View>
                 ))}
               </View>

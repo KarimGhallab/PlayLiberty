@@ -1,26 +1,20 @@
 # 09: The gallery journeys
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`02`](02-the-gallery-draws-the-playlists.md), [`05`](05-the-add-sheet.md), [`07`](07-the-cards-actions.md)
 
-## What to build
+## Outcome
 
-Three Maestro flows for the gallery's critical journeys. Each flow establishes its own starting state, signing in through the existing fallback when the app is signed out.
+Three Maestro flows now cover the gallery's critical journeys: `gallery-card` opens a card's playlist, `gallery-add` adds a playlist from the floating action, and `gallery-pin` pins one from its card. Each flow stops and launches the app, signs in through the existing browser fallback when the app is signed out, and leaves the device in the library. The add flow takes its link from `SOURCE_URL`.
 
-- The gallery opens and a card reaches its playlist.
-- A playlist is added from the floating action: the sheet opens, the link is pasted, Add is pressed, the sheet closes and the new playlist appears under the Syncing heading.
-- A playlist is pinned from its card: the overflow opens, Pin is pressed, and the Pinned heading appears.
+The flows needed stable seams: the detail route carries `playlist-screen`, the Pinned and Syncing headings carry `gallery-heading-pinned` and `gallery-heading-syncing`, and a card's overflow carries a group-qualified id so the pin flow targets an unpinned, idle card in the rest group regardless of the account's existing pins.
 
-The add flow takes its source link from the runner, so the dev instance's source is not hardcoded in the flow.
-
-## Acceptance criteria
-
-- [ ] The three flows pass on the emulator against the dev topology.
-- [ ] Each flow is independent and establishes its own state.
-- [ ] The add flow takes its source link from the runner.
-- [ ] The flows use the existing sign-in fallback and leave the device in a known state.
+The add flow exposed the server's first reconcile finishing before the gallery read, so the new playlist arrived idle. `useCreatePlaylist` now inserts the created playlist into the library as syncing and the gallery holds that flag for six seconds; the next read replaces it. The new playlist is therefore visible under the Syncing heading on the press, including when the source is already in the account's library.
 
 ## Verification
 
-`PATH="$HOME/.maestro/bin:$PATH" maestro test -e SOURCE_URL=<source> apps/mobile/.maestro`, with the add flow's source link supplied to the runner.
+- All seven flows pass on the emulator: 7/7 in 3m 42s, including the three gallery journeys.
+- Mobile 164 tests across 27 suites pass; `typecheck`, `lint:check` and `build` pass.
+
+See [`21-see-the-library`](../../specs/21-see-the-library.md).

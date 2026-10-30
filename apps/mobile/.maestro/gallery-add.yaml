@@ -1,0 +1,48 @@
+appId: dev.playliberty.app
+name: A playlist is added from the floating action
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: gallery-add
+    timeout: 30000
+- tapOn:
+    id: gallery-add
+- extendedWaitUntil:
+    visible:
+      id: add-sheet
+    timeout: 15000
+- tapOn:
+    id: add-url
+- inputText: ${SOURCE_URL}
+- tapOn:
+    id: add-submit
+- extendedWaitUntil:
+    notVisible:
+      id: add-sheet
+    timeout: 60000
+# The server started the new playlist's first sync.
+- extendedWaitUntil:
+    visible:
+      id: gallery-heading-syncing
+    timeout: 30000

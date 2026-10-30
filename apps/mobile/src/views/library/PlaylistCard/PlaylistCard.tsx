@@ -31,6 +31,7 @@ export interface PlaylistCardProps {
   readonly config: ApiConfig | null;
   readonly onOpen: () => void;
   readonly onOpenActions: () => void;
+  readonly actionsTestID?: string;
 }
 
 type MissingState =
@@ -122,7 +123,8 @@ export default function PlaylistCard({
   ownerName,
   config,
   onOpen,
-  onOpenActions
+  onOpenActions,
+  actionsTestID
 }: PlaylistCardProps) {
   const { t } = useI18n();
   const cover = usePlaylistCover(playlist, config);
@@ -226,7 +228,7 @@ export default function PlaylistCard({
       </Pressable>
 
       <Pressable
-        testID="playlist-actions"
+        testID={actionsTestID ?? 'playlist-actions'}
         accessibilityRole="button"
         accessibilityLabel={t('header.actions', { name: playlist.name })}
         style={[styles.actions, { top: playTop }]}

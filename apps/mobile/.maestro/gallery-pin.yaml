@@ -1,0 +1,49 @@
+appId: dev.playliberty.app
+name: A playlist is pinned from its card
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+# The rest group is the unpinned, idle set; pinning one of its cards proves the
+# move regardless of the pins the account already holds.
+- scrollUntilVisible:
+    element:
+      id: playlist-actions-rest
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: playlist-actions-rest
+    index: 0
+    point: '10%,50%'
+- extendedWaitUntil:
+    visible:
+      id: playlist-actions-sheet
+    timeout: 15000
+- tapOn:
+    id: playlist-action-pin
+- extendedWaitUntil:
+    visible:
+      id: gallery-heading-pinned
+    timeout: 15000

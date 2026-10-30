@@ -12,13 +12,22 @@ import {
 export interface ScreenProps {
   readonly title?: string;
   readonly subtitle?: string;
+  readonly testID?: string;
   readonly children?: ReactNode;
 }
 
 /** The app's screen frame: the page ground, one inset, and a named heading. */
-export default function Screen({ title, subtitle, children }: ScreenProps) {
+export default function Screen({
+  title,
+  subtitle,
+  testID,
+  children
+}: ScreenProps) {
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      testID={testID}
+      style={styles.screen}
+      edges={['top', 'left', 'right']}>
       <View style={styles.content}>
         {title === undefined ? null : (
           <Text accessibilityRole="header" style={styles.title}>

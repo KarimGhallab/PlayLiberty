@@ -24,7 +24,7 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
-import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
+import { useCreatePlaylist } from '../../../api/useCreatePlaylist/useCreatePlaylist';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
