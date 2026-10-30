@@ -1,29 +1,23 @@
 # 01: One sheet frame for the app
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
-## Observed
+## Outcome
 
-The account sheet owns the app's only modal frame: the backdrop, the top drag handle, the bottom safe inset, the slide and the reduced-motion jump. The add sheet and the card's actions sheet need the same frame, and copying it would give the app three sheets that drift.
+The app now has one modal frame, `Sheet` under the shared components. It owns the scrim, the backdrop, the top drag handle, the 80-point and 0.5-velocity dismissal decision, the settle on `motion-base` with the project's one curve, the reduced-motion jump, the bottom safe inset and the title heading. A caller supplies the title, the content, the two test ids and a close request.
 
-## Expected
+The account sheet now draws only its own content: the failure alert, the identity with its avatar or monogram, the language control with its sliding thumb, the hairline and Sign out. It passes its title, its content and `onClose` to the frame, and its eleven tests still pass.
 
-One shared sheet frame owns the backdrop, the drag handle, the safe inset, the slide and the reduced-motion jump. The account sheet uses it, and the two new sheets reuse it. A caller supplies its title, its content and its close request, so the add sheet can confirm a discard before it closes.
+The close request is the caller's, so a busy sheet can refuse it. The frame does not close itself; the `visible` prop does. A refused drag settles the sheet back to rest instead of leaving it half dismissed.
 
-## Evidence
-
-The account sheet's frame is the only modal frame in the app today. The gallery's add and actions sheets are specified as modal sheets over the gallery, with the same dismissal paths.
-
-## Acceptance criteria
-
-- [ ] The shared frame draws the backdrop, the top drag handle, the bottom safe inset, the slide and the reduced-motion jump.
-- [ ] The backdrop, the system back gesture and a downward drag all ask the caller to close; the caller decides whether to close.
-- [ ] The account sheet uses the frame and its eleven tests still pass.
-- [ ] A caller can replace the content and the title.
-- [ ] A caller can refuse the close request, so a sheet that cannot be dismissed while busy stays open.
+The frame's tests cover the title and content, the backdrop close request and that the sheet stays open when the caller refuses, the bottom safe inset, reduced motion, the drag decision, and the sheet and handle test ids. The pan responder itself is the account sheet's, moved unchanged, so the earlier device pass on the drag still applies.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile exec jest src/shared/components/AccountSheet` and `pnpm --filter @playliberty/mobile run typecheck`.
+- Mobile 82 tests across 16 suites, including the sheet frame's 6 and the account sheet's 11.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run build` and `pnpm run lint:check` pass.
+
+See [`21-see-the-library`](../../specs/21-see-the-library.md).
