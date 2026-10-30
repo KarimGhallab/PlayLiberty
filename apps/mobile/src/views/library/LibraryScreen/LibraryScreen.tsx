@@ -6,7 +6,7 @@ import LibraryHeader from '../../../shared/components/LibraryHeader/LibraryHeade
 import Notice from '../../../shared/components/Notice/Notice';
 import { tokenLength } from '../../../shared/styles/tokens';
 
-import { usePlaylists } from '../../../api/usePlaylists';
+import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { galleryAddActionSize } from '../GalleryAddAction/GalleryAddAction';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';

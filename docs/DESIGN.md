@@ -74,9 +74,10 @@ the type family, the space scale, the radii, the durations and the one curve are
   console are routes of their own, and the account sheet is a modal over whatever is open. There is no tab bar, no
   drawer and no sidebar; the platform's back gesture is the way back.
 - **The gallery is a two-column card grid.** The card is the detail's hero arrangement: cover above the identity,
-  with the play and overflow controls on the scrim. The pinned section is a heading above the grid, and the ownership
-  scope and the status chips are one row that scrolls. The bulk sync keeps its count in the header; the web's phone
-  arrangement drops it because the browser's header cannot hold the sentence, and the app's header can.
+  with the play and overflow controls on the scrim. The pinned section is a heading above one horizontal row that
+  peeks the next card and scrolls sideways; the rest is the grid, and the ownership scope and the status chips are
+  one row that scrolls. The bulk sync keeps its count in the header; the web's phone arrangement drops it because
+  the browser's header cannot hold the sentence, and the app's header can.
 - **The detail scrolls its identity away and keeps its controls.** The cover, the name and the sync line are the
   list's first item; the sort and the chips stay under the top inset. The transport is the player bar's, not the
   header's, and the header keeps Play and Shuffle. This is where the app departs from the web's phone arrangement,

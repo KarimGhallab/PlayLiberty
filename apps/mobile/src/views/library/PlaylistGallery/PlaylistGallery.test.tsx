@@ -26,14 +26,14 @@ import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
-import { usePlaylists } from '../../../api/usePlaylists';
+import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import PlaylistGallery from './PlaylistGallery';
 
-jest.mock('../../../api/usePlaylists', () => ({
+jest.mock('../../../api/usePlaylists/usePlaylists', () => ({
   usePlaylists: jest.fn()
 }));
 
@@ -158,6 +158,10 @@ function queryResult<T>(data: T, overrides: Record<string, unknown> = {}) {
     isPending: false,
     isError: false,
     isFetching: false,
+    isRefetching: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: jest.fn(),
     error: null,
     refetch: jest.fn(),
     ...overrides
@@ -247,6 +251,18 @@ describe('the gallery', () => {
         .getAllByTestId('playlist-card')
         .map(card => card.props.accessibilityLabel)
     ).toEqual(['Pinned Mix', 'Syncing Mix', 'Rest Mix']);
+  });
+
+  it('draws the pinned group as one horizontal row', async () => {
+    await renderGallery([pinned, base]);
+
+    expect(screen.getByTestId('pinned-row').props.horizontal).toBe(true);
+  });
+
+  it('draws no pinned row when nothing is pinned', async () => {
+    await renderGallery([base]);
+
+    expect(screen.queryByTestId('pinned-row')).not.toBeOnTheScreen();
   });
 
   it('draws no heading for a group with no items', async () => {
@@ -359,6 +375,11 @@ describe('the gallery', () => {
     );
     await waitFor(() => {
       expect(
+        screen.queryByTestId('playlist-actions-sheet')
+      ).not.toBeOnTheScreen();
+    });
+    await waitFor(() => {
+      expect(
         screen.getByText('The pin could not be changed.')
       ).toBeOnTheScreen();
     });
@@ -375,6 +396,11 @@ describe('the gallery', () => {
     });
     await fireEvent.press(screen.getByTestId('playlist-action-delete'));
 
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('playlist-actions-sheet')
+      ).not.toBeOnTheScreen();
+    });
     await waitFor(() => {
       expect(screen.queryByTestId('playlist-card')).not.toBeOnTheScreen();
     });
@@ -413,7 +439,56 @@ describe('the gallery', () => {
       await fireEvent.press(
         screen.getByTestId('playlist-placeholder-backdrop')
       );
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('header', { name: title })
+        ).not.toBeOnTheScreen();
+      });
     }
+  });
+
+  it('refetches the gallery and its counts on pull', async () => {
+    const refetch = jest.fn();
+    await renderPlaylists(queryResult(page([base]), { refetch }));
+
+    const control = screen.getByTestId('gallery-scroll').props.refreshControl;
+    control.props.onRefresh();
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('appends the next page when the last row is near', async () => {
+    const fetchNextPage = jest.fn();
+    await renderPlaylists(
+      queryResult(page([base]), { hasNextPage: true, fetchNextPage })
+    );
+
+    await fireEvent.scroll(screen.getByTestId('gallery-scroll'), {
+      nativeEvent: {
+        contentOffset: { x: 0, y: 800 },
+        contentSize: { width: 390, height: 1200 },
+        layoutMeasurement: { width: 390, height: 600 }
+      }
+    });
+
+    expect(fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for the last row before appending', async () => {
+    const fetchNextPage = jest.fn();
+    await renderPlaylists(
+      queryResult(page([base]), { hasNextPage: true, fetchNextPage })
+    );
+
+    await fireEvent.scroll(screen.getByTestId('gallery-scroll'), {
+      nativeEvent: {
+        contentOffset: { x: 0, y: 0 },
+        contentSize: { width: 390, height: 2000 },
+        layoutMeasurement: { width: 390, height: 600 }
+      }
+    });
+
+    expect(fetchNextPage).not.toHaveBeenCalled();
   });
 
   it('draws the scope and the chips with their counts', async () => {

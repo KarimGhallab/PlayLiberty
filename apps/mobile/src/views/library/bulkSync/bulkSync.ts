@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { PlaylistSyncStatus, ShareLevel } from '@playliberty/contracts';
 import type {
   PlaylistWithCounts,
   TrackFileStatus
 } from '@playliberty/contracts';
+import { PlaylistSyncStatus, ShareLevel } from '@playliberty/contracts';
 import type { Messages, Translator } from '@playliberty/i18n';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useSyncAllPlaylists } from '../../../api/useSyncAllPlaylists';
-import type { SyncAllOutcome } from '../../../api/useSyncAllPlaylists';
+import {
+  type SyncAllOutcome,
+  useSyncAllPlaylists
+} from '../../../api/useSyncAllPlaylists/useSyncAllPlaylists';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 
 export interface BulkSyncNotice {

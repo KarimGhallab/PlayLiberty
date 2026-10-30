@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
+import type { InfiniteData } from '@tanstack/react-query';
 
 import {
   type PlaylistPage,
@@ -10,7 +11,7 @@ import {
 } from '@playliberty/contracts';
 import { Language, catalogs, createTranslator } from '@playliberty/i18n';
 
-import { pinPlaylistInPage } from '../../../api/playlistCache';
+import { pinPlaylistInPages } from '../../../api/playlistCache';
 import { deleteIntentFor, playlistActionsFor } from './playlistActions';
 
 const base: PlaylistWithCounts = {
@@ -85,21 +86,31 @@ describe('the playlist actions model', () => {
     expect(pinOf(true)).toBe('header.unpin');
   });
 
-  it('flips the pin on the cached page so the gallery regroups', () => {
-    const page: PlaylistPage = {
-      items: [playlist(), playlist({ id: 'playlist-2', pinned: true })],
-      total: 2,
-      limit: 200,
-      offset: 0
+  it('flips the pin on the loaded pages so the gallery regroups', () => {
+    const pages: InfiniteData<PlaylistPage> = {
+      pages: [
+        {
+          items: [playlist()],
+          total: 2,
+          limit: 200,
+          offset: 0
+        },
+        {
+          items: [playlist({ id: 'playlist-2', pinned: true })],
+          total: 2,
+          limit: 200,
+          offset: 1
+        }
+      ],
+      pageParams: [0, 1]
     };
 
-    const patched = pinPlaylistInPage(page, 'playlist-1', true);
+    const patched = pinPlaylistInPages(pages, 'playlist-2', false);
 
-    expect(patched.items.map(item => [item.id, item.pinned])).toEqual([
-      ['playlist-1', true],
-      ['playlist-2', true]
-    ]);
-    expect(page.items[0]?.pinned).toBe(false);
+    expect(
+      patched.pages.map(data => data.items.map(item => [item.id, item.pinned]))
+    ).toEqual([[['playlist-1', false]], [['playlist-2', false]]]);
+    expect(pages.pages[1]?.items[0]?.pinned).toBe(true);
   });
 
   it('defers a delete with the surface sentence and the playlist name', () => {

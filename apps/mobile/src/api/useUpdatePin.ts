@@ -1,19 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 
 import type { PlaylistPage } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
 import { cacheEffects, libraryKey } from '@playliberty/query';
 
 import { apiClient } from './client';
-import { pinPlaylistInPage } from './playlistCache';
+import { pinPlaylistInPages } from './playlistCache';
 
 export interface PinPlaylistVariables {
   readonly playlistId: string;
   readonly pinned: boolean;
 }
 
-/* The card moves on the press: the cached page carries the new flag until the
- * gallery reads again, and a refusal puts the previous page back. */
+/* The card moves on the press: the cached pages carry the new flag until the
+ * gallery reads again, and a refusal puts the previous pages back. */
 export function useUpdatePin() {
   const queryClient = useQueryClient();
 
@@ -29,12 +30,13 @@ export function useUpdatePin() {
       ),
     onMutate: async ({ playlistId, pinned }: PinPlaylistVariables) => {
       await queryClient.cancelQueries({ queryKey: libraryKey });
-      const previous = queryClient.getQueryData<PlaylistPage>(libraryKey);
+      const previous =
+        queryClient.getQueryData<InfiniteData<PlaylistPage>>(libraryKey);
 
       if (previous !== undefined) {
-        queryClient.setQueryData<PlaylistPage>(
+        queryClient.setQueryData<InfiniteData<PlaylistPage>>(
           libraryKey,
-          pinPlaylistInPage(previous, playlistId, pinned)
+          pinPlaylistInPages(previous, playlistId, pinned)
         );
       }
 

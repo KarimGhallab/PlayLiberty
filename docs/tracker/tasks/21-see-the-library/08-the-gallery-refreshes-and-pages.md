@@ -1,21 +1,23 @@
 # 08: The gallery refreshes and pages
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`02`](02-the-gallery-draws-the-playlists.md), [`04`](04-the-scope-and-the-status-chips.md)
 
-## What to build
+## Outcome
 
-The grid refreshes when pulled down, and it appends the next page when the last row is near, with no Load more control. The first read requests the route's maximum page, so the scope and chip counts are whole up to that size; later pages append beyond it and the counts follow the loaded pages. The optimistic pin and the deferred delete work across pages.
+The gallery's read is now an infinite query. The first page asks the route's maximum, 200, so the scope and chip counts are whole up to that size; the next offset is the loaded count, and the loaded pages flatten into the one list the gallery already read, so the counts follow the pages that arrived.
 
-## Acceptance criteria
+The grid pulls to refresh through a `RefreshControl`, which refetches every loaded page. Scrolling within 384 points of the bottom asks for the next page, guarded by `hasNextPage` and `isFetchingNextPage`; there is no Load more control.
 
-- [ ] Pulling the grid down refetches the gallery and its counts.
-- [ ] The next page appends when the last row is near, with no Load more control.
-- [ ] A library larger than the first page pages correctly.
-- [ ] The counts follow the loaded pages.
-- [ ] The optimistic pin and the deferred delete work across pages.
+The optimistic pin patches every loaded page, not the first alone, so a pinned playlist on page two regroups with the rest. The deferred delete hides by playlist id over the flattened list, so it works across pages too.
+
+The paging tests cover the next offset after a full page, the stop at the total and on an empty page, and the page flattening with the first total. The gallery tests cover the pull-to-refresh refetch, appending near the last row, and waiting while the last row is far.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run test` and `pnpm --filter @playliberty/mobile run typecheck`.
+- Mobile 159 tests across 26 suites, including the paging's 4 and the gallery's 3 new tests.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run build` and `pnpm run lint:check` pass.
+
+See [`21-see-the-library`](../../specs/21-see-the-library.md).

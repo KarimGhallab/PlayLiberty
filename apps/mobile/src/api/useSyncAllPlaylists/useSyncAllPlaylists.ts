@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProblemCode, endpoints } from '@playliberty/contracts';
 import { cacheEffects } from '@playliberty/query';
 
-import { ApiError } from './apiClient/ApiClient';
-import { apiClient } from './client';
+import { ApiError } from '../apiClient/ApiClient';
+import { apiClient } from '../client';
 
 export interface SyncAllOutcome {
   readonly started: number;

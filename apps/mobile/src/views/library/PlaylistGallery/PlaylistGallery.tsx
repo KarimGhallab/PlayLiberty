@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions
+} from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
@@ -25,7 +33,7 @@ import {
 } from '../../../api/useAccountDirectory';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
-import { usePlaylists } from '../../../api/usePlaylists';
+import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -54,6 +62,8 @@ import type {
 
 const TRACK_STATUSES: readonly TrackFileStatus[] =
   Object.values(TrackFileStatus);
+
+const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
 
 /* The chips read the scope they are drawn over: one total per status over every
  * playlist in that scope. */
@@ -98,6 +108,9 @@ export default function PlaylistGallery({
 }: PlaylistGalleryProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const window = useWindowDimensions();
+  const pinnedCardWidth =
+    (window.width - tokenLength('space-4') * 2 - tokenLength('space-3')) * 0.45;
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
   const create = useCreatePlaylist();
@@ -161,6 +174,29 @@ export default function PlaylistGallery({
   const createProblem = problemDetail(
     t,
     create.error instanceof ApiError ? create.error.problem : null
+  );
+  const loadMore = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+    if (!playlists.hasNextPage || playlists.isFetchingNextPage) {
+      return;
+    }
+
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const nearBottom =
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - LOAD_MORE_DISTANCE;
+
+    if (nearBottom) {
+      void playlists.fetchNextPage();
+    }
+  };
+  const cardFor = (playlist: PlaylistWithCounts) => (
+    <PlaylistCard
+      playlist={playlist}
+      ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
+      config={config}
+      onOpen={() => onOpenPlaylist(playlist.id)}
+      onOpenActions={() => setActionTargetId(playlist.id)}
+    />
   );
 
   /* The server accepts the link by starting the sync, so the sheet closes and
@@ -300,9 +336,11 @@ export default function PlaylistGallery({
   const undoSnackbar =
     pendingDelete === null ? null : (
       <UndoSnackbar
+        key={pendingDelete.id}
         message={pendingDelete.message}
         detail={pendingDelete.detail}
         onUndo={undoDelete}
+        durationMs={UNDO_WINDOW_MS}
         bottomOffset={galleryAddActionSize + tokenLength('space-3')}
       />
     );
@@ -381,7 +419,21 @@ export default function PlaylistGallery({
         onStatusChange={onStatusChange}
       />
       <ScrollView
+        testID="gallery-scroll"
         style={styles.gallery}
+        refreshControl={
+          <RefreshControl
+            testID="gallery-refresh"
+            refreshing={playlists.isRefetching}
+            onRefresh={() => {
+              void playlists.refetch();
+            }}
+            tintColor={tokenColor('ink')}
+            colors={[tokenColor('accent')]}
+          />
+        }
+        onScroll={loadMore}
+        scrollEventThrottle={16}
         contentContainerStyle={[
           styles.content,
           {
@@ -399,22 +451,28 @@ export default function PlaylistGallery({
                 {group.heading}
               </Text>
             )}
-            <View style={styles.grid}>
-              {group.items.map(playlist => (
-                <View key={playlist.id} style={styles.cell}>
-                  <PlaylistCard
-                    playlist={playlist}
-                    ownerName={ownerNameFrom(
-                      directoryItems,
-                      playlist.ownerAccountId
-                    )}
-                    config={config}
-                    onOpen={() => onOpenPlaylist(playlist.id)}
-                    onOpenActions={() => setActionTargetId(playlist.id)}
-                  />
-                </View>
-              ))}
-            </View>
+            {group.key === 'pinned' ? (
+              <ScrollView
+                testID="pinned-row"
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.pinnedRow}
+                contentContainerStyle={styles.pinnedContent}>
+                {group.items.map(playlist => (
+                  <View key={playlist.id} style={{ width: pinnedCardWidth }}>
+                    {cardFor(playlist)}
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.grid}>
+                {group.items.map(playlist => (
+                  <View key={playlist.id} style={styles.cell}>
+                    {cardFor(playlist)}
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -447,6 +505,13 @@ const styles = StyleSheet.create({
   },
   group: {
     gap: tokenLength('space-2')
+  },
+  pinnedRow: {
+    flexGrow: 0
+  },
+  pinnedContent: {
+    gap: tokenLength('space-3'),
+    paddingRight: tokenLength('space-4')
   },
   heading: {
     color: tokenColor('ink'),

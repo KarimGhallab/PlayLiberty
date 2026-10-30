@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import { ProblemCode } from '@playliberty/contracts';
 
-import { ApiError } from './apiClient/ApiClient';
+import { ApiError } from '../apiClient/ApiClient';
 import { runSyncAll } from './useSyncAllPlaylists';
 
 const refusal = (code: ProblemCode, status = 409) =>
