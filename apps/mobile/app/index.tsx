@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 
+import { UserRole } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import AccountSheet from '../src/shared/components/AccountSheet/AccountSheet';
@@ -60,7 +61,13 @@ export default function LibraryRoute() {
 
   return (
     <Screen title={t('app.name')}>
-      <LibraryHeader onOpenAccount={() => setAccountOpen(true)} />
+      <LibraryHeader
+        isAdmin={account?.role === UserRole.Admin}
+        onOpenAccount={() => setAccountOpen(true)}
+        onOpenEgress={() => {
+          router.push('/egress');
+        }}
+      />
 
       <AccountSheet
         visible={accountOpen}
@@ -70,10 +77,6 @@ export default function LibraryRoute() {
         onSignOut={() => {
           setAccountOpen(false);
           signOut();
-        }}
-        onOpenEgress={() => {
-          setAccountOpen(false);
-          router.push('/egress');
         }}
       />
     </Screen>

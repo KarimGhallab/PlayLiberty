@@ -2,18 +2,38 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
-import { tokenColor, tokenLength, touchTarget } from '../../styles/tokens';
+import {
+  fontFamily,
+  tokenColor,
+  tokenLength,
+  touchTarget
+} from '../../styles/tokens';
 
 export interface LibraryHeaderProps {
+  readonly isAdmin: boolean;
   readonly onOpenAccount: () => void;
+  readonly onOpenEgress: () => void;
 }
 
-/** The library's only chrome: the door to the account sheet. */
-export default function LibraryHeader({ onOpenAccount }: LibraryHeaderProps) {
+/** The library's chrome: the account door and, for an admin, the egress door. */
+export default function LibraryHeader({
+  isAdmin,
+  onOpenAccount,
+  onOpenEgress
+}: LibraryHeaderProps) {
   const { t } = useI18n();
 
   return (
     <View style={styles.header}>
+      {isAdmin ? (
+        <Pressable
+          testID="egress-door"
+          accessibilityRole="button"
+          style={styles.action}
+          onPress={onOpenEgress}>
+          <Text style={styles.label}>{t('account.egress')}</Text>
+        </Pressable>
+      ) : null}
       <Pressable
         testID="account-door"
         accessibilityRole="button"
@@ -29,7 +49,8 @@ export default function LibraryHeader({ onOpenAccount }: LibraryHeaderProps) {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end'
+    justifyContent: 'flex-end',
+    gap: tokenLength('space-2')
   },
   action: {
     minHeight: touchTarget,
@@ -42,6 +63,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: tokenColor('ink'),
+    fontFamily,
     fontSize: tokenLength('text-md')
   }
 });

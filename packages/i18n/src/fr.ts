@@ -35,7 +35,6 @@ export const fr: Messages = {
   },
   common: {
     cancel: 'Annuler',
-    close: 'Fermer',
     discardPrompt: 'Abandonner ce lien ? Le lien collé sera perdu.',
     keepEditing: 'Continuer la saisie',
     discard: 'Abandonner'

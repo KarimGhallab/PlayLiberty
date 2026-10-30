@@ -6,6 +6,7 @@ import {
   waitFor
 } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { type Account, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
@@ -13,6 +14,11 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 import AccountSheet, { type AccountSheetProps } from './AccountSheet';
 
 const store = { getItem: () => null, setItem: () => {} };
+
+const metrics = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 }
+};
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -33,14 +39,15 @@ async function renderSheet(overrides: Partial<AccountSheetProps> = {}) {
     failure: null,
     onClose: jest.fn(),
     onSignOut: jest.fn(),
-    onOpenEgress: jest.fn(),
     ...overrides
   };
 
   const view = await render(
-    <I18nProvider initialLanguage={Language.English} storage={store}>
-      <AccountSheet {...props} />
-    </I18nProvider>
+    <SafeAreaProvider initialMetrics={metrics}>
+      <I18nProvider initialLanguage={Language.English} storage={store}>
+        <AccountSheet {...props} />
+      </I18nProvider>
+    </SafeAreaProvider>
   );
 
   return { props, view };
@@ -63,24 +70,22 @@ describe('the account sheet', () => {
     expect(screen.getByTestId('account-avatar')).toBeOnTheScreen();
   });
 
-  it('marks an admin and offers the egress console', async () => {
-    const { props } = await renderSheet({
-      account: { ...account, role: UserRole.Admin }
-    });
+  it('marks an admin', async () => {
+    await renderSheet({ account: { ...account, role: UserRole.Admin } });
 
     expect(screen.getByText('Admin')).toBeOnTheScreen();
-
-    fireEvent.press(screen.getByRole('button', { name: 'VPN settings' }));
-    expect(props.onOpenEgress).toHaveBeenCalledTimes(1);
   });
 
-  it('offers neither the mark nor the console to a normal account', async () => {
+  it('does not mark a normal account', async () => {
     await renderSheet();
 
     expect(screen.queryByText('Admin')).not.toBeOnTheScreen();
-    expect(
-      screen.queryByRole('button', { name: 'VPN settings' })
-    ).not.toBeOnTheScreen();
+  });
+
+  it('draws the account initial when it has no avatar', async () => {
+    await renderSheet();
+
+    expect(screen.getByText('M')).toBeOnTheScreen();
   });
 
   it('names its heading', async () => {
@@ -116,6 +121,13 @@ describe('the account sheet', () => {
 
     fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
     expect(props.onSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes when the backdrop is pressed', async () => {
+    const { props } = await renderSheet();
+
+    fireEvent.press(screen.getByTestId('account-backdrop'));
+    expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
   it('shows the refusal in place of nothing', async () => {

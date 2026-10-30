@@ -1,4 +1,10 @@
-import { colors, families, lengths, numbers } from '@playliberty/tokens';
+import {
+  colors,
+  durations,
+  families,
+  lengths,
+  numbers
+} from '@playliberty/tokens';
 
 /* The token module is unitless; React Native wants points and colours. This is
  * the one place a token becomes a style value, so a screen never reads
@@ -14,6 +20,10 @@ export function tokenLength(name: keyof typeof lengths): number {
 
 export function tokenNumber(name: keyof typeof numbers): number {
   return numbers[name].value;
+}
+
+export function tokenDuration(name: keyof typeof durations): number {
+  return durations[name].value;
 }
 
 export const fontFamily = families['font-ui'].value;

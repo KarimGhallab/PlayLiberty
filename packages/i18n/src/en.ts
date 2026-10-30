@@ -32,7 +32,6 @@ export const en = {
   },
   common: {
     cancel: 'Cancel',
-    close: 'Close',
     discardPrompt: 'Discard this link? The link you pasted will be lost.',
     keepEditing: 'Keep editing',
     discard: 'Discard'

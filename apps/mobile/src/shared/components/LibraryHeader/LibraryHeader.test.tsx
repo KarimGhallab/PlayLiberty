@@ -4,22 +4,26 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { touchTarget } from '../../styles/tokens';
-import LibraryHeader from './LibraryHeader';
+import LibraryHeader, { type LibraryHeaderProps } from './LibraryHeader';
 
 const store = { getItem: () => null, setItem: () => {} };
 
-async function renderHeader(): Promise<{
-  onOpenAccount: ReturnType<typeof jest.fn>;
-}> {
+async function renderHeader(overrides: Partial<LibraryHeaderProps> = {}) {
   const onOpenAccount = jest.fn();
+  const onOpenEgress = jest.fn();
 
   await render(
     <I18nProvider initialLanguage={Language.English} storage={store}>
-      <LibraryHeader onOpenAccount={onOpenAccount} />
+      <LibraryHeader
+        isAdmin={false}
+        onOpenAccount={onOpenAccount}
+        onOpenEgress={onOpenEgress}
+        {...overrides}
+      />
     </I18nProvider>
   );
 
-  return { onOpenAccount };
+  return { onOpenAccount, onOpenEgress };
 }
 
 describe('the library header', () => {
@@ -35,5 +39,21 @@ describe('the library header', () => {
 
     fireEvent.press(door);
     expect(onOpenAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers the egress console to an admin', async () => {
+    const { onOpenEgress } = await renderHeader({ isAdmin: true });
+
+    fireEvent.press(screen.getByRole('button', { name: 'VPN settings' }));
+
+    expect(onOpenEgress).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the egress console from a normal account', async () => {
+    await renderHeader();
+
+    expect(
+      screen.queryByRole('button', { name: 'VPN settings' })
+    ).not.toBeOnTheScreen();
   });
 });

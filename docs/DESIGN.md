@@ -91,8 +91,12 @@ the type family, the space scale, the radii, the durations and the one curve are
   cold-start session read draw the same frame, so the handoff never shows a second screen. A failure sits above the
   action as a panel that names the problem. The covers are art rather than derived hues, because a signed-out app
   has no playlists to draw a sleeve from.
-- **The account sheet is the app's one settings surface.** It holds the display name, the admin mark, the language
-  control, Sign out and the egress door for an admin.
+- **The account sheet is the account's settings surface.** It holds the display name, the admin mark, the language
+  control and Sign out. The selected language takes the accent on its segment, as the detail's selected chip does;
+  a missing avatar falls back to the account's initial on one of the six sleeve hues, derived from the account id,
+  so two accounts are told apart at a glance. The admin's VPN settings door is not here: it is an instance-level
+  control and sits in the library header beside the account door. The sheet dismisses on the backdrop, the system back
+  gesture, or a downward drag on its handle.
 - **A target is 44 points, and every control has a name and a role.** Dynamic Type is respected, with a capped
   multiplier only where a fixed layout would break, and reduced motion is read from the system. The focus ring and
   the keyboard contract are the web's and have no analogue.

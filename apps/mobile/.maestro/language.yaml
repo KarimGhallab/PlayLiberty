@@ -27,7 +27,7 @@ name: The language survives a restart
     id: language-fr
 - assertVisible: 'Se déconnecter'
 - tapOn:
-    id: account-close
+    point: '50%,25%'
 - stopApp
 - launchApp
 - extendedWaitUntil:
@@ -41,5 +41,5 @@ name: The language survives a restart
 - tapOn:
     id: language-en
 - tapOn:
-    id: account-close
+    point: '50%,25%'
 - assertVisible: 'Account'

@@ -28,6 +28,6 @@ name: The library and the account sheet
 - assertVisible:
     id: account-sign-out
 - tapOn:
-    id: account-close
+    point: '50%,25%'
 - assertNotVisible:
     id: account-sign-out
