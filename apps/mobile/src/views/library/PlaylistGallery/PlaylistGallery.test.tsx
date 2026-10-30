@@ -6,6 +6,7 @@ import {
   waitFor,
   within
 } from '@testing-library/react-native';
+import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -16,7 +17,8 @@ import {
   type PlaylistWithCounts,
   ProblemCode,
   Provider,
-  ShareLevel
+  ShareLevel,
+  TrackFileStatus
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
@@ -25,6 +27,7 @@ import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import PlaylistGallery from './PlaylistGallery';
 
 jest.mock('../../../api/usePlaylists', () => ({
@@ -157,6 +160,28 @@ function mutationResult(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function GalleryHarness({
+  onOpenPlaylist
+}: {
+  readonly onOpenPlaylist: (playlistId: string) => void;
+}) {
+  const [scope, setScope] = useState<LibraryScope>('all');
+  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
+    null
+  );
+
+  return (
+    <PlaylistGallery
+      config={config}
+      scope={scope}
+      statusFilter={statusFilter}
+      onScopeChange={setScope}
+      onStatusChange={setStatusFilter}
+      onOpenPlaylist={onOpenPlaylist}
+    />
+  );
+}
+
 async function renderPlaylists(
   result: unknown,
   accounts: AccountSummary[] = []
@@ -170,7 +195,7 @@ async function renderPlaylists(
   const view = await render(
     <SafeAreaProvider initialMetrics={metrics}>
       <I18nProvider initialLanguage={Language.English} storage={store}>
-        <PlaylistGallery config={config} onOpenPlaylist={onOpenPlaylist} />
+        <GalleryHarness onOpenPlaylist={onOpenPlaylist} />
       </I18nProvider>
     </SafeAreaProvider>
   );
@@ -368,7 +393,7 @@ describe('the gallery', () => {
     const tree = () => (
       <SafeAreaProvider initialMetrics={metrics}>
         <I18nProvider initialLanguage={Language.English} storage={store}>
-          <PlaylistGallery config={config} onOpenPlaylist={onOpenPlaylist} />
+          <GalleryHarness onOpenPlaylist={onOpenPlaylist} />
         </I18nProvider>
       </SafeAreaProvider>
     );

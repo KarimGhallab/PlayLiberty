@@ -5,7 +5,6 @@ import { UserRole } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import AccountSheet from '../src/shared/components/AccountSheet/AccountSheet';
-import LibraryHeader from '../src/shared/components/LibraryHeader/LibraryHeader';
 import Screen from '../src/shared/components/Screen/Screen';
 import SignInDoor from '../src/shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../src/shared/components/SignedOut/SignedOut';
@@ -16,7 +15,7 @@ import { provisioningFailure } from '../src/auth/provisioningFailure';
 import { startProvisioning } from '../src/auth/startProvisioning';
 import { useApiConfig } from '../src/auth/useApiConfig';
 import { SessionStatus, useSession } from '../src/auth/useSession';
-import PlaylistGallery from '../src/views/library/PlaylistGallery/PlaylistGallery';
+import LibraryScreen from '../src/views/library/LibraryScreen/LibraryScreen';
 
 export default function LibraryRoute() {
   const { t } = useI18n();
@@ -64,16 +63,14 @@ export default function LibraryRoute() {
 
   return (
     <Screen>
-      <LibraryHeader
+      <LibraryScreen
+        account={account ?? null}
+        config={config}
         isAdmin={account?.role === UserRole.Admin}
         onOpenAccount={() => setAccountOpen(true)}
         onOpenEgress={() => {
           router.push('/egress');
         }}
-      />
-
-      <PlaylistGallery
-        config={config}
         onOpenPlaylist={playlistId => {
           router.push({
             pathname: '/playlists/[playlistId]',

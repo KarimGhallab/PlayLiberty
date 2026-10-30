@@ -33,6 +33,7 @@ import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
+import { scopedPlaylists, visiblePlaylists } from '../bulkSync/bulkSync';
 
 const TRACK_STATUSES: readonly TrackFileStatus[] =
   Object.values(TrackFileStatus);
@@ -61,6 +62,10 @@ function totalStatusCounts(
 
 export interface PlaylistGalleryProps {
   readonly config: ApiConfig | null;
+  readonly scope: LibraryScope;
+  readonly statusFilter: TrackFileStatus | null;
+  readonly onScopeChange: (scope: LibraryScope) => void;
+  readonly onStatusChange: (status: TrackFileStatus | null) => void;
   readonly onOpenPlaylist: (playlistId: string) => void;
 }
 
@@ -68,6 +73,10 @@ export interface PlaylistGalleryProps {
  * sync, so the transient group holds the unpinned rows only. */
 export default function PlaylistGallery({
   config,
+  scope,
+  statusFilter,
+  onScopeChange,
+  onStatusChange,
   onOpenPlaylist
 }: PlaylistGalleryProps) {
   const { t } = useI18n();
@@ -76,36 +85,29 @@ export default function PlaylistGallery({
   const directory = useAccountDirectory();
   const create = useCreatePlaylist();
   const [addOpen, setAddOpen] = useState(false);
-  const [scope, setScope] = useState<LibraryScope>('all');
-  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
-    null
-  );
   const items = playlists.data?.items ?? [];
   const directoryItems = directory.data ?? [];
   const sharedItems = items.filter(item => item.access !== 'owner');
   const hasShared = sharedItems.length > 0;
-  const scopedItems = scope === 'shared' ? sharedItems : items;
+  const scopedItems = scopedPlaylists(items, scope);
   const statusCounts = totalStatusCounts(scopedItems);
   const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
-  const visibleItems =
-    statusFilter === null
-      ? scopedItems
-      : scopedItems.filter(item => item.counts[statusFilter] > 0);
+  const visibleItems = visiblePlaylists(scopedItems, statusFilter);
 
   /* A status the scope no longer carries cannot stay in force; a live read that
    * drops the last track in it returns the rail to All. */
   useEffect(() => {
     if (statusFilter !== null && activeCount === 0) {
-      setStatusFilter(null);
+      onStatusChange(null);
     }
-  }, [statusFilter, activeCount]);
+  }, [statusFilter, activeCount, onStatusChange]);
 
   /* The scope cannot outlive the last share: its pair leaves the rail. */
   useEffect(() => {
     if (scope === 'shared' && !hasShared) {
-      setScope('all');
+      onScopeChange('all');
     }
-  }, [scope, hasShared]);
+  }, [scope, hasShared, onScopeChange]);
 
   const pinned = visibleItems.filter(item => item.pinned);
   const unpinned = visibleItems.filter(item => !item.pinned);
@@ -206,10 +208,10 @@ export default function PlaylistGallery({
         totalCount={items.length}
         sharedCount={sharedItems.length}
         scope={scope}
-        onScopeChange={setScope}
+        onScopeChange={onScopeChange}
         counts={statusCounts}
         activeStatus={statusFilter}
-        onStatusChange={setStatusFilter}
+        onStatusChange={onStatusChange}
       />
       <ScrollView
         style={styles.gallery}

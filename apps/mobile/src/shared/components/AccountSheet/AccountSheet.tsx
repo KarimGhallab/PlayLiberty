@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -14,7 +13,6 @@ import { Language, useI18n } from '@playliberty/i18n';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../a11y/useReduceMotion';
-import { sleeveColor } from '../../styles/sleeve';
 import {
   fontFamily,
   tokenColor,
@@ -23,6 +21,7 @@ import {
   tokenNumber,
   touchTarget
 } from '../../styles/tokens';
+import AccountAvatar from '../AccountAvatar/AccountAvatar';
 import Sheet from '../Sheet/Sheet';
 
 export interface AccountSheetProps {
@@ -99,7 +98,7 @@ export default function AccountSheet({
 
       {account === null ? null : (
         <View style={styles.identity}>
-          <Avatar account={account} />
+          <AccountAvatar account={account} />
           <View style={styles.who}>
             <Text style={styles.name}>{account.displayName}</Text>
             {account.role === UserRole.Admin ? (
@@ -158,57 +157,12 @@ export default function AccountSheet({
   );
 }
 
-function Avatar({ account }: { readonly account: Account }) {
-  if (account.avatarUrl === null) {
-    return <Monogram account={account} />;
-  }
-
-  return (
-    <Image
-      accessible={false}
-      testID="account-avatar"
-      source={{ uri: account.avatarUrl }}
-      style={styles.avatar}
-    />
-  );
-}
-
-function Monogram({ account }: { readonly account: Account }) {
-  const initial = account.displayName.trim().charAt(0).toUpperCase() || '?';
-  const tone = sleeveColor(account.id);
-
-  return (
-    <View style={[styles.monogram, { backgroundColor: tone }]}>
-      <Text style={styles.monogramLabel}>{initial}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   identity: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-3'),
     marginTop: tokenLength('space-3')
-  },
-  avatar: {
-    width: tokenLength('space-9'),
-    height: tokenLength('space-9'),
-    borderRadius: tokenLength('radius-chip'),
-    backgroundColor: tokenColor('surface-raised')
-  },
-  monogram: {
-    width: tokenLength('space-9'),
-    height: tokenLength('space-9'),
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokenLength('radius-chip')
-  },
-  monogramLabel: {
-    color: tokenColor('ink'),
-    fontFamily,
-    fontSize: tokenLength('text-lg'),
-    fontWeight: '600'
   },
   who: {
     flexShrink: 1,
