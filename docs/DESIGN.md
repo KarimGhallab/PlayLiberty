@@ -10,7 +10,7 @@ This file names roles and rules and never a literal value. The literals live in 
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/tokens/src/values.ts`        | Every literal: the colour roles, the type scale, the space scale, the radii, the control sizes, the durations, the weights, the leadings, the z tiers, the family and the one curve. Lengths and durations are unitless there; `emitTokens` is the only place a unit is added, and it quotes the family for the stylesheet. |
 | `packages/tokens` build output         | `dist/tokens.css` for the web client's custom properties, the typed module for the mobile client's `StyleSheet`, and the morph table both clients draw with.                                                                                                                                                                |
-| `packages/ui-foundation`               | The derivations both clients share, so neither writes them twice: the file-status to tone mapping and its precedence, the sleeve index a playlist draws, the easing.                                                                                                                                                        |
+| `packages/ui-foundation`               | The derivations both clients share, so neither writes them twice: the file-status to tone mapping and its precedence, the sleeve index a playlist draws, the equalizer's resting scales, the easing.                                                                                                                        |
 | `apps/web/src/shared/styles/base.scss` | The one global stylesheet: the `@font-face`, `color-scheme`, the page ground and text, the focus ring, and the single reduced-motion rule.                                                                                                                                                                                  |
 
 ## Colour
@@ -85,6 +85,12 @@ the type family, the space scale, the radii, the durations and the one curve are
 - **The player bar is the only persistent chrome and the only transport.** The queue is a sheet above it. There is no
   volume rail, no mute and no keyboard chord: the device's buttons are the volume, and the operating system's
   controls are the transport when the app is in the background.
+- **The sign-in door is the app's signed-out surface.** Three sleeves fan above the wordmark, the title and the
+  browser handoff, with one filled accent action at the bottom of the column. The front sleeve carries the equalizer
+  mark, still at its resting scales and moving while provisioning is in flight; the callback's return and the
+  cold-start session read draw the same frame, so the handoff never shows a second screen. A failure sits above the
+  action as a panel that names the problem. The covers are art rather than derived hues, because a signed-out app
+  has no playlists to draw a sleeve from.
 - **The account sheet is the app's one settings surface.** It holds the display name, the admin mark, the language
   control, Sign out and the egress door for an admin.
 - **A target is 44 points, and every control has a name and a role.** Dynamic Type is respected, with a capped

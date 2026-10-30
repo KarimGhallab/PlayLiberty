@@ -6,6 +6,7 @@ import { problemDetail, useI18n } from '@playliberty/i18n';
 import AccountSheet from '../src/shared/components/AccountSheet/AccountSheet';
 import LibraryHeader from '../src/shared/components/LibraryHeader/LibraryHeader';
 import Screen from '../src/shared/components/Screen/Screen';
+import SignInDoor from '../src/shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../src/shared/components/SignedOut/SignedOut';
 
 import { ApiError } from '../src/api/apiClient/ApiClient';
@@ -42,7 +43,7 @@ export default function LibraryRoute() {
   }, [t]);
 
   if (status === SessionStatus.Loading) {
-    return <Screen title={t('app.name')} subtitle={t('library.loading')} />;
+    return <SignInDoor />;
   }
 
   if (status === SessionStatus.SignedOut) {

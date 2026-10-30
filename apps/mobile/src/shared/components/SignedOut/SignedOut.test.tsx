@@ -6,6 +6,11 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 import { touchTarget } from '../../styles/tokens';
 import SignedOut from './SignedOut';
 
+/* The mark's loop is visual; a still door keeps the test off the clock. */
+jest.mock('../../a11y/useReduceMotion', () => ({
+  useReduceMotion: () => true
+}));
+
 const store = { getItem: () => null, setItem: () => {} };
 
 async function renderSignedOut(
@@ -57,5 +62,13 @@ describe('the signed-out state', () => {
     expect(
       screen.getByRole('header', { name: 'Sign in to enter the app' })
     ).toBeOnTheScreen();
+  });
+
+  it('announces a failed sign-in as an alert', async () => {
+    await renderSignedOut({ failure: 'Sign-in could not finish.' });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Sign-in could not finish.'
+    );
   });
 });

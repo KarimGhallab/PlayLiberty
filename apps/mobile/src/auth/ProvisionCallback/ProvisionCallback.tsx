@@ -1,10 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, Text } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
-import Screen from '../../shared/components/Screen/Screen';
+import SignInDoor from '../../shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../../shared/components/SignedOut/SignedOut';
+import {
+  fontFamily,
+  tokenColor,
+  tokenLength,
+  tokenNumber
+} from '../../shared/styles/tokens';
 
 import { expoProvisioningDeps } from '../expoProvisioning';
 import { completeProvisioning } from '../provisioning/provisioning';
@@ -65,7 +72,13 @@ export default function ProvisionCallback() {
   }, [t]);
 
   if (failure === null) {
-    return <Screen title={t('app.name')} subtitle={t('signedOut.busy')} />;
+    return (
+      <SignInDoor busy>
+        <Text accessibilityLiveRegion="polite" style={styles.waiting}>
+          {t('signedOut.busy')}
+        </Text>
+      </SignInDoor>
+    );
   }
 
   return (
@@ -79,3 +92,14 @@ export default function ProvisionCallback() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  waiting: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-md'),
+    lineHeight: tokenLength('text-md') * tokenNumber('leading-normal'),
+    textAlign: 'center',
+    width: '100%'
+  }
+});

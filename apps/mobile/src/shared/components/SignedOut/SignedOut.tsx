@@ -1,14 +1,16 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
 import {
+  fontFamily,
   tokenColor,
   tokenLength,
   tokenNumber,
   touchTarget
 } from '../../styles/tokens';
-import Screen from '../Screen/Screen';
+import SignInDoor from '../SignInDoor/SignInDoor';
+import Spinner from '../Spinner/Spinner';
 
 export interface SignedOutProps {
   readonly busy: boolean;
@@ -30,40 +32,103 @@ export default function SignedOut({
     : (actionLabel ?? t('signedOut.action'));
 
   return (
-    <Screen title={t('signedOut.title')} subtitle={t('signedOut.body')}>
-      <Pressable
-        testID="sign-in"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: busy }}
-        disabled={busy}
-        style={[styles.action, busy && styles.actionDisabled]}
-        onPress={onSignIn}>
-        <Text style={styles.label}>{label}</Text>
-      </Pressable>
-      {failure === null ? null : <Text style={styles.failure}>{failure}</Text>}
-    </Screen>
+    <SignInDoor
+      busy={busy}
+      action={
+        <View style={styles.action}>
+          {failure === null ? null : (
+            <View
+              accessible
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              style={styles.failure}>
+              <Text style={styles.failureText}>{failure}</Text>
+            </View>
+          )}
+          <Pressable
+            testID="sign-in"
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            accessibilityState={{ disabled: busy }}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.primary,
+              pressed && styles.primaryPressed
+            ]}
+            onPress={onSignIn}>
+            {busy ? <Spinner color={tokenColor('bg')} /> : null}
+            <Text style={styles.label}>{label}</Text>
+            {busy ? null : <Text style={styles.arrow}>↗</Text>}
+          </Pressable>
+        </View>
+      }>
+      <Text accessibilityRole="header" style={styles.title}>
+        {t('signedOut.title')}
+      </Text>
+      <Text style={styles.hint}>{t('signedOut.browser')}</Text>
+    </SignInDoor>
   );
 }
 
 const styles = StyleSheet.create({
   action: {
+    width: '100%',
+    gap: tokenLength('space-3')
+  },
+  primary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokenLength('space-2'),
     minHeight: touchTarget,
     minWidth: touchTarget,
-    justifyContent: 'center',
-    paddingHorizontal: tokenLength('space-4'),
+    paddingHorizontal: tokenLength('space-5'),
     borderRadius: tokenLength('radius-control'),
-    borderWidth: 1,
-    borderColor: tokenColor('control-border')
+    backgroundColor: tokenColor('accent')
   },
-  actionDisabled: {
-    opacity: tokenNumber('opacity-disabled')
+  primaryPressed: {
+    backgroundColor: tokenColor('accent-hover')
   },
   label: {
-    color: tokenColor('ink'),
+    color: tokenColor('bg'),
+    fontFamily,
+    fontSize: tokenLength('text-md'),
+    fontWeight: '500'
+  },
+  arrow: {
+    color: tokenColor('bg'),
+    fontFamily,
     fontSize: tokenLength('text-md')
   },
+  title: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-lg'),
+    fontWeight: '500',
+    lineHeight: tokenLength('text-lg') * tokenNumber('leading-tight'),
+    textAlign: 'center',
+    width: '100%'
+  },
+  hint: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-xs'),
+    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal'),
+    textAlign: 'center',
+    width: '100%'
+  },
   failure: {
-    color: tokenColor('tone-failed'),
-    fontSize: tokenLength('text-sm')
+    width: '100%',
+    padding: tokenLength('space-3'),
+    borderLeftWidth: 2,
+    borderLeftColor: tokenColor('tone-failed'),
+    borderRadius: tokenLength('radius-control'),
+    backgroundColor: tokenColor('surface')
+  },
+  failureText: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   }
 });

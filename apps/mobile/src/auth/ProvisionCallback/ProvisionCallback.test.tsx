@@ -58,6 +58,11 @@ const mockParams = jest.mocked(useLocalSearchParams);
 
 const store = { getItem: () => null, setItem: () => {} };
 
+/* The door's mark is visual; a still door keeps the test off the clock. */
+jest.mock('../../shared/a11y/useReduceMotion', () => ({
+  useReduceMotion: () => true
+}));
+
 function refusal(): ProvisioningError {
   return new ProvisioningError(ProvisioningFailure.Refused, {
     type: 'https://playliberty.dev/problems/invalid_grant',

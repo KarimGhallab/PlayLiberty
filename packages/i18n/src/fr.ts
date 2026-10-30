@@ -26,7 +26,8 @@ export const fr: Messages = {
   },
   signedOut: {
     title: "Connectez-vous pour entrer dans l'application",
-    body: 'Cette application demande un compte sur votre instance.',
+    browser:
+      "Votre navigateur s'ouvre pour la connexion, puis vous ramène ici.",
     action: 'Se connecter',
     retry: 'Se connecter à nouveau',
     busy: 'Connexion…',

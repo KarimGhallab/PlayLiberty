@@ -24,7 +24,7 @@ export const en = {
   },
   signedOut: {
     title: 'Sign in to enter the app',
-    body: 'This app needs an account on your instance.',
+    browser: 'Your browser opens to sign in, then brings you back here.',
     action: 'Sign in',
     retry: 'Sign in again',
     busy: 'Signing in…',
