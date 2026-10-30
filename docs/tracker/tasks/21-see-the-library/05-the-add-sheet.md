@@ -1,24 +1,23 @@
 # 05: The add sheet
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-one-sheet-frame-for-the-app.md), [`03`](03-the-gallery-states.md)
 
-## What to build
+## Outcome
 
-The add control is the floating round action on a gallery with items, and it is absent when the gallery is empty; the empty gallery's own labelled action opens the same sheet. The sheet holds the playlist link field, the skip-non-music switch defaulting on, Cancel and Add. Add is disabled while busy and shows the busy state. A malformed link is refused before the request; a server refusal is shown in the sheet. A typed link asks once before the sheet is discarded. A successful create closes the sheet and leaves the person in the gallery, with the new playlist arriving from the server already syncing.
+The gallery now draws the floating round add action over a gallery with items, and no floating action when the gallery is empty; the empty gallery's own labelled action opens the same sheet. Both controls open `AddPlaylistSheet`, which uses the shared `Sheet` frame.
 
-## Acceptance criteria
+The sheet owns the playlist link field, the skip-non-music checkbox defaulting on, Cancel and Add, the busy label with its spinner, the schema refusal, the server refusal and the discard confirmation. Add is disabled while busy or while the field is empty. A malformed link is refused by `CreatePlaylistInputSchema` before any request. A typed link asks before it is discarded, through Cancel, the backdrop, a drag or the back request. A fresh open resets the link and the checkbox.
 
-- [ ] The floating action is present on a gallery with items and absent on an empty one.
-- [ ] The empty gallery's action opens the same sheet.
-- [ ] A malformed link is refused before the request.
-- [ ] The skip switch defaults on.
-- [ ] Add is disabled while busy and shows the busy state.
-- [ ] A typed link asks once before the sheet is discarded.
-- [ ] A server refusal is shown in the sheet.
-- [ ] A successful create closes the sheet and the gallery reads again.
+`useCreatePlaylist` posts the link and the setting, then invalidates the library, so the new playlist arrives on the next read already syncing. The gallery closes the sheet and resets the mutation when the create succeeds.
+
+The gallery's tests cover the floating action's presence and absence, the empty gallery's action opening the sheet, and the sheet closing on success. The add sheet's own tests cover the schema refusal, the busy state, the discard confirmation and the skip default. The skip control is the shared `Checkbox`, whose own tests cover the announced state, the toggle, the hint and the disabled refusal.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run test` and `pnpm --filter @playliberty/mobile run typecheck`. The add sheet's tests cover the schema refusal, the busy state, the discard confirmation and the skip default.
+- Mobile 119 tests across 20 suites, including the add sheet's 7, the gallery's 16 and the checkbox's 3.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run build` and `pnpm run lint:check` pass.
+
+See [`21-see-the-library`](../../specs/21-see-the-library.md).

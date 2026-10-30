@@ -3,6 +3,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within
 } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -21,12 +22,17 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
+import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import PlaylistGallery from './PlaylistGallery';
 
 jest.mock('../../../api/usePlaylists', () => ({
   usePlaylists: jest.fn()
+}));
+
+jest.mock('../../../api/useCreatePlaylist', () => ({
+  useCreatePlaylist: jest.fn()
 }));
 
 jest.mock('../../../api/useAccountDirectory', () => {
@@ -140,29 +146,36 @@ function queryResult<T>(data: T, overrides: Record<string, unknown> = {}) {
   } as never;
 }
 
+function mutationResult(overrides: Record<string, unknown> = {}) {
+  return {
+    mutate: jest.fn(),
+    reset: jest.fn(),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+    ...overrides
+  };
+}
+
 async function renderPlaylists(
   result: unknown,
   accounts: AccountSummary[] = []
 ) {
   jest.mocked(usePlaylists).mockReturnValue(result as never);
   jest.mocked(useAccountDirectory).mockReturnValue(queryResult(accounts));
+  jest.mocked(useCreatePlaylist).mockReturnValue(mutationResult() as never);
 
   const onOpenPlaylist = jest.fn();
-  const onAddPlaylist = jest.fn();
 
   const view = await render(
     <SafeAreaProvider initialMetrics={metrics}>
       <I18nProvider initialLanguage={Language.English} storage={store}>
-        <PlaylistGallery
-          config={config}
-          onOpenPlaylist={onOpenPlaylist}
-          onAddPlaylist={onAddPlaylist}
-        />
+        <PlaylistGallery config={config} onOpenPlaylist={onOpenPlaylist} />
       </I18nProvider>
     </SafeAreaProvider>
   );
 
-  return { onOpenPlaylist, onAddPlaylist, view };
+  return { onOpenPlaylist, view };
 }
 
 async function renderGallery(
@@ -313,22 +326,67 @@ describe('the gallery', () => {
     expect(screen.queryByText('No playlists yet')).not.toBeOnTheScreen();
   });
 
-  it('draws the empty gallery and calls the add callback', async () => {
-    const { onAddPlaylist } = await renderGallery([]);
+  it('draws the empty gallery and opens the add sheet from its action', async () => {
+    await renderGallery([]);
 
     expect(
       screen.getByRole('header', { name: 'No playlists yet' })
     ).toBeOnTheScreen();
     expect(
       screen.getByText(
-        'Paste a YouTube playlist link, then sync it. Every stored track is yours from then on, even if the video is taken down later.'
+        'Paste a YouTube playlist link, then sync it to listen to its tracks.'
       )
     ).toBeOnTheScreen();
+    expect(screen.queryByTestId('gallery-add')).not.toBeOnTheScreen();
 
     await fireEvent.press(
       screen.getByRole('button', { name: 'Add a playlist' })
     );
-    expect(onAddPlaylist).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-sheet')).toBeOnTheScreen();
+    });
+  });
+
+  it('draws the floating add action over a gallery with items', async () => {
+    await renderGallery([base]);
+
+    await fireEvent.press(screen.getByTestId('gallery-add'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-sheet')).toBeOnTheScreen();
+    });
+  });
+
+  it('closes the add sheet when the create succeeds', async () => {
+    jest.mocked(usePlaylists).mockReturnValue(queryResult(page([base])));
+    jest.mocked(useAccountDirectory).mockReturnValue(queryResult([]));
+    const create = mutationResult();
+    jest.mocked(useCreatePlaylist).mockReturnValue(create as never);
+    const onOpenPlaylist = jest.fn();
+
+    const tree = () => (
+      <SafeAreaProvider initialMetrics={metrics}>
+        <I18nProvider initialLanguage={Language.English} storage={store}>
+          <PlaylistGallery config={config} onOpenPlaylist={onOpenPlaylist} />
+        </I18nProvider>
+      </SafeAreaProvider>
+    );
+
+    const view = await render(tree());
+    await fireEvent.press(screen.getByTestId('gallery-add'));
+    await waitFor(() => {
+      expect(screen.getByTestId('add-sheet')).toBeOnTheScreen();
+    });
+
+    const succeeded = mutationResult({ isSuccess: true });
+    jest.mocked(useCreatePlaylist).mockReturnValue(succeeded as never);
+    await view.rerender(tree());
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('add-sheet')).not.toBeOnTheScreen();
+    });
+    expect(succeeded.reset).toHaveBeenCalled();
   });
 
   it('draws the failure body with the problem and a retry, not the empty gallery', async () => {

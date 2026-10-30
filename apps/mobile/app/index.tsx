@@ -74,7 +74,6 @@ export default function LibraryRoute() {
 
       <PlaylistGallery
         config={config}
-        onAddPlaylist={() => {}}
         onOpenPlaylist={playlistId => {
           router.push({
             pathname: '/playlists/[playlistId]',

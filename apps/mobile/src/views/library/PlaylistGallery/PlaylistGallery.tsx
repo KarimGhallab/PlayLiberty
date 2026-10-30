@@ -21,9 +21,14 @@ import {
   ownerNameFrom,
   useAccountDirectory
 } from '../../../api/useAccountDirectory';
+import { useCreatePlaylist } from '../../../api/useCreatePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
+import GalleryAddAction, {
+  galleryAddActionSize
+} from '../GalleryAddAction/GalleryAddAction';
 import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
@@ -56,7 +61,6 @@ function totalStatusCounts(
 
 export interface PlaylistGalleryProps {
   readonly config: ApiConfig | null;
-  readonly onAddPlaylist: () => void;
   readonly onOpenPlaylist: (playlistId: string) => void;
 }
 
@@ -64,13 +68,14 @@ export interface PlaylistGalleryProps {
  * sync, so the transient group holds the unpinned rows only. */
 export default function PlaylistGallery({
   config,
-  onAddPlaylist,
   onOpenPlaylist
 }: PlaylistGalleryProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
+  const create = useCreatePlaylist();
+  const [addOpen, setAddOpen] = useState(false);
   const [scope, setScope] = useState<LibraryScope>('all');
   const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
     null
@@ -120,6 +125,34 @@ export default function PlaylistGallery({
       t,
       playlists.error instanceof ApiError ? playlists.error.problem : null
     ) ?? t('library.readFailed');
+  const createProblem = problemDetail(
+    t,
+    create.error instanceof ApiError ? create.error.problem : null
+  );
+
+  /* The server accepts the link by starting the sync, so the sheet closes and
+   * the gallery reads again; the new row arrives already syncing. */
+  useEffect(() => {
+    if (create.isSuccess) {
+      setAddOpen(false);
+      create.reset();
+    }
+  }, [create.isSuccess, create.reset]);
+
+  const addSheet = (
+    <AddPlaylistSheet
+      visible={addOpen}
+      busy={create.isPending}
+      problem={createProblem}
+      onSubmit={(url, skipNonMusic) => {
+        create.mutate({ url, skipNonMusic });
+      }}
+      onClose={() => {
+        setAddOpen(false);
+        create.reset();
+      }}
+    />
+  );
 
   if (playlists.isPending) {
     return (
@@ -153,13 +186,16 @@ export default function PlaylistGallery({
 
   if (items.length === 0) {
     return (
-      <View
-        style={[
-          styles.state,
-          { paddingBottom: insets.bottom + tokenLength('space-4') }
-        ]}>
-        <EmptyGallery onAdd={onAddPlaylist} />
-      </View>
+      <>
+        <View
+          style={[
+            styles.state,
+            { paddingBottom: insets.bottom + tokenLength('space-4') }
+          ]}>
+          <EmptyGallery onAdd={() => setAddOpen(true)} />
+        </View>
+        {addSheet}
+      </>
     );
   }
 
@@ -179,7 +215,13 @@ export default function PlaylistGallery({
         style={styles.gallery}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + tokenLength('space-4') }
+          {
+            paddingBottom:
+              insets.bottom +
+              tokenLength('space-4') +
+              galleryAddActionSize +
+              tokenLength('space-3')
+          }
         ]}>
         {groups.map(group => (
           <View key={group.key} style={styles.group}>
@@ -206,6 +248,11 @@ export default function PlaylistGallery({
           </View>
         ))}
       </ScrollView>
+      <GalleryAddAction
+        label={t('library.add')}
+        onPress={() => setAddOpen(true)}
+      />
+      {addSheet}
     </View>
   );
 }

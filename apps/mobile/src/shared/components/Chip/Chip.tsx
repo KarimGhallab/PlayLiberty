@@ -1,10 +1,13 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text } from 'react-native';
 
-import { TrackTone } from '@playliberty/ui-foundation';
+import { TrackTone, standardEasingBezier } from '@playliberty/ui-foundation';
 
+import { useReduceMotion } from '../../a11y/useReduceMotion';
 import {
   fontFamily,
   tokenColor,
+  tokenDuration,
   tokenLength,
   touchTarget
 } from '../../styles/tokens';
@@ -35,7 +38,7 @@ export interface ChipProps {
 }
 
 /* The one interactive chip: a border, a word, an optional count, and a dot that
- * appears when the chip is in force. */
+ * grows when the chip is in force. */
 export default function Chip({
   label,
   count,
@@ -43,6 +46,7 @@ export default function Chip({
   selected = false,
   onPress
 }: ChipProps) {
+  const reduceMotion = useReduceMotion();
   const color = toneColor(tone);
   const inkSelected = tone === TrackTone.Stored || tone === TrackTone.Pending;
   const labelColor = selected
@@ -50,23 +54,49 @@ export default function Chip({
       ? tokenColor('ink')
       : color
     : tokenColor('muted');
+  const reveal = useRef(new Animated.Value(selected ? 1 : 0)).current;
+
+  useEffect(() => {
+    const target = selected ? 1 : 0;
+
+    if (reduceMotion) {
+      reveal.setValue(target);
+      return;
+    }
+
+    Animated.timing(reveal, {
+      toValue: target,
+      duration: tokenDuration('motion-base'),
+      easing: Easing.bezier(...standardEasingBezier),
+      useNativeDriver: true
+    }).start();
+  }, [reduceMotion, reveal, selected]);
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={count === undefined ? label : `${label} ${count}`}
-      style={[
-        styles.chip,
-        { borderColor: selected ? color : tokenColor('control-border') }
-      ]}
+      style={styles.chip}
       onPress={onPress}>
-      <View
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.border, { borderColor: color, opacity: reveal }]}
+      />
+      <Animated.View
         style={[
           styles.indicator,
           {
             backgroundColor: color,
-            transform: [{ scale: selected ? 1 : 0 }]
+            opacity: reveal,
+            transform: [
+              {
+                scale: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.3, 1]
+                })
+              }
+            ]
           }
         ]}
       />
@@ -86,8 +116,18 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2'),
     paddingHorizontal: tokenLength('space-3'),
     borderWidth: 1,
+    borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-chip'),
     backgroundColor: 'transparent'
+  },
+  border: {
+    position: 'absolute',
+    top: -1,
+    left: -1,
+    right: -1,
+    bottom: -1,
+    borderWidth: 1,
+    borderRadius: tokenLength('radius-chip')
   },
   indicator: {
     width: 7,

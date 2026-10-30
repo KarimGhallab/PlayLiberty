@@ -1,11 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor
-} from '@testing-library/react-native';
-import { AccessibilityInfo, Text } from 'react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { tokenLength } from '../../styles/tokens';
@@ -68,19 +63,15 @@ describe('the sheet frame', () => {
     });
   });
 
-  it('does not slide when the system asks for less motion', async () => {
-    jest
-      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-      .mockResolvedValue(true);
+  it('moves the sheet and fades the scrim instead of sliding the whole modal', async () => {
     const { view } = await renderSheet();
 
-    await waitFor(() => {
-      const [modal] = view.container.queryAll(
-        node => 'animationType' in node.props
-      );
+    const [modal] = view.container.queryAll(
+      node => 'animationType' in node.props
+    );
 
-      expect(modal?.props.animationType).toBe('none');
-    });
+    expect(modal?.props.animationType).toBe('none');
+    expect(screen.getByTestId('sheet-scrim')).toBeOnTheScreen();
   });
 
   it('dismisses on a long drag or a fast flick, not on a short drag', () => {

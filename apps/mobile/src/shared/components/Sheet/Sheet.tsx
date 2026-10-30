@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Easing,
+  KeyboardAvoidingView,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -34,14 +37,18 @@ export interface SheetProps {
 
 const DISMISS_DISTANCE = tokenLength('space-8') * 2;
 const DISMISS_VELOCITY = 0.5;
+const EASE = Easing.bezier(...standardEasingBezier);
 
 /** A long drag or a fast flick asks the sheet to close. */
 export function dismissesOnDrag(dy: number, vy: number): boolean {
   return dy > DISMISS_DISTANCE || vy > DISMISS_VELOCITY;
 }
 
-/* The app's one modal frame. A caller supplies the title, the content and the
- * close request, so a sheet that cannot dismiss while busy stays open. */
+/*
+ * The app's one modal frame. The scrim fades over the frame while the sheet
+ * rises from the bottom, so the darkening is air rather than a moving panel.
+ * The frame owns the exit too, and unmounts only when it finishes.
+ */
 export default function Sheet({
   visible,
   title,
@@ -52,35 +59,140 @@ export default function Sheet({
 }: SheetProps) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(0)).current;
+  const [rendered, setRendered] = useState(visible);
+  const [height, setHeight] = useState(0);
+  const entered = useRef(false);
+  const exiting = useRef(false);
+  const motion = useRef(0);
+  const windowHeight = useRef(Dimensions.get('window').height).current;
+  const translateY = useRef(
+    new Animated.Value(visible ? windowHeight : 0)
+  ).current;
+  const scrimOpacity = useRef(new Animated.Value(visible ? 0 : 1)).current;
   const closeRef = useRef(onRequestClose);
   closeRef.current = onRequestClose;
 
   useEffect(() => {
     if (visible) {
-      translateY.setValue(0);
+      setRendered(true);
+      exiting.current = false;
+
+      if (!rendered) {
+        translateY.setValue(height > 0 ? height : windowHeight);
+        scrimOpacity.setValue(0);
+        return;
+      }
+
+      if (entered.current || height === 0) {
+        return;
+      }
+
+      entered.current = true;
+      motion.current += 1;
+
+      if (reduceMotion) {
+        translateY.setValue(0);
+        scrimOpacity.setValue(1);
+        return;
+      }
+
+      translateY.setValue(height);
+      scrimOpacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: tokenDuration('motion-base'),
+          easing: EASE,
+          useNativeDriver: false
+        }),
+        Animated.timing(scrimOpacity, {
+          toValue: 1,
+          duration: tokenDuration('motion-base'),
+          easing: EASE,
+          useNativeDriver: false
+        })
+      ]).start();
+      return;
     }
-  }, [visible, translateY]);
+
+    entered.current = false;
+
+    if (!rendered || exiting.current) {
+      return;
+    }
+
+    exiting.current = true;
+    const token = ++motion.current;
+    const travel = height > 0 ? height : windowHeight;
+
+    if (reduceMotion) {
+      translateY.setValue(travel);
+      scrimOpacity.setValue(0);
+      exiting.current = false;
+      setRendered(false);
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: travel,
+        duration: tokenDuration('motion-fast'),
+        easing: EASE,
+        useNativeDriver: false
+      }),
+      Animated.timing(scrimOpacity, {
+        toValue: 0,
+        duration: tokenDuration('motion-fast'),
+        easing: EASE,
+        useNativeDriver: false
+      })
+    ]).start(({ finished }) => {
+      exiting.current = false;
+
+      if (finished && motion.current === token) {
+        setRendered(false);
+      }
+    });
+  }, [
+    height,
+    reduceMotion,
+    rendered,
+    scrimOpacity,
+    translateY,
+    visible,
+    windowHeight
+  ]);
 
   const drag = useMemo(() => {
     const settle = (): void => {
       if (reduceMotion) {
         translateY.setValue(0);
+        scrimOpacity.setValue(1);
         return;
       }
 
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: tokenDuration('motion-base'),
-        easing: Easing.bezier(...standardEasingBezier),
-        useNativeDriver: false
-      }).start();
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: tokenDuration('motion-base'),
+          easing: EASE,
+          useNativeDriver: false
+        }),
+        Animated.timing(scrimOpacity, {
+          toValue: 1,
+          duration: tokenDuration('motion-base'),
+          easing: EASE,
+          useNativeDriver: false
+        })
+      ]).start();
     };
 
     return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gesture) => {
-        translateY.setValue(Math.max(0, gesture.dy));
+        const dy = Math.max(0, gesture.dy);
+        translateY.setValue(dy);
+        scrimOpacity.setValue(Math.max(0, 1 - dy / Math.max(1, height)));
       },
       onPanResponderRelease: (_, gesture) => {
         if (dismissesOnDrag(gesture.dy, gesture.vy)) {
@@ -91,15 +203,28 @@ export default function Sheet({
       },
       onPanResponderTerminate: settle
     });
-  }, [reduceMotion, translateY]);
+  }, [height, reduceMotion, scrimOpacity, translateY]);
 
   return (
     <Modal
-      visible={visible}
+      visible={rendered}
       onRequestClose={onRequestClose}
-      animationType={reduceMotion ? 'none' : 'slide'}
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
       transparent>
-      <View style={styles.scrim}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.scrim}>
+        <Animated.View
+          testID={`${testID}-scrim`}
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            styles.scrimFill,
+            { opacity: scrimOpacity }
+          ]}
+        />
         <Pressable
           testID={backdropTestID}
           accessible={false}
@@ -109,6 +234,7 @@ export default function Sheet({
         />
         <Animated.View
           testID={testID}
+          onLayout={event => setHeight(event.nativeEvent.layout.height)}
           style={[
             styles.sheet,
             {
@@ -129,7 +255,7 @@ export default function Sheet({
           </View>
           {children}
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -137,7 +263,9 @@ export default function Sheet({
 const styles = StyleSheet.create({
   scrim: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-end'
+  },
+  scrimFill: {
     backgroundColor: tokenColor('scrim')
   },
   sheet: {

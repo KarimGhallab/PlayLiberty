@@ -87,7 +87,7 @@ one scrolling row above the grid.
 - **The add control is the floating round action, never the labelled button.** An empty gallery draws its own
   labelled action in the body instead, and the floating action is then absent. `Decided here:` the design record's
   rule for the two widths, applied to the app as its only arrangement.
-- **Adding is a modal sheet over the gallery.** It holds the URL field, the skip-non-music switch, Add, Cancel, a
+- **Adding is a modal sheet over the gallery.** It holds the URL field, the skip-non-music checkbox, Add, Cancel, a
   busy state, the schema refusal and the discard confirmation. A successful create closes the sheet and leaves the
   person in the gallery, with the new item arriving from the server already syncing.
 - **The ownership scope and the status chips are one horizontally scrolling row above the grid.** The scope is two
@@ -125,7 +125,7 @@ one scrolling row above the grid.
   owner line only for a shared item, the incomplete mark's count, the empty gallery's action, and the failure body
   with its retry. Prior art is the web library's page tests.
 - **The add sheet is tested at its own seam**: the schema refusal, the busy state, the discard confirmation, and the
-  skip switch's default. Prior art is the web's `AddPlaylistDialog` tests.
+  skip checkbox's default. Prior art is the web's `AddPlaylistDialog` tests.
 - **The actions sheet is tested where the shared actions model is tested**: the items each access level produces,
   the pin's label, and the delete's deferral. Prior art is the web's `playlistActions` tests.
 - **The critical journeys are Maestro flows**: open the gallery and reach a playlist, add a playlist from the
