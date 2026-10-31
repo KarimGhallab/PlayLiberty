@@ -293,6 +293,7 @@ export const en = {
     seekBackward: 'Back ten seconds',
     failed: 'Playback failed: {title}',
     failedDetail: 'Play it again to retry, or choose another track.',
+    notificationRefused: 'Allow notifications to control the tracks.',
     position: 'Position in track',
     positionValue: '{elapsed} of {duration}',
     shortcutShift: 'Shift',

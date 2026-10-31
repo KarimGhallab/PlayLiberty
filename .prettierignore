@@ -29,3 +29,6 @@ ContainerFile
 .husky/
 # Database migration scripts
 apps/server/drizzle/
+
+# Android modules
+apps/mobile/modules/

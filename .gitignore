@@ -88,6 +88,7 @@ apps/egress-agent/proton
 # Expo: the dev server's cache, and the native projects prebuild generates
 apps/mobile/.expo
 apps/mobile/android
+apps/mobile/modules/*/android/build/
 apps/mobile/ios
 
 # Release signing: the key is never in the tree

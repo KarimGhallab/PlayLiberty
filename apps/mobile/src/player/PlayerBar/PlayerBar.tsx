@@ -57,6 +57,10 @@ export default function PlayerBar({ config }: PlayerBarProps) {
   const dismissPlaybackFailure = usePlayerStore(
     state => state.dismissPlaybackFailure
   );
+  const backgroundNotice = usePlayerStore(state => state.backgroundNotice);
+  const dismissBackgroundNotice = usePlayerStore(
+    state => state.dismissBackgroundNotice
+  );
   const wasPlaying = useRef(false);
   const [failedId, setFailedId] = useState<string | null>(null);
 
@@ -222,14 +226,20 @@ export default function PlayerBar({ config }: PlayerBarProps) {
           onSeekBy={seekBy}
         />
       </View>
-      {failureTitle === null ? null : (
+      {failureTitle !== null ? (
         <Notice
           message={t('playerBar.failed', { title: failureTitle })}
           detail={t('playerBar.failedDetail')}
           onDismiss={dismissPlaybackFailure}
           bottomOffset={playerBarHeight + tokenLength('space-2')}
         />
-      )}
+      ) : backgroundNotice ? (
+        <Notice
+          message={t('playerBar.notificationRefused')}
+          onDismiss={dismissBackgroundNotice}
+          bottomOffset={playerBarHeight + tokenLength('space-2')}
+        />
+      ) : null}
     </>
   );
 }

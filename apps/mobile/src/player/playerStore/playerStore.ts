@@ -151,6 +151,8 @@ export interface PlayerState {
   readonly tracks: Readonly<Record<string, PlayerTrack>>;
   readonly playlistId: string | null;
   readonly playlistName: string | null;
+  readonly playlistCoverUpdatedAt: string | null;
+  readonly playlistCoverTrackId: string | null;
   readonly currentId: string | null;
   readonly shuffle: boolean;
   readonly isPlaying: boolean;
@@ -159,6 +161,8 @@ export interface PlayerState {
   readonly seekTo: number | null;
   /* The track whose playback failed, while the notice is on screen. */
   readonly playbackFailureId: string | null;
+  /* The one-time notice that the notification permission was refused. */
+  readonly backgroundNotice: boolean;
   start: (
     tracks: readonly PlayerTrack[],
     playlist: PlayerPlaylist | null,
@@ -172,6 +176,8 @@ export interface PlayerState {
   setPlaying: (playing: boolean) => void;
   failPlayback: (trackId: string) => void;
   dismissPlaybackFailure: () => void;
+  showBackgroundNotice: () => void;
+  dismissBackgroundNotice: () => void;
   setPosition: (seconds: number) => void;
   seekToFraction: (fraction: number) => void;
   seekBy: (seconds: number) => void;
@@ -189,12 +195,15 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   tracks: {},
   playlistId: null,
   playlistName: null,
+  playlistCoverUpdatedAt: null,
+  playlistCoverTrackId: null,
   currentId: null,
   shuffle: false,
   isPlaying: false,
   positionSeconds: 0,
   seekTo: null,
   playbackFailureId: null,
+  backgroundNotice: false,
   start: (tracks, playlist, currentId, shuffle = false) => {
     const queue = tracks.map(track => track.id);
 
@@ -204,6 +213,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       tracks: tracksById(tracks),
       playlistId: playlist?.id ?? null,
       playlistName: playlist?.name ?? null,
+      playlistCoverUpdatedAt: playlist?.coverUpdatedAt ?? null,
+      playlistCoverTrackId: playlist?.coverTrackId ?? null,
       currentId,
       shuffle,
       isPlaying: true,
@@ -219,6 +230,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       tracks: { [track.id]: track },
       playlistId: null,
       playlistName: null,
+      playlistCoverUpdatedAt: null,
+      playlistCoverTrackId: null,
       currentId: track.id,
       shuffle: false,
       isPlaying: true,
@@ -334,6 +347,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   dismissPlaybackFailure: () =>
     set(state =>
       state.playbackFailureId === null ? state : { playbackFailureId: null }
+    ),
+  showBackgroundNotice: () =>
+    set(state => (state.backgroundNotice ? state : { backgroundNotice: true })),
+  dismissBackgroundNotice: () =>
+    set(state =>
+      state.backgroundNotice ? { backgroundNotice: false } : state
     ),
   setPosition: seconds =>
     set(state => {
@@ -486,11 +505,14 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       tracks: {},
       playlistId: null,
       playlistName: null,
+      playlistCoverUpdatedAt: null,
+      playlistCoverTrackId: null,
       currentId: null,
       shuffle: false,
       isPlaying: false,
       positionSeconds: 0,
       seekTo: null,
-      playbackFailureId: null
+      playbackFailureId: null,
+      backgroundNotice: false
     })
 }));

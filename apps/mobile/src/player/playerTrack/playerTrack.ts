@@ -11,6 +11,8 @@ export interface PlayerTrack {
 export interface PlayerPlaylist {
   readonly id: string;
   readonly name: string;
+  readonly coverUpdatedAt?: string | null;
+  readonly coverTrackId?: string | null;
 }
 
 /** The playable reads become the queue's metadata, in the server's order. */

@@ -296,6 +296,16 @@ describe('the playback failure', () => {
     expect(usePlayerStore.getState().playbackFailureId).toBeNull();
     expect(usePlayerStore.getState().currentId).toBe('b');
   });
+
+  it('shows and dismisses the background notice once', () => {
+    start(['a'], 'a');
+
+    usePlayerStore.getState().showBackgroundNotice();
+    expect(usePlayerStore.getState().backgroundNotice).toBe(true);
+
+    usePlayerStore.getState().dismissBackgroundNotice();
+    expect(usePlayerStore.getState().backgroundNotice).toBe(false);
+  });
 });
 
 describe('the queue refetch', () => {

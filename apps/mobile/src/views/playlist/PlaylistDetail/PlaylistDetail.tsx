@@ -264,7 +264,12 @@ export default function PlaylistDetail({
         playerTracks(items),
         playlistData === undefined
           ? null
-          : { id: playlistData.id, name: playlistData.name },
+          : {
+              id: playlistData.id,
+              name: playlistData.name,
+              coverUpdatedAt: playlistData.coverUpdatedAt,
+              coverTrackId: playlistData.coverTrackId
+            },
         trackId
       );
     },
@@ -556,7 +561,12 @@ export default function PlaylistDetail({
 
       start(
         playerTracks(items),
-        { id: data.id, name: data.name },
+        {
+          id: data.id,
+          name: data.name,
+          coverUpdatedAt: data.coverUpdatedAt,
+          coverTrackId: data.coverTrackId
+        },
         leader.track.id,
         intent === 'shuffle'
       );

@@ -302,6 +302,8 @@ export const fr: Messages = {
     seekBackward: 'Reculer de dix secondes',
     failed: 'La lecture a échoué : {title}',
     failedDetail: 'Relancez la lecture ou choisissez une autre piste.',
+    notificationRefused:
+      'Autorisez les notifications pour pouvoir contrôler la lecture depuis le volet.',
     position: 'Position dans la piste',
     positionValue: '{elapsed} sur {duration}',
     shortcutShift: 'Shift',

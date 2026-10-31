@@ -9,6 +9,7 @@ import { useApiConfig } from '../src/auth/useApiConfig';
 import LiveEvents from '../src/live/LiveEvents';
 import PlayerAudio from '../src/player/PlayerAudio/PlayerAudio';
 import PlayerBar from '../src/player/PlayerBar/PlayerBar';
+import BackgroundPlayback from '../src/player/backgroundPlayback/BackgroundPlayback';
 import {
   StreamFailureKind,
   classifyStreamFailure
@@ -36,6 +37,7 @@ export default function RootLayout() {
     <AppProviders>
       <StatusBar style="light" />
       <LiveEvents config={config} />
+      <BackgroundPlayback config={config} />
       <PlayerAudio
         resolveSource={resolveSource}
         classifyFailure={classifyFailure}

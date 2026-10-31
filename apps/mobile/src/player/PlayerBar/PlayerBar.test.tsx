@@ -140,6 +140,29 @@ describe('the player bar', () => {
     });
   });
 
+  it('explains a refused notification permission', async () => {
+    startPlaylist();
+    await renderBar();
+
+    await act(() => {
+      usePlayerStore.getState().showBackgroundNotice();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('notice')).toHaveTextContent(
+        /Allow notifications to control the tracks/
+      );
+    });
+
+    await act(() => {
+      usePlayerStore.getState().dismissBackgroundNotice();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('notice')).not.toBeOnTheScreen();
+    });
+  });
+
   it('moves next and disables next at the last entry', async () => {
     usePlayerStore
       .getState()
