@@ -1,37 +1,35 @@
 # 02: The detail's read states
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-the-detail-reads-a-playlist.md)
 
-## What to build
+## Outcome
 
-The detail draws one body for each read outcome.
+The detail now draws one body for each read outcome.
 
-A pending read draws a skeleton of rows under the identity block, announced once, with the placeholders hidden from
-the accessibility tree.
+A pending playlist read draws the row skeleton under the route's frame, announced once as "Loading tracks." with the
+placeholders hidden from the accessibility tree. The identity block stays absent until the playlist read lands. A
+pending tracks read under a loaded identity draws the same skeleton in the tracks area.
 
-A 404 on the playlist draws the playlist not-found body: the copy that says the playlist is not here, and one way
-back to the gallery. It offers no retry, because a retry cannot change the answer.
+A 404 on the playlist draws the playlist not-found body with the `notFound` heading, prose and one back action to the
+gallery. It offers no retry. Any other playlist failure draws the read-failure body with the problem's detail, the
+detail's read-failed copy as the fallback and a retry that refetches the playlist read. A failed tracks read draws
+its own read-failure body under the identity with its own retry.
 
-Any other playlist read failure draws the read-failure body with the problem's sentence, falling back to the detail's
-read-failed copy, and a retry that refetches the playlist read. A failed tracks read is its own read-failure body with
-its own retry.
+A never-synced playlist with no tracks draws the empty state: the heading, the synced promise and the product promise.
+An owner or a write collaborator gets Sync now, centered under the copy and carrying the loop sync icon, with the
+spinner while it runs. It reports its in-flight state from the mutation, the latest run or the playlist's own syncing
+status. A read collaborator sees the same body without the control. A synced playlist with no tracks says there are
+no tracks.
 
-A never-synced playlist with no tracks offers Sync now to an owner or a write collaborator, and the control reports
-its in-flight state. A synced playlist with no tracks says there are no tracks. A read collaborator sees the sentence
-without a Sync now control.
-
-## Acceptance criteria
-
-- [ ] A pending playlist read draws the row skeleton and no empty list.
-- [ ] A 404 draws the playlist not-found body with a way back and no retry.
-- [ ] Any other failure draws the read-failure body with a retry that refetches the read that failed.
-- [ ] A never-synced empty playlist offers Sync now to a writer; a synced empty playlist says there are no tracks.
-- [ ] A read collaborator sees no Sync now control.
-- [ ] The bodies and the skip of the Sync now render in French.
+The write check moved into one shared access helper, which the later detail sheets reuse. The route now supplies the
+not-found back action, which replaces the detail with the gallery.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run typecheck`, the detail's Jest file, then `pnpm run build` and
-`pnpm run lint:check`.
+- Detail 20 tests pass; mobile 184 tests across 28 suites pass.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run lint:check` and `pnpm run build` pass.
+
+See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

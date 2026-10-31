@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, screen, within } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within
+} from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -9,6 +14,7 @@ import {
   PlaylistSort,
   PlaylistSyncStatus,
   type PlaylistTrack,
+  ProblemCode,
   Provider,
   ShareLevel,
   type SyncRun,
@@ -18,10 +24,12 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
+import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
+import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import PlaylistDetail from './PlaylistDetail';
 
@@ -31,6 +39,9 @@ jest.mock('../../../api/usePlaylistTracks', () => ({
 }));
 jest.mock('../../../api/useLatestSyncRun', () => ({
   useLatestSyncRun: jest.fn()
+}));
+jest.mock('../../../api/useSyncPlaylist', () => ({
+  useSyncPlaylist: jest.fn()
 }));
 jest.mock('../../../api/useAccountDirectory', () => {
   const actual = jest.requireActual<
@@ -46,6 +57,9 @@ const usePlaylistTracksMock = usePlaylistTracks as jest.MockedFunction<
 >;
 const useLatestSyncRunMock = useLatestSyncRun as jest.MockedFunction<
   typeof useLatestSyncRun
+>;
+const useSyncPlaylistMock = useSyncPlaylist as jest.MockedFunction<
+  typeof useSyncPlaylist
 >;
 const useAccountDirectoryMock = useAccountDirectory as jest.MockedFunction<
   typeof useAccountDirectory
@@ -85,6 +99,17 @@ const playlist: Playlist = {
   updatedAt: '2026-09-29T12:00:00.000Z'
 };
 
+const neverSynced: Playlist = {
+  ...playlist,
+  lastSyncedAt: null,
+  trackCount: 0
+};
+
+const syncedEmpty: Playlist = {
+  ...playlist,
+  trackCount: 0
+};
+
 const track: PlaylistTrack = {
   track: {
     id: 'track-1',
@@ -105,18 +130,36 @@ const track: PlaylistTrack = {
   position: 0
 };
 
+const counts = {
+  [TrackFileStatus.Stored]: 1,
+  [TrackFileStatus.Pending]: 0,
+  [TrackFileStatus.Downloading]: 0,
+  [TrackFileStatus.Failed]: 0,
+  [TrackFileStatus.Unavailable]: 0
+};
+
+const emptyCounts = {
+  [TrackFileStatus.Stored]: 0,
+  [TrackFileStatus.Pending]: 0,
+  [TrackFileStatus.Downloading]: 0,
+  [TrackFileStatus.Failed]: 0,
+  [TrackFileStatus.Unavailable]: 0
+};
+
 const page = {
   items: [track],
   total: 1,
   limit: 100,
   offset: 0,
-  counts: {
-    [TrackFileStatus.Stored]: 1,
-    [TrackFileStatus.Pending]: 0,
-    [TrackFileStatus.Downloading]: 0,
-    [TrackFileStatus.Failed]: 0,
-    [TrackFileStatus.Unavailable]: 0
-  }
+  counts
+};
+
+const emptyPage = {
+  items: [],
+  total: 0,
+  limit: 100,
+  offset: 0,
+  counts: emptyCounts
 };
 
 const bea: AccountSummary = {
@@ -124,6 +167,30 @@ const bea: AccountSummary = {
   displayName: 'Bea',
   avatarUrl: null
 };
+
+const notFound = new ApiError(404, {
+  type: 'about:blank',
+  title: 'Playlist not found',
+  status: 404,
+  code: ProblemCode.PlaylistNotFound,
+  detail: 'The playlist does not exist.'
+});
+
+const playlistFailure = new ApiError(503, {
+  type: 'about:blank',
+  title: 'Service unavailable',
+  status: 503,
+  code: ProblemCode.InternalError,
+  detail: 'The playlist is unavailable.'
+});
+
+const tracksFailure = new ApiError(503, {
+  type: 'about:blank',
+  title: 'Service unavailable',
+  status: 503,
+  code: ProblemCode.InternalError,
+  detail: 'The tracks are unavailable.'
+});
 
 function queryResult<T>(data: T, overrides: Record<string, unknown> = {}) {
   return {
@@ -138,6 +205,17 @@ function queryResult<T>(data: T, overrides: Record<string, unknown> = {}) {
   } as never;
 }
 
+function mutationResult(overrides: Record<string, unknown> = {}) {
+  return {
+    mutate: jest.fn(),
+    reset: jest.fn(),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+    ...overrides
+  } as never;
+}
+
 interface RenderOptions {
   readonly playlist?: Playlist;
   readonly tracks?: typeof page;
@@ -145,30 +223,76 @@ interface RenderOptions {
   readonly directory?: readonly AccountSummary[];
   readonly language?: Language;
   readonly pending?: boolean;
+  readonly tracksPending?: boolean;
+  readonly playlistError?: Error;
+  readonly tracksError?: Error;
+  readonly syncPending?: boolean;
+  readonly onBack?: () => void;
 }
 
 async function renderDetail(options: RenderOptions = {}) {
+  const onBack = options.onBack ?? jest.fn();
+  const playlistRefetch = jest.fn();
+  const tracksRefetch = jest.fn();
+  const syncMutate = jest.fn();
+
   usePlaylistMock.mockReturnValue(
-    queryResult(
-      options.playlist ?? playlist,
-      options.pending === true
-        ? { isPending: true, isSuccess: false, data: undefined }
-        : {}
-    )
+    options.playlistError === undefined
+      ? queryResult(
+          options.pending === true ? undefined : (options.playlist ?? playlist),
+          options.pending === true
+            ? { isPending: true, isSuccess: false, data: undefined }
+            : {}
+        )
+      : queryResult(undefined, {
+          isPending: false,
+          isSuccess: false,
+          isError: true,
+          error: options.playlistError,
+          refetch: playlistRefetch
+        })
   );
-  usePlaylistTracksMock.mockReturnValue(queryResult(options.tracks ?? page));
+  usePlaylistTracksMock.mockReturnValue(
+    options.tracksError === undefined
+      ? queryResult(
+          options.tracksPending === true ? undefined : (options.tracks ?? page),
+          options.tracksPending === true
+            ? { isPending: true, isSuccess: false, data: undefined }
+            : {}
+        )
+      : queryResult(undefined, {
+          isPending: false,
+          isSuccess: false,
+          isError: true,
+          error: options.tracksError,
+          refetch: tracksRefetch
+        })
+  );
   useLatestSyncRunMock.mockReturnValue(queryResult(options.latestRun ?? null));
   useAccountDirectoryMock.mockReturnValue(queryResult(options.directory ?? []));
+  useSyncPlaylistMock.mockReturnValue(
+    mutationResult({
+      mutate: syncMutate,
+      isPending: options.syncPending === true
+    })
+  );
 
   await render(
     <I18nProvider
       initialLanguage={options.language ?? Language.English}
       storage={store}>
       <SafeAreaProvider initialMetrics={metrics}>
-        <PlaylistDetail config={config} playlistId="playlist-1" now={now} />
+        <PlaylistDetail
+          config={config}
+          playlistId="playlist-1"
+          onBack={onBack}
+          now={now}
+        />
       </SafeAreaProvider>
     </I18nProvider>
   );
+
+  return { onBack, playlistRefetch, tracksRefetch, syncMutate };
 }
 
 beforeEach(() => {
@@ -233,11 +357,99 @@ describe('the playlist detail', () => {
     expect(screen.queryByText('Shared by Bea')).not.toBeOnTheScreen();
   });
 
-  it('keeps the frame for a pending read', async () => {
+  it('keeps the frame and the skeleton for a pending read', async () => {
     await renderDetail({ pending: true });
 
     expect(screen.getByTestId('playlist-screen')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-skeleton')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Loading tracks.')).toBeOnTheScreen();
     expect(screen.queryByTestId('playlist-identity')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('track-row')).not.toBeOnTheScreen();
+  });
+
+  it('draws the identity over the skeleton while the tracks page is pending', async () => {
+    await renderDetail({ tracksPending: true });
+
+    expect(screen.getByTestId('playlist-identity')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-skeleton')).toBeOnTheScreen();
+    expect(screen.queryByTestId('track-row')).not.toBeOnTheScreen();
+  });
+
+  it('draws the playlist not-found body with a way back and no retry', async () => {
+    const { onBack } = await renderDetail({ playlistError: notFound });
+
+    expect(screen.getByTestId('playlist-not-found')).toBeOnTheScreen();
+    expect(screen.getByText('This playlist is not here')).toBeOnTheScreen();
+    expect(screen.queryByTestId('read-failure-retry')).not.toBeOnTheScreen();
+
+    fireEvent.press(screen.getByRole('button', { name: 'Back to home' }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws the playlist read failure with its own retry', async () => {
+    const { playlistRefetch } = await renderDetail({
+      playlistError: playlistFailure
+    });
+
+    expect(screen.getByText('The playlist is unavailable.')).toBeOnTheScreen();
+    expect(screen.queryByTestId('playlist-identity')).not.toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('read-failure-retry'));
+    expect(playlistRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws the tracks read failure with its own retry', async () => {
+    const { tracksRefetch } = await renderDetail({
+      tracksError: tracksFailure
+    });
+
+    expect(screen.getByTestId('playlist-identity')).toBeOnTheScreen();
+    expect(screen.getByText('The tracks are unavailable.')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('read-failure-retry'));
+    expect(tracksRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers Sync now on a never-synced empty playlist', async () => {
+    const { syncMutate } = await renderDetail({
+      playlist: neverSynced,
+      tracks: emptyPage
+    });
+
+    expect(screen.getByTestId('playlist-empty')).toBeOnTheScreen();
+    expect(screen.getByText('Nothing here yet')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('empty-sync'));
+    expect(syncMutate).toHaveBeenCalledWith('playlist-1');
+  });
+
+  it('draws no Sync now for a read collaborator', async () => {
+    await renderDetail({
+      playlist: { ...neverSynced, access: ShareLevel.Read },
+      tracks: emptyPage
+    });
+
+    expect(screen.getByText('Nothing here yet')).toBeOnTheScreen();
+    expect(screen.queryByTestId('empty-sync')).not.toBeOnTheScreen();
+  });
+
+  it('says there are no tracks on a synced empty playlist', async () => {
+    await renderDetail({ playlist: syncedEmpty, tracks: emptyPage });
+
+    expect(screen.getByTestId('playlist-no-tracks')).toBeOnTheScreen();
+    expect(screen.getByText('No tracks yet.')).toBeOnTheScreen();
+    expect(screen.queryByText('Nothing here yet')).not.toBeOnTheScreen();
+  });
+
+  it('reports the Sync now control in flight', async () => {
+    await renderDetail({
+      playlist: neverSynced,
+      tracks: emptyPage,
+      syncPending: true
+    });
+
+    expect(screen.getByTestId('empty-sync')).toBeDisabled();
+    expect(screen.getByText('Syncing')).toBeOnTheScreen();
   });
 
   it('draws the start controls disabled until their ticket', async () => {
@@ -284,6 +496,26 @@ describe('the playlist detail', () => {
     expect(screen.getByLabelText('Lire cette playlist')).toBeOnTheScreen();
     expect(
       screen.getByLabelText('Lecture aléatoire de Rain On The Window')
+    ).toBeOnTheScreen();
+  });
+
+  it('renders the empty body in French', async () => {
+    await renderDetail({
+      language: Language.French,
+      playlist: neverSynced,
+      tracks: emptyPage
+    });
+
+    expect(screen.getByText('Rien pour le moment')).toBeOnTheScreen();
+    expect(screen.getByText('Synchroniser')).toBeOnTheScreen();
+  });
+
+  it('renders the not-found body in French', async () => {
+    await renderDetail({ language: Language.French, playlistError: notFound });
+
+    expect(screen.getByText("Cette playlist n'est pas ici")).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: "Retour à l'accueil" })
     ).toBeOnTheScreen();
   });
 });
