@@ -57,12 +57,11 @@ import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { playerTracks } from '../../../player/playerTrack/playerTrack';
 import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
+import CoverSheet from '../../library/CoverSheet/CoverSheet';
 import GalleryAddAction, {
   galleryAddActionSize
 } from '../../library/GalleryAddAction/GalleryAddAction';
 import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
-import type { PlaceholderAction } from '../../library/PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
-import PlaylistPlaceholderSheet from '../../library/PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import RenameSheet from '../../library/RenameSheet/RenameSheet';
 import ShareSheet from '../../library/ShareSheet/ShareSheet';
 import {
@@ -158,10 +157,7 @@ export default function PlaylistDetail({
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameProblem, setRenameProblem] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [placeholder, setPlaceholder] = useState<{
-    readonly action: PlaceholderAction;
-    readonly name: string;
-  } | null>(null);
+  const [coverOpen, setCoverOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [starting, setStarting] = useState<'play' | 'shuffle' | null>(null);
   const [notice, setNotice] = useState<{
@@ -731,7 +727,7 @@ export default function PlaylistDetail({
     setHeaderProblem(null);
 
     if (key === 'cover') {
-      setPlaceholder({ action: key, name: data.name });
+      setCoverOpen(true);
     }
   };
 
@@ -1001,10 +997,10 @@ export default function PlaylistDetail({
           setHeaderProblem(null);
         }}
       />
-      <PlaylistPlaceholderSheet
-        action={placeholder?.action ?? null}
-        playlistName={placeholder?.name ?? ''}
-        onClose={() => setPlaceholder(null)}
+      <CoverSheet
+        playlist={coverOpen ? data : null}
+        config={config}
+        onClose={() => setCoverOpen(false)}
       />
       <RenameSheet
         visible={renameOpen}

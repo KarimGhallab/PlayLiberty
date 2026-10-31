@@ -33,8 +33,10 @@ import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { useGrantShare } from '../../../api/useGrantShare';
 import { usePlaylistShares } from '../../../api/usePlaylistShares';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
+import { useRemovePlaylistCover } from '../../../api/useRemovePlaylistCover';
 import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useRevokeShare } from '../../../api/useRevokeShare';
+import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -86,6 +88,30 @@ jest.mock('../../../api/useGrantShare', () => ({
 
 jest.mock('../../../api/useRevokeShare', () => ({
   useRevokeShare: jest.fn()
+}));
+
+jest.mock('../../../api/useSetPlaylistCover', () => ({
+  useSetPlaylistCover: jest.fn()
+}));
+
+jest.mock('../../../api/useRemovePlaylistCover', () => ({
+  useRemovePlaylistCover: jest.fn()
+}));
+
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  launchImageLibraryAsync: jest.fn()
+}));
+
+jest.mock('expo-file-system', () => ({
+  File: class {
+    readonly uri: string;
+    readonly size = 0;
+
+    constructor(uri: string) {
+      this.uri = uri;
+    }
+  }
 }));
 
 jest.mock('../../../api/useAccountDirectory', () => {
@@ -290,6 +316,10 @@ async function renderPlaylists(
     refetch: jest.fn()
   } as never);
   jest.mocked(useGrantShare).mockReturnValue(mutationResult() as never);
+  jest.mocked(useSetPlaylistCover).mockReturnValue(mutationResult() as never);
+  jest
+    .mocked(useRemovePlaylistCover)
+    .mockReturnValue(mutationResult() as never);
 
   const onOpenPlaylist = jest.fn();
 
@@ -669,7 +699,7 @@ describe('the gallery', () => {
     });
   });
 
-  it('opens the Cover placeholder from a card', async () => {
+  it('opens the cover sheet from a card', async () => {
     await renderGallery([base]);
 
     await fireEvent.press(
@@ -682,15 +712,17 @@ describe('the gallery', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('header', { name: 'Update the cover' })
+        screen.getByRole('header', { name: 'Playlist cover' })
       ).toBeOnTheScreen();
     });
-    expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('cover-save').props.accessibilityState
+    ).toMatchObject({ disabled: true });
 
-    await fireEvent.press(screen.getByTestId('playlist-placeholder-backdrop'));
+    await fireEvent.press(screen.getByTestId('cover-backdrop'));
     await waitFor(() => {
       expect(
-        screen.queryByRole('header', { name: 'Update the cover' })
+        screen.queryByRole('header', { name: 'Playlist cover' })
       ).not.toBeOnTheScreen();
     });
   });

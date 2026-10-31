@@ -40,9 +40,6 @@ export const fr: Messages = {
     keepEditing: 'Continuer la saisie',
     discard: 'Abandonner'
   },
-  playlistActions: {
-    arriving: 'Cet écran arrive plus tard.'
-  },
   library: {
     add: 'Ajouter une playlist',
     loading: 'Chargement des playlists.',
@@ -228,6 +225,7 @@ export const fr: Messages = {
     title: 'Image de la playlist',
     description: 'JPEG, PNG ou WebP, jusqu’à 5 Mo.',
     choose: 'Choisir une image',
+    pickFailed: "La photothèque n'a pas pu être ouverte.",
     wrongType: 'Choisissez une image JPEG, PNG ou WebP.',
     tooLarge: 'Choisissez une image de moins de 5 Mo.',
     uploadFailed: "L'image n'a pas pu être enregistrée.",

@@ -37,9 +37,6 @@ export const en = {
     keepEditing: 'Keep editing',
     discard: 'Discard'
   },
-  playlistActions: {
-    arriving: 'This surface arrives later.'
-  },
   library: {
     add: 'Add a playlist',
     loading: 'Loading playlists.',
@@ -222,6 +219,7 @@ export const en = {
     title: 'Playlist cover',
     description: 'JPEG, PNG or WebP, up to 5 MB.',
     choose: 'Choose image',
+    pickFailed: 'The photo library could not be opened.',
     wrongType: 'Choose a JPEG, PNG or WebP image.',
     tooLarge: 'Choose an image smaller than 5 MB.',
     uploadFailed: 'The cover could not be saved.',

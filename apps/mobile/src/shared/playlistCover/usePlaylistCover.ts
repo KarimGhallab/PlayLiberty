@@ -27,18 +27,18 @@ function withVersion(source: MediaSource, version: string): MediaSource {
  * cover shares. A media route is read by an image element, so it carries the
  * session's token headers rather than the API client. */
 export function usePlaylistCover(
-  playlist: Playlist,
+  playlist: Playlist | null,
   config: ApiConfig | null
 ): PlaylistCover {
   const [failure, setFailure] = useState(CoverFailure.None);
 
   useEffect(() => {
     setFailure(CoverFailure.None);
-  }, [playlist.coverUpdatedAt, playlist.coverTrackId]);
+  }, [playlist?.coverUpdatedAt, playlist?.coverTrackId]);
 
-  const sleeve = sleeveColor(playlist.id);
+  const sleeve = sleeveColor(playlist?.id ?? '');
 
-  if (config === null) {
+  if (config === null || playlist === null) {
     return { source: null, sleeve, onError: () => {} };
   }
 

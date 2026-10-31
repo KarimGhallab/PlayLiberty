@@ -47,11 +47,13 @@ import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistShares } from '../../../api/usePlaylistShares';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks/usePlaylistTracks';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
+import { useRemovePlaylistCover } from '../../../api/useRemovePlaylistCover';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useRevokeShare } from '../../../api/useRevokeShare';
+import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
@@ -112,6 +114,26 @@ jest.mock('../../../api/useRenamePlaylist', () => ({
 }));
 jest.mock('../../../api/useDeletePlaylist', () => ({
   useDeletePlaylist: jest.fn()
+}));
+jest.mock('../../../api/useSetPlaylistCover', () => ({
+  useSetPlaylistCover: jest.fn()
+}));
+jest.mock('../../../api/useRemovePlaylistCover', () => ({
+  useRemovePlaylistCover: jest.fn()
+}));
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  launchImageLibraryAsync: jest.fn()
+}));
+jest.mock('expo-file-system', () => ({
+  File: class {
+    readonly uri: string;
+    readonly size = 0;
+
+    constructor(uri: string) {
+      this.uri = uri;
+    }
+  }
 }));
 jest.mock('../../../api/useUpdateSort', () => ({
   useUpdateSort: jest.fn()
@@ -447,6 +469,8 @@ async function renderDetail(options: RenderOptions = {}) {
   const removeMutate = jest.fn();
   const deleteMutate = jest.fn();
   const renameMutate = jest.fn();
+  jest.mocked(useSetPlaylistCover).mockReturnValue(mutationResult());
+  jest.mocked(useRemovePlaylistCover).mockReturnValue(mutationResult());
   usePlaylistSharesMock.mockReturnValue(queryResult([]));
   useRevokeShareMock.mockReturnValue(mutationResult());
   jest.mocked(useAccount).mockReturnValue(
@@ -1643,22 +1667,24 @@ describe('the playlist detail', () => {
     });
   });
 
-  it('opens the Cover placeholder from the detail', async () => {
+  it('opens the cover sheet from the detail', async () => {
     await openHeaderSheet();
 
     fireEvent.press(screen.getByTestId('playlist-action-cover'));
 
     await waitFor(() => {
       expect(
-        screen.getByRole('header', { name: 'Update the cover' })
+        screen.getByRole('header', { name: 'Playlist cover' })
       ).toBeOnTheScreen();
     });
-    expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('cover-save').props.accessibilityState
+    ).toMatchObject({ disabled: true });
 
-    fireEvent.press(screen.getByTestId('playlist-placeholder-backdrop'));
+    fireEvent.press(screen.getByTestId('cover-backdrop'));
     await waitFor(() => {
       expect(
-        screen.queryByRole('header', { name: 'Update the cover' })
+        screen.queryByRole('header', { name: 'Playlist cover' })
       ).not.toBeOnTheScreen();
     });
   });

@@ -44,6 +44,7 @@ import type { ApiConfig } from '../../../auth/useApiConfig';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
+import CoverSheet from '../CoverSheet/CoverSheet';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
 import GalleryAddAction, {
   galleryAddActionSize
@@ -53,8 +54,6 @@ import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
 import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
-import type { PlaceholderAction } from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
-import PlaylistPlaceholderSheet from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import RenameSheet from '../RenameSheet/RenameSheet';
 import ShareSheet from '../ShareSheet/ShareSheet';
 import { scopedPlaylists, visiblePlaylists } from '../bulkSync/bulkSync';
@@ -139,10 +138,7 @@ export default function PlaylistGallery({
   const [shareTarget, setShareTarget] = useState<PlaylistWithCounts | null>(
     null
   );
-  const [placeholder, setPlaceholder] = useState<{
-    readonly action: PlaceholderAction;
-    readonly name: string;
-  } | null>(null);
+  const [coverTargetId, setCoverTargetId] = useState<string | null>(null);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
@@ -279,6 +275,10 @@ export default function PlaylistGallery({
     actionTargetId === null
       ? null
       : (items.find(item => item.id === actionTargetId) ?? null);
+  const coverTarget =
+    coverTargetId === null
+      ? null
+      : (items.find(item => item.id === coverTargetId) ?? null);
   const actions = actionTarget === null ? [] : playlistActionsFor(actionTarget);
 
   useEffect(() => {
@@ -408,7 +408,9 @@ export default function PlaylistGallery({
       return;
     }
 
-    setPlaceholder({ action: key, name: target.name });
+    if (key === 'cover') {
+      setCoverTargetId(target.id);
+    }
   };
 
   const actionsSheet = (
@@ -420,11 +422,11 @@ export default function PlaylistGallery({
       onClose={closeActions}
     />
   );
-  const placeholderSheet = (
-    <PlaylistPlaceholderSheet
-      action={placeholder?.action ?? null}
-      playlistName={placeholder?.name ?? ''}
-      onClose={() => setPlaceholder(null)}
+  const coverSheet = (
+    <CoverSheet
+      playlist={coverTarget}
+      config={config}
+      onClose={() => setCoverTargetId(null)}
     />
   );
   const renameSheet = (
@@ -649,7 +651,7 @@ export default function PlaylistGallery({
       />
       {addSheet}
       {actionsSheet}
-      {placeholderSheet}
+      {coverSheet}
       {renameSheet}
       {shareSheet}
       {undoSnackbar}
