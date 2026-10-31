@@ -11,22 +11,12 @@ import {
   tokenLength,
   touchTarget
 } from '../../styles/tokens';
+import { trackToneColor } from '../../trackState/trackToneColor';
 
 export type ChipTone = 'accent' | TrackTone;
 
-const TONE_COLORS = {
-  [TrackTone.Stored]: 'tone-stored',
-  [TrackTone.Pending]: 'tone-pending',
-  [TrackTone.Downloading]: 'tone-downloading',
-  [TrackTone.Failed]: 'tone-failed',
-  [TrackTone.Unavailable]: 'tone-unavailable',
-  [TrackTone.Removed]: 'tone-removed'
-} as const;
-
 function toneColor(tone: ChipTone): string {
-  return tone === 'accent'
-    ? tokenColor('accent')
-    : tokenColor(TONE_COLORS[tone]);
+  return tone === 'accent' ? tokenColor('accent') : trackToneColor(tone);
 }
 
 export interface ChipProps {

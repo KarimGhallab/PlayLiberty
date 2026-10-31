@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   type AccountSummary,
   AssociationOrigin,
+  FailureKind,
   type Playlist,
   PlaylistSort,
   PlaylistSyncStatus,
@@ -28,14 +29,19 @@ import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
+import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import PlaylistDetail from './PlaylistDetail';
 
 jest.mock('../../../api/usePlaylist', () => ({ usePlaylist: jest.fn() }));
 jest.mock('../../../api/usePlaylistTracks', () => ({
   usePlaylistTracks: jest.fn()
+}));
+jest.mock('../../../api/usePlaylistQueue', () => ({
+  usePlaylistQueue: jest.fn()
 }));
 jest.mock('../../../api/useLatestSyncRun', () => ({
   useLatestSyncRun: jest.fn()
@@ -54,6 +60,9 @@ jest.mock('../../../api/useAccountDirectory', () => {
 const usePlaylistMock = usePlaylist as jest.MockedFunction<typeof usePlaylist>;
 const usePlaylistTracksMock = usePlaylistTracks as jest.MockedFunction<
   typeof usePlaylistTracks
+>;
+const usePlaylistQueueMock = usePlaylistQueue as jest.MockedFunction<
+  typeof usePlaylistQueue
 >;
 const useLatestSyncRunMock = useLatestSyncRun as jest.MockedFunction<
   typeof useLatestSyncRun
@@ -128,6 +137,16 @@ const track: PlaylistTrack = {
   },
   origin: AssociationOrigin.Remote,
   position: 0
+};
+
+const failedTrack: PlaylistTrack = {
+  ...track,
+  track: {
+    ...track.track,
+    fileStatus: TrackFileStatus.Failed,
+    failureKind: FailureKind.Network,
+    failureReason: 'yt-dlp: HTTP 403'
+  }
 };
 
 const counts = {
@@ -219,6 +238,7 @@ function mutationResult(overrides: Record<string, unknown> = {}) {
 interface RenderOptions {
   readonly playlist?: Playlist;
   readonly tracks?: typeof page;
+  readonly queue?: readonly PlaylistTrack[];
   readonly latestRun?: SyncRun | null;
   readonly directory?: readonly AccountSummary[];
   readonly language?: Language;
@@ -268,6 +288,9 @@ async function renderDetail(options: RenderOptions = {}) {
           refetch: tracksRefetch
         })
   );
+  usePlaylistQueueMock.mockReturnValue(
+    queryResult({ items: options.queue ?? [track] })
+  );
   useLatestSyncRunMock.mockReturnValue(queryResult(options.latestRun ?? null));
   useAccountDirectoryMock.mockReturnValue(queryResult(options.directory ?? []));
   useSyncPlaylistMock.mockReturnValue(
@@ -297,6 +320,7 @@ async function renderDetail(options: RenderOptions = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  usePlayerStore.setState({ queue: [], playlistId: null, currentId: null });
 });
 
 describe('the playlist detail', () => {
@@ -315,6 +339,39 @@ describe('the playlist detail', () => {
     expect(screen.getByText('Synced 2 days ago')).toBeOnTheScreen();
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('3:02')).toBeOnTheScreen();
+  });
+
+  it('marks the current row and starts the queue at a press', async () => {
+    usePlayerStore.setState({
+      queue: [],
+      playlistId: 'playlist-1',
+      currentId: 'track-1'
+    });
+    await renderDetail();
+
+    expect(screen.getByText('Playing')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('track-bars', { includeHiddenElements: true })
+    ).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('track-play'));
+
+    expect(usePlayerStore.getState()).toMatchObject({
+      queue: ['track-1'],
+      playlistId: 'playlist-1',
+      currentId: 'track-1'
+    });
+  });
+
+  it('draws no play control for an unplayable row', async () => {
+    await renderDetail({
+      tracks: { ...page, items: [failedTrack], total: 1 },
+      queue: []
+    });
+
+    expect(screen.queryByTestId('track-play')).not.toBeOnTheScreen();
+    expect(screen.getByText('First Song')).toBeOnTheScreen();
+    expect(screen.getByText('Failed')).toBeOnTheScreen();
   });
 
   it('draws the cover with the session headers', async () => {
@@ -485,6 +542,7 @@ describe('the playlist detail', () => {
 
     expect(usePlaylistMock).toHaveBeenCalledWith('playlist-1');
     expect(usePlaylistTracksMock).toHaveBeenCalledWith('playlist-1');
+    expect(usePlaylistQueueMock).toHaveBeenCalledWith('playlist-1', true);
     expect(useLatestSyncRunMock).toHaveBeenCalledWith('playlist-1');
   });
 

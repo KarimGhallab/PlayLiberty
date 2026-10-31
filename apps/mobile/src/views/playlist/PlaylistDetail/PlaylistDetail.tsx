@@ -1,12 +1,12 @@
+import { useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets
 } from 'react-native-safe-area-context';
 
-import type { PlaylistTrack } from '@playliberty/contracts';
 import { PlaylistSyncStatus, SyncRunStatus } from '@playliberty/contracts';
-import { formatDuration, problemDetail, useI18n } from '@playliberty/i18n';
+import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
@@ -23,13 +23,16 @@ import {
 } from '../../../api/useAccountDirectory';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
+import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
 import TrackListSkeleton from '../TrackListSkeleton/TrackListSkeleton';
+import TrackRow from '../TrackRow/TrackRow';
 
 export interface PlaylistDetailProps {
   readonly playlistId: string | null;
@@ -51,9 +54,12 @@ export default function PlaylistDetail({
   const insets = useSafeAreaInsets();
   const playlist = usePlaylist(playlistId);
   const tracks = usePlaylistTracks(playlistId);
+  const queue = usePlaylistQueue(playlistId, playlist.isSuccess);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
   const sync = useSyncPlaylist();
+  const currentId = usePlayerStore(state => state.currentId);
+  const start = usePlayerStore(state => state.start);
   const playlistFailure =
     problemDetail(
       t,
@@ -64,6 +70,28 @@ export default function PlaylistDetail({
       t,
       tracks.error instanceof ApiError ? tracks.error.problem : null
     ) ?? t('detail.readFailed');
+
+  /* The queue is the playlist's playable order, so a press on any row starts
+   * the same queue at that row rather than a queue built from the loaded page. */
+  const playTrack = useCallback(
+    (trackId: string): void => {
+      const items = queue.data?.items ?? [];
+
+      if (
+        playlistId === null ||
+        !items.some(entry => entry.track.id === trackId)
+      ) {
+        return;
+      }
+
+      start(
+        items.map(entry => entry.track.id),
+        playlistId,
+        trackId
+      );
+    },
+    [playlistId, queue.data, start]
+  );
 
   if (playlist.isPending) {
     return (
@@ -164,26 +192,17 @@ export default function PlaylistDetail({
         ) : null}
         {tracks.isSuccess && data.trackCount > 0
           ? tracks.data.items.map(entry => (
-              <TrackRowSummary key={entry.track.id} entry={entry} />
+              <TrackRow
+                key={entry.track.id}
+                association={entry}
+                config={config}
+                current={currentId === entry.track.id}
+                onPlay={playTrack}
+              />
             ))
           : null}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function TrackRowSummary({ entry }: { readonly entry: PlaylistTrack }) {
-  return (
-    <View testID="track-row" style={styles.row}>
-      <Text numberOfLines={1} style={styles.rowTitle}>
-        {entry.track.title}
-      </Text>
-      {entry.track.durationSeconds === null ? null : (
-        <Text style={styles.rowDuration}>
-          {formatDuration(entry.track.durationSeconds)}
-        </Text>
-      )}
-    </View>
   );
 }
 
@@ -209,26 +228,5 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-md')
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: tokenLength('space-3'),
-    paddingVertical: tokenLength('space-2'),
-    borderBottomWidth: 1,
-    borderBottomColor: tokenColor('line')
-  },
-  rowTitle: {
-    flexShrink: 1,
-    color: tokenColor('ink'),
-    fontFamily,
-    fontSize: tokenLength('text-md')
-  },
-  rowDuration: {
-    color: tokenColor('muted'),
-    fontFamily,
-    fontSize: tokenLength('text-sm'),
-    fontVariant: ['tabular-nums']
   }
 });

@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import { endpointPath, endpoints } from '@playliberty/contracts';
+import { endpoints } from '@playliberty/contracts';
 
-import {
-  ACCESS_TOKEN_HEADER,
-  ACCESS_TOKEN_ID_HEADER,
-  API_PREFIX
-} from '../../api/apiClient/ApiClient';
 import type { ApiConfig } from '../../auth/useApiConfig';
+import { type MediaSource, mediaSource } from '../media/mediaSource';
 import { sleeveColor } from '../styles/sleeve';
 
 enum CoverFailure {
@@ -17,19 +13,14 @@ enum CoverFailure {
   Track = 'track'
 }
 
-export interface PlaylistCoverSource {
-  readonly uri: string;
-  readonly headers: Record<string, string>;
-}
-
 export interface PlaylistCover {
-  readonly source: PlaylistCoverSource | null;
+  readonly source: MediaSource | null;
   readonly sleeve: string;
   readonly onError: () => void;
 }
 
-function mediaUrl(baseUrl: string, path: string): string {
-  return `${baseUrl.replace(/\/+$/, '')}${API_PREFIX}${path}`;
+function withVersion(source: MediaSource, version: string): MediaSource {
+  return { ...source, uri: `${source.uri}?v=${encodeURIComponent(version)}` };
 }
 
 /* The custom, first-track, sleeve chain every surface that draws a playlist
@@ -51,36 +42,22 @@ export function usePlaylistCover(
     return { source: null, sleeve, onError: () => {} };
   }
 
-  const headers: Record<string, string> = {
-    [ACCESS_TOKEN_ID_HEADER]: config.token.id,
-    [ACCESS_TOKEN_HEADER]: config.token.secret
-  };
-
   const customSource =
     playlist.coverUpdatedAt === null
       ? null
-      : {
-          uri: `${mediaUrl(
-            config.baseUrl,
-            endpointPath(endpoints.playlistCover.path, {
-              playlistId: playlist.id
-            })
-          )}?v=${encodeURIComponent(playlist.coverUpdatedAt)}`,
-          headers
-        };
+      : withVersion(
+          mediaSource(config, endpoints.playlistCover, {
+            playlistId: playlist.id
+          }),
+          playlist.coverUpdatedAt
+        );
 
   const trackSource =
     playlist.coverTrackId === null
       ? null
-      : {
-          uri: mediaUrl(
-            config.baseUrl,
-            endpointPath(endpoints.trackThumbnail.path, {
-              trackId: playlist.coverTrackId
-            })
-          ),
-          headers
-        };
+      : mediaSource(config, endpoints.trackThumbnail, {
+          trackId: playlist.coverTrackId
+        });
 
   const showingCustom = customSource !== null && failure === CoverFailure.None;
   const source = showingCustom

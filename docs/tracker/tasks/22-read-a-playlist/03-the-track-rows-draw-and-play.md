@@ -1,36 +1,37 @@
 # 03: The track rows draw and play
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-the-detail-reads-a-playlist.md)
 
-## What to build
+## Outcome
 
-The first page of tracks draws as rows. Each row carries the artwork, the title, the state word and tone from the
-shared track-state helpers, the duration and, for a failed track, the shared failure sentence with the server's
-reason behind a Show details control. The reason is shown as-is and never translated.
+The first page of tracks now draws as rows. A row carries the track thumbnail with the session headers, the title, the
+state word and tone from the shared track-state helpers, the duration, and, for a failed track, the shared failure
+sentence with the server's reason behind a Show details control. The reason is shown as-is and never translated. A
+missing thumbnail falls back to the raised surface.
 
-The current row is marked with its word and bars. Every row announces its title, state and duration as one label.
-The paused word waits for `23`, which owns the transport.
+The current row carries the Playing word and the accent bars over its artwork. The paused word waits for `23`, which
+owns the transport. Every playable row's play target is labelled with its title, state and duration, so the row is
+announced as one control. An unplayable row has no play target and keeps its text.
 
-A press anywhere on a playable row starts the queue at that track, built from the playlist's playable order read from
-the queue route, not from the loaded page. An unplayable row has no play layer and its press does nothing; its text
-stays readable. The row accepts an optional lane callback, which `04` supplies; this ticket draws no lane.
+The play target is an absolute layer behind the row's content, so a press anywhere starts the queue and the Show
+details control still receives its own press. The queue is read from the playlist queue route and starts at the
+pressed track, so the queue is the whole playable order rather than the loaded page. The shell's mounted player takes
+over from there; no transport is drawn here.
 
-The audio is already mounted by the shell, so this ticket starts the queue without adding a transport. The bar is
-spec `23`'s.
+The ticket added the shared `isPlayable`, `failureSentence`, `trackToneColor`, `mediaSource` and `TrackBars` modules,
+and the queue read. The gallery cover and the chip now share the media source and tone helpers, so the cover URL and
+the colours cannot drift.
 
-## Acceptance criteria
-
-- [ ] A row draws its artwork, title, state word and duration.
-- [ ] A failed row reveals the shared failure sentence and the server's reason, untranslated.
-- [ ] A press anywhere on a playable row starts the queue at that track from the whole playable order.
-- [ ] An unplayable row does not start a queue and keeps its text.
-- [ ] The current row carries its word and bars.
-- [ ] Each row announces its title, state and duration.
-- [ ] The state words render in French.
+The row accepts the lane callback in its interface but draws no lane; ticket `04` adds it.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run typecheck`, the row's and detail's Jest files, then `pnpm run build` and
-`pnpm run lint:check`.
+- Row 7 tests and detail 22 tests pass; mobile 193 tests across 29 suites pass.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run lint:check` and `pnpm run build` pass.
+- On the emulator, pressing the first row of the shared playlist started the queue and marked the row Playing with the
+  bars.
+
+See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).
