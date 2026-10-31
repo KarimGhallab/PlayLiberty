@@ -77,7 +77,8 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`09-keep-the-screens-current/TICKETS.md`](09-keep-the-screens-current/TICKETS.md)
 - [`11-choose-a-language/TICKETS.md`](11-choose-a-language/TICKETS.md)
 - [`12-sort-and-filter-the-track-list/TICKETS.md`](12-sort-and-filter-the-track-list/TICKETS.md)
-- [`13-pin-a-playlist/TICKETS.md`](13-pin-a-playlist/TICKETS.md).
+- [`13-pin-a-playlist/TICKETS.md`](13-pin-a-playlist/TICKETS.md)
+- [`23-play-stored-audio/TICKETS.md`](23-play-stored-audio/TICKETS.md).
 - [`14-upload-a-playlist-cover/TICKETS.md`](14-upload-a-playlist-cover/TICKETS.md).
 - [`15-prepare-the-production-deployment/TICKETS.md`](15-prepare-the-production-deployment/TICKETS.md).
 - [`17-crop-a-playlist-cover/TICKETS.md`](17-crop-a-playlist-cover/TICKETS.md).
