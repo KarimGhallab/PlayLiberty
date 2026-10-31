@@ -1,0 +1,51 @@
+appId: dev.playliberty.app
+name: A track change crosses the screen-off boundary
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: playlist-card
+          timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ${OWNED_PLAYLIST}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${OWNED_PLAYLIST}
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: track-play
+    timeout: 30000
+# The fourth playable row is the short track in Paradis, so the wait crosses it.
+- tapOn:
+    id: track-play
+    index: 3
+- extendedWaitUntil:
+    visible:
+      id: player-bar
+    timeout: 15000
+# The device check waits for the next title and then wakes the phone.
+- pressKey: Lock

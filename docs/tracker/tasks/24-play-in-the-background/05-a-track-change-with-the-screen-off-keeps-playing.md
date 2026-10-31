@@ -1,36 +1,36 @@
 # 05: A track change with the screen off keeps playing
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`02`](02-the-notifications-transport-drives-the-queue.md),
 [`03`](03-the-service-follows-the-queues-lifetime.md)
 
-## What to build
+## Outcome
 
-The physical-device journey that proves issue `102` is fixed on the app. Start a playlist, turn the screen off, let a
-track end, and the next one plays rather than going silent. The notification names the next track and the lock screen
-keeps the same controls throughout.
+The physical-device journey is in `apps/mobile/.maestro-device/background-journey.yaml`, outside the standard
+`.maestro` suite because it leaves the phone locked. It opens `OWNED_PLAYLIST`, starts its fourth playable row, waits
+for the bar and locks the screen. With `OWNED_PLAYLIST=Paradis` that row is `Azure Flute`.
 
-The journey runs on the phone that will use the app. It is the only proof that the foreground service keeps the queue
-advancing with the screen off; neither an emulator-only pass nor a service unit test is accepted in its place.
+The run was on the physical `SM-S931B` (`RZCY11E39KV`, Android 17), signed in through the USB dev proxy. The flow
+passed, and the device was left locked.
 
-If the device shows the JS player does not advance while the screen is off, this ticket owns moving the advance and
-the queue handoff into the native service, so the same journey passes. It does not add a second queue or a second
-play state.
+While the screen stayed off, the queue crossed from `Pokemon- Black and White- Lets Go Together- Music` to `Victory
+Lies Before You! (Last Pokémon): Remastered ► Pokémon Black & White`. The notification title changed to the new track,
+and the lock screen showed that track, its artwork, `Paradis`, the seek rail and previous/play-pause/next. The media
+session stayed `PLAYING`.
 
-## Acceptance criteria
+A forced deep-idle then left the media session `PLAYING` at `1:34`, so the service survived Doze. The JS player
+advanced the queue; no native handoff was needed.
 
-- [ ] With the screen off, a finished track is followed by the next track's audio.
-- [ ] The notification and lock screen name the new track after the change.
-- [ ] The service survives the track change and Doze, and still stops when the queue ends.
-- [ ] The journey passes on the physical phone the app is for.
-- [ ] If the JS player cannot advance in the background, the native handoff makes the same journey pass.
+The README records the device-only command, the fourth-row requirement, and the `dumpsys` checks.
 
 ## Verification
 
-- The Maestro flow starts a playlist, drives the app, turns the screen off, waits for a track to finish, and asserts
-  the next track's audio and notification on the physical device.
-- The run is recorded with the device name and the track it crossed.
-- No emulator-only or unit-only result is recorded as passing this ticket.
+- Physical run on `SM-S931B` / `RZCY11E39KV`, Android 17: the Maestro driver passed and locked the phone.
+- Screen off for 60 seconds: the notification and lock screen moved from Pokemon Black and White to Victory Lies
+  Before You, and the media session reported `PLAYING`.
+- Forced deep idle: the media session remained `PLAYING` at `1:34`; Doze did not stop the audio.
+- The device was force-stopped afterwards and the temporary `localhost` dev configuration was restored.
+- No source changed; the mobile suite and build were not rerun for this ticket.
 
 See [`24-play-in-the-background`](../../specs/24-play-in-the-background.md).

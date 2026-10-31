@@ -23,6 +23,21 @@ works.
 `signed-out` leaves the device signed out; the other flows sign in first when they need to. `provisioning` starts from
 either state and leaves the device signed in.
 
+## The physical background journey
+
+`../.maestro-device/background-journey.yaml` is the device-only driver for the screen-off track change. It starts
+`OWNED_PLAYLIST` at its fourth playable row, waits for the bar and locks the screen. It is not part of `pnpm e2e`,
+because it leaves the phone locked and needs a playlist whose fourth playable track is short.
+
+```sh
+PATH="$HOME/.maestro/bin:$PATH" \
+  maestro test --udid <phone> -e OWNED_PLAYLIST=Paradis apps/mobile/.maestro-device/background-journey.yaml
+```
+
+Wait for the current track to finish, then read the notification and media session with `adb -s <phone> shell dumpsys
+notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone with `adb -s <phone> shell input keyevent
+224` to inspect the lock screen.
+
 ## The flows
 
 | Flow                  | Journey                                                                  |
@@ -55,5 +70,6 @@ commit before Undo lands.
 ## Scope
 
 These flows cover the shell, the gallery's three critical journeys, the detail's three, the player's journey, and
-the provisioning journey. The track link belongs to `30` and the egress console to `31`; each of those specs owns its
-own journey.
+the provisioning journey. The screen-off background journey is the device-only driver in `../.maestro-device`; it
+leaves the phone locked, so it is run separately. The track link belongs to `30` and the egress console to `31`; each
+of those specs owns its own journey.
