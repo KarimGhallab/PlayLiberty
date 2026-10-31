@@ -14,10 +14,18 @@ jest.mock('expo-audio', () => {
     seekTo: jest.fn(() => Promise.resolve())
   };
   const status = {
-    current: { didJustFinish: false, currentTime: 0, error: null } as {
+    current: {
+      didJustFinish: false,
+      currentTime: 0,
+      error: null,
+      playing: true,
+      isBuffering: false
+    } as {
       didJustFinish: boolean;
       currentTime: number;
       error: string | null;
+      playing: boolean;
+      isBuffering: boolean;
     }
   };
 
@@ -53,6 +61,8 @@ interface AudioMock {
       didJustFinish: boolean;
       currentTime: number;
       error: string | null;
+      playing: boolean;
+      isBuffering: boolean;
     };
   };
 }
@@ -95,7 +105,9 @@ beforeEach(() => {
   audio.__status.current = {
     didJustFinish: false,
     currentTime: 0,
-    error: null
+    error: null,
+    playing: true,
+    isBuffering: false
   };
 });
 
@@ -137,6 +149,82 @@ describe('the player audio', () => {
     expect(audio.__player.replace).toHaveBeenCalledTimes(1);
   });
 
+  it('follows the player through a focus pause and resume', async () => {
+    start(['a'], 'a');
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 5,
+        error: null,
+        playing: false,
+        isBuffering: false
+      };
+    });
+    await view.rerender({});
+
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 5,
+        error: null,
+        playing: true,
+        isBuffering: false
+      };
+    });
+    await view.rerender({});
+
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('does not read a buffering gap as a pause', async () => {
+    start(['a'], 'a');
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 0,
+        error: null,
+        playing: false,
+        isBuffering: true
+      };
+    });
+    await view.rerender({});
+
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('leaves a listener pause in place when the player stays paused', async () => {
+    start(['a'], 'a');
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      usePlayerStore.getState().setPlaying(false);
+    });
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 5,
+        error: null,
+        playing: false,
+        isBuffering: false
+      };
+    });
+    await view.rerender({});
+
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
   it('reports the player position to the store', async () => {
     start(['a'], 'a');
     const view = await renderHook(() =>
@@ -147,7 +235,9 @@ describe('the player audio', () => {
       audio.__status.current = {
         didJustFinish: false,
         currentTime: 12.5,
-        error: null
+        error: null,
+        playing: true,
+        isBuffering: false
       };
     });
     await view.rerender({});
@@ -185,7 +275,9 @@ describe('the player audio', () => {
       audio.__status.current = {
         didJustFinish: true,
         currentTime: 60,
-        error: null
+        error: null,
+        playing: true,
+        isBuffering: false
       };
     });
     await view.rerender({});
@@ -221,7 +313,9 @@ describe('the player audio', () => {
       audio.__status.current = {
         didJustFinish: false,
         currentTime: 0,
-        error: 'stream failed'
+        error: 'stream failed',
+        playing: true,
+        isBuffering: false
       };
     });
     await view.rerender({});
@@ -244,7 +338,9 @@ describe('the player audio', () => {
       audio.__status.current = {
         didJustFinish: false,
         currentTime: 0,
-        error: 'stream failed'
+        error: 'stream failed',
+        playing: true,
+        isBuffering: false
       };
     });
     await view.rerender({});
@@ -267,7 +363,9 @@ describe('the player audio', () => {
       audio.__status.current = {
         didJustFinish: false,
         currentTime: 0,
-        error: 'stream failed'
+        error: 'stream failed',
+        playing: true,
+        isBuffering: false
       };
     });
     await view.rerender({});
@@ -291,7 +389,9 @@ describe('the player audio', () => {
       audio.__status.current = {
         didJustFinish: false,
         currentTime: 0,
-        error: 'stream failed'
+        error: 'stream failed',
+        playing: true,
+        isBuffering: false
       };
     });
     await view.rerender({});
@@ -321,7 +421,9 @@ describe('the player audio', () => {
       audio.__status.current = {
         didJustFinish: false,
         currentTime: 0,
-        error: 'stream failed'
+        error: 'stream failed',
+        playing: true,
+        isBuffering: false
       };
     });
     await view.rerender({});

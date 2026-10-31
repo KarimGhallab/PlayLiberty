@@ -1,32 +1,27 @@
 # 07: A call or an unplugged headset pauses
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-the-bar-plays-the-queue.md)
 
-## What to build
+## Outcome
 
-The platform's audio focus is the only owner of interruptions. A call, another app's audio or an unplugged headset
-pauses the current track, and the bar shows the paused state because the store follows the player's own status
-rather than keeping a second play state.
+The player's own status now drives the bar's play state. Once a source has been observed playing, a settled status of
+not playing pauses the store, and a later playing status resumes it; the platform owns the focus and the resume, so a
+transient focus loss resumes and a listener's pause does not. A buffering gap and the first not-playing status after a
+source loads are ignored, so starting a track is not cancelled by its own loading state.
 
-When focus returns after a transient interruption, playback resumes only if the app was playing when focus was lost.
-A player the listener paused stays paused. The notification, the lock screen and background playback remain spec
-`24`'s; this ticket only reconciles the foreground player with the focus contract.
-
-## Acceptance criteria
-
-- [ ] A call or another app taking audio pauses the current track and the bar shows it paused.
-- [ ] Unplugging headphones pauses instead of playing to the room.
-- [ ] Playback resumes after a transient interruption only if it was playing when focus was lost.
-- [ ] A player paused by the listener does not resume when focus returns.
-- [ ] The bar's play state comes from the player's status, not a second copy.
+`setPlaying` no longer writes when the state already agrees and there is no failure notice to clear, so the status
+mirror does not churn the store. expo-audio keeps the audio mode at `doNotMix`, which owns focus loss and the
+headphone-disconnect stop on the platform side. The notification, lock screen and background service remain spec
+`24`'s.
 
 ## Verification
 
-- A small unit test covers the resume policy, with the platform status stubbed; the platform's focus contract itself
-  is not tested.
-- On the device: take a call while a track plays, then end it; unplug headphones while a track plays; pause, lose
-  focus and regain it, and confirm the paused player stays paused.
+- Mobile 358 tests across 41 suites pass. The audio tests cover a status pause followed by its resume, a buffering gap
+  that is not read as a pause, and a listener pause that stays paused.
+- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- On the emulator, a simulated incoming call was answered and ended; the emulator did not take audio focus from the
+  app, so playback continued and the focus contract itself was not exercised there.
 
 See [`23-play-stored-audio`](../../specs/23-play-stored-audio.md).

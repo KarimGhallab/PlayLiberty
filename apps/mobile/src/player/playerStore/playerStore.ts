@@ -314,6 +314,13 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         return state;
       }
 
+      if (
+        state.isPlaying === playing &&
+        (playing === false || state.playbackFailureId === null)
+      ) {
+        return state;
+      }
+
       return playing
         ? { isPlaying: true, playbackFailureId: null }
         : { isPlaying: false };

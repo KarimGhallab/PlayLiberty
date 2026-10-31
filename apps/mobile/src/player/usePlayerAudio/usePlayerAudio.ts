@@ -36,6 +36,7 @@ export function usePlayerAudio(
   const finished = useRef(false);
   const healthyId = useRef<string | null>(null);
   const classified = useRef<{ id: string; error: string } | null>(null);
+  const observedPlaying = useRef(false);
 
   useEffect(() => {
     void setAudioModeAsync({
@@ -49,6 +50,10 @@ export function usePlayerAudio(
     // A new resolver means a new credential or edge; the current track reloads.
     loadedId.current = null;
   }, [resolveSource]);
+
+  useEffect(() => {
+    observedPlaying.current = false;
+  }, [currentId]);
 
   useEffect(() => {
     if (currentId === null) {
@@ -161,6 +166,25 @@ export function usePlayerAudio(
       usePlayerStore.getState().failPlayback(failedId);
     });
   }, [classifyFailure, currentId, status.error]);
+
+  /* The platform owns a focus pause and its resume; the store follows the
+   * player's settled status so the bar cannot claim a track is still playing. */
+  useEffect(() => {
+    if (status.isBuffering || status.error !== null) {
+      return;
+    }
+
+    if (status.playing) {
+      observedPlaying.current = true;
+      usePlayerStore.getState().setPlaying(true);
+      return;
+    }
+
+    if (observedPlaying.current) {
+      observedPlaying.current = false;
+      usePlayerStore.getState().setPlaying(false);
+    }
+  }, [status.error, status.isBuffering, status.playing]);
 
   /* The status pulses once per ended track; the guard keeps a late pulse from
    * advancing again after the next track has already loaded. */
