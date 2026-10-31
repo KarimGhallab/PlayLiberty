@@ -1,0 +1,54 @@
+appId: dev.playliberty.app
+name: A row plays from the detail
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+- tapOn:
+    id: playlist-card
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: track-play
+    timeout: 30000
+# The first playable row, regardless of the states above it.
+- tapOn:
+    id: track-play
+    index: 0
+# The row says it is playing; the player bar is spec 23's.
+- extendedWaitUntil:
+    visible:
+      id: track-now
+    timeout: 15000
+# Leave the device in the library.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000

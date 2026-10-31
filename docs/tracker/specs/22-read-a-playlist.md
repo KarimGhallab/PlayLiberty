@@ -1,6 +1,6 @@
 # Read a playlist on mobile
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement

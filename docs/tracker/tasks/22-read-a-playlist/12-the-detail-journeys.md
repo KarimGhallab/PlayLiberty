@@ -1,37 +1,35 @@
 # 12: The detail journeys
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`05`](05-removal-and-deletion-are-deferred.md), [`06`](06-the-header-plays-and-shuffles.md),
 [`08`](08-the-sort-and-the-chips.md)
 
-## What to build
+## Outcome
 
-Three Maestro flows for the detail's critical journeys. Each stops and launches the app, signs in through the
-existing browser fallback when signed out, and leaves the device in the gallery.
+Three Maestro flows live beside the app, one per detail journey:
 
-- `detail-play`: open a playlist from the gallery, play a playable row and see its playing mark. The bar is spec
-  `23`'s, so the flow asserts the row, not the bar.
-- `detail-filter`: open a playlist, filter to Failed, assert the filtered body, then return to All and see the whole
-  list. The failed set may be empty, so the flow accepts the rows or the filter-empty body before returning with the
-  All chip; the filter-empty body's Show all is the same return and is covered by `08`'s widget test.
-- `detail-remove-undo`: open an owned playlist named by the runner in `OWNED_PLAYLIST`, open a row's lane, choose
-  Remove, see the undo snackbar, press Undo and see the row again. The name keeps the flow independent of gallery
-  order and of a shared first card.
+- `detail-play` opens the gallery's first card, plays the first playable row and asserts that row's `track-now`
+  mark, not the player bar (which belongs to spec `23`).
+- `detail-filter` opens the first card, sweeps the chip rail twice to reach Failed, accepts either the filtered rows
+  or the filter-empty body, then sweeps back to All and sees the whole list again.
+- `detail-remove-undo` opens the playlist named by `OWNED_PLAYLIST`, copies the first row's title, opens its lane,
+  removes it, presses the snackbar's Undo inside the six-second window and asserts the same title is back.
 
-The flows use the stable test ids the earlier tickets add for the screen, the rows, the lane, the sheet, the chips
-and the snackbar. The README's run command and flow table are updated, including `OWNED_PLAYLIST`.
+Each flow stops and relaunches the app, uses the existing sign-in fallback when signed out, and ends with Back in
+the gallery. Selectors are the test ids, so a French device runs them unchanged; the verification run was French.
 
-## Acceptance criteria
-
-- [ ] The three flows are independent and pass on the emulator against the dev topology.
-- [ ] Each flow establishes its own state, uses the sign-in fallback and leaves the device in the gallery.
-- [ ] The play flow asserts the row's playing mark, not the bar.
-- [ ] The filter flow reaches the failed filter and returns to All.
-- [ ] The remove flow removes a row and restores it with Undo.
-- [ ] The README records the run command, the three flows and `OWNED_PLAYLIST`.
+The harness notes are recorded in `apps/mobile/.maestro/README.md`: the chip rail is horizontal, so the filter flow
+sweeps it by hand (a `scrollUntilVisible` scrolls the page under it), and Remove and Undo set
+`waitToSettleTimeoutMs: 0` because a settle wait can outlast the six-second Undo window and let the removal commit.
 
 ## Verification
 
-`PATH="$HOME/.maestro/bin:$PATH" maestro test -e OWNED_PLAYLIST=<name> apps/mobile/.maestro`, with the dev client
-connected and Metro serving the app.
+- The three flows together passed in both orders against the dev topology, with `-e OWNED_PLAYLIST=Paradis`:
+  `3/3` in 1m 40s in the play, filter, remove order and `3/3` in 1m 40s in the remove, filter, play order.
+- Each flow also passed alone while it was written, and the remove flow was repeated twice more to check its window.
+- The remove flow left the playlist as it found it each time: the first row was back and the whole set stayed at 12
+  tracks.
+- `apps/mobile/.maestro/README.md` records the run command, `OWNED_PLAYLIST` and the three rows in the flow table.
+
+See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

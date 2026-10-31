@@ -1,0 +1,87 @@
+appId: dev.playliberty.app
+name: The detail filters to the failed tracks and back
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+- tapOn:
+    id: playlist-card
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: filter-all
+    timeout: 30000
+# The rail scrolls sideways; Failed is the fifth chip. Two sweeps reach it.
+- swipe:
+    start: 90%, 31%
+    end: 20%, 31%
+    duration: 400
+- swipe:
+    start: 90%, 31%
+    end: 20%, 31%
+    duration: 400
+- tapOn:
+    id: filter-failed
+# The failed set can be empty, in which case the filter names its body.
+- runFlow:
+    when:
+      visible:
+        id: filter-empty
+    commands:
+      - assertVisible:
+          id: filter-empty
+- runFlow:
+    when:
+      notVisible:
+        id: filter-empty
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: track-row
+          timeout: 15000
+- swipe:
+    start: 10%, 31%
+    end: 90%, 31%
+    duration: 400
+- swipe:
+    start: 10%, 31%
+    end: 90%, 31%
+    duration: 400
+- tapOn:
+    id: filter-all
+- extendedWaitUntil:
+    visible:
+      id: track-row
+    timeout: 15000
+# Leave the device in the library.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000
