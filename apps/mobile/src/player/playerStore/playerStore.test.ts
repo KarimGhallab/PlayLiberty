@@ -272,6 +272,32 @@ describe('the seek', () => {
   });
 });
 
+describe('the playback failure', () => {
+  it('records a failure and clears it when play retries', () => {
+    start(['a', 'b'], 'a');
+
+    usePlayerStore.getState().failPlayback('a');
+
+    expect(usePlayerStore.getState().playbackFailureId).toBe('a');
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+
+    usePlayerStore.getState().setPlaying(true);
+
+    expect(usePlayerStore.getState().playbackFailureId).toBeNull();
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('clears the failure when the playhead moves', () => {
+    start(['a', 'b'], 'a');
+    usePlayerStore.getState().failPlayback('a');
+
+    usePlayerStore.getState().play('b');
+
+    expect(usePlayerStore.getState().playbackFailureId).toBeNull();
+    expect(usePlayerStore.getState().currentId).toBe('b');
+  });
+});
+
 describe('the shuffle flag', () => {
   it('starts a shuffled queue on its leader with every track once', () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);

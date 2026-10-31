@@ -1,36 +1,33 @@
 # 05: A broken track is skipped and a refusal is explained
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-the-bar-plays-the-queue.md)
 
-## What to build
+## Outcome
 
-A queued track whose stored file has gone, and a track that fails to load mid-stream, are dropped when the failure is
-reached and playback continues with the next entry. Dropping the last entry stops playback and removes the bar. A
-track with no stored file never enters the queue, and its row offers no play target.
+A load failure is classified by re-asking the stream route: `404` is gone, `401` is the session, and anything else is
+unknown. Only an error from a source that had loaded is read as this track's failure, so a stale error from the
+previous source is not applied to the new one, and a classification that resolves after the playhead moved does
+nothing.
 
-A refusal is handled by kind. A `404` drops the entry and advances. A `401` is the shell's signed-out state and is
-never drawn as a broken track. Any other refusal pauses on the current track and draws a notice naming the track and
-saying that playback could not start or continue; the queue stays where it is so play can be pressed again. A
-classification that arrives after the playhead has moved does nothing.
+A gone entry is dropped and the next one continues; dropping the last entry stops playback and removes the bar. A
+session refusal clears the player and expires the session instead of drawing a broken track. An unknown refusal pauses
+on the track and records it, so the bar draws a notice naming the track and saying playback failed, with the queue
+left in place for another press. A successful retry or a move clears the notice.
 
-The notice and the playback copy are in both catalogs.
-
-## Acceptance criteria
-
-- [ ] A `404` at load or mid-stream drops that entry and advances to the next one.
-- [ ] Dropping the last entry stops playback and removes the bar.
-- [ ] A `401` ends the session instead of drawing a playback failure.
-- [ ] Any other refusal pauses and explains itself with a notice naming the track.
-- [ ] A late failure classification does not act on a track that is no longer current.
-- [ ] The failure copy exists in English and French.
+The stream classifier lives in its own module so the audio layer receives one function from the shell. The notice copy
+exists in both catalogs. The device check also confirmed that expo-audio rejects `replace(null)`; stopping now pauses
+and leaves the source loaded until the next track replaces it.
 
 ## Verification
 
-- Store and audio unit tests cover the drop, the advance, the `401` and the late classification, with the stream
-  classifier stubbed.
-- On the emulator: remove a queued file on the server and reach it, then confirm the next track plays and the bar
-  moves on.
+- Mobile 350 tests across 41 suites pass. The classifier tests cover `404`, `401`, a server refusal and a network
+  failure. The audio tests cover the gone drop and advance, the last-entry stop, the unclassified pause and notice
+  state, the session expiry, and a late classification. The bar test covers the notice and its retry clear.
+- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- The emulator check removed a queued file and reached it, but the development client was running without a usable
+  media config in that session, so the failure did not surface before the file was restored. The file was restored
+  and the behaviour rests on the unit seams above.
 
 See [`23-play-stored-audio`](../../specs/23-play-stored-audio.md).

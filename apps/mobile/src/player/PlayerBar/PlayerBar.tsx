@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { endpoints } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
+import Notice from '../../shared/components/Notice/Notice';
 import { mediaSource } from '../../shared/media/mediaSource';
 import {
   fontFamily,
@@ -52,6 +53,10 @@ export default function PlayerBar({ config }: PlayerBarProps) {
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const seekToFraction = usePlayerStore(state => state.seekToFraction);
   const seekBy = usePlayerStore(state => state.seekBy);
+  const playbackFailureId = usePlayerStore(state => state.playbackFailureId);
+  const dismissPlaybackFailure = usePlayerStore(
+    state => state.dismissPlaybackFailure
+  );
   const wasPlaying = useRef(false);
   const [failedId, setFailedId] = useState<string | null>(null);
 
@@ -78,6 +83,7 @@ export default function PlayerBar({ config }: PlayerBarProps) {
   const imageFailed = failedId === track.id;
   const currentIndex = queue.indexOf(currentId);
   const hasNext = currentIndex >= 0 && queue[currentIndex + 1] !== undefined;
+  const failureTitle = playbackFailureId === currentId ? track.title : null;
 
   const artwork =
     config === null || track.thumbnailPath === null || imageFailed
@@ -121,95 +127,110 @@ export default function PlayerBar({ config }: PlayerBarProps) {
     );
 
   return (
-    <View testID="player-bar" style={[styles.bar, { bottom: insets.bottom }]}>
-      <View style={styles.top}>
-        {art}
-        <View style={styles.identity}>
-          <Text testID="player-title" numberOfLines={1} style={styles.title}>
-            {track.title}
-          </Text>
-          {playlistName === null ? null : (
-            <Text
-              testID="player-playlist"
-              numberOfLines={1}
-              style={styles.playlist}>
-              {playlistName}
+    <>
+      <View testID="player-bar" style={[styles.bar, { bottom: insets.bottom }]}>
+        <View style={styles.top}>
+          {art}
+          <View style={styles.identity}>
+            <Text testID="player-title" numberOfLines={1} style={styles.title}>
+              {track.title}
             </Text>
-          )}
-        </View>
-        <View style={styles.transport}>
-          <Pressable
-            testID="player-previous"
-            accessibilityRole="button"
-            accessibilityLabel={t('playerBar.previousNamed', {
-              title: track.title
-            })}
-            style={({ pressed }) => [
-              styles.step,
-              pressed && styles.stepPressed
-            ]}
-            onPress={skipPrevious}>
-            <IconPlayerSkipBack
-              size={tokenLength('icon-md')}
-              color={tokenColor('ink')}
-            />
-          </Pressable>
-          <Pressable
-            testID="player-toggle"
-            accessibilityRole="button"
-            accessibilityLabel={
-              isPlaying
-                ? t('playerBar.pauseNamed', { title: track.title })
-                : t('playerBar.playNamed', { title: track.title })
-            }
-            accessibilityState={{ selected: isPlaying }}
-            style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}
-            onPress={() => setPlaying(!isPlaying)}>
-            {isPlaying ? (
-              <IconPlayerPause
-                size={tokenLength('icon-lg')}
-                color={tokenColor('ink')}
-              />
-            ) : (
-              <IconPlayerPlay
-                size={tokenLength('icon-lg')}
-                color={tokenColor('ink')}
-              />
+            {playlistName === null ? null : (
+              <Text
+                testID="player-playlist"
+                numberOfLines={1}
+                style={styles.playlist}>
+                {playlistName}
+              </Text>
             )}
-          </Pressable>
-          <Pressable
-            testID="player-next"
-            accessibilityRole="button"
-            accessibilityLabel={t('playerBar.nextNamed', {
-              title: track.title
-            })}
-            accessibilityState={{ disabled: !hasNext }}
-            disabled={!hasNext}
-            style={({ pressed }) => [
-              styles.step,
-              !hasNext && styles.stepDisabled,
-              pressed && styles.stepPressed
-            ]}
-            onPress={skipNext}>
-            <IconPlayerSkipForward
-              size={tokenLength('icon-md')}
-              color={
-                hasNext ? tokenColor('ink') : tokenColor('control-disabled-fg')
+          </View>
+          <View style={styles.transport}>
+            <Pressable
+              testID="player-previous"
+              accessibilityRole="button"
+              accessibilityLabel={t('playerBar.previousNamed', {
+                title: track.title
+              })}
+              style={({ pressed }) => [
+                styles.step,
+                pressed && styles.stepPressed
+              ]}
+              onPress={skipPrevious}>
+              <IconPlayerSkipBack
+                size={tokenLength('icon-md')}
+                color={tokenColor('ink')}
+              />
+            </Pressable>
+            <Pressable
+              testID="player-toggle"
+              accessibilityRole="button"
+              accessibilityLabel={
+                isPlaying
+                  ? t('playerBar.pauseNamed', { title: track.title })
+                  : t('playerBar.playNamed', { title: track.title })
               }
-            />
-          </Pressable>
+              accessibilityState={{ selected: isPlaying }}
+              style={({ pressed }) => [
+                styles.toggle,
+                pressed && styles.pressed
+              ]}
+              onPress={() => setPlaying(!isPlaying)}>
+              {isPlaying ? (
+                <IconPlayerPause
+                  size={tokenLength('icon-lg')}
+                  color={tokenColor('ink')}
+                />
+              ) : (
+                <IconPlayerPlay
+                  size={tokenLength('icon-lg')}
+                  color={tokenColor('ink')}
+                />
+              )}
+            </Pressable>
+            <Pressable
+              testID="player-next"
+              accessibilityRole="button"
+              accessibilityLabel={t('playerBar.nextNamed', {
+                title: track.title
+              })}
+              accessibilityState={{ disabled: !hasNext }}
+              disabled={!hasNext}
+              style={({ pressed }) => [
+                styles.step,
+                !hasNext && styles.stepDisabled,
+                pressed && styles.stepPressed
+              ]}
+              onPress={skipNext}>
+              <IconPlayerSkipForward
+                size={tokenLength('icon-md')}
+                color={
+                  hasNext
+                    ? tokenColor('ink')
+                    : tokenColor('control-disabled-fg')
+                }
+              />
+            </Pressable>
+          </View>
         </View>
+        <SeekBar
+          key={track.id}
+          durationSeconds={track.durationSeconds}
+          positionSeconds={positionSeconds}
+          onSeekStart={startScrub}
+          onSeekEnd={endScrub}
+          onSeek={seekToFraction}
+          onSeekBy={seekBy}
+        />
       </View>
-      <SeekBar
-        key={track.id}
-        durationSeconds={track.durationSeconds}
-        positionSeconds={positionSeconds}
-        onSeekStart={startScrub}
-        onSeekEnd={endScrub}
-        onSeek={seekToFraction}
-        onSeekBy={seekBy}
-      />
-    </View>
+      {failureTitle === null ? null : (
+        <Notice
+          message={t('playerBar.failed', { title: failureTitle })}
+          detail={t('playerBar.failedDetail')}
+          onDismiss={dismissPlaybackFailure}
+          bottomOffset={playerBarHeight + tokenLength('space-2')}
+        />
+      )}
+    </>
   );
 }
 

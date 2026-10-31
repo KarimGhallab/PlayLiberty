@@ -6,7 +6,12 @@ import {
 } from 'expo-audio';
 import { useEffect, useRef } from 'react';
 
+import { useSessionStore } from '../../auth/sessionStore/sessionStore';
 import { usePlayerStore } from '../playerStore/playerStore';
+import {
+  type StreamFailureClassifier,
+  StreamFailureKind
+} from '../streamFailure/streamFailure';
 
 export type SourceResolver = (trackId: string) => AudioSource | null;
 
@@ -15,7 +20,10 @@ export type SourceResolver = (trackId: string) => AudioSource | null;
  * The OS's controls and notification are spec 24's; this hook sets the mode
  * that makes them possible and keeps the native source in step with the store. */
 
-export function usePlayerAudio(resolveSource: SourceResolver): void {
+export function usePlayerAudio(
+  resolveSource: SourceResolver,
+  classifyFailure: StreamFailureClassifier
+): void {
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
   const currentId = usePlayerStore(state => state.currentId);
@@ -26,6 +34,8 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
   const consumeSeek = usePlayerStore(state => state.consumeSeek);
   const loadedId = useRef<string | null>(null);
   const finished = useRef(false);
+  const healthyId = useRef<string | null>(null);
+  const classified = useRef<{ id: string; error: string } | null>(null);
 
   useEffect(() => {
     void setAudioModeAsync({
@@ -44,7 +54,6 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
     if (currentId === null) {
       if (loadedId.current !== null) {
         player.pause();
-        player.replace(null);
         loadedId.current = null;
       }
 
@@ -61,7 +70,6 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
 
     if (source === null) {
       player.pause();
-      player.replace(null);
       return;
     }
 
@@ -104,6 +112,55 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
 
     setPosition(status.currentTime);
   }, [setPosition, status.currentTime]);
+
+  /* Only an error from a source that had loaded is this track's failure; a
+   * stale error from the previous source is not read onto the new track. */
+  useEffect(() => {
+    if (status.error === null) {
+      healthyId.current = currentId;
+      classified.current = null;
+    }
+  }, [currentId, status.error]);
+
+  useEffect(() => {
+    if (status.error === null || currentId === null) {
+      return;
+    }
+
+    if (healthyId.current !== currentId) {
+      return;
+    }
+
+    if (
+      classified.current?.id === currentId &&
+      classified.current.error === status.error
+    ) {
+      return;
+    }
+
+    const failedId = currentId;
+
+    classified.current = { id: failedId, error: status.error };
+
+    void classifyFailure(failedId).then(kind => {
+      if (usePlayerStore.getState().currentId !== failedId) {
+        return;
+      }
+
+      if (kind === StreamFailureKind.Session) {
+        usePlayerStore.getState().clear();
+        void useSessionStore.getState().expire();
+        return;
+      }
+
+      if (kind === StreamFailureKind.Gone) {
+        usePlayerStore.getState().drop(failedId);
+        return;
+      }
+
+      usePlayerStore.getState().failPlayback(failedId);
+    });
+  }, [classifyFailure, currentId, status.error]);
 
   /* The status pulses once per ended track; the guard keeps a late pulse from
    * advancing again after the next track has already loaded. */

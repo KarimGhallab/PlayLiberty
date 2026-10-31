@@ -116,6 +116,30 @@ describe('the player bar', () => {
     });
   });
 
+  it('explains a playback failure and clears it on retry', async () => {
+    startPlaylist();
+    await renderBar();
+
+    await act(() => {
+      usePlayerStore.getState().failPlayback('track-1');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('notice')).toHaveTextContent(
+        /Playback failed: First Song/
+      );
+    });
+    expect(screen.getByTestId('notice')).toHaveTextContent(
+      /Play it again to retry, or choose another track/
+    );
+
+    fireEvent.press(screen.getByLabelText('Play First Song'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('notice')).not.toBeOnTheScreen();
+    });
+  });
+
   it('moves next and disables next at the last entry', async () => {
     usePlayerStore
       .getState()

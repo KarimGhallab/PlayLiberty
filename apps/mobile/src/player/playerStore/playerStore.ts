@@ -111,6 +111,8 @@ export interface PlayerState {
   readonly positionSeconds: number;
   /* A seek the player has not applied yet; it is cleared when applied. */
   readonly seekTo: number | null;
+  /* The track whose playback failed, while the notice is on screen. */
+  readonly playbackFailureId: string | null;
   start: (
     tracks: readonly PlayerTrack[],
     playlist: PlayerPlaylist | null,
@@ -121,6 +123,8 @@ export interface PlayerState {
   setShuffle: (shuffle: boolean) => void;
   play: (trackId: string) => void;
   setPlaying: (playing: boolean) => void;
+  failPlayback: (trackId: string) => void;
+  dismissPlaybackFailure: () => void;
   setPosition: (seconds: number) => void;
   seekToFraction: (fraction: number) => void;
   seekBy: (seconds: number) => void;
@@ -143,6 +147,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   isPlaying: false,
   positionSeconds: 0,
   seekTo: null,
+  playbackFailureId: null,
   start: (tracks, playlist, currentId, shuffle = false) => {
     const queue = tracks.map(track => track.id);
 
@@ -156,7 +161,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       shuffle,
       isPlaying: true,
       positionSeconds: 0,
-      seekTo: null
+      seekTo: null,
+      playbackFailureId: null
     });
   },
   startBareTrack: track =>
@@ -170,7 +176,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       shuffle: false,
       isPlaying: true,
       positionSeconds: 0,
-      seekTo: null
+      seekTo: null,
+      playbackFailureId: null
     }),
   /* Turning shuffle on draws a new order and a new leader; turning it off
    * restores the playlist order and leaves the playhead in place. */
@@ -195,7 +202,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         queue: shuffledWithLeader(state.queue, leader),
         currentId: leader,
         positionSeconds: 0,
-        seekTo: null
+        seekTo: null,
+        playbackFailureId: null
       };
     }),
   play: trackId =>
@@ -205,18 +213,37 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       }
 
       if (state.currentId === trackId) {
-        return { isPlaying: true };
+        return { isPlaying: true, playbackFailureId: null };
       }
 
       return {
         currentId: trackId,
         isPlaying: true,
         positionSeconds: 0,
-        seekTo: null
+        seekTo: null,
+        playbackFailureId: null
       };
     }),
   setPlaying: playing =>
-    set(state => (state.currentId === null ? state : { isPlaying: playing })),
+    set(state => {
+      if (state.currentId === null) {
+        return state;
+      }
+
+      return playing
+        ? { isPlaying: true, playbackFailureId: null }
+        : { isPlaying: false };
+    }),
+  failPlayback: trackId =>
+    set(state =>
+      state.tracks[trackId] === undefined
+        ? state
+        : { playbackFailureId: trackId, isPlaying: false }
+    ),
+  dismissPlaybackFailure: () =>
+    set(state =>
+      state.playbackFailureId === null ? state : { playbackFailureId: null }
+    ),
   setPosition: seconds =>
     set(state => {
       if (state.currentId === null) {
@@ -269,7 +296,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       currentId: next,
       positionSeconds: 0,
       isPlaying: true,
-      seekTo: null
+      seekTo: null,
+      playbackFailureId: null
     });
   },
   skipPrevious: () => {
@@ -288,13 +316,19 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
           currentId: previous,
           positionSeconds: 0,
           isPlaying: true,
-          seekTo: null
+          seekTo: null,
+          playbackFailureId: null
         });
         return;
       }
     }
 
-    set({ positionSeconds: 0, isPlaying: true, seekTo: null });
+    set({
+      positionSeconds: 0,
+      isPlaying: true,
+      seekTo: null,
+      playbackFailureId: null
+    });
   },
   advance: () => {
     const { queue, currentId } = get();
@@ -305,11 +339,19 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       currentId: next,
       isPlaying: next !== null,
       positionSeconds: 0,
-      seekTo: null
+      seekTo: null,
+      playbackFailureId: null
     });
   },
   drop: trackId => {
-    const { queue, sourceQueue, tracks, currentId, isPlaying } = get();
+    const {
+      queue,
+      sourceQueue,
+      tracks,
+      currentId,
+      isPlaying,
+      playbackFailureId
+    } = get();
     const index = queue.indexOf(trackId);
 
     if (index < 0) {
@@ -319,9 +361,16 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     const nextQueue = queue.filter(id => id !== trackId);
     const nextSource = sourceQueue.filter(id => id !== trackId);
     const nextTracks = withoutTrack(tracks, trackId);
+    const nextFailure =
+      playbackFailureId === trackId ? null : playbackFailureId;
 
     if (currentId !== trackId) {
-      set({ queue: nextQueue, sourceQueue: nextSource, tracks: nextTracks });
+      set({
+        queue: nextQueue,
+        sourceQueue: nextSource,
+        tracks: nextTracks,
+        playbackFailureId: nextFailure
+      });
       return;
     }
 
@@ -335,7 +384,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       currentId: next,
       isPlaying: next === null ? false : isPlaying,
       positionSeconds: 0,
-      seekTo: null
+      seekTo: null,
+      playbackFailureId: null
     });
   },
   clear: () =>
@@ -349,6 +399,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       shuffle: false,
       isPlaying: false,
       positionSeconds: 0,
-      seekTo: null
+      seekTo: null,
+      playbackFailureId: null
     })
 }));

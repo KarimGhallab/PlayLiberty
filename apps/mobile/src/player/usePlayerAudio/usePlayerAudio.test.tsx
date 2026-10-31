@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
+import { StreamFailureKind } from '../streamFailure/streamFailure';
 import { usePlayerAudio } from './usePlayerAudio';
 
 jest.mock('expo-audio', () => {
@@ -13,9 +14,10 @@ jest.mock('expo-audio', () => {
     seekTo: jest.fn(() => Promise.resolve())
   };
   const status = {
-    current: { didJustFinish: false, currentTime: 0 } as {
+    current: { didJustFinish: false, currentTime: 0, error: null } as {
       didJustFinish: boolean;
       currentTime: number;
+      error: string | null;
     }
   };
 
@@ -29,6 +31,16 @@ jest.mock('expo-audio', () => {
   };
 });
 
+jest.mock('../../auth/sessionStore/sessionStore', () => {
+  const expire = jest.fn(() => Promise.resolve());
+
+  return {
+    __esModule: true,
+    __expire: expire,
+    useSessionStore: { getState: () => ({ expire }) }
+  };
+});
+
 interface AudioMock {
   readonly __player: {
     readonly replace: jest.Mock;
@@ -37,12 +49,26 @@ interface AudioMock {
     readonly seekTo: jest.Mock;
   };
   readonly __status: {
-    current: { didJustFinish: boolean; currentTime: number };
+    current: {
+      didJustFinish: boolean;
+      currentTime: number;
+      error: string | null;
+    };
   };
 }
 
+interface SessionMock {
+  readonly __expire: jest.Mock;
+}
+
 const audio = jest.requireMock<AudioMock>('expo-audio');
+const session = jest.requireMock<SessionMock>(
+  '../../auth/sessionStore/sessionStore'
+);
 const resolveSource = (trackId: string): { uri: string } => ({ uri: trackId });
+const classifyFailure = jest.fn(
+  async (): Promise<StreamFailureKind> => StreamFailureKind.Unknown
+);
 
 function track(id: string): PlayerTrack {
   return {
@@ -66,14 +92,18 @@ function start(ids: readonly string[], currentId: string): void {
 beforeEach(() => {
   jest.clearAllMocks();
   usePlayerStore.getState().clear();
-  audio.__status.current = { didJustFinish: false, currentTime: 0 };
+  audio.__status.current = {
+    didJustFinish: false,
+    currentTime: 0,
+    error: null
+  };
 });
 
 describe('the player audio', () => {
   it('loads only the track that was reached', async () => {
     start(['a', 'b'], 'a');
 
-    await renderHook(() => usePlayerAudio(resolveSource));
+    await renderHook(() => usePlayerAudio(resolveSource, classifyFailure));
 
     expect(audio.__player.replace).toHaveBeenCalledTimes(1);
     expect(audio.__player.replace).toHaveBeenLastCalledWith({ uri: 'a' });
@@ -89,7 +119,7 @@ describe('the player audio', () => {
   it('plays and pauses the same source with the player state', async () => {
     start(['a'], 'a');
 
-    await renderHook(() => usePlayerAudio(resolveSource));
+    await renderHook(() => usePlayerAudio(resolveSource, classifyFailure));
 
     expect(audio.__player.play).toHaveBeenCalled();
 
@@ -109,10 +139,16 @@ describe('the player audio', () => {
 
   it('reports the player position to the store', async () => {
     start(['a'], 'a');
-    const view = await renderHook(() => usePlayerAudio(resolveSource));
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
 
     await act(() => {
-      audio.__status.current = { didJustFinish: false, currentTime: 12.5 };
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 12.5,
+        error: null
+      };
     });
     await view.rerender({});
 
@@ -121,7 +157,9 @@ describe('the player audio', () => {
 
   it('applies a seek once', async () => {
     start(['a'], 'a');
-    const view = await renderHook(() => usePlayerAudio(resolveSource));
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
 
     await act(() => {
       usePlayerStore.getState().seekToFraction(0.5);
@@ -139,10 +177,16 @@ describe('the player audio', () => {
 
   it('advances once when the track finishes', async () => {
     start(['a', 'b'], 'a');
-    const view = await renderHook(() => usePlayerAudio(resolveSource));
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
 
     await act(() => {
-      audio.__status.current = { didJustFinish: true, currentTime: 60 };
+      audio.__status.current = {
+        didJustFinish: true,
+        currentTime: 60,
+        error: null
+      };
     });
     await view.rerender({});
 
@@ -153,16 +197,149 @@ describe('the player audio', () => {
     expect(usePlayerStore.getState().currentId).toBe('b');
   });
 
-  it('clears the source when the queue stops', async () => {
+  it('stops the player when the queue stops', async () => {
     start(['a'], 'a');
 
-    await renderHook(() => usePlayerAudio(resolveSource));
+    await renderHook(() => usePlayerAudio(resolveSource, classifyFailure));
 
     await act(() => {
       usePlayerStore.getState().clear();
     });
 
     expect(audio.__player.pause).toHaveBeenCalled();
-    expect(audio.__player.replace).toHaveBeenLastCalledWith(null);
+    expect(audio.__player.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a gone track and advances', async () => {
+    start(['a', 'b'], 'a');
+    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Gone);
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 0,
+        error: 'stream failed'
+      };
+    });
+    await view.rerender({});
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('b');
+    });
+    expect(usePlayerStore.getState().queue).toEqual(['b']);
+    expect(audio.__player.replace).toHaveBeenLastCalledWith({ uri: 'b' });
+  });
+
+  it('stops when the last entry is gone', async () => {
+    start(['a'], 'a');
+    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Gone);
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 0,
+        error: 'stream failed'
+      };
+    });
+    await view.rerender({});
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBeNull();
+    });
+    expect(usePlayerStore.getState().queue).toEqual([]);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('pauses on an unclassified refusal and names the track', async () => {
+    start(['a', 'b'], 'a');
+    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Unknown);
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 0,
+        error: 'stream failed'
+      };
+    });
+    await view.rerender({});
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().playbackFailureId).toBe('a');
+    });
+    expect(usePlayerStore.getState().currentId).toBe('a');
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().queue).toEqual(['a', 'b']);
+  });
+
+  it('expires the session instead of drawing a broken track', async () => {
+    start(['a'], 'a');
+    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Session);
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 0,
+        error: 'stream failed'
+      };
+    });
+    await view.rerender({});
+
+    await waitFor(() => {
+      expect(session.__expire).toHaveBeenCalled();
+    });
+    expect(usePlayerStore.getState().currentId).toBeNull();
+    expect(usePlayerStore.getState().playbackFailureId).toBeNull();
+  });
+
+  it('ignores a classification that arrives after the playhead moved', async () => {
+    let resolveKind: ((kind: StreamFailureKind) => void) | null = null;
+
+    start(['a', 'b'], 'a');
+    classifyFailure.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveKind = resolve;
+        })
+    );
+    const view = await renderHook(() =>
+      usePlayerAudio(resolveSource, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 0,
+        error: 'stream failed'
+      };
+    });
+    await view.rerender({});
+
+    await waitFor(() => {
+      expect(classifyFailure).toHaveBeenCalledTimes(1);
+    });
+
+    await act(() => {
+      usePlayerStore.getState().play('b');
+    });
+
+    await act(async () => {
+      resolveKind?.(StreamFailureKind.Gone);
+      await Promise.resolve();
+    });
+
+    expect(usePlayerStore.getState().currentId).toBe('b');
+    expect(usePlayerStore.getState().queue).toEqual(['a', 'b']);
   });
 });

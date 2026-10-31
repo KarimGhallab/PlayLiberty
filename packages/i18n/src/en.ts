@@ -291,6 +291,8 @@ export const en = {
     openPlaylist: 'Open {name}',
     seekForward: 'Forward ten seconds',
     seekBackward: 'Back ten seconds',
+    failed: 'Playback failed: {title}',
+    failedDetail: 'Play it again to retry, or choose another track.',
     position: 'Position in track',
     positionValue: '{elapsed} of {duration}',
     shortcutShift: 'Shift',

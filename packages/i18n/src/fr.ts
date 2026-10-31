@@ -300,6 +300,8 @@ export const fr: Messages = {
     openPlaylist: 'Ouvrir {name}',
     seekForward: 'Avancer de dix secondes',
     seekBackward: 'Reculer de dix secondes',
+    failed: 'La lecture a échoué : {title}',
+    failedDetail: 'Relancez la lecture ou choisissez une autre piste.',
     position: 'Position dans la piste',
     positionValue: '{elapsed} sur {duration}',
     shortcutShift: 'Shift',
