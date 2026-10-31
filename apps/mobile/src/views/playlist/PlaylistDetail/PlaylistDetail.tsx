@@ -43,6 +43,7 @@ import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
+import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdateSort } from '../../../api/useUpdateSort';
@@ -60,6 +61,7 @@ import PlaylistControls from '../PlaylistControls/PlaylistControls';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
+import SyncBand from '../SyncBand/SyncBand';
 import TrackActionsSheet from '../TrackActionsSheet/TrackActionsSheet';
 import {
   type TrackActionKey,
@@ -127,6 +129,7 @@ export default function PlaylistDetail({
   const directory = useAccountDirectory();
   const sync = useSyncPlaylist();
   const retry = useRetryTrack(playlistId ?? '');
+  const retryFailed = useRetryFailedTracks(playlistId ?? '');
   const fetchWhole = useFetchTrackWhole(playlistId ?? '');
   const removeTrack = useRemoveTrack(playlistId ?? '');
   const deletePlaylist = useDeletePlaylist();
@@ -386,6 +389,27 @@ export default function PlaylistDetail({
     activeFilter === null
       ? undefined
       : STATUS_CHIPS.find(chip => chip.value === activeFilter);
+  const bandRun = latestRun.data ?? null;
+  const bandCounts = tracks.counts;
+  const band =
+    latestRun.isSuccess && bandRun !== null && bandCounts !== undefined ? (
+      <SyncBand
+        playlist={data}
+        run={bandRun}
+        counts={bandCounts}
+        now={now}
+        canWrite={canWritePlaylist(data)}
+        syncing={syncInFlight}
+        onSync={() => {
+          sync.mutate(data.id);
+        }}
+        retryingFailed={retryFailed.isPending}
+        onRetryFailed={() => {
+          retryFailed.mutate();
+        }}
+        showRunningStamp={!syncInFlight}
+      />
+    ) : null;
 
   const playableQueue = (queue.data?.items ?? []).filter(entry =>
     isPlayable(entry.track)
@@ -671,6 +695,7 @@ export default function PlaylistDetail({
             data.access === 'owner' ? () => setHeaderOpen(true) : undefined
           }
         />
+        {band}
         {showControls ? (
           <PlaylistControls
             sort={data.sort}

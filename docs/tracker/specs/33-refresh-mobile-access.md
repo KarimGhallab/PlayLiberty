@@ -45,6 +45,7 @@ The app obtains a short-lived access token and a long-lived refresh token at pro
 30. As a maintainer, I want the web client untouched, so that the browser session keeps its single credential.
 31. As a maintainer, I want the refresh decisions recorded in one spec, so that the earlier lifetime clauses are not silently contradicted.
 32. As an operator, I want a family revoked on reuse to also delete its live access tokens, so that detection cuts the attacker's window immediately.
+33. As a user whose device clock is wrong, I want renewal scheduled from the server's duration, so that the app does not refresh on every request.
 
 ## Implementation Decisions
 
@@ -67,16 +68,18 @@ The app obtains a short-lived access token and a long-lived refresh token at pro
   "access": {
     "id": "pangolin-access-token-id",
     "secret": "pangolin-access-token-secret",
-    "expires_at": "2026-10-30T12:00:00.000Z"
+    "expires_at": "2026-10-30T12:00:00.000Z",
+    "expires_in": 43200
   },
   "refresh": {
     "token": "opaque-refresh-token",
-    "expires_at": "2027-04-28T12:00:00.000Z"
+    "expires_at": "2027-04-28T12:00:00.000Z",
+    "expires_in": 15552000
   }
 }
 ```
 
-- `expires_at` is the Pangolin token's actual expiry, passed through from the Integration API response. The refresh expiry is computed as the sliding window clamped to the family cap. Both are ISO 8601 UTC.
+- `expires_at` is the absolute expiry in ISO 8601 UTC: the Pangolin token's own expiry for the access pair, and the sliding window clamped to the family cap for the refresh token. `expires_in` is the same lifetime as whole seconds from the response. The server keeps the absolute value; the client schedules from the relative one. _Decided here:_ both fields, because the absolute value is the record and the relative value is the only safe scheduling input when a device clock is wrong.
 - The exchange and refresh share one token-pair schema, so the client has one record shape.
 
 ### The refresh endpoint
@@ -115,8 +118,8 @@ The app obtains a short-lived access token and a long-lived refresh token at pro
 
 ### Client
 
-- The two separate SecureStore keys become one JSON session record holding the access id, the access secret, the access expiry, the refresh token, and the refresh expiry. It is written atomically after a refresh and deleted on sign-out. _Decided here:_ one record avoids a crash leaving half a credential pair.
-- Before every send, the client compares the current time with the access expiry. Inside a 60-second margin it refreshes first, then sends. _Decided here:_ just-in-time, not a background timer, because mobile timers are unreliable when the app is suspended.
+- The two separate SecureStore keys become one JSON session record holding the access id, the access secret, the local access deadline, the refresh token, and the refresh expiry. The deadline is computed at receipt as `receivedAt + expires_in * 1000`, not copied from the server's `expires_at`, so a phone whose clock is offset does not treat every new token as already expired. It is written atomically after a refresh and deleted on sign-out. _Decided here:_ one record avoids a crash leaving half a credential pair.
+- Before every send, the client compares the current time with the local access deadline. Inside a 60-second margin it refreshes first, then sends. _Decided here:_ just-in-time, not a background timer, because mobile timers are unreliable when the app is suspended, and a clock offset cannot cause a refresh per request because the deadline came from a duration. A clock jump after receipt is still covered by the fallback.
 - One in-flight refresh promise is shared by API reads, mutations, the live event stream, and the player's source resolution. Callers await the same result.
 - A `401` from the edge triggers the same refresh once, then one retry. A second `401` after a fresh token is a definitive refusal.
 - Only `400 invalid_grant` clears the session. `429`, `502`, network failures, and an edge redirect on the bypass path keep the session and surface a retry with backoff. The current rule that any API `401` signs out moves behind the refresh attempt.
@@ -134,7 +137,7 @@ The app obtains a short-lived access token and a long-lived refresh token at pro
 
 ### Contracts
 
-- The token pair is one shared schema, used by both the exchange and refresh responses.
+- The token pair is one shared schema, used by both the exchange and refresh responses, carrying the absolute `expires_at` and the relative `expires_in` for each credential.
 - The refresh request and the revoke request each have a schema for the refresh token.
 - The existing problem codes cover every refusal; no new code is added.
 - The revoke endpoint answers `204`, including when the family is already gone or belongs to another account.
@@ -145,14 +148,14 @@ A good test asserts external behavior that a user or an operator relies on, at t
 
 ### Server
 
-- The refresh route is tested at the HTTP seam: the real app over a temporary database, a fake Pangolin client that records mints and revocations, and the injected clock. This is the same seam as the provisioning route tests. It proves rotation, the grace replay, reuse revocation of the family and its access tokens, a mint failure that does not consume the token, a vanished user, the cap clamp, the rate limit, and the audit lines.
+- The refresh route is tested at the HTTP seam: the real app over a temporary database, a fake Pangolin client that records mints and revocations, and the injected clock. This is the same seam as the provisioning route tests. It proves rotation, the grace replay, reuse revocation of the family and its access tokens, a mint failure that does not consume the token, a vanished user, the cap clamp, the rate limit, the expiry fields, and the audit lines.
 - The identity hook's exemption is tested at its own seam, following the exchange cases: `POST` reaches the route without identity, while `GET` and `PUT` on the same path are refused.
 - The real Pangolin client gets one contract test for the revocation request, because a wrong delete path fails silently at sign-out. Its other HTTP shape stays cut, as the provisioning spec decided.
 - The revoke endpoint is tested at the HTTP seam for the account check, the family revocation, and the idempotent answer.
 
 ### Mobile
 
-- The session module is tested at its injected seam, following the provisioning dependencies: `fetch`, `store`, and `now`. It proves the proactive margin, the single-flight promise, the rotation write, the `invalid_grant` versus transient split, the atomic record, and sign-out.
+- The session module is tested at its injected seam, following the provisioning dependencies: `fetch`, `store`, and `now`. It proves the proactive margin, the single-flight promise, the rotation write, the `invalid_grant` versus transient split, the atomic record, sign-out, and that a device clock offset does not cause a refresh per request.
 - The API client is tested with a fake session: a `401` produces one refresh and one retry, and a refused refresh produces the signed-out error only for `invalid_grant`.
 - The live event module keeps its existing refusal test and adds the `401` refresh and reconnect branch.
 
@@ -184,3 +187,4 @@ The refresh token's format and length, the 180-day and one-year constants, the S
 - The access life is the lever that makes the stream recovery path necessary. If the default drops below 12 hours, build that path first.
 - The web client and its single credential are untouched. The edge keeps two exact SSO exemptions, not one.
 - The development proxy and the Android build need the refresh path for the provisioning journey to keep working end to end.
+- The absolute expiry is the server's record; the relative duration is the client's schedule. Keeping both is deliberate: the first is useful for display and records, the second prevents a clock offset from turning a fresh token into an immediate refresh.

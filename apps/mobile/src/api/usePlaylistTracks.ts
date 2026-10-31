@@ -11,7 +11,7 @@ import { playlistTracksKey } from '@playliberty/query';
 
 import { apiClient } from './client';
 
-const PAGE_SIZE = 100;
+export const PLAYLIST_TRACKS_PAGE_SIZE = 100;
 
 /* The next page starts where the loaded pages end, and stops at the total. */
 export function nextTracksPageParam(lastPage: {
@@ -60,7 +60,7 @@ export function usePlaylistTracks(
         { playlistId },
         {},
         {
-          limit: PAGE_SIZE,
+          limit: PLAYLIST_TRACKS_PAGE_SIZE,
           offset: pageParam,
           ...(state === undefined ? {} : { state })
         }

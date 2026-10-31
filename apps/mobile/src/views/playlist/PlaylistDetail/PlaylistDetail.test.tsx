@@ -40,6 +40,7 @@ import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
+import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdateSort } from '../../../api/useUpdateSort';
@@ -75,6 +76,9 @@ jest.mock('../../../api/useDeletePlaylist', () => ({
 }));
 jest.mock('../../../api/useUpdateSort', () => ({
   useUpdateSort: jest.fn()
+}));
+jest.mock('../../../api/useRetryFailedTracks', () => ({
+  useRetryFailedTracks: jest.fn()
 }));
 jest.mock('../../../shared/clipboard/copyText', () => ({
   copyText: jest.fn()
@@ -114,6 +118,9 @@ const useDeletePlaylistMock = useDeletePlaylist as jest.MockedFunction<
 >;
 const useUpdateSortMock = useUpdateSort as jest.MockedFunction<
   typeof useUpdateSort
+>;
+const useRetryFailedTracksMock = useRetryFailedTracks as jest.MockedFunction<
+  typeof useRetryFailedTracks
 >;
 const copyTextMock = copyText as jest.MockedFunction<typeof copyText>;
 const useAccountDirectoryMock = useAccountDirectory as jest.MockedFunction<
@@ -237,6 +244,19 @@ const emptyPage = {
   counts: emptyCounts
 };
 
+const completedRun: SyncRun = {
+  id: 'run-1',
+  playlistId: 'playlist-1',
+  status: SyncRunStatus.Completed,
+  addedCount: 2,
+  retainedCount: 3,
+  removedCount: 1,
+  failedCount: 0,
+  startedAt: '2026-09-29T11:59:00.000Z',
+  finishedAt: '2026-09-29T12:00:00.000Z',
+  error: null
+};
+
 const bea: AccountSummary = {
   id: 'account-2',
   displayName: 'Bea',
@@ -311,6 +331,7 @@ interface RenderOptions {
   readonly fetchNextPageError?: boolean;
   readonly syncPending?: boolean;
   readonly sortPending?: boolean;
+  readonly retryFailedPending?: boolean;
   readonly retryPending?: boolean;
   readonly retryVariables?: string;
   readonly fetchPending?: boolean;
@@ -335,6 +356,7 @@ async function renderDetail(options: RenderOptions = {}) {
   const removeMutate = jest.fn();
   const deleteMutate = jest.fn();
   const sortMutate = jest.fn();
+  const retryFailedMutate = jest.fn();
   const queueRefetch = jest.fn<() => Promise<QueueReadResult>>();
   const queueItems = options.queue ?? [track];
   const queueBehaviour =
@@ -460,6 +482,12 @@ async function renderDetail(options: RenderOptions = {}) {
       isPending: options.sortPending === true
     })
   );
+  useRetryFailedTracksMock.mockReturnValue(
+    mutationResult({
+      mutate: retryFailedMutate,
+      isPending: options.retryFailedPending === true
+    })
+  );
 
   await render(
     <I18nProvider
@@ -487,7 +515,8 @@ async function renderDetail(options: RenderOptions = {}) {
     fetchWholeMutate,
     removeMutate,
     deleteMutate,
-    sortMutate
+    sortMutate,
+    retryFailedMutate
   };
 }
 
@@ -1538,6 +1567,63 @@ describe('the playlist detail', () => {
     await renderDetail({ latestRun: running });
 
     expect(screen.getByText('Syncing')).toBeOnTheScreen();
+  });
+
+  it('draws the run band under the identity and above the controls', async () => {
+    await renderDetail({ latestRun: completedRun });
+    const scroll = screen.getByTestId('playlist-scroll');
+
+    expect(
+      within(scroll)
+        .getAllByTestId(/^(playlist-(identity|controls)|sync-band)$/)
+        .map(node => node.props.testID)
+    ).toEqual(['playlist-identity', 'sync-band', 'playlist-controls']);
+    expect(screen.getByText('Last sync 2 days ago')).toBeOnTheScreen();
+    expect(screen.getByLabelText('3 kept')).toBeOnTheScreen();
+  });
+
+  it('retries a failed sync for a writer', async () => {
+    const failedRun: SyncRun = {
+      ...completedRun,
+      status: SyncRunStatus.Failed,
+      error: 'yt-dlp: HTTP 403'
+    };
+    const { syncMutate } = await renderDetail({
+      playlist: { ...playlist, syncStatus: PlaylistSyncStatus.Error },
+      latestRun: failedRun
+    });
+
+    expect(screen.queryByTestId('sync-cell-kept')).not.toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('sync-error-retry'));
+    expect(syncMutate).toHaveBeenCalledWith('playlist-1');
+  });
+
+  it('retries the failed set from the band', async () => {
+    const { retryFailedMutate } = await renderDetail({
+      latestRun: completedRun,
+      tracks: {
+        ...page,
+        counts: { ...counts, [TrackFileStatus.Failed]: 2 }
+      }
+    });
+
+    fireEvent.press(screen.getByTestId('sync-retry-failed'));
+    expect(retryFailedMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws no sync retry for a read collaborator', async () => {
+    await renderDetail({
+      playlist: {
+        ...playlist,
+        access: ShareLevel.Read,
+        syncStatus: PlaylistSyncStatus.Error
+      },
+      latestRun: { ...completedRun, status: SyncRunStatus.Failed, error: '403' }
+    });
+
+    expect(screen.queryByTestId('sync-error-retry')).not.toBeOnTheScreen();
+    expect(screen.getByText(/Could not reach YouTube/)).toBeOnTheScreen();
   });
 
   it('reads the route id', async () => {
