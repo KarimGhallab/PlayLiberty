@@ -268,7 +268,10 @@ const styles = StyleSheet.create({
   scrimFill: {
     backgroundColor: tokenColor('scrim')
   },
+  /* A body taller than the room left above the keyboard shrinks and scrolls
+   * itself, so the sheet's actions never leave the screen. */
   sheet: {
+    maxHeight: '90%',
     paddingHorizontal: tokenLength('space-5'),
     borderTopLeftRadius: tokenLength('radius-card'),
     borderTopRightRadius: tokenLength('radius-card'),

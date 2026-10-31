@@ -8,6 +8,7 @@ import {
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import {
+  AddTrackOutcome,
   PlaylistSort,
   PlaylistSyncStatus,
   SyncRunStatus,
@@ -36,28 +37,33 @@ import {
   ownerNameFrom,
   useAccountDirectory
 } from '../../../api/useAccountDirectory';
+import { useAddTrack } from '../../../api/useAddTrack';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
-import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
+import { usePlaylistTracks } from '../../../api/usePlaylistTracks/usePlaylistTracks';
+import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
-import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic';
+import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
-import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddAction';
+import GalleryAddAction, {
+  galleryAddActionSize
+} from '../../library/GalleryAddAction/GalleryAddAction';
 import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
 import {
   type PlaylistAction,
   type PlaylistActionKey,
   UNDO_WINDOW_MS
 } from '../../library/playlistActions/playlistActions';
+import AddTrackSheet from '../AddTrackSheet/AddTrackSheet';
 import PlaylistControls from '../PlaylistControls/PlaylistControls';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
@@ -113,6 +119,7 @@ export default function PlaylistDetail({
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const playlist = usePlaylist(playlistId);
+  const playlists = usePlaylists();
   const [filter, setFilter] = useState<TrackFileStatus | null>(null);
   const currentId = usePlayerStore(state => state.currentId);
   const shuffled = usePlayerStore(state => state.shuffle);
@@ -128,6 +135,7 @@ export default function PlaylistDetail({
   const sort = useUpdateSort(playlistId ?? '');
   const skipSetting = useUpdateSkipNonMusic(playlistId ?? '');
   const queue = usePlaylistQueue(playlistId, playlist.isSuccess);
+  const addTrack = useAddTrack();
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
   const sync = useSyncPlaylist();
@@ -142,6 +150,7 @@ export default function PlaylistDetail({
   );
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [headerOpen, setHeaderOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [starting, setStarting] = useState<'play' | 'shuffle' | null>(null);
   const [notice, setNotice] = useState<{
     readonly message: string;
@@ -395,6 +404,60 @@ export default function PlaylistDetail({
         });
       }
     });
+  };
+
+  /* The picker holds the gallery's first page, never a later one, so a long
+   * library costs one read. The detail's own playlist may fall past that page;
+   * the sheet still leads with it. */
+  const writablePlaylists =
+    playlists.data === undefined
+      ? []
+      : playlists.data.items
+          .slice(0, playlists.data.limit)
+          .filter(canWritePlaylist);
+  const addTruncated =
+    playlists.data !== undefined && playlists.data.total > playlists.data.limit;
+  const addProblem = addTrack.isError
+    ? problemMessage(addTrack.error, t('addTrackDialog.failed'))
+    : null;
+  const addResult = addTrack.data ?? null;
+  /* The floating action owns the bottom-right corner, so a notice or snackbar
+   * clears its height rather than sitting under it. */
+  const floatingOffset = canWritePlaylist(data)
+    ? galleryAddActionSize + tokenLength('space-3')
+    : 0;
+
+  const openAdd = (): void => {
+    addTrack.reset();
+    setAddOpen(true);
+  };
+
+  const closeAdd = (): void => {
+    setAddOpen(false);
+    addTrack.reset();
+  };
+
+  /* A batch with a refusal stays open to draw every outcome. A clean batch has
+   * nothing to answer, so the sheet goes. */
+  const submitAdd = (url: string, playlistIds: string[]): void => {
+    /* A new batch must not draw the last batch's outcomes while it runs. */
+    addTrack.reset();
+    addTrack.mutate(
+      { url, playlistIds },
+      {
+        onSuccess: result => {
+          if (
+            result.results.some(
+              entry => entry.outcome === AddTrackOutcome.Refused
+            )
+          ) {
+            return;
+          }
+
+          closeAdd();
+        }
+      }
+    );
   };
 
   const showControls =
@@ -812,6 +875,26 @@ export default function PlaylistDetail({
           </Pressable>
         ) : null}
       </ScrollView>
+      {canWritePlaylist(data) ? (
+        <GalleryAddAction
+          testID="detail-add-track"
+          label={t('detail.addTrack')}
+          horizontalInset={tokenLength('space-4')}
+          onPress={openAdd}
+        />
+      ) : null}
+      <AddTrackSheet
+        visible={addOpen}
+        currentPlaylist={data}
+        playlists={writablePlaylists}
+        firstPageLimit={playlists.data?.limit ?? null}
+        truncated={addTruncated}
+        busy={addTrack.isPending}
+        problem={addProblem}
+        result={addResult}
+        onSubmit={submitAdd}
+        onClose={closeAdd}
+      />
       <TrackActionsSheet
         trackTitle={actionTarget?.track.title ?? null}
         actions={actions}
@@ -830,6 +913,7 @@ export default function PlaylistDetail({
           message={pending.message}
           detail={pending.detail}
           durationMs={undoWindowMs}
+          bottomOffset={floatingOffset}
           horizontalInset={tokenLength('space-4')}
           onUndo={undoPending}
         />
@@ -840,9 +924,10 @@ export default function PlaylistDetail({
           detail={notice.detail}
           onDismiss={() => setNotice(null)}
           bottomOffset={
-            pending === null
+            floatingOffset +
+            (pending === null
               ? 0
-              : tokenLength('space-9') + tokenLength('space-4')
+              : tokenLength('space-9') + tokenLength('space-4'))
           }
         />
       )}

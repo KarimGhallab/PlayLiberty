@@ -7,6 +7,9 @@ import { tokenColor, tokenLength } from '../../../shared/styles/tokens';
 export interface GalleryAddActionProps {
   readonly label: string;
   readonly onPress: () => void;
+  /* The padded screens place it themselves; this keeps it off a bare edge. */
+  readonly horizontalInset?: number;
+  readonly testID?: string;
 }
 
 /** The circle's box, which the gallery clears under the last row. */
@@ -17,18 +20,23 @@ export const galleryAddActionSize =
  * thumb reaches it. An empty gallery draws its own labelled action instead. */
 export default function GalleryAddAction({
   label,
-  onPress
+  onPress,
+  horizontalInset = 0,
+  testID = 'gallery-add'
 }: GalleryAddActionProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <Pressable
-      testID="gallery-add"
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [
         styles.action,
-        { bottom: insets.bottom + tokenLength('space-4') },
+        {
+          right: horizontalInset,
+          bottom: insets.bottom + tokenLength('space-4')
+        },
         pressed && styles.pressed
       ]}
       onPress={onPress}>
@@ -40,7 +48,6 @@ export default function GalleryAddAction({
 const styles = StyleSheet.create({
   action: {
     position: 'absolute',
-    right: 0,
     width: galleryAddActionSize,
     height: galleryAddActionSize,
     alignItems: 'center',

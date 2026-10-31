@@ -1,19 +1,12 @@
 import { useState } from 'react';
-import {
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View
-} from 'react-native';
+import { Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CreatePlaylistInputSchema } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Sheet from '../../../shared/components/Sheet/Sheet';
-import Spinner from '../../../shared/components/Spinner/Spinner';
+import SheetActions from '../../../shared/components/SheetActions/SheetActions';
 import {
   fontFamily,
   tokenColor,
@@ -154,73 +147,18 @@ export default function AddPlaylistSheet({
         />
       </View>
 
-      {confirmingDiscard ? (
-        <Text
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-          style={styles.discard}>
-          {t('common.discardPrompt')}
-        </Text>
-      ) : null}
-
-      {confirmingDiscard ? (
-        <View style={styles.actions}>
-          <Pressable
-            testID="add-keep-editing"
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.secondary,
-              pressed && styles.secondaryPressed
-            ]}
-            onPress={() => setConfirmingDiscard(false)}>
-            <Text style={styles.secondaryLabel}>{t('common.keepEditing')}</Text>
-          </Pressable>
-          <Pressable
-            testID="add-discard"
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.primary,
-              pressed && styles.primaryPressed
-            ]}
-            onPress={onClose}>
-            <Text style={styles.primaryLabel}>{t('common.discard')}</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.actions}>
-          <Pressable
-            testID="add-cancel"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: busy }}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.secondary,
-              pressed && styles.secondaryPressed,
-              busy && styles.disabled
-            ]}
-            onPress={requestClose}>
-            <Text style={styles.secondaryLabel}>{t('common.cancel')}</Text>
-          </Pressable>
-          <Pressable
-            testID="add-submit"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: busy || !dirty, busy }}
-            disabled={busy || !dirty}
-            style={({ pressed }) => [
-              styles.primary,
-              pressed && styles.primaryPressed,
-              !dirty && styles.disabled
-            ]}
-            onPress={submit}>
-            {busy ? <Spinner color={tokenColor('bg')} /> : null}
-            <Text style={styles.primaryLabel}>
-              {busy
-                ? t('addPlaylistDialog.adding')
-                : t('addPlaylistDialog.add')}
-            </Text>
-          </Pressable>
-        </View>
-      )}
+      <SheetActions
+        testIDPrefix="add"
+        busy={busy}
+        canSubmit={dirty}
+        addLabel={t('addPlaylistDialog.add')}
+        addingLabel={t('addPlaylistDialog.adding')}
+        confirmingDiscard={confirmingDiscard}
+        onAdd={submit}
+        onCancel={requestClose}
+        onDiscard={onClose}
+        onKeepEditing={() => setConfirmingDiscard(false)}
+      />
     </Sheet>
   );
 }
@@ -259,60 +197,6 @@ const styles = StyleSheet.create({
   },
   checkBlock: {
     marginTop: tokenLength('space-4')
-  },
-  discard: {
-    color: tokenColor('ink'),
-    fontFamily,
-    fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal'),
-    marginTop: tokenLength('space-4')
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: tokenLength('space-2'),
-    marginTop: tokenLength('space-5')
-  },
-  secondary: {
-    minHeight: touchTarget,
-    minWidth: touchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: tokenLength('space-5'),
-    borderWidth: 1,
-    borderColor: tokenColor('control-border'),
-    borderRadius: tokenLength('radius-control')
-  },
-  secondaryPressed: {
-    backgroundColor: tokenColor('surface-raised')
-  },
-  secondaryLabel: {
-    color: tokenColor('ink'),
-    fontFamily,
-    fontSize: tokenLength('text-md')
-  },
-  primary: {
-    minHeight: touchTarget,
-    minWidth: touchTarget,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokenLength('space-2'),
-    paddingHorizontal: tokenLength('space-5'),
-    borderWidth: 1,
-    borderColor: tokenColor('accent'),
-    borderRadius: tokenLength('radius-control'),
-    backgroundColor: tokenColor('accent')
-  },
-  primaryPressed: {
-    backgroundColor: tokenColor('accent-hover')
-  },
-  primaryLabel: {
-    color: tokenColor('bg'),
-    fontFamily,
-    fontSize: tokenLength('text-md'),
-    fontWeight: '500'
   },
   disabled: {
     opacity: tokenNumber('opacity-disabled')

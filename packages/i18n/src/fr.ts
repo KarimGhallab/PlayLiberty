@@ -264,6 +264,13 @@ export const fr: Messages = {
       "Collez le lien d'une vidéo YouTube, par exemple https://youtube.com/watch?v=...",
     add: 'Ajouter',
     adding: 'Ajout en cours',
+    playlistsLabel: 'Playlists',
+    firstPage:
+      'Seules les {count} premières playlists de la bibliothèque sont listées.',
+    outcomeAdded: 'Ajoutée',
+    outcomePresent: 'Déjà présente',
+    outcomeRefused: 'Refusée',
+    failed: "La piste n'a pas pu être ajoutée.",
     refusedSome: 'Ajoutée aux autres. Non ajoutée à :',
     refusedAll: "Rien n'a été ajouté. Non ajoutée à :"
   },

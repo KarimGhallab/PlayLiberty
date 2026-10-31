@@ -9,7 +9,7 @@ import type {
 import { endpoints } from '@playliberty/contracts';
 import { playlistTracksKey } from '@playliberty/query';
 
-import { apiClient } from './client';
+import { apiClient } from '../client';
 
 export const PLAYLIST_TRACKS_PAGE_SIZE = 100;
 

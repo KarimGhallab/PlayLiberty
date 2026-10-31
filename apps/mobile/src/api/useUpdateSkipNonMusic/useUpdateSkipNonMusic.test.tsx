@@ -18,10 +18,10 @@ import {
 } from '@playliberty/contracts';
 import { playlistKey } from '@playliberty/query';
 
-import { apiClient } from './client';
+import { apiClient } from '../client';
 import { useUpdateSkipNonMusic } from './useUpdateSkipNonMusic';
 
-jest.mock('./client', () => ({
+jest.mock('../client', () => ({
   apiClient: { send: jest.fn() }
 }));
 
@@ -77,32 +77,34 @@ async function renderSkip() {
     )
   });
 
+  cleanUp = () => {
+    view.unmount();
+    queryClient.clear();
+  };
+
   return {
     queryClient,
     view,
     saved: () => queryClient.getQueryData<Playlist>(playlistKey(playlist.id))
   };
-  cleanUp = () => {
-    view.unmount();
-    queryClient.clear();
-  };
 }
+
+let cleanUp: (() => void) | null = null;
 
 beforeEach(() => {
   sendMock.mockReset();
 });
 
-describe('the skip setting write', () => {
-  let cleanUp: (() => void) | null = null;
+afterEach(() => {
+  cleanUp?.();
+  cleanUp = null;
+});
 
+describe('the skip setting write', () => {
   it('moves the value on the press and puts it back on a refusal', async () => {
     const gate = deferred<Playlist>();
     sendMock.mockReturnValue(gate.promise);
     const { view, saved } = await renderSkip();
-    afterEach(() => {
-      cleanUp?.();
-      cleanUp = null;
-    });
 
     await act(() => {
       view.result.current.mutate(false);

@@ -4,7 +4,7 @@ import type { Playlist } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
 import { cacheEffects, playlistKey } from '@playliberty/query';
 
-import { apiClient } from './client';
+import { apiClient } from '../client';
 
 /* The switch moves on the press: the playlist cache carries the new value
  * until the write answers, and a refusal puts the saved one back. The setting

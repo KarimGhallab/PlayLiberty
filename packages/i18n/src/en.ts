@@ -257,6 +257,12 @@ export const en = {
       'Paste a YouTube video link, such as https://youtube.com/watch?v=...',
     add: 'Add',
     adding: 'Adding',
+    playlistsLabel: 'Playlists',
+    firstPage: 'Only the first {count} playlists in the library are listed.',
+    outcomeAdded: 'Added',
+    outcomePresent: 'Already there',
+    outcomeRefused: 'Refused',
+    failed: 'The track could not be added.',
     refusedSome: 'Added to the rest. Not added to:',
     refusedAll: 'Nothing was added. Not added to:'
   },

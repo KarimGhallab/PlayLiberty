@@ -12,6 +12,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
   type AccountSummary,
+  AddTrackOutcome,
+  type AddTrackResult,
   AssociationOrigin,
   FailureKind,
   type Playlist,
@@ -33,17 +35,19 @@ import { tokenLength, tokenNumber } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
+import { useAddTrack } from '../../../api/useAddTrack';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
-import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
+import { usePlaylistTracks } from '../../../api/usePlaylistTracks/usePlaylistTracks';
+import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
-import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic';
+import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -51,11 +55,17 @@ import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddA
 import PlaylistDetail from './PlaylistDetail';
 
 jest.mock('../../../api/usePlaylist', () => ({ usePlaylist: jest.fn() }));
-jest.mock('../../../api/usePlaylistTracks', () => ({
+jest.mock('../../../api/usePlaylistTracks/usePlaylistTracks', () => ({
   usePlaylistTracks: jest.fn()
 }));
 jest.mock('../../../api/usePlaylistQueue', () => ({
   usePlaylistQueue: jest.fn()
+}));
+jest.mock('../../../api/usePlaylists/usePlaylists', () => ({
+  usePlaylists: jest.fn()
+}));
+jest.mock('../../../api/useAddTrack', () => ({
+  useAddTrack: jest.fn()
 }));
 jest.mock('../../../api/useLatestSyncRun', () => ({
   useLatestSyncRun: jest.fn()
@@ -78,7 +88,7 @@ jest.mock('../../../api/useDeletePlaylist', () => ({
 jest.mock('../../../api/useUpdateSort', () => ({
   useUpdateSort: jest.fn()
 }));
-jest.mock('../../../api/useUpdateSkipNonMusic', () => ({
+jest.mock('../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic', () => ({
   useUpdateSkipNonMusic: jest.fn()
 }));
 jest.mock('../../../api/useRetryFailedTracks', () => ({
@@ -102,6 +112,10 @@ const usePlaylistTracksMock = usePlaylistTracks as jest.MockedFunction<
 const usePlaylistQueueMock = usePlaylistQueue as jest.MockedFunction<
   typeof usePlaylistQueue
 >;
+const usePlaylistsMock = usePlaylists as jest.MockedFunction<
+  typeof usePlaylists
+>;
+const useAddTrackMock = useAddTrack as jest.MockedFunction<typeof useAddTrack>;
 const useLatestSyncRunMock = useLatestSyncRun as jest.MockedFunction<
   typeof useLatestSyncRun
 >;
@@ -177,6 +191,27 @@ const neverSynced: Playlist = {
 const syncedEmpty: Playlist = {
   ...playlist,
   trackCount: 0
+};
+
+const writableOther: Playlist = {
+  ...playlist,
+  id: 'playlist-2',
+  name: 'Late Night Jazz',
+  access: ShareLevel.Write
+};
+
+const readOnlyOther: Playlist = {
+  ...playlist,
+  id: 'playlist-3',
+  name: 'Shared read',
+  access: ShareLevel.Read
+};
+
+const galleryPage = {
+  items: [playlist, writableOther, readOnlyOther],
+  total: 3,
+  limit: 200,
+  offset: 0
 };
 
 const track: PlaylistTrack = {
@@ -318,8 +353,16 @@ function mutationResult(overrides: Record<string, unknown> = {}) {
   } as never;
 }
 
+interface GalleryPage {
+  readonly items: readonly Playlist[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+}
+
 interface RenderOptions {
   readonly playlist?: Playlist;
+  readonly gallery?: GalleryPage;
   readonly tracks?: typeof page;
   readonly filteredTracks?: Partial<Record<TrackFileStatus, typeof page>>;
   readonly queue?: readonly PlaylistTrack[];
@@ -337,6 +380,8 @@ interface RenderOptions {
   readonly fetchingNextPage?: boolean;
   readonly fetchNextPageError?: boolean;
   readonly syncPending?: boolean;
+  readonly addPending?: boolean;
+  readonly addResult?: AddTrackResult;
   readonly sortPending?: boolean;
   readonly skipPending?: boolean;
   readonly retryFailedPending?: boolean;
@@ -365,6 +410,7 @@ async function renderDetail(options: RenderOptions = {}) {
   const deleteMutate = jest.fn();
   const sortMutate = jest.fn();
   const skipMutate = jest.fn();
+  const addMutate = jest.fn();
   const retryFailedMutate = jest.fn();
   const queueRefetch = jest.fn<() => Promise<QueueReadResult>>();
   const queueItems = options.queue ?? [track];
@@ -459,12 +505,20 @@ async function renderDetail(options: RenderOptions = {}) {
           })
         : queryResult({ items: queueItems })
   );
+  usePlaylistsMock.mockReturnValue(queryResult(options.gallery ?? galleryPage));
   useLatestSyncRunMock.mockReturnValue(queryResult(options.latestRun ?? null));
   useAccountDirectoryMock.mockReturnValue(queryResult(options.directory ?? []));
   useSyncPlaylistMock.mockReturnValue(
     mutationResult({
       mutate: syncMutate,
       isPending: options.syncPending === true
+    })
+  );
+  useAddTrackMock.mockReturnValue(
+    mutationResult({
+      mutate: addMutate,
+      isPending: options.addPending === true,
+      data: options.addResult
     })
   );
   useRetryTrackMock.mockReturnValue(
@@ -504,7 +558,7 @@ async function renderDetail(options: RenderOptions = {}) {
     })
   );
 
-  await render(
+  const view = await render(
     <I18nProvider
       initialLanguage={options.language ?? Language.English}
       storage={store}>
@@ -532,7 +586,9 @@ async function renderDetail(options: RenderOptions = {}) {
     deleteMutate,
     sortMutate,
     skipMutate,
-    retryFailedMutate
+    addMutate,
+    retryFailedMutate,
+    view
   };
 }
 
@@ -1789,5 +1845,164 @@ describe('the playlist detail', () => {
     expect(
       screen.getByRole('button', { name: "Retour à l'accueil" })
     ).toBeOnTheScreen();
+  });
+
+  it('draws the add action for a writer', async () => {
+    await renderDetail();
+
+    expect(screen.getByTestId('detail-add-track')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Add a track')).toBeOnTheScreen();
+  });
+
+  it('draws no add action for a read collaborator', async () => {
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    expect(screen.queryByTestId('detail-add-track')).not.toBeOnTheScreen();
+  });
+
+  it('opens the add sheet on the current playlist and the gallery writes', async () => {
+    const { view } = await renderDetail();
+
+    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await waitFor(() => {
+      expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
+    });
+
+    const boxes = within(screen.getByTestId('add-track-pick')).getAllByRole(
+      'checkbox'
+    );
+
+    expect(boxes.map(box => box.props.accessibilityLabel)).toEqual([
+      'Rain On The Window',
+      'Late Night Jazz'
+    ]);
+    expect(boxes[0]).toBeChecked();
+    view.unmount();
+  });
+
+  it('caps the add picker at the gallery first page', async () => {
+    const third: Playlist = {
+      ...playlist,
+      id: 'playlist-4',
+      name: 'Third write',
+      access: ShareLevel.Write
+    };
+
+    const { view } = await renderDetail({
+      gallery: {
+        items: [playlist, writableOther, third],
+        total: 3,
+        limit: 2,
+        offset: 0
+      }
+    });
+
+    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await waitFor(() => {
+      expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
+    });
+
+    expect(
+      screen.queryByTestId('add-track-pick-playlist-4')
+    ).not.toBeOnTheScreen();
+    expect(screen.getByTestId('add-track-first-page')).toHaveTextContent(
+      /first 2 playlists/
+    );
+    view.unmount();
+  });
+
+  it('sends one batch and closes the sheet on a clean result', async () => {
+    const result: AddTrackResult = {
+      results: [{ playlistId: 'playlist-1', outcome: AddTrackOutcome.Added }]
+    };
+    const { addMutate } = await renderDetail();
+    const mutate = addMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          input: { url: string; playlistIds: string[] },
+          options: { onSuccess?: (answer: AddTrackResult) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_input, options) => {
+      options.onSuccess?.(result);
+    });
+
+    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await waitFor(() => {
+      expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
+    });
+    fireEvent.changeText(
+      screen.getByLabelText('Video link'),
+      'https://youtube.com/watch?v=dQw4w9WgXcQ'
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('add-track-submit')).toBeEnabled();
+    });
+    fireEvent.press(screen.getByTestId('add-track-submit'));
+
+    expect(addMutate).toHaveBeenCalledWith(
+      {
+        url: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
+        playlistIds: ['playlist-1']
+      },
+      expect.any(Object)
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('add-track-sheet')).not.toBeOnTheScreen();
+    });
+  });
+
+  it('keeps the add sheet open with the outcomes of a mixed batch', async () => {
+    const result: AddTrackResult = {
+      results: [
+        { playlistId: 'playlist-1', outcome: AddTrackOutcome.Added },
+        { playlistId: 'playlist-2', outcome: AddTrackOutcome.Refused }
+      ]
+    };
+    const { addMutate, view } = await renderDetail({ addResult: result });
+    const mutate = addMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          input: { url: string; playlistIds: string[] },
+          options: { onSuccess?: (answer: AddTrackResult) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_input, options) => {
+      options.onSuccess?.(result);
+    });
+
+    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await waitFor(() => {
+      expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
+    });
+    fireEvent.changeText(
+      screen.getByLabelText('Video link'),
+      'https://youtube.com/watch?v=dQw4w9WgXcQ'
+    );
+    fireEvent.press(screen.getByTestId('add-track-pick-playlist-2'));
+    await waitFor(() => {
+      expect(screen.getByTestId('add-track-submit')).toBeEnabled();
+    });
+    fireEvent.press(screen.getByTestId('add-track-submit'));
+
+    expect(
+      screen.getByTestId('add-track-outcome-playlist-2')
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
+    expect(addMutate).toHaveBeenCalledWith(
+      {
+        url: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
+        playlistIds: ['playlist-1', 'playlist-2']
+      },
+      expect.any(Object)
+    );
+
+    view.unmount();
   });
 });
