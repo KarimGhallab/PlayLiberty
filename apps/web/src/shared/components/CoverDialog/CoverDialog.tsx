@@ -4,16 +4,16 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
-import { sleeveIndex } from '@playliberty/ui-foundation';
-
-import type { CoverCrop, CropFraming } from '../../coverCrop/coverCrop';
 import {
   clampPan,
   cropOf,
   formatZoom,
   maxZoom,
-  shortEdge
-} from '../../coverCrop/coverCrop';
+  shortEdge,
+  sleeveIndex
+} from '@playliberty/ui-foundation';
+import type { CoverCrop, CropFraming } from '@playliberty/ui-foundation';
+
 import { usePlaylistCover } from '../../playlistCover/usePlaylistCover';
 import Dialog from '../Dialog/Dialog';
 import dialogStyles from '../Dialog/Dialog.module.scss';

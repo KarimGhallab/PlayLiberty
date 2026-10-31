@@ -9,8 +9,8 @@ import {
   Provider
 } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
+import type { CoverCrop } from '@playliberty/ui-foundation';
 
-import type { CoverCrop } from '../../coverCrop/coverCrop';
 import CoverDialog from './CoverDialog';
 
 const CUSTOM_VERSION = '2026-10-20T12:00:00.000Z';

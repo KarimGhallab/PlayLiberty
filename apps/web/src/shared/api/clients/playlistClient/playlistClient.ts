@@ -35,8 +35,8 @@ import {
   playlistSharesKey,
   playlistTracksKey
 } from '@playliberty/query';
+import type { CoverCrop } from '@playliberty/ui-foundation';
 
-import type { CoverCrop } from '../../../coverCrop/coverCrop';
 import {
   commandEndpoint,
   deleteEndpoint,
