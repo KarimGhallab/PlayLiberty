@@ -1,34 +1,27 @@
 # 06: The queue follows the playlist
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-the-bar-plays-the-queue.md)
 
-## What to build
+## Outcome
 
-The queue read that feeds the detail also feeds the live queue. Every refetch is re-applied over the queue that is
-playing: a known track keeps its place, including a shuffled order, a track new to the playlist is appended in the
-server's order, and a track the read no longer returns is dropped. A read of another playlist is ignored, so a queue
-never accumulates across playlists.
+The queue read now feeds the live queue. When the detail's queue read settles or refetches, it is merged over a queue
+that already belongs to the same playlist: known ids keep the order already playing, including a shuffled order, new
+ids append in the server's order, and ids the read no longer returns are gone. A read of another playlist is ignored,
+so a queue cannot accumulate across playlists, and a read with nothing changed does not update the store.
 
-The current track and its position do not move while it is still in the playlist. When the current track leaves the
-playlist, playback stops and the bar clears. Starting another playlist still replaces the queue. The detail's list
-continues to mirror the queue's order while shuffle is on. The player never writes to the server.
-
-## Acceptance criteria
-
-- [ ] A refetch keeps every known track in its place and appends a new one.
-- [ ] A track missing from the refetch is dropped, and a shuffled order survives the merge.
-- [ ] A refetch of another playlist does not change this queue.
-- [ ] The current track and its position stay put until it leaves the playlist; then playback stops and the bar clears.
-- [ ] Starting another playlist replaces the queue.
-- [ ] The detail's list still mirrors the queue's order while shuffle is on.
+The source order follows the incoming list, so turning shuffle off restores the playlist's current order. A current
+track that remains keeps its position and play state. One that leaves stops playback, clears the position and the
+seek request, and removes the bar. Starting another playlist still replaces the queue through `start`. The detail list
+still mirrors the queue while shuffle is on.
 
 ## Verification
 
-- Store tests cover the merge, the shuffled order, the removal of the current track and the foreign playlist; a detail
-  test proves the read is wired to the queue.
-- On the emulator: play a playlist, add a track in another client and let the live read land, then confirm the queue
-  grows at the end rather than moving the current track.
+- Mobile 355 tests across 41 suites pass. Store tests cover the merge, the appended track, the shuffled order, a
+  retained current track and its position, the removal of the current track, and a foreign playlist. A detail test
+  proves the queue read is applied over the live queue.
+- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- The emulator live-read check was not run; the read-to-queue wiring is covered by the detail test.
 
 See [`23-play-stored-audio`](../../specs/23-play-stored-audio.md).

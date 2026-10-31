@@ -165,6 +165,7 @@ export default function PlaylistDetail({
   const landed = useRef(false);
   const pendingDelete = pending?.kind === 'delete';
   const start = usePlayerStore(state => state.start);
+  const applyRefetch = usePlayerStore(state => state.applyRefetch);
   const setShuffle = usePlayerStore(state => state.setShuffle);
   const playerQueue = usePlayerStore(state => state.queue);
   const drawnRows = tracks.isSuccess
@@ -192,6 +193,22 @@ export default function PlaylistDetail({
   useEffect(() => {
     setFilter(null);
   }, [playlistId]);
+
+  /* The queue route is the whole playable playlist, so its every answer is
+   * re-applied over a queue that already belongs to this playlist. */
+  useEffect(() => {
+    if (
+      !queue.isSuccess ||
+      queue.data === undefined ||
+      playlistData === undefined
+    ) {
+      return;
+    }
+
+    const items = queue.data.items.filter(entry => isPlayable(entry.track));
+
+    applyRefetch(playlistData.id, playerTracks(items));
+  }, [applyRefetch, playlistData, queue.data, queue.isSuccess]);
 
   /* Opening the queue's playlist lands on its current row once; a later start
    * or skip does not move the list under the reader. */

@@ -298,6 +298,69 @@ describe('the playback failure', () => {
   });
 });
 
+describe('the queue refetch', () => {
+  it('keeps known tracks in place, drops missing ones and appends a new one', () => {
+    start(['a', 'b', 'c'], 'a');
+    usePlayerStore.setState({ queue: ['c', 'a', 'b'], shuffle: true });
+    usePlayerStore.getState().setPosition(12);
+
+    usePlayerStore
+      .getState()
+      .applyRefetch('playlist-1', [track('b'), track('d'), track('a')]);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual(['a', 'b', 'd']);
+    expect(state.sourceQueue).toEqual(['b', 'd', 'a']);
+    expect(state.tracks.d).toEqual(track('d'));
+    expect(state.currentId).toBe('a');
+    expect(state.positionSeconds).toBe(12);
+  });
+
+  it('leaves the current track in place while it remains', () => {
+    start(['a', 'b'], 'b');
+    usePlayerStore.getState().setPosition(10);
+
+    usePlayerStore
+      .getState()
+      .applyRefetch('playlist-1', [track('a'), track('b')]);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.currentId).toBe('b');
+    expect(state.positionSeconds).toBe(10);
+    expect(state.isPlaying).toBe(true);
+  });
+
+  it('stops when the current track leaves the playlist', () => {
+    start(['a', 'b'], 'a');
+    usePlayerStore.getState().setPosition(10);
+
+    usePlayerStore.getState().applyRefetch('playlist-1', [track('b')]);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual(['b']);
+    expect(state.currentId).toBeNull();
+    expect(state.positionSeconds).toBe(0);
+    expect(state.isPlaying).toBe(false);
+  });
+
+  it('ignores another playlist read', () => {
+    start(['a', 'b'], 'a');
+
+    usePlayerStore
+      .getState()
+      .applyRefetch('playlist-2', [track('c'), track('d')]);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual(['a', 'b']);
+    expect(state.playlistId).toBe('playlist-1');
+    expect(state.currentId).toBe('a');
+  });
+});
+
 describe('the shuffle flag', () => {
   it('starts a shuffled queue on its leader with every track once', () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);

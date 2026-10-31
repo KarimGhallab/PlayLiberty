@@ -45,6 +45,52 @@ function tracksById(
   return Object.fromEntries(tracks.map(track => [track.id, track]));
 }
 
+/* A refetch keeps the order already playing for known ids; new ids join at the
+ * end in the server's order and a missing id is simply gone. */
+function mergeQueue(
+  current: readonly string[],
+  incoming: readonly PlayerTrack[]
+): readonly string[] {
+  const incomingIds = new Set(incoming.map(track => track.id));
+  const kept = current.filter(id => incomingIds.has(id));
+  const keptIds = new Set(kept);
+
+  return [
+    ...kept,
+    ...incoming.filter(track => !keptIds.has(track.id)).map(track => track.id)
+  ];
+}
+
+function sameOrder(
+  current: readonly string[],
+  incoming: readonly string[]
+): boolean {
+  return (
+    current.length === incoming.length &&
+    current.every((id, index) => id === incoming[index])
+  );
+}
+
+function sameTracks(
+  current: Readonly<Record<string, PlayerTrack>>,
+  incoming: readonly PlayerTrack[]
+): boolean {
+  if (Object.keys(current).length !== incoming.length) {
+    return false;
+  }
+
+  return incoming.every(track => {
+    const existing = current[track.id];
+
+    return (
+      existing !== undefined &&
+      existing.title === track.title &&
+      existing.durationSeconds === track.durationSeconds &&
+      existing.thumbnailPath === track.thumbnailPath
+    );
+  });
+}
+
 function withoutTrack(
   tracks: Readonly<Record<string, PlayerTrack>>,
   trackId: string
@@ -120,6 +166,7 @@ export interface PlayerState {
     shuffle?: boolean
   ) => void;
   startBareTrack: (track: PlayerTrack) => void;
+  applyRefetch: (playlistId: string, tracks: readonly PlayerTrack[]) => void;
   setShuffle: (shuffle: boolean) => void;
   play: (trackId: string) => void;
   setPlaying: (playing: boolean) => void;
@@ -178,6 +225,43 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       positionSeconds: 0,
       seekTo: null,
       playbackFailureId: null
+    }),
+  applyRefetch: (playlistId, incoming) =>
+    set(state => {
+      // Another playlist's read is not this queue; merging it would extend it.
+      if (state.playlistId !== playlistId) {
+        return state;
+      }
+
+      const queue = mergeQueue(state.queue, incoming);
+      const sourceQueue = incoming.map(track => track.id);
+      const tracks = tracksById(incoming);
+      const currentStillThere =
+        state.currentId !== null && queue.includes(state.currentId);
+
+      if (
+        (currentStillThere || state.currentId === null) &&
+        sameOrder(state.queue, queue) &&
+        sameOrder(state.sourceQueue, sourceQueue) &&
+        sameTracks(state.tracks, incoming)
+      ) {
+        return state;
+      }
+
+      if (!currentStillThere) {
+        return {
+          queue,
+          sourceQueue,
+          tracks,
+          currentId: null,
+          isPlaying: false,
+          positionSeconds: 0,
+          seekTo: null,
+          playbackFailureId: null
+        };
+      }
+
+      return { queue, sourceQueue, tracks };
     }),
   /* Turning shuffle on draws a new order and a new leader; turning it off
    * restores the playlist order and leaves the playhead in place. */

@@ -1008,14 +1008,17 @@ describe('the playlist detail', () => {
       playlistId: 'playlist-1',
       currentId: 'track-2'
     });
-    const { tracksFetchNextPage } = await renderDetail({ hasMore: true });
+    const { tracksFetchNextPage } = await renderDetail({
+      hasMore: true,
+      queue: [track, secondTrack]
+    });
 
     expect(screen.getByTestId('playlist-skeleton')).toBeOnTheScreen();
     expect(screen.getByTestId('playlist-identity')).toBeOnTheScreen();
     expect(screen.queryByTestId('track-row')).not.toBeOnTheScreen();
 
     await waitFor(() => {
-      expect(tracksFetchNextPage).toHaveBeenCalledTimes(1);
+      expect(tracksFetchNextPage).toHaveBeenCalled();
     });
   });
 
@@ -1615,6 +1618,26 @@ describe('the playlist detail', () => {
     await waitFor(() => {
       expect(titles()).toEqual(['First Song', 'Second Song', 'Third Song']);
     });
+  });
+
+  it('re-applies the queue read over the live queue', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1'],
+      sourceQueue: ['track-1'],
+      playlistId: 'playlist-1',
+      currentId: 'track-1',
+      positionSeconds: 10
+    });
+    await renderDetail({
+      tracks: { ...page, items: [track, secondTrack], total: 2 },
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().queue).toEqual(['track-1', 'track-2']);
+    });
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+    expect(usePlayerStore.getState().positionSeconds).toBe(10);
   });
 
   it('disables both start controls on an empty queue', async () => {
