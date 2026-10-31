@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { usePlayerStore } from '../../player/playerStore/playerStore';
 import { tokenStore } from '../tokenStore';
 
 export enum SessionStatus {
@@ -35,6 +36,7 @@ export const useSessionStore = create<SessionState>()(set => ({
   expire: async () => {
     generation += 1;
     await tokenStore.clear();
+    usePlayerStore.getState().clear();
     set({ status: SessionStatus.SignedOut });
   }
 }));

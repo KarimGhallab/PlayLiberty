@@ -188,6 +188,26 @@ describe('the background playback bridge', () => {
     );
   });
 
+  it('clears the queue when the notification is dismissed', async () => {
+    await startQueue([track, secondTrack]);
+    await renderHook(() => useBackgroundPlayback(config), { wrapper });
+
+    await waitFor(() => {
+      expect(playback.__addCommandListener).toHaveBeenCalled();
+    });
+
+    const listener = playback.__addCommandListener.mock.calls[0]?.[0] as (
+      command: string
+    ) => void;
+
+    await act(() => {
+      listener('dismiss');
+    });
+
+    expect(usePlayerStore.getState().currentId).toBeNull();
+    expect(usePlayerStore.getState().queue).toEqual([]);
+  });
+
   it('moves with previous and next from the service', async () => {
     await startQueue([track, secondTrack, thirdTrack]);
     await renderHook(() => useBackgroundPlayback(config), { wrapper });

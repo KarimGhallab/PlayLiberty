@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import * as SecureStore from 'expo-secure-store';
 
+import { usePlayerStore } from '../../player/playerStore/playerStore';
 import { tokenStore } from '../tokenStore';
 import { SessionStatus, useSessionStore } from './sessionStore';
 
@@ -43,12 +44,20 @@ describe('the session', () => {
     expect(useSessionStore.getState().status).toBe(SessionStatus.SignedOut);
   });
 
-  it('forgets the token and signs out', async () => {
+  it('forgets the token, clears the player and signs out', async () => {
     await tokenStore.write({ id: 'token-id', secret: 'token-secret' });
+    usePlayerStore.getState().startBareTrack({
+      id: 'track-1',
+      title: 'First Song',
+      durationSeconds: 60,
+      thumbnailPath: null
+    });
 
     await useSessionStore.getState().expire();
 
     expect(await tokenStore.read()).toBeNull();
     expect(useSessionStore.getState().status).toBe(SessionStatus.SignedOut);
+    expect(usePlayerStore.getState().currentId).toBeNull();
+    expect(usePlayerStore.getState().queue).toEqual([]);
   });
 });

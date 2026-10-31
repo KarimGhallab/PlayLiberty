@@ -21,7 +21,9 @@ An Android foreground service of the media playback type, started from a user ac
 for as long as the queue is non-empty. It draws one media-style notification with the track, the playlist, the
 artwork, previous, play-pause, next and a seek position, and it exposes the same controls to the lock screen through
 the platform's media session. The notification and the lock screen read the player's state; there is no second copy.
-The service stops when the queue is emptied, when the account signs out, or when the notification is dismissed.
+The service stops when the queue is emptied, when the account signs out, when the app task is swiped away, or when
+the system stops the foreground service. Android 14 keeps a media-style foreground notification pinned, so swiping the
+notification itself is not an end control.
 
 ## User Stories
 
@@ -38,7 +40,8 @@ The service stops when the queue is emptied, when the account signs out, or when
 11. As a listener, I want the notification to be silent on a track change, so that it does not buzz in my pocket.
 12. As a listener, I want tapping the notification to open the app where I left it, so that I am not reset to the gallery.
 13. As a listener, I want pausing to keep the notification, so that I can resume from the shade.
-14. As a listener, I want dismissing the notification to stop the music, so that a dismissed session is over.
+14. As a listener, I want the session to end when the queue ends, when I sign out, or when the system stops the
+    service, so that nothing runs after I am done.
 15. As a listener, I want the service to stop when the queue ends, so that nothing runs after the music.
 16. As a listener, I want no music to start on its own after a restart, so that the app never surprises me.
 17. As a listener, I want the music to stop when I sign out, so that a handed-over phone is silent.
@@ -60,10 +63,13 @@ The service stops when the queue is emptied, when the account signs out, or when
   from a user action in the app, never from the background. `Decided here:` Android 14 refuses a background start,
   so every playback begins with a press, and a service started any other way is a crash waiting for a device.
 - **The service lives while the queue is non-empty, including while paused.** It stops when the queue is emptied,
-  when the account signs out, or when the notification is dismissed. `Decided here:` a paused queue that lost its
-  notification could not be resumed from the shade, which is the whole point of the feature.
-- **Dismissing the notification stops playback and clears the queue.** `Decided here:` a dismissed session is one the
-  listener ended, and keeping a queue nobody can see would make the next press start music unexpectedly.
+  when the account signs out, when the app task is swiped away, or when the OS stops the foreground service.
+  `Decided here:` a paused queue that lost its notification could not be resumed from the shade, which is the whole
+  point of the feature.
+- **The media-style notification is pinned by Android 14 and is not swiped away.** A delete intent is wired where the
+  OS offers a dismissal, and it stops playback and clears the queue. On Android 14 the end controls are the queue
+  ending, sign-out and the foreground-service task manager stop. `Decided here:` the alternative is a custom
+  notification without the system media card, which loses the standard transport and seek surface.
 - **The notification is one media-style notification on its own channel, created once.** It carries the track title,
   the playlist name as the subtitle (empty for a bare track), the artwork, previous, play-pause, next and the seek
   position, and it is updated in place on every state change. `Decided here:` a second notification per track is the
@@ -94,8 +100,8 @@ The service stops when the queue is emptied, when the account signs out, or when
 
 - A test earns its place only if it fails when a listener would notice. The tests assert that the notification names
   the current track after a change, that a change keeps playback, that the service stops when the queue empties, and
-  that dismissing the notification clears the queue. They do not assert the notification's layout, the channel's
-  identifier, or the service's start mechanism.
+  that a sign-out clears the queue. A dismissal command is tested where the OS allows one. They do not assert the
+  notification's layout, the channel's identifier, or the service's start mechanism.
 - **The notification's state is tested at the mapping's seam**: a track change produces one notification with the new
   title, the playlist as the subtitle, and the empty subtitle for a bare track. Prior art is the web's Media Session
   mapping tests.

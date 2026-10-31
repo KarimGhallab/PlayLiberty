@@ -168,6 +168,11 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
       (command, position) => {
         const player = usePlayerStore.getState();
 
+        if (command === 'dismiss') {
+          player.clear();
+          return;
+        }
+
         if (command === 'toggle') {
           player.setPlaying(!player.isPlaying);
           return;

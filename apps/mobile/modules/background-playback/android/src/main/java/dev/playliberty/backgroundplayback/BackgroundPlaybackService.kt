@@ -32,6 +32,7 @@ class BackgroundPlaybackService : Service() {
     private const val ACTION_TOGGLE = "dev.playliberty.backgroundplayback.TOGGLE"
     private const val ACTION_PREVIOUS = "dev.playliberty.backgroundplayback.PREVIOUS"
     private const val ACTION_NEXT = "dev.playliberty.backgroundplayback.NEXT"
+    private const val ACTION_DISMISS = "dev.playliberty.backgroundplayback.DISMISS"
 
     fun start(context: Context) {
       val intent = Intent(context, BackgroundPlaybackService::class.java)
@@ -110,12 +111,22 @@ class BackgroundPlaybackService : Service() {
       ACTION_TOGGLE -> BackgroundPlaybackEvents.command("toggle")
       ACTION_PREVIOUS -> BackgroundPlaybackEvents.command("previous")
       ACTION_NEXT -> BackgroundPlaybackEvents.command("next")
+      ACTION_DISMISS -> {
+        BackgroundPlaybackEvents.command("dismiss")
+        stopSelf()
+      }
     }
 
     return START_NOT_STICKY
   }
 
   override fun onBind(intent: Intent?): IBinder? = null
+
+  override fun onTaskRemoved(rootIntent: Intent?) {
+    BackgroundPlaybackEvents.command("dismiss")
+    stopSelf()
+    super.onTaskRemoved(rootIntent)
+  }
 
   override fun onDestroy() {
     artworkThread?.interrupt()
@@ -291,6 +302,12 @@ class BackgroundPlaybackService : Service() {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
       )
     }
+    val delete = PendingIntent.getService(
+      this,
+      3,
+      Intent(this, BackgroundPlaybackService::class.java).setAction(ACTION_DISMISS),
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
     if (current.canPrevious) {
       actions += NotificationCompat.Action(
@@ -340,6 +357,7 @@ class BackgroundPlaybackService : Service() {
       .setSubText(current.playlistName)
       .setLargeIcon(artwork)
       .setContentIntent(content)
+      .setDeleteIntent(delete)
       .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setOnlyAlertOnce(true)
@@ -350,7 +368,12 @@ class BackgroundPlaybackService : Service() {
 
     actions.forEach { builder.addAction(it) }
 
-    return builder.build()
+    val notification = builder.build()
+    notification.flags = notification.flags and
+      Notification.FLAG_NO_CLEAR.inv() and
+      Notification.FLAG_ONGOING_EVENT.inv()
+
+    return notification
   }
 
   private fun startForegroundCompat(notification: Notification?) {

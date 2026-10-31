@@ -3,7 +3,7 @@ import { requireOptionalNativeModule } from 'expo';
 import type { BackgroundPlaybackState } from './backgroundPlaybackState/backgroundPlaybackState';
 
 export type BackgroundCommand =
-  'toggle' | 'play' | 'pause' | 'previous' | 'next' | 'seek';
+  'toggle' | 'play' | 'pause' | 'previous' | 'next' | 'seek' | 'dismiss';
 
 interface NativeSubscription {
   remove(): void;
