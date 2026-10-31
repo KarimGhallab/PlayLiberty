@@ -1,4 +1,8 @@
-import { IconArrowsShuffle, IconPlayerPlay } from '@tabler/icons-react-native';
+import {
+  IconArrowsShuffle,
+  IconDots,
+  IconPlayerPlay
+} from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -39,6 +43,7 @@ export interface PlaylistIdentityProps {
   readonly now?: Date;
   readonly onPlay?: () => void;
   readonly onShuffle?: () => void;
+  readonly onOpenActions?: () => void;
   readonly children?: ReactNode;
 }
 
@@ -52,6 +57,7 @@ export default function PlaylistIdentity({
   now = new Date(),
   onPlay,
   onShuffle,
+  onOpenActions,
   children
 }: PlaylistIdentityProps) {
   const { t } = useI18n();
@@ -145,23 +151,45 @@ export default function PlaylistIdentity({
               color={tokenColor('bg')}
             />
           </Pressable>
-          <Pressable
-            testID="detail-shuffle"
-            accessibilityRole="button"
-            accessibilityLabel={t('header.shuffle', { name: playlist.name })}
-            accessibilityState={{ disabled: onShuffle === undefined }}
-            disabled={onShuffle === undefined}
-            style={({ pressed }) => [
-              styles.shuffle,
-              onShuffle === undefined && styles.disabled,
-              pressed && onShuffle !== undefined && styles.shufflePressed
-            ]}
-            onPress={onShuffle}>
-            <IconArrowsShuffle
-              size={tokenLength('icon-md')}
-              color={tokenColor('muted')}
-            />
-          </Pressable>
+          <View style={styles.secondary}>
+            <Pressable
+              testID="detail-shuffle"
+              accessibilityRole="button"
+              accessibilityLabel={t('header.shuffle', {
+                name: playlist.name
+              })}
+              accessibilityState={{ disabled: onShuffle === undefined }}
+              disabled={onShuffle === undefined}
+              style={({ pressed }) => [
+                styles.shuffle,
+                onShuffle === undefined && styles.disabled,
+                pressed && onShuffle !== undefined && styles.shufflePressed
+              ]}
+              onPress={onShuffle}>
+              <IconArrowsShuffle
+                size={tokenLength('icon-md')}
+                color={tokenColor('muted')}
+              />
+            </Pressable>
+            {onOpenActions === undefined ? null : (
+              <Pressable
+                testID="detail-actions"
+                accessibilityRole="button"
+                accessibilityLabel={t('header.actions', {
+                  name: playlist.name
+                })}
+                style={({ pressed }) => [
+                  styles.shuffle,
+                  pressed && styles.shufflePressed
+                ]}
+                onPress={onOpenActions}>
+                <IconDots
+                  size={tokenLength('icon-md')}
+                  color={tokenColor('muted')}
+                />
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
 
@@ -239,6 +267,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     alignItems: 'center',
+    gap: tokenLength('space-2')
+  },
+  secondary: {
+    flexDirection: 'row',
     gap: tokenLength('space-2')
   },
   play: {

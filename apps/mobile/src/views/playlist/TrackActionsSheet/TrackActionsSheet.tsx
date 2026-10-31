@@ -1,7 +1,8 @@
 import {
   IconCopy,
   IconRotate,
-  IconScissorsOff
+  IconScissorsOff,
+  IconTrash
 } from '@tabler/icons-react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
@@ -15,12 +16,13 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import type { TrackAction, TrackActionKey } from './trackActions';
+import type { TrackAction, TrackActionKey } from './trackActions/trackActions';
 
 const ICONS = {
   copy: IconCopy,
   retry: IconRotate,
-  fetchWhole: IconScissorsOff
+  fetchWhole: IconScissorsOff,
+  remove: IconTrash
 } as const;
 
 export interface TrackActionsSheetProps {
@@ -49,6 +51,10 @@ export default function TrackActionsSheet({
       backdropTestID="track-actions-backdrop">
       {actions.map((action, index) => {
         const Icon = ICONS[action.key];
+        const destructive = action.key === 'remove';
+        const color = destructive
+          ? tokenColor('tone-failed')
+          : tokenColor('ink');
 
         return (
           <Pressable
@@ -61,8 +67,10 @@ export default function TrackActionsSheet({
               pressed && styles.pressed
             ]}
             onPress={() => onSelect(action.key)}>
-            <Icon size={tokenLength('icon-md')} color={tokenColor('ink')} />
-            <Text style={styles.label}>{t(action.label)}</Text>
+            <Icon size={tokenLength('icon-md')} color={color} />
+            <Text style={[styles.label, destructive && styles.destructive]}>
+              {t(action.label)}
+            </Text>
           </Pressable>
         );
       })}
@@ -88,5 +96,8 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md')
+  },
+  destructive: {
+    color: tokenColor('tone-failed')
   }
 });

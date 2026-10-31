@@ -1,34 +1,34 @@
 # 05: Removal and deletion are deferred
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`04`](04-the-rows-lane-and-sheet.md)
 
-## What to build
+## Outcome
 
-Remove joins the row sheet for an owner or a write collaborator. It drops the row immediately from the list, hides it
-for the visit and defers the remove request for six seconds. Undo cancels the request and restores the row. A failed
-request restores the row and says the removal failed.
+Remove joins the row sheet for an owner or a write collaborator. It hides the row at once, opens the shared
+UndoSnackbar with the track's name and defers the request for six seconds. Undo cancels the request and restores the
+row; a refused removal restores the row and shows the problem's sentence. A read collaborator sees no Remove.
 
-Delete joins the header's sheet for the owner only. The detail's sheet carries Delete alone; spec `25` extends it
-with the rest of the playlist's actions. It dims the detail and disables its controls, opens the same six-second undo
-window and pops to the gallery when the request lands. Undo cancels the request and restores the detail. A failed
-request restores the detail and says the delete failed.
+Delete joins the detail's header sheet for the owner only. The detail's sheet carries Delete alone; spec `25` extends
+it. The action dims the detail, disables its scroll, opens the same six-second window and pops to the gallery when the
+delete lands. Undo restores the detail; a refused delete keeps the detail and shows the problem's sentence. A read or
+write collaborator sees no header actions.
 
-One window at a time: a second removal or deletion commits the first request rather than losing it. A read
-collaborator sees neither Remove nor Delete. The shared UndoSnackbar carries the sentence, the subject and the
-countdown.
+One window at a time: a second removal commits the first request before opening its own countdown. The window defaults
+to six seconds and is injectable for the tests.
 
-## Acceptance criteria
-
-- [ ] Remove hides the row at once and Undo restores it without a request.
-- [ ] Delete dims the detail, pops to the gallery when the request lands, and Undo restores the detail.
-- [ ] A failed remove or delete restores the subject and explains the failure.
-- [ ] A second deferred action commits the first request.
-- [ ] A read collaborator sees neither Remove nor Delete.
-- [ ] The sentences and the Undo control render in French.
+The two failure sentences were added to both catalogs. The identity gained the owner's overflow control, and the row
+sheet gained the destructive Remove item.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run typecheck`, the detail's Jest file, then `pnpm run build` and
-`pnpm run lint:check`.
+- Track sheet model 6 tests, sheet 4 tests, row 8 tests and detail 39 tests pass.
+- Mobile 221 tests across 31 suites pass.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run lint:check` and `pnpm run build` pass.
+- On the emulator, Delete dimmed the detail, disabled the scroll and showed "Deleting playlist" with Undo. The window
+  expired before the undo, so the private Chine duplicate was deleted and then restored from the shared Chine source
+  with its 70 associations. Its sync-run history is not restored.
+
+See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

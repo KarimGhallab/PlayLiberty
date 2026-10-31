@@ -11,7 +11,7 @@ import {
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import TrackActionsSheet from './TrackActionsSheet';
-import { trackActionsFor } from './trackActions';
+import { trackActionsFor } from './trackActions/trackActions';
 
 const store = { getItem: () => null, setItem: () => {} };
 
@@ -60,16 +60,18 @@ async function renderSheet(language = Language.English) {
 }
 
 describe('the track actions sheet', () => {
-  it('draws the copy and the two repairs', async () => {
+  it('draws the copy, the two repairs and the removal', async () => {
     await renderSheet();
 
     expect(screen.getByTestId('track-actions-sheet')).toBeOnTheScreen();
     expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
     expect(screen.getByTestId('track-action-retry')).toBeOnTheScreen();
     expect(screen.getByTestId('track-action-fetchWhole')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-action-remove')).toBeOnTheScreen();
     expect(screen.getByText('Copy link')).toBeOnTheScreen();
     expect(screen.getByText('Retry')).toBeOnTheScreen();
     expect(screen.getByText('Fetch whole')).toBeOnTheScreen();
+    expect(screen.getByText('Remove from playlist')).toBeOnTheScreen();
   });
 
   it('selects an item', async () => {
@@ -94,5 +96,6 @@ describe('the track actions sheet', () => {
     expect(screen.getByText('Copier le lien')).toBeOnTheScreen();
     expect(screen.getByText('Réessayer')).toBeOnTheScreen();
     expect(screen.getByText('Récupérer en entier')).toBeOnTheScreen();
+    expect(screen.getByText('Retirer de la playlist')).toBeOnTheScreen();
   });
 });

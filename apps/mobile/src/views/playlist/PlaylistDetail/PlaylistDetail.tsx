@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
@@ -12,11 +12,13 @@ import { problemDetail, useI18n } from '@playliberty/i18n';
 import { copyText } from '../../../shared/clipboard/copyText';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
 import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
 import {
   fontFamily,
   tokenColor,
-  tokenLength
+  tokenLength,
+  tokenNumber
 } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
@@ -24,15 +26,23 @@ import {
   ownerNameFrom,
   useAccountDirectory
 } from '../../../api/useAccountDirectory';
+import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
+import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
+import {
+  type PlaylistAction,
+  type PlaylistActionKey,
+  UNDO_WINDOW_MS
+} from '../../library/playlistActions/playlistActions';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
@@ -44,11 +54,30 @@ import {
 import TrackListSkeleton from '../TrackListSkeleton/TrackListSkeleton';
 import TrackRow from '../TrackRow/TrackRow';
 
+type PendingAction =
+  | {
+      readonly kind: 'remove';
+      readonly trackId: string;
+      readonly message: string;
+      readonly detail: string;
+    }
+  | {
+      readonly kind: 'delete';
+      readonly message: string;
+      readonly detail: string;
+    };
+
+const HEADER_ACTIONS: readonly PlaylistAction[] = [
+  { key: 'delete', label: 'header.delete' }
+];
+
 export interface PlaylistDetailProps {
   readonly playlistId: string | null;
   readonly config: ApiConfig | null;
   readonly onBack: () => void;
   readonly now?: Date;
+  /* The undo window; the app always uses the six-second default. */
+  readonly undoWindowMs?: number;
 }
 
 /* The detail's read surface. The identity block and the rows are one scroll, so
@@ -58,7 +87,8 @@ export default function PlaylistDetail({
   playlistId,
   config,
   onBack,
-  now
+  now,
+  undoWindowMs = UNDO_WINDOW_MS
 }: PlaylistDetailProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
@@ -70,11 +100,20 @@ export default function PlaylistDetail({
   const sync = useSyncPlaylist();
   const retry = useRetryTrack(playlistId ?? '');
   const fetchWhole = useFetchTrackWhole(playlistId ?? '');
+  const removeTrack = useRemoveTrack(playlistId ?? '');
+  const deletePlaylist = useDeletePlaylist();
   const [actionTargetId, setActionTargetId] = useState<string | null>(null);
+  const [hiddenTracks, setHiddenTracks] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const [pending, setPending] = useState<PendingAction | null>(null);
+  const [headerOpen, setHeaderOpen] = useState(false);
   const [notice, setNotice] = useState<{
     readonly message: string;
     readonly detail: string;
   } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingDelete = pending?.kind === 'delete';
   const currentId = usePlayerStore(state => state.currentId);
   const start = usePlayerStore(state => state.start);
   const busyTrackId = retry.isPending
@@ -116,6 +155,14 @@ export default function PlaylistDetail({
   );
   const openActions = useCallback((trackId: string): void => {
     setActionTargetId(trackId);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current !== null) {
+        clearTimeout(timer.current);
+      }
+    };
   }, []);
 
   if (playlist.isPending) {
@@ -180,9 +227,108 @@ export default function PlaylistDetail({
           busyTrackId === actionTarget.track.id
         );
 
-  const actionFailure = (error: Error): string =>
+  const problemMessage = (error: Error, fallback: string): string =>
     problemDetail(t, error instanceof ApiError ? error.problem : null) ??
-    t('trackRow.failure.unknown');
+    fallback;
+
+  const hideTrack = (trackId: string): void => {
+    setHiddenTracks(previous => new Set(previous).add(trackId));
+  };
+
+  const unhideTrack = (trackId: string): void => {
+    setHiddenTracks(previous => {
+      const next = new Set(previous);
+      next.delete(trackId);
+      return next;
+    });
+  };
+
+  const commitPending = (action: PendingAction): void => {
+    if (action.kind === 'remove') {
+      removeTrack.mutate(action.trackId, {
+        onError: error => {
+          unhideTrack(action.trackId);
+          setNotice({
+            message: problemMessage(error, t('detail.removeFailed')),
+            detail: action.detail
+          });
+        }
+      });
+      return;
+    }
+
+    deletePlaylist.mutate(data.id, {
+      onSuccess: onBack,
+      onError: error => {
+        setNotice({
+          message: problemMessage(error, t('detail.deleteFailed')),
+          detail: action.detail
+        });
+      }
+    });
+  };
+
+  /* One window at a time: a second action sends the first now rather than
+   * losing its request, then opens its own countdown. */
+  const startPending = (next: PendingAction): void => {
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+
+    if (pending !== null) {
+      commitPending(pending);
+    }
+
+    if (next.kind === 'remove') {
+      hideTrack(next.trackId);
+    }
+
+    setPending(next);
+    timer.current = setTimeout(() => {
+      commitPending(next);
+      setPending(null);
+      timer.current = null;
+    }, undoWindowMs);
+  };
+
+  const undoPending = (): void => {
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+
+    if (pending?.kind === 'remove') {
+      unhideTrack(pending.trackId);
+    }
+
+    setPending(null);
+  };
+
+  const startRemove = (target: PlaylistTrack): void => {
+    startPending({
+      kind: 'remove',
+      trackId: target.track.id,
+      message: t('detail.removeDeferred'),
+      detail: target.track.title
+    });
+  };
+
+  const startDelete = (): void => {
+    startPending({
+      kind: 'delete',
+      message: t('detail.deleteDeferred'),
+      detail: data.name
+    });
+  };
+
+  const chooseHeaderAction = (key: PlaylistActionKey): void => {
+    setHeaderOpen(false);
+
+    if (key === 'delete') {
+      startDelete();
+    }
+  };
 
   const copyTrackLink = (target: PlaylistTrack): void => {
     if (config === null) {
@@ -228,11 +374,16 @@ export default function PlaylistDetail({
       return;
     }
 
+    if (key === 'remove') {
+      startRemove(target);
+      return;
+    }
+
     if (key === 'retry') {
       retry.mutate(target.track.id, {
         onError: error => {
           setNotice({
-            message: actionFailure(error),
+            message: problemMessage(error, t('trackRow.failure.unknown')),
             detail: target.track.title
           });
         }
@@ -243,7 +394,7 @@ export default function PlaylistDetail({
     fetchWhole.mutate(target.track.id, {
       onError: error => {
         setNotice({
-          message: actionFailure(error),
+          message: problemMessage(error, t('trackRow.failure.unknown')),
           detail: target.track.title
         });
       }
@@ -258,6 +409,8 @@ export default function PlaylistDetail({
       <ScrollView
         testID="playlist-scroll"
         showsVerticalScrollIndicator={false}
+        pointerEvents={pendingDelete ? 'none' : 'auto'}
+        style={pendingDelete ? styles.pending : undefined}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: insets.bottom + tokenLength('space-4') }
@@ -268,6 +421,9 @@ export default function PlaylistDetail({
           config={config}
           syncing={syncing}
           now={now}
+          onOpenActions={
+            data.access === 'owner' ? () => setHeaderOpen(true) : undefined
+          }
         />
         {tracks.isPending ? <TrackListSkeleton /> : null}
         {tracks.isError ? (
@@ -300,16 +456,18 @@ export default function PlaylistDetail({
           )
         ) : null}
         {tracks.isSuccess && data.trackCount > 0
-          ? tracks.data.items.map(entry => (
-              <TrackRow
-                key={entry.track.id}
-                association={entry}
-                config={config}
-                current={currentId === entry.track.id}
-                onOpenActions={openActions}
-                onPlay={playTrack}
-              />
-            ))
+          ? tracks.data.items
+              .filter(entry => !hiddenTracks.has(entry.track.id))
+              .map(entry => (
+                <TrackRow
+                  key={entry.track.id}
+                  association={entry}
+                  config={config}
+                  current={currentId === entry.track.id}
+                  onOpenActions={openActions}
+                  onPlay={playTrack}
+                />
+              ))
           : null}
       </ScrollView>
       <TrackActionsSheet
@@ -318,11 +476,32 @@ export default function PlaylistDetail({
         onSelect={chooseTrackAction}
         onClose={() => setActionTargetId(null)}
       />
+      <PlaylistActionsSheet
+        playlistName={headerOpen ? data.name : null}
+        actions={HEADER_ACTIONS}
+        onSelect={chooseHeaderAction}
+        onClose={() => setHeaderOpen(false)}
+      />
+      {pending === null ? null : (
+        <UndoSnackbar
+          key={pending.kind === 'remove' ? pending.trackId : 'delete'}
+          message={pending.message}
+          detail={pending.detail}
+          durationMs={undoWindowMs}
+          horizontalInset={tokenLength('space-4')}
+          onUndo={undoPending}
+        />
+      )}
       {notice === null ? null : (
         <Notice
           message={notice.message}
           detail={notice.detail}
           onDismiss={() => setNotice(null)}
+          bottomOffset={
+            pending === null
+              ? 0
+              : tokenLength('space-9') + tokenLength('space-4')
+          }
         />
       )}
     </SafeAreaView>
@@ -342,6 +521,9 @@ const styles = StyleSheet.create({
   stateBody: {
     flex: 1,
     padding: tokenLength('space-4')
+  },
+  pending: {
+    opacity: tokenNumber('opacity-disabled')
   },
   tracksState: {
     minHeight: tokenLength('space-9') * 4,

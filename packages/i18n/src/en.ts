@@ -141,6 +141,8 @@ export const en = {
     playbackFailed: 'Playback could not start: the queue was not loaded.',
     deleteDeferred: 'Deleting playlist',
     removeDeferred: 'Removing track',
+    deleteFailed: 'The playlist could not be deleted.',
+    removeFailed: 'The track could not be removed.',
     trackFallback: 'Track',
     settingFailed: 'The setting could not be changed.',
     settingNotice: 'The skip setting was not changed.',

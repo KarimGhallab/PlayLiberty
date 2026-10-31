@@ -27,14 +27,17 @@ import {
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { copyText } from '../../../shared/clipboard/copyText';
+import { tokenLength, tokenNumber } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
+import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
+import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -59,6 +62,12 @@ jest.mock('../../../api/useRetryTrack', () => ({
 }));
 jest.mock('../../../api/useFetchTrackWhole', () => ({
   useFetchTrackWhole: jest.fn()
+}));
+jest.mock('../../../api/useRemoveTrack', () => ({
+  useRemoveTrack: jest.fn()
+}));
+jest.mock('../../../api/useDeletePlaylist', () => ({
+  useDeletePlaylist: jest.fn()
 }));
 jest.mock('../../../shared/clipboard/copyText', () => ({
   copyText: jest.fn()
@@ -89,6 +98,12 @@ const useRetryTrackMock = useRetryTrack as jest.MockedFunction<
 >;
 const useFetchTrackWholeMock = useFetchTrackWhole as jest.MockedFunction<
   typeof useFetchTrackWhole
+>;
+const useRemoveTrackMock = useRemoveTrack as jest.MockedFunction<
+  typeof useRemoveTrack
+>;
+const useDeletePlaylistMock = useDeletePlaylist as jest.MockedFunction<
+  typeof useDeletePlaylist
 >;
 const copyTextMock = copyText as jest.MockedFunction<typeof copyText>;
 const useAccountDirectoryMock = useAccountDirectory as jest.MockedFunction<
@@ -272,6 +287,7 @@ interface RenderOptions {
   readonly retryVariables?: string;
   readonly fetchPending?: boolean;
   readonly fetchVariables?: string;
+  readonly undoWindowMs?: number;
   readonly onBack?: () => void;
 }
 
@@ -282,6 +298,8 @@ async function renderDetail(options: RenderOptions = {}) {
   const syncMutate = jest.fn();
   const retryMutate = jest.fn();
   const fetchWholeMutate = jest.fn();
+  const removeMutate = jest.fn();
+  const deleteMutate = jest.fn();
 
   usePlaylistMock.mockReturnValue(
     options.playlistError === undefined
@@ -340,6 +358,10 @@ async function renderDetail(options: RenderOptions = {}) {
       variables: options.fetchVariables
     })
   );
+  useRemoveTrackMock.mockReturnValue(mutationResult({ mutate: removeMutate }));
+  useDeletePlaylistMock.mockReturnValue(
+    mutationResult({ mutate: deleteMutate })
+  );
 
   await render(
     <I18nProvider
@@ -351,6 +373,7 @@ async function renderDetail(options: RenderOptions = {}) {
           playlistId="playlist-1"
           onBack={onBack}
           now={now}
+          undoWindowMs={options.undoWindowMs}
         />
       </SafeAreaProvider>
     </I18nProvider>
@@ -362,7 +385,9 @@ async function renderDetail(options: RenderOptions = {}) {
     tracksRefetch,
     syncMutate,
     retryMutate,
-    fetchWholeMutate
+    fetchWholeMutate,
+    removeMutate,
+    deleteMutate
   };
 }
 
@@ -439,12 +464,37 @@ describe('the playlist detail', () => {
     return result;
   }
 
-  it('draws copy and the two repairs on a failed row', async () => {
+  async function openStoredSheet(options: RenderOptions = {}) {
+    const result = await renderDetail(options);
+
+    fireEvent.press(screen.getByTestId('track-actions'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('track-actions-sheet')).toBeOnTheScreen();
+    });
+
+    return result;
+  }
+
+  async function openHeaderSheet(options: RenderOptions = {}) {
+    const result = await renderDetail(options);
+
+    fireEvent.press(screen.getByTestId('detail-actions'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+    });
+
+    return result;
+  }
+
+  it('draws copy, the two repairs and Remove on a failed row', async () => {
     await openFailedSheet();
 
     expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
     expect(screen.getByTestId('track-action-retry')).toBeOnTheScreen();
     expect(screen.getByTestId('track-action-fetchWhole')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-action-remove')).toBeOnTheScreen();
   });
 
   it('draws only copy for a read collaborator', async () => {
@@ -457,6 +507,7 @@ describe('the playlist detail', () => {
     expect(
       screen.queryByTestId('track-action-fetchWhole')
     ).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('track-action-remove')).not.toBeOnTheScreen();
   });
 
   it('draws only copy while the row is busy', async () => {
@@ -470,6 +521,7 @@ describe('the playlist detail', () => {
     expect(
       screen.queryByTestId('track-action-fetchWhole')
     ).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('track-action-remove')).not.toBeOnTheScreen();
   });
 
   it('copies the track absolute link and confirms', async () => {
@@ -549,6 +601,193 @@ describe('the playlist detail', () => {
         screen.getByText('The track could not be retried.')
       ).toBeOnTheScreen();
     });
+  });
+
+  it('removes the row at once and Undo restores it without a request', async () => {
+    const { removeMutate } = await openStoredSheet();
+
+    fireEvent.press(screen.getByTestId('track-action-remove'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('track-row')).not.toBeOnTheScreen();
+    });
+    expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+    expect(screen.getByTestId('undo-snackbar')).toHaveStyle({
+      left: tokenLength('space-4'),
+      right: tokenLength('space-4')
+    });
+    expect(screen.getByText('Removing track')).toBeOnTheScreen();
+    expect(removeMutate).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('undo-snackbar-action'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('track-row')).toBeOnTheScreen();
+    });
+    expect(removeMutate).not.toHaveBeenCalled();
+  });
+
+  it('commits the removal after the window', async () => {
+    const { removeMutate } = await openStoredSheet({ undoWindowMs: 20 });
+
+    fireEvent.press(screen.getByTestId('track-action-remove'));
+
+    await waitFor(() => {
+      expect(removeMutate).toHaveBeenCalledWith('track-1', expect.any(Object));
+    });
+  });
+
+  it('restores the row and explains a failed removal', async () => {
+    const failure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The track could not be removed.'
+    });
+    const { removeMutate } = await openStoredSheet({ undoWindowMs: 20 });
+    const mutate = removeMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          trackId: string,
+          options: { onError?: (error: Error) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_trackId, options) => {
+      options.onError?.(failure);
+    });
+
+    fireEvent.press(screen.getByTestId('track-action-remove'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('The track could not be removed.')
+      ).toBeOnTheScreen();
+    });
+    expect(screen.getByTestId('track-row')).toBeOnTheScreen();
+  });
+
+  it('dims the detail for a delete and Undo restores it', async () => {
+    const { deleteMutate } = await openHeaderSheet();
+
+    fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+    });
+    expect(screen.getByText('Deleting playlist')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-scroll').props.pointerEvents).toBe(
+      'none'
+    );
+    expect(screen.getByTestId('playlist-scroll')).toHaveStyle({
+      opacity: tokenNumber('opacity-disabled')
+    });
+    expect(deleteMutate).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('undo-snackbar-action'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('undo-snackbar')).not.toBeOnTheScreen();
+    });
+    expect(deleteMutate).not.toHaveBeenCalled();
+  });
+
+  it('commits the delete after the window and pops to the gallery', async () => {
+    const { onBack, deleteMutate } = await openHeaderSheet({
+      undoWindowMs: 20
+    });
+    const mutate = deleteMutate as unknown as {
+      mockImplementation: (
+        fn: (playlistId: string, options: { onSuccess?: () => void }) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_playlistId, options) => {
+      options.onSuccess?.();
+    });
+
+    fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(deleteMutate).toHaveBeenCalledWith(
+        'playlist-1',
+        expect.any(Object)
+      );
+    });
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains a failed delete and keeps the detail', async () => {
+    const failure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The playlist could not be deleted.'
+    });
+    const { onBack, deleteMutate } = await openHeaderSheet({
+      undoWindowMs: 20
+    });
+    const mutate = deleteMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          playlistId: string,
+          options: { onError?: (error: Error) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_playlistId, options) => {
+      options.onError?.(failure);
+    });
+
+    fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('The playlist could not be deleted.')
+      ).toBeOnTheScreen();
+    });
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByTestId('playlist-scroll').props.pointerEvents).toBe(
+      'auto'
+    );
+  });
+
+  it('offers the header actions to the owner only', async () => {
+    await renderDetail();
+
+    expect(screen.getByTestId('detail-actions')).toBeOnTheScreen();
+  });
+
+  it('draws no header actions for a read collaborator', async () => {
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    expect(screen.queryByTestId('detail-actions')).not.toBeOnTheScreen();
+  });
+
+  it('renders the delete window in French', async () => {
+    await renderDetail({ language: Language.French });
+
+    fireEvent.press(screen.getByTestId('detail-actions'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+    });
+
+    expect(screen.getByText('Supprimer')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+    });
+    expect(screen.getByText('Suppression de la playlist')).toBeOnTheScreen();
+    expect(screen.getByText('Annuler')).toBeOnTheScreen();
   });
 
   it('draws the cover with the session headers', async () => {

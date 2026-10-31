@@ -147,6 +147,8 @@ export const fr: Messages = {
       "La lecture n'a pas pu démarrer : la file d'attente n'a pas été chargée.",
     deleteDeferred: 'Suppression de la playlist',
     removeDeferred: 'Retrait de la piste',
+    deleteFailed: "La playlist n'a pas pu être supprimée.",
+    removeFailed: "La piste n'a pas pu être retirée.",
     trackFallback: 'Piste',
     settingFailed: "Le paramètre n'a pas pu être modifié.",
     settingNotice: "Le paramètre n'a pas été modifié.",

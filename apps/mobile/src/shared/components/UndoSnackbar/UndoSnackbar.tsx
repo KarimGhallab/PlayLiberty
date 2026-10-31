@@ -27,6 +27,8 @@ export interface UndoSnackbarProps {
   /** The deferred window, which the remaining bar counts down. */
   readonly durationMs: number;
   readonly bottomOffset?: number;
+  /** Matches a padded parent's inset where the snackbar is full bleed. */
+  readonly horizontalInset?: number;
 }
 
 /* A deferred action's surface: the sentence, the subject, the countdown, and
@@ -37,7 +39,8 @@ export default function UndoSnackbar({
   detail,
   onUndo,
   durationMs,
-  bottomOffset = 0
+  bottomOffset = 0,
+  horizontalInset = 0
 }: UndoSnackbarProps) {
   const { t } = useI18n();
   const reduceMotion = useReduceMotion();
@@ -68,7 +71,11 @@ export default function UndoSnackbar({
       testID="undo-snackbar"
       style={[
         styles.snackbar,
-        { bottom: insets.bottom + tokenLength('space-4') + bottomOffset }
+        {
+          bottom: insets.bottom + tokenLength('space-4') + bottomOffset,
+          left: horizontalInset,
+          right: horizontalInset
+        }
       ]}>
       <View style={styles.content}>
         <View
@@ -108,8 +115,6 @@ export default function UndoSnackbar({
 const styles = StyleSheet.create({
   snackbar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: tokenColor('control-border'),

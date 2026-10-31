@@ -39,22 +39,31 @@ describe('the track sheet actions', () => {
     expect(keys(trackActionsFor(track, false, false, false))).toEqual(['copy']);
   });
 
-  it('offers Retry and Fetch whole for a failed track a writer may repair', () => {
+  it('offers Remove to a writer on a stored track', () => {
+    expect(keys(trackActionsFor(track, true, true, false))).toEqual([
+      'copy',
+      'remove'
+    ]);
+  });
+
+  it('offers Retry, Fetch whole and Remove for a failed track a writer may repair', () => {
     expect(keys(trackActionsFor(failed, true, true, false))).toEqual([
       'copy',
       'retry',
-      'fetchWhole'
+      'fetchWhole',
+      'remove'
     ]);
   });
 
   it('drops Fetch whole when the skip setting is off', () => {
     expect(keys(trackActionsFor(failed, true, false, false))).toEqual([
       'copy',
-      'retry'
+      'retry',
+      'remove'
     ]);
   });
 
-  it('offers no repair to a read collaborator', () => {
+  it('offers no repair or Remove to a read collaborator', () => {
     expect(keys(trackActionsFor(failed, false, true, false))).toEqual(['copy']);
   });
 
