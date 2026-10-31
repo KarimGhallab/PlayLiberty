@@ -286,6 +286,8 @@ export const en = {
     pause: 'Pause',
     playNamed: 'Play {title}',
     pauseNamed: 'Pause {title}',
+    previousNamed: 'Previous track, {title}',
+    nextNamed: 'Next track, {title}',
     openPlaylist: 'Open {name}',
     position: 'Position in track',
     positionValue: '{elapsed} of {duration}',

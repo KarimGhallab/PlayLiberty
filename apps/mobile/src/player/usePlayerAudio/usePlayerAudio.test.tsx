@@ -12,7 +12,10 @@ jest.mock('expo-audio', () => {
     pause: jest.fn()
   };
   const status = {
-    current: { didJustFinish: false } as { didJustFinish: boolean }
+    current: { didJustFinish: false, currentTime: 0 } as {
+      didJustFinish: boolean;
+      currentTime: number;
+    }
   };
 
   return {
@@ -31,7 +34,9 @@ interface AudioMock {
     readonly play: jest.Mock;
     readonly pause: jest.Mock;
   };
-  readonly __status: { current: { didJustFinish: boolean } };
+  readonly __status: {
+    current: { didJustFinish: boolean; currentTime: number };
+  };
 }
 
 const audio = jest.requireMock<AudioMock>('expo-audio');
@@ -59,7 +64,7 @@ function start(ids: readonly string[], currentId: string): void {
 beforeEach(() => {
   jest.clearAllMocks();
   usePlayerStore.getState().clear();
-  audio.__status.current = { didJustFinish: false };
+  audio.__status.current = { didJustFinish: false, currentTime: 0 };
 });
 
 describe('the player audio', () => {
@@ -100,12 +105,24 @@ describe('the player audio', () => {
     expect(audio.__player.replace).toHaveBeenCalledTimes(1);
   });
 
+  it('reports the player position to the store', async () => {
+    start(['a'], 'a');
+    const view = await renderHook(() => usePlayerAudio(resolveSource));
+
+    await act(() => {
+      audio.__status.current = { didJustFinish: false, currentTime: 12.5 };
+    });
+    await view.rerender({});
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(12.5);
+  });
+
   it('advances once when the track finishes', async () => {
     start(['a', 'b'], 'a');
     const view = await renderHook(() => usePlayerAudio(resolveSource));
 
     await act(() => {
-      audio.__status.current = { didJustFinish: true };
+      audio.__status.current = { didJustFinish: true, currentTime: 60 };
     });
     await view.rerender({});
 

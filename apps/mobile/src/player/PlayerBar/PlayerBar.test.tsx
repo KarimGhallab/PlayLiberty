@@ -41,6 +41,12 @@ const track: PlayerTrack = {
   thumbnailPath: 'thumbs/1.jpg'
 };
 
+const secondTrack: PlayerTrack = {
+  ...track,
+  id: 'track-2',
+  title: 'Second Song'
+};
+
 async function renderBar(language = Language.English) {
   await render(
     <I18nProvider initialLanguage={language} storage={store}>
@@ -109,6 +115,47 @@ describe('the player bar', () => {
     });
   });
 
+  it('moves next and disables next at the last entry', async () => {
+    usePlayerStore
+      .getState()
+      .start(
+        [track, secondTrack],
+        { id: 'playlist-1', name: 'Rain On The Window' },
+        track.id
+      );
+    await renderBar();
+
+    expect(screen.getByLabelText('Next track, First Song')).not.toBeDisabled();
+
+    fireEvent.press(screen.getByLabelText('Next track, First Song'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Second Song')).toBeOnTheScreen();
+    });
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(screen.getByLabelText('Next track, Second Song')).toBeDisabled();
+  });
+
+  it('moves previous from the bar', async () => {
+    usePlayerStore
+      .getState()
+      .start(
+        [track, secondTrack],
+        { id: 'playlist-1', name: 'Rain On The Window' },
+        secondTrack.id
+      );
+    await renderBar();
+
+    fireEvent.press(screen.getByLabelText('Previous track, Second Song'));
+
+    await waitFor(() => {
+      expect(screen.getByText('First Song')).toBeOnTheScreen();
+    });
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
   it('draws a bare track without a playlist or a link', async () => {
     usePlayerStore.getState().startBareTrack(track);
     await renderBar();
@@ -130,12 +177,18 @@ describe('the player bar', () => {
     });
   });
 
-  it('names the playlist link in both languages', async () => {
+  it('names the controls in both languages', async () => {
     startPlaylist();
     await renderBar(Language.French);
 
     expect(
       screen.getByLabelText('Ouvrir Rain On The Window')
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Piste précédente, First Song')
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Piste suivante, First Song')
     ).toBeOnTheScreen();
     expect(
       screen.getByLabelText('Mettre en pause First Song')

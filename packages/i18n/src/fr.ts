@@ -295,6 +295,8 @@ export const fr: Messages = {
     pause: 'Mettre en pause',
     playNamed: 'Lire {title}',
     pauseNamed: 'Mettre en pause {title}',
+    previousNamed: 'Piste précédente, {title}',
+    nextNamed: 'Piste suivante, {title}',
     openPlaylist: 'Ouvrir {name}',
     position: 'Position dans la piste',
     positionValue: '{elapsed} sur {duration}',

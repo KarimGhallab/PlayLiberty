@@ -44,6 +44,7 @@ describe('the player store', () => {
     expect(state.playlistId).toBe('playlist-1');
     expect(state.playlistName).toBe('Playlist One');
     expect(state.isPlaying).toBe(true);
+    expect(state.positionSeconds).toBe(0);
   });
 
   it('starts a bare track with no playlist context', () => {
@@ -61,20 +62,24 @@ describe('the player store', () => {
 
   it('advances to the next track', () => {
     start(['a', 'b', 'c'], 'a');
+    usePlayerStore.getState().setPosition(20);
 
     usePlayerStore.getState().advance();
 
     expect(usePlayerStore.getState().currentId).toBe('b');
     expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
   it('ends the queue after the last track', () => {
     start(['a', 'b'], 'b');
+    usePlayerStore.getState().setPosition(20);
 
     usePlayerStore.getState().advance();
 
     expect(usePlayerStore.getState().currentId).toBeNull();
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
   it('drops the current track and advances', () => {
@@ -115,12 +120,14 @@ describe('the player store', () => {
   it('moves the playhead without rebuilding the queue', () => {
     start(['a', 'b', 'c'], 'a');
     usePlayerStore.getState().setPlaying(false);
+    usePlayerStore.getState().setPosition(20);
 
     usePlayerStore.getState().play('c');
 
     expect(usePlayerStore.getState().queue).toEqual(['a', 'b', 'c']);
     expect(usePlayerStore.getState().currentId).toBe('c');
     expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 
   it('leaves the queue when the playhead is not in it', () => {
@@ -145,6 +152,64 @@ describe('the player store', () => {
     usePlayerStore.getState().setPlaying(true);
 
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+});
+
+describe('the transport', () => {
+  it('moves next and starts the entry it lands on', () => {
+    start(['a', 'b', 'c'], 'a');
+    usePlayerStore.getState().setPlaying(false);
+
+    usePlayerStore.getState().skipNext();
+
+    expect(usePlayerStore.getState().currentId).toBe('b');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('does nothing at the last entry', () => {
+    start(['a', 'b'], 'b');
+    usePlayerStore.getState().setPlaying(false);
+    usePlayerStore.getState().setPosition(12);
+
+    usePlayerStore.getState().skipNext();
+
+    expect(usePlayerStore.getState().currentId).toBe('b');
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().positionSeconds).toBe(12);
+  });
+
+  it('moves previous early in a track', () => {
+    start(['a', 'b', 'c'], 'b');
+    usePlayerStore.getState().setPosition(4);
+
+    usePlayerStore.getState().skipPrevious();
+
+    expect(usePlayerStore.getState().currentId).toBe('a');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('restarts the current track past the grace window', () => {
+    start(['a', 'b', 'c'], 'b');
+    usePlayerStore.getState().setPosition(6);
+
+    usePlayerStore.getState().skipPrevious();
+
+    expect(usePlayerStore.getState().currentId).toBe('b');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('restarts the first entry rather than moving before it', () => {
+    start(['a', 'b'], 'a');
+    usePlayerStore.getState().setPosition(9);
+
+    usePlayerStore.getState().skipPrevious();
+
+    expect(usePlayerStore.getState().currentId).toBe('a');
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
   });
 });
 
@@ -199,5 +264,6 @@ describe('the shuffle flag', () => {
     expect(state.playlistName).toBeNull();
     expect(state.tracks).toEqual({});
     expect(state.isPlaying).toBe(false);
+    expect(state.positionSeconds).toBe(0);
   });
 });

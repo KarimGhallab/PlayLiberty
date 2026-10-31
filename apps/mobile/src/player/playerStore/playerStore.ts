@@ -36,6 +36,9 @@ function randomId(queue: readonly string[]): string | undefined {
     : queue[Math.floor(Math.random() * queue.length)];
 }
 
+/* How far into a track a previous press still means the entry before it. */
+const PREVIOUS_GRACE_SECONDS = 5;
+
 function tracksById(
   tracks: readonly PlayerTrack[]
 ): Readonly<Record<string, PlayerTrack>> {
@@ -65,6 +68,7 @@ export interface PlayerState {
   readonly currentId: string | null;
   readonly shuffle: boolean;
   readonly isPlaying: boolean;
+  readonly positionSeconds: number;
   start: (
     tracks: readonly PlayerTrack[],
     playlist: PlayerPlaylist | null,
@@ -75,6 +79,9 @@ export interface PlayerState {
   setShuffle: (shuffle: boolean) => void;
   play: (trackId: string) => void;
   setPlaying: (playing: boolean) => void;
+  setPosition: (seconds: number) => void;
+  skipNext: () => void;
+  skipPrevious: () => void;
   advance: () => void;
   drop: (trackId: string) => void;
   clear: () => void;
@@ -89,6 +96,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   currentId: null,
   shuffle: false,
   isPlaying: false,
+  positionSeconds: 0,
   start: (tracks, playlist, currentId, shuffle = false) => {
     const queue = tracks.map(track => track.id);
 
@@ -100,7 +108,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       playlistName: playlist?.name ?? null,
       currentId,
       shuffle,
-      isPlaying: true
+      isPlaying: true,
+      positionSeconds: 0
     });
   },
   startBareTrack: track =>
@@ -112,7 +121,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       playlistName: null,
       currentId: track.id,
       shuffle: false,
-      isPlaying: true
+      isPlaying: true,
+      positionSeconds: 0
     }),
   /* Turning shuffle on draws a new order and a new leader; turning it off
    * restores the playlist order and leaves the playhead in place. */
@@ -135,7 +145,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       return {
         shuffle,
         queue: shuffledWithLeader(state.queue, leader),
-        currentId: leader
+        currentId: leader,
+        positionSeconds: 0
       };
     }),
   play: trackId =>
@@ -144,16 +155,58 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         return state;
       }
 
-      return { currentId: trackId, isPlaying: true };
+      if (state.currentId === trackId) {
+        return { isPlaying: true };
+      }
+
+      return { currentId: trackId, isPlaying: true, positionSeconds: 0 };
     }),
   setPlaying: playing =>
     set(state => (state.currentId === null ? state : { isPlaying: playing })),
+  setPosition: seconds =>
+    set(state => {
+      if (state.currentId === null || !Number.isFinite(seconds)) {
+        return state;
+      }
+
+      return { positionSeconds: Math.max(0, seconds) };
+    }),
+  skipNext: () => {
+    const { queue, currentId } = get();
+    const index = currentId === null ? -1 : queue.indexOf(currentId);
+    const next = queue[index + 1];
+
+    if (next === undefined) {
+      return;
+    }
+
+    set({ currentId: next, positionSeconds: 0, isPlaying: true });
+  },
+  skipPrevious: () => {
+    const { queue, currentId, positionSeconds } = get();
+    const index = currentId === null ? -1 : queue.indexOf(currentId);
+
+    if (index < 0) {
+      return;
+    }
+
+    if (index > 0 && positionSeconds < PREVIOUS_GRACE_SECONDS) {
+      const previous = queue[index - 1];
+
+      if (previous !== undefined) {
+        set({ currentId: previous, positionSeconds: 0, isPlaying: true });
+        return;
+      }
+    }
+
+    set({ positionSeconds: 0, isPlaying: true });
+  },
   advance: () => {
     const { queue, currentId } = get();
     const index = currentId === null ? -1 : queue.indexOf(currentId);
     const next = queue[index + 1] ?? null;
 
-    set({ currentId: next, isPlaying: next !== null });
+    set({ currentId: next, isPlaying: next !== null, positionSeconds: 0 });
   },
   drop: trackId => {
     const { queue, sourceQueue, tracks, currentId, isPlaying } = get();
@@ -180,7 +233,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       sourceQueue: nextSource,
       tracks: nextTracks,
       currentId: next,
-      isPlaying: next === null ? false : isPlaying
+      isPlaying: next === null ? false : isPlaying,
+      positionSeconds: 0
     });
   },
   clear: () =>
@@ -192,6 +246,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       playlistName: null,
       currentId: null,
       shuffle: false,
-      isPlaying: false
+      isPlaying: false,
+      positionSeconds: 0
     })
 }));

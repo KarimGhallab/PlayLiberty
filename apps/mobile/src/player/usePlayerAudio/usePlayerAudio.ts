@@ -21,6 +21,7 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
   const currentId = usePlayerStore(state => state.currentId);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const advance = usePlayerStore(state => state.advance);
+  const setPosition = usePlayerStore(state => state.setPosition);
   const loadedId = useRef<string | null>(null);
   const finished = useRef(false);
 
@@ -77,6 +78,16 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
 
     player.pause();
   }, [currentId, isPlaying, player]);
+
+  /* The status is the player's own; a position from the previous source must
+   * not be read as the new track's, so only a time change reports. */
+  useEffect(() => {
+    if (usePlayerStore.getState().currentId === null) {
+      return;
+    }
+
+    setPosition(status.currentTime);
+  }, [setPosition, status.currentTime]);
 
   /* The status pulses once per ended track; the guard keeps a late pulse from
    * advancing again after the next track has already loaded. */
