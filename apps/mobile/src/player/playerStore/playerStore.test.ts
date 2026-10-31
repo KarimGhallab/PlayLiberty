@@ -309,6 +309,38 @@ describe('the playback failure', () => {
 });
 
 describe('the queue refetch', () => {
+  it('adopts the read order when the queue is not shuffled', () => {
+    start(['a', 'b', 'c'], 'b');
+    usePlayerStore.getState().setPosition(8);
+
+    usePlayerStore
+      .getState()
+      .applyRefetch('playlist-1', [track('c'), track('a'), track('b')]);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual(['c', 'a', 'b']);
+    expect(state.sourceQueue).toEqual(['c', 'a', 'b']);
+    expect(state.currentId).toBe('b');
+    expect(state.positionSeconds).toBe(8);
+    expect(state.isPlaying).toBe(true);
+  });
+
+  it('returns to the last read order when shuffle is turned off', () => {
+    start(['a', 'b', 'c'], 'a');
+    usePlayerStore.getState().setShuffle(true);
+
+    usePlayerStore
+      .getState()
+      .applyRefetch('playlist-1', [track('c'), track('a'), track('b')]);
+    usePlayerStore.getState().setShuffle(false);
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual(['c', 'a', 'b']);
+    expect(state.sourceQueue).toEqual(['c', 'a', 'b']);
+  });
+
   it('keeps known tracks in place, drops missing ones and appends a new one', () => {
     start(['a', 'b', 'c'], 'a');
     usePlayerStore.setState({ queue: ['c', 'a', 'b'], shuffle: true });

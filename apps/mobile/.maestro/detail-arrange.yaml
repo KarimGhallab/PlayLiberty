@@ -1,0 +1,135 @@
+appId: dev.playliberty.app
+name: The detail arranges the list and returns to the whole of it
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+# The name keeps the flow independent of gallery order and of a shared first card.
+- scrollUntilVisible:
+    element:
+      text: ${OWNED_PLAYLIST}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${OWNED_PLAYLIST}
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: detail-sort
+    timeout: 30000
+- assertVisible:
+    id: filter-all
+- tapOn:
+    id: detail-sort
+- extendedWaitUntil:
+    visible:
+      id: playlist-sort-sheet
+    timeout: 15000
+# Playlist order first guarantees the next press changes the saved value, so
+# every run writes and reads the sort rather than re-picking what is already on.
+- tapOn:
+    id: playlist-sort-playlist
+- extendedWaitUntil:
+    notVisible:
+      id: playlist-sort-sheet
+    timeout: 15000
+- tapOn:
+    id: detail-sort
+- extendedWaitUntil:
+    visible:
+      id: playlist-sort-sheet
+    timeout: 15000
+- tapOn:
+    id: playlist-sort-newest
+- extendedWaitUntil:
+    notVisible:
+      id: playlist-sort-sheet
+    timeout: 15000
+# The reopened sheet reads the saved value, not the choice just made in it.
+- tapOn:
+    id: detail-sort
+- extendedWaitUntil:
+    visible:
+      id: playlist-sort-sheet
+    timeout: 15000
+- assertVisible:
+    id: playlist-sort-newest
+    checked: true
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: playlist-sort-sheet
+    timeout: 15000
+# The rail scrolls sideways; Failed is the fifth chip. Two sweeps reach it.
+- swipe:
+    start: 90%, 34%
+    end: 20%, 34%
+    duration: 400
+- swipe:
+    start: 90%, 34%
+    end: 20%, 34%
+    duration: 400
+- tapOn:
+    id: filter-failed
+# The failed set can be empty, in which case the filter names its body.
+- runFlow:
+    when:
+      visible:
+        id: filter-empty
+    commands:
+      - assertVisible:
+          id: filter-empty
+- runFlow:
+    when:
+      notVisible:
+        id: filter-empty
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: track-row
+          timeout: 15000
+- swipe:
+    start: 10%, 34%
+    end: 90%, 34%
+    duration: 400
+- swipe:
+    start: 10%, 34%
+    end: 90%, 34%
+    duration: 400
+- tapOn:
+    id: filter-all
+- extendedWaitUntil:
+    visible:
+      id: track-row
+    timeout: 15000
+# Leave the device in the library.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000

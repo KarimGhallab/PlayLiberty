@@ -25,7 +25,8 @@ of `OWNED_PLAYLIST`. The remove, player, batch and share flows take their playli
 must name a playlist the signed-in account owns with at least three playable tracks; the name keeps them independent
 of gallery order and of a shared first card. The flows are independent, so any order works.
 `signed-out` leaves the device signed out; the other flows sign in first when they need to. `provisioning` starts from
-either state and leaves the device signed in.
+either state and leaves the device signed in. The pin flow takes `PIN_PLAYLIST`, which must name an unpinned playlist;
+it finds that card by name in the rest group and leaves it unpinned when it ends.
 
 ## The physical background journey
 
@@ -48,9 +49,9 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 | --------------------- | ------------------------------------------------------------------------ |
 | `gallery-card`        | the gallery opens and a card reaches its playlist                        |
 | `gallery-add`         | a playlist is added from the floating action and appears under Syncing   |
-| `gallery-pin`         | a playlist is pinned from its card and the Pinned heading appears        |
+| `gallery-pin`         | a card is pinned, moves under Pinned, and is unpinned again              |
 | `detail-play`         | a row plays and its own row says it is playing                           |
-| `detail-filter`       | the failed chip draws its body, then All brings the whole list back      |
+| `detail-arrange`      | the sort round-trips, Failed draws its body, then All returns the list   |
 | `detail-remove-undo`  | Remove defers, Undo restores the row, and the device ends in the gallery |
 | `detail-add-batch`    | a video is added to two playlists, removed and restored                  |
 | `detail-share`        | a playlist is shared at read, changed to write, then revoked             |
@@ -66,12 +67,18 @@ The development client draws a floating gear over the top right of the app, and 
 the account door. The flows tap the left tenth of the door instead, which is why the `tapOn` for `account-door`
 carries a `point`.
 
+## Why the pin flow names its card
+
+The pinned section is one sideways row, so the flow cannot reopen a card by its group index: pinning the first rest
+card would make the named card a different one. It addresses the named card through the group-qualified actions id
+and the card's own name, and one sideways sweep at 33% height brings the later cards of the row into view.
+
 ## Why the detail flows move by hand
 
-The status chips sit on one horizontal rail, so `scrollUntilVisible` scrolls the page under it rather than the rail.
-The filter flow swipes the chip row twice to reach Failed and twice back to All. Remove and Undo live in a six-second
-window, so those taps set `waitToSettleTimeoutMs: 0`; a settle wait can outlast the window and let the removal
-commit before Undo lands.
+The sort and the chips share one rail below the header, so `scrollUntilVisible` would scroll the page under the rail
+rather than the rail itself. The arranging flow swipes the chip rail twice to reach Failed and twice back to All.
+Remove and Undo live in a six-second window, so those taps set `waitToSettleTimeoutMs: 0`; a settle wait can outlast
+the window and let the removal commit before Undo lands.
 
 The batch flow checks the second checkbox in the add sheet. The current playlist is first and preselected, so index
 1 is the next writable playlist on the gallery's first page. A clean batch closes the sheet; a refusal would keep it

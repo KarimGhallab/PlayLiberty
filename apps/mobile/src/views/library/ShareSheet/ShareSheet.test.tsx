@@ -32,7 +32,7 @@ jest.mock('../../../api/useAccount', () => ({
   useAccount: jest.fn()
 }));
 
-jest.mock('../../../api/useAccountPage', () => ({
+jest.mock('../../../api/useAccountPage/useAccountPage', () => ({
   useAccountPage: jest.fn()
 }));
 

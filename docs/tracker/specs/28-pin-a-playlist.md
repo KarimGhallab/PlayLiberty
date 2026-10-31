@@ -1,20 +1,22 @@
 # Pin a playlist on mobile
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
 
 The gallery is one grid in name order, and the playlist a person returns to drifts further down as the account grows.
-The web client has a per-account pin and a pinned section; the app has neither, and its grid is read by thumb, so the
-playlist that is always wanted is the one that costs the most scrolling.
+The web client has a per-account pin and a pinned section, and the app's gallery inherited both when spec `21` was
+built: the per-account pin, the Pinned heading, the menu item and the optimistic move already ship. The app's pinned
+section is one horizontal row that peeks the next card rather than a copy of the grid below. What the mobile corpus
+still lacks is the journey that proves the move on the device: the flow stopped at the heading and never unpinned.
 
 ## Solution
 
 Pin and Unpin are items in the playlist's actions sheet, and the gallery draws a Pinned section above the rest of the
-grid, in name order and without a count. The section exists only while something is pinned, and a pinned playlist is
-lifted out of the grid below rather than drawn twice. The pin is the account's own and never moves anybody else's
-gallery.
+grid, in name order and without a count. The section is one horizontal row of the same cards, exists only while
+something is pinned, and a pinned playlist is lifted out of the grid below rather than drawn twice. The pin is the
+account's own and never moves anybody else's gallery.
 
 ## User Stories
 
@@ -42,8 +44,8 @@ gallery.
   action.
 - **A reader's actions sheet holds Pin and Unpin alone.** Visibility is the whole of what pinning needs, so a share
   at the read level otherwise offers nothing. `Decided here:` the web's rule, kept rather than hiding the sheet.
-- **The pinned section is a heading above the grid, in name order, with no count.** The items are the same card at
-  the same arrangement, and the section exists only while something is pinned.
+- **The pinned section is a heading above one horizontal row, in name order, with no count.** The items are the same
+  card, the row peeks the next card, and the section exists only while something is pinned.
 - **A pinned playlist is lifted out of the grid below rather than drawn twice.**
 - **The pin is optimistic.** The card moves on the press and the read is invalidated on the answer. `Decided here:`
   a pin that waits for a round trip reads as a dropped press, and the web makes the same move optimistically.
@@ -59,7 +61,7 @@ gallery.
 
 - A test earns its place only if it fails when behaviour an account would notice. The tests assert that the pinned
   section is drawn only with a pin, that a pinned card is absent from the grid below, that the item's label follows
-  the state, and that a reader's sheet holds the two items alone. They do not assert the section's spacing or the
+  the state, and that a reader's sheet holds the pin alone. They do not assert the section's spacing or the
   heading's style.
 - **The gallery's grouping is tested at the gallery's seam**: the three groups, the section's absence and the
   no-duplicate rule. Prior art is the web library's pinned-section tests.
@@ -79,3 +81,5 @@ gallery.
 
 - The pin is the gallery's one exception to the single list, and the reason is the account's own placement rather
   than a second meaning for a shared item.
+- The code half shipped with `21`'s gallery and `13`'s server, and the mobile arrangement is `21`'s horizontal row
+  that `docs/DESIGN.md` records. `01` closed the journey's unpin half.

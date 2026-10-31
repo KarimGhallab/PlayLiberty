@@ -91,6 +91,8 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`24-play-in-the-background/TICKETS.md`](24-play-in-the-background/TICKETS.md).
 - [`25-curate-a-playlist/TICKETS.md`](25-curate-a-playlist/TICKETS.md).
 - [`26-share-a-playlist/TICKETS.md`](26-share-a-playlist/TICKETS.md).
+- [`27-sort-and-filter-the-track-list/TICKETS.md`](27-sort-and-filter-the-track-list/TICKETS.md).
+- [`28-pin-a-playlist/TICKETS.md`](28-pin-a-playlist/TICKETS.md).
 
 ## Conventions
 

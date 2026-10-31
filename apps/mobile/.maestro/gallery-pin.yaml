@@ -1,5 +1,5 @@
 appId: dev.playliberty.app
-name: A playlist is pinned from its card
+name: A playlist is pinned from its card and unpinned again
 ---
 - stopApp
 - launchApp
@@ -26,17 +26,43 @@ name: A playlist is pinned from its card
     visible:
       id: playlist-card
     timeout: 30000
-# The rest group is the unpinned, idle set; pinning one of its cards proves the
-# move regardless of the pins the account already holds.
+# The actions control carries the rest group's id and the card's own name, so
+# the flow opens one named unpinned card rather than whichever card sorts first.
 - scrollUntilVisible:
     element:
       id: playlist-actions-rest
+      text: .*${PIN_PLAYLIST}.*
     direction: DOWN
     timeout: 30000
 - tapOn:
     id: playlist-actions-rest
-    index: 0
-    point: '10%,50%'
+    text: .*${PIN_PLAYLIST}.*
+- extendedWaitUntil:
+    visible:
+      id: playlist-actions-sheet
+    timeout: 15000
+- tapOn:
+    id: playlist-action-pin
+# The card moves on the press; the heading can be above the card's old place.
+- scrollUntilVisible:
+    element:
+      id: gallery-heading-pinned
+    direction: UP
+    timeout: 15000
+# The pinned section is one sideways row; one sweep brings its later cards in.
+- swipe:
+    start: 85%, 33%
+    end: 20%, 33%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: playlist-actions-pinned
+      text: .*${PIN_PLAYLIST}.*
+    timeout: 15000
+# The same card's sheet, opened from where the pin put it.
+- tapOn:
+    id: playlist-actions-pinned
+    text: .*${PIN_PLAYLIST}.*
 - extendedWaitUntil:
     visible:
       id: playlist-actions-sheet
@@ -44,6 +70,19 @@ name: A playlist is pinned from its card
 - tapOn:
     id: playlist-action-pin
 - extendedWaitUntil:
-    visible:
-      id: gallery-heading-pinned
+    notVisible:
+      id: playlist-actions-sheet
     timeout: 15000
+- assertNotVisible:
+    id: playlist-actions-pinned
+    text: .*${PIN_PLAYLIST}.*
+# The card is back in the rest group, found by its name and its group's id.
+- scrollUntilVisible:
+    element:
+      id: playlist-actions-rest
+      text: .*${PIN_PLAYLIST}.*
+    direction: DOWN
+    timeout: 30000
+- assertVisible:
+    id: playlist-actions-rest
+    text: .*${PIN_PLAYLIST}.*

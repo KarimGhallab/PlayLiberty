@@ -1,6 +1,6 @@
 # Sort and filter the track list on mobile
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
@@ -86,5 +86,6 @@ disabled while the list is shuffled.
 
 ## Further Notes
 
-- The two controls are the only part of the detail that stays on screen while the list scrolls. That is why the sort
-  is a sheet and the chips are a row rather than both being sheets.
+- Shipped differently: the owner revised the control block after the tickets landed. The sort and the chips share one
+  rail below the header, with a vertical rule between them, and the rail scrolls sideways. The pinned band the spec
+  describes, with the sort on its own line and the chips wrapping, is what the resolved tickets were cut against.

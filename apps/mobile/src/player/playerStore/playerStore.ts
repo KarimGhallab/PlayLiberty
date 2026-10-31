@@ -45,8 +45,8 @@ function tracksById(
   return Object.fromEntries(tracks.map(track => [track.id, track]));
 }
 
-/* A refetch keeps the order already playing for known ids; new ids join at the
- * end in the server's order and a missing id is simply gone. */
+/* A shuffled refetch keeps the order already playing for known ids; new ids
+ * join at the end in the server's order and a missing id is simply gone. */
 function mergeQueue(
   current: readonly string[],
   incoming: readonly PlayerTrack[]
@@ -246,8 +246,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         return state;
       }
 
-      const queue = mergeQueue(state.queue, incoming);
+      /* Unshuffled, the queue is the read's order; shuffled, the incoming
+       * entries join the arrangement already playing. */
       const sourceQueue = incoming.map(track => track.id);
+      const queue = state.shuffle
+        ? mergeQueue(state.queue, incoming)
+        : sourceQueue;
       const tracks = tracksById(incoming);
       const currentStillThere =
         state.currentId !== null && queue.includes(state.currentId);

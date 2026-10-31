@@ -36,9 +36,9 @@ export interface PlaylistControlsProps {
   readonly onFilterChange: (status: TrackFileStatus | null) => void;
 }
 
-/* The detail's one rail below the identity: the saved order then the
- * whole-playlist chips, scrolling sideways like the gallery's rail. Both step
- * aside while the queue's shuffled order is on screen. */
+/* The detail's one row below the header: the saved order, a rule, then the
+ * whole-playlist chips. Both step aside while the queue's shuffled order is on
+ * screen. */
 export default function PlaylistControls({
   sort,
   canEdit,

@@ -78,11 +78,9 @@ the type family, the space scale, the radii, the durations and the one curve are
   peeks the next card and scrolls sideways; the rest is the grid, and the ownership scope and the status chips are
   one row that scrolls. The bulk sync keeps its count in the header; the web's phone arrangement drops it because
   the browser's header cannot hold the sentence, and the app's header can.
-- **The detail scrolls its identity away and keeps its controls.** The cover, the name and the sync line are the
-  list's first item; the sort and the chips stay under the top inset. The transport is the player bar's, not the
-  header's, and the header keeps Play and Shuffle. This is where the app departs from the web's phone arrangement,
-  which keeps its whole header sticky: a native screen already has a system bar, and a second pinned block would
-  spend a third of the screen.
+- **The detail is one column.** The cover, the name and the sync line lead; the sort and the chips follow on one
+  rail below the header, with a vertical rule between the sort and the chips, and the rail scrolls sideways past the
+  width. The transport is the player bar's, not the header's, and the header keeps Play and Shuffle.
 - **The player bar is the only persistent chrome and the only transport.** The queue is a sheet above it. There is no
   volume rail, no mute and no keyboard chord: the device's buttons are the volume, and the operating system's
   controls are the transport when the app is in the background.
