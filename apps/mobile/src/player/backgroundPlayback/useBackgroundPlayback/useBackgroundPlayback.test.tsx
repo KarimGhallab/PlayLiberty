@@ -16,7 +16,7 @@ jest.mock('expo-audio', () => ({
   )
 }));
 
-jest.mock('./backgroundPlayback', () => {
+jest.mock('../backgroundPlayback', () => {
   const start = jest.fn(() => Promise.resolve(true));
   const update = jest.fn();
   const stop = jest.fn();
@@ -36,7 +36,7 @@ const playback = jest.requireMock<{
   __update: jest.Mock;
   __stop: jest.Mock;
   __addCommandListener: jest.Mock;
-}>('./backgroundPlayback');
+}>('../backgroundPlayback');
 const { requestNotificationPermissionsAsync } = jest.requireMock<{
   requestNotificationPermissionsAsync: jest.Mock;
 }>('expo-audio');
@@ -63,10 +63,25 @@ function wrapper({ children }: { readonly children: ReactNode }) {
   );
 }
 
-async function startQueue(): Promise<void> {
+const secondTrack: PlayerTrack = {
+  ...track,
+  id: 'track-2',
+  title: 'Second Song'
+};
+
+const thirdTrack: PlayerTrack = {
+  ...track,
+  id: 'track-3',
+  title: 'Third Song'
+};
+
+async function startQueue(
+  tracks: readonly PlayerTrack[] = [track],
+  currentId = track.id
+): Promise<void> {
   usePlayerStore
     .getState()
-    .start([track], { id: 'playlist-1', name: 'Rain On The Window' }, track.id);
+    .start(tracks, { id: 'playlist-1', name: 'Rain On The Window' }, currentId);
 }
 
 beforeEach(() => {
@@ -89,7 +104,9 @@ describe('the background playback bridge', () => {
         expect.objectContaining({
           title: 'First Song',
           playlistName: 'Rain On The Window',
-          isPlaying: true
+          isPlaying: true,
+          positionSeconds: 0,
+          canNext: false
         })
       );
     });
@@ -143,7 +160,8 @@ describe('the background playback bridge', () => {
     });
 
     const listener = playback.__addCommandListener.mock.calls[0]?.[0] as (
-      command: string
+      command: string,
+      position?: number
     ) => void;
 
     await act(() => {
@@ -151,5 +169,52 @@ describe('the background playback bridge', () => {
     });
 
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('mirrors the position for the notification', async () => {
+    await startQueue();
+    await renderHook(() => useBackgroundPlayback(config), { wrapper });
+
+    await waitFor(() => {
+      expect(playback.__start).toHaveBeenCalled();
+    });
+
+    await act(() => {
+      usePlayerStore.getState().setPosition(12);
+    });
+
+    expect(playback.__update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ positionSeconds: 12 })
+    );
+  });
+
+  it('moves with previous and next from the service', async () => {
+    await startQueue([track, secondTrack, thirdTrack]);
+    await renderHook(() => useBackgroundPlayback(config), { wrapper });
+
+    await waitFor(() => {
+      expect(playback.__addCommandListener).toHaveBeenCalled();
+    });
+
+    const listener = playback.__addCommandListener.mock.calls[0]?.[0] as (
+      command: string,
+      position?: number
+    ) => void;
+
+    await act(() => {
+      listener('next');
+    });
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+
+    await act(() => {
+      listener('previous');
+    });
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+
+    await act(() => {
+      listener('seek', 30);
+    });
+    expect(usePlayerStore.getState().positionSeconds).toBe(30);
+    expect(usePlayerStore.getState().seekTo).toBe(30);
   });
 });

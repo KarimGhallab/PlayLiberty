@@ -30,6 +30,8 @@ class BackgroundPlaybackService : Service() {
     private const val ACTION_START = "dev.playliberty.backgroundplayback.START"
     private const val ACTION_UPDATE = "dev.playliberty.backgroundplayback.UPDATE"
     private const val ACTION_TOGGLE = "dev.playliberty.backgroundplayback.TOGGLE"
+    private const val ACTION_PREVIOUS = "dev.playliberty.backgroundplayback.PREVIOUS"
+    private const val ACTION_NEXT = "dev.playliberty.backgroundplayback.NEXT"
 
     fun start(context: Context) {
       val intent = Intent(context, BackgroundPlaybackService::class.java)
@@ -55,6 +57,7 @@ class BackgroundPlaybackService : Service() {
   private var artworkUrl: String = ""
   private var artworkHeaders: Map<String, String> = emptyMap()
   private var artworkThread: Thread? = null
+  private var notificationKey: String? = null
 
   override fun onCreate() {
     super.onCreate()
@@ -71,6 +74,18 @@ class BackgroundPlaybackService : Service() {
 
         override fun onPause() {
           BackgroundPlaybackEvents.command("pause")
+        }
+
+        override fun onSkipToNext() {
+          BackgroundPlaybackEvents.command("next")
+        }
+
+        override fun onSkipToPrevious() {
+          BackgroundPlaybackEvents.command("previous")
+        }
+
+        override fun onSeekTo(pos: Long) {
+          BackgroundPlaybackEvents.command("seek", pos / 1000.0)
         }
       })
       isActive = true
@@ -89,10 +104,12 @@ class BackgroundPlaybackService : Service() {
           return START_NOT_STICKY
         }
 
-        render()
+        applyState()
       }
 
       ACTION_TOGGLE -> BackgroundPlaybackEvents.command("toggle")
+      ACTION_PREVIOUS -> BackgroundPlaybackEvents.command("previous")
+      ACTION_NEXT -> BackgroundPlaybackEvents.command("next")
     }
 
     return START_NOT_STICKY
@@ -110,37 +127,82 @@ class BackgroundPlaybackService : Service() {
     super.onDestroy()
   }
 
-  private fun render() {
+  private fun applyState() {
     val current = state ?: return
 
     createChannel(current.channelName)
     updateSession(current)
     loadArtwork(current)
+
+    val key = stateKey(current)
+
+    if (key == notificationKey) {
+      return
+    }
+
+    notificationKey = key
     startForegroundCompat(buildNotification(current))
   }
 
   private fun updateSession(current: BackgroundPlaybackState) {
     val session = this.session ?: return
+    val durationMs = (current.durationSeconds * 1000).toLong().coerceAtLeast(0)
     val metadata = MediaMetadataCompat.Builder()
       .putString(MediaMetadataCompat.METADATA_KEY_TITLE, current.title)
+      .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, current.title)
+      .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, current.playlistName)
+      .putString(
+        MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE,
+        current.playlistName
+      )
       .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, current.playlistName)
+      .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationMs)
       .apply {
         artwork?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) }
       }
       .build()
+    var actions = PlaybackStateCompat.ACTION_PLAY_PAUSE
+
+    if (durationMs > 0) {
+      actions = actions or PlaybackStateCompat.ACTION_SEEK_TO
+    }
+
+    if (current.canPrevious) {
+      actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+    }
+
+    if (current.canNext) {
+      actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+    }
+
+    val positionMs = (current.positionSeconds * 1000).toLong().coerceAtLeast(0)
     val playback = PlaybackStateCompat.Builder()
-      .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE)
+      .setActions(actions)
       .setState(
         if (current.isPlaying) PlaybackStateCompat.STATE_PLAYING
         else PlaybackStateCompat.STATE_PAUSED,
-        PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN,
-        1f
+        positionMs,
+        if (current.isPlaying) 1f else 0f
       )
       .build()
 
     session.setMetadata(metadata)
     session.setPlaybackState(playback)
   }
+
+  private fun stateKey(current: BackgroundPlaybackState): String =
+    listOf(
+      current.title,
+      current.playlistName,
+      current.isPlaying,
+      current.canNext,
+      current.artworkUrl,
+      current.playLabel,
+      current.pauseLabel,
+      current.previousLabel,
+      current.nextLabel,
+      current.channelName
+    ).joinToString("|")
 
   private fun loadArtwork(current: BackgroundPlaybackState) {
     if (current.artworkUrl == artworkUrl) {
@@ -166,8 +228,8 @@ class BackgroundPlaybackService : Service() {
       handler.post {
         if (artworkUrl == loadingUrl) {
           artwork = bitmap
-          state?.let { updateSession(it) }
-          state?.let { startForegroundCompat(buildNotification(it)) }
+          notificationKey = null
+          applyState()
         }
       }
     }.also { it.start() }
@@ -213,6 +275,8 @@ class BackgroundPlaybackService : Service() {
 
   private fun buildNotification(current: BackgroundPlaybackState): Notification? {
     val session = this.session ?: return null
+    val actions = mutableListOf<NotificationCompat.Action>()
+    val compact = mutableListOf<Int>()
     val toggle = PendingIntent.getService(
       this,
       0,
@@ -227,11 +291,50 @@ class BackgroundPlaybackService : Service() {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
       )
     }
+
+    if (current.canPrevious) {
+      actions += NotificationCompat.Action(
+        android.R.drawable.ic_media_previous,
+        current.previousLabel,
+        PendingIntent.getService(
+          this,
+          1,
+          Intent(this, BackgroundPlaybackService::class.java)
+            .setAction(ACTION_PREVIOUS),
+          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+      )
+      compact += 0
+    }
+
+    val toggleIndex = actions.size
+
+    actions += NotificationCompat.Action(
+      if (current.isPlaying) android.R.drawable.ic_media_pause
+      else android.R.drawable.ic_media_play,
+      if (current.isPlaying) current.pauseLabel else current.playLabel,
+      toggle
+    )
+    compact += toggleIndex
+
+    if (current.canNext) {
+      actions += NotificationCompat.Action(
+        android.R.drawable.ic_media_next,
+        current.nextLabel,
+        PendingIntent.getService(
+          this,
+          2,
+          Intent(this, BackgroundPlaybackService::class.java).setAction(ACTION_NEXT),
+          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+      )
+      compact += actions.size - 1
+    }
+
     val style = MediaStyle()
       .setMediaSession(session.sessionToken)
-      .setShowActionsInCompactView(0)
-
-    return NotificationCompat.Builder(this, CHANNEL_ID)
+      .setShowActionsInCompactView(*compact.toIntArray())
+    val builder = NotificationCompat.Builder(this, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_media_play)
       .setContentTitle(current.title)
       .setSubText(current.playlistName)
@@ -244,13 +347,10 @@ class BackgroundPlaybackService : Service() {
       .setShowWhen(false)
       .setOngoing(false)
       .setStyle(style)
-      .addAction(
-        if (current.isPlaying) android.R.drawable.ic_media_pause
-        else android.R.drawable.ic_media_play,
-        if (current.isPlaying) current.pauseLabel else current.playLabel,
-        toggle
-      )
-      .build()
+
+    actions.forEach { builder.addAction(it) }
+
+    return builder.build()
   }
 
   private fun startForegroundCompat(notification: Notification?) {

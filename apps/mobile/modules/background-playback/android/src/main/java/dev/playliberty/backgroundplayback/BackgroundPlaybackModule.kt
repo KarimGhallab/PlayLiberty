@@ -11,8 +11,14 @@ class BackgroundPlaybackModule : Module() {
     Events("onCommand")
 
     OnCreate {
-      BackgroundPlaybackEvents.listener = { command ->
-        sendEvent("onCommand", mapOf("command" to command))
+      BackgroundPlaybackEvents.listener = { command, positionSeconds ->
+        val body = mutableMapOf<String, Any?>("command" to command)
+
+        if (positionSeconds != null) {
+          body["positionSeconds"] = positionSeconds
+        }
+
+        sendEvent("onCommand", body)
       }
     }
 
@@ -52,8 +58,14 @@ class BackgroundPlaybackModule : Module() {
       artworkUrl = map["artworkUrl"]?.toString() ?: "",
       artworkHeaders = headers,
       isPlaying = map["isPlaying"] as? Boolean ?: false,
+      positionSeconds = (map["positionSeconds"] as? Number)?.toDouble() ?: 0.0,
+      durationSeconds = (map["durationSeconds"] as? Number)?.toDouble() ?: 0.0,
+      canPrevious = map["canPrevious"] as? Boolean ?: false,
+      canNext = map["canNext"] as? Boolean ?: false,
       playLabel = map["playLabel"]?.toString() ?: "Play",
       pauseLabel = map["pauseLabel"]?.toString() ?: "Pause",
+      previousLabel = map["previousLabel"]?.toString() ?: "Previous track",
+      nextLabel = map["nextLabel"]?.toString() ?: "Next track",
       channelName = map["channelName"]?.toString() ?: "Playback"
     )
   }

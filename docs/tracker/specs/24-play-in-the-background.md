@@ -71,7 +71,7 @@ The service stops when the queue is emptied, when the account signs out, or when
 - **The channel is low importance, with no sound and no heads-up.** A track change must not buzz.
 - **The lock screen's controls come from the platform's media session, not from a custom view.** The session's
   metadata is the same state the bar draws: title, the playlist as the album (empty for a bare track), and the
-  artwork, which is the playlist's cover when it has one and the track's thumbnail otherwise.
+  artwork, which is the playing track's thumbnail. The playlist name is the line under the track title.
 - **The notification's tap opens the app on the screen it was on.** It does not reset the stack to the library.
   `Decided here:` a tap is a return, not a new session.
 - **Playback never starts by itself after a kill.** The service does not restart, and a relaunch has no queue. This

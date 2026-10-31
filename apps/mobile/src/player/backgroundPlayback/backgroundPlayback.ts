@@ -2,7 +2,8 @@ import { requireOptionalNativeModule } from 'expo';
 
 import type { BackgroundPlaybackState } from './backgroundPlaybackState/backgroundPlaybackState';
 
-export type BackgroundCommand = 'toggle' | 'play' | 'pause';
+export type BackgroundCommand =
+  'toggle' | 'play' | 'pause' | 'previous' | 'next' | 'seek';
 
 interface NativeSubscription {
   remove(): void;
@@ -14,7 +15,10 @@ interface NativeBackgroundPlayback {
   stop(): void;
   addListener(
     eventName: 'onCommand',
-    listener: (event: { readonly command: string }) => void
+    listener: (event: {
+      readonly command: string;
+      readonly positionSeconds?: number;
+    }) => void
   ): NativeSubscription;
 }
 
@@ -23,7 +27,7 @@ export interface BackgroundPlaybackClient {
   update(state: BackgroundPlaybackState): void;
   stop(): void;
   addCommandListener(
-    listener: (command: BackgroundCommand) => void
+    listener: (command: BackgroundCommand, positionSeconds?: number) => void
   ): NativeSubscription;
 }
 
@@ -39,7 +43,7 @@ export const backgroundPlayback: BackgroundPlaybackClient | null = native
       stop: () => native.stop(),
       addCommandListener: listener =>
         native.addListener('onCommand', event =>
-          listener(event.command as BackgroundCommand)
+          listener(event.command as BackgroundCommand, event.positionSeconds)
         )
     }
   : null;

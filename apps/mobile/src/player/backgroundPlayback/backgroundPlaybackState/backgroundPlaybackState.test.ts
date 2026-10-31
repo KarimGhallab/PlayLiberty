@@ -15,6 +15,8 @@ const config: ApiConfig = {
 const labels: BackgroundPlaybackLabels = {
   play: 'Play',
   pause: 'Pause',
+  previous: 'Previous track',
+  next: 'Next track',
   channel: 'Player'
 };
 
@@ -35,6 +37,9 @@ function state(
     coverUpdatedAt: null,
     coverTrackId: null,
     isPlaying: true,
+    positionSeconds: 30,
+    canPrevious: true,
+    canNext: true,
     config,
     labels,
     ...overrides
@@ -56,16 +61,28 @@ describe('the background playback state', () => {
     });
     expect(result.playLabel).toBe('Play');
     expect(result.pauseLabel).toBe('Pause');
+    expect(result.previousLabel).toBe('Previous track');
+    expect(result.nextLabel).toBe('Next track');
+    expect(result.positionSeconds).toBe(30);
+    expect(result.durationSeconds).toBe(182);
+    expect(result.canPrevious).toBe(true);
+    expect(result.canNext).toBe(true);
   });
 
-  it('prefers the custom cover, then the cover track', () => {
-    const custom = state({ coverUpdatedAt: '2026-10-01T00:00:00.000Z' });
+  it('uses the track thumbnail, then falls back to the playlist cover', () => {
+    const noThumbnail = state({
+      track: { ...track, thumbnailPath: null },
+      coverUpdatedAt: '2026-10-01T00:00:00.000Z'
+    });
 
-    expect(custom.artworkUrl).toBe(
+    expect(noThumbnail.artworkUrl).toBe(
       'https://instance.test/api/v1/playlists/playlist-1/cover?v=2026-10-01T00%3A00%3A00.000Z'
     );
 
-    const coverTrack = state({ coverTrackId: 'track-9' });
+    const coverTrack = state({
+      track: { ...track, thumbnailPath: null },
+      coverTrackId: 'track-9'
+    });
 
     expect(coverTrack.artworkUrl).toBe(
       'https://instance.test/api/v1/tracks/track-9/thumbnail'

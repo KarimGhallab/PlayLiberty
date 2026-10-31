@@ -19,6 +19,8 @@ import {
  */
 export function useBackgroundPlayback(config: ApiConfig | null): void {
   const { t } = useI18n();
+  const currentId = usePlayerStore(state => state.currentId);
+  const queue = usePlayerStore(state => state.queue);
   const track = usePlayerStore(state =>
     state.currentId === null ? undefined : state.tracks[state.currentId]
   );
@@ -27,6 +29,7 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
   const coverUpdatedAt = usePlayerStore(state => state.playlistCoverUpdatedAt);
   const coverTrackId = usePlayerStore(state => state.playlistCoverTrackId);
   const isPlaying = usePlayerStore(state => state.isPlaying);
+  const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const showBackgroundNotice = usePlayerStore(
     state => state.showBackgroundNotice
   );
@@ -39,11 +42,18 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
     () => ({
       play: t('playerBar.play'),
       pause: t('playerBar.pause'),
+      previous: t('playerBar.previous'),
+      next: t('playerBar.next'),
       channel: t('playerBar.label')
     }),
     [t]
   );
 
+  const canNext =
+    currentId !== null &&
+    queue.indexOf(currentId) >= 0 &&
+    queue[queue.indexOf(currentId) + 1] !== undefined;
+  const roundedPosition = Math.floor(positionSeconds);
   const state = useMemo(
     () =>
       track === undefined
@@ -55,10 +65,14 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
             coverUpdatedAt,
             coverTrackId,
             isPlaying,
+            positionSeconds: roundedPosition,
+            canPrevious: true,
+            canNext,
             config,
             labels
           }),
     [
+      canNext,
       config,
       coverTrackId,
       coverUpdatedAt,
@@ -66,6 +80,7 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
       labels,
       playlistId,
       playlistName,
+      roundedPosition,
       track
     ]
   );
@@ -149,16 +164,42 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
       return;
     }
 
-    const subscription = backgroundPlayback.addCommandListener(command => {
-      const player = usePlayerStore.getState();
+    const subscription = backgroundPlayback.addCommandListener(
+      (command, position) => {
+        const player = usePlayerStore.getState();
 
-      if (command === 'toggle') {
-        player.setPlaying(!player.isPlaying);
-        return;
+        if (command === 'toggle') {
+          player.setPlaying(!player.isPlaying);
+          return;
+        }
+
+        if (command === 'previous') {
+          player.skipPrevious();
+          return;
+        }
+
+        if (command === 'next') {
+          player.skipNext();
+          return;
+        }
+
+        if (command === 'seek') {
+          const current =
+            player.currentId === null
+              ? undefined
+              : player.tracks[player.currentId];
+          const duration = current?.durationSeconds ?? null;
+
+          if (position !== undefined && duration !== null && duration > 0) {
+            player.seekToFraction(position / duration);
+          }
+
+          return;
+        }
+
+        player.setPlaying(command === 'play');
       }
-
-      player.setPlaying(command === 'play');
-    });
+    );
 
     return () => subscription.remove();
   }, []);

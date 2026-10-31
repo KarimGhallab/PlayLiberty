@@ -1,36 +1,33 @@
 # 02: The notification's transport drives the queue
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-the-service-starts-with-the-player.md)
 
-## What to build
+## Outcome
 
-The notification and the lock screen carry previous, play-pause, next and the seek position. Pressing one of them
-calls the same store action the bar calls, so there is one queue, one play state and one position.
+The service contract now carries the current position, the track duration and whether previous and next are available.
+The notification builds previous, play-pause and next, and its media session publishes the same transport actions plus
+seek. The seek position and duration are in the session metadata and playback state, so the shade's media card draws
+the progress rail. Next is omitted when the queue ends, and the session drops its skip-next action at the same time.
 
-Previous follows the bar's grace rule, next stops at the last entry rather than wrapping, and a seek is bounded to the
-track. The media session and notification update from the player's own status after every command and every track
-change. At the end of the queue, next is disabled or absent rather than sending a command that does nothing silently.
+Commands come back through the same store actions the bar uses: previous calls `skipPrevious`, next calls `skipNext`,
+play and pause call `setPlaying`, and a seek is converted to a bounded `seekToFraction`. There is no second queue or
+play state in the service.
 
-The notification's seek position reflects the current time and the track duration. Seeking from the shade lands on a
-bounded position and the bar shows it when the app returns.
-
-## Acceptance criteria
-
-- [ ] Previous, play-pause and next exist in the notification and on the lock screen.
-- [ ] Previous, next and pause call the same store actions as the bar and leave the queue unchanged.
-- [ ] Next at the last entry is disabled or absent and does not wrap.
-- [ ] The notification's seek position follows the player and a seek from the shade is bounded to the track.
-- [ ] The notification and lock screen agree with the bar after every command.
-- [ ] No second queue and no second play state exist in the service.
+Position is mirrored once per whole second to keep the notification current without a 500 ms service write. The
+service updates the media session on every state update but only rebuilds the foreground notification when a visible
+fact changes.
 
 ## Verification
 
-- Adapter command tests prove each notification action reaches its store action, the ends behave, and a seek is
-  bounded and applied once.
-- On the device: pause, resume, previous and next from the shade and from the lock screen, then seek from the shade
-  and confirm the bar agrees when the app returns.
+- Mobile 370 tests across 43 suites pass. Adapter tests cover previous, next, pause/toggle and a bounded seek, plus the
+  position mirror and the `canNext` end state.
 - `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- The Android module compiled with `:app:assembleDebug` and the rebuilt client installed.
+- On the emulator the notification showed `Piste précédente`, `Mettre en pause` and `Piste suivante`, and the shade's
+  media card showed previous, pause, next and a seek rail.
+- Next changed the title to the next track, an immediate previous returned, and a seek at about four fifths moved the
+  bar to `0:58` on a `1:02` track. The app's service was the media-button session during the run.
 
 See [`24-play-in-the-background`](../../specs/24-play-in-the-background.md).

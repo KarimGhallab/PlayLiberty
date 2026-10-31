@@ -6,8 +6,14 @@ data class BackgroundPlaybackState(
   val artworkUrl: String,
   val artworkHeaders: Map<String, String>,
   val isPlaying: Boolean,
+  val positionSeconds: Double,
+  val durationSeconds: Double,
+  val canPrevious: Boolean,
+  val canNext: Boolean,
   val playLabel: String,
   val pauseLabel: String,
+  val previousLabel: String,
+  val nextLabel: String,
   val channelName: String
 )
 
@@ -18,9 +24,9 @@ object BackgroundPlaybackStateHolder {
 
 object BackgroundPlaybackEvents {
   @Volatile
-  var listener: ((String) -> Unit)? = null
+  var listener: ((String, Double?) -> Unit)? = null
 
-  fun command(command: String) {
-    listener?.invoke(command)
+  fun command(command: String, positionSeconds: Double? = null) {
+    listener?.invoke(command, positionSeconds)
   }
 }

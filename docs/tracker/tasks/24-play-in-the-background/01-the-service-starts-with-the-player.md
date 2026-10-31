@@ -14,12 +14,13 @@ into it, and stops it when the queue clears. It starts no timer, poll or wake lo
 The bridge asks for notification permission on the first playback. A refusal still starts playback and shows the one
 `playerBar.notificationRefused` notice once; it does not block the service or the audio. The service creates one
 low-importance, silent channel and one media-style notification. The notification carries the current track title, the
-playlist as subtext (empty for a bare track), the artwork from the playlist cover, cover track or track thumbnail with
-the token headers, and one play-pause action. The media session carries the same title, playlist album and artwork.
-The notification id is constant, so a track change updates the same notification.
+playlist as subtext (empty for a bare track), the playing track's thumbnail with the token headers, and one
+play-pause action. The media session carries the same title, the playlist as artist/album, and the track artwork, so
+the shade draws the playlist name below the track title. The notification id is constant, so a track change updates
+the same notification.
 
-The player store now carries the playlist's cover version and cover track, so the service can choose the artwork on a
-track change. The bar draws the permission-refusal notice above itself, and its copy exists in English and French.
+The player store now carries the playlist's cover version and cover track as the artwork fallback when the track has
+no thumbnail. The bar draws the permission-refusal notice above itself, and its copy exists in English and French.
 
 ## Verification
 
@@ -29,8 +30,8 @@ track change. The bar draws the permission-refusal notice above itself, and its 
 - The Android module compiled with `:app:assembleDebug`, the rebuilt client installed, and the first play showed the
   permission prompt.
 - On the emulator the notification used channel `playliberty_playback` with name `Lecteur`, importance LOW, silent and
-  one play-pause action. It showed the track title, `Chine` as subtext and a bitmap artwork. The media session metadata
-  carried the title, the playlist album and the artwork.
+  one play-pause action. Its background was the playing track's thumbnail, and `Chine` was drawn below the track
+  title. The media session metadata carried the title, playlist artist and album, and the artwork.
 - Pausing and resuming from the shade changed the action between `Mettre en pause` and `Lire`. Six seconds with the
   screen off advanced the audio from 1:33 to 2:03. A track change kept the same notification id and replaced its title.
 - No notification existed before the first play.
