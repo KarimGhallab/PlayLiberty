@@ -1,6 +1,6 @@
 # Mobile journeys
 
-Maestro flows for the shell's critical journeys. One flow per journey, each establishing its own starting state.
+Maestro flows for the app's critical journeys. One flow per journey, each establishing its own starting state.
 
 ## Prerequisites
 
@@ -16,9 +16,10 @@ PATH="$HOME/.maestro/bin:$PATH" \
   maestro test -e SOURCE_URL=<source> -e OWNED_PLAYLIST=<owned playlist> apps/mobile/.maestro
 ```
 
-The add flow takes its playlist link from `SOURCE_URL`. The remove flow takes its playlist name from
-`OWNED_PLAYLIST`, which must name a playlist the signed-in account owns so Remove is offered; the name keeps the
-flow independent of gallery order and of a shared first card. The flows are independent, so any order works.
+The add flow takes its playlist link from `SOURCE_URL`. The remove and player flows take their playlist name from
+`OWNED_PLAYLIST`, which must name a playlist the signed-in account owns with at least three playable tracks; the name
+keeps both flows independent of gallery order and of a shared first card. The flows are independent, so any order
+works.
 `signed-out` leaves the device signed out; the other flows sign in first when they need to. `provisioning` starts from
 either state and leaves the device signed in.
 
@@ -32,6 +33,7 @@ either state and leaves the device signed in.
 | `detail-play`         | a row plays and its own row says it is playing                           |
 | `detail-filter`       | the failed chip draws its body, then All brings the whole list back      |
 | `detail-remove-undo`  | Remove defers, Undo restores the row, and the device ends in the gallery |
+| `player-journey`      | a queue plays, advances, jumps from a row, and the bar survives a back   |
 | `library-and-account` | the app opens on the library, the account sheet opens and closes         |
 | `signed-out`          | signing out leaves one action and nothing else                           |
 | `language`            | French survives a kill and relaunch, then English is restored            |
@@ -52,6 +54,6 @@ commit before Undo lands.
 
 ## Scope
 
-These flows cover the shell, the gallery's three critical journeys, the detail's three, and the provisioning
-journey. The track link belongs to `30`, the egress console to `31`, and streaming to `23`; each of those specs
-owns its own journey.
+These flows cover the shell, the gallery's three critical journeys, the detail's three, the player's journey, and
+the provisioning journey. The track link belongs to `30` and the egress console to `31`; each of those specs owns its
+own journey.
