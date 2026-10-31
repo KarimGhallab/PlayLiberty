@@ -78,7 +78,6 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`11-choose-a-language/TICKETS.md`](11-choose-a-language/TICKETS.md)
 - [`12-sort-and-filter-the-track-list/TICKETS.md`](12-sort-and-filter-the-track-list/TICKETS.md)
 - [`13-pin-a-playlist/TICKETS.md`](13-pin-a-playlist/TICKETS.md)
-- [`23-play-stored-audio/TICKETS.md`](23-play-stored-audio/TICKETS.md).
 - [`14-upload-a-playlist-cover/TICKETS.md`](14-upload-a-playlist-cover/TICKETS.md).
 - [`15-prepare-the-production-deployment/TICKETS.md`](15-prepare-the-production-deployment/TICKETS.md).
 - [`17-crop-a-playlist-cover/TICKETS.md`](17-crop-a-playlist-cover/TICKETS.md).
@@ -88,6 +87,8 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`20-provision-mobile-access/TICKETS.md`](20-provision-mobile-access/TICKETS.md).
 - [`21-see-the-library/TICKETS.md`](21-see-the-library/TICKETS.md).
 - [`22-read-a-playlist/TICKETS.md`](22-read-a-playlist/TICKETS.md).
+- [`23-play-stored-audio/TICKETS.md`](23-play-stored-audio/TICKETS.md).
+- [`24-play-in-the-background/TICKETS.md`](24-play-in-the-background/TICKETS.md).
 
 ## Conventions
 
