@@ -68,7 +68,11 @@ const failed: PlaylistTrack = {
 
 async function renderRow(
   association: PlaylistTrack = stored,
-  options: { readonly current?: boolean; readonly language?: Language } = {}
+  options: {
+    readonly current?: boolean;
+    readonly language?: Language;
+    readonly onOpenActions?: (trackId: string) => void;
+  } = {}
 ) {
   const onPlay = jest.fn();
 
@@ -80,6 +84,7 @@ async function renderRow(
         association={association}
         config={config}
         current={options.current ?? false}
+        onOpenActions={options.onOpenActions}
         onPlay={onPlay}
       />
     </I18nProvider>
@@ -153,6 +158,15 @@ describe('the track row', () => {
     fireEvent.press(play);
 
     expect(onPlay).toHaveBeenCalledWith('track-1');
+  });
+
+  it('opens the lane for its track', async () => {
+    const onOpenActions = jest.fn();
+    await renderRow(stored, { onOpenActions });
+
+    fireEvent.press(screen.getByTestId('track-actions'));
+
+    expect(onOpenActions).toHaveBeenCalledWith('track-1');
   });
 
   it('draws no play control for an unplayable row', async () => {

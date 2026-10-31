@@ -3,6 +3,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within
 } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -25,12 +26,16 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
+import { copyText } from '../../../shared/clipboard/copyText';
+
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
+import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
+import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -48,6 +53,15 @@ jest.mock('../../../api/useLatestSyncRun', () => ({
 }));
 jest.mock('../../../api/useSyncPlaylist', () => ({
   useSyncPlaylist: jest.fn()
+}));
+jest.mock('../../../api/useRetryTrack', () => ({
+  useRetryTrack: jest.fn()
+}));
+jest.mock('../../../api/useFetchTrackWhole', () => ({
+  useFetchTrackWhole: jest.fn()
+}));
+jest.mock('../../../shared/clipboard/copyText', () => ({
+  copyText: jest.fn()
 }));
 jest.mock('../../../api/useAccountDirectory', () => {
   const actual = jest.requireActual<
@@ -70,6 +84,13 @@ const useLatestSyncRunMock = useLatestSyncRun as jest.MockedFunction<
 const useSyncPlaylistMock = useSyncPlaylist as jest.MockedFunction<
   typeof useSyncPlaylist
 >;
+const useRetryTrackMock = useRetryTrack as jest.MockedFunction<
+  typeof useRetryTrack
+>;
+const useFetchTrackWholeMock = useFetchTrackWhole as jest.MockedFunction<
+  typeof useFetchTrackWhole
+>;
+const copyTextMock = copyText as jest.MockedFunction<typeof copyText>;
 const useAccountDirectoryMock = useAccountDirectory as jest.MockedFunction<
   typeof useAccountDirectory
 >;
@@ -247,6 +268,10 @@ interface RenderOptions {
   readonly playlistError?: Error;
   readonly tracksError?: Error;
   readonly syncPending?: boolean;
+  readonly retryPending?: boolean;
+  readonly retryVariables?: string;
+  readonly fetchPending?: boolean;
+  readonly fetchVariables?: string;
   readonly onBack?: () => void;
 }
 
@@ -255,6 +280,8 @@ async function renderDetail(options: RenderOptions = {}) {
   const playlistRefetch = jest.fn();
   const tracksRefetch = jest.fn();
   const syncMutate = jest.fn();
+  const retryMutate = jest.fn();
+  const fetchWholeMutate = jest.fn();
 
   usePlaylistMock.mockReturnValue(
     options.playlistError === undefined
@@ -299,6 +326,20 @@ async function renderDetail(options: RenderOptions = {}) {
       isPending: options.syncPending === true
     })
   );
+  useRetryTrackMock.mockReturnValue(
+    mutationResult({
+      mutate: retryMutate,
+      isPending: options.retryPending === true,
+      variables: options.retryVariables
+    })
+  );
+  useFetchTrackWholeMock.mockReturnValue(
+    mutationResult({
+      mutate: fetchWholeMutate,
+      isPending: options.fetchPending === true,
+      variables: options.fetchVariables
+    })
+  );
 
   await render(
     <I18nProvider
@@ -315,11 +356,19 @@ async function renderDetail(options: RenderOptions = {}) {
     </I18nProvider>
   );
 
-  return { onBack, playlistRefetch, tracksRefetch, syncMutate };
+  return {
+    onBack,
+    playlistRefetch,
+    tracksRefetch,
+    syncMutate,
+    retryMutate,
+    fetchWholeMutate
+  };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  copyTextMock.mockReset();
   usePlayerStore.setState({ queue: [], playlistId: null, currentId: null });
 });
 
@@ -372,6 +421,134 @@ describe('the playlist detail', () => {
     expect(screen.queryByTestId('track-play')).not.toBeOnTheScreen();
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('Failed')).toBeOnTheScreen();
+  });
+
+  async function openFailedSheet(options: RenderOptions = {}) {
+    const result = await renderDetail({
+      tracks: { ...page, items: [failedTrack], total: 1 },
+      queue: [],
+      ...options
+    });
+
+    fireEvent.press(screen.getByTestId('track-actions'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('track-actions-sheet')).toBeOnTheScreen();
+    });
+
+    return result;
+  }
+
+  it('draws copy and the two repairs on a failed row', async () => {
+    await openFailedSheet();
+
+    expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-action-retry')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-action-fetchWhole')).toBeOnTheScreen();
+  });
+
+  it('draws only copy for a read collaborator', async () => {
+    await openFailedSheet({
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
+    expect(screen.queryByTestId('track-action-retry')).not.toBeOnTheScreen();
+    expect(
+      screen.queryByTestId('track-action-fetchWhole')
+    ).not.toBeOnTheScreen();
+  });
+
+  it('draws only copy while the row is busy', async () => {
+    await openFailedSheet({
+      retryPending: true,
+      retryVariables: 'track-1'
+    });
+
+    expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
+    expect(screen.queryByTestId('track-action-retry')).not.toBeOnTheScreen();
+    expect(
+      screen.queryByTestId('track-action-fetchWhole')
+    ).not.toBeOnTheScreen();
+  });
+
+  it('copies the track absolute link and confirms', async () => {
+    copyTextMock.mockResolvedValue(true);
+    await openFailedSheet();
+
+    fireEvent.press(screen.getByTestId('track-action-copy'));
+
+    await waitFor(() => {
+      expect(copyTextMock).toHaveBeenCalledWith(
+        'https://instance.test/playlists/playlist-1?track=track-1'
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Link copied')).toBeOnTheScreen();
+    });
+  });
+
+  it('explains a refused copy', async () => {
+    copyTextMock.mockResolvedValue(false);
+    await openFailedSheet();
+
+    fireEvent.press(screen.getByTestId('track-action-copy'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('The link could not be copied.')
+      ).toBeOnTheScreen();
+    });
+  });
+
+  it('retries the failed track', async () => {
+    const { retryMutate } = await openFailedSheet();
+
+    fireEvent.press(screen.getByTestId('track-action-retry'));
+
+    expect(retryMutate).toHaveBeenCalledWith('track-1', expect.any(Object));
+  });
+
+  it('fetches the failed track whole', async () => {
+    const { fetchWholeMutate } = await openFailedSheet();
+
+    fireEvent.press(screen.getByTestId('track-action-fetchWhole'));
+
+    expect(fetchWholeMutate).toHaveBeenCalledWith(
+      'track-1',
+      expect.any(Object)
+    );
+  });
+
+  it('explains a refused retry', async () => {
+    const failure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The track could not be retried.'
+    });
+    const { retryMutate } = await openFailedSheet();
+    const mutate = retryMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          trackId: string,
+          options: { onError?: (error: Error) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_trackId, options) => {
+      options.onError?.(failure);
+    });
+
+    fireEvent.press(screen.getByTestId('track-action-retry'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('The track could not be retried.')
+      ).toBeOnTheScreen();
+    });
   });
 
   it('draws the cover with the session headers', async () => {

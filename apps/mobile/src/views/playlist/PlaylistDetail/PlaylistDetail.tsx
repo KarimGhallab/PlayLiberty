@@ -1,13 +1,16 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets
 } from 'react-native-safe-area-context';
 
+import type { PlaylistTrack } from '@playliberty/contracts';
 import { PlaylistSyncStatus, SyncRunStatus } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
+import { copyText } from '../../../shared/clipboard/copyText';
+import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
 import {
@@ -21,16 +24,23 @@ import {
   ownerNameFrom,
   useAccountDirectory
 } from '../../../api/useAccountDirectory';
+import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
+import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
+import TrackActionsSheet from '../TrackActionsSheet/TrackActionsSheet';
+import {
+  type TrackActionKey,
+  trackActionsFor
+} from '../TrackActionsSheet/trackActions/trackActions';
 import TrackListSkeleton from '../TrackListSkeleton/TrackListSkeleton';
 import TrackRow from '../TrackRow/TrackRow';
 
@@ -58,8 +68,20 @@ export default function PlaylistDetail({
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
   const sync = useSyncPlaylist();
+  const retry = useRetryTrack(playlistId ?? '');
+  const fetchWhole = useFetchTrackWhole(playlistId ?? '');
+  const [actionTargetId, setActionTargetId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    readonly message: string;
+    readonly detail: string;
+  } | null>(null);
   const currentId = usePlayerStore(state => state.currentId);
   const start = usePlayerStore(state => state.start);
+  const busyTrackId = retry.isPending
+    ? retry.variables
+    : fetchWhole.isPending
+      ? fetchWhole.variables
+      : undefined;
   const playlistFailure =
     problemDetail(
       t,
@@ -92,6 +114,9 @@ export default function PlaylistDetail({
     },
     [playlistId, queue.data, start]
   );
+  const openActions = useCallback((trackId: string): void => {
+    setActionTargetId(trackId);
+  }, []);
 
   if (playlist.isPending) {
     return (
@@ -140,6 +165,90 @@ export default function PlaylistDetail({
       data.syncStatus === PlaylistSyncStatus.Syncing);
   const syncInFlight =
     sync.isPending || syncing || data.syncStatus === PlaylistSyncStatus.Syncing;
+  const actionTarget =
+    actionTargetId === null
+      ? null
+      : (tracks.data?.items.find(entry => entry.track.id === actionTargetId) ??
+        null);
+  const actions =
+    actionTarget === null
+      ? []
+      : trackActionsFor(
+          actionTarget.track,
+          canWritePlaylist(data),
+          data.skipNonMusic,
+          busyTrackId === actionTarget.track.id
+        );
+
+  const actionFailure = (error: Error): string =>
+    problemDetail(t, error instanceof ApiError ? error.problem : null) ??
+    t('trackRow.failure.unknown');
+
+  const copyTrackLink = (target: PlaylistTrack): void => {
+    if (config === null) {
+      setNotice({
+        message: t('trackRow.linkCopyFailed'),
+        detail: target.track.title
+      });
+      return;
+    }
+
+    const origin = config.baseUrl.replace(/\/+$/, '');
+    const url = `${origin}/playlists/${encodeURIComponent(
+      data.id
+    )}?track=${encodeURIComponent(target.track.id)}`;
+
+    void copyText(url)
+      .then(copied => {
+        setNotice({
+          message: copied
+            ? t('trackRow.linkCopied')
+            : t('trackRow.linkCopyFailed'),
+          detail: target.track.title
+        });
+      })
+      .catch(() => {
+        setNotice({
+          message: t('trackRow.linkCopyFailed'),
+          detail: target.track.title
+        });
+      });
+  };
+
+  const chooseTrackAction = (key: TrackActionKey): void => {
+    const target = actionTarget;
+    setActionTargetId(null);
+
+    if (target === null) {
+      return;
+    }
+
+    if (key === 'copy') {
+      copyTrackLink(target);
+      return;
+    }
+
+    if (key === 'retry') {
+      retry.mutate(target.track.id, {
+        onError: error => {
+          setNotice({
+            message: actionFailure(error),
+            detail: target.track.title
+          });
+        }
+      });
+      return;
+    }
+
+    fetchWhole.mutate(target.track.id, {
+      onError: error => {
+        setNotice({
+          message: actionFailure(error),
+          detail: target.track.title
+        });
+      }
+    });
+  };
 
   return (
     <SafeAreaView
@@ -197,11 +306,25 @@ export default function PlaylistDetail({
                 association={entry}
                 config={config}
                 current={currentId === entry.track.id}
+                onOpenActions={openActions}
                 onPlay={playTrack}
               />
             ))
           : null}
       </ScrollView>
+      <TrackActionsSheet
+        trackTitle={actionTarget?.track.title ?? null}
+        actions={actions}
+        onSelect={chooseTrackAction}
+        onClose={() => setActionTargetId(null)}
+      />
+      {notice === null ? null : (
+        <Notice
+          message={notice.message}
+          detail={notice.detail}
+          onDismiss={() => setNotice(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }

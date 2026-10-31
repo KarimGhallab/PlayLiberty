@@ -1,3 +1,4 @@
+import { IconDots } from '@tabler/icons-react-native';
 import { memo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -13,7 +14,8 @@ import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber
+  tokenNumber,
+  touchTarget
 } from '../../../shared/styles/tokens';
 import { failureSentence } from '../../../shared/trackState/failureSentence';
 import { trackToneColor } from '../../../shared/trackState/trackToneColor';
@@ -25,14 +27,20 @@ export interface TrackRowProps {
   readonly config: ApiConfig | null;
   readonly current: boolean;
   readonly onPlay: (trackId: string) => void;
-  /** The lane opens in `04`; this row draws no lane yet. */
-  readonly onOpenActions?: () => void;
+  /** Absent leaves the row without a lane; the detail supplies it. */
+  readonly onOpenActions?: (trackId: string) => void;
 }
 
 /* One track: the artwork, the title, the state word, the duration and, for a
  * failed track, the shared sentence with the server's reason behind a reveal.
  * The whole row is the play target when the file is stored. */
-function TrackRow({ association, config, current, onPlay }: TrackRowProps) {
+function TrackRow({
+  association,
+  config,
+  current,
+  onPlay,
+  onOpenActions
+}: TrackRowProps) {
   const { t } = useI18n();
   const { track } = association;
   const [revealed, setRevealed] = useState(false);
@@ -140,6 +148,17 @@ function TrackRow({ association, config, current, onPlay }: TrackRowProps) {
       <Text testID="track-duration" style={styles.duration}>
         {duration}
       </Text>
+
+      {onOpenActions === undefined ? null : (
+        <Pressable
+          testID="track-actions"
+          accessibilityRole="button"
+          accessibilityLabel={t('trackRow.actions', { title: track.title })}
+          style={({ pressed }) => [styles.lane, pressed && styles.lanePressed]}
+          onPress={() => onOpenActions(track.id)}>
+          <IconDots size={tokenLength('icon-md')} color={tokenColor('muted')} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -231,6 +250,18 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-sm'),
     fontVariant: ['tabular-nums']
+  },
+  lane: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: tokenColor('control-border'),
+    borderRadius: tokenLength('radius-control')
+  },
+  lanePressed: {
+    backgroundColor: tokenColor('surface-raised')
   }
 });
 
