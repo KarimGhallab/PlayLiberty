@@ -14,8 +14,8 @@ playlist first, which is the one place this set leaves the spec's out-of-scope l
 unchanged. The picker's level buttons are also a decision: accounts that already hold the playlist appear with
 their level selected, so one picker both grants and changes a level.
 
-| Ticket                                                                | Status          | Blocked by                                | Blocks                                 |
-| --------------------------------------------------------------------- | --------------- | ----------------------------------------- | -------------------------------------- |
-| [`01-the-share-list-and-a-revoke`](01-the-share-list-and-a-revoke.md) | ready-for-agent | none                                      | [`02`](02-grant-and-change-a-level.md) |
-| [`02-grant-and-change-a-level`](02-grant-and-change-a-level.md)       | ready-for-agent | [`01`](01-the-share-list-and-a-revoke.md) | [`03`](03-the-share-journey.md)        |
-| [`03-the-share-journey`](03-the-share-journey.md)                     | ready-for-agent | [`02`](02-grant-and-change-a-level.md)    | none                                   |
+| Ticket                                                                | Status   | Blocked by                                | Blocks                                 |
+| --------------------------------------------------------------------- | -------- | ----------------------------------------- | -------------------------------------- |
+| [`01-the-share-list-and-a-revoke`](01-the-share-list-and-a-revoke.md) | resolved | none                                      | [`02`](02-grant-and-change-a-level.md) |
+| [`02-grant-and-change-a-level`](02-grant-and-change-a-level.md)       | resolved | [`01`](01-the-share-list-and-a-revoke.md) | [`03`](03-the-share-journey.md)        |
+| [`03-the-share-journey`](03-the-share-journey.md)                     | resolved | [`02`](02-grant-and-change-a-level.md)    | none                                   |

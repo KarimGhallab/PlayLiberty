@@ -1,43 +1,49 @@
 # 01: The share list and a revoke
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
-## What to build
+## Outcome
 
-The Share item opens a real sheet from both surfaces: the detail's actions sheet and a gallery card's actions
-sheet, which behave the same. The placeholder that said the surface arrives later loses Share and keeps Cover.
+The Share item now opens a share sheet from both surfaces: the detail's actions sheet and a gallery card's actions
+sheet, which behave the same. The placeholder keeps Cover alone; Share left it on both screens.
 
-The sheet reads the playlist's shares. Each row carries the account's display name and avatar, its level as a word,
-and a Revoke control. The read has three bodies: loading while it is in flight, a private empty state when nobody
-else holds the playlist, and the read-failure body with a retry when it fails.
+The sheet reads the playlist's shares only while it is open, through its own read and its own revoke write. A row
+carries the account's monogram or avatar, its display name, its level as a word and Revoke. The read has three
+bodies: `shareDialog.loading` while it is in flight, `shareDialog.private` when nobody else holds the playlist, and
+the read-failure body with a retry.
 
-Revoke asks once, inline in the row: a stray tap must not end somebody's access. Confirming sends one request and
-the row reports busy until the answer. A success refreshes the shares, the playlist and the library, so the
-playlist's share mark settles. A refusal keeps the sheet and the row open with the problem's mapped sentence beside
-that row, falling back to `shareDialog.revokeFailed` with the account's name.
+Revoke asks once, in the row, and the question replaces the control. Cancel sends nothing. Confirming sends one
+request and the row stays disabled until the answer. A success invalidates the playlist and the library, so the
+shares list, the playlist's share mark and the gallery settle together. A refusal keeps the sheet and the row, with
+the problem's mapped sentence when the server sent one and `shareDialog.revokeFailed` with the account's name
+otherwise.
 
-The sheet is owner-only, which follows from the actions sheet: a write or read collaborator has no Share item and
-therefore no way in. The server's refusal on the routes stays the second line.
+The sheet is reachable only where the actions sheet is: a writer and a reader have no Share item. The server's
+routes remain the second line.
 
-Granting, level changes and the picker are [`02`](02-grant-and-change-a-level.md)'s.
+The account avatar now accepts the directory's narrow summary, so the sheet draws another account's face without
+carrying an email address or a role. The new copy is `shareDialog.private`, `shareDialog.revoke`,
+`shareDialog.revokeAsk` and `shareDialog.remove`, in both catalogs.
 
-## Acceptance criteria
-
-- [ ] The owner opens the same share sheet from the detail's Share item and from a gallery card's Share item.
-- [ ] Each row shows the account's display name, avatar, level and Revoke; no row is the owner's own account.
-- [ ] Loading, private empty and read failure with retry are distinct bodies.
-- [ ] Revoke asks once inline; confirming sends exactly one request; the row is busy until it answers.
-- [ ] A refused revoke keeps the sheet and the row open with the mapped sentence, falling back to the account's name.
-- [ ] A successful revoke refreshes the shares, the playlist and the library.
-- [ ] A writer and a reader have no Share item, and the sheet cannot be opened for them.
-- [ ] The new copy is in the English and French catalogs together.
+The revoke control drops `busy` from its accessibility state and keeps `disabled`, because Android rewrote the
+control's accessible name to "busy" after a refusal.
 
 ## Verification
 
-The share sheet's own test renders the read pending, empty, failed and settled, and asserts that Revoke asks once,
-that one press sends one request, and that a refusal keeps the sheet open. The detail and gallery tests assert that
-their Share item opens the sheet and that a collaborator's actions sheet has no Share item. The mobile suite,
-typecheck, lint and build pass. On the emulator in French, revoke a real share and see the row go, then force a
-refusal with airplane mode and see the sheet stay.
+- Mobile 403 tests across 45 suites pass, including the share sheet's nine cases and the detail and gallery entry
+  cases. The i18n suite passes 42 tests.
+- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- On the emulator, in French, a share from Milloser's `Chine` to `Dev User` read `Dev User`, `Peut écouter`,
+  `Retirer`, and the row's accessible name read `Dev User, Peut écouter`.
+- `Retirer` asked once with `Retirer l'accès à cette playlist ?`; `Annuler` left the share in place. Confirming
+  removed the row, showed `Personne d'autre ne peut voir cette playlist. Elle est privée.`, and deleted the row in
+  the database.
+- Airplane mode forced a refused revoke; the sheet and the row stayed, the row stayed usable, and the sentence read
+  `Le retrait du partage de la playlist avec Dev User a échoué.` The share was revoked afterwards, leaving the
+  playlist private.
+- A gallery card's Share opened the same sheet with the same private body, and the card's share mark returned to
+  private.
+
+See [`26-share-a-playlist`](../../specs/26-share-a-playlist.md).

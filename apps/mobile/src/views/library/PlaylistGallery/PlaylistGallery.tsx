@@ -56,6 +56,7 @@ import PlaylistCard from '../PlaylistCard/PlaylistCard';
 import type { PlaceholderAction } from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import PlaylistPlaceholderSheet from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import RenameSheet from '../RenameSheet/RenameSheet';
+import ShareSheet from '../ShareSheet/ShareSheet';
 import { scopedPlaylists, visiblePlaylists } from '../bulkSync/bulkSync';
 import type {
   DeleteIntent,
@@ -135,6 +136,9 @@ export default function PlaylistGallery({
     null
   );
   const [renameProblem, setRenameProblem] = useState<string | null>(null);
+  const [shareTarget, setShareTarget] = useState<PlaylistWithCounts | null>(
+    null
+  );
   const [placeholder, setPlaceholder] = useState<{
     readonly action: PlaceholderAction;
     readonly name: string;
@@ -399,6 +403,11 @@ export default function PlaylistGallery({
       return;
     }
 
+    if (key === 'share') {
+      setShareTarget(target);
+      return;
+    }
+
     setPlaceholder({ action: key, name: target.name });
   };
 
@@ -447,6 +456,13 @@ export default function PlaylistGallery({
         setRenameProblem(null);
         rename.reset();
       }}
+    />
+  );
+  const shareSheet = (
+    <ShareSheet
+      visible={shareTarget !== null}
+      playlistId={shareTarget?.id ?? null}
+      onClose={() => setShareTarget(null)}
     />
   );
   const undoSnackbar =
@@ -635,6 +651,7 @@ export default function PlaylistGallery({
       {actionsSheet}
       {placeholderSheet}
       {renameSheet}
+      {shareSheet}
       {undoSnackbar}
       {noticeNode}
     </View>

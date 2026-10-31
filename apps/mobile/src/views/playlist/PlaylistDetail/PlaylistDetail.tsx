@@ -64,6 +64,7 @@ import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistAct
 import type { PlaceholderAction } from '../../library/PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import PlaylistPlaceholderSheet from '../../library/PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import RenameSheet from '../../library/RenameSheet/RenameSheet';
+import ShareSheet from '../../library/ShareSheet/ShareSheet';
 import {
   type PlaylistActionKey,
   UNDO_WINDOW_MS,
@@ -156,6 +157,7 @@ export default function PlaylistDetail({
   const [headerProblem, setHeaderProblem] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameProblem, setRenameProblem] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [placeholder, setPlaceholder] = useState<{
     readonly action: PlaceholderAction;
     readonly name: string;
@@ -718,10 +720,17 @@ export default function PlaylistDetail({
       return;
     }
 
+    if (key === 'share') {
+      setHeaderOpen(false);
+      setHeaderProblem(null);
+      setShareOpen(true);
+      return;
+    }
+
     setHeaderOpen(false);
     setHeaderProblem(null);
 
-    if (key !== 'pin') {
+    if (key === 'cover') {
       setPlaceholder({ action: key, name: data.name });
     }
   };
@@ -1023,6 +1032,11 @@ export default function PlaylistDetail({
           setRenameProblem(null);
           rename.reset();
         }}
+      />
+      <ShareSheet
+        visible={shareOpen}
+        playlistId={data.id}
+        onClose={() => setShareOpen(false)}
       />
       {pending === null ? null : (
         <UndoSnackbar

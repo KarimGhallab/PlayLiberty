@@ -25,11 +25,16 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 import { tokenLength } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
+import { useAccount } from '../../../api/useAccount';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
+import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist/useCreatePlaylist';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
+import { useGrantShare } from '../../../api/useGrantShare';
+import { usePlaylistShares } from '../../../api/usePlaylistShares';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
+import { useRevokeShare } from '../../../api/useRevokeShare';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -61,6 +66,26 @@ jest.mock('../../../api/useDeletePlaylist', () => ({
 
 jest.mock('../../../api/useRenamePlaylist', () => ({
   useRenamePlaylist: jest.fn()
+}));
+
+jest.mock('../../../api/usePlaylistShares', () => ({
+  usePlaylistShares: jest.fn()
+}));
+
+jest.mock('../../../api/useAccount', () => ({
+  useAccount: jest.fn()
+}));
+
+jest.mock('../../../api/useAccountPage', () => ({
+  useAccountPage: jest.fn()
+}));
+
+jest.mock('../../../api/useGrantShare', () => ({
+  useGrantShare: jest.fn()
+}));
+
+jest.mock('../../../api/useRevokeShare', () => ({
+  useRevokeShare: jest.fn()
 }));
 
 jest.mock('../../../api/useAccountDirectory', () => {
@@ -240,6 +265,31 @@ async function renderPlaylists(
   jest.mocked(useSyncPlaylist).mockReturnValue(syncNow as never);
   jest.mocked(useDeletePlaylist).mockReturnValue(remove as never);
   jest.mocked(useRenamePlaylist).mockReturnValue(rename as never);
+  jest.mocked(usePlaylistShares).mockReturnValue(queryResult([]));
+  jest.mocked(useRevokeShare).mockReturnValue(mutationResult() as never);
+  jest.mocked(useAccount).mockReturnValue(
+    queryResult({
+      id: 'account-me',
+      displayName: 'Owner',
+      email: null,
+      avatarUrl: null,
+      role: 'user'
+    }) as never
+  );
+  jest.mocked(useAccountPage).mockReturnValue({
+    items: [],
+    isPending: false,
+    isError: false,
+    isSuccess: true,
+    isFetching: false,
+    error: null,
+    hasMore: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    fetchNextPage: jest.fn(),
+    refetch: jest.fn()
+  } as never);
+  jest.mocked(useGrantShare).mockReturnValue(mutationResult() as never);
 
   const onOpenPlaylist = jest.fn();
 
@@ -595,35 +645,54 @@ describe('the gallery', () => {
     expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
   });
 
-  it('opens the Share and Cover placeholders', async () => {
+  it('opens the share sheet from a card', async () => {
     await renderGallery([base]);
 
-    for (const [key, title] of [
-      ['share', 'Share'],
-      ['cover', 'Update the cover']
-    ] as const) {
-      await fireEvent.press(
-        screen.getByRole('button', { name: 'More actions for Rest Mix' })
-      );
-      await waitFor(() => {
-        expect(screen.getByTestId(`playlist-action-${key}`)).toBeOnTheScreen();
-      });
-      await fireEvent.press(screen.getByTestId(`playlist-action-${key}`));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-share')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-share'));
 
-      await waitFor(() => {
-        expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
-      });
-      expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId('share-sheet')).toBeOnTheScreen();
+    });
+    expect(
+      screen.getByRole('header', { name: 'Share playlist' })
+    ).toBeOnTheScreen();
 
-      await fireEvent.press(
-        screen.getByTestId('playlist-placeholder-backdrop')
-      );
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('header', { name: title })
-        ).not.toBeOnTheScreen();
-      });
-    }
+    await fireEvent.press(screen.getByTestId('share-done'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('share-sheet')).not.toBeOnTheScreen();
+    });
+  });
+
+  it('opens the Cover placeholder from a card', async () => {
+    await renderGallery([base]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-cover')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-cover'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('header', { name: 'Update the cover' })
+      ).toBeOnTheScreen();
+    });
+    expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('playlist-placeholder-backdrop'));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('header', { name: 'Update the cover' })
+      ).not.toBeOnTheScreen();
+    });
   });
 
   it('refetches the gallery and its counts on pull', async () => {

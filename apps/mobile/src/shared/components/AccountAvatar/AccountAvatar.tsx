@@ -1,6 +1,6 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import type { Account } from '@playliberty/contracts';
+import type { AccountSummary } from '@playliberty/contracts';
 
 import { sleeveColor } from '../../styles/sleeve';
 import { fontFamily, tokenColor, tokenLength } from '../../styles/tokens';
@@ -8,7 +8,7 @@ import { fontFamily, tokenColor, tokenLength } from '../../styles/tokens';
 export type AccountAvatarSize = 'sm' | 'md';
 
 export interface AccountAvatarProps {
-  readonly account: Account;
+  readonly account: AccountSummary;
   readonly size?: AccountAvatarSize;
 }
 

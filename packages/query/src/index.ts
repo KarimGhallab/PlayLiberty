@@ -1,5 +1,6 @@
 export { cacheEffects } from './cacheEffects/cacheEffects.js';
 export {
+  accountPageKey,
   accountsKey,
   currentAccountKey,
   egressKey,

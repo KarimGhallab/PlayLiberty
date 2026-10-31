@@ -1,42 +1,31 @@
 # 03: The share journey
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`02`](02-grant-and-change-a-level.md)
 
-## What to build
+## Outcome
 
-One Maestro flow, `detail-share`, proves the owner's journey end to end on the emulator.
+`apps/mobile/.maestro/detail-share.yaml` opens `OWNED_PLAYLIST`, opens Share, and starts from a state where
+`SHARE_ACCOUNT` holds nothing: if the row is already there, it revokes it and confirms first.
 
-It opens `OWNED_PLAYLIST`, then establishes its own starting state: if `SHARE_ACCOUNT` already holds the playlist,
-it revokes that share first. It opens Share, opens Add, and presses Can listen on `SHARE_ACCOUNT`. The row appears
-in the share list at read. It reopens Add, presses Can edit on the same account, and the row reads write. It revokes
-the share, confirms the inline question, and the row is gone. It ends in the gallery.
+It grants read from Add with `share-picker-level-read`, then reopens Add and asserts that level is selected. It
+presses `share-picker-level-write`, reopens Add again, and asserts write is selected. It closes the picker, revokes
+the share, confirms the inline question, and waits for the account's name to leave the sheet. It ends in the
+gallery.
 
-The flow finds a share row by the account's display name and the level controls by their stable test ids, not by
-copy, so it does not depend on the app's language. It never reads an email address or a role, which the directory
-does not carry.
+Rows are found by `SHARE_ACCOUNT` and the picker's controls by their ids, so no copy is read and the flow survives
+either language. It reads no email address and no role.
 
-The README records `SHARE_ACCOUNT`, the flow's row, and the picker's three rules: the owner is absent, accounts that
-already hold the playlist appear with their level selected, and pages append as the list reaches its end. The
-account must not be the signed-in owner of `OWNED_PLAYLIST`.
-
-## Acceptance criteria
-
-- [ ] `detail-share` passes on the emulator with a named playlist and a second account.
-- [ ] A second run passes from the state the first left: no share with `SHARE_ACCOUNT`.
-- [ ] The flow asserts the read share, the write share after the level press, and the gone row after the confirmed
-      revoke.
-- [ ] The flow reads no email address and no role.
-- [ ] The README carries the variable, the flow row and the picker rules.
+The README records `SHARE_ACCOUNT`, the flow's row, the picker's three rules, and that the account must not be the
+signed-in owner of `OWNED_PLAYLIST`.
 
 ## Verification
 
-```sh
-PATH="$HOME/.maestro/bin:$PATH" \
-  maestro test --udid emulator-5554 \
-  -e OWNED_PLAYLIST=<owned playlist> -e SHARE_ACCOUNT=<second account> \
-  apps/mobile/.maestro/detail-share.yaml
-```
+- The flow passed twice in a row on the emulator with `OWNED_PLAYLIST=Paradis` and `SHARE_ACCOUNT=Dev User`, the
+  second starting from the private state the first left.
+- A third run started with a share seeded for that account and playlist. The reset branch revoked it, then the
+  read grant, the write change and the confirmed revoke passed, and the database held no share afterwards.
+- No source changed; the flow and the README are the ticket's artifacts.
 
-Run it twice. No source changes; the flow and the README are the artifacts.
+See [`26-share-a-playlist`](../../specs/26-share-a-playlist.md).

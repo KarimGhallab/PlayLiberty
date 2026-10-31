@@ -34,19 +34,24 @@ import { copyText } from '../../../shared/clipboard/copyText';
 import { tokenLength, tokenNumber } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
+import { useAccount } from '../../../api/useAccount';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
+import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
 import { useAddTrack } from '../../../api/useAddTrack';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
+import { useGrantShare } from '../../../api/useGrantShare';
 import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
 import { usePlaylist } from '../../../api/usePlaylist';
 import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
+import { usePlaylistShares } from '../../../api/usePlaylistShares';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks/usePlaylistTracks';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
+import { useRevokeShare } from '../../../api/useRevokeShare';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
@@ -83,6 +88,24 @@ jest.mock('../../../api/useFetchTrackWhole', () => ({
 }));
 jest.mock('../../../api/useRemoveTrack', () => ({
   useRemoveTrack: jest.fn()
+}));
+jest.mock('../../../api/usePlaylistShares', () => ({
+  usePlaylistShares: jest.fn()
+}));
+
+jest.mock('../../../api/useAccount', () => ({
+  useAccount: jest.fn()
+}));
+
+jest.mock('../../../api/useAccountPage', () => ({
+  useAccountPage: jest.fn()
+}));
+
+jest.mock('../../../api/useGrantShare', () => ({
+  useGrantShare: jest.fn()
+}));
+jest.mock('../../../api/useRevokeShare', () => ({
+  useRevokeShare: jest.fn()
 }));
 jest.mock('../../../api/useRenamePlaylist', () => ({
   useRenamePlaylist: jest.fn()
@@ -138,6 +161,12 @@ const useRemoveTrackMock = useRemoveTrack as jest.MockedFunction<
 >;
 const useRenamePlaylistMock = useRenamePlaylist as jest.MockedFunction<
   typeof useRenamePlaylist
+>;
+const usePlaylistSharesMock = usePlaylistShares as jest.MockedFunction<
+  typeof usePlaylistShares
+>;
+const useRevokeShareMock = useRevokeShare as jest.MockedFunction<
+  typeof useRevokeShare
 >;
 const useDeletePlaylistMock = useDeletePlaylist as jest.MockedFunction<
   typeof useDeletePlaylist
@@ -418,6 +447,31 @@ async function renderDetail(options: RenderOptions = {}) {
   const removeMutate = jest.fn();
   const deleteMutate = jest.fn();
   const renameMutate = jest.fn();
+  usePlaylistSharesMock.mockReturnValue(queryResult([]));
+  useRevokeShareMock.mockReturnValue(mutationResult());
+  jest.mocked(useAccount).mockReturnValue(
+    queryResult({
+      id: 'account-me',
+      displayName: 'Owner',
+      email: null,
+      avatarUrl: null,
+      role: 'user'
+    })
+  );
+  jest.mocked(useAccountPage).mockReturnValue({
+    items: [],
+    isPending: false,
+    isError: false,
+    isSuccess: true,
+    isFetching: false,
+    error: null,
+    hasMore: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    fetchNextPage: jest.fn(),
+    refetch: jest.fn()
+  } as never);
+  jest.mocked(useGrantShare).mockReturnValue(mutationResult());
   const sortMutate = jest.fn();
   const skipMutate = jest.fn();
   const addMutate = jest.fn();
@@ -1571,27 +1625,42 @@ describe('the playlist detail', () => {
     expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
   });
 
-  it('opens the Share and Cover placeholders from the detail', async () => {
-    for (const [key, title] of [
-      ['share', 'Share'],
-      ['cover', 'Update the cover']
-    ] as const) {
-      await openHeaderSheet();
+  it('opens the share sheet from the detail', async () => {
+    await openHeaderSheet();
 
-      fireEvent.press(screen.getByTestId(`playlist-action-${key}`));
+    fireEvent.press(screen.getByTestId('playlist-action-share'));
 
-      await waitFor(() => {
-        expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
-      });
-      expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId('share-sheet')).toBeOnTheScreen();
+    });
+    expect(
+      screen.getByRole('header', { name: 'Share playlist' })
+    ).toBeOnTheScreen();
 
-      fireEvent.press(screen.getByTestId('playlist-placeholder-backdrop'));
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('header', { name: title })
-        ).not.toBeOnTheScreen();
-      });
-    }
+    fireEvent.press(screen.getByTestId('share-done'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('share-sheet')).not.toBeOnTheScreen();
+    });
+  });
+
+  it('opens the Cover placeholder from the detail', async () => {
+    await openHeaderSheet();
+
+    fireEvent.press(screen.getByTestId('playlist-action-cover'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('header', { name: 'Update the cover' })
+      ).toBeOnTheScreen();
+    });
+    expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('playlist-placeholder-backdrop'));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('header', { name: 'Update the cover' })
+      ).not.toBeOnTheScreen();
+    });
   });
 
   it('draws no header actions for a read collaborator', async () => {

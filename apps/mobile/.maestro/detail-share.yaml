@@ -1,0 +1,154 @@
+appId: dev.playliberty.app
+name: A playlist is shared at read, changed to write, then revoked
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+# The name keeps the flow independent of gallery order and of a shared first card.
+- scrollUntilVisible:
+    element:
+      text: ${OWNED_PLAYLIST}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${OWNED_PLAYLIST}
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 15000
+- tapOn:
+    id: detail-actions
+- extendedWaitUntil:
+    visible:
+      id: playlist-actions-sheet
+    timeout: 15000
+- tapOn:
+    id: playlist-action-share
+- extendedWaitUntil:
+    visible:
+      id: share-sheet
+    timeout: 15000
+# A share left by an earlier run would make the grant below a downgrade, so the
+# flow starts from the account holding nothing.
+- runFlow:
+    when:
+      visible:
+        text: ${SHARE_ACCOUNT}
+    commands:
+      - tapOn:
+          id: share-revoke
+          rightOf:
+            text: ${SHARE_ACCOUNT}
+      - extendedWaitUntil:
+          visible:
+            id: share-revoke-confirm
+          timeout: 15000
+      - tapOn:
+          id: share-revoke-confirm
+      - extendedWaitUntil:
+          notVisible:
+            text: ${SHARE_ACCOUNT}
+          timeout: 15000
+- tapOn:
+    id: share-add
+- extendedWaitUntil:
+    visible:
+      id: share-picker
+    timeout: 15000
+# The owner's own row is absent, so the account's name anchors its level pair.
+- tapOn:
+    id: share-picker-level-read
+    below:
+      text: ${SHARE_ACCOUNT}
+- extendedWaitUntil:
+    notVisible:
+      id: share-picker
+    timeout: 15000
+- assertVisible: ${SHARE_ACCOUNT}
+# The row now holds read: the picker marks that level as selected.
+- tapOn:
+    id: share-add
+- extendedWaitUntil:
+    visible:
+      id: share-picker
+    timeout: 15000
+- assertVisible:
+    id: share-picker-level-read
+    selected: true
+    below:
+      text: ${SHARE_ACCOUNT}
+- tapOn:
+    id: share-picker-level-write
+    below:
+      text: ${SHARE_ACCOUNT}
+- extendedWaitUntil:
+    notVisible:
+      id: share-picker
+    timeout: 15000
+- assertVisible: ${SHARE_ACCOUNT}
+# The same picker now marks write, and one upsert moved it there.
+- tapOn:
+    id: share-add
+- extendedWaitUntil:
+    visible:
+      id: share-picker
+    timeout: 15000
+- assertVisible:
+    id: share-picker-level-write
+    selected: true
+    below:
+      text: ${SHARE_ACCOUNT}
+- tapOn:
+    id: share-picker-done
+- extendedWaitUntil:
+    notVisible:
+      id: share-picker
+    timeout: 15000
+- tapOn:
+    id: share-revoke
+    rightOf:
+      text: ${SHARE_ACCOUNT}
+- extendedWaitUntil:
+    visible:
+      id: share-revoke-confirm
+    timeout: 15000
+- tapOn:
+    id: share-revoke-confirm
+- extendedWaitUntil:
+    notVisible:
+      text: ${SHARE_ACCOUNT}
+    timeout: 15000
+- tapOn:
+    id: share-done
+- extendedWaitUntil:
+    notVisible:
+      id: share-sheet
+    timeout: 15000
+# Leave the device in the library.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000

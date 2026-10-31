@@ -1,6 +1,6 @@
 # Share a playlist on mobile
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
@@ -88,3 +88,5 @@ change is an upsert, a revoke asks once, and a refusal stays in the sheet with o
 
 - The share sheet is the only place the app draws another account's identity. It reads the narrow directory view, so
   no email address and no role reaches the screen.
+- Shipped differently: a gallery card's Share opens the same sheet as the detail's, rather than requiring the owner
+  to open the playlist first. The decision is recorded in the [tickets](../tasks/26-share-a-playlist/TICKETS.md).

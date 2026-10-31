@@ -8,6 +8,9 @@ import type { TrackFileStatus } from '@playliberty/contracts';
 
 export const accountsKey = ['accounts'] as const;
 
+/** The picker's paged read; `accountsKey` stays the single-page name lookup. */
+export const accountPageKey = ['accounts', 'page'] as const;
+
 export const currentAccountKey = ['me'] as const;
 
 export const egressKey = ['egress'] as const;
