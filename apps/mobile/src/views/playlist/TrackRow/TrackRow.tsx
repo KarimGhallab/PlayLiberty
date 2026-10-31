@@ -82,7 +82,7 @@ function TrackRow({
         />
       ) : null}
 
-      <View testID="track-artwork" style={styles.art}>
+      <View testID="track-artwork" pointerEvents="none" style={styles.art}>
         {artwork === null ? null : (
           <Image
             testID="track-artwork-image"
@@ -96,28 +96,32 @@ function TrackRow({
         {current ? <TrackBars /> : null}
       </View>
 
-      <View style={styles.body}>
-        <Text testID="track-title" numberOfLines={1} style={styles.title}>
-          {track.title}
-        </Text>
-        <View style={styles.sub}>
-          {current ? (
-            <Text testID="track-now" style={styles.now}>
-              {t('trackBars.playing')}
-            </Text>
-          ) : null}
-          {stateLabel === null ? null : (
-            <Text
-              testID="track-state"
-              style={[styles.state, { color: trackToneColor(tone) }]}>
-              {stateLabel}
-            </Text>
-          )}
-          {withFailure ? (
-            <Text testID="track-failure" style={styles.sentence}>
-              {failureSentence(t, track.failureKind)}
-            </Text>
-          ) : null}
+      <View pointerEvents="box-none" style={styles.body}>
+        <View pointerEvents="none">
+          <Text testID="track-title" numberOfLines={1} style={styles.title}>
+            {track.title}
+          </Text>
+        </View>
+        <View pointerEvents="box-none" style={styles.sub}>
+          <View pointerEvents="none" style={styles.sub}>
+            {current ? (
+              <Text testID="track-now" style={styles.now}>
+                {t('trackBars.playing')}
+              </Text>
+            ) : null}
+            {stateLabel === null ? null : (
+              <Text
+                testID="track-state"
+                style={[styles.state, { color: trackToneColor(tone) }]}>
+                {stateLabel}
+              </Text>
+            )}
+            {withFailure ? (
+              <Text testID="track-failure" style={styles.sentence}>
+                {failureSentence(t, track.failureKind)}
+              </Text>
+            ) : null}
+          </View>
           {track.failureReason === null ? null : (
             <Pressable
               testID="track-details"
@@ -145,9 +149,11 @@ function TrackRow({
         ) : null}
       </View>
 
-      <Text testID="track-duration" style={styles.duration}>
-        {duration}
-      </Text>
+      <View pointerEvents="none">
+        <Text testID="track-duration" style={styles.duration}>
+          {duration}
+        </Text>
+      </View>
 
       {onOpenActions === undefined ? null : (
         <Pressable

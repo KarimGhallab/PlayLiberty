@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets
@@ -12,6 +13,7 @@ import { problemDetail, useI18n } from '@playliberty/i18n';
 import { copyText } from '../../../shared/clipboard/copyText';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import Spinner from '../../../shared/components/Spinner/Spinner';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
 import { isPlayable } from '../../../shared/playable/playable';
 import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
@@ -39,6 +41,7 @@ import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
+import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddAction';
 import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
 import {
   type PlaylistAction,
@@ -72,6 +75,8 @@ type PendingAction =
 const HEADER_ACTIONS: readonly PlaylistAction[] = [
   { key: 'delete', label: 'header.delete' }
 ];
+
+const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
 
 export interface PlaylistDetailProps {
   readonly playlistId: string | null;
@@ -116,6 +121,10 @@ export default function PlaylistDetail({
     readonly detail: string;
   } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scroll = useRef<ScrollView>(null);
+  const landingPlaylist = useRef<string | null>(null);
+  const landingTarget = useRef<string | null>(null);
+  const landed = useRef(false);
   const pendingDelete = pending?.kind === 'delete';
   const currentId = usePlayerStore(state => state.currentId);
   const start = usePlayerStore(state => state.start);
@@ -123,6 +132,36 @@ export default function PlaylistDetail({
   const playerQueue = usePlayerStore(state => state.queue);
   const playerPlaylistId = usePlayerStore(state => state.playlistId);
   const shuffled = usePlayerStore(state => state.shuffle);
+  const playlistData = playlist.data;
+  const isQueue =
+    playlistData !== undefined && playerPlaylistId === playlistData.id;
+  const listShuffled = isQueue && shuffled;
+  const drawnRows = tracks.isSuccess
+    ? tracks.items.filter(entry => !hiddenTracks.has(entry.track.id))
+    : [];
+  const rows = listShuffled
+    ? orderTracksByQueue(drawnRows, playerQueue)
+    : drawnRows;
+  /* Until the current row is loaded, the pages are a walk with no list to
+   * read; drawing each page on the way would freeze the screen. */
+  const landing =
+    isQueue &&
+    currentId !== null &&
+    tracks.isSuccess &&
+    tracks.hasMore &&
+    !tracks.isFetchNextPageError &&
+    !rows.some(entry => entry.track.id === currentId);
+
+  /* Opening the queue's playlist lands on its current row once; a later start
+   * or skip does not move the list under the reader. */
+  if (
+    playlistData !== undefined &&
+    landingPlaylist.current !== playlistData.id
+  ) {
+    landingPlaylist.current = playlistData.id;
+    landingTarget.current = isQueue ? currentId : null;
+    landed.current = false;
+  }
   const busyTrackId = retry.isPending
     ? retry.variables
     : fetchWhole.isPending
@@ -174,6 +213,64 @@ export default function PlaylistDetail({
   const openActions = useCallback((trackId: string): void => {
     setActionTargetId(trackId);
   }, []);
+
+  /* The next page is the loaded count, and a page is asked for when the list
+   * nears its bottom rather than from a control. */
+  const loadMore = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+    if (!tracks.hasMore || tracks.isFetchingNextPage) {
+      return;
+    }
+
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const nearBottom =
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - LOAD_MORE_DISTANCE;
+
+    if (nearBottom) {
+      tracks.fetchNextPage();
+    }
+  };
+
+  const landOnRow = (trackId: string, y: number): void => {
+    if (landed.current || landingTarget.current !== trackId) {
+      return;
+    }
+
+    landed.current = true;
+    scroll.current?.scrollTo({
+      y: Math.max(0, y - tokenLength('space-4')),
+      animated: false
+    });
+  };
+
+  /* A current row beyond the loaded pages is awaited page by page; the row's
+   * own layout does the scroll once it exists. */
+  useEffect(() => {
+    const target = landingTarget.current;
+
+    if (target === null || landed.current || !tracks.isSuccess) {
+      return;
+    }
+
+    if (rows.some(entry => entry.track.id === target)) {
+      return;
+    }
+
+    if (
+      tracks.hasMore &&
+      !tracks.isFetchingNextPage &&
+      !tracks.isFetchNextPageError
+    ) {
+      tracks.fetchNextPage();
+    }
+  }, [
+    rows,
+    tracks.fetchNextPage,
+    tracks.hasMore,
+    tracks.isFetchingNextPage,
+    tracks.isFetchNextPageError,
+    tracks.isSuccess
+  ]);
 
   useEffect(() => {
     return () => {
@@ -233,8 +330,7 @@ export default function PlaylistDetail({
   const actionTarget =
     actionTargetId === null
       ? null
-      : (tracks.data?.items.find(entry => entry.track.id === actionTargetId) ??
-        null);
+      : (tracks.items.find(entry => entry.track.id === actionTargetId) ?? null);
   const actions =
     actionTarget === null
       ? []
@@ -249,8 +345,6 @@ export default function PlaylistDetail({
     problemDetail(t, error instanceof ApiError ? error.problem : null) ??
     fallback;
 
-  const isQueue = playerPlaylistId === data.id;
-  const listShuffled = isQueue && shuffled;
   const playableQueue = (queue.data?.items ?? []).filter(entry =>
     isPlayable(entry.track)
   );
@@ -481,26 +575,28 @@ export default function PlaylistDetail({
     });
   };
 
-  const drawnRows = tracks.isSuccess
-    ? tracks.data.items.filter(entry => !hiddenTracks.has(entry.track.id))
-    : [];
-  const rows = listShuffled
-    ? orderTracksByQueue(drawnRows, playerQueue)
-    : drawnRows;
-
   return (
     <SafeAreaView
       testID="playlist-screen"
       style={styles.screen}
       edges={['top', 'left', 'right']}>
       <ScrollView
+        ref={scroll}
         testID="playlist-scroll"
         showsVerticalScrollIndicator={false}
         pointerEvents={pendingDelete ? 'none' : 'auto'}
         style={pendingDelete ? styles.pending : undefined}
+        onScroll={loadMore}
+        scrollEventThrottle={16}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + tokenLength('space-4') }
+          {
+            paddingBottom:
+              insets.bottom +
+              tokenLength('space-4') +
+              galleryAddActionSize +
+              tokenLength('space-3')
+          }
         ]}>
         <PlaylistIdentity
           playlist={data}
@@ -533,15 +629,13 @@ export default function PlaylistDetail({
             data.access === 'owner' ? () => setHeaderOpen(true) : undefined
           }
         />
-        {tracks.isPending ? <TrackListSkeleton /> : null}
+        {tracks.isPending || landing ? <TrackListSkeleton /> : null}
         {tracks.isError ? (
           <View style={styles.tracksState}>
             <ReadFailure
               message={tracksFailure}
               retrying={tracks.isFetching}
-              onRetry={() => {
-                void tracks.refetch();
-              }}
+              onRetry={tracks.refetch}
             />
           </View>
         ) : null}
@@ -563,18 +657,44 @@ export default function PlaylistDetail({
             </Text>
           )
         ) : null}
-        {tracks.isSuccess && data.trackCount > 0
+        {tracks.isSuccess && !landing && data.trackCount > 0
           ? rows.map(entry => (
-              <TrackRow
+              <View
                 key={entry.track.id}
-                association={entry}
-                config={config}
-                current={currentId === entry.track.id}
-                onOpenActions={openActions}
-                onPlay={playTrack}
-              />
+                testID={`track-slot-${entry.track.id}`}
+                onLayout={event =>
+                  landOnRow(entry.track.id, event.nativeEvent.layout.y)
+                }>
+                <TrackRow
+                  association={entry}
+                  config={config}
+                  current={currentId === entry.track.id}
+                  onOpenActions={openActions}
+                  onPlay={playTrack}
+                />
+              </View>
             ))
           : null}
+        {!landing && tracks.isFetchingNextPage ? (
+          <View testID="tracks-append" style={styles.append}>
+            <Spinner color={tokenColor('muted')} />
+            <Text style={styles.appendLabel}>
+              {t('detail.loadMoreLoading')}
+            </Text>
+          </View>
+        ) : null}
+        {tracks.isFetchNextPageError ? (
+          <Pressable
+            testID="tracks-append-retry"
+            accessibilityRole="button"
+            accessibilityLabel={t('detail.loadMoreRetry')}
+            style={styles.appendRetry}
+            onPress={tracks.fetchNextPage}>
+            <Text style={styles.appendRetryLabel}>
+              {t('detail.loadMoreRetry')}
+            </Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
       <TrackActionsSheet
         trackTitle={actionTarget?.track.title ?? null}
@@ -623,6 +743,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokenLength('space-4'),
     paddingTop: tokenLength('space-4'),
     gap: tokenLength('space-3')
+  },
+  append: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokenLength('space-2'),
+    paddingVertical: tokenLength('space-3')
+  },
+  appendLabel: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-sm')
+  },
+  appendRetry: {
+    alignSelf: 'center',
+    paddingHorizontal: tokenLength('space-4'),
+    paddingVertical: tokenLength('space-2'),
+    borderWidth: 1,
+    borderColor: tokenColor('control-border'),
+    borderRadius: tokenLength('radius-control')
+  },
+  appendRetryLabel: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-sm')
   },
   stateBody: {
     flex: 1,

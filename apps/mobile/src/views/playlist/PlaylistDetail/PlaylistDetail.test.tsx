@@ -7,6 +7,7 @@ import {
   waitFor,
   within
 } from '@testing-library/react-native';
+import { ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -43,6 +44,7 @@ import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddAction';
 import PlaylistDetail from './PlaylistDetail';
 
 jest.mock('../../../api/usePlaylist', () => ({ usePlaylist: jest.fn() }));
@@ -296,6 +298,9 @@ interface RenderOptions {
   readonly tracksPending?: boolean;
   readonly playlistError?: Error;
   readonly tracksError?: Error;
+  readonly hasMore?: boolean;
+  readonly fetchingNextPage?: boolean;
+  readonly fetchNextPageError?: boolean;
   readonly syncPending?: boolean;
   readonly retryPending?: boolean;
   readonly retryVariables?: string;
@@ -314,6 +319,7 @@ async function renderDetail(options: RenderOptions = {}) {
   const onBack = options.onBack ?? jest.fn();
   const playlistRefetch = jest.fn();
   const tracksRefetch = jest.fn();
+  const tracksFetchNextPage = jest.fn();
   const syncMutate = jest.fn();
   const retryMutate = jest.fn();
   const fetchWholeMutate = jest.fn();
@@ -354,21 +360,37 @@ async function renderDetail(options: RenderOptions = {}) {
           refetch: playlistRefetch
         })
   );
+  const tracksRead = (
+    data: typeof page,
+    overrides: Record<string, unknown> = {}
+  ) =>
+    ({
+      items: data.items,
+      counts: data.counts,
+      total: data.total,
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      isFetching: false,
+      error: null,
+      hasMore: options.hasMore === true,
+      isFetchingNextPage: options.fetchingNextPage === true,
+      isFetchNextPageError: options.fetchNextPageError === true,
+      fetchNextPage: tracksFetchNextPage,
+      refetch: tracksRefetch,
+      ...overrides
+    }) as never;
+
   usePlaylistTracksMock.mockReturnValue(
-    options.tracksError === undefined
-      ? queryResult(
-          options.tracksPending === true ? undefined : (options.tracks ?? page),
-          options.tracksPending === true
-            ? { isPending: true, isSuccess: false, data: undefined }
-            : {}
-        )
-      : queryResult(undefined, {
-          isPending: false,
+    options.tracksError !== undefined
+      ? tracksRead(emptyPage, {
           isSuccess: false,
           isError: true,
-          error: options.tracksError,
-          refetch: tracksRefetch
+          error: options.tracksError
         })
+      : options.tracksPending === true
+        ? tracksRead(emptyPage, { isPending: true, isSuccess: false })
+        : tracksRead(options.tracks ?? page)
   );
   usePlaylistQueueMock.mockReturnValue(
     options.queueError !== undefined
@@ -436,6 +458,7 @@ async function renderDetail(options: RenderOptions = {}) {
     onBack,
     playlistRefetch,
     tracksRefetch,
+    tracksFetchNextPage,
     syncMutate,
     retryMutate,
     fetchWholeMutate,
@@ -495,6 +518,137 @@ describe('the playlist detail', () => {
       playlistId: 'playlist-1',
       currentId: 'track-1'
     });
+  });
+
+  it('appends the next page near the bottom and stops at the end', async () => {
+    const { tracksFetchNextPage } = await renderDetail({ hasMore: true });
+    const scroll = screen.getByTestId('playlist-scroll');
+
+    await fireEvent.scroll(scroll, {
+      nativeEvent: {
+        contentOffset: { y: 0 },
+        contentSize: { height: 2000 },
+        layoutMeasurement: { height: 400 }
+      }
+    });
+    expect(tracksFetchNextPage).not.toHaveBeenCalled();
+
+    await fireEvent.scroll(scroll, {
+      nativeEvent: {
+        contentOffset: { y: 1600 },
+        contentSize: { height: 2000 },
+        layoutMeasurement: { height: 400 }
+      }
+    });
+    expect(tracksFetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws no Load more control and clears the add action under the last row', async () => {
+    await renderDetail();
+
+    expect(screen.queryByText('Load more')).not.toBeOnTheScreen();
+    expect(
+      screen.getByTestId('playlist-scroll').props.contentContainerStyle[1]
+        .paddingBottom
+    ).toBe(
+      tokenLength('space-4') + galleryAddActionSize + tokenLength('space-3')
+    );
+  });
+
+  it('reports the next page in flight', async () => {
+    await renderDetail({ hasMore: true, fetchingNextPage: true });
+
+    expect(screen.getByTestId('tracks-append')).toBeOnTheScreen();
+    expect(screen.getByText('Loading...')).toBeOnTheScreen();
+  });
+
+  it('offers a retry when the next page fails', async () => {
+    const { tracksFetchNextPage } = await renderDetail({
+      hasMore: true,
+      fetchNextPageError: true
+    });
+
+    expect(screen.getByText('Try again')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('tracks-append-retry'));
+    expect(tracksFetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('lands on the current row once when this playlist is the queue', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1', 'track-2', 'track-3'],
+      playlistId: 'playlist-1',
+      currentId: 'track-2'
+    });
+    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    await renderDetail({
+      tracks: { ...page, items: [track, secondTrack, thirdTrack], total: 3 },
+      queue: [track, secondTrack, thirdTrack]
+    });
+
+    const slot = screen.getByTestId('track-slot-track-2');
+    const layout = {
+      nativeEvent: { layout: { x: 0, y: 500, width: 300, height: 72 } }
+    };
+
+    expect(screen.queryByTestId('playlist-skeleton')).not.toBeOnTheScreen();
+
+    await fireEvent(slot, 'layout', layout);
+
+    expect(scrollTo).toHaveBeenCalledWith({
+      y: 500 - tokenLength('space-4'),
+      animated: false
+    });
+
+    await fireEvent(slot, 'layout', layout);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for the page holding the current row when it is not loaded', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1', 'track-2'],
+      playlistId: 'playlist-1',
+      currentId: 'track-2'
+    });
+    const { tracksFetchNextPage } = await renderDetail({ hasMore: true });
+
+    expect(screen.getByTestId('playlist-skeleton')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-identity')).toBeOnTheScreen();
+    expect(screen.queryByTestId('track-row')).not.toBeOnTheScreen();
+
+    await waitFor(() => {
+      expect(tracksFetchNextPage).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does not retry a failed page from the landing', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1', 'track-2'],
+      playlistId: 'playlist-1',
+      currentId: 'track-2'
+    });
+    const { tracksFetchNextPage } = await renderDetail({
+      hasMore: true,
+      fetchNextPageError: true
+    });
+
+    expect(tracksFetchNextPage).not.toHaveBeenCalled();
+  });
+
+  it('does not land when another playlist is the queue', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1'],
+      playlistId: 'playlist-2',
+      currentId: 'track-1'
+    });
+    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    await renderDetail();
+
+    await fireEvent(screen.getByTestId('track-slot-track-1'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 500, width: 300, height: 72 } }
+    });
+
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
   it('draws no play control for an unplayable row', async () => {
@@ -1184,6 +1338,26 @@ describe('the playlist detail', () => {
     expect(usePlaylistTracksMock).toHaveBeenCalledWith('playlist-1');
     expect(usePlaylistQueueMock).toHaveBeenCalledWith('playlist-1', true);
     expect(useLatestSyncRunMock).toHaveBeenCalledWith('playlist-1');
+  });
+
+  it('renders the append loading in French', async () => {
+    await renderDetail({
+      language: Language.French,
+      hasMore: true,
+      fetchingNextPage: true
+    });
+
+    expect(screen.getByText('Chargement...')).toBeOnTheScreen();
+  });
+
+  it('renders the append retry in French', async () => {
+    await renderDetail({
+      language: Language.French,
+      hasMore: true,
+      fetchNextPageError: true
+    });
+
+    expect(screen.getByText('Réessayer')).toBeOnTheScreen();
   });
 
   it('renders the identity in French', async () => {
