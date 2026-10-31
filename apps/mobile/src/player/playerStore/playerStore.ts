@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import type { PlayerPlaylist, PlayerTrack } from '../playerTrack/playerTrack';
+
 /* The queue is client state and never reaches the server. It holds track ids,
  * so a stream address is derived when a track is reached. */
 
@@ -34,22 +36,45 @@ function randomId(queue: readonly string[]): string | undefined {
     : queue[Math.floor(Math.random() * queue.length)];
 }
 
+function tracksById(
+  tracks: readonly PlayerTrack[]
+): Readonly<Record<string, PlayerTrack>> {
+  return Object.fromEntries(tracks.map(track => [track.id, track]));
+}
+
+function withoutTrack(
+  tracks: Readonly<Record<string, PlayerTrack>>,
+  trackId: string
+): Readonly<Record<string, PlayerTrack>> {
+  const next = { ...tracks };
+
+  delete next[trackId];
+
+  return next;
+}
+
 export interface PlayerState {
   /* The order being played: the playlist's own, or a shuffle of it. */
   readonly queue: readonly string[];
   /* The playlist's own order, so turning shuffle off restores it. */
   readonly sourceQueue: readonly string[];
+  /* The metadata of every queued track, keyed by id. */
+  readonly tracks: Readonly<Record<string, PlayerTrack>>;
   readonly playlistId: string | null;
+  readonly playlistName: string | null;
   readonly currentId: string | null;
   readonly shuffle: boolean;
+  readonly isPlaying: boolean;
   start: (
-    queue: readonly string[],
-    playlistId: string | null,
+    tracks: readonly PlayerTrack[],
+    playlist: PlayerPlaylist | null,
     currentId: string,
     shuffle?: boolean
   ) => void;
+  startBareTrack: (track: PlayerTrack) => void;
   setShuffle: (shuffle: boolean) => void;
   play: (trackId: string) => void;
+  setPlaying: (playing: boolean) => void;
   advance: () => void;
   drop: (trackId: string) => void;
   clear: () => void;
@@ -58,16 +83,36 @@ export interface PlayerState {
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
   queue: [],
   sourceQueue: [],
+  tracks: {},
   playlistId: null,
+  playlistName: null,
   currentId: null,
   shuffle: false,
-  start: (queue, playlistId, currentId, shuffle = false) =>
+  isPlaying: false,
+  start: (tracks, playlist, currentId, shuffle = false) => {
+    const queue = tracks.map(track => track.id);
+
     set({
       queue: shuffle ? shuffledWithLeader(queue, currentId) : queue,
       sourceQueue: queue,
-      playlistId,
+      tracks: tracksById(tracks),
+      playlistId: playlist?.id ?? null,
+      playlistName: playlist?.name ?? null,
       currentId,
-      shuffle
+      shuffle,
+      isPlaying: true
+    });
+  },
+  startBareTrack: track =>
+    set({
+      queue: [track.id],
+      sourceQueue: [track.id],
+      tracks: { [track.id]: track },
+      playlistId: null,
+      playlistName: null,
+      currentId: track.id,
+      shuffle: false,
+      isPlaying: true
     }),
   /* Turning shuffle on draws a new order and a new leader; turning it off
    * restores the playlist order and leaves the playhead in place. */
@@ -94,17 +139,24 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       };
     }),
   play: trackId =>
-    set(state =>
-      state.queue.includes(trackId) ? { currentId: trackId } : state
-    ),
+    set(state => {
+      if (!state.queue.includes(trackId)) {
+        return state;
+      }
+
+      return { currentId: trackId, isPlaying: true };
+    }),
+  setPlaying: playing =>
+    set(state => (state.currentId === null ? state : { isPlaying: playing })),
   advance: () => {
     const { queue, currentId } = get();
     const index = currentId === null ? -1 : queue.indexOf(currentId);
+    const next = queue[index + 1] ?? null;
 
-    set({ currentId: queue[index + 1] ?? null });
+    set({ currentId: next, isPlaying: next !== null });
   },
   drop: trackId => {
-    const { queue, sourceQueue, currentId } = get();
+    const { queue, sourceQueue, tracks, currentId, isPlaying } = get();
     const index = queue.indexOf(trackId);
 
     if (index < 0) {
@@ -113,25 +165,33 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
     const nextQueue = queue.filter(id => id !== trackId);
     const nextSource = sourceQueue.filter(id => id !== trackId);
+    const nextTracks = withoutTrack(tracks, trackId);
 
     if (currentId !== trackId) {
-      set({ queue: nextQueue, sourceQueue: nextSource });
+      set({ queue: nextQueue, sourceQueue: nextSource, tracks: nextTracks });
       return;
     }
 
     // A dropped current track advances; if it was the last one the queue ends.
+    const next = nextQueue[index] ?? null;
+
     set({
       queue: nextQueue,
       sourceQueue: nextSource,
-      currentId: nextQueue[index] ?? null
+      tracks: nextTracks,
+      currentId: next,
+      isPlaying: next === null ? false : isPlaying
     });
   },
   clear: () =>
     set({
       queue: [],
       sourceQueue: [],
+      tracks: {},
       playlistId: null,
+      playlistName: null,
       currentId: null,
-      shuffle: false
+      shuffle: false,
+      isPlaying: false
     })
 }));

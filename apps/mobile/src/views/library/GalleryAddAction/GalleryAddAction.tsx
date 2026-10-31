@@ -9,6 +9,8 @@ export interface GalleryAddActionProps {
   readonly onPress: () => void;
   /* The padded screens place it themselves; this keeps it off a bare edge. */
   readonly horizontalInset?: number;
+  /** Space the action must clear under it, such as the player bar. */
+  readonly bottomOffset?: number;
   readonly testID?: string;
 }
 
@@ -22,6 +24,7 @@ export default function GalleryAddAction({
   label,
   onPress,
   horizontalInset = 0,
+  bottomOffset = 0,
   testID = 'gallery-add'
 }: GalleryAddActionProps) {
   const insets = useSafeAreaInsets();
@@ -35,7 +38,7 @@ export default function GalleryAddAction({
         styles.action,
         {
           right: horizontalInset,
-          bottom: insets.bottom + tokenLength('space-4')
+          bottom: insets.bottom + tokenLength('space-4') + bottomOffset
         },
         pressed && styles.pressed
       ]}

@@ -52,7 +52,9 @@ import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import { playerTracks } from '../../../player/playerTrack/playerTrack';
 import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
 import GalleryAddAction, {
   galleryAddActionSize
@@ -242,12 +244,14 @@ export default function PlaylistDetail({
       }
 
       start(
-        items.map(entry => entry.track.id),
-        playlistId,
+        playerTracks(items),
+        playlistData === undefined
+          ? null
+          : { id: playlistData.id, name: playlistData.name },
         trackId
       );
     },
-    [playlistId, queue.data, start]
+    [playlistData, playlistId, queue.data, start]
   );
   const openActions = useCallback((trackId: string): void => {
     setActionTargetId(trackId);
@@ -422,10 +426,13 @@ export default function PlaylistDetail({
     : null;
   const addResult = addTrack.data ?? null;
   /* The floating action owns the bottom-right corner, so a notice or snackbar
-   * clears its height rather than sitting under it. */
-  const floatingOffset = canWritePlaylist(data)
-    ? galleryAddActionSize + tokenLength('space-3')
-    : 0;
+   * clears its height rather than sitting under it. The bar owns the bottom
+   * first, so both clear it too. */
+  const playerOffset = currentId === null ? 0 : playerBarHeight;
+  const floatingOffset =
+    (canWritePlaylist(data)
+      ? galleryAddActionSize + tokenLength('space-3')
+      : 0) + playerOffset;
 
   const openAdd = (): void => {
     addTrack.reset();
@@ -531,8 +538,8 @@ export default function PlaylistDetail({
       }
 
       start(
-        items.map(entry => entry.track.id),
-        data.id,
+        playerTracks(items),
+        { id: data.id, name: data.name },
         leader.track.id,
         intent === 'shuffle'
       );
@@ -738,7 +745,8 @@ export default function PlaylistDetail({
               insets.bottom +
               tokenLength('space-4') +
               galleryAddActionSize +
-              tokenLength('space-3')
+              tokenLength('space-3') +
+              playerOffset
           }
         ]}>
         <PlaylistIdentity
@@ -880,6 +888,7 @@ export default function PlaylistDetail({
           testID="detail-add-track"
           label={t('detail.addTrack')}
           horizontalInset={tokenLength('space-4')}
+          bottomOffset={playerOffset}
           onPress={openAdd}
         />
       ) : null}

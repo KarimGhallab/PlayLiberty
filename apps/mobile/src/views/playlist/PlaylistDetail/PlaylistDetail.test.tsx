@@ -50,6 +50,7 @@ import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddAction';
 import PlaylistDetail from './PlaylistDetail';
@@ -921,6 +922,35 @@ describe('the playlist detail', () => {
     ).toBe(
       tokenLength('space-4') + galleryAddActionSize + tokenLength('space-3')
     );
+  });
+
+  it('clears the player bar under the last row and the add action', async () => {
+    usePlayerStore.getState().start(
+      [
+        {
+          id: 'track-1',
+          title: 'First Song',
+          durationSeconds: 182,
+          thumbnailPath: null
+        }
+      ],
+      { id: 'playlist-1', name: 'Rain On The Window' },
+      'track-1'
+    );
+    await renderDetail();
+
+    expect(
+      screen.getByTestId('playlist-scroll').props.contentContainerStyle[1]
+        .paddingBottom
+    ).toBe(
+      tokenLength('space-4') +
+        galleryAddActionSize +
+        tokenLength('space-3') +
+        playerBarHeight
+    );
+    expect(screen.getByTestId('detail-add-track')).toHaveStyle({
+      bottom: tokenLength('space-4') + playerBarHeight
+    });
   });
 
   it('reports the next page in flight', async () => {

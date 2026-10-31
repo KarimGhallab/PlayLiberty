@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import {
   fireEvent,
   render,
@@ -22,6 +22,8 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
+import { tokenLength } from '../../../shared/styles/tokens';
+
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist/useCreatePlaylist';
@@ -30,6 +32,9 @@ import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
+import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import { galleryAddActionSize } from '../GalleryAddAction/GalleryAddAction';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import PlaylistGallery from './PlaylistGallery';
 
@@ -63,6 +68,10 @@ jest.mock('../../../api/useAccountDirectory', () => {
 
 const store = { getItem: () => null, setItem: () => {} };
 const hidden = { includeHiddenElements: true };
+
+afterEach(() => {
+  usePlayerStore.getState().clear();
+});
 
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -610,6 +619,35 @@ describe('the gallery', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('add-sheet')).toBeOnTheScreen();
+    });
+  });
+
+  it('clears the player bar under the last row and the add action', async () => {
+    usePlayerStore.getState().start(
+      [
+        {
+          id: 'track-1',
+          title: 'First Song',
+          durationSeconds: 182,
+          thumbnailPath: null
+        }
+      ],
+      { id: 'playlist-1', name: 'Rest Mix' },
+      'track-1'
+    );
+    await renderGallery([base]);
+
+    expect(
+      screen.getByTestId('gallery-scroll').props.contentContainerStyle[1]
+        .paddingBottom
+    ).toBe(
+      tokenLength('space-4') +
+        galleryAddActionSize +
+        tokenLength('space-3') +
+        playerBarHeight
+    );
+    expect(screen.getByTestId('gallery-add')).toHaveStyle({
+      bottom: tokenLength('space-4') + playerBarHeight
     });
   });
 

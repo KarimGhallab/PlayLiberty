@@ -40,6 +40,8 @@ import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
+import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
 import GalleryAddAction, {
@@ -112,6 +114,8 @@ export default function PlaylistGallery({
 }: PlaylistGalleryProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const playerOffset =
+    usePlayerStore(state => state.currentId) === null ? 0 : playerBarHeight;
   const window = useWindowDimensions();
   const pinnedCardWidth =
     (window.width - tokenLength('space-4') * 2 - tokenLength('space-3')) * 0.45;
@@ -382,7 +386,9 @@ export default function PlaylistGallery({
         detail={pendingDelete.detail}
         onUndo={undoDelete}
         durationMs={UNDO_WINDOW_MS}
-        bottomOffset={galleryAddActionSize + tokenLength('space-3')}
+        bottomOffset={
+          galleryAddActionSize + tokenLength('space-3') + playerOffset
+        }
       />
     );
   const noticeNode =
@@ -393,6 +399,7 @@ export default function PlaylistGallery({
         bottomOffset={
           galleryAddActionSize +
           tokenLength('space-3') +
+          playerOffset +
           (pendingDelete === null
             ? 0
             : tokenLength('space-9') + tokenLength('space-4'))
@@ -482,7 +489,8 @@ export default function PlaylistGallery({
               insets.bottom +
               tokenLength('space-4') +
               galleryAddActionSize +
-              tokenLength('space-3')
+              tokenLength('space-3') +
+              playerOffset
           }
         ]}>
         {groups.map(group => (
@@ -549,6 +557,7 @@ export default function PlaylistGallery({
       </ScrollView>
       <GalleryAddAction
         label={t('library.add')}
+        bottomOffset={playerOffset}
         onPress={() => setAddOpen(true)}
       />
       {addSheet}
