@@ -28,6 +28,22 @@ of gallery order and of a shared first card. The flows are independent, so any o
 either state and leaves the device signed in. The pin flow takes `PIN_PLAYLIST`, which must name an unpinned playlist;
 it finds that card by name in the rest group and leaves it unpinned when it ends.
 
+## The cover fixture
+
+The cover flow takes the first tile in the system photo picker. Push a photo as the newest image before the run, so
+the first tile is the known fixture:
+
+```sh
+cp .github/assets/readme/02-playlist.webp /tmp/playliberty-cover-fixture.webp
+touch /tmp/playliberty-cover-fixture.webp
+adb -s emulator-5554 push /tmp/playliberty-cover-fixture.webp \
+  /sdcard/Pictures/playliberty-cover-fixture.webp
+adb -s emulator-5554 shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE \
+  -d file:///sdcard/Pictures/playliberty-cover-fixture.webp
+```
+
+`touch` makes the copy newer than the library's other photos, so the picker draws it first.
+
 ## The physical background journey
 
 `../.maestro-device/background-journey.yaml` is the device-only driver for the screen-off track change. It starts
@@ -50,6 +66,7 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 | `gallery-card`        | the gallery opens and a card reaches its playlist                        |
 | `gallery-add`         | a playlist is added from the floating action and appears under Syncing   |
 | `gallery-pin`         | a card is pinned, moves under Pinned, and is unpinned again              |
+| `gallery-cover`       | a cover is chosen, framed, saved, seen again and removed                 |
 | `detail-play`         | a row plays and its own row says it is playing                           |
 | `detail-arrange`      | the sort round-trips, Failed draws its body, then All returns the list   |
 | `detail-remove-undo`  | Remove defers, Undo restores the row, and the device ends in the gallery |
@@ -66,6 +83,12 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 The development client draws a floating gear over the top right of the app, and its touch area covers the centre of
 the account door. The flows tap the left tenth of the door instead, which is why the `tapOn` for `account-door`
 carries a `point`.
+
+## Why the cover flow taps the picker by point
+
+The system photo picker is not the app: its labels belong to the system and its grid depends on the device. The flow
+taps the first tile by point instead, and the fixture is pushed as the newest image so the first tile is known.
+Everything after the picker is found by an app id.
 
 ## Why the pin flow names its card
 
@@ -90,7 +113,7 @@ playlist with its level selected, and appends directory pages as the list reache
 
 ## Scope
 
-These flows cover the shell, the gallery's three critical journeys, the detail's five, the player's journey, and
+These flows cover the shell, the gallery's four critical journeys, the detail's five, the player's journey, and
 the provisioning journey. The screen-off background journey is the device-only driver in `../.maestro-device`; it
 leaves the phone locked, so it is run separately. The track link belongs to `30` and the egress console to `31`; each
 of those specs owns its own journey.

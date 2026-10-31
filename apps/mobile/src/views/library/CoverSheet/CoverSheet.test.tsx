@@ -1,11 +1,13 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor
 } from '@testing-library/react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { Playlist } from '@playliberty/contracts';
@@ -45,6 +47,12 @@ jest.mock('expo-file-system', () => ({
 }));
 
 jest.setTimeout(15000);
+
+beforeEach(() => {
+  jest.spyOn(Image, 'getSize').mockImplementation((_uri, success) => {
+    success(1000, 800);
+  });
+});
 
 const store = { getItem: () => null, setItem: () => {} };
 
@@ -192,7 +200,8 @@ describe('the cover sheet', () => {
       {
         playlistId: 'playlist-1',
         file: expect.objectContaining({ uri: 'file:///tmp/cover.jpg' }),
-        contentType: 'image/jpeg'
+        contentType: 'image/jpeg',
+        crop: null
       },
       expect.anything()
     );
@@ -342,5 +351,117 @@ describe('the cover sheet', () => {
     await renderSheet();
 
     expect(screen.queryByTestId('cover-remove')).not.toBeOnTheScreen();
+  });
+});
+
+async function openStage() {
+  await renderSheet();
+  await choose({});
+  await act(async () => {
+    screen.getByTestId('cover-stage').props.onLayout({
+      nativeEvent: { layout: { width: 300, height: 300 } }
+    });
+  });
+
+  await waitFor(() => {
+    expect(
+      screen.getByTestId('cover-zoom').props.accessibilityState
+    ).toMatchObject({ disabled: false });
+  });
+
+  return setCover.mutate as jest.Mock;
+}
+
+function savedCrop(mutate: jest.Mock) {
+  const call = mutate.mock.calls[0]?.[0] as
+    { readonly crop: unknown } | undefined;
+
+  return call?.crop;
+}
+
+describe('the crop stage', () => {
+  it('sends the four fractions of a zoomed stage', async () => {
+    const mutate = await openStage();
+
+    fireEvent(screen.getByTestId('cover-zoom'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.1x');
+    });
+    fireEvent.press(saveButton());
+
+    const crop = savedCrop(mutate) as {
+      readonly x: number;
+      readonly y: number;
+      readonly width: number;
+      readonly height: number;
+    };
+
+    expect(crop).toEqual({
+      x: expect.any(Number),
+      y: expect.any(Number),
+      width: expect.any(Number),
+      height: expect.any(Number)
+    });
+    expect(crop.width).toBeGreaterThan(0);
+    expect(crop.width).toBeLessThan(1);
+    expect(crop.x).toBeGreaterThanOrEqual(0);
+    expect(crop.x + crop.width).toBeLessThanOrEqual(1);
+    expect(crop.y + crop.height).toBeLessThanOrEqual(1);
+  });
+
+  it('returns to the centred square on Reset', async () => {
+    const mutate = await openStage();
+
+    expect(
+      screen.getByTestId('cover-reset').props.accessibilityState
+    ).toMatchObject({ disabled: true });
+
+    fireEvent(screen.getByTestId('cover-zoom'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' }
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('cover-reset').props.accessibilityState
+      ).toMatchObject({ disabled: false });
+    });
+
+    fireEvent.press(screen.getByTestId('cover-reset'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.0x');
+    });
+    expect(
+      screen.getByTestId('cover-reset').props.accessibilityState
+    ).toMatchObject({ disabled: true });
+
+    fireEvent.press(saveButton());
+
+    expect(savedCrop(mutate)).toBeNull();
+  });
+
+  it('caps the zoom at the quality ceiling', async () => {
+    await openStage();
+    const rail = screen.getByTestId('cover-zoom');
+
+    await act(async () => {
+      rail.props.onLayout({
+        nativeEvent: { layout: { width: 100, height: 48 } }
+      });
+    });
+    fireEvent.press(rail, { nativeEvent: { locationX: 100 } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.3x');
+    });
+
+    fireEvent.press(rail, { nativeEvent: { locationX: 100 } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.3x');
+    });
   });
 });

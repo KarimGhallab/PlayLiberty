@@ -1,0 +1,130 @@
+appId: dev.playliberty.app
+name: A cover is framed, saved, seen again and removed
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+# The name keeps the flow independent of gallery order and of a shared first card.
+- scrollUntilVisible:
+    element:
+      text: ${OWNED_PLAYLIST}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${OWNED_PLAYLIST}
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 15000
+- tapOn:
+    id: detail-actions
+- extendedWaitUntil:
+    visible:
+      id: playlist-actions-sheet
+    timeout: 15000
+- tapOn:
+    id: playlist-action-cover
+- extendedWaitUntil:
+    visible:
+      id: cover-sheet
+    timeout: 15000
+- tapOn:
+    id: cover-choose
+# The system photo picker is the one surface outside the app. The fixture is the
+# newest image and sits first in the grid; this point is its tile's centre.
+- tapOn:
+    point: '17%, 58%'
+- extendedWaitUntil:
+    visible:
+      id: cover-zoom
+    timeout: 20000
+# Frame the image: pan it left, then raise the zoom from the rail.
+- swipe:
+    start: 70%, 50%
+    end: 40%, 50%
+    duration: 400
+- tapOn:
+    id: cover-zoom
+    point: '70%, 50%'
+- tapOn:
+    id: cover-save
+- extendedWaitUntil:
+    notVisible:
+      id: cover-sheet
+    timeout: 30000
+# Leave the playlist for the gallery, then come back to it.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: ${OWNED_PLAYLIST}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${OWNED_PLAYLIST}
+- extendedWaitUntil:
+    visible:
+      id: playlist-cover-image
+    timeout: 15000
+- tapOn:
+    id: detail-actions
+- extendedWaitUntil:
+    visible:
+      id: playlist-actions-sheet
+    timeout: 15000
+- tapOn:
+    id: playlist-action-cover
+# Remove is offered only while the playlist carries a saved custom cover.
+- extendedWaitUntil:
+    visible:
+      id: cover-remove
+    timeout: 15000
+- tapOn:
+    id: cover-remove
+- extendedWaitUntil:
+    visible:
+      id: cover-remove-confirm
+    timeout: 15000
+- tapOn:
+    id: cover-remove-confirm
+- extendedWaitUntil:
+    notVisible:
+      id: cover-remove
+    timeout: 15000
+- tapOn:
+    id: cover-cancel
+- extendedWaitUntil:
+    notVisible:
+      id: cover-sheet
+    timeout: 15000
+# Leave the device in the gallery, with the playlist back on its fallback cover.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000

@@ -1,36 +1,33 @@
 # 03: The crop stage frames the cover
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-one-owner-for-the-crop-fractions.md) and [`02`](02-the-cover-sheet-saves-a-chosen-image.md)
 
-## What to build
+## Outcome
 
-A chosen image turns the sheet's square into the crop stage. Drag pans, a two-finger pinch zooms, an accessible zoom
-control moves in steps and reads its value, and Reset returns to centred at 1x. Zoom starts at 1x, the scale that
-fills the square, and is capped at `min(3, 640 / shortEdge)` and never below 1x, so a small source does not zoom and
-a large one never stores a soft square.
+A chosen image turns the sheet's square into the crop stage. The image is painted at its source aspect with its short
+edge spanning the square; a drag pans it, a two-touch gesture zooms it, and the shared crop module supplies the cap,
+the clamp and the four fractions. The stage uses the existing `PanResponder` and the shared module, so no gesture or
+animation dependency was added.
 
-The stage paints the image at the source's aspect with its short edge spanning the square, then pans and scales it.
-The visible square becomes four fractions from the shared crop module, and Save sends all four together; an
-untouched stage sends none, which is the centred square the server already applies. Reset is disabled when the stage
-is already centred at 1x.
+Zoom starts at 1x and is capped by `maxZoom`, which clamps to `min(3, 640 / shortEdge)` and never below 1. The zoom
+rail is an adjustable control: it is labelled, reports its value, moves in 0.1 steps through its increment and
+decrement actions, and can also be pressed along its track. Reset returns to centred at 1x and is disabled when
+nothing has moved.
 
-The gesture layer uses what the app already has: a responder for drag and two touches, and a stepped control for
-zoom. No gesture or animation dependency is added for this ticket.
-
-## Acceptance criteria
-
-- [ ] A panned and zoomed stage produces four fractions inside the image's bounds, and an untouched stage sends no
-      crop fields.
-- [ ] Zoom cannot exceed the quality cap nor fall below 1x, and pan is clamped so no empty edge shows.
-- [ ] Reset returns to centred at 1x and is disabled when nothing moved.
-- [ ] The zoom control is labelled, reports its value, and changes the zoom without a gesture.
-- [ ] The four fractions travel together on Save and the stored square matches what the stage showed.
+Save sends the four fractions together, six decimals each, only when the stage moved; an untouched stage sends no
+crop fields, so the server applies its centred square. The fractions come from `cropOf`, so the stored square is the
+one the stage showed.
 
 ## Verification
 
-- The shared crop suite gains the mobile-relevant cases only where the web suite does not already own them.
-- `pnpm --filter @playliberty/mobile run test` covers the sheet's panned, zoomed and reset frames.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- On `emulator-5554`, pan and zoom a chosen image, save, and see the same square on the card and the detail.
+- Mobile: 437 tests across 48 suites. The sheet covers the zoomed fractions, Reset's return and disabled state, and
+  the quality cap; the untouched save still sends `crop: null`.
+- The pan-to-fractions arithmetic stays with the shared crop suite. The sheet's pan wiring is proven on the device
+  rather than with a synthetic gesture, which would assert PanResponder's physics.
+- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- On `emulator-5554`, the library screenshot was chosen, panned left and set to 1.6x, then saved. The stored cover was
+  a 728x728 WebP showing the same framed region on the gallery card. The cover was removed afterwards.
+
+See [`29-set-a-playlist-cover`](../../specs/29-set-a-playlist-cover.md).
