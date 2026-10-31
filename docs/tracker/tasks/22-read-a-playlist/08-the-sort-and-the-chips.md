@@ -1,37 +1,38 @@
 # 08: The sort and the chips
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`06`](06-the-header-plays-and-shuffles.md), [`07`](07-the-list-pages-and-lands.md)
 
-## What to build
+## Outcome
 
-The sort and the status chips sit in a band that sticks under the top inset while the identity block and the rows
-scroll under it.
+The detail now keeps one rail below the identity: the sort control then the six status chips, on one line that
+scrolls sideways like the gallery's rail. The sort control is borderless and a vertical rule separates it from the
+chips, matching the gallery's filter rail. The identity, the rail and the rows scroll together. The chips keep their
+whole-playlist counts.
 
-The sort is a sheet with three radios: Playlist order, Newest first and Oldest first. It writes the playlist's saved
-sort, applies optimistically and asks the playlist reads again because the order moved. A refusal is a notice and the
-control returns to the saved value. A read collaborator sees the control disabled. The control is disabled while the
-list is shuffled.
+The sort opens a sheet of three radios: Playlist order, Newest first and Oldest first. Choosing one closes the sheet
+and writes the saved sort. `useUpdateSort` moves the playlist's cached value on the press and asks every playlist read
+again after the server answers, so the list and the queue follow the new order. A refusal restores the saved value and
+shows a sort-specific notice. The control is disabled for a read collaborator, while the list is shuffled, and while
+the write is in flight.
 
-The chips are All and the five file states with the whole-playlist counts. They take the full width and wrap. A chip
-filters the list read by state; the counts do not follow the filter; the total and paging stay honest under it. A
-filter with no rows names the state and offers Show all. Both controls are disabled while the list is shuffled. The
-filter is client state for the visit and clears when the screen is left. The filter never changes what Play or
-Shuffle starts.
+The chips are All and the five file states with the whole-playlist counts. A chip filters the tracks read by state;
+the counts do not follow it, and paging stays within the filtered total. A filter with no rows names the state and
+offers Show all, which returns the whole list. The chips are disabled while the list is shuffled, and the filter steps
+aside for the queue's order and returns when shuffle is off. The filter is visit state and clears when the screen
+leaves. Play and Shuffle still start from the queue route, never the filtered list.
 
-## Acceptance criteria
-
-- [ ] The sort sheet writes one of the three values, applies it optimistically and asks the playlist reads again.
-- [ ] A refused sort is a notice and the control returns to the saved value.
-- [ ] The chips filter the list read by state and their counts stay the whole-playlist counts.
-- [ ] A filter with no rows names the state and offers Show all, which returns the whole list.
-- [ ] The sort is disabled for a read collaborator; both controls are disabled while the list is shuffled.
-- [ ] The filter clears when the screen is left and never changes what Play or Shuffle starts.
-- [ ] The band sticks under the top inset while the list scrolls.
-- [ ] The sort sheet, the chips and the filter-empty state render in French.
+The status chip words, tones and filter-empty sentences moved to one shared model used by the gallery and the detail.
+The two sort notice sentences were added to both catalogs.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run typecheck`, the detail's Jest file, then `pnpm run build` and
-`pnpm run lint:check`.
+- Detail 66 tests, `usePlaylistTracks` 4 tests; mobile 266 tests across 34 suites.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run lint:check` and `pnpm run build` pass.
+- On the emulator, the identity led, the sort and chips followed as one rail, choosing Newest first updated the saved
+  sort and reordered the list, the Stored chip filtered the read while All kept 70, and an empty Failed filter offered
+  Show all. Shuffle disabled both controls.
+
+See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

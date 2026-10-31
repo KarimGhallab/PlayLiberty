@@ -146,6 +146,8 @@ export const en = {
     trackFallback: 'Track',
     settingFailed: 'The setting could not be changed.',
     settingNotice: 'The skip setting was not changed.',
+    sortFailed: 'The sort could not be changed.',
+    sortNotice: 'The sort was not changed.',
     sortBy: 'Sort by',
     sortPlaylist: 'Playlist order',
     sortNewest: 'Newest first',

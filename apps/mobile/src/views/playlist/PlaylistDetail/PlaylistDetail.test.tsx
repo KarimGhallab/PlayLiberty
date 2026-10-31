@@ -42,6 +42,7 @@ import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
+import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddAction';
@@ -71,6 +72,9 @@ jest.mock('../../../api/useRemoveTrack', () => ({
 }));
 jest.mock('../../../api/useDeletePlaylist', () => ({
   useDeletePlaylist: jest.fn()
+}));
+jest.mock('../../../api/useUpdateSort', () => ({
+  useUpdateSort: jest.fn()
 }));
 jest.mock('../../../shared/clipboard/copyText', () => ({
   copyText: jest.fn()
@@ -107,6 +111,9 @@ const useRemoveTrackMock = useRemoveTrack as jest.MockedFunction<
 >;
 const useDeletePlaylistMock = useDeletePlaylist as jest.MockedFunction<
   typeof useDeletePlaylist
+>;
+const useUpdateSortMock = useUpdateSort as jest.MockedFunction<
+  typeof useUpdateSort
 >;
 const copyTextMock = copyText as jest.MockedFunction<typeof copyText>;
 const useAccountDirectoryMock = useAccountDirectory as jest.MockedFunction<
@@ -287,6 +294,7 @@ function mutationResult(overrides: Record<string, unknown> = {}) {
 interface RenderOptions {
   readonly playlist?: Playlist;
   readonly tracks?: typeof page;
+  readonly filteredTracks?: Partial<Record<TrackFileStatus, typeof page>>;
   readonly queue?: readonly PlaylistTrack[];
   readonly queueError?: Error;
   readonly queuePending?: boolean;
@@ -302,6 +310,7 @@ interface RenderOptions {
   readonly fetchingNextPage?: boolean;
   readonly fetchNextPageError?: boolean;
   readonly syncPending?: boolean;
+  readonly sortPending?: boolean;
   readonly retryPending?: boolean;
   readonly retryVariables?: string;
   readonly fetchPending?: boolean;
@@ -325,6 +334,7 @@ async function renderDetail(options: RenderOptions = {}) {
   const fetchWholeMutate = jest.fn();
   const removeMutate = jest.fn();
   const deleteMutate = jest.fn();
+  const sortMutate = jest.fn();
   const queueRefetch = jest.fn<() => Promise<QueueReadResult>>();
   const queueItems = options.queue ?? [track];
   const queueBehaviour =
@@ -372,6 +382,7 @@ async function renderDetail(options: RenderOptions = {}) {
       isError: false,
       isSuccess: true,
       isFetching: false,
+      isPlaceholderData: false,
       error: null,
       hasMore: options.hasMore === true,
       isFetchingNextPage: options.fetchingNextPage === true,
@@ -380,8 +391,14 @@ async function renderDetail(options: RenderOptions = {}) {
       refetch: tracksRefetch,
       ...overrides
     }) as never;
+  const pageFor = (state?: TrackFileStatus) => {
+    const filtered =
+      state === undefined ? undefined : options.filteredTracks?.[state];
 
-  usePlaylistTracksMock.mockReturnValue(
+    return filtered ?? options.tracks ?? page;
+  };
+
+  usePlaylistTracksMock.mockImplementation((_id, state) =>
     options.tracksError !== undefined
       ? tracksRead(emptyPage, {
           isSuccess: false,
@@ -390,7 +407,7 @@ async function renderDetail(options: RenderOptions = {}) {
         })
       : options.tracksPending === true
         ? tracksRead(emptyPage, { isPending: true, isSuccess: false })
-        : tracksRead(options.tracks ?? page)
+        : tracksRead(pageFor(state))
   );
   usePlaylistQueueMock.mockReturnValue(
     options.queueError !== undefined
@@ -437,6 +454,12 @@ async function renderDetail(options: RenderOptions = {}) {
   useDeletePlaylistMock.mockReturnValue(
     mutationResult({ mutate: deleteMutate })
   );
+  useUpdateSortMock.mockReturnValue(
+    mutationResult({
+      mutate: sortMutate,
+      isPending: options.sortPending === true
+    })
+  );
 
   await render(
     <I18nProvider
@@ -463,7 +486,8 @@ async function renderDetail(options: RenderOptions = {}) {
     retryMutate,
     fetchWholeMutate,
     removeMutate,
-    deleteMutate
+    deleteMutate,
+    sortMutate
   };
 }
 
@@ -496,6 +520,189 @@ describe('the playlist detail', () => {
     expect(screen.getByText('Synced 2 days ago')).toBeOnTheScreen();
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('3:02')).toBeOnTheScreen();
+  });
+
+  it('draws the sort and the chips below the identity as one rail', async () => {
+    await renderDetail();
+    const scroll = screen.getByTestId('playlist-scroll');
+
+    expect(
+      within(scroll)
+        .getAllByTestId(/^playlist-(identity|controls)$/)
+        .map(node => node.props.testID)
+    ).toEqual(['playlist-identity', 'playlist-controls']);
+    expect(screen.getByTestId('playlist-filter-rail').props.horizontal).toBe(
+      true
+    );
+    expect(screen.getByTestId('playlist-filter-divider')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Sort by: Playlist order')).toBeOnTheScreen();
+    expect(screen.getByTestId('filter-all').props.accessibilityLabel).toBe(
+      'All 1'
+    );
+    expect(screen.getByTestId('filter-failed').props.accessibilityLabel).toBe(
+      'Failed 0'
+    );
+  });
+
+  it('filters the read by state while the chips keep the whole counts', async () => {
+    await renderDetail({
+      filteredTracks: {
+        [TrackFileStatus.Failed]: {
+          ...page,
+          items: [failedTrack],
+          total: 1,
+          counts
+        }
+      }
+    });
+
+    fireEvent.press(screen.getByTestId('filter-failed'));
+
+    await waitFor(() => {
+      expect(usePlaylistTracksMock).toHaveBeenLastCalledWith(
+        'playlist-1',
+        TrackFileStatus.Failed
+      );
+    });
+    expect(
+      within(screen.getByTestId('track-row')).getByText('Failed')
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('filter-all').props.accessibilityLabel).toBe(
+      'All 1'
+    );
+    expect(
+      screen.getByTestId('filter-failed').props.accessibilityState
+    ).toMatchObject({ selected: true });
+    expect(
+      screen.getByTestId('filter-all').props.accessibilityState
+    ).toMatchObject({ selected: false });
+  });
+
+  it('names an empty filter and returns the whole list from Show all', async () => {
+    await renderDetail({
+      filteredTracks: {
+        [TrackFileStatus.Failed]: { ...emptyPage, counts }
+      }
+    });
+
+    fireEvent.press(screen.getByTestId('filter-failed'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-empty')).toBeOnTheScreen();
+    });
+    expect(screen.getByText('No failed tracks')).toBeOnTheScreen();
+    expect(screen.getByText('Show all')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('filter-show-all'));
+
+    await waitFor(() => {
+      expect(usePlaylistTracksMock).toHaveBeenLastCalledWith(
+        'playlist-1',
+        undefined
+      );
+    });
+    expect(screen.queryByTestId('filter-empty')).not.toBeOnTheScreen();
+  });
+
+  it('writes the chosen sort from the sheet', async () => {
+    const { sortMutate } = await renderDetail();
+
+    fireEvent.press(screen.getByTestId('detail-sort'));
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-sort-sheet')).toBeOnTheScreen();
+    });
+
+    fireEvent.press(screen.getByTestId('playlist-sort-newest'));
+
+    expect(sortMutate).toHaveBeenCalledWith(
+      PlaylistSort.NewestFirst,
+      expect.any(Object)
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('playlist-sort-sheet')).not.toBeOnTheScreen();
+    });
+  });
+
+  it('explains a refused sort', async () => {
+    const failure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The sort is unavailable.'
+    });
+    const { sortMutate } = await renderDetail();
+    const mutate = sortMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          sort: PlaylistSort,
+          options: { onError?: (error: Error) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_sort, options) => {
+      options.onError?.(failure);
+    });
+
+    fireEvent.press(screen.getByTestId('detail-sort'));
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-sort-sheet')).toBeOnTheScreen();
+    });
+    fireEvent.press(screen.getByTestId('playlist-sort-newest'));
+
+    await waitFor(() => {
+      expect(screen.getByText('The sort was not changed.')).toBeOnTheScreen();
+    });
+    expect(screen.getByText('The sort is unavailable.')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Sort by: Playlist order')).toBeOnTheScreen();
+    await waitFor(() => {
+      expect(screen.queryByTestId('playlist-sort-sheet')).not.toBeOnTheScreen();
+    });
+  });
+
+  it('disables the sort for a read collaborator but not the chips', async () => {
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    expect(screen.getByTestId('detail-sort')).toBeDisabled();
+    expect(screen.getByTestId('filter-all')).not.toBeDisabled();
+  });
+
+  it('disables the sort and the chips while the list is shuffled', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1'],
+      playlistId: 'playlist-1',
+      currentId: 'track-1',
+      shuffle: true
+    });
+    await renderDetail();
+
+    expect(screen.getByTestId('detail-sort')).toBeDisabled();
+    expect(screen.getByTestId('filter-all')).toBeDisabled();
+    expect(screen.getByTestId('filter-failed')).toBeDisabled();
+  });
+
+  it('keeps the filter out of what Play starts', async () => {
+    await renderDetail({
+      queue: [track, secondTrack],
+      filteredTracks: {
+        [TrackFileStatus.Failed]: { ...emptyPage, counts }
+      }
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('filter-failed'));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('track-1');
+    });
+    expect(usePlayerStore.getState().queue).toEqual(['track-1', 'track-2']);
   });
 
   it('marks the current row and starts the queue at a press', async () => {
@@ -659,7 +866,9 @@ describe('the playlist detail', () => {
 
     expect(screen.queryByTestId('track-play')).not.toBeOnTheScreen();
     expect(screen.getByText('First Song')).toBeOnTheScreen();
-    expect(screen.getByText('Failed')).toBeOnTheScreen();
+    expect(
+      within(screen.getByTestId('track-row')).getByText('Failed')
+    ).toBeOnTheScreen();
   });
 
   async function openFailedSheet(options: RenderOptions = {}) {
@@ -1335,7 +1544,7 @@ describe('the playlist detail', () => {
     await renderDetail();
 
     expect(usePlaylistMock).toHaveBeenCalledWith('playlist-1');
-    expect(usePlaylistTracksMock).toHaveBeenCalledWith('playlist-1');
+    expect(usePlaylistTracksMock).toHaveBeenCalledWith('playlist-1', undefined);
     expect(usePlaylistQueueMock).toHaveBeenCalledWith('playlist-1', true);
     expect(useLatestSyncRunMock).toHaveBeenCalledWith('playlist-1');
   });
@@ -1358,6 +1567,35 @@ describe('the playlist detail', () => {
     });
 
     expect(screen.getByText('Réessayer')).toBeOnTheScreen();
+  });
+
+  it('renders the controls, sort sheet and empty filter in French', async () => {
+    await renderDetail({
+      language: Language.French,
+      filteredTracks: {
+        [TrackFileStatus.Failed]: { ...emptyPage, counts }
+      }
+    });
+
+    expect(screen.getByText('Trier par')).toBeOnTheScreen();
+    expect(screen.getByText('Toutes')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('filter-failed'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Aucune piste en échec')).toBeOnTheScreen();
+    });
+    expect(screen.getByText('Tout afficher')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('detail-sort'));
+    await waitFor(() => {
+      expect(screen.getByText("Plus récentes d'abord")).toBeOnTheScreen();
+    });
+
+    fireEvent.press(screen.getByTestId('playlist-sort-backdrop'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('playlist-sort-sheet')).not.toBeOnTheScreen();
+    });
   });
 
   it('renders the identity in French', async () => {

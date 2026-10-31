@@ -12,9 +12,8 @@ import {
 
 import { TrackFileStatus } from '@playliberty/contracts';
 import type { TrackFileStatusCounts } from '@playliberty/contracts';
-import type { MessageKey, Messages } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
-import { TrackTone, standardEasingBezier } from '@playliberty/ui-foundation';
+import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
 import Chip from '../../../shared/components/Chip/Chip';
@@ -25,6 +24,10 @@ import {
   tokenLength,
   touchTarget
 } from '../../../shared/styles/tokens';
+import {
+  STATUS_CHIPS,
+  totalStatusCount
+} from '../../../shared/trackState/statusChips';
 
 export type LibraryScope = 'all' | 'shared';
 
@@ -32,40 +35,6 @@ interface SegmentRect {
   readonly x: number;
   readonly width: number;
 }
-
-interface StatusChip {
-  readonly value: TrackFileStatus;
-  readonly label: MessageKey<Messages>;
-  readonly tone: TrackTone;
-}
-
-const STATUSES: readonly StatusChip[] = [
-  {
-    value: TrackFileStatus.Stored,
-    label: 'trackState.stored',
-    tone: TrackTone.Stored
-  },
-  {
-    value: TrackFileStatus.Pending,
-    label: 'trackState.pending',
-    tone: TrackTone.Pending
-  },
-  {
-    value: TrackFileStatus.Downloading,
-    label: 'trackState.downloading',
-    tone: TrackTone.Downloading
-  },
-  {
-    value: TrackFileStatus.Failed,
-    label: 'trackState.failed',
-    tone: TrackTone.Failed
-  },
-  {
-    value: TrackFileStatus.Unavailable,
-    label: 'trackState.unavailable',
-    tone: TrackTone.Unavailable
-  }
-];
 
 export interface GalleryFilterBarProps {
   readonly hasShared: boolean;
@@ -97,7 +66,7 @@ export default function GalleryFilterBar({
   const selection = useRef(
     new Animated.Value(scope === 'shared' ? 1 : 0)
   ).current;
-  const total = STATUSES.reduce((sum, status) => sum + counts[status.value], 0);
+  const total = totalStatusCount(counts);
   const hasStatus = total > 0;
   const measured = allRect !== null && sharedRect !== null;
 
@@ -246,16 +215,18 @@ export default function GalleryFilterBar({
             selected={activeStatus === null}
             onPress={() => onStatusChange(null)}
           />
-          {STATUSES.filter(status => counts[status.value] > 0).map(status => (
-            <Chip
-              key={status.value}
-              label={t(status.label)}
-              count={counts[status.value]}
-              tone={status.tone}
-              selected={activeStatus === status.value}
-              onPress={() => onStatusChange(status.value)}
-            />
-          ))}
+          {STATUS_CHIPS.filter(status => counts[status.value] > 0).map(
+            status => (
+              <Chip
+                key={status.value}
+                label={t(status.label)}
+                count={counts[status.value]}
+                tone={status.tone}
+                selected={activeStatus === status.value}
+                onPress={() => onStatusChange(status.value)}
+              />
+            )
+          )}
         </View>
       ) : null}
     </ScrollView>

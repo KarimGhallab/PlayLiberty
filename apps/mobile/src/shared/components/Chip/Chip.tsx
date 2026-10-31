@@ -9,6 +9,7 @@ import {
   tokenColor,
   tokenDuration,
   tokenLength,
+  tokenNumber,
   touchTarget
 } from '../../styles/tokens';
 import { trackToneColor } from '../../trackState/trackToneColor';
@@ -24,6 +25,8 @@ export interface ChipProps {
   readonly count?: number;
   readonly tone?: ChipTone;
   readonly selected?: boolean;
+  readonly disabled?: boolean;
+  readonly testID?: string;
   readonly onPress: () => void;
 }
 
@@ -34,6 +37,8 @@ export default function Chip({
   count,
   tone = 'accent',
   selected = false,
+  disabled = false,
+  testID,
   onPress
 }: ChipProps) {
   const reduceMotion = useReduceMotion();
@@ -64,10 +69,12 @@ export default function Chip({
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled }}
       accessibilityLabel={count === undefined ? label : `${label} ${count}`}
-      style={styles.chip}
+      disabled={disabled}
+      style={[styles.chip, disabled && styles.disabled]}
       onPress={onPress}>
       <Animated.View
         pointerEvents="none"
@@ -133,5 +140,8 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-sm'),
     fontVariant: ['tabular-nums']
+  },
+  disabled: {
+    opacity: tokenNumber('opacity-disabled')
   }
 });

@@ -7,7 +7,12 @@ import {
 } from 'react-native-safe-area-context';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
-import { PlaylistSyncStatus, SyncRunStatus } from '@playliberty/contracts';
+import {
+  PlaylistSort,
+  PlaylistSyncStatus,
+  SyncRunStatus,
+  TrackFileStatus
+} from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import { copyText } from '../../../shared/clipboard/copyText';
@@ -21,8 +26,10 @@ import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber
+  tokenNumber,
+  touchTarget
 } from '../../../shared/styles/tokens';
+import { STATUS_CHIPS } from '../../../shared/trackState/statusChips';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import {
@@ -38,6 +45,7 @@ import { usePlaylistTracks } from '../../../api/usePlaylistTracks';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
+import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
@@ -48,6 +56,7 @@ import {
   type PlaylistActionKey,
   UNDO_WINDOW_MS
 } from '../../library/playlistActions/playlistActions';
+import PlaylistControls from '../PlaylistControls/PlaylistControls';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
@@ -100,7 +109,19 @@ export default function PlaylistDetail({
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const playlist = usePlaylist(playlistId);
-  const tracks = usePlaylistTracks(playlistId);
+  const [filter, setFilter] = useState<TrackFileStatus | null>(null);
+  const currentId = usePlayerStore(state => state.currentId);
+  const shuffled = usePlayerStore(state => state.shuffle);
+  const playerPlaylistId = usePlayerStore(state => state.playlistId);
+  const playlistData = playlist.data;
+  const isQueue =
+    playlistData !== undefined && playerPlaylistId === playlistData.id;
+  const listShuffled = isQueue && shuffled;
+  /* The filter is the visit's, and it steps aside while the queue's own order
+   * is on screen; the chips are disabled there. */
+  const activeFilter = listShuffled ? null : filter;
+  const tracks = usePlaylistTracks(playlistId, activeFilter ?? undefined);
+  const sort = useUpdateSort(playlistId ?? '');
   const queue = usePlaylistQueue(playlistId, playlist.isSuccess);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
@@ -126,16 +147,9 @@ export default function PlaylistDetail({
   const landingTarget = useRef<string | null>(null);
   const landed = useRef(false);
   const pendingDelete = pending?.kind === 'delete';
-  const currentId = usePlayerStore(state => state.currentId);
   const start = usePlayerStore(state => state.start);
   const setShuffle = usePlayerStore(state => state.setShuffle);
   const playerQueue = usePlayerStore(state => state.queue);
-  const playerPlaylistId = usePlayerStore(state => state.playlistId);
-  const shuffled = usePlayerStore(state => state.shuffle);
-  const playlistData = playlist.data;
-  const isQueue =
-    playlistData !== undefined && playerPlaylistId === playlistData.id;
-  const listShuffled = isQueue && shuffled;
   const drawnRows = tracks.isSuccess
     ? tracks.items.filter(entry => !hiddenTracks.has(entry.track.id))
     : [];
@@ -148,9 +162,19 @@ export default function PlaylistDetail({
     isQueue &&
     currentId !== null &&
     tracks.isSuccess &&
+    !tracks.isPlaceholderData &&
     tracks.hasMore &&
     !tracks.isFetchNextPageError &&
     !rows.some(entry => entry.track.id === currentId);
+  const filterEmpty =
+    activeFilter !== null &&
+    tracks.isSuccess &&
+    !tracks.isPlaceholderData &&
+    tracks.total === 0;
+
+  useEffect(() => {
+    setFilter(null);
+  }, [playlistId]);
 
   /* Opening the queue's playlist lands on its current row once; a later start
    * or skip does not move the list under the reader. */
@@ -344,6 +368,24 @@ export default function PlaylistDetail({
   const problemMessage = (error: Error, fallback: string): string =>
     problemDetail(t, error instanceof ApiError ? error.problem : null) ??
     fallback;
+
+  const chooseSort = (value: PlaylistSort): void => {
+    sort.mutate(value, {
+      onError: error => {
+        setNotice({
+          message: t('detail.sortNotice'),
+          detail: problemMessage(error, t('detail.sortFailed'))
+        });
+      }
+    });
+  };
+
+  const showControls =
+    tracks.isSuccess && data.trackCount > 0 && tracks.counts !== undefined;
+  const emptyFilterChip =
+    activeFilter === null
+      ? undefined
+      : STATUS_CHIPS.find(chip => chip.value === activeFilter);
 
   const playableQueue = (queue.data?.items ?? []).filter(entry =>
     isPlayable(entry.track)
@@ -629,6 +671,18 @@ export default function PlaylistDetail({
             data.access === 'owner' ? () => setHeaderOpen(true) : undefined
           }
         />
+        {showControls ? (
+          <PlaylistControls
+            sort={data.sort}
+            canEdit={canWritePlaylist(data)}
+            shuffled={listShuffled}
+            saving={sort.isPending}
+            counts={tracks.counts}
+            active={activeFilter}
+            onSortChange={chooseSort}
+            onFilterChange={setFilter}
+          />
+        ) : null}
         {tracks.isPending || landing ? <TrackListSkeleton /> : null}
         {tracks.isError ? (
           <View style={styles.tracksState}>
@@ -657,7 +711,24 @@ export default function PlaylistDetail({
             </Text>
           )
         ) : null}
-        {tracks.isSuccess && !landing && data.trackCount > 0
+        {filterEmpty && emptyFilterChip !== undefined ? (
+          <View testID="filter-empty" style={styles.filterEmpty}>
+            <Text style={styles.filterEmptyText}>
+              {t(emptyFilterChip.empty)}
+            </Text>
+            <Pressable
+              testID="filter-show-all"
+              accessibilityRole="button"
+              accessibilityLabel={t('detail.filterShowAll')}
+              style={styles.filterShowAll}
+              onPress={() => setFilter(null)}>
+              <Text style={styles.filterShowAllLabel}>
+                {t('detail.filterShowAll')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {tracks.isSuccess && !landing && !filterEmpty && data.trackCount > 0
           ? rows.map(entry => (
               <View
                 key={entry.track.id}
@@ -768,6 +839,31 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm')
+  },
+  filterEmpty: {
+    alignItems: 'center',
+    gap: tokenLength('space-3'),
+    paddingVertical: tokenLength('space-5')
+  },
+  filterEmptyText: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-sm')
+  },
+  filterShowAll: {
+    minHeight: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: tokenLength('space-4'),
+    borderWidth: 1,
+    borderColor: tokenColor('control-border'),
+    borderRadius: tokenLength('radius-control')
+  },
+  filterShowAllLabel: {
+    color: tokenColor('accent'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    fontWeight: '600'
   },
   stateBody: {
     flex: 1,

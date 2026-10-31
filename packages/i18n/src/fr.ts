@@ -152,6 +152,8 @@ export const fr: Messages = {
     trackFallback: 'Piste',
     settingFailed: "Le paramètre n'a pas pu être modifié.",
     settingNotice: "Le paramètre n'a pas été modifié.",
+    sortFailed: "Le tri n'a pas pu être modifié.",
+    sortNotice: "Le tri n'a pas été modifié.",
     sortBy: 'Trier par',
     sortPlaylist: 'Ordre de la playlist',
     sortNewest: "Plus récentes d'abord",

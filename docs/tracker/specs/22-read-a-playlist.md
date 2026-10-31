@@ -17,10 +17,10 @@ same width, and a control that is only reachable by scrolling back to the top is
 ## Solution
 
 One column. The identity block draws the cover, the name, the share mark, the owner line, the count and the sync
-line, with Play and Shuffle, and it scrolls away with the list. The sort and the status chips stick under the top
-inset, so they are reachable at any scroll position. The track list is the queue's order, and it appends as it
-scrolls. A row plays on a press anywhere and its lane opens a sheet. A playlist the account cannot see is a
-not-found body with a way back; a failed read is a retry, never an empty list.
+line, with Play and Shuffle, and it scrolls away with the list. The sort and the status chips follow it as one
+horizontal rail, so the cover leads and the controls stay together. The track list is the queue's order, and it
+appends as it scrolls. A row plays on a press anywhere and its lane opens a sheet. A playlist the account cannot see
+is a not-found body with a way back; a failed read is a retry, never an empty list.
 
 ## User Stories
 
@@ -35,7 +35,8 @@ not-found body with a way back; a failed read is a retry, never an empty list.
 9. As an account, I want a playlist I cannot see to read as not found, so that the app never confirms one I may not have.
 10. As an account, I want a playlist with no tracks to offer Sync now, so that I know what to do next.
 11. As an account, I want a synced but empty playlist to say so, so that I do not mistake it for broken.
-12. As an account, I want the sort and the chips to stay reachable while I scroll, so that I can narrow a long list.
+12. As an account, I want the sort and the chips under the header on one rail, so that the cover leads and I can
+    narrow the list.
 13. As an account, I want to sort by playlist order, newest or oldest, so that I can read the list the way I want.
 14. As an account, I want the sort saved, so that it is still there when I return.
 15. As an account, I want a refused sort explained, so that I know the press did not stick.
@@ -64,10 +65,10 @@ not-found body with a way back; a failed read is a retry, never an empty list.
 
 ## Implementation Decisions
 
-- **One column, and the identity block scrolls away.** The cover, name, share mark, owner line, count, sync line and
-  the Play and Shuffle controls are the list's first item; the sort and the chips stick under the top inset. `Decided
-here:` a sticky identity block spends a third of a phone screen on a cover the person has already read, and the
-  controls are what a long scroll needs.
+- **One column, and the identity block leads.** The cover, name, share mark, owner line, count, sync line and the
+  Play and Shuffle controls are the list's first item; the sort and the chips follow it as one horizontally scrolling
+  rail. `Decided here:` the header stays first and the controls stay together; a band fixed over the list cost more
+  of the screen than the reach it returned.
 - **The transport lives in the player bar, not the header.** The header keeps Play and Shuffle, which start a queue;
   previous, play-pause and next are the bar's, and the bar is on every screen. `Decided here:` the web's header
   transport exists because its bar is an overlay at the bottom of a wide window; on a phone it would be the same
@@ -80,8 +81,8 @@ here:` a sticky identity block spends a third of a phone screen on a cover the p
   synced playlist with no tracks says so. The loading state is a skeleton of rows under the header.
 - **The sort is a sheet with three radios, and it is the playlist's saved value.** The refusal is a notice. The
   control is disabled for a read collaborator and while shuffled, as the web's rule says.
-- **The status chips take the full width and wrap.** `Decided here:` the web's phone rule, kept because a scrolling
-  chip rail hides the last state behind a gesture nobody knows about.
+- **The status chips share one horizontal rail with the sort.** `Decided here:` the gallery's rail keeps the six
+  states on one line; the rail scrolls sideways rather than wrapping onto rows.
 - **The filter is client state for the visit.** Leaving the screen clears it; the sort is the one saved value.
 - **The row is one target.** A press anywhere plays, the lane opens a bottom sheet, and a row that cannot play has
   no play layer but keeps its lane. `Decided here:` the web's rule, and the sheet rather than a popover because a
@@ -127,8 +128,8 @@ here:` a sticky identity block spends a third of a phone screen on a cover the p
 - **The critical journeys are Maestro flows**: open a playlist from the gallery, play a row and see the bar, filter
   to failed and back to all, and remove a track then undo. The sort's persistence and the chips' counts are widget
   tests, because their value is arithmetic.
-- **Cut tests:** no test of the sticky row's elevation, the disclosure's animation, the snackbar's timing, or the
-  exact copy of the not-found sentence.
+- **Cut tests:** no test of the rail's scroll offset, the disclosure's animation, the snackbar's timing, or the exact
+  copy of the not-found sentence.
 
 ## Out of Scope
 
@@ -143,5 +144,4 @@ here:` a sticky identity block spends a third of a phone screen on a cover the p
 
 - The detail is the one screen where the app draws a header and a player bar at once. The bar is an overlay, so the
   list's last row pays its height as bottom padding, as the web's two pages do.
-- The sticky sort and chips are the only controls the app keeps on screen while scrolling; everything else scrolls
-  with the content.
+- The sort and chips rail scrolls with the identity and the rows; everything scrolls with the content.
