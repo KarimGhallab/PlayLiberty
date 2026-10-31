@@ -13,6 +13,7 @@ import { copyText } from '../../../shared/clipboard/copyText';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
+import { isPlayable } from '../../../shared/playable/playable';
 import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
 import {
   fontFamily,
@@ -37,6 +38,7 @@ import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
 import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
 import {
   type PlaylistAction,
@@ -108,6 +110,7 @@ export default function PlaylistDetail({
   );
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [headerOpen, setHeaderOpen] = useState(false);
+  const [starting, setStarting] = useState<'play' | 'shuffle' | null>(null);
   const [notice, setNotice] = useState<{
     readonly message: string;
     readonly detail: string;
@@ -116,6 +119,10 @@ export default function PlaylistDetail({
   const pendingDelete = pending?.kind === 'delete';
   const currentId = usePlayerStore(state => state.currentId);
   const start = usePlayerStore(state => state.start);
+  const setShuffle = usePlayerStore(state => state.setShuffle);
+  const playerQueue = usePlayerStore(state => state.queue);
+  const playerPlaylistId = usePlayerStore(state => state.playlistId);
+  const shuffled = usePlayerStore(state => state.shuffle);
   const busyTrackId = retry.isPending
     ? retry.variables
     : fetchWhole.isPending
@@ -132,16 +139,27 @@ export default function PlaylistDetail({
       tracks.error instanceof ApiError ? tracks.error.problem : null
     ) ?? t('detail.readFailed');
 
-  /* The queue is the playlist's playable order, so a press on any row starts
-   * the same queue at that row rather than a queue built from the loaded page. */
+  /* A press on a loaded row moves the playhead in the queue it is already in,
+   * so a shuffled order survives; otherwise the whole playable playlist starts
+   * at that row rather than a queue built from the loaded page. */
   const playTrack = useCallback(
     (trackId: string): void => {
-      const items = queue.data?.items ?? [];
+      if (playlistId === null) {
+        return;
+      }
 
-      if (
-        playlistId === null ||
-        !items.some(entry => entry.track.id === trackId)
-      ) {
+      const player = usePlayerStore.getState();
+
+      if (player.playlistId === playlistId && player.queue.includes(trackId)) {
+        player.play(trackId);
+        return;
+      }
+
+      const items = (queue.data?.items ?? []).filter(entry =>
+        isPlayable(entry.track)
+      );
+
+      if (!items.some(entry => entry.track.id === trackId)) {
         return;
       }
 
@@ -230,6 +248,68 @@ export default function PlaylistDetail({
   const problemMessage = (error: Error, fallback: string): string =>
     problemDetail(t, error instanceof ApiError ? error.problem : null) ??
     fallback;
+
+  const isQueue = playerPlaylistId === data.id;
+  const listShuffled = isQueue && shuffled;
+  const playableQueue = (queue.data?.items ?? []).filter(entry =>
+    isPlayable(entry.track)
+  );
+  const queueEmpty = queue.isSuccess && playableQueue.length === 0;
+
+  /* The queue route is the whole playable playlist, so a start never inherits
+   * the loaded page. A read that has not landed is awaited, and a failure is
+   * the start's own notice. */
+  const readPlayableQueue = async (): Promise<readonly PlaylistTrack[]> => {
+    const result = queue.isSuccess
+      ? { data: queue.data, error: null }
+      : await queue.refetch();
+
+    if (result.error !== null) {
+      throw result.error;
+    }
+
+    return (result.data?.items ?? []).filter(entry => isPlayable(entry.track));
+  };
+
+  const startPlaylist = async (intent: 'play' | 'shuffle'): Promise<void> => {
+    setStarting(intent);
+
+    try {
+      const items = await readPlayableQueue();
+
+      if (items.length === 0) {
+        setNotice({
+          message: t('start.empty', { name: data.name }),
+          detail: t('start.emptyDetail')
+        });
+        return;
+      }
+
+      const index =
+        intent === 'shuffle' ? Math.floor(Math.random() * items.length) : 0;
+      const leader = items[index];
+
+      if (leader === undefined) {
+        return;
+      }
+
+      start(
+        items.map(entry => entry.track.id),
+        data.id,
+        leader.track.id,
+        intent === 'shuffle'
+      );
+    } catch (error) {
+      setNotice({
+        message: t('start.unreachable', { name: data.name }),
+        detail:
+          problemDetail(t, error instanceof ApiError ? error.problem : null) ??
+          t('start.unreachableDetail')
+      });
+    } finally {
+      setStarting(null);
+    }
+  };
 
   const hideTrack = (trackId: string): void => {
     setHiddenTracks(previous => new Set(previous).add(trackId));
@@ -401,6 +481,13 @@ export default function PlaylistDetail({
     });
   };
 
+  const drawnRows = tracks.isSuccess
+    ? tracks.data.items.filter(entry => !hiddenTracks.has(entry.track.id))
+    : [];
+  const rows = listShuffled
+    ? orderTracksByQueue(drawnRows, playerQueue)
+    : drawnRows;
+
   return (
     <SafeAreaView
       testID="playlist-screen"
@@ -421,6 +508,27 @@ export default function PlaylistDetail({
           config={config}
           syncing={syncing}
           now={now}
+          starting={starting}
+          shuffled={listShuffled}
+          onPlay={
+            queueEmpty
+              ? undefined
+              : () => {
+                  void startPlaylist('play');
+                }
+          }
+          onShuffle={
+            queueEmpty
+              ? undefined
+              : () => {
+                  if (listShuffled) {
+                    setShuffle(false);
+                    return;
+                  }
+
+                  void startPlaylist('shuffle');
+                }
+          }
           onOpenActions={
             data.access === 'owner' ? () => setHeaderOpen(true) : undefined
           }
@@ -456,18 +564,16 @@ export default function PlaylistDetail({
           )
         ) : null}
         {tracks.isSuccess && data.trackCount > 0
-          ? tracks.data.items
-              .filter(entry => !hiddenTracks.has(entry.track.id))
-              .map(entry => (
-                <TrackRow
-                  key={entry.track.id}
-                  association={entry}
-                  config={config}
-                  current={currentId === entry.track.id}
-                  onOpenActions={openActions}
-                  onPlay={playTrack}
-                />
-              ))
+          ? rows.map(entry => (
+              <TrackRow
+                key={entry.track.id}
+                association={entry}
+                config={config}
+                current={currentId === entry.track.id}
+                onOpenActions={openActions}
+                onPlay={playTrack}
+              />
+            ))
           : null}
       </ScrollView>
       <TrackActionsSheet

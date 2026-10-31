@@ -15,6 +15,7 @@ import {
   useI18n
 } from '@playliberty/i18n';
 
+import Spinner from '../../../shared/components/Spinner/Spinner';
 import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
 import {
   shareMark,
@@ -44,6 +45,10 @@ export interface PlaylistIdentityProps {
   readonly onPlay?: () => void;
   readonly onShuffle?: () => void;
   readonly onOpenActions?: () => void;
+  /** The start waiting on its queue read, so that control says so. */
+  readonly starting?: 'play' | 'shuffle' | null;
+  /** Whether this playlist's queue is the shuffled one on screen. */
+  readonly shuffled?: boolean;
   readonly children?: ReactNode;
 }
 
@@ -58,6 +63,8 @@ export default function PlaylistIdentity({
   onPlay,
   onShuffle,
   onOpenActions,
+  starting = null,
+  shuffled = false,
   children
 }: PlaylistIdentityProps) {
   const { t } = useI18n();
@@ -69,6 +76,11 @@ export default function PlaylistIdentity({
     playlist.lastSyncedAt === null ? null : new Date(playlist.lastSyncedAt);
   const sharedBy =
     playlist.access !== 'owner' && ownerName !== null ? ownerName : null;
+  const startingPlay = starting === 'play';
+  const startingShuffle = starting === 'shuffle';
+  const busy = starting !== null;
+  const playDisabled = onPlay === undefined || busy;
+  const shuffleDisabled = onShuffle === undefined || busy;
 
   return (
     <View testID="playlist-identity" style={styles.identity}>
@@ -138,18 +150,22 @@ export default function PlaylistIdentity({
             testID="detail-play"
             accessibilityRole="button"
             accessibilityLabel={t('header.play')}
-            accessibilityState={{ disabled: onPlay === undefined }}
-            disabled={onPlay === undefined}
+            accessibilityState={{ disabled: playDisabled, busy: startingPlay }}
+            disabled={playDisabled}
             style={({ pressed }) => [
               styles.play,
-              onPlay === undefined && styles.disabled,
-              pressed && onPlay !== undefined && styles.playPressed
+              playDisabled && styles.disabled,
+              pressed && !playDisabled && styles.playPressed
             ]}
             onPress={onPlay}>
-            <IconPlayerPlay
-              size={tokenLength('icon-md')}
-              color={tokenColor('bg')}
-            />
+            {startingPlay ? (
+              <Spinner color={tokenColor('bg')} />
+            ) : (
+              <IconPlayerPlay
+                size={tokenLength('icon-md')}
+                color={tokenColor('bg')}
+              />
+            )}
           </Pressable>
           <View style={styles.secondary}>
             <Pressable
@@ -158,18 +174,27 @@ export default function PlaylistIdentity({
               accessibilityLabel={t('header.shuffle', {
                 name: playlist.name
               })}
-              accessibilityState={{ disabled: onShuffle === undefined }}
-              disabled={onShuffle === undefined}
+              accessibilityState={{
+                disabled: shuffleDisabled,
+                selected: shuffled,
+                busy: startingShuffle
+              }}
+              disabled={shuffleDisabled}
               style={({ pressed }) => [
                 styles.shuffle,
-                onShuffle === undefined && styles.disabled,
-                pressed && onShuffle !== undefined && styles.shufflePressed
+                shuffled && !shuffleDisabled && styles.shuffleOn,
+                shuffleDisabled && styles.disabled,
+                pressed && !shuffleDisabled && styles.shufflePressed
               ]}
               onPress={onShuffle}>
-              <IconArrowsShuffle
-                size={tokenLength('icon-md')}
-                color={tokenColor('muted')}
-              />
+              {startingShuffle ? (
+                <Spinner color={tokenColor('muted')} />
+              ) : (
+                <IconArrowsShuffle
+                  size={tokenLength('icon-md')}
+                  color={shuffled ? tokenColor('accent') : tokenColor('muted')}
+                />
+              )}
             </Pressable>
             {onOpenActions === undefined ? null : (
               <Pressable
@@ -292,6 +317,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-control')
+  },
+  shuffleOn: {
+    borderColor: tokenColor('accent')
   },
   shufflePressed: {
     backgroundColor: tokenColor('surface-raised')

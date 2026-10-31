@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -185,6 +186,16 @@ const failedTrack: PlaylistTrack = {
   }
 };
 
+const secondTrack: PlaylistTrack = {
+  ...track,
+  track: { ...track.track, id: 'track-2', title: 'Second Song' }
+};
+
+const thirdTrack: PlaylistTrack = {
+  ...track,
+  track: { ...track.track, id: 'track-3', title: 'Third Song' }
+};
+
 const counts = {
   [TrackFileStatus.Stored]: 1,
   [TrackFileStatus.Pending]: 0,
@@ -275,6 +286,9 @@ interface RenderOptions {
   readonly playlist?: Playlist;
   readonly tracks?: typeof page;
   readonly queue?: readonly PlaylistTrack[];
+  readonly queueError?: Error;
+  readonly queuePending?: boolean;
+  readonly queueRefetch?: 'resolve' | 'reject' | 'hold';
   readonly latestRun?: SyncRun | null;
   readonly directory?: readonly AccountSummary[];
   readonly language?: Language;
@@ -291,6 +305,11 @@ interface RenderOptions {
   readonly onBack?: () => void;
 }
 
+type QueueReadResult = {
+  readonly data: { readonly items: readonly PlaylistTrack[] } | undefined;
+  readonly error: Error | null;
+};
+
 async function renderDetail(options: RenderOptions = {}) {
   const onBack = options.onBack ?? jest.fn();
   const playlistRefetch = jest.fn();
@@ -300,6 +319,24 @@ async function renderDetail(options: RenderOptions = {}) {
   const fetchWholeMutate = jest.fn();
   const removeMutate = jest.fn();
   const deleteMutate = jest.fn();
+  const queueRefetch = jest.fn<() => Promise<QueueReadResult>>();
+  const queueItems = options.queue ?? [track];
+  const queueBehaviour =
+    options.queueRefetch ??
+    (options.queueError === undefined ? 'resolve' : 'reject');
+
+  if (queueBehaviour === 'resolve') {
+    queueRefetch.mockResolvedValue({
+      data: { items: queueItems },
+      error: null
+    });
+  } else if (queueBehaviour === 'reject') {
+    queueRefetch.mockRejectedValue(
+      options.queueError ?? new Error('The queue read failed.')
+    );
+  } else {
+    queueRefetch.mockReturnValue(new Promise<QueueReadResult>(() => {}));
+  }
 
   usePlaylistMock.mockReturnValue(
     options.playlistError === undefined
@@ -334,7 +371,23 @@ async function renderDetail(options: RenderOptions = {}) {
         })
   );
   usePlaylistQueueMock.mockReturnValue(
-    queryResult({ items: options.queue ?? [track] })
+    options.queueError !== undefined
+      ? queryResult(undefined, {
+          isPending: false,
+          isSuccess: false,
+          isError: true,
+          error: options.queueError,
+          refetch: queueRefetch
+        })
+      : options.queuePending === true
+        ? queryResult(undefined, {
+            isPending: true,
+            isSuccess: false,
+            isError: false,
+            data: undefined,
+            refetch: queueRefetch
+          })
+        : queryResult({ items: queueItems })
   );
   useLatestSyncRunMock.mockReturnValue(queryResult(options.latestRun ?? null));
   useAccountDirectoryMock.mockReturnValue(queryResult(options.directory ?? []));
@@ -392,9 +445,16 @@ async function renderDetail(options: RenderOptions = {}) {
 }
 
 beforeEach(() => {
+  jest.restoreAllMocks();
   jest.clearAllMocks();
   copyTextMock.mockReset();
-  usePlayerStore.setState({ queue: [], playlistId: null, currentId: null });
+  usePlayerStore.setState({
+    queue: [],
+    sourceQueue: [],
+    playlistId: null,
+    currentId: null,
+    shuffle: false
+  });
 });
 
 describe('the playlist detail', () => {
@@ -925,13 +985,177 @@ describe('the playlist detail', () => {
     expect(screen.getByText('Syncing')).toBeOnTheScreen();
   });
 
-  it('draws the start controls disabled until their ticket', async () => {
-    await renderDetail();
+  it('starts at the first playable track from the whole queue', async () => {
+    await renderDetail({
+      tracks: { ...page, items: [failedTrack], total: 1 },
+      queue: [failedTrack, secondTrack, thirdTrack]
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('track-2');
+    });
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue).toEqual(['track-2', 'track-3']);
+    expect(state.playlistId).toBe('playlist-1');
+    expect(state.shuffle).toBe(false);
+  });
+
+  it('shuffles every playable track from a random one', async () => {
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    await renderDetail({
+      queue: [track, secondTrack, thirdTrack]
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-shuffle'));
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().shuffle).toBe(true);
+    });
+
+    const state = usePlayerStore.getState();
+
+    expect(state.queue[0]).toBe('track-1');
+    expect([...state.queue].sort()).toEqual(['track-1', 'track-2', 'track-3']);
+    expect(state.currentId).toBe('track-1');
+  });
+
+  it('draws the shuffled queue order and restores the saved order when off', async () => {
+    usePlayerStore.setState({
+      queue: ['track-3', 'track-2', 'track-1'],
+      sourceQueue: ['track-1', 'track-2', 'track-3'],
+      playlistId: 'playlist-1',
+      currentId: 'track-2',
+      shuffle: true
+    });
+    await renderDetail({
+      tracks: { ...page, items: [track, secondTrack, thirdTrack], total: 3 },
+      queue: [track, secondTrack, thirdTrack]
+    });
+
+    const titles = (): readonly string[] =>
+      screen.getAllByTestId('track-title').map(node => node.props.children);
+
+    expect(titles()).toEqual(['Third Song', 'Second Song', 'First Song']);
+    expect(
+      screen.getByTestId('detail-shuffle').props.accessibilityState
+    ).toMatchObject({ selected: true, disabled: false });
+
+    fireEvent.press(screen.getByTestId('detail-shuffle'));
+
+    expect(usePlayerStore.getState().shuffle).toBe(false);
+    expect(usePlayerStore.getState().queue).toEqual([
+      'track-1',
+      'track-2',
+      'track-3'
+    ]);
+    expect(usePlayerStore.getState().currentId).toBe('track-2');
+
+    await waitFor(() => {
+      expect(titles()).toEqual(['First Song', 'Second Song', 'Third Song']);
+    });
+  });
+
+  it('disables both start controls on an empty queue', async () => {
+    await renderDetail({ queue: [] });
 
     expect(screen.getByTestId('detail-play')).toBeDisabled();
     expect(screen.getByTestId('detail-shuffle')).toBeDisabled();
     expect(screen.getByLabelText('Play this playlist')).toBeDisabled();
     expect(screen.getByLabelText('Shuffle Rain On The Window')).toBeDisabled();
+  });
+
+  it('starts a playlist for a read collaborator', async () => {
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('track-1');
+    });
+    expect(usePlayerStore.getState().queue).toEqual(['track-1']);
+  });
+
+  it('reports the start waiting on its queue read', async () => {
+    await renderDetail({ queuePending: true, queueRefetch: 'hold' });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-play')).toBeDisabled();
+    });
+    expect(screen.getByTestId('detail-shuffle')).toBeDisabled();
+    expect(screen.getByTestId('detail-play').props.accessibilityState).toEqual({
+      disabled: true,
+      busy: true
+    });
+  });
+
+  it('reports the shuffle waiting on its queue read', async () => {
+    await renderDetail({ queuePending: true, queueRefetch: 'hold' });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-shuffle'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-shuffle')).toBeDisabled();
+    });
+    expect(screen.getByTestId('detail-play')).toBeDisabled();
+    expect(
+      screen.getByTestId('detail-shuffle').props.accessibilityState
+    ).toEqual({ disabled: true, selected: false, busy: true });
+  });
+
+  it('explains a failed queue read', async () => {
+    const queueFailure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The queue is unavailable.'
+    });
+    await renderDetail({ queueError: queueFailure });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/could not be read/)).toBeOnTheScreen();
+    });
+  });
+
+  it('renders the start failure in French', async () => {
+    const queueFailure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The queue is unavailable.'
+    });
+    await renderDetail({ language: Language.French, queueError: queueFailure });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/n'a pas pu être lue/)).toBeOnTheScreen();
+    });
   });
 
   it('shows a running latest sync as the playlist state', async () => {

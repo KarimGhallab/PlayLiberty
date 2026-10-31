@@ -62,6 +62,7 @@ import {
   deleteIntentFor,
   playlistActionsFor
 } from '../playlistActions/playlistActions';
+import { clampScrollOffset } from './clampScrollOffset/clampScrollOffset';
 
 const TRACK_STATUSES: readonly TrackFileStatus[] =
   Object.values(TrackFileStatus);
@@ -132,6 +133,9 @@ export default function PlaylistGallery({
   const [notice, setNotice] = useState<string | null>(null);
   const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const createTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinnedRow = useRef<ScrollView>(null);
+  const pinnedViewport = useRef(0);
+  const pinnedOffset = useRef(0);
   const loadedItems = (playlists.data?.items ?? []).filter(
     item => !hidden.has(item.id)
   );
@@ -493,11 +497,38 @@ export default function PlaylistGallery({
             )}
             {group.key === 'pinned' ? (
               <ScrollView
+                ref={pinnedRow}
                 testID="pinned-row"
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.pinnedRow}
-                contentContainerStyle={styles.pinnedContent}>
+                contentContainerStyle={styles.pinnedContent}
+                scrollEventThrottle={16}
+                onLayout={event => {
+                  pinnedViewport.current = event.nativeEvent.layout.width;
+                }}
+                onScroll={event => {
+                  pinnedOffset.current = event.nativeEvent.contentOffset.x;
+                }}
+                onContentSizeChange={width => {
+                  const viewport =
+                    pinnedViewport.current === 0
+                      ? window.width
+                      : pinnedViewport.current;
+                  const clamped = clampScrollOffset(
+                    pinnedOffset.current,
+                    width,
+                    viewport
+                  );
+
+                  if (clamped !== pinnedOffset.current) {
+                    pinnedRow.current?.scrollTo({
+                      x: clamped,
+                      animated: false
+                    });
+                    pinnedOffset.current = clamped;
+                  }
+                }}>
                 {group.items.map(playlist => (
                   <View key={playlist.id} style={{ width: pinnedCardWidth }}>
                     {cardFor(playlist, group.key)}
