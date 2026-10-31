@@ -46,6 +46,7 @@ import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
+import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -61,6 +62,7 @@ import PlaylistControls from '../PlaylistControls/PlaylistControls';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
+import SkipSetting from '../SkipSetting/SkipSetting';
 import SyncBand from '../SyncBand/SyncBand';
 import TrackActionsSheet from '../TrackActionsSheet/TrackActionsSheet';
 import {
@@ -124,6 +126,7 @@ export default function PlaylistDetail({
   const activeFilter = listShuffled ? null : filter;
   const tracks = usePlaylistTracks(playlistId, activeFilter ?? undefined);
   const sort = useUpdateSort(playlistId ?? '');
+  const skipSetting = useUpdateSkipNonMusic(playlistId ?? '');
   const queue = usePlaylistQueue(playlistId, playlist.isSuccess);
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
@@ -378,6 +381,17 @@ export default function PlaylistDetail({
         setNotice({
           message: t('detail.sortNotice'),
           detail: problemMessage(error, t('detail.sortFailed'))
+        });
+      }
+    });
+  };
+
+  const chooseSkip = (value: boolean): void => {
+    skipSetting.mutate(value, {
+      onError: error => {
+        setNotice({
+          message: t('detail.settingNotice'),
+          detail: problemMessage(error, t('detail.settingFailed'))
         });
       }
     });
@@ -693,8 +707,14 @@ export default function PlaylistDetail({
           }
           onOpenActions={
             data.access === 'owner' ? () => setHeaderOpen(true) : undefined
-          }
-        />
+          }>
+          <SkipSetting
+            skipNonMusic={data.skipNonMusic}
+            canEdit={canWritePlaylist(data)}
+            saving={skipSetting.isPending}
+            onChange={chooseSkip}
+          />
+        </PlaylistIdentity>
         {band}
         {showControls ? (
           <PlaylistControls

@@ -43,6 +43,7 @@ import { useRemoveTrack } from '../../../api/useRemoveTrack';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
+import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -76,6 +77,9 @@ jest.mock('../../../api/useDeletePlaylist', () => ({
 }));
 jest.mock('../../../api/useUpdateSort', () => ({
   useUpdateSort: jest.fn()
+}));
+jest.mock('../../../api/useUpdateSkipNonMusic', () => ({
+  useUpdateSkipNonMusic: jest.fn()
 }));
 jest.mock('../../../api/useRetryFailedTracks', () => ({
   useRetryFailedTracks: jest.fn()
@@ -118,6 +122,9 @@ const useDeletePlaylistMock = useDeletePlaylist as jest.MockedFunction<
 >;
 const useUpdateSortMock = useUpdateSort as jest.MockedFunction<
   typeof useUpdateSort
+>;
+const useUpdateSkipNonMusicMock = useUpdateSkipNonMusic as jest.MockedFunction<
+  typeof useUpdateSkipNonMusic
 >;
 const useRetryFailedTracksMock = useRetryFailedTracks as jest.MockedFunction<
   typeof useRetryFailedTracks
@@ -331,6 +338,7 @@ interface RenderOptions {
   readonly fetchNextPageError?: boolean;
   readonly syncPending?: boolean;
   readonly sortPending?: boolean;
+  readonly skipPending?: boolean;
   readonly retryFailedPending?: boolean;
   readonly retryPending?: boolean;
   readonly retryVariables?: string;
@@ -356,6 +364,7 @@ async function renderDetail(options: RenderOptions = {}) {
   const removeMutate = jest.fn();
   const deleteMutate = jest.fn();
   const sortMutate = jest.fn();
+  const skipMutate = jest.fn();
   const retryFailedMutate = jest.fn();
   const queueRefetch = jest.fn<() => Promise<QueueReadResult>>();
   const queueItems = options.queue ?? [track];
@@ -482,6 +491,12 @@ async function renderDetail(options: RenderOptions = {}) {
       isPending: options.sortPending === true
     })
   );
+  useUpdateSkipNonMusicMock.mockReturnValue(
+    mutationResult({
+      mutate: skipMutate,
+      isPending: options.skipPending === true
+    })
+  );
   useRetryFailedTracksMock.mockReturnValue(
     mutationResult({
       mutate: retryFailedMutate,
@@ -516,6 +531,7 @@ async function renderDetail(options: RenderOptions = {}) {
     removeMutate,
     deleteMutate,
     sortMutate,
+    skipMutate,
     retryFailedMutate
   };
 }
@@ -549,6 +565,66 @@ describe('the playlist detail', () => {
     expect(screen.getByText('Synced 2 days ago')).toBeOnTheScreen();
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('3:02')).toBeOnTheScreen();
+  });
+
+  it('draws the skip setting inside the identity and writes the flip', async () => {
+    const { skipMutate } = await renderDetail();
+
+    const setting = within(screen.getByTestId('playlist-identity')).getByTestId(
+      'skip-setting'
+    );
+
+    expect(setting.props.accessibilityState).toMatchObject({ checked: true });
+
+    fireEvent.press(setting);
+
+    expect(skipMutate).toHaveBeenCalledWith(false, expect.any(Object));
+  });
+
+  it('keeps the skip setting, disabled, for a read collaborator', async () => {
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    expect(screen.getByText('Skip non-music parts')).toBeOnTheScreen();
+    expect(screen.getByTestId('skip-setting')).toBeDisabled();
+  });
+
+  it('explains a refused skip setting in French', async () => {
+    const failure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'Le paramètre est indisponible.'
+    });
+    const { skipMutate } = await renderDetail({ language: Language.French });
+    const mutate = skipMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          skipNonMusic: boolean,
+          options: { onError?: (error: Error) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_skipNonMusic, options) => {
+      options.onError?.(failure);
+    });
+
+    expect(
+      screen.getByText('Ignorer les parties non musicales')
+    ).toBeOnTheScreen();
+    fireEvent.press(screen.getByTestId('skip-setting'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le paramètre n'a pas été modifié.")
+      ).toBeOnTheScreen();
+    });
+    expect(
+      screen.getByTestId('skip-setting').props.accessibilityState
+    ).toMatchObject({ checked: true });
   });
 
   it('draws the sort and the chips below the identity as one rail', async () => {
