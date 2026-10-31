@@ -63,6 +63,14 @@ function wrapper({ children }: { readonly children: ReactNode }) {
   );
 }
 
+function frenchWrapper({ children }: { readonly children: ReactNode }) {
+  return (
+    <I18nProvider initialLanguage={Language.French} storage={store}>
+      {children}
+    </I18nProvider>
+  );
+}
+
 const secondTrack: PlayerTrack = {
   ...track,
   id: 'track-2',
@@ -134,6 +142,30 @@ describe('the background playback bridge', () => {
     });
 
     expect(playback.__stop).toHaveBeenCalled();
+  });
+
+  it('passes the French copy to the service', async () => {
+    await startQueue();
+
+    await renderHook(
+      () => useBackgroundPlayback(config, '/playlists/playlist-1'),
+      {
+        wrapper: frenchWrapper
+      }
+    );
+
+    await waitFor(() => {
+      expect(playback.__start).toHaveBeenCalledWith(
+        expect.objectContaining({
+          playLabel: 'Lire First Song',
+          pauseLabel: 'Mettre en pause First Song',
+          previousLabel: 'Piste précédente, First Song',
+          nextLabel: 'Piste suivante, First Song',
+          channelName: 'Lecteur',
+          route: '/playlists/playlist-1'
+        })
+      );
+    });
   });
 
   it('shows the refused-permission notice once', async () => {

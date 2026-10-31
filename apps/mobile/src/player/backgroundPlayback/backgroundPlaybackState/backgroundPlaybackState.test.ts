@@ -34,6 +34,7 @@ function state(
     track,
     playlistId: 'playlist-1',
     playlistName: 'Rain On The Window',
+    route: '/playlists/playlist-1',
     coverUpdatedAt: null,
     coverTrackId: null,
     isPlaying: true,
@@ -52,6 +53,7 @@ describe('the background playback state', () => {
 
     expect(result.title).toBe('First Song');
     expect(result.playlistName).toBe('Rain On The Window');
+    expect(result.route).toBe('/playlists/playlist-1');
     expect(result.artworkUrl).toBe(
       'https://instance.test/api/v1/tracks/track-1/thumbnail'
     );
@@ -87,6 +89,24 @@ describe('the background playback state', () => {
     expect(coverTrack.artworkUrl).toBe(
       'https://instance.test/api/v1/tracks/track-9/thumbnail'
     );
+  });
+
+  it('carries the app language into every control label', () => {
+    const french = state({
+      labels: {
+        play: 'Lire',
+        pause: 'Mettre en pause',
+        previous: 'Piste précédente',
+        next: 'Piste suivante',
+        channel: 'Lecteur'
+      }
+    });
+
+    expect(french.playLabel).toBe('Lire');
+    expect(french.pauseLabel).toBe('Mettre en pause');
+    expect(french.previousLabel).toBe('Piste précédente');
+    expect(french.nextLabel).toBe('Piste suivante');
+    expect(french.channelName).toBe('Lecteur');
   });
 
   it('leaves a bare track without a playlist', () => {

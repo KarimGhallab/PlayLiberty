@@ -1,35 +1,33 @@
 # 04: The notification returns and speaks French
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-the-service-starts-with-the-player.md)
 
-## What to build
+## Outcome
 
-Tapping the notification returns the listener to the screen they left, not to the gallery. The service carries the
-current route and asks the app to resolve it on return, so an open playlist stays open and the bar remains.
+The bridge now carries the current `usePathname()` route into the service. The service builds the notification's
+content intent from it, and uses the same pending intent as the media session's session activity, so both the shade
+and the lock screen return to the screen the listener left. The route is part of the notification key, so navigating
+to another screen rebuilds the intent. The gallery route keeps the app launch intent; a deeper route becomes a
+`dev.playliberty.app://` link.
 
-The notification's actions, channel and transport labels are in the app's language, as are the track and playlist it
-draws. A bare queue reveals no playlist name. Screen-reader users hear each control's name and the current track, not
-an icon or an English default.
-
-The notification's copy follows a language change without waiting for a track change.
-
-## Acceptance criteria
-
-- [ ] Tapping the notification from another app returns to the screen the listener left.
-- [ ] The open screen and the bar are unchanged by the return.
-- [ ] Every visible notification label exists in English and French.
-- [ ] A language change updates the notification's copy.
-- [ ] A bare queue reveals no playlist name.
-- [ ] Every notification control has a screen-reader label naming its action and track.
+Every notification action label now names both the action and the current track, using the existing named transport
+copy: for example `Piste précédente, Makafushigi Adventure Instrumental Full Version`. The channel name, play, pause,
+previous and next labels all come from the app's translator, so they follow the selected language. A language change
+changes the label state, which changes the notification key and rebuilds the notification and channel. A bare queue
+passes an empty playlist name, so no subtitle or artist line is drawn.
 
 ## Verification
 
-- Mapping tests cover the route carried by the notification, the English and French copy, the bare subtitle and the
-  control labels.
-- On the device: leave the app on a playlist, open another app, tap the notification and confirm the playlist is still
-  open; switch the app to French and inspect the shade.
+- Mobile 373 tests across 43 suites pass. Mapping tests cover the route, English and French labels, the named actions
+  and the empty bare subtitle. A hook test proves the French labels and route reach the service.
 - `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- The Android module compiled with `:app:assembleDebug` and the rebuilt client installed.
+- On the French device, the notification actions read `Piste précédente, ...`, `Mettre en pause ...` and
+  `Piste suivante, ...`, with the track title in each. The media metadata carried the title, playlist artist and
+  album.
+- Leaving the app on `Chine`, opening the home screen, and tapping the media card returned to `Chine` with the bar
+  still visible.
 
 See [`24-play-in-the-background`](../../specs/24-play-in-the-background.md).

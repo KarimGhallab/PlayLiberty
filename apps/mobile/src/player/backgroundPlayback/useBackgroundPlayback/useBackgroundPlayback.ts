@@ -17,7 +17,10 @@ import {
  * starts the service from a user press and then mirrors one state object into
  * it; commands come back into the same store actions the bar uses.
  */
-export function useBackgroundPlayback(config: ApiConfig | null): void {
+export function useBackgroundPlayback(
+  config: ApiConfig | null,
+  route = '/'
+): void {
   const { t } = useI18n();
   const currentId = usePlayerStore(state => state.currentId);
   const queue = usePlayerStore(state => state.queue);
@@ -38,16 +41,17 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
   const permissionGranted = useRef(false);
   const refusalNoticed = useRef(false);
 
-  const labels = useMemo<BackgroundPlaybackLabels>(
-    () => ({
-      play: t('playerBar.play'),
-      pause: t('playerBar.pause'),
-      previous: t('playerBar.previous'),
-      next: t('playerBar.next'),
+  const labels = useMemo<BackgroundPlaybackLabels>(() => {
+    const title = track?.title ?? '';
+
+    return {
+      play: t('playerBar.playNamed', { title }),
+      pause: t('playerBar.pauseNamed', { title }),
+      previous: t('playerBar.previousNamed', { title }),
+      next: t('playerBar.nextNamed', { title }),
       channel: t('playerBar.label')
-    }),
-    [t]
-  );
+    };
+  }, [t, track?.title]);
 
   const canNext =
     currentId !== null &&
@@ -62,6 +66,7 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
             track,
             playlistId,
             playlistName,
+            route,
             coverUpdatedAt,
             coverTrackId,
             isPlaying,
@@ -81,6 +86,7 @@ export function useBackgroundPlayback(config: ApiConfig | null): void {
       playlistId,
       playlistName,
       roundedPosition,
+      route,
       track
     ]
   );

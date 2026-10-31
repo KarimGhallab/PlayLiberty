@@ -1,3 +1,5 @@
+import { usePathname } from 'expo-router';
+
 import type { ApiConfig } from '../../auth/useApiConfig';
 import { useBackgroundPlayback } from './useBackgroundPlayback/useBackgroundPlayback';
 
@@ -9,7 +11,9 @@ export interface BackgroundPlaybackProps {
 export default function BackgroundPlayback({
   config
 }: BackgroundPlaybackProps) {
-  useBackgroundPlayback(config);
+  const route = usePathname();
+
+  useBackgroundPlayback(config, route);
 
   return null;
 }

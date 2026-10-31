@@ -9,6 +9,7 @@ import type { PlayerTrack } from '../../playerTrack/playerTrack';
 export interface BackgroundPlaybackState {
   readonly title: string;
   readonly playlistName: string;
+  readonly route: string;
   readonly artworkUrl: string;
   readonly artworkHeaders: Record<string, string>;
   readonly isPlaying: boolean;
@@ -35,6 +36,7 @@ export interface BackgroundTrackInput {
   readonly track: PlayerTrack;
   readonly playlistId: string | null;
   readonly playlistName: string | null;
+  readonly route: string;
   readonly coverUpdatedAt: string | null;
   readonly coverTrackId: string | null;
   readonly isPlaying: boolean;
@@ -95,6 +97,7 @@ export function backgroundPlaybackState(
   return {
     title: input.track.title,
     playlistName: input.playlistName ?? '',
+    route: input.route,
     artworkUrl: artwork.url,
     artworkHeaders: artwork.headers,
     isPlaying: input.isPlaying,

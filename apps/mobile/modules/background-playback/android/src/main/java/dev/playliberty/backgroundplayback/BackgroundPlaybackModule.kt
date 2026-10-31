@@ -55,6 +55,7 @@ class BackgroundPlaybackModule : Module() {
     return BackgroundPlaybackState(
       title = map["title"]?.toString() ?: "",
       playlistName = map["playlistName"]?.toString() ?: "",
+      route = map["route"]?.toString() ?: "/",
       artworkUrl = map["artworkUrl"]?.toString() ?: "",
       artworkHeaders = headers,
       isPlaying = map["isPlaying"] as? Boolean ?: false,

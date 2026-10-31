@@ -3,6 +3,7 @@ package dev.playliberty.backgroundplayback
 data class BackgroundPlaybackState(
   val title: String,
   val playlistName: String,
+  val route: String,
   val artworkUrl: String,
   val artworkHeaders: Map<String, String>,
   val isPlaying: Boolean,

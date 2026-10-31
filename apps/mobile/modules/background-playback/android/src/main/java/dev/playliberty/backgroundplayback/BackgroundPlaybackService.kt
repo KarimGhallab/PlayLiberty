@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -199,12 +200,39 @@ class BackgroundPlaybackService : Service() {
 
     session.setMetadata(metadata)
     session.setPlaybackState(playback)
+    contentIntent(current)?.let { session.setSessionActivity(it) }
+  }
+
+  private fun contentIntent(current: BackgroundPlaybackState): PendingIntent? {
+    val route = current.route
+    val intent = if (route.isBlank() || route == "/") {
+      packageManager.getLaunchIntentForPackage(packageName)
+    } else {
+      Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("dev.playliberty.app://${route.trimStart('/')}")
+      ).setPackage(packageName)
+    }
+
+    intent?.addFlags(
+      Intent.FLAG_ACTIVITY_NEW_TASK or
+        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+        Intent.FLAG_ACTIVITY_SINGLE_TOP
+    ) ?: return null
+
+    return PendingIntent.getActivity(
+      this,
+      0,
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
   }
 
   private fun stateKey(current: BackgroundPlaybackState): String =
     listOf(
       current.title,
       current.playlistName,
+      current.route,
       current.isPlaying,
       current.canNext,
       current.artworkUrl,
@@ -294,14 +322,7 @@ class BackgroundPlaybackService : Service() {
       Intent(this, BackgroundPlaybackService::class.java).setAction(ACTION_TOGGLE),
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
-    val content = packageManager.getLaunchIntentForPackage(packageName)?.let {
-      PendingIntent.getActivity(
-        this,
-        0,
-        it,
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      )
-    }
+    val content = contentIntent(current)
     val delete = PendingIntent.getService(
       this,
       3,
