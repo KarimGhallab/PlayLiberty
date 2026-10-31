@@ -37,7 +37,7 @@ jest.mock('../../../api/usePlaylists/usePlaylists', () => ({
   usePlaylists: jest.fn()
 }));
 
-jest.mock('../../../api/useCreatePlaylist', () => ({
+jest.mock('../../../api/useCreatePlaylist/useCreatePlaylist', () => ({
   useCreatePlaylist: jest.fn()
 }));
 

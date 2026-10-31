@@ -1,20 +1,21 @@
 import {
   IconDots,
   IconDownload,
-  IconLock,
-  IconLockShare,
-  IconPlayerPlay,
-  IconUserShare
+  IconPlayerPlay
 } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PlaylistWithCounts } from '@playliberty/contracts';
-import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
-import type { MessageKey, Messages } from '@playliberty/i18n';
+import { TrackFileStatus } from '@playliberty/contracts';
 import { syncStateLabel, trackCountUnit, useI18n } from '@playliberty/i18n';
 
 import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
+import {
+  shareMark,
+  shareMarkColor
+} from '../../../shared/playlistIdentity/shareMark';
+import { syncStateColor } from '../../../shared/playlistIdentity/syncStateColor';
 import {
   fontFamily,
   tokenColor,
@@ -65,24 +66,6 @@ const TONE_COLORS: Record<
   [TrackFileStatus.Unavailable]: 'tone-unavailable'
 };
 
-interface ShareMark {
-  readonly label: MessageKey<Messages>;
-  readonly Icon: typeof IconLock;
-}
-
-/* One glyph says you are not the owner, not what you may do. */
-function shareMark(playlist: PlaylistWithCounts): ShareMark {
-  if (playlist.access !== 'owner') {
-    return { label: 'header.collab', Icon: IconUserShare };
-  }
-
-  if (playlist.hasShares) {
-    return { label: 'header.shared', Icon: IconLockShare };
-  }
-
-  return { label: 'header.private', Icon: IconLock };
-}
-
 interface Incomplete {
   readonly missing: number;
   readonly tone: MissingState;
@@ -101,21 +84,6 @@ function incompleteOf(counts: PlaylistWithCounts['counts']): Incomplete | null {
   return { missing, tone };
 }
 
-function stateColor(status: PlaylistSyncStatus): string {
-  if (status === PlaylistSyncStatus.Syncing) {
-    return tokenColor('emphasis');
-  }
-
-  if (
-    status === PlaylistSyncStatus.Error ||
-    status === PlaylistSyncStatus.Blocked
-  ) {
-    return tokenColor('tone-failed');
-  }
-
-  return tokenColor('muted');
-}
-
 /* The gallery's one card: the detail's hero arrangement at a phone's width.
  * The play waits for spec 23, so it is drawn and disabled. */
 export default function PlaylistCard({
@@ -132,10 +100,7 @@ export default function PlaylistCard({
   const incomplete = incompleteOf(playlist.counts);
   const sharedBy = playlist.access === 'owner' ? null : ownerName;
   const [width, setWidth] = useState(0);
-  const shareColor =
-    mark.label === 'header.private'
-      ? tokenColor('muted')
-      : tokenColor('shared');
+  const shareColor = shareMarkColor(mark);
   const playTop = Math.max(0, width - touchTarget - tokenLength('space-2'));
 
   return (
@@ -193,7 +158,10 @@ export default function PlaylistCard({
             )}
           </View>
           <Text
-            style={[styles.state, { color: stateColor(playlist.syncStatus) }]}>
+            style={[
+              styles.state,
+              { color: syncStateColor(playlist.syncStatus) }
+            ]}>
             {syncStateLabel(t, playlist.syncStatus)}
           </Text>
         </View>

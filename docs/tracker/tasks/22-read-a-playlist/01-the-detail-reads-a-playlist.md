@@ -1,32 +1,35 @@
 # 01: The detail reads a playlist
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
-## What to build
+## Outcome
 
-The playlist route stops drawing its id and becomes the detail. It reads the playlist, the first page of its tracks
-and the latest sync run, and resolves the owner from the account directory.
+The playlist route now draws the detail instead of its id. It reads the playlist, the first page of its tracks at 100
+per page and the latest sync run, and resolves the owner from the account directory. A latest run the playlist read
+still calls idle or syncing shows the sync line as syncing, so a run that started after the read is not hidden.
 
-The screen is one column. The identity block is the first item in the same scroll as the tracks: the playlist cover
-from the shared custom, first-track, sleeve chain, the name as the heading, the share mark, the owner line for a
-shared playlist, the track count and the sync state with the last-synced stamp. Play and Shuffle are drawn and wait
-for `06`. The platform back returns to the gallery; the screen draws no back button.
+The identity block and the first page's rows are one scroll. The block draws the 96-point cover from the shared
+custom, first-track, sleeve chain with the session headers, the name as the heading, the share mark, the owner line
+for a shared playlist, the count, the sync state and the last-synced stamp. Play and Shuffle are drawn disabled until
+ticket `06` supplies their callbacks. The platform back returns to the gallery; the screen draws no back button.
 
-The route keeps the `playlist-screen` test id the gallery journey already targets. The loading and failure bodies are
-`02`; this ticket draws the success path and does not invent a fourth state for a pending read.
+The share mark and the sync state colour moved into one shared module that the gallery card and the detail both read,
+so the card's marks and tone cannot drift from the detail's.
 
-## Acceptance criteria
+A pending or failed playlist read draws the route's frame and no body. Ticket `02` adds the skeleton, not-found and
+failure bodies. The first page's rows are plain title and duration; ticket `03` replaces them with the full row, its
+play layer and its state words.
 
-- [ ] The detail draws the cover, name, share mark, owner line, count and sync line from the three reads.
-- [ ] A shared playlist names its owner; the account's own playlist draws no owner line.
-- [ ] The platform back returns to the gallery.
-- [ ] `playlist-screen` remains the route's test id.
-- [ ] The identity block and the rows share one scroll; no fixed header covers the list.
-- [ ] The new copy renders in French.
+The full suite exposed a stale duplicate `useCreatePlaylist` test at the old path and a gallery mock still naming the
+moved module. The duplicate was removed and the mock path corrected, so the suite runs again.
 
 ## Verification
 
-`pnpm --filter @playliberty/mobile run typecheck`, the detail's Jest file, then `pnpm run build` and
-`pnpm run lint:check`.
+- Detail 10 tests and card 9 tests pass; mobile 174 tests across 28 suites pass.
+- `pnpm --filter @playliberty/mobile run typecheck` passes.
+- `pnpm run lint:check` and `pnpm run build` pass.
+- The Maestro `gallery-card` flow still targets `playlist-screen`; ticket `12` runs the detail journeys.
+
+See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).
