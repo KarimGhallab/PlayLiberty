@@ -56,6 +56,46 @@ function withoutTrack(
   return next;
 }
 
+/* The current track's declared duration, or null while there is nothing to
+ * measure a position against. */
+function currentDuration(state: PlayerState): number | null {
+  if (state.currentId === null) {
+    return null;
+  }
+
+  const duration = state.tracks[state.currentId]?.durationSeconds ?? null;
+
+  return duration !== null && duration > 0 ? duration : null;
+}
+
+/* The store's one position bound: the current track's own duration. */
+function boundedPosition(state: PlayerState, seconds: number): number | null {
+  if (!Number.isFinite(seconds)) {
+    return null;
+  }
+
+  const duration = currentDuration(state);
+
+  if (duration === null) {
+    return Math.max(0, seconds);
+  }
+
+  return Math.min(duration, Math.max(0, seconds));
+}
+
+function seekPatch(
+  state: PlayerState,
+  seconds: number
+): Partial<PlayerState> | PlayerState {
+  const position = boundedPosition(state, seconds);
+
+  if (position === null) {
+    return state;
+  }
+
+  return { positionSeconds: position, seekTo: position };
+}
+
 export interface PlayerState {
   /* The order being played: the playlist's own, or a shuffle of it. */
   readonly queue: readonly string[];
@@ -69,6 +109,8 @@ export interface PlayerState {
   readonly shuffle: boolean;
   readonly isPlaying: boolean;
   readonly positionSeconds: number;
+  /* A seek the player has not applied yet; it is cleared when applied. */
+  readonly seekTo: number | null;
   start: (
     tracks: readonly PlayerTrack[],
     playlist: PlayerPlaylist | null,
@@ -80,6 +122,9 @@ export interface PlayerState {
   play: (trackId: string) => void;
   setPlaying: (playing: boolean) => void;
   setPosition: (seconds: number) => void;
+  seekToFraction: (fraction: number) => void;
+  seekBy: (seconds: number) => void;
+  consumeSeek: () => number | null;
   skipNext: () => void;
   skipPrevious: () => void;
   advance: () => void;
@@ -97,6 +142,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   shuffle: false,
   isPlaying: false,
   positionSeconds: 0,
+  seekTo: null,
   start: (tracks, playlist, currentId, shuffle = false) => {
     const queue = tracks.map(track => track.id);
 
@@ -109,7 +155,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       currentId,
       shuffle,
       isPlaying: true,
-      positionSeconds: 0
+      positionSeconds: 0,
+      seekTo: null
     });
   },
   startBareTrack: track =>
@@ -122,7 +169,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       currentId: track.id,
       shuffle: false,
       isPlaying: true,
-      positionSeconds: 0
+      positionSeconds: 0,
+      seekTo: null
     }),
   /* Turning shuffle on draws a new order and a new leader; turning it off
    * restores the playlist order and leaves the playhead in place. */
@@ -146,7 +194,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         shuffle,
         queue: shuffledWithLeader(state.queue, leader),
         currentId: leader,
-        positionSeconds: 0
+        positionSeconds: 0,
+        seekTo: null
       };
     }),
   play: trackId =>
@@ -159,18 +208,54 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         return { isPlaying: true };
       }
 
-      return { currentId: trackId, isPlaying: true, positionSeconds: 0 };
+      return {
+        currentId: trackId,
+        isPlaying: true,
+        positionSeconds: 0,
+        seekTo: null
+      };
     }),
   setPlaying: playing =>
     set(state => (state.currentId === null ? state : { isPlaying: playing })),
   setPosition: seconds =>
     set(state => {
-      if (state.currentId === null || !Number.isFinite(seconds)) {
+      if (state.currentId === null) {
         return state;
       }
 
-      return { positionSeconds: Math.max(0, seconds) };
+      const position = boundedPosition(state, seconds);
+
+      return position === null ? state : { positionSeconds: position };
     }),
+  seekToFraction: fraction =>
+    set(state => {
+      const duration = currentDuration(state);
+
+      if (duration === null || !Number.isFinite(fraction)) {
+        return state;
+      }
+
+      const bounded = Math.min(1, Math.max(0, fraction));
+
+      return seekPatch(state, bounded * duration);
+    }),
+  seekBy: seconds =>
+    set(state => {
+      if (currentDuration(state) === null || !Number.isFinite(seconds)) {
+        return state;
+      }
+
+      return seekPatch(state, state.positionSeconds + seconds);
+    }),
+  consumeSeek: () => {
+    const target = get().seekTo;
+
+    if (target !== null) {
+      set({ seekTo: null });
+    }
+
+    return target;
+  },
   skipNext: () => {
     const { queue, currentId } = get();
     const index = currentId === null ? -1 : queue.indexOf(currentId);
@@ -180,7 +265,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       return;
     }
 
-    set({ currentId: next, positionSeconds: 0, isPlaying: true });
+    set({
+      currentId: next,
+      positionSeconds: 0,
+      isPlaying: true,
+      seekTo: null
+    });
   },
   skipPrevious: () => {
     const { queue, currentId, positionSeconds } = get();
@@ -194,19 +284,29 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       const previous = queue[index - 1];
 
       if (previous !== undefined) {
-        set({ currentId: previous, positionSeconds: 0, isPlaying: true });
+        set({
+          currentId: previous,
+          positionSeconds: 0,
+          isPlaying: true,
+          seekTo: null
+        });
         return;
       }
     }
 
-    set({ positionSeconds: 0, isPlaying: true });
+    set({ positionSeconds: 0, isPlaying: true, seekTo: null });
   },
   advance: () => {
     const { queue, currentId } = get();
     const index = currentId === null ? -1 : queue.indexOf(currentId);
     const next = queue[index + 1] ?? null;
 
-    set({ currentId: next, isPlaying: next !== null, positionSeconds: 0 });
+    set({
+      currentId: next,
+      isPlaying: next !== null,
+      positionSeconds: 0,
+      seekTo: null
+    });
   },
   drop: trackId => {
     const { queue, sourceQueue, tracks, currentId, isPlaying } = get();
@@ -234,7 +334,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       tracks: nextTracks,
       currentId: next,
       isPlaying: next === null ? false : isPlaying,
-      positionSeconds: 0
+      positionSeconds: 0,
+      seekTo: null
     });
   },
   clear: () =>
@@ -247,6 +348,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       currentId: null,
       shuffle: false,
       isPlaying: false,
-      positionSeconds: 0
+      positionSeconds: 0,
+      seekTo: null
     })
 }));

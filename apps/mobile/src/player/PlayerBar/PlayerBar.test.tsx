@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -156,6 +157,110 @@ describe('the player bar', () => {
     expect(usePlayerStore.getState().isPlaying).toBe(true);
   });
 
+  it('reports the elapsed and total time', async () => {
+    startPlaylist();
+    usePlayerStore.getState().setPosition(30);
+    await renderBar();
+
+    expect(screen.getByTestId('player-elapsed')).toHaveTextContent('0:30');
+    expect(screen.getByTestId('player-duration')).toHaveTextContent('3:02');
+    expect(
+      screen.getByTestId('player-seek').props.accessibilityValue.text
+    ).toBe('0:30 of 3:02');
+  });
+
+  it('seeks once on release and resumes a playing player', async () => {
+    startPlaylist();
+    await renderBar();
+
+    const rail = screen.getByTestId('player-seek');
+
+    await act(() => {
+      rail.props.onLayout({ nativeEvent: { layout: { width: 200 } } });
+      rail.props.onResponderGrant({ nativeEvent: { locationX: 100 } });
+      rail.props.onResponderMove({ nativeEvent: { locationX: 150 } });
+    });
+
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+
+    await act(() => {
+      rail.props.onResponderRelease({ nativeEvent: { locationX: 150 } });
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().positionSeconds).toBeCloseTo(136.5);
+    });
+
+    expect(usePlayerStore.getState().seekTo).toBeCloseTo(136.5);
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+  });
+
+  it('keeps a paused player paused after a seek', async () => {
+    startPlaylist();
+    usePlayerStore.getState().setPlaying(false);
+    await renderBar();
+
+    const rail = screen.getByTestId('player-seek');
+
+    await act(() => {
+      rail.props.onLayout({ nativeEvent: { layout: { width: 200 } } });
+      rail.props.onResponderGrant({ nativeEvent: { locationX: 100 } });
+      rail.props.onResponderRelease({ nativeEvent: { locationX: 100 } });
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().positionSeconds).toBeCloseTo(91);
+    });
+
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('adjusts the rail by ten seconds for a screen reader', async () => {
+    startPlaylist();
+    await renderBar();
+
+    const rail = screen.getByTestId('player-seek');
+
+    await act(() => {
+      rail.props.onAccessibilityAction({
+        nativeEvent: { actionName: 'increment' }
+      });
+    });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(10);
+    expect(usePlayerStore.getState().seekTo).toBe(10);
+
+    await act(() => {
+      rail.props.onAccessibilityAction({
+        nativeEvent: { actionName: 'decrement' }
+      });
+    });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('leaves the rail inert without a duration', async () => {
+    usePlayerStore.getState().startBareTrack({
+      ...track,
+      durationSeconds: null
+    });
+    await renderBar();
+
+    const rail = screen.getByTestId('player-seek');
+
+    expect(rail.props.accessibilityState).toEqual({ disabled: true });
+    expect(rail.props.accessibilityActions).toEqual([]);
+
+    await act(() => {
+      rail.props.onAccessibilityAction({
+        nativeEvent: { actionName: 'increment' }
+      });
+    });
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+  });
+
   it('draws a bare track without a playlist or a link', async () => {
     usePlayerStore.getState().startBareTrack(track);
     await renderBar();
@@ -193,5 +298,14 @@ describe('the player bar', () => {
     expect(
       screen.getByLabelText('Mettre en pause First Song')
     ).toBeOnTheScreen();
+
+    const rail = screen.getByTestId('player-seek');
+
+    expect(rail.props.accessibilityLabel).toBe('Position dans la piste');
+    expect(rail.props.accessibilityValue.text).toBe('0:00 sur 3:02');
+    expect(rail.props.accessibilityActions).toEqual([
+      { name: 'increment', label: 'Avancer de dix secondes' },
+      { name: 'decrement', label: 'Reculer de dix secondes' }
+    ]);
   });
 });

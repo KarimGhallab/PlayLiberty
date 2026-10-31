@@ -213,6 +213,65 @@ describe('the transport', () => {
   });
 });
 
+describe('the seek', () => {
+  it('binds a fraction to the track and reports it once', () => {
+    start(['a'], 'a');
+
+    usePlayerStore.getState().seekToFraction(0.5);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(30);
+    expect(usePlayerStore.getState().seekTo).toBe(30);
+    expect(usePlayerStore.getState().consumeSeek()).toBe(30);
+    expect(usePlayerStore.getState().consumeSeek()).toBeNull();
+  });
+
+  it('clamps a fraction outside the track', () => {
+    start(['a'], 'a');
+
+    usePlayerStore.getState().seekToFraction(2);
+    expect(usePlayerStore.getState().positionSeconds).toBe(60);
+
+    usePlayerStore.getState().seekToFraction(-1);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('steps forward and backward within the track', () => {
+    start(['a'], 'a');
+    usePlayerStore.getState().setPosition(30);
+
+    usePlayerStore.getState().seekBy(10);
+    expect(usePlayerStore.getState().positionSeconds).toBe(40);
+
+    usePlayerStore.getState().seekBy(-50);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('bounds the reported position to the track', () => {
+    start(['a'], 'a');
+
+    usePlayerStore.getState().setPosition(100);
+    expect(usePlayerStore.getState().positionSeconds).toBe(60);
+
+    usePlayerStore.getState().setPosition(-5);
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it('leaves the seek alone when the duration is unknown', () => {
+    usePlayerStore.getState().startBareTrack({
+      id: 'a',
+      title: 'Track a',
+      durationSeconds: null,
+      thumbnailPath: null
+    });
+
+    usePlayerStore.getState().seekToFraction(0.5);
+    usePlayerStore.getState().seekBy(10);
+
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+  });
+});
+
 describe('the shuffle flag', () => {
   it('starts a shuffled queue on its leader with every track once', () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);

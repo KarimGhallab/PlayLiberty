@@ -22,6 +22,8 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const advance = usePlayerStore(state => state.advance);
   const setPosition = usePlayerStore(state => state.setPosition);
+  const seekTo = usePlayerStore(state => state.seekTo);
+  const consumeSeek = usePlayerStore(state => state.consumeSeek);
   const loadedId = useRef<string | null>(null);
   const finished = useRef(false);
 
@@ -65,6 +67,20 @@ export function usePlayerAudio(resolveSource: SourceResolver): void {
 
     player.replace(source);
   }, [currentId, player, resolveSource]);
+
+  /* A seek applies once: the store hands it over and clears it, so the player
+   * reporting its own progress is not read as another request. */
+  useEffect(() => {
+    if (seekTo === null) {
+      return;
+    }
+
+    const target = consumeSeek();
+
+    if (target !== null) {
+      void player.seekTo(target).catch(() => undefined);
+    }
+  }, [consumeSeek, player, seekTo]);
 
   useEffect(() => {
     if (currentId === null) {

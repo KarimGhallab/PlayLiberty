@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { act, renderHook } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
@@ -9,7 +9,8 @@ jest.mock('expo-audio', () => {
   const player = {
     replace: jest.fn(),
     play: jest.fn(),
-    pause: jest.fn()
+    pause: jest.fn(),
+    seekTo: jest.fn(() => Promise.resolve())
   };
   const status = {
     current: { didJustFinish: false, currentTime: 0 } as {
@@ -33,6 +34,7 @@ interface AudioMock {
     readonly replace: jest.Mock;
     readonly play: jest.Mock;
     readonly pause: jest.Mock;
+    readonly seekTo: jest.Mock;
   };
   readonly __status: {
     current: { didJustFinish: boolean; currentTime: number };
@@ -115,6 +117,24 @@ describe('the player audio', () => {
     await view.rerender({});
 
     expect(usePlayerStore.getState().positionSeconds).toBe(12.5);
+  });
+
+  it('applies a seek once', async () => {
+    start(['a'], 'a');
+    const view = await renderHook(() => usePlayerAudio(resolveSource));
+
+    await act(() => {
+      usePlayerStore.getState().seekToFraction(0.5);
+    });
+
+    await waitFor(() => {
+      expect(audio.__player.seekTo).toHaveBeenCalledWith(30);
+    });
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+
+    await view.rerender({});
+
+    expect(audio.__player.seekTo).toHaveBeenCalledTimes(1);
   });
 
   it('advances once when the track finishes', async () => {

@@ -298,6 +298,8 @@ export const fr: Messages = {
     previousNamed: 'Piste précédente, {title}',
     nextNamed: 'Piste suivante, {title}',
     openPlaylist: 'Ouvrir {name}',
+    seekForward: 'Avancer de dix secondes',
+    seekBackward: 'Reculer de dix secondes',
     position: 'Position dans la piste',
     positionValue: '{elapsed} sur {duration}',
     shortcutShift: 'Shift',

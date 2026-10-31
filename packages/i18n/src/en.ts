@@ -289,6 +289,8 @@ export const en = {
     previousNamed: 'Previous track, {title}',
     nextNamed: 'Next track, {title}',
     openPlaylist: 'Open {name}',
+    seekForward: 'Forward ten seconds',
+    seekBackward: 'Back ten seconds',
     position: 'Position in track',
     positionValue: '{elapsed} of {duration}',
     shortcutShift: 'Shift',
