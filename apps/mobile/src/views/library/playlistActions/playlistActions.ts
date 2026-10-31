@@ -1,4 +1,4 @@
-import type { PlaylistWithCounts } from '@playliberty/contracts';
+import type { Playlist } from '@playliberty/contracts';
 import type { MessageKey, Messages, Translator } from '@playliberty/i18n';
 
 export type PlaylistActionKey =
@@ -11,19 +11,26 @@ export interface PlaylistAction {
   readonly label: MessageKey<Messages>;
 }
 
+export interface PlaylistActionsOptions {
+  /* The gallery offers the pin; the detail deliberately does not. */
+  readonly includePin?: boolean;
+}
+
 /* Visibility alone grants the pin, so every access level holds it; the rest are
  * the writes, and an owner's delete. */
 export function playlistActionsFor(
-  playlist: PlaylistWithCounts
+  playlist: Playlist,
+  options: PlaylistActionsOptions = {}
 ): readonly PlaylistAction[] {
   const pin: PlaylistAction = {
     key: 'pin',
     label: playlist.pinned ? 'header.unpin' : 'header.pin'
   };
+  const pinned = options.includePin === false ? [] : [pin];
 
   if (playlist.access === 'owner') {
     return [
-      pin,
+      ...pinned,
       { key: 'share', label: 'header.share' },
       { key: 'rename', label: 'header.rename' },
       { key: 'cover', label: 'header.cover' },
@@ -34,13 +41,13 @@ export function playlistActionsFor(
 
   if (playlist.access === 'write') {
     return [
-      pin,
+      ...pinned,
       { key: 'cover', label: 'header.cover' },
       { key: 'sync', label: 'header.syncNow' }
     ];
   }
 
-  return [pin];
+  return pinned;
 }
 
 export interface DeleteIntent {
@@ -51,7 +58,7 @@ export interface DeleteIntent {
 
 export function deleteIntentFor(
   t: Translator<Messages>,
-  playlist: PlaylistWithCounts
+  playlist: Playlist
 ): DeleteIntent {
   return {
     id: playlist.id,

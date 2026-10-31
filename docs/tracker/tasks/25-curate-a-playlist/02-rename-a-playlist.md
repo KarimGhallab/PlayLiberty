@@ -1,39 +1,32 @@
 # 02: Rename a playlist
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-one-actions-sheet-on-both-surfaces.md)
 
-## What to build
+## Outcome
 
 Rename is a sheet with one prefilled field, opened from the detail's actions sheet and from the gallery card. It
-replaces the placeholder on both screens.
+replaces the rename placeholder on both screens.
 
-The field starts with the current name and selects it on focus. The name is trimmed before it is checked. Save is
-disabled while the trimmed name is empty, and an overlong name is refused by the schema without a request. While the
-request runs, the field and Save are busy, so a second press cannot rename twice.
+The field starts with the current name and selects it on focus. The name is trimmed before the schema check. Save is
+disabled while the trimmed name is empty; an overlong name shows the schema sentence and never leaves the sheet. The
+field and Save are busy while the write runs, and the sheet cannot be dismissed then.
 
-A refusal keeps the sheet open with one sentence, the problem's title when there is one. A success closes the sheet
-and refreshes the playlist and the gallery. The write touches the name and nothing else.
+A refusal keeps the sheet open with the mapped problem sentence, falling back to `renameDialog.failed`. A success
+closes the sheet and refreshes the playlist and the library through the playlist-changed cache effect. The write
+sends only the name. The owner gate is the actions model and the server's same owner-only route.
 
-Rename is the owner's alone. A writer and a reader see no Rename item, and the route refuses them when asked
-directly.
-
-## Acceptance criteria
-
-- [ ] Rename opens from the detail's actions sheet and the gallery card for the owner only.
-- [ ] The field is prefilled with the current name and selected on focus.
-- [ ] Save is disabled for an empty trimmed name, and an overlong name never leaves the sheet.
-- [ ] A valid name is trimmed and sent once, with the field and Save busy while it runs.
-- [ ] A refusal keeps the sheet open with one sentence; a success closes it and refreshes the playlist and the
-      library.
-- [ ] A writer and a reader see no Rename item.
-- [ ] The copy is in English and French.
+The copy is in both catalogs; `renameDialog.failed` is the new sentence.
 
 ## Verification
 
-- The rename sheet tests, the detail tests and the gallery tests.
-- `pnpm --filter @playliberty/mobile run typecheck`
-- `pnpm run lint:check` and `pnpm run build` once at the end.
-- On the emulator: rename from the detail and from the gallery card, confirm both screens agree, and force a refusal
-  to see the sheet stay open.
+- Mobile 392 tests across 44 suites pass, including the rename sheet, detail and gallery cases.
+- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
+- On the emulator, in French, renaming from the detail changed the identity to `ChineTest` and the gallery card to
+  `ChineTest`. Renaming from the gallery card restored `Chine`, and the detail agreed.
+- With an empty field, `Enregistrer` was disabled.
+- Airplane mode forced a refused rename; the sheet stayed open with `La playlist n'a pas pu être renommée.`, and
+  closing without saving left the name `Chine`.
+
+See [`25-curate-a-playlist`](../../specs/25-curate-a-playlist.md).

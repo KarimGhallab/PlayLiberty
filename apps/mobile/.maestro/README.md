@@ -13,13 +13,15 @@ Maestro flows for the app's critical journeys. One flow per journey, each establ
 
 ```sh
 PATH="$HOME/.maestro/bin:$PATH" \
-  maestro test -e SOURCE_URL=<source> -e OWNED_PLAYLIST=<owned playlist> apps/mobile/.maestro
+  maestro test -e SOURCE_URL=<source> -e OWNED_PLAYLIST=<owned playlist> \
+  -e VIDEO_URL=<video> -e VIDEO_TITLE=<title> apps/mobile/.maestro
 ```
 
-The add flow takes its playlist link from `SOURCE_URL`. The remove and player flows take their playlist name from
-`OWNED_PLAYLIST`, which must name a playlist the signed-in account owns with at least three playable tracks; the name
-keeps both flows independent of gallery order and of a shared first card. The flows are independent, so any order
-works.
+The playlist-add flow takes its playlist link from `SOURCE_URL`. The batch flow takes one video from `VIDEO_URL`
+and its resolved title from `VIDEO_TITLE`, then adds it to `OWNED_PLAYLIST` and the next writable playlist in the
+sheet. The remove, player and batch flows take their playlist name from `OWNED_PLAYLIST`, which must name a playlist
+the signed-in account owns with at least three playable tracks; the name keeps them independent of gallery order and
+of a shared first card. The flows are independent, so any order works.
 `signed-out` leaves the device signed out; the other flows sign in first when they need to. `provisioning` starts from
 either state and leaves the device signed in.
 
@@ -48,6 +50,7 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 | `detail-play`         | a row plays and its own row says it is playing                           |
 | `detail-filter`       | the failed chip draws its body, then All brings the whole list back      |
 | `detail-remove-undo`  | Remove defers, Undo restores the row, and the device ends in the gallery |
+| `detail-add-batch`    | a video is added to two playlists, removed and restored                  |
 | `player-journey`      | a queue plays, advances, jumps from a row, and the bar survives a back   |
 | `library-and-account` | the app opens on the library, the account sheet opens and closes         |
 | `signed-out`          | signing out leaves one action and nothing else                           |
@@ -67,9 +70,13 @@ The filter flow swipes the chip row twice to reach Failed and twice back to All.
 window, so those taps set `waitToSettleTimeoutMs: 0`; a settle wait can outlast the window and let the removal
 commit before Undo lands.
 
+The batch flow checks the second checkbox in the add sheet. The current playlist is first and preselected, so index
+1 is the next writable playlist on the gallery's first page. A clean batch closes the sheet; a refusal would keep it
+open with one outcome row per chosen playlist.
+
 ## Scope
 
-These flows cover the shell, the gallery's three critical journeys, the detail's three, the player's journey, and
+These flows cover the shell, the gallery's three critical journeys, the detail's four, the player's journey, and
 the provisioning journey. The screen-off background journey is the device-only driver in `../.maestro-device`; it
 leaves the phone locked, so it is run separately. The track link belongs to `30` and the egress console to `31`; each
 of those specs owns its own journey.

@@ -16,6 +16,7 @@ import {
   fontFamily,
   tokenColor,
   tokenLength,
+  tokenNumber,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -36,6 +37,8 @@ const ICONS = {
 export interface PlaylistActionsSheetProps {
   readonly playlistName: string | null;
   readonly actions: readonly PlaylistAction[];
+  /* The refusal beside the item that caused it; the sheet stays open. */
+  readonly problem?: string | null;
   readonly onSelect: (key: PlaylistActionKey) => void;
   readonly onClose: () => void;
 }
@@ -45,6 +48,7 @@ export interface PlaylistActionsSheetProps {
 export default function PlaylistActionsSheet({
   playlistName,
   actions,
+  problem = null,
   onSelect,
   onClose
 }: PlaylistActionsSheetProps) {
@@ -57,6 +61,15 @@ export default function PlaylistActionsSheet({
       onRequestClose={onClose}
       testID="playlist-actions-sheet"
       backdropTestID="playlist-actions-backdrop">
+      {problem === null ? null : (
+        <Text
+          testID="playlist-actions-problem"
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={styles.problem}>
+          {problem}
+        </Text>
+      )}
       {actions.map((action, index) => {
         const Icon =
           action.key === 'pin' && action.label === 'header.unpin'
@@ -110,5 +123,12 @@ const styles = StyleSheet.create({
   },
   destructive: {
     color: tokenColor('tone-failed')
+  },
+  problem: {
+    color: tokenColor('tone-failed'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal'),
+    marginBottom: tokenLength('space-3')
   }
 });

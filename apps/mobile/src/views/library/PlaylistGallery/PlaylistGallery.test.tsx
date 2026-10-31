@@ -29,6 +29,7 @@ import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useCreatePlaylist } from '../../../api/useCreatePlaylist/useCreatePlaylist';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
+import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -56,6 +57,10 @@ jest.mock('../../../api/useSyncPlaylist', () => ({
 
 jest.mock('../../../api/useDeletePlaylist', () => ({
   useDeletePlaylist: jest.fn()
+}));
+
+jest.mock('../../../api/useRenamePlaylist', () => ({
+  useRenamePlaylist: jest.fn()
 }));
 
 jest.mock('../../../api/useAccountDirectory', () => {
@@ -192,6 +197,12 @@ function hasErrorHandler(value: unknown): value is { onError?: () => void } {
   return typeof value === 'object' && value !== null;
 }
 
+function hasSuccessHandler(
+  value: unknown
+): value is { onSuccess?: () => void } {
+  return typeof value === 'object' && value !== null;
+}
+
 function GalleryHarness({
   onOpenPlaylist
 }: {
@@ -224,9 +235,11 @@ async function renderPlaylists(
   const pin = mutationResult();
   const syncNow = mutationResult();
   const remove = mutationResult();
+  const rename = mutationResult();
   jest.mocked(useUpdatePin).mockReturnValue(pin as never);
   jest.mocked(useSyncPlaylist).mockReturnValue(syncNow as never);
   jest.mocked(useDeletePlaylist).mockReturnValue(remove as never);
+  jest.mocked(useRenamePlaylist).mockReturnValue(rename as never);
 
   const onOpenPlaylist = jest.fn();
 
@@ -238,7 +251,7 @@ async function renderPlaylists(
     </SafeAreaProvider>
   );
 
-  return { onOpenPlaylist, view, pin, syncNow, remove };
+  return { onOpenPlaylist, view, pin, syncNow, remove, rename };
 }
 
 async function renderGallery(
@@ -342,6 +355,9 @@ describe('the gallery', () => {
     });
     expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
     expect(
+      screen.queryByTestId('playlist-action-rename')
+    ).not.toBeOnTheScreen();
+    expect(
       screen.queryByTestId('playlist-action-delete')
     ).not.toBeOnTheScreen();
   });
@@ -360,7 +376,28 @@ describe('the gallery', () => {
     });
   });
 
-  it('pins from the sheet and hands the refusal to the notice', async () => {
+  it('offers a write collaborator the pin, Cover and Sync', async () => {
+    await renderGallery([{ ...base, access: ShareLevel.Write }]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
+    });
+    expect(screen.getByTestId('playlist-action-cover')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
+    expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
+    expect(
+      screen.queryByTestId('playlist-action-rename')
+    ).not.toBeOnTheScreen();
+    expect(
+      screen.queryByTestId('playlist-action-delete')
+    ).not.toBeOnTheScreen();
+  });
+
+  it('pins from the sheet and keeps a refusal in the sheet', async () => {
     const { pin } = await renderGallery([base]);
     pin.mutate.mockImplementation((...args: unknown[]) => {
       const options = args[1];
@@ -383,15 +420,66 @@ describe('the gallery', () => {
       expect.anything()
     );
     await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-problem')).toHaveTextContent(
+        'The pin could not be changed.'
+      );
+    });
+    expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+  });
+
+  it('syncs from the sheet and closes it on success', async () => {
+    const { syncNow } = await renderGallery([base]);
+    syncNow.mutate.mockImplementation((...args: unknown[]) => {
+      const options = args[1];
+
+      if (hasSuccessHandler(options)) {
+        options.onSuccess?.();
+      }
+    });
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-sync'));
+
+    expect(syncNow.mutate).toHaveBeenCalledWith(
+      'playlist-rest',
+      expect.anything()
+    );
+    await waitFor(() => {
       expect(
         screen.queryByTestId('playlist-actions-sheet')
       ).not.toBeOnTheScreen();
     });
-    await waitFor(() => {
-      expect(
-        screen.getByText('The pin could not be changed.')
-      ).toBeOnTheScreen();
+  });
+
+  it('keeps a refused sync in the sheet', async () => {
+    const { syncNow } = await renderGallery([base]);
+    syncNow.mutate.mockImplementation((...args: unknown[]) => {
+      const options = args[1];
+
+      if (hasErrorHandler(options)) {
+        options.onError?.();
+      }
     });
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-sync'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-problem')).toHaveTextContent(
+        'The sync could not be started.'
+      );
+    });
+    expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
   });
 
   it('removes a card on delete and restores it on Undo without sending', async () => {
@@ -424,12 +512,94 @@ describe('the gallery', () => {
     expect(remove.mutate).not.toHaveBeenCalled();
   });
 
-  it('opens the Share, Rename and Cover placeholders', async () => {
+  it('renames a playlist from its card', async () => {
+    const { rename } = await renderGallery([base]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-rename')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-rename'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
+    });
+    expect(screen.getByLabelText('Playlist name')).toHaveDisplayValue(
+      'Rest Mix'
+    );
+
+    rename.mutate.mockImplementation((...args: unknown[]) => {
+      const options = args[1];
+
+      if (hasSuccessHandler(options)) {
+        options.onSuccess?.();
+      }
+    });
+
+    fireEvent.changeText(
+      screen.getByLabelText('Playlist name'),
+      '  New Name  '
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('Playlist name')).toHaveDisplayValue(
+        '  New Name  '
+      );
+    });
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+
+    expect(rename.mutate).toHaveBeenCalledWith(
+      { playlistId: 'playlist-rest', name: 'New Name' },
+      expect.anything()
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('rename-sheet')).not.toBeOnTheScreen();
+    });
+  });
+
+  it('keeps a refused rename in the sheet', async () => {
+    const { rename } = await renderGallery([base]);
+    rename.mutate.mockImplementation((...args: unknown[]) => {
+      const options = args[1];
+
+      if (hasErrorHandler(options)) {
+        options.onError?.();
+      }
+    });
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-rename')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-rename'));
+    await waitFor(() => {
+      expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
+    });
+
+    fireEvent.changeText(screen.getByLabelText('Playlist name'), 'New Name');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Playlist name')).toHaveDisplayValue(
+        'New Name'
+      );
+    });
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'The playlist could not be renamed.'
+      );
+    });
+    expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
+  });
+
+  it('opens the Share and Cover placeholders', async () => {
     await renderGallery([base]);
 
     for (const [key, title] of [
       ['share', 'Share'],
-      ['rename', 'Rename'],
       ['cover', 'Update the cover']
     ] as const) {
       await fireEvent.press(

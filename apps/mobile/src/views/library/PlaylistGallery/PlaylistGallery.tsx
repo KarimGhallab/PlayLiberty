@@ -37,6 +37,7 @@ import {
 } from '../../../api/useCreatePlaylist/useCreatePlaylist';
 import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
+import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -54,6 +55,7 @@ import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
 import type { PlaceholderAction } from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
 import PlaylistPlaceholderSheet from '../PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
+import RenameSheet from '../RenameSheet/RenameSheet';
 import { scopedPlaylists, visiblePlaylists } from '../bulkSync/bulkSync';
 import type {
   DeleteIntent,
@@ -125,8 +127,14 @@ export default function PlaylistGallery({
   const pin = useUpdatePin();
   const syncNow = useSyncPlaylist();
   const remove = useDeletePlaylist();
+  const rename = useRenamePlaylist();
   const [addOpen, setAddOpen] = useState(false);
   const [actionTargetId, setActionTargetId] = useState<string | null>(null);
+  const [actionProblem, setActionProblem] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<PlaylistWithCounts | null>(
+    null
+  );
+  const [renameProblem, setRenameProblem] = useState<string | null>(null);
   const [placeholder, setPlaceholder] = useState<{
     readonly action: PlaceholderAction;
     readonly name: string;
@@ -218,7 +226,7 @@ export default function PlaylistGallery({
       ownerName={ownerNameFrom(directoryItems, playlist.ownerAccountId)}
       config={config}
       onOpen={() => onOpenPlaylist(playlist.id)}
-      onOpenActions={() => setActionTargetId(playlist.id)}
+      onOpenActions={() => openActions(playlist.id)}
       actionsTestID={`playlist-actions-${groupKey}`}
     />
   );
@@ -334,29 +342,60 @@ export default function PlaylistGallery({
     }, UNDO_WINDOW_MS);
   };
 
+  const openActions = (playlistId: string): void => {
+    setActionProblem(null);
+    setActionTargetId(playlistId);
+  };
+
+  const closeActions = (): void => {
+    setActionTargetId(null);
+    setActionProblem(null);
+  };
+
+  const problemMessage = (error: Error, fallback: string): string =>
+    problemDetail(t, error instanceof ApiError ? error.problem : null) ??
+    fallback;
+
   const chooseAction = (key: PlaylistActionKey): void => {
     const target = actionTarget;
-    setActionTargetId(null);
 
     if (target === null) {
+      closeActions();
       return;
     }
 
     if (key === 'pin') {
       pin.mutate(
         { playlistId: target.id, pinned: !target.pinned },
-        { onError: () => setNotice(t('library.pinFailed')) }
+        {
+          onSuccess: closeActions,
+          onError: error =>
+            setActionProblem(problemMessage(error, t('library.pinFailed')))
+        }
       );
       return;
     }
 
     if (key === 'sync') {
-      syncNow.mutate(target.id);
+      syncNow.mutate(target.id, {
+        onSuccess: closeActions,
+        onError: error =>
+          setActionProblem(problemMessage(error, t('library.syncFailed')))
+      });
       return;
     }
 
+    closeActions();
+
     if (key === 'delete') {
       startDelete(target);
+      return;
+    }
+
+    if (key === 'rename') {
+      setRenameProblem(null);
+      rename.reset();
+      setRenameTarget(target);
       return;
     }
 
@@ -367,8 +406,9 @@ export default function PlaylistGallery({
     <PlaylistActionsSheet
       playlistName={actionTarget?.name ?? null}
       actions={actions}
+      problem={actionProblem}
       onSelect={chooseAction}
-      onClose={() => setActionTargetId(null)}
+      onClose={closeActions}
     />
   );
   const placeholderSheet = (
@@ -376,6 +416,37 @@ export default function PlaylistGallery({
       action={placeholder?.action ?? null}
       playlistName={placeholder?.name ?? ''}
       onClose={() => setPlaceholder(null)}
+    />
+  );
+  const renameSheet = (
+    <RenameSheet
+      visible={renameTarget !== null}
+      currentName={renameTarget?.name ?? ''}
+      busy={rename.isPending}
+      problem={renameProblem}
+      onSubmit={name => {
+        if (renameTarget === null) {
+          return;
+        }
+
+        rename.mutate(
+          { playlistId: renameTarget.id, name },
+          {
+            onSuccess: () => {
+              setRenameTarget(null);
+              setRenameProblem(null);
+            },
+            onError: error => {
+              setRenameProblem(problemMessage(error, t('renameDialog.failed')));
+            }
+          }
+        );
+      }}
+      onClose={() => {
+        setRenameTarget(null);
+        setRenameProblem(null);
+        rename.reset();
+      }}
     />
   );
   const undoSnackbar =
@@ -563,6 +634,7 @@ export default function PlaylistGallery({
       {addSheet}
       {actionsSheet}
       {placeholderSheet}
+      {renameSheet}
       {undoSnackbar}
       {noticeNode}
     </View>

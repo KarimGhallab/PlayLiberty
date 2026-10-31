@@ -46,6 +46,7 @@ import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks/usePlaylistTracks';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
+import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
@@ -60,10 +61,13 @@ import GalleryAddAction, {
   galleryAddActionSize
 } from '../../library/GalleryAddAction/GalleryAddAction';
 import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
+import type { PlaceholderAction } from '../../library/PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
+import PlaylistPlaceholderSheet from '../../library/PlaylistPlaceholderSheet/PlaylistPlaceholderSheet';
+import RenameSheet from '../../library/RenameSheet/RenameSheet';
 import {
-  type PlaylistAction,
   type PlaylistActionKey,
-  UNDO_WINDOW_MS
+  UNDO_WINDOW_MS,
+  playlistActionsFor
 } from '../../library/playlistActions/playlistActions';
 import AddTrackSheet from '../AddTrackSheet/AddTrackSheet';
 import PlaylistControls from '../PlaylistControls/PlaylistControls';
@@ -92,10 +96,6 @@ type PendingAction =
       readonly message: string;
       readonly detail: string;
     };
-
-const HEADER_ACTIONS: readonly PlaylistAction[] = [
-  { key: 'delete', label: 'header.delete' }
-];
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
 
@@ -146,12 +146,20 @@ export default function PlaylistDetail({
   const fetchWhole = useFetchTrackWhole(playlistId ?? '');
   const removeTrack = useRemoveTrack(playlistId ?? '');
   const deletePlaylist = useDeletePlaylist();
+  const rename = useRenamePlaylist();
   const [actionTargetId, setActionTargetId] = useState<string | null>(null);
   const [hiddenTracks, setHiddenTracks] = useState<ReadonlySet<string>>(
     () => new Set()
   );
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [headerOpen, setHeaderOpen] = useState(false);
+  const [headerProblem, setHeaderProblem] = useState<string | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameProblem, setRenameProblem] = useState<string | null>(null);
+  const [placeholder, setPlaceholder] = useState<{
+    readonly action: PlaceholderAction;
+    readonly name: string;
+  } | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [starting, setStarting] = useState<'play' | 'shuffle' | null>(null);
   const [notice, setNotice] = useState<{
@@ -410,6 +418,8 @@ export default function PlaylistDetail({
     problemDetail(t, error instanceof ApiError ? error.problem : null) ??
     fallback;
 
+  const headerActions = playlistActionsFor(data, { includePin: false });
+
   const chooseSort = (value: PlaylistSort): void => {
     sort.mutate(value, {
       onError: error => {
@@ -464,6 +474,11 @@ export default function PlaylistDetail({
   const closeAdd = (): void => {
     setAddOpen(false);
     addTrack.reset();
+  };
+
+  const openHeaderActions = (): void => {
+    setHeaderProblem(null);
+    setHeaderOpen(true);
   };
 
   /* A batch with a refusal stays open to draw every outcome. A clean batch has
@@ -674,10 +689,40 @@ export default function PlaylistDetail({
   };
 
   const chooseHeaderAction = (key: PlaylistActionKey): void => {
-    setHeaderOpen(false);
-
     if (key === 'delete') {
+      setHeaderOpen(false);
+      setHeaderProblem(null);
       startDelete();
+      return;
+    }
+
+    if (key === 'sync') {
+      sync.mutate(data.id, {
+        onSuccess: () => {
+          setHeaderOpen(false);
+          setHeaderProblem(null);
+        },
+        onError: error => {
+          setHeaderProblem(problemMessage(error, t('library.syncFailed')));
+        }
+      });
+      return;
+    }
+
+    if (key === 'rename') {
+      setHeaderOpen(false);
+      setHeaderProblem(null);
+      setRenameProblem(null);
+      rename.reset();
+      setRenameOpen(true);
+      return;
+    }
+
+    setHeaderOpen(false);
+    setHeaderProblem(null);
+
+    if (key !== 'pin') {
+      setPlaceholder({ action: key, name: data.name });
     }
   };
 
@@ -804,7 +849,7 @@ export default function PlaylistDetail({
                 }
           }
           onOpenActions={
-            data.access === 'owner' ? () => setHeaderOpen(true) : undefined
+            headerActions.length > 0 ? openHeaderActions : undefined
           }>
           <SkipSetting
             skipNonMusic={data.skipNonMusic}
@@ -939,9 +984,45 @@ export default function PlaylistDetail({
       />
       <PlaylistActionsSheet
         playlistName={headerOpen ? data.name : null}
-        actions={HEADER_ACTIONS}
+        actions={headerActions}
+        problem={headerProblem}
         onSelect={chooseHeaderAction}
-        onClose={() => setHeaderOpen(false)}
+        onClose={() => {
+          setHeaderOpen(false);
+          setHeaderProblem(null);
+        }}
+      />
+      <PlaylistPlaceholderSheet
+        action={placeholder?.action ?? null}
+        playlistName={placeholder?.name ?? ''}
+        onClose={() => setPlaceholder(null)}
+      />
+      <RenameSheet
+        visible={renameOpen}
+        currentName={data.name}
+        busy={rename.isPending}
+        problem={renameProblem}
+        onSubmit={name => {
+          rename.mutate(
+            { playlistId: data.id, name },
+            {
+              onSuccess: () => {
+                setRenameOpen(false);
+                setRenameProblem(null);
+              },
+              onError: error => {
+                setRenameProblem(
+                  problemMessage(error, t('renameDialog.failed'))
+                );
+              }
+            }
+          );
+        }}
+        onClose={() => {
+          setRenameOpen(false);
+          setRenameProblem(null);
+          rename.reset();
+        }}
       />
       {pending === null ? null : (
         <UndoSnackbar

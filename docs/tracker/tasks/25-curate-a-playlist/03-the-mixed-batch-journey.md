@@ -1,31 +1,31 @@
 # 03: The mixed-batch journey
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
-## What to build
+## Outcome
 
-A Maestro flow for the batch add and the undo. It opens `OWNED_PLAYLIST`, taps the add action, pastes `VIDEO_URL`,
-chooses the current playlist and one more writable playlist, and submits.
+`apps/mobile/.maestro/detail-add-batch.yaml` opens `OWNED_PLAYLIST`, pastes `VIDEO_URL` into the add-track sheet,
+checks the second writable playlist in the picker, and submits. The current playlist is first and preselected, so
+the second checkbox is the flow's one other choice.
 
-The sheet draws one outcome row per chosen playlist, in the order chosen. The flow then finds the row for
-`VIDEO_TITLE`, removes it and presses Undo inside the six-second window, and ends in the gallery.
+The batch closes the sheet on an all-success result, as the add-track sheet already does. The flow then scrolls to
+`VIDEO_TITLE`, opens that row's lane from the title's own row, removes the track and presses Undo inside the
+six-second window. It ends in the gallery.
 
-The gallery's first page must hold at least one writable playlist besides the current one. If `VIDEO_URL` is already
-in a playlist, its outcome is already there; the flow still expects one row per chosen playlist. The README records
-`VIDEO_URL`, `VIDEO_TITLE` and the flow's row in the table.
-
-## Acceptance criteria
-
-- [ ] The flow adds one video to the current playlist and one more writable playlist from the detail.
-- [ ] The sheet draws one outcome row per chosen playlist, in the order chosen.
-- [ ] The flow finds the added track, removes it and undoes the removal inside the window.
-- [ ] The flow ends in the gallery.
-- [ ] The README records the two new variables and the flow.
-- [ ] The flow passes against the dev topology.
+A clean batch closes the sheet before its outcome rows can be read. The rows themselves are covered by the add-track
+sheet tests, including one row per chosen playlist in the chosen order and the three outcome words; a refusal would
+keep the sheet open. The README records `VIDEO_URL`, `VIDEO_TITLE`, the flow's row, and the picker's second-row
+rule.
 
 ## Verification
 
-- `PATH="$HOME/.maestro/bin:$PATH" maestro test -e OWNED_PLAYLIST=<playlist> -e VIDEO_URL=<video> -e VIDEO_TITLE=<title> apps/mobile/.maestro`
-- The remove and Undo taps use `waitToSettleTimeoutMs: 0`, so the settle wait cannot outlast the undo window.
+- The flow passed twice on the emulator with `OWNED_PLAYLIST=Paradis`,
+  `VIDEO_URL=https://www.youtube.com/watch?v=LibFI0nWtRA` and `VIDEO_TITLE=Alaska`.
+- The first run added `Alaska` to `Paradis` and the next writable playlist, found the row, removed it, undid the
+  removal, and ended in the gallery.
+- The second run exercised the already-present path with the same assertions and passed.
+- No source changed; the flow and README are the ticket's artifacts.
+
+See [`25-curate-a-playlist`](../../specs/25-curate-a-playlist.md).

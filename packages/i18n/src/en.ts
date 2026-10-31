@@ -51,6 +51,7 @@ export const en = {
     scopeLabel: 'Filter by owner',
     allTracks: 'All tracks',
     pinFailed: 'The pin could not be changed.',
+    syncFailed: 'The sync could not be started.',
     deleteFailed: 'The playlist could not be deleted.',
     notDownloaded: {
       one: '{count} track is not stored',
@@ -213,6 +214,7 @@ export const en = {
     description: 'It does not change the playlist on YouTube.',
     nameLabel: 'Playlist name',
     invalid: 'A name is required, up to 200 characters.',
+    failed: 'The playlist could not be renamed.',
     save: 'Save',
     saving: 'Saving'
   },

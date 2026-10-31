@@ -11,11 +11,10 @@ import {
   tokenNumber
 } from '../../../shared/styles/tokens';
 
-export type PlaceholderAction = 'share' | 'rename' | 'cover';
+export type PlaceholderAction = 'share' | 'cover';
 
 const TITLES: Record<PlaceholderAction, MessageKey<Messages>> = {
   share: 'header.share',
-  rename: 'header.rename',
   cover: 'header.cover'
 };
 

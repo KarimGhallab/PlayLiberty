@@ -54,6 +54,7 @@ export const fr: Messages = {
     scopeLabel: 'Filtrer par propriétaire',
     allTracks: 'Toutes les pistes',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
+    syncFailed: "La synchronisation n'a pas pu démarrer.",
     deleteFailed: "La playlist n'a pas pu être supprimée.",
     notDownloaded: {
       one: "{count} piste n'est pas stockée",
@@ -219,6 +220,7 @@ export const fr: Messages = {
     description: 'Il ne change pas la playlist sur YouTube.',
     nameLabel: 'Nom de la playlist',
     invalid: "Un nom est requis, jusqu'à 200 caractères.",
+    failed: "La playlist n'a pas pu être renommée.",
     save: 'Enregistrer',
     saving: 'Enregistrement'
   },

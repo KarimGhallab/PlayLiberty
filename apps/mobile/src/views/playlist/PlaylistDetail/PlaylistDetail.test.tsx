@@ -44,6 +44,7 @@ import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
 import { usePlaylistTracks } from '../../../api/usePlaylistTracks/usePlaylistTracks';
 import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useRemoveTrack } from '../../../api/useRemoveTrack';
+import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
 import { useRetryTrack } from '../../../api/useRetryTrack';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
@@ -82,6 +83,9 @@ jest.mock('../../../api/useFetchTrackWhole', () => ({
 }));
 jest.mock('../../../api/useRemoveTrack', () => ({
   useRemoveTrack: jest.fn()
+}));
+jest.mock('../../../api/useRenamePlaylist', () => ({
+  useRenamePlaylist: jest.fn()
 }));
 jest.mock('../../../api/useDeletePlaylist', () => ({
   useDeletePlaylist: jest.fn()
@@ -131,6 +135,9 @@ const useFetchTrackWholeMock = useFetchTrackWhole as jest.MockedFunction<
 >;
 const useRemoveTrackMock = useRemoveTrack as jest.MockedFunction<
   typeof useRemoveTrack
+>;
+const useRenamePlaylistMock = useRenamePlaylist as jest.MockedFunction<
+  typeof useRenamePlaylist
 >;
 const useDeletePlaylistMock = useDeletePlaylist as jest.MockedFunction<
   typeof useDeletePlaylist
@@ -385,6 +392,7 @@ interface RenderOptions {
   readonly addResult?: AddTrackResult;
   readonly sortPending?: boolean;
   readonly skipPending?: boolean;
+  readonly renamePending?: boolean;
   readonly retryFailedPending?: boolean;
   readonly retryPending?: boolean;
   readonly retryVariables?: string;
@@ -409,6 +417,7 @@ async function renderDetail(options: RenderOptions = {}) {
   const fetchWholeMutate = jest.fn();
   const removeMutate = jest.fn();
   const deleteMutate = jest.fn();
+  const renameMutate = jest.fn();
   const sortMutate = jest.fn();
   const skipMutate = jest.fn();
   const addMutate = jest.fn();
@@ -540,6 +549,12 @@ async function renderDetail(options: RenderOptions = {}) {
   useDeletePlaylistMock.mockReturnValue(
     mutationResult({ mutate: deleteMutate })
   );
+  useRenamePlaylistMock.mockReturnValue(
+    mutationResult({
+      mutate: renameMutate,
+      isPending: options.renamePending === true
+    })
+  );
   useUpdateSortMock.mockReturnValue(
     mutationResult({
       mutate: sortMutate,
@@ -585,6 +600,7 @@ async function renderDetail(options: RenderOptions = {}) {
     fetchWholeMutate,
     removeMutate,
     deleteMutate,
+    renameMutate,
     sortMutate,
     skipMutate,
     addMutate,
@@ -1105,6 +1121,33 @@ describe('the playlist detail', () => {
     return result;
   }
 
+  async function openRenameSheet(options: RenderOptions = {}) {
+    const result = await openHeaderSheet(options);
+
+    fireEvent.press(screen.getByTestId('playlist-action-rename'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
+    });
+
+    return result;
+  }
+
+  /* React 19 defers the state an event writes, so the test waits for the field
+   * to hold what was typed before pressing Save. */
+  async function typeRename(value: string) {
+    fireEvent.changeText(screen.getByLabelText('Playlist name'), value);
+
+    await waitFor(
+      () => {
+        expect(screen.getByLabelText('Playlist name')).toHaveDisplayValue(
+          value
+        );
+      },
+      { timeout: 3000 }
+    );
+  }
+
   it('draws copy, the two repairs and Remove on a failed row', async () => {
     await openFailedSheet();
 
@@ -1373,10 +1416,182 @@ describe('the playlist detail', () => {
     );
   });
 
-  it('offers the header actions to the owner only', async () => {
+  it('draws the overflow for the owner and a write collaborator', async () => {
     await renderDetail();
-
     expect(screen.getByTestId('detail-actions')).toBeOnTheScreen();
+
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Write }
+    });
+    expect(screen.getByTestId('detail-actions')).toBeOnTheScreen();
+  });
+
+  it('offers the owner share, rename, cover, sync and delete, without the pin', async () => {
+    await openHeaderSheet();
+
+    for (const key of ['share', 'rename', 'cover', 'sync', 'delete']) {
+      expect(screen.getByTestId(`playlist-action-${key}`)).toBeOnTheScreen();
+    }
+    expect(screen.queryByTestId('playlist-action-pin')).not.toBeOnTheScreen();
+  });
+
+  it('offers a write collaborator cover and sync alone', async () => {
+    await openHeaderSheet({
+      playlist: { ...playlist, access: ShareLevel.Write }
+    });
+
+    expect(screen.getByTestId('playlist-action-cover')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
+    expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
+    expect(
+      screen.queryByTestId('playlist-action-rename')
+    ).not.toBeOnTheScreen();
+    expect(
+      screen.queryByTestId('playlist-action-delete')
+    ).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('playlist-action-pin')).not.toBeOnTheScreen();
+  });
+
+  it('starts the playlist sync from the sheet and closes it on success', async () => {
+    const { syncMutate } = await openHeaderSheet();
+    const mutate = syncMutate as unknown as {
+      mockImplementation: (
+        fn: (playlistId: string, options: { onSuccess?: () => void }) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_playlistId, options) => {
+      options.onSuccess?.();
+    });
+
+    fireEvent.press(screen.getByTestId('playlist-action-sync'));
+
+    expect(syncMutate).toHaveBeenCalledWith('playlist-1', expect.any(Object));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('playlist-actions-sheet')
+      ).not.toBeOnTheScreen();
+    });
+  });
+
+  it('keeps a refused sync in the sheet with the problem sentence', async () => {
+    const failure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The playlist could not be synced.'
+    });
+    const { syncMutate } = await openHeaderSheet();
+    const mutate = syncMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          playlistId: string,
+          options: { onError?: (error: Error) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_playlistId, options) => {
+      options.onError?.(failure);
+    });
+
+    fireEvent.press(screen.getByTestId('playlist-action-sync'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-problem')).toHaveTextContent(
+        'The playlist could not be synced.'
+      );
+    });
+    expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+  });
+
+  it('prefills and renames from the detail header', async () => {
+    const { renameMutate } = await openRenameSheet();
+
+    expect(screen.getByLabelText('Playlist name')).toHaveDisplayValue(
+      'Rain On The Window'
+    );
+
+    const mutate = renameMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          variables: { playlistId: string; name: string },
+          options: { onSuccess?: () => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_variables, options) => {
+      options.onSuccess?.();
+    });
+
+    await typeRename('  New Name  ');
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+
+    expect(renameMutate).toHaveBeenCalledWith(
+      { playlistId: 'playlist-1', name: 'New Name' },
+      expect.any(Object)
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('rename-sheet')).not.toBeOnTheScreen();
+    });
+  });
+
+  it('keeps a refused rename open with the problem sentence', async () => {
+    const failure = new ApiError(503, {
+      type: 'about:blank',
+      title: 'Service unavailable',
+      status: 503,
+      code: ProblemCode.InternalError,
+      detail: 'The playlist could not be renamed.'
+    });
+    const { renameMutate } = await openRenameSheet();
+    const mutate = renameMutate as unknown as {
+      mockImplementation: (
+        fn: (
+          variables: { playlistId: string; name: string },
+          options: { onError?: (error: Error) => void }
+        ) => void
+      ) => void;
+    };
+
+    mutate.mockImplementation((_variables, options) => {
+      options.onError?.(failure);
+    });
+
+    await typeRename('New Name');
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'The playlist could not be renamed.'
+      );
+    });
+    expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
+  });
+
+  it('opens the Share and Cover placeholders from the detail', async () => {
+    for (const [key, title] of [
+      ['share', 'Share'],
+      ['cover', 'Update the cover']
+    ] as const) {
+      await openHeaderSheet();
+
+      fireEvent.press(screen.getByTestId(`playlist-action-${key}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
+      });
+      expect(screen.getByText('This surface arrives later.')).toBeOnTheScreen();
+
+      fireEvent.press(screen.getByTestId('playlist-placeholder-backdrop'));
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('header', { name: title })
+        ).not.toBeOnTheScreen();
+      });
+    }
   });
 
   it('draws no header actions for a read collaborator', async () => {
