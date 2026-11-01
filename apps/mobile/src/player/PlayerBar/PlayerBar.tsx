@@ -4,16 +4,28 @@ import {
   IconPlayerSkipBack,
   IconPlayerSkipForward
 } from '@tabler/icons-react-native';
-import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  type GestureResponderHandlers,
+  Image,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { endpoints } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
+import { useReduceMotion } from '../../shared/a11y/useReduceMotion';
 import Notice from '../../shared/components/Notice/Notice';
-import { mediaSource } from '../../shared/media/mediaSource';
+import { type MediaSource, mediaSource } from '../../shared/media/mediaSource';
+import { sleeveColor } from '../../shared/styles/sleeve';
 import {
   fontFamily,
   tokenColor,
@@ -25,34 +37,425 @@ import {
 import type { ApiConfig } from '../../auth/useApiConfig';
 import { playerBarHeight } from '../playerBarSize/playerBarSize';
 import { usePlayerStore } from '../playerStore/playerStore';
+import type { PlayerTrack } from '../playerTrack/playerTrack';
+import Artwork from './Artwork';
 import SeekBar from './SeekBar';
+
+/*
+ * The player bar: absent at rest and once playback exists it persists across
+ * routes, like the music. A horizontal swipe moves the queue; the neighbouring
+ * track's bar slides in with the finger, so the next player takes this one's
+ * place instead of replacing it after the fact.
+ */
 
 export interface PlayerBarProps {
   readonly config: ApiConfig | null;
 }
 
-/*
- * The player bar: absent at rest and once playback exists it persists across
- * routes, like the music. The artwork is the way back to the queue's playlist;
- * a bare track has none to offer.
- */
-export default function PlayerBar({ config }: PlayerBarProps) {
-  const { t } = useI18n();
-  const insets = useSafeAreaInsets();
+interface BarState {
+  readonly track: PlayerTrack;
+  readonly playlistId: string | null;
+  readonly playlistName: string | null;
+  readonly playlistCoverUpdatedAt: string | null;
+  readonly playlistCoverTrackId: string | null;
+  readonly isPlaying: boolean;
+  readonly hasNext: boolean;
+  readonly previousId: string | null;
+  readonly nextId: string | null;
+  readonly positionSeconds: number;
+  readonly queueLabel: string;
+  readonly queueIndex: number;
+  readonly queueLength: number;
+  readonly tracks: Readonly<Record<string, PlayerTrack>>;
+  readonly setPlaying: (playing: boolean) => void;
+  readonly skipPrevious: () => void;
+  readonly skipNext: () => void;
+  readonly play: (trackId: string) => void;
+  readonly seekToFraction: (fraction: number) => void;
+  readonly seekBy: (seconds: number) => void;
+}
+
+interface BarView {
+  readonly track: PlayerTrack;
+  readonly playlistId: string | null;
+  readonly playlistName: string | null;
+  readonly playlistCoverUpdatedAt: string | null;
+  readonly playlistCoverTrackId: string | null;
+  readonly isPlaying: boolean;
+  readonly positionSeconds: number;
+  readonly queueLabel: string;
+}
+
+function useBarState(): BarState | null {
   const currentId = usePlayerStore(state => state.currentId);
   const track = usePlayerStore(state =>
     state.currentId === null ? undefined : state.tracks[state.currentId]
   );
   const playlistId = usePlayerStore(state => state.playlistId);
   const playlistName = usePlayerStore(state => state.playlistName);
+  const playlistCoverUpdatedAt = usePlayerStore(
+    state => state.playlistCoverUpdatedAt
+  );
+  const playlistCoverTrackId = usePlayerStore(
+    state => state.playlistCoverTrackId
+  );
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const queue = usePlayerStore(state => state.queue);
+  const tracks = usePlayerStore(state => state.tracks);
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
+  const play = usePlayerStore(state => state.play);
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const seekToFraction = usePlayerStore(state => state.seekToFraction);
   const seekBy = usePlayerStore(state => state.seekBy);
+
+  if (currentId === null || track === undefined) {
+    return null;
+  }
+
+  const index = queue.indexOf(currentId);
+  const previousId = index > 0 ? (queue[index - 1] ?? null) : null;
+  const nextId = index >= 0 ? (queue[index + 1] ?? null) : null;
+
+  return {
+    track,
+    playlistId,
+    playlistName,
+    playlistCoverUpdatedAt,
+    playlistCoverTrackId,
+    isPlaying,
+    hasNext: nextId !== null,
+    previousId,
+    nextId,
+    positionSeconds,
+    queueLabel: index >= 0 ? `${index + 1}/${queue.length}` : '',
+    queueIndex: index,
+    queueLength: queue.length,
+    tracks,
+    setPlaying,
+    skipPrevious,
+    skipNext,
+    play,
+    seekToFraction,
+    seekBy
+  };
+}
+
+function currentView(bar: BarState): BarView {
+  return {
+    track: bar.track,
+    playlistId: bar.playlistId,
+    playlistName: bar.playlistName,
+    playlistCoverUpdatedAt: bar.playlistCoverUpdatedAt,
+    playlistCoverTrackId: bar.playlistCoverTrackId,
+    isPlaying: bar.isPlaying,
+    positionSeconds: bar.positionSeconds,
+    queueLabel: bar.queueLabel
+  };
+}
+
+function neighbourView(
+  bar: BarState,
+  trackId: string,
+  offset: number
+): BarView | null {
+  const track = bar.tracks[trackId];
+
+  if (track === undefined) {
+    return null;
+  }
+
+  return {
+    track,
+    playlistId: bar.playlistId,
+    playlistName: bar.playlistName,
+    playlistCoverUpdatedAt: bar.playlistCoverUpdatedAt,
+    playlistCoverTrackId: bar.playlistCoverTrackId,
+    isPlaying: bar.isPlaying,
+    positionSeconds: 0,
+    queueLabel: `${bar.queueIndex + offset + 1}/${bar.queueLength}`
+  };
+}
+
+/** The playlist's cover chain for the veil, with the track as the bare
+ * fallback. The cards' chain is the same; the bar only holds the fields. */
+function coverSource(
+  config: ApiConfig | null,
+  view: BarView
+): MediaSource | null {
+  if (config === null) {
+    return null;
+  }
+
+  if (view.playlistId !== null && view.playlistCoverUpdatedAt !== null) {
+    const source = mediaSource(config, endpoints.playlistCover, {
+      playlistId: view.playlistId
+    });
+
+    return {
+      ...source,
+      uri: `${source.uri}?v=${encodeURIComponent(view.playlistCoverUpdatedAt)}`
+    };
+  }
+
+  if (view.playlistId !== null && view.playlistCoverTrackId !== null) {
+    return mediaSource(config, endpoints.trackThumbnail, {
+      trackId: view.playlistCoverTrackId
+    });
+  }
+
+  if (view.track.thumbnailPath !== null) {
+    return mediaSource(config, endpoints.trackThumbnail, {
+      trackId: view.track.id
+    });
+  }
+
+  return null;
+}
+
+interface StepButtonProps {
+  readonly direction: 'previous' | 'next';
+  readonly label: string;
+  readonly onPress: () => void;
+  readonly disabled?: boolean;
+  readonly size?: number;
+}
+
+function StepButton({
+  direction,
+  label,
+  onPress,
+  disabled = false,
+  size = touchTarget
+}: StepButtonProps) {
+  const Glyph =
+    direction === 'previous' ? IconPlayerSkipBack : IconPlayerSkipForward;
+
+  return (
+    <Pressable
+      testID={direction === 'previous' ? 'player-previous' : 'player-next'}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      hitSlop={size < touchTarget ? (touchTarget - size) / 2 : 0}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.step,
+        { width: size, height: size },
+        disabled && styles.stepDisabled,
+        pressed && styles.stepPressed
+      ]}>
+      <Glyph
+        size={tokenLength('icon-md')}
+        color={disabled ? tokenColor('control-disabled-fg') : tokenColor('ink')}
+      />
+    </Pressable>
+  );
+}
+
+function PlayOrb({
+  isPlaying,
+  title,
+  onToggle,
+  size
+}: {
+  readonly isPlaying: boolean;
+  readonly title: string;
+  readonly onToggle: () => void;
+  readonly size: number;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <Pressable
+      testID="player-toggle"
+      accessibilityRole="button"
+      accessibilityLabel={
+        isPlaying
+          ? t('playerBar.pauseNamed', { title })
+          : t('playerBar.playNamed', { title })
+      }
+      accessibilityState={{ selected: isPlaying }}
+      hitSlop={(touchTarget - size > 0 ? touchTarget - size : 0) / 2 + 4}
+      onPress={onToggle}
+      style={({ pressed }) => [
+        styles.orb,
+        { width: size, height: size, borderRadius: size / 2 },
+        pressed && styles.orbPressed
+      ]}>
+      {isPlaying ? (
+        <IconPlayerPause
+          size={size * 0.5}
+          color={tokenColor('bg')}
+          strokeWidth={2.4}
+        />
+      ) : (
+        <IconPlayerPlay
+          size={size * 0.5}
+          color={tokenColor('bg')}
+          strokeWidth={2.4}
+        />
+      )}
+    </Pressable>
+  );
+}
+
+function Title({ view }: { readonly view: BarView }) {
+  return (
+    <Text testID="player-title" numberOfLines={1} style={styles.title}>
+      {view.track.title}
+    </Text>
+  );
+}
+
+function Meta({ view }: { readonly view: BarView }) {
+  return (
+    <View style={styles.meta}>
+      {view.playlistName === null ? null : (
+        <Text
+          testID="player-playlist"
+          numberOfLines={1}
+          style={styles.playlist}>
+          {view.playlistName}
+        </Text>
+      )}
+      <Text testID="player-queue" style={styles.count}>
+        {view.queueLabel}
+      </Text>
+    </View>
+  );
+}
+
+interface BarPageProps {
+  readonly config: ApiConfig | null;
+  readonly bar: BarState;
+  readonly view: BarView;
+  readonly translateX: Animated.Value | Animated.AnimatedAddition<number>;
+  readonly interactive: boolean;
+  readonly panHandlers?: GestureResponderHandlers;
+}
+
+function BarPage({
+  config,
+  bar,
+  view,
+  translateX,
+  interactive,
+  panHandlers
+}: BarPageProps) {
+  const { t } = useI18n();
+  const cover = coverSource(config, view);
+  const [coverFailed, setCoverFailed] = useState(false);
+  const base =
+    view.playlistId === null
+      ? tokenColor('surface-raised')
+      : sleeveColor(view.playlistId);
+  const wasPlaying = useRef(false);
+
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [cover?.uri]);
+
+  const startScrub = useCallback((): void => {
+    wasPlaying.current = usePlayerStore.getState().isPlaying;
+
+    if (wasPlaying.current) {
+      bar.setPlaying(false);
+    }
+  }, [bar]);
+
+  const endScrub = useCallback((): void => {
+    if (wasPlaying.current) {
+      bar.setPlaying(true);
+    }
+
+    wasPlaying.current = false;
+  }, [bar]);
+
+  return (
+    <Animated.View
+      pointerEvents={interactive ? 'auto' : 'none'}
+      importantForAccessibility={interactive ? 'auto' : 'no-hide-descendants'}
+      accessibilityElementsHidden={!interactive}
+      {...panHandlers}
+      style={[
+        styles.capsule,
+        { backgroundColor: base, transform: [{ translateX }] }
+      ]}>
+      {cover !== null && !coverFailed ? (
+        <>
+          <Image
+            testID="player-cover-veil"
+            source={cover}
+            resizeMode="cover"
+            style={[StyleSheet.absoluteFill, styles.veilImage]}
+            onError={() => setCoverFailed(true)}
+          />
+          <View style={[StyleSheet.absoluteFill, styles.veilScrim]} />
+        </>
+      ) : null}
+      <View style={styles.top}>
+        <Artwork
+          config={config}
+          track={view.track}
+          playlistId={view.playlistId}
+          playlistName={view.playlistName}
+          size={tokenLength('space-9') - tokenLength('space-1')}
+          radius={tokenLength('space-2')}
+        />
+        <View style={styles.identity}>
+          <Title view={view} />
+          <Meta view={view} />
+        </View>
+        <PlayOrb
+          isPlaying={view.isPlaying}
+          title={view.track.title}
+          onToggle={() => bar.setPlaying(!view.isPlaying)}
+          size={tokenLength('space-7') + 8}
+        />
+      </View>
+      <View style={styles.bottom}>
+        <StepButton
+          direction="previous"
+          label={t('playerBar.previousNamed', { title: view.track.title })}
+          onPress={bar.skipPrevious}
+          size={tokenLength('space-7') + 8}
+        />
+        <View style={styles.rail}>
+          <SeekBar
+            key={view.track.id}
+            durationSeconds={view.track.durationSeconds}
+            positionSeconds={view.positionSeconds}
+            onSeekStart={startScrub}
+            onSeekEnd={endScrub}
+            onSeek={bar.seekToFraction}
+            onSeekBy={bar.seekBy}
+          />
+        </View>
+        <StepButton
+          direction="next"
+          label={t('playerBar.nextNamed', { title: view.track.title })}
+          onPress={bar.skipNext}
+          disabled={!bar.hasNext}
+          size={tokenLength('space-7') + 8}
+        />
+      </View>
+    </Animated.View>
+  );
+}
+
+type SwipeDirection = 'previous' | 'next';
+
+export default function PlayerBar({ config }: PlayerBarProps) {
+  const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const bar = useBarState();
+  const reduceMotion = useReduceMotion();
+  const swipe = useRef(new Animated.Value(0)).current;
+  const [direction, setDirection] = useState<SwipeDirection | null>(null);
   const playbackFailureId = usePlayerStore(state => state.playbackFailureId);
   const dismissPlaybackFailure = usePlayerStore(
     state => state.dismissPlaybackFailure
@@ -61,169 +464,152 @@ export default function PlayerBar({ config }: PlayerBarProps) {
   const dismissBackgroundNotice = usePlayerStore(
     state => state.dismissBackgroundNotice
   );
-  const wasPlaying = useRef(false);
-  const [failedId, setFailedId] = useState<string | null>(null);
 
-  const startScrub = useCallback((): void => {
-    wasPlaying.current = usePlayerStore.getState().isPlaying;
+  /* The reset waits for the new track to render, so the deck never rests on the
+   * outgoing content for a frame after the swap. */
+  useEffect(() => {
+    swipe.setValue(0);
+    setDirection(current => (current === null ? current : null));
+  }, [bar?.track.id, swipe]);
 
-    if (wasPlaying.current) {
-      setPlaying(false);
-    }
-  }, [setPlaying]);
+  const previousId = bar?.previousId ?? null;
+  const nextId = bar?.nextId ?? null;
+  const play = bar?.play;
 
-  const endScrub = useCallback((): void => {
-    if (wasPlaying.current) {
-      setPlaying(true);
-    }
+  const previousView =
+    bar !== null && previousId !== null
+      ? neighbourView(bar, previousId, -1)
+      : null;
+  const nextView =
+    bar !== null && nextId !== null ? neighbourView(bar, nextId, 1) : null;
+  const incoming =
+    direction === 'previous'
+      ? previousView
+      : direction === 'next'
+        ? nextView
+        : null;
 
-    wasPlaying.current = false;
-  }, [setPlaying]);
+  const settleBack = useCallback((): void => {
+    /* The incoming page stays mounted while the deck retracts, so it leaves
+     * with the current one instead of vanishing. A new drag supersedes the
+     * spring, which reports unfinished and keeps the newer direction. */
+    Animated.spring(swipe, {
+      toValue: 0,
+      speed: 18,
+      bounciness: 0,
+      useNativeDriver: true
+    }).start(({ finished }) => {
+      if (finished) {
+        setDirection(null);
+      }
+    });
+  }, [swipe]);
 
-  if (currentId === null || track === undefined) {
+  const complete = useCallback(
+    (trackId: string, toValue: number): void => {
+      if (play === undefined) {
+        return;
+      }
+
+      if (reduceMotion) {
+        play(trackId);
+        return;
+      }
+
+      Animated.timing(swipe, {
+        toValue,
+        duration: 260,
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        useNativeDriver: true
+      }).start(({ finished }) => {
+        if (finished) {
+          play(trackId);
+        }
+      });
+    },
+    [play, reduceMotion, swipe]
+  );
+
+  const pan = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          Math.abs(gesture.dx) > 12 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.3,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_event, gesture) => {
+          const directionNow: SwipeDirection =
+            gesture.dx > 0 ? 'previous' : 'next';
+          const allowed =
+            directionNow === 'previous' ? previousId !== null : nextId !== null;
+
+          if (!allowed) {
+            const resisted = gesture.dx * 0.045;
+            swipe.setValue(Math.max(-28, Math.min(28, resisted)));
+            return;
+          }
+
+          swipe.setValue(Math.max(-width, Math.min(width, gesture.dx)));
+
+          if (Math.abs(gesture.dx) > 6) {
+            setDirection(current =>
+              current === directionNow ? current : directionNow
+            );
+          }
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          const directionNow: SwipeDirection =
+            gesture.dx > 0 ? 'previous' : 'next';
+          const trackId = directionNow === 'previous' ? previousId : nextId;
+          const committed =
+            trackId !== null &&
+            (Math.abs(gesture.dx) > width * 0.26 ||
+              (Math.abs(gesture.vx) > 0.4 && Math.abs(gesture.dx) > 24));
+
+          if (committed && trackId !== null) {
+            complete(trackId, directionNow === 'previous' ? width : -width);
+            return;
+          }
+
+          settleBack();
+        },
+        onPanResponderTerminate: settleBack
+      }),
+    [complete, nextId, previousId, settleBack, swipe, width]
+  );
+
+  if (bar === null) {
     return null;
   }
 
-  const imageFailed = failedId === track.id;
-  const currentIndex = queue.indexOf(currentId);
-  const hasNext = currentIndex >= 0 && queue[currentIndex + 1] !== undefined;
-  const failureTitle = playbackFailureId === currentId ? track.title : null;
-
-  const artwork =
-    config === null || track.thumbnailPath === null || imageFailed
-      ? null
-      : mediaSource(config, endpoints.trackThumbnail, {
-          trackId: track.id
-        });
-  const image =
-    artwork === null ? (
-      <View testID="player-bar-no-artwork" style={styles.noArtwork} />
-    ) : (
-      <Image
-        testID="player-bar-artwork"
-        accessible={false}
-        source={artwork}
-        style={styles.image}
-        onError={() => setFailedId(track.id)}
-      />
-    );
-  const art =
-    playlistId === null ? (
-      <View testID="player-bar-art" style={styles.art}>
-        {image}
-      </View>
-    ) : (
-      <Pressable
-        testID="player-open-playlist"
-        accessibilityRole="button"
-        accessibilityLabel={t('playerBar.openPlaylist', {
-          name: playlistName ?? ''
-        })}
-        style={styles.art}
-        onPress={() =>
-          router.navigate({
-            pathname: '/playlists/[playlistId]',
-            params: { playlistId }
-          })
-        }>
-        {image}
-      </Pressable>
-    );
+  const failureTitle =
+    playbackFailureId === bar.track.id ? bar.track.title : null;
 
   return (
     <>
-      <View testID="player-bar" style={[styles.bar, { bottom: insets.bottom }]}>
-        <View style={styles.top}>
-          {art}
-          <View style={styles.identity}>
-            <Text testID="player-title" numberOfLines={1} style={styles.title}>
-              {track.title}
-            </Text>
-            {playlistName === null ? null : (
-              <Text
-                testID="player-playlist"
-                numberOfLines={1}
-                style={styles.playlist}>
-                {playlistName}
-              </Text>
+      <View
+        testID="player-bar"
+        pointerEvents="box-none"
+        style={[styles.deck, { bottom: insets.bottom + 4 }]}>
+        {incoming === null ? null : (
+          <BarPage
+            config={config}
+            bar={bar}
+            view={incoming}
+            translateX={Animated.add(
+              swipe,
+              direction === 'previous' ? -width : width
             )}
-          </View>
-          <View style={styles.transport}>
-            <Pressable
-              testID="player-previous"
-              accessibilityRole="button"
-              accessibilityLabel={t('playerBar.previousNamed', {
-                title: track.title
-              })}
-              style={({ pressed }) => [
-                styles.step,
-                pressed && styles.stepPressed
-              ]}
-              onPress={skipPrevious}>
-              <IconPlayerSkipBack
-                size={tokenLength('icon-md')}
-                color={tokenColor('ink')}
-              />
-            </Pressable>
-            <Pressable
-              testID="player-toggle"
-              accessibilityRole="button"
-              accessibilityLabel={
-                isPlaying
-                  ? t('playerBar.pauseNamed', { title: track.title })
-                  : t('playerBar.playNamed', { title: track.title })
-              }
-              accessibilityState={{ selected: isPlaying }}
-              style={({ pressed }) => [
-                styles.toggle,
-                pressed && styles.pressed
-              ]}
-              onPress={() => setPlaying(!isPlaying)}>
-              {isPlaying ? (
-                <IconPlayerPause
-                  size={tokenLength('icon-lg')}
-                  color={tokenColor('ink')}
-                />
-              ) : (
-                <IconPlayerPlay
-                  size={tokenLength('icon-lg')}
-                  color={tokenColor('ink')}
-                />
-              )}
-            </Pressable>
-            <Pressable
-              testID="player-next"
-              accessibilityRole="button"
-              accessibilityLabel={t('playerBar.nextNamed', {
-                title: track.title
-              })}
-              accessibilityState={{ disabled: !hasNext }}
-              disabled={!hasNext}
-              style={({ pressed }) => [
-                styles.step,
-                !hasNext && styles.stepDisabled,
-                pressed && styles.stepPressed
-              ]}
-              onPress={skipNext}>
-              <IconPlayerSkipForward
-                size={tokenLength('icon-md')}
-                color={
-                  hasNext
-                    ? tokenColor('ink')
-                    : tokenColor('control-disabled-fg')
-                }
-              />
-            </Pressable>
-          </View>
-        </View>
-        <SeekBar
-          key={track.id}
-          durationSeconds={track.durationSeconds}
-          positionSeconds={positionSeconds}
-          onSeekStart={startScrub}
-          onSeekEnd={endScrub}
-          onSeek={seekToFraction}
-          onSeekBy={seekBy}
+            interactive={false}
+          />
+        )}
+        <BarPage
+          config={config}
+          bar={bar}
+          view={currentView(bar)}
+          translateX={swipe}
+          interactive
+          panHandlers={pan.panHandlers}
         />
       </View>
       {failureTitle !== null ? (
@@ -245,43 +631,52 @@ export default function PlayerBar({ config }: PlayerBarProps) {
 }
 
 const styles = StyleSheet.create({
-  bar: {
+  deck: {
     position: 'absolute',
     left: 0,
     right: 0,
-    zIndex: tokenNumber('z-player'),
-    elevation: tokenNumber('z-player'),
-    height: playerBarHeight,
-    justifyContent: 'center',
+    height: playerBarHeight - 6,
+    zIndex: tokenNumber('z-player')
+  },
+  capsule: {
+    position: 'absolute',
+    left: tokenLength('space-2'),
+    right: tokenLength('space-2'),
+    bottom: 0,
+    overflow: 'hidden',
+    elevation: tokenNumber('z-player') + 2,
+    height: playerBarHeight - 6,
     gap: tokenLength('space-1'),
-    paddingHorizontal: tokenLength('space-4'),
+    paddingHorizontal: tokenLength('space-3'),
     paddingVertical: tokenLength('space-1'),
-    borderTopWidth: 1,
-    borderTopColor: tokenColor('line'),
-    backgroundColor: tokenColor('surface')
+    borderRadius: tokenLength('space-3'),
+    borderWidth: 1,
+    borderColor: tokenColor('line')
+  },
+  veilImage: {
+    opacity: 0.45
+  },
+  veilScrim: {
+    backgroundColor: tokenColor('bg'),
+    opacity: 0.5
   },
   top: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-3')
   },
-  art: {
-    width: tokenLength('space-9'),
-    height: tokenLength('space-9'),
-    overflow: 'hidden',
-    borderRadius: tokenLength('radius-artwork'),
-    backgroundColor: tokenColor('surface-raised')
+  bottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-1')
   },
-  image: {
-    width: '100%',
-    height: '100%'
-  },
-  noArtwork: {
+  rail: {
     flex: 1
   },
   identity: {
     flex: 1,
-    gap: tokenLength('space-1')
+    gap: 2
   },
   title: {
     color: tokenColor('ink'),
@@ -290,20 +685,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: tokenLength('text-md') * tokenNumber('leading-tight')
   },
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-1')
+  },
   playlist: {
+    flexShrink: 1,
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
     lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
   },
-  transport: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokenLength('space-1')
+  count: {
+    color: tokenColor('accent'),
+    fontFamily,
+    fontSize: tokenLength('text-xs'),
+    fontWeight: '600',
+    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
   },
   step: {
-    width: touchTarget,
-    height: touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: tokenLength('radius-chip')
@@ -314,17 +715,12 @@ const styles = StyleSheet.create({
   stepDisabled: {
     opacity: tokenNumber('opacity-disabled')
   },
-  toggle: {
-    width: touchTarget,
-    height: touchTarget,
+  orb: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: tokenColor('control-border'),
-    borderRadius: tokenLength('radius-chip'),
-    backgroundColor: tokenColor('surface-raised')
+    backgroundColor: tokenColor('accent')
   },
-  pressed: {
-    backgroundColor: tokenColor('current-surface')
+  orbPressed: {
+    opacity: 0.82
   }
 });

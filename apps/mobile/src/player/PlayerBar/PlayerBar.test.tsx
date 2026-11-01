@@ -80,7 +80,7 @@ describe('the player bar', () => {
     startPlaylist();
     await renderBar();
 
-    expect(screen.getByTestId('player-bar')).toHaveStyle({ bottom: 24 });
+    expect(screen.getByTestId('player-bar')).toHaveStyle({ bottom: 28 });
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('Rain On The Window')).toBeOnTheScreen();
 
