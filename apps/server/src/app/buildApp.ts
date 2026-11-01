@@ -39,6 +39,7 @@ import {
 import { registerCoverRoutes } from '../features/playlists/cover/routes/coverRoutes.js';
 import { registerPlaylistRoutes } from '../features/playlists/routes/playlistRoutes.js';
 import {
+  pruneExpiredCredentials,
   pruneOrphanCovers,
   pruneOrphanTracks
 } from '../features/prune/service/pruneService.js';
@@ -289,6 +290,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
         await pruneOrphanTracks(pruneOptions);
         await pruneOrphanCovers(pruneOptions);
+        pruneExpiredCredentials({
+          database: context.database,
+          logger: app.log,
+          now: context.now
+        });
       }
     });
   });

@@ -36,7 +36,8 @@ no auth method, Pangolin does not evaluate path rules at all (Pangolin issue 255
 
 ## The Integration API
 
-The server mints access tokens through Pangolin's Integration API. On the Pangolin host:
+The server mints access tokens through Pangolin's Integration API, and deletes them at sign-out and on reuse. On the
+Pangolin host:
 
 ```yaml
 # config.yml
@@ -46,7 +47,8 @@ server:
   integration_port: 3003
 ```
 
-Create a root API key under **Server Admin → API Keys**, with permission to create resource access tokens. Then
+Create a root API key under **Server Admin → API Keys**, with permission to create **and delete** resource access
+tokens. Both actions are required: sign-out and reuse must end the token at the edge, not only on the phone. Then
 give the server:
 
 | Variable                       | Value                                                |
@@ -67,3 +69,8 @@ build script derives the HTTPS callback from the public origin and adds the sche
 
 All three `PANGOLIN_*` values are set together or not at all; a partial set fails the boot. With none of them, the
 exchange and the refresh answer `503 provisioning_unavailable` and the rest of the instance is unaffected.
+
+The credential lifetimes are server configuration, not secret: `MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS` (12 hours),
+`MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS` (180 days) and `MOBILE_FAMILY_LIFETIME_SECONDS` (one year). They are positive
+whole seconds, a credential may not outlive its family, and an invalid combination fails the boot. The weekly prune
+removes credential rows once they expire, so the database follows the same caps.
