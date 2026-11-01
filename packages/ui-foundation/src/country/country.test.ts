@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { Language } from '@playliberty/i18n';
-
-import { countryNameOf, countryOf, flagOf } from './countryFlag';
+import { countryNameOf, countryOf, flagOf } from './country.js';
 
 describe('countryOf', () => {
   it('reads the country segment from the pool name', () => {
@@ -34,12 +32,12 @@ describe('flagOf', () => {
 
 describe('countryNameOf', () => {
   it('names the region in the current language', () => {
-    expect(countryNameOf('FR', Language.English)).toBe('France');
-    expect(countryNameOf('CH', Language.English)).toBe('Switzerland');
-    expect(countryNameOf('CH', Language.French)).toBe('Suisse');
+    expect(countryNameOf('FR', 'en')).toBe('France');
+    expect(countryNameOf('CH', 'en')).toBe('Switzerland');
+    expect(countryNameOf('CH', 'fr')).toBe('Suisse');
   });
 
   it('answers null for anything that is not a two-letter code', () => {
-    expect(countryNameOf('USA', Language.English)).toBeNull();
+    expect(countryNameOf('USA', 'en')).toBeNull();
   });
 });

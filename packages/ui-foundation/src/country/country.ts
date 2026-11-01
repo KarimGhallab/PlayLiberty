@@ -1,5 +1,3 @@
-import type { Language } from '@playliberty/i18n';
-
 const COUNTRY_CODE = /^[^-]+-([A-Za-z]{2})(?:-|$)/;
 const TWO_LETTERS = /^[A-Za-z]{2}$/;
 
@@ -26,10 +24,10 @@ export function flagOf(country: string): string | null {
   );
 }
 
-/* The flag's accessible name and tooltip; the code remains the fallback. */
+/* The flag's accessible name and the row's word; the code remains the fallback. */
 export function countryNameOf(
   country: string,
-  language: Language
+  language: string
 ): string | null {
   if (!TWO_LETTERS.test(country)) {
     return null;

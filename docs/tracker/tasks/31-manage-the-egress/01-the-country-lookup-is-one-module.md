@@ -1,35 +1,22 @@
 # 01: The country lookup is one module
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
-## Observed
+## Outcome
 
-The pool name's country segment is read by `countryOf`, `flagOf` and `countryNameOf` under the web's egress view.
-The mobile console needs the same rule: the pool name is `NN-CC-<slug>.conf`, the country is its second segment, the
-flag is two regional indicators, and the name is `Intl.DisplayNames` in the current language. A copy in the mobile
-view would make two owners of that rule.
+`packages/ui-foundation/src/country/country.ts` now owns `countryOf`, `flagOf` and `countryNameOf`, exported from the
+package. The web Egress page imports them from `@playliberty/ui-foundation`, and the old `countryFlag` folder and its
+test are gone.
 
-## Expected
-
-The three functions live in `@playliberty/ui-foundation` with their tests, and both clients import them. The web's
-behavior is unchanged, and no client module owns the lookup.
-
-## Evidence
-
-`apps/web/src/views/egress/EgressPage/countryFlag/countryFlag.ts` and its test hold the only implementation. The
-mobile console's card needs the same country word and flag.
-
-## Acceptance criteria
-
-- [ ] The shared module exports `countryOf`, `flagOf` and `countryNameOf`, with tests for the country segment, the
-      flag and the localized name.
-- [ ] The web Egress page imports the shared functions, and no copy remains under `apps/web`.
-- [ ] The shared package's tests and the web tests pass.
-- [ ] `pnpm run build` and `pnpm run lint:check` pass.
+`countryNameOf` takes the language as a string tag rather than the i18n `Language` type, so the shared package stays
+free of an i18n dependency; the web's `Language` value is assignable unchanged. The shared test covers the country
+segment, the flag and the localized region name in English and French.
 
 ## Verification
 
-`pnpm --filter @playliberty/ui-foundation test`, `pnpm --filter @playliberty/web test`, `pnpm run build` and
-`pnpm run lint:check`.
+- `pnpm --filter @playliberty/ui-foundation test`: 21 passed across 4 files.
+- `pnpm --filter @playliberty/web test`: 622 passed across 58 files, including the Egress page's France and
+  Switzerland assertions.
+- `pnpm run build` and `pnpm run lint:check` pass.

@@ -1,3 +1,4 @@
+export { countryNameOf, countryOf, flagOf } from './country/country.js';
 export { standardEasingBezier } from './easing/easing.js';
 export { equalizerRests } from './equalizer/equalizer.js';
 export { sleeveIndex } from './sleeve/sleeve.js';

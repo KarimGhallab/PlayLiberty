@@ -10,6 +10,7 @@ import { EgressStatus } from '@playliberty/contracts';
 import type { EgressConfig } from '@playliberty/contracts';
 import type { Language, Messages, Translator } from '@playliberty/i18n';
 import { formatRelativeTime, useI18n } from '@playliberty/i18n';
+import { countryNameOf, countryOf, flagOf } from '@playliberty/ui-foundation';
 
 import { ApiError } from '../../../shared/api/clients/apiClient/apiClient';
 import {
@@ -26,7 +27,6 @@ import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePl
 import { useMediaQuery } from '../../../shared/useMediaQuery/useMediaQuery';
 
 import styles from './EgressPage.module.scss';
-import { countryNameOf, countryOf, flagOf } from './countryFlag/countryFlag';
 
 interface ActionToast {
   readonly id: number;
