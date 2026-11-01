@@ -251,11 +251,23 @@ export const ExchangeInputSchema = z.object({
   redirect_uri: z.url()
 });
 
-/* The token pair the app stores: the id and the secret Pangolin expects in its
- * two headers. */
+/* The lifetime of one credential: the absolute expiry is the record, and the
+ * relative value is the only safe scheduling input on a wrong device clock. */
+export const CredentialLifetimeSchema = z.object({
+  expires_at: isoDateTime,
+  expires_in: z.number().int().positive()
+});
+
+/* The access token is the id and secret Pangolin expects in its two headers;
+ * the refresh token is the opaque value only the app and the server hold. */
 export const MobileTokenSchema = z.object({
-  id: identifier,
-  secret: z.string().min(1)
+  access: CredentialLifetimeSchema.extend({
+    id: identifier,
+    secret: z.string().min(1)
+  }),
+  refresh: CredentialLifetimeSchema.extend({
+    token: z.string().min(1)
+  })
 });
 
 export const PlaylistTracksQuerySchema = PageQuerySchema.extend({

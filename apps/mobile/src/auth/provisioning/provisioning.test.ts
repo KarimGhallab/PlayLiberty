@@ -19,11 +19,25 @@ const VERIFIER_BYTES = new Uint8Array(32).fill(7);
 const STATE_BYTES = new Uint8Array(16).fill(9);
 const CHALLENGE = 'challenge-value';
 
+const PAIR = {
+  access: {
+    id: 'token-id',
+    secret: 'token-secret',
+    expires_at: '2026-11-02T00:00:00.000Z',
+    expires_in: 43_200
+  },
+  refresh: {
+    token: 'refresh-token',
+    expires_at: '2027-04-30T12:00:00.000Z',
+    expires_in: 15_552_000
+  }
+};
+
 function tokenResponse(): Response {
-  return new Response(
-    JSON.stringify({ id: 'token-id', secret: 'token-secret' }),
-    { status: 200, headers: { 'content-type': 'application/json' } }
-  );
+  return new Response(JSON.stringify(PAIR), {
+    status: 200,
+    headers: { 'content-type': 'application/json' }
+  });
 }
 
 function successFor(url: string, redirectUri: string): BrowserResult {
@@ -130,7 +144,7 @@ describe('completeProvisioning', () => {
     };
   }
 
-  it('trades the code and its verifier for the token', async () => {
+  it('trades the code and its verifier for the token pair', async () => {
     const { code, state } = await started();
     const fetchMock = jest.fn<ProvisioningDeps['fetch']>(async () =>
       tokenResponse()
@@ -144,7 +158,7 @@ describe('completeProvisioning', () => {
     const [exchangeUrl, init] = fetchMock.mock.calls[0] ?? [];
     const body: unknown = JSON.parse(String(init?.body));
 
-    expect(token).toEqual({ id: 'token-id', secret: 'token-secret' });
+    expect(token).toEqual(PAIR);
     expect(exchangeUrl).toBe(`${BASE}/auth/exchange`);
     expect(body).toMatchObject({
       code,

@@ -1,6 +1,9 @@
-import { type Problem, ProblemSchema } from '@playliberty/contracts';
-
-import type { AccessToken } from '../../api/apiClient/ApiClient';
+import {
+  type MobileToken,
+  MobileTokenSchema,
+  type Problem,
+  ProblemSchema
+} from '@playliberty/contracts';
 
 /* The browser flow's decisions, free of the platform: a PKCE challenge and a
  * state go out, a single-use code comes back, and the code is traded for the
@@ -112,7 +115,7 @@ export async function beginProvisioning(
 export async function completeProvisioning(
   input: { readonly code: string; readonly state: string },
   deps: ProvisioningDeps
-): Promise<AccessToken> {
+): Promise<MobileToken> {
   const current = pending;
 
   if (current === null) {
@@ -147,7 +150,7 @@ async function exchange(
     readonly verifier: string;
     readonly redirectUri: string;
   }
-): Promise<AccessToken> {
+): Promise<MobileToken> {
   const response = await deps.fetch(`${baseUrl}/auth/exchange`, {
     method: 'POST',
     headers: {
@@ -172,22 +175,13 @@ async function exchange(
     );
   }
 
-  if (!isAccessToken(body)) {
+  const token = MobileTokenSchema.safeParse(body);
+
+  if (!token.success) {
     throw new ProvisioningError(ProvisioningFailure.Refused);
   }
 
-  return body;
-}
-
-function isAccessToken(value: unknown): value is AccessToken {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    'secret' in value &&
-    typeof value.id === 'string' &&
-    typeof value.secret === 'string'
-  );
+  return token.data;
 }
 
 /** Length first, then every character, so a near match costs the same. */

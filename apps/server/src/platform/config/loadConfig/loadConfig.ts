@@ -14,6 +14,12 @@ const optionalUrl = z.preprocess(
   z.url().optional()
 );
 
+/* The credential policy: a short access token, a sliding refresh window, and a
+ * family that ends a year after it was first issued. */
+export const DEFAULT_ACCESS_TOKEN_LIFETIME_SECONDS = 12 * 60 * 60;
+export const DEFAULT_REFRESH_TOKEN_LIFETIME_SECONDS = 180 * 24 * 60 * 60;
+export const DEFAULT_FAMILY_LIFETIME_SECONDS = 365 * 24 * 60 * 60;
+
 const LOOPBACK_HOSTS = new Set(['localhost', '::1', '0:0:0:0:0:0:0:1']);
 
 function isLoopbackHost(host: string): boolean {
@@ -54,6 +60,23 @@ const EnvSchema = z.object({
   PANGOLIN_INTEGRATION_API_KEY: optionalString,
   /* The callbacks the provisioning route may redirect to, comma-separated. */
   MOBILE_REDIRECT_URIS: z.string().default(''),
+  /* The credential lifetimes in seconds. Policy, not mechanism: a deployment
+   * may tighten them without a code change. */
+  MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_ACCESS_TOKEN_LIFETIME_SECONDS),
+  MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_REFRESH_TOKEN_LIFETIME_SECONDS),
+  MOBILE_FAMILY_LIFETIME_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_FAMILY_LIFETIME_SECONDS),
   EGRESS_AGENT_SOCKET: z
     .string()
     .min(1)
@@ -140,6 +163,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     );
   }
 
+  /* A credential cannot outlive the family that owns it. */
+  if (
+    value.MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS >
+      value.MOBILE_FAMILY_LIFETIME_SECONDS ||
+    value.MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS >
+      value.MOBILE_FAMILY_LIFETIME_SECONDS
+  ) {
+    throw new Error(
+      'Invalid environment configuration: the mobile access and refresh lifetimes may not exceed MOBILE_FAMILY_LIFETIME_SECONDS.'
+    );
+  }
+
   return {
     runtime,
     port: value.PORT,
@@ -165,6 +200,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     mobileRedirectUris: value.MOBILE_REDIRECT_URIS.split(',')
       .map(entry => entry.trim())
       .filter(entry => entry.length > 0),
+    mobileAccessTokenLifetimeSeconds:
+      value.MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS,
+    mobileRefreshTokenLifetimeSeconds:
+      value.MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS,
+    mobileFamilyLifetimeSeconds: value.MOBILE_FAMILY_LIFETIME_SECONDS,
     egressAgentSocket: value.EGRESS_AGENT_SOCKET,
     egressFailureLimit: value.EGRESS_FAILURE_LIMIT,
     egressDrainTimeoutMs: value.EGRESS_DRAIN_TIMEOUT_MS,

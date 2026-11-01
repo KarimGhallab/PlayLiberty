@@ -16,8 +16,11 @@ import {
 import { expoProvisioningDeps } from '../expoProvisioning';
 import { completeProvisioning } from '../provisioning/provisioning';
 import { provisioningFailure } from '../provisioningFailure';
+import {
+  recordFromToken,
+  sessionRecordStore
+} from '../sessionRecord/sessionRecord';
 import { startProvisioning } from '../startProvisioning';
-import { tokenStore } from '../tokenStore';
 
 /* The app's callback, shared by the scheme route and the HTTPS App Link: it
  * trades the code before returning to the library, so the deep link never lands
@@ -40,7 +43,9 @@ export default function ProvisionCallback() {
     let active = true;
 
     void completeProvisioning({ code, state }, expoProvisioningDeps)
-      .then(token => tokenStore.write(token))
+      .then(token =>
+        sessionRecordStore.write(recordFromToken(token, Date.now()))
+      )
       .then(() => {
         if (active) {
           router.replace('/');

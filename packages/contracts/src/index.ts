@@ -11,6 +11,7 @@ export type {
   EgressConfig,
   EgressRead,
   LiveEvent,
+  MobileToken,
   Page,
   PageQuery,
   PinPlaylistInput,

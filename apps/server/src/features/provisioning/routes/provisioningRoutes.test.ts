@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { FastifyBaseLogger } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -13,7 +15,12 @@ import { createTestContext } from '../../../app/testing/createTestContext.js';
 import type { LogLine } from '../../../app/testing/recordingLogger.js';
 import { recordingLogger } from '../../../app/testing/recordingLogger.js';
 
-import { accounts } from '../../../platform/database/schema.js';
+import {
+  accessTokens,
+  accounts,
+  refreshFamilies,
+  refreshTokens
+} from '../../../platform/database/schema.js';
 import { PangolinError } from '../pangolin/PangolinClient.js';
 import { challengeFor } from '../service/ProvisioningService.js';
 
@@ -52,11 +59,11 @@ afterEach(async () => {
 async function start(
   env: NodeJS.ProcessEnv = {},
   pangolin: IPangolinClient = new FakePangolin(),
-  provisioningNow?: () => number
+  now?: () => number
 ): Promise<TestContext> {
   context = await createTestContext(
     { MOBILE_REDIRECT_URIS: REDIRECT_URI, ...env },
-    { pangolin, provisioningNow }
+    { pangolin, now }
   );
 
   return context;
@@ -65,11 +72,11 @@ async function start(
 async function startWithLogger(
   logger: FastifyBaseLogger,
   pangolin: IPangolinClient = new FakePangolin(),
-  provisioningNow?: () => number
+  now?: () => number
 ): Promise<TestContext> {
   context = await createTestContext(
     { MOBILE_REDIRECT_URIS: REDIRECT_URI },
-    { pangolin, loggerInstance: logger, provisioningNow }
+    { pangolin, loggerInstance: logger, now }
   );
 
   return context;
@@ -151,6 +158,18 @@ function mintedCode(response: Injected): { code: string; state: string } {
 
 function accountRows(testContext: TestContext) {
   return testContext.database.db.select().from(accounts).all();
+}
+
+function familyRows(testContext: TestContext) {
+  return testContext.database.db.select().from(refreshFamilies).all();
+}
+
+function refreshRows(testContext: TestContext) {
+  return testContext.database.db.select().from(refreshTokens).all();
+}
+
+function accessRows(testContext: TestContext) {
+  return testContext.database.db.select().from(accessTokens).all();
 }
 
 function exchangeLines(lines: LogLine[]): LogLine[] {
@@ -263,7 +282,73 @@ describe('GET /provision', () => {
 });
 
 describe('POST /auth/exchange', () => {
-  it('trades a code and its verifier for a token bound to the user', async () => {
+  it('trades a code and its verifier for a token pair bound to the user', async () => {
+    const nowMs = Date.parse('2026-11-01T12:00:00.000Z');
+    const pangolin = new FakePangolin();
+    const testContext = await start(
+      {
+        MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: '3600',
+        MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS: '86400'
+      },
+      pangolin,
+      () => nowMs
+    );
+    const { code } = mintedCode(await provision(testContext));
+
+    const response = await exchange(testContext, {
+      code,
+      code_verifier: VERIFIER,
+      redirect_uri: REDIRECT_URI
+    });
+
+    const body = response.json();
+    const family = familyRows(testContext)[0];
+    const refresh = refreshRows(testContext)[0];
+
+    expect(response.statusCode).toBe(200);
+    expect(body).toMatchObject({
+      access: {
+        id: 'token-id',
+        secret: 'token-secret',
+        expires_at: '2026-11-01T13:00:00.000Z',
+        expires_in: 3600
+      },
+      refresh: {
+        expires_at: '2026-11-02T12:00:00.000Z',
+        expires_in: 86400
+      }
+    });
+    expect(body.refresh.token.length).toBeGreaterThan(40);
+    expect(pangolin.calls).toHaveLength(1);
+    expect(pangolin.calls[0]?.pangolinUserId).toBe('p-alice');
+    expect(pangolin.calls[0]?.validForSeconds).toBe(3600);
+    expect(pangolin.calls[0]?.title).toBe(
+      `PlayLiberty mobile ${String(family?.id).slice(0, 8)}`
+    );
+    expect(accountRows(testContext)).toEqual([]);
+    expect(family).toMatchObject({
+      pangolinUserId: 'p-alice',
+      createdAt: '2026-11-01T12:00:00.000Z',
+      lastUsedAt: '2026-11-01T12:00:00.000Z',
+      expiresAt: '2027-11-01T12:00:00.000Z',
+      revokedAt: null
+    });
+    expect(refresh?.tokenHash).toBe(
+      createHash('sha256').update(body.refresh.token).digest('hex')
+    );
+    expect(refresh?.tokenHash).not.toBe(body.refresh.token);
+    expect(refresh?.consumedAt).toBeNull();
+    expect(accessRows(testContext)).toEqual([
+      expect.objectContaining({
+        pangolinTokenId: 'token-id',
+        familyId: family?.id,
+        expiresAt: '2026-11-01T13:00:00.000Z',
+        revokedAt: null
+      })
+    ]);
+  });
+
+  it('uses the default lifetimes when none are configured', async () => {
     const pangolin = new FakePangolin();
     const testContext = await start({}, pangolin);
     const { code } = mintedCode(await provision(testContext));
@@ -275,14 +360,9 @@ describe('POST /auth/exchange', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      id: 'token-id',
-      secret: 'token-secret'
-    });
-    expect(pangolin.calls).toHaveLength(1);
-    expect(pangolin.calls[0]?.pangolinUserId).toBe('p-alice');
-    expect(pangolin.calls[0]?.validForSeconds).toBe(180 * 24 * 60 * 60);
-    expect(accountRows(testContext)).toEqual([]);
+    expect(pangolin.calls[0]?.validForSeconds).toBe(12 * 60 * 60);
+    expect(response.json().access.expires_in).toBe(12 * 60 * 60);
+    expect(response.json().refresh.expires_in).toBe(180 * 24 * 60 * 60);
   });
 
   it('refuses a wrong verifier and burns the code', async () => {
@@ -373,6 +453,9 @@ describe('POST /auth/exchange', () => {
 
     expect(response.statusCode).toBe(502);
     expect(response.json().code).toBe(ProblemCode.ProvisioningFailed);
+    expect(familyRows(testContext)).toEqual([]);
+    expect(refreshRows(testContext)).toEqual([]);
+    expect(accessRows(testContext)).toEqual([]);
   });
 
   it('needs the edge assertion but no identity', async () => {

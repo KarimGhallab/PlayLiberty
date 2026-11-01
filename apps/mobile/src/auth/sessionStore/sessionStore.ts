@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { usePlayerStore } from '../../player/playerStore/playerStore';
-import { tokenStore } from '../tokenStore';
+import { sessionRecordStore } from '../sessionRecord/sessionRecord';
 
 export enum SessionStatus {
   Loading = 'loading',
@@ -23,19 +23,19 @@ export const useSessionStore = create<SessionState>()(set => ({
   status: SessionStatus.Loading,
   refresh: async () => {
     const mine = (generation += 1);
-    const token = await tokenStore.read();
+    const record = await sessionRecordStore.read();
 
     if (mine !== generation) {
       return;
     }
 
     set({
-      status: token === null ? SessionStatus.SignedOut : SessionStatus.SignedIn
+      status: record === null ? SessionStatus.SignedOut : SessionStatus.SignedIn
     });
   },
   expire: async () => {
     generation += 1;
-    await tokenStore.clear();
+    await sessionRecordStore.clear();
     usePlayerStore.getState().clear();
     set({ status: SessionStatus.SignedOut });
   }

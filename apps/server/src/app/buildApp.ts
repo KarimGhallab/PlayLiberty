@@ -73,9 +73,9 @@ export interface AppOptions {
   /* The token issuer: a test passes a fake, a real process builds it from
    * config. */
   pangolin?: AppContext['pangolin'];
-  /* The provisioning clock; a test moves it to reach expiry and the rate
-   * limit's window without waiting. */
-  provisioningNow?: () => number;
+  /* The credential clock; a test moves it to reach expiry, the rate limit's
+   * window and the lifetimes without waiting. */
+  now?: () => number;
   /* A test's logger, so it can read the audit lines the app writes. */
   loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
@@ -167,7 +167,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       (options.config.pangolin === null
         ? null
         : new PangolinClient(options.config.pangolin)),
-    provisioning: new ProvisioningService(options.provisioningNow)
+    provisioning: new ProvisioningService(options.now),
+    now: options.now ?? Date.now
   };
 
   const loggerOptions =

@@ -18,8 +18,8 @@ import {
   ProvisioningFailure,
   completeProvisioning
 } from '../provisioning/provisioning';
+import { sessionRecordStore } from '../sessionRecord/sessionRecord';
 import { startProvisioning } from '../startProvisioning';
-import { tokenStore } from '../tokenStore';
 import ProvisionCallback from './ProvisionCallback';
 
 jest.mock('expo-router', () => ({
@@ -46,13 +46,20 @@ jest.mock('../startProvisioning', () => ({
   startProvisioning: jest.fn()
 }));
 
-jest.mock('../tokenStore', () => ({
-  tokenStore: { write: jest.fn() }
-}));
+jest.mock('../sessionRecord/sessionRecord', () => {
+  const actual = jest.requireActual<
+    typeof import('../sessionRecord/sessionRecord')
+  >('../sessionRecord/sessionRecord');
+
+  return {
+    ...actual,
+    sessionRecordStore: { write: jest.fn() }
+  };
+});
 
 const complete = jest.mocked(completeProvisioning);
 const start = jest.mocked(startProvisioning);
-const writeToken = jest.mocked(tokenStore.write);
+const writeRecord = jest.mocked(sessionRecordStore.write);
 const mockReplace = jest.mocked(router.replace);
 const mockParams = jest.mocked(useLocalSearchParams);
 
@@ -185,16 +192,33 @@ describe('the provisioning callback', () => {
     ).toBeOnTheScreen();
   });
 
-  it('writes the token and returns to the library on success', async () => {
-    complete.mockResolvedValue({ id: 'token-id', secret: 'token-secret' });
+  it('writes the record and returns to the library on success', async () => {
+    complete.mockResolvedValue({
+      access: {
+        id: 'token-id',
+        secret: 'token-secret',
+        expires_at: '2026-11-02T00:00:00.000Z',
+        expires_in: 43_200
+      },
+      refresh: {
+        token: 'refresh-token',
+        expires_at: '2027-04-30T12:00:00.000Z',
+        expires_in: 15_552_000
+      }
+    });
 
     await renderCallback();
 
     await waitFor(() => {
-      expect(writeToken).toHaveBeenCalledWith({
-        id: 'token-id',
-        secret: 'token-secret'
-      });
+      expect(writeRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accessId: 'token-id',
+          accessSecret: 'token-secret',
+          accessDeadline: expect.any(Number),
+          refreshToken: 'refresh-token',
+          refreshExpiresAt: '2027-04-30T12:00:00.000Z'
+        })
+      );
       expect(mockReplace).toHaveBeenCalledWith('/');
     });
   });

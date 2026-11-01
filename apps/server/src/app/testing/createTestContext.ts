@@ -47,9 +47,9 @@ export interface TestContextOptions {
   loggerInstance?: FastifyServerOptions['loggerInstance'];
   /* The token issuer: a test passes a fake so no Pangolin instance is needed. */
   pangolin?: IPangolinClient;
-  /* The provisioning clock: a test moves it to reach expiry and the rate
-   * limit's window without waiting. */
-  provisioningNow?: () => number;
+  /* The credential clock: a test moves it to reach expiry, the rate limit's
+   * window and the lifetimes without waiting. */
+  now?: () => number;
 }
 
 export async function createTestContext(
@@ -84,7 +84,7 @@ export async function createTestContext(
     sseHeartbeatMs: options.sseHeartbeatMs,
     loggerInstance: options.loggerInstance,
     pangolin: options.pangolin,
-    provisioningNow: options.provisioningNow,
+    now: options.now,
     events
   });
   await app.ready();

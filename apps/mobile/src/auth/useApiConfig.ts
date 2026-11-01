@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 
 import { apiBaseUrl } from '../api/apiBaseUrl';
 import type { AccessToken } from '../api/apiClient/ApiClient';
+import {
+  accessTokenOf,
+  sessionRecordStore
+} from './sessionRecord/sessionRecord';
 import { SessionStatus, useSessionStore } from './sessionStore/sessionStore';
-import { tokenStore } from './tokenStore';
 
 export interface ApiConfig {
   readonly baseUrl: string;
@@ -24,9 +27,9 @@ export function useApiConfig(): ApiConfig | null {
 
     let active = true;
 
-    void tokenStore.read().then(token => {
-      if (active && token !== null) {
-        setConfig({ baseUrl: apiBaseUrl(), token });
+    void sessionRecordStore.read().then(record => {
+      if (active && record !== null) {
+        setConfig({ baseUrl: apiBaseUrl(), token: accessTokenOf(record) });
       }
     });
 

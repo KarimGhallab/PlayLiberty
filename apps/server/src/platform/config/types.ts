@@ -33,6 +33,11 @@ export interface Config {
   pangolin: PangolinConfig | null;
   /* The exact callbacks provisioning may redirect to. */
   mobileRedirectUris: string[];
+  /* The mobile credential lifetimes, in seconds: the access token, the sliding
+   * refresh window, and the family's absolute cap. */
+  mobileAccessTokenLifetimeSeconds: number;
+  mobileRefreshTokenLifetimeSeconds: number;
+  mobileFamilyLifetimeSeconds: number;
   /* The egress agent's socket: the host owns it, the pod only connects. */
   egressAgentSocket: string;
   /* The rotation policy: failures before a switch, the drain bound, and the

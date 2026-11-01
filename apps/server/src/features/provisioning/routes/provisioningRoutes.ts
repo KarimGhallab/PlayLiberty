@@ -16,10 +16,7 @@ import {
 } from '../../../shared/problem.js';
 import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 
-/* 180 days, the token life the architecture records. */
-export const MOBILE_TOKEN_LIFETIME_SECONDS = 180 * 24 * 60 * 60;
-
-const TOKEN_TITLE = 'PlayLiberty mobile';
+import { issueMobileSession } from '../service/credentialService.js';
 
 function sendInvalidGrant(reply: Parameters<typeof sendProblem>[0]) {
   return sendProblem(reply, {
@@ -164,15 +161,21 @@ export function registerProvisioningRoutes(
     }
 
     try {
-      const token = await context.pangolin.mintResourceAccessToken({
+      const pair = await issueMobileSession({
+        database: context.database,
+        pangolin: context.pangolin,
+        lifetimes: {
+          accessSeconds: context.config.mobileAccessTokenLifetimeSeconds,
+          refreshSeconds: context.config.mobileRefreshTokenLifetimeSeconds,
+          familySeconds: context.config.mobileFamilyLifetimeSeconds
+        },
         pangolinUserId: entry.pangolinUserId,
-        validForSeconds: MOBILE_TOKEN_LIFETIME_SECONDS,
-        title: TOKEN_TITLE
+        now: context.now
       });
 
       auditAllowed(request, entry.pangolinUserId);
 
-      return reply.send(token);
+      return reply.send(pair);
     } catch (error) {
       request.log.error({ err: error }, 'the token could not be minted');
       auditRefused(request, 'token_mint_failed', entry.pangolinUserId);

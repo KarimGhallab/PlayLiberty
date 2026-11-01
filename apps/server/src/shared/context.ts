@@ -27,4 +27,7 @@ export interface AppContext {
   pangolin: IPangolinClient | null;
   /* The short-lived provisioning codes and the exchange's rate limit. */
   provisioning: IProvisioningCodes;
+  /* The one clock the credential lifetimes are read from, so a test can move
+   * time without waiting. */
+  now: () => number;
 }
