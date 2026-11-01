@@ -29,7 +29,8 @@ either state and leaves the device signed in. The pin flow takes `PIN_PLAYLIST`,
 it finds that card by name in the rest group and leaves it unpinned when it ends. The track-link flow takes
 `PLAYLIST_ID`, `TRACK_ID` and `TRACK_TITLE`; the title names the track in the bar and its row, so keep it simple
 enough to be a selector. Pick a track above the playlist's last row and long enough for the copy, because the last
-row's lane can sit under the player bar.
+row's lane can sit under the player bar. The egress flow takes `EGRESS_STANDBY`, which must name a pool exit that is
+a standby; the device must be signed in as an admin and the host's egress agent reachable.
 
 ## The cover fixture
 
@@ -46,6 +47,12 @@ adb -s emulator-5554 shell am broadcast -a android.intent.action.MEDIA_SCANNER_S
 ```
 
 `touch` makes the copy newer than the library's other photos, so the picker draws it first.
+
+## The egress fixture
+
+`egress-switch` needs an admin account, a reachable egress agent and a pool with at least one standby. It taps the
+header's VPN settings door, switches `EGRESS_STANDBY`, and waits for the active mark to move to that exit. A run
+leaves the exit active; pass the other exit next time to switch back.
 
 ## The physical background journey
 
@@ -71,6 +78,7 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 | `gallery-pin`         | a card is pinned, moves under Pinned, and is unpinned again              |
 | `gallery-cover`       | a cover is chosen, framed, saved, seen again and removed                 |
 | `link-track`          | a track link opens its playlist at the track and copies it               |
+| `egress-switch`       | an admin switches a standby and its active mark moves                    |
 | `detail-play`         | a row plays and its own row says it is playing                           |
 | `detail-arrange`      | the sort round-trips, Failed draws its body, then All returns the list   |
 | `detail-remove-undo`  | Remove defers, Undo restores the row, and the device ends in the gallery |
@@ -124,7 +132,7 @@ playlist with its level selected, and appends directory pages as the list reache
 
 ## Scope
 
-These flows cover the shell, the gallery's four critical journeys, the detail's five, the player's journey, and
-the provisioning journey. The screen-off background journey is the device-only driver in `../.maestro-device`; it
-leaves the phone locked, so it is run separately. The track link belongs to `30` and the egress console to `31`; each
-of those specs owns its own journey.
+These flows cover the shell, the gallery's four critical journeys, the detail's five, the player's journey, the
+provisioning journey, the track link and the egress console's switch. The screen-off background journey is the
+device-only driver in `../.maestro-device`; it leaves the phone locked, so it is run separately. The track link
+belongs to `30` and the egress console to `31`.

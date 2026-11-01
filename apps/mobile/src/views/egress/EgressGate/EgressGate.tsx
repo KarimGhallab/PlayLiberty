@@ -1,0 +1,64 @@
+import { router } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+
+import { UserRole } from '@playliberty/contracts';
+import { useI18n } from '@playliberty/i18n';
+
+import NotFound from '../../../shared/components/NotFound/NotFound';
+import Screen from '../../../shared/components/Screen/Screen';
+import Spinner from '../../../shared/components/Spinner/Spinner';
+import { tokenColor } from '../../../shared/styles/tokens';
+
+import { useAccount } from '../../../api/useAccount';
+import { SessionStatus } from '../../../auth/sessionStore/sessionStore';
+import { useSession } from '../../../auth/useSession';
+import EgressScreen from '../EgressScreen/EgressScreen';
+
+/* The console is operator information: the account read's role is the door,
+ * and everyone else gets the same not-found body a missing route would give. */
+export default function EgressGate() {
+  const { t } = useI18n();
+  const { status } = useSession();
+  const account = useAccount(status === SessionStatus.SignedIn);
+  const back = (): void => {
+    router.replace('/');
+  };
+
+  if (status === SessionStatus.Loading) {
+    return (
+      <Screen testID="egress-gate-loading" title={t('egress.title')}>
+        <View style={styles.loading}>
+          <Spinner color={tokenColor('muted')} />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (status === SessionStatus.SignedOut) {
+    return <NotFound onBack={back} />;
+  }
+
+  if (account.isPending) {
+    return (
+      <Screen testID="egress-gate-loading" title={t('egress.title')}>
+        <View style={styles.loading}>
+          <Spinner color={tokenColor('muted')} />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (account.data?.role !== UserRole.Admin) {
+    return <NotFound onBack={back} />;
+  }
+
+  return <EgressScreen />;
+}
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+});

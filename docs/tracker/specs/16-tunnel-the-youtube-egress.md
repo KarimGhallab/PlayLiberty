@@ -38,7 +38,7 @@ tunnel never enters it.
 The server treats an exit failure as a distinct condition. Failures are counted
 per config, the pool rotates on consecutive failures, and an exhausted pool
 refuses the sync with a `blocked` state instead of a failed run and a screen of
-failed rows. An admin-only route in the web client lists the pool and switches
+failed rows. An admin-only route in each client lists the pool and switches
 or checks an exit by hand.
 
 ## Implementation Decisions

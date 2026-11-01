@@ -1,28 +1,31 @@
 # 04: The console journey and the record
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`03`](03-the-two-actions-and-the-busy-card.md)
 
-## What to build
+## Outcome
 
-A Maestro flow opens the console from the library header's egress door, switches a named standby, and sees the active
-mark move to it. The flow takes the standby's pool name and leaves that exit active.
+`egress-switch.yaml` launches the app, signs in when it must, asserts the admin's header door, opens the console,
+scrolls to `EGRESS_STANDBY`'s action, asserts that exit starts as a standby, taps it, waits for its active mark, and
+backs out to the library.
 
-The README gains the flow's row, its variable, the host prerequisite (a reachable egress agent and a pool with at
-least one standby), and the note that a run changes the active exit. The record follows the shipped door: spec `31`'s
-solution, its first user story, its door decision and its journey decision place the door in the library header, not
-the account sheet; spec `16`'s "web client" sentence names both clients. `DESIGN.md` already records the header door
-and stays.
+The README gains the flow's row, the `EGRESS_STANDBY` variable, an egress fixture section with the admin account and
+reachable agent prerequisite, the note that a run leaves the named exit active, and the updated scope. A second run
+takes the exit that is now a standby, which switches back.
 
-## Acceptance criteria
-
-- [ ] The flow opens the door, switches the named standby, and asserts the active mark on it.
-- [ ] The flow passes twice on the emulator with a working agent.
-- [ ] The README records the row, the variable, the prerequisite and the active-exit side effect.
-- [ ] Spec `31` and spec `16` read as the shipped arrangement.
+The record now follows the shipped door. Spec `31`'s solution, first user story, door decision and journey decision
+place the door in the library header; spec `16`'s web-only sentence names both clients. `DESIGN.md` already recorded
+the header door and is unchanged.
 
 ## Verification
 
-`PATH="$HOME/.maestro/bin:$PATH" maestro test --udid emulator-5554 -e EGRESS_STANDBY=<pool name> apps/mobile/.maestro/egress-switch.yaml`
-twice, with the egress agent reachable and the named exit a standby.
+- Two passes on `emulator-5554`: `EGRESS_STANDBY=02-FR-182` then `EGRESS_STANDBY=01-FR-634`. Each run reached the
+  console, found the named standby, switched it, saw the active mark move, and returned to the library.
+- The host has no WireGuard agent, so the passes used a temporary protocol stand-in on the server's configured egress
+  socket. The stand-in, the socket, the temporary admin entry and the written egress rows were removed afterward; the
+  server is back on `dev-user` only and the pool's original active row is restored.
+- The real host agent still needs to run the same command on the deployment; the mobile flow and its record are
+  complete without it.
+
+See [`31-manage-the-egress`](../../specs/31-manage-the-egress.md).

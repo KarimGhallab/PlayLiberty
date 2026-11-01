@@ -7,12 +7,12 @@ The `/egress` route stub and the admin's door in the library header already ship
 country lookup, the pool read behind the route's guard, the two actions, and the journey. The door stays in the
 library header; ticket `04` corrects spec `31`'s account-sheet sentences to match it.
 
-| Ticket                                                                                                          | Status          | Blocked by                                                     | Blocks                                                         |
-| --------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
-| [`01-the-country-lookup-is-one-module`](01-the-country-lookup-is-one-module.md)                                 | resolved        | none                                                           | [`02`](02-the-console-reads-the-pool-behind-the-admin-gate.md) |
-| [`02-the-console-reads-the-pool-behind-the-admin-gate`](02-the-console-reads-the-pool-behind-the-admin-gate.md) | ready-for-agent | [`01`](01-the-country-lookup-is-one-module.md)                 | [`03`](03-the-two-actions-and-the-busy-card.md)                |
-| [`03-the-two-actions-and-the-busy-card`](03-the-two-actions-and-the-busy-card.md)                               | ready-for-agent | [`02`](02-the-console-reads-the-pool-behind-the-admin-gate.md) | [`04`](04-the-console-journey-and-the-record.md)               |
-| [`04-the-console-journey-and-the-record`](04-the-console-journey-and-the-record.md)                             | ready-for-agent | [`03`](03-the-two-actions-and-the-busy-card.md)                | none                                                           |
+| Ticket                                                                                                          | Status   | Blocked by                                                     | Blocks                                                         |
+| --------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| [`01-the-country-lookup-is-one-module`](01-the-country-lookup-is-one-module.md)                                 | resolved | none                                                           | [`02`](02-the-console-reads-the-pool-behind-the-admin-gate.md) |
+| [`02-the-console-reads-the-pool-behind-the-admin-gate`](02-the-console-reads-the-pool-behind-the-admin-gate.md) | resolved | [`01`](01-the-country-lookup-is-one-module.md)                 | [`03`](03-the-two-actions-and-the-busy-card.md)                |
+| [`03-the-two-actions-and-the-busy-card`](03-the-two-actions-and-the-busy-card.md)                               | resolved | [`02`](02-the-console-reads-the-pool-behind-the-admin-gate.md) | [`04`](04-the-console-journey-and-the-record.md)               |
+| [`04-the-console-journey-and-the-record`](04-the-console-journey-and-the-record.md)                             | resolved | [`03`](03-the-two-actions-and-the-busy-card.md)                | none                                                           |
 
 ## Conventions
 

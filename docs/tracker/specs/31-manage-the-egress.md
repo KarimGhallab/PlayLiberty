@@ -1,6 +1,6 @@
 # Manage the egress on mobile
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement
@@ -15,7 +15,7 @@ and a tooltip that names an exit's country has no mobile analogue.
 
 ## Solution
 
-An egress route behind the admin gate, reached from the account sheet. It draws one card per exit with its name, its
+An egress route behind the admin gate, reached from the library header's door. It draws one card per exit with its name, its
 endpoint, its status word and tone, when it was last attempted and the country its address resolves to, plus the one
 action that row allows: Switch on a standby and Check on the active exit. One action runs at a time, the pressed card
 is busy, and the pool's agent is reported at the top as reachable or down. A non-admin never sees the door and the
@@ -23,7 +23,7 @@ route answers the not-found body.
 
 ## User Stories
 
-1. As an admin, I want the egress console from my account sheet, so that I can reach it from a phone.
+1. As an admin, I want the egress console from my library header, so that I can reach it from a phone.
 2. As an admin, I want to see every exit, so that I know what the pool holds.
 3. As an admin, I want each exit's endpoint, so that I know where it goes.
 4. As an admin, I want each exit's status, so that I know which one is healthy.
@@ -52,8 +52,8 @@ route answers the not-found body.
 
 ## Implementation Decisions
 
-- **The route is pushed from the account sheet and exists only for an admin.** The door is drawn from the account
-  read's role, and the route's guard answers the not-found body to everyone else. `Decided here:` the web's rule,
+- **The route is pushed from the library header's door and exists only for an admin.** The door is drawn from the
+  account read's role, and the route's guard answers the not-found body to everyone else. `Decided here:` the web's rule,
   kept because the console is operator information and a household account has no action to take.
 - **The pool is cards, one per exit.** Each card draws the name, the endpoint, the status word with its tone, the last
   attempt date and the country the address resolves to, with the flag glyph beside the name. The active card shows
@@ -83,8 +83,8 @@ route answers the not-found body.
   actions, the busy state, the agent's two states, the empty and failure states, and the two toasts. Prior art is the
   web's `EgressPage` tests.
 - **The guard is tested at the router's seam**: an admin reaches the route, a non-admin gets not-found.
-- **The critical journey is a Maestro flow**: open the console from the account sheet, switch to a standby, and see
-  the new active card.
+- **The critical journey is a Maestro flow**: open the console from the library header's door, switch to a standby,
+  and see the new active card.
 - **Cut tests:** no test of the flag glyph, the card's tone, or the cooldown's timing.
 
 ## Out of Scope
