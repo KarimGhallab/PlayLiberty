@@ -36,14 +36,15 @@ The only external service, reached through yt-dlp behind the `packages/youtube` 
 
 nginx serves the web client and proxies `/api` and `/healthz` to the server. It is the single public origin on `pangolin_frontend`; the server is never reached by the browser or the phone directly. nginx forwards the Pangolin `Remote-*` headers and the client's `X-PlayLiberty-Client` header upstream, and the server enforces both.
 
-Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except `POST /auth/exchange`, which is the mobile app's credential-less first contact and is protected by a one-time PKCE-bound code (see [Mobile provisioning](#mobile-provisioning)).
+Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except `POST /auth/exchange` and `POST /auth/refresh`, the mobile app's two exact, method-scoped exemptions. The first is protected by a one-time PKCE-bound code, the second by the rotating refresh token in its body (see [Mobile provisioning](#mobile-provisioning)).
 
 ## Mobile access, end to end
 
 1. The app generates `state` and a PKCE verifier and opens `GET /provision` in an in-app browser.
 2. Pangolin SSO authenticates the browser; the server sees `Remote-User` and mints a single-use, 60-second code bound to the user, the redirect URI, and the PKCE challenge, then redirects to the app.
-3. The app posts the code and verifier to `POST /auth/exchange`, which verifies PKCE, consumes the code atomically, and mints a 180-day per-user Pangolin access token.
-4. The app stores the token in the platform keystore and sends it as `P-Access-Token-Id` plus `P-Access-Token`; Badger injects `Remote-*` and the origin behaves exactly as it does for the browser.
+3. The app posts the code and verifier to `POST /auth/exchange`, which verifies PKCE, consumes the code atomically, and mints a short-lived per-user Pangolin access token plus a refresh family.
+4. The app stores one credential record: the access pair with a local deadline, and the refresh token. Before the access token lapses it renews silently at `POST /auth/refresh`, which rotates the pair. A replayed consumed token inside a 30-second grace window gets the same pair; a replay later revokes the family.
+5. Requests carry the access pair as `P-Access-Token-Id` plus `P-Access-Token`; Badger injects `Remote-*` and the origin behaves exactly as it does for the browser. Sign-out asks the server to revoke the family, then clears the device, best effort.
 
 ## Sync, end to end
 
@@ -144,11 +145,11 @@ One Node 26 process built with Fastify 5 and compiled by `tsc`, owning a local S
 
 ### The mobile stack
 
-`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.2, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The access token lives in `expo-secure-store`. Distribution in v1 is a development build and a sideloaded Android APK; the code stays cross-platform but iOS is not built or tested.
+`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.2, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The credential record, the access pair and the refresh token, lives in `expo-secure-store`; the access token renews silently before its deadline. Distribution in v1 is a development build and a sideloaded Android APK; the code stays cross-platform but iOS is not built or tested.
 
 ### Mobile provisioning
 
-The mobile client authenticates with a per-user Pangolin resource access token, obtained through the browser flow in [Mobile access, end to end](#mobile-access-end-to-end): PKCE, a single-use 60-second code, `POST /auth/exchange` exempt from Pangolin SSO, and a 180-day token stored in `expo-secure-store`. The long-lived token never travels in a URL; the redirect carries a single-use code bound by PKCE to the app instance. On iOS `ASWebAuthenticationSession` guarantees the callback reaches only the calling app; on Android in Expo SDK 57 there is no equivalent guarantee, so the safety rests on the code plus PKCE, trying a verified HTTPS App Link first and falling back to a reverse-DNS custom scheme.
+The mobile client authenticates with a per-user Pangolin resource access token, obtained through the browser flow in [Mobile access, end to end](#mobile-access-end-to-end): PKCE, a single-use 60-second code, and `POST /auth/exchange` exempt from Pangolin SSO. The exchange answers a short access token and a rotating refresh token; the access token is renewed silently at `POST /auth/refresh`, the second exact, method-scoped exemption, and the server stores only the refresh token's hash. The refresh token never travels in a URL; the redirect carries a single-use code bound by PKCE to the app instance. Sign-out and reuse revoke the family and every unexpired access token at the edge. On iOS `ASWebAuthenticationSession` guarantees the callback reaches only the calling app; on Android in Expo SDK 57 there is no equivalent guarantee, so the safety rests on the code plus PKCE, trying a verified HTTPS App Link first and falling back to a reverse-DNS custom scheme.
 
 ### Mutating requests carry a client header and pass origin checks
 

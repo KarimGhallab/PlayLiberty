@@ -19,8 +19,8 @@ the keyboard contract are the web's accessibility answer. React Native has none 
 assumed them would invent a different answer on each screen.
 
 The account surface is the third gap. The web has none: identity is the edge's, sign-out is the edge's, and the
-language control sits in the two headers. The mobile app carries its own token for 180 days, so it needs a way to
-forget it, and the egress console needs a way in for an admin. That surface does not exist on the web, and the
+language control sits in the two headers. The mobile app carries its own credential, so it needs a way to
+forget it and to end it at the edge, and the egress console needs a way in for an admin. That surface does not exist on the web, and the
 screen inventory decision that removed it was taken before the token and the egress console were in scope.
 
 ## Solution
@@ -89,11 +89,10 @@ device instead of a browser.
   control, Sign out, and the egress door for an admin only.** `Decided here:` the sheet is the one surface the web
   does not have, and it exists because the app owns a token the edge does not. It is a settings surface in
   everything but name, and this spec reverses the inventory decision that removed the account screen.
-- **Sign out forgets the token on the device and returns to the signed-out state.** It clears the stored token, the
-  language is kept, and the query cache is cleared so no collaborator's data survives the handover. It calls no
-  server route, because the app has no revocation path: the token remains valid on the instance until it expires.
-  `Decided here:` the consequence is recorded rather than solved, and revocation through the Pangolin Integration
-  API is the feature that would add a call here.
+- **Sign out revokes the credential at the edge and forgets it on the device.** It asks the server to revoke the
+  refresh family, best effort, then clears the stored record, keeps the language, and clears the query cache so no
+  collaborator's data survives the handover. A lost network never blocks the local clear. `Decided here:` the local
+  clear is the guarantee; the revocation is spec `33`'s, and it is what cuts a copied credential off.
 - **The language is resolved once per launch, in the fixed order the shared package already owns:** an explicit
   choice, then the device's preferred locales matched by base, then English. There is no `languagechange`
   listener and no locale in a route. The device's tags come from `expo-localization`.
@@ -182,7 +181,7 @@ device instead of a browser.
 - iOS builds and iOS verification. The code stays cross-platform; the parity claim is Android's.
 - A tablet or landscape arrangement, a tab bar, a drawer, and a sidebar.
 - A per-account language preference, and any language beyond English and French.
-- Token revocation on the server, and any server-issued device-token scheme.
+- Any server-issued device-token scheme; token revocation moved to spec `33`.
 - Push notifications other than the playback notification, which spec `24` owns.
 - A settings screen beyond the account sheet's items, and any preference field the contracts do not have.
 - Analytics, crash reporting, and any third-party telemetry.

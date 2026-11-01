@@ -1,32 +1,39 @@
 # 08: The record follows the refresh model
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`07`](07-expired-credentials-are-pruned-and-the-key-can-delete.md)
 
 ## Outcome
 
-The earlier records stop describing one 180-day token. In spec `20`, the lifetime sentence, the exchange decision
-that mints a 180-day token, and the out-of-scope clauses that exclude refresh and revocation follow the pair and its
-family. Its claim that the life is a configuration change becomes true and points at the three lifetime values. Spec
-`19`'s sentence that the app has no revocation path is corrected: sign-out now revokes the family.
+Spec `20` now describes the pair and its two paths. Its solution exchanges the code for a short access token and a
+rotating refresh token stored as one record, and names the exchange and the refresh as the two exact, method-scoped
+exemptions. Stories 10, 15 and 23 follow: a refused credential, the credential paths as the only paths outside SSO,
+and sign-out ending the credential at the edge. The exchange decision mints a short-lived token, answers the pair and
+the first refresh token, and points at spec `33` for rotation, reuse and revocation. The record decision replaces the
+"token pair" wording, the testing decision writes the session record, the lifetime disappears from the cut tests,
+the out-of-scope line points refresh and revocation at `33`, and the further notes name
+`MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS`, `MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS` and `MOBILE_FAMILY_LIFETIME_SECONDS`
+as the configuration that owns the lives.
 
-`ARCHITECTURE.md`'s mobile provisioning section and mobile stack paragraph describe the pair, the silent renewal, the
-refresh family and the second exact SSO exemption. The spec tracker's row for `33` is marked resolved and links this
-ticket set. Every other provisioning decision stands.
+Spec `19` no longer says the app carries one token for 180 days or that it has no revocation path. Its sign-out
+decision asks the server to revoke the refresh family best effort, then clears locally, and its out-of-scope line
+points revocation at `33`.
 
-## Acceptance criteria
+`ARCHITECTURE.md` records both exemptions at the edge, the pair, silent renewal, the 30-second grace and reuse
+revocation, the one credential record, and sign-out revocation. Its mobile access flow grew the renewal and
+sign-out steps, and the mobile stack and provisioning paragraphs describe the record and the family instead of one
+180-day token.
 
-- [ ] Spec `20` no longer claims a 180-day token, and its refresh and revocation out-of-scope clauses are gone.
-- [ ] Spec `19` no longer says the app has no revocation path.
-- [ ] `ARCHITECTURE.md` describes the pair, the renewal, the family and both exact exemptions.
-- [ ] The spec tracker records `33` as resolved with its ticket set.
+Spec `33` is marked resolved in its own file and in the spec tracker, whose row links this ticket set. Every other
+provisioning decision stands.
 
 ## Verification
 
-- A search for the old lifetime and revocation claims across `docs/` finds no stale statement outside the superseded
-  record of this spec.
-- Every link added resolves.
-- No em dash is introduced.
+- Searches across `docs/` for the old lifetime, "the only path outside SSO", "no revocation path" and
+  "re-provisions when it is refused" find no stale statement; the remaining 180-day text is spec `33`'s own record of
+  the policy it replaced.
+- Every relative link in the edited files resolves.
+- No em dash was introduced.
 
 See [`33-refresh-mobile-access`](../../specs/33-refresh-mobile-access.md).
