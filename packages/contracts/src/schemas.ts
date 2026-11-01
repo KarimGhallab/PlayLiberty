@@ -258,6 +258,11 @@ export const CredentialLifetimeSchema = z.object({
   expires_in: z.number().int().positive()
 });
 
+/* The refresh request: the token alone, never in a URL. */
+export const RefreshInputSchema = z.object({
+  refresh_token: z.string().min(1)
+});
+
 /* The access token is the id and secret Pangolin expects in its two headers;
  * the refresh token is the opaque value only the app and the server hold. */
 export const MobileTokenSchema = z.object({

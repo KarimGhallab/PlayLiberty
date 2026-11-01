@@ -22,6 +22,9 @@ import { EventBus } from '../shared/events/eventBus/EventBus.js';
 import { sendProblem } from '../shared/problem.js';
 
 import { registerAccountRoutes } from '../features/accounts/routes/accountRoutes.js';
+import { PangolinClient } from '../features/auth/pangolin/PangolinClient.js';
+import { registerAuthRoutes } from '../features/auth/routes/authRoutes/authRoutes.js';
+import { ProvisioningService } from '../features/auth/service/ProvisioningService.js';
 import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
@@ -34,9 +37,6 @@ import {
 } from '../features/events/routes/eventRoutes.js';
 import { registerCoverRoutes } from '../features/playlists/cover/routes/coverRoutes.js';
 import { registerPlaylistRoutes } from '../features/playlists/routes/playlistRoutes.js';
-import { PangolinClient } from '../features/provisioning/pangolin/PangolinClient.js';
-import { registerProvisioningRoutes } from '../features/provisioning/routes/provisioningRoutes.js';
-import { ProvisioningService } from '../features/provisioning/service/ProvisioningService.js';
 import {
   pruneOrphanCovers,
   pruneOrphanTracks
@@ -220,7 +220,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   registerHealthRoutes(app, context);
-  registerProvisioningRoutes(app, context);
+  registerAuthRoutes(app, context);
 
   await app.register(
     async api => {

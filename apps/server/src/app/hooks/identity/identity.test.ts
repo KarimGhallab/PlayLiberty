@@ -168,6 +168,40 @@ describe('the identity hook', () => {
     }
   );
 
+  it('lets the refresh POST through without identity', async () => {
+    context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+    const response = await context.app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      headers: {
+        'content-type': 'application/json',
+        'x-playliberty-edge': 'the-edge-secret',
+        'x-playliberty-client': 'mobile'
+      },
+      payload: JSON.stringify({ refresh_token: 'unknown' })
+    });
+
+    /* No Integration API is configured, so the route's own 503 is the proof the
+     * hook let the request reach it. */
+    expect(response.statusCode).toBe(503);
+  });
+
+  it.each(['GET', 'PUT'] as const)(
+    'refuses %s on the refresh path without identity',
+    async method => {
+      context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+      const response = await context.app.inject({
+        method,
+        url: '/auth/refresh',
+        headers: { 'x-playliberty-edge': 'the-edge-secret' }
+      });
+
+      expect(response.statusCode).toBe(401);
+    }
+  );
+
   it('still exempts the health endpoints when an assertion is configured', async () => {
     context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
 

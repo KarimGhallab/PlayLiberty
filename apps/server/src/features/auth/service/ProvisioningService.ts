@@ -46,7 +46,7 @@ export class ProvisioningService implements IProvisioningCodes {
     return entry.expiresAt <= this._now();
   }
 
-  allowExchange(key: string): boolean {
+  allowAttempt(key: string): boolean {
     const now = this._now();
     const recent = (this._attempts.get(key) ?? []).filter(
       attempt => now - attempt < RATE_LIMIT_WINDOW_MS

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type {
   IPangolinClient,
   MintResourceAccessTokenInput
-} from '../../../shared/pangolin.js';
+} from '../../../../shared/pangolin.js';
 
-import { createTestContext } from '../../../app/testing/createTestContext.js';
+import { createTestContext } from '../../../../app/testing/createTestContext.js';
 
 import { issueMobileSession } from './credentialService.js';
 

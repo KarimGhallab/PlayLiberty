@@ -1,34 +1,45 @@
 import { createHash } from 'node:crypto';
 
+import { eq } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { MobileToken } from '@playliberty/contracts';
 import { ProblemCode, UserRole } from '@playliberty/contracts';
 
 import type {
   IPangolinClient,
   MintResourceAccessTokenInput
-} from '../../../shared/pangolin.js';
+} from '../../../../shared/pangolin.js';
 
-import type { TestContext } from '../../../app/testing/createTestContext.js';
-import { createTestContext } from '../../../app/testing/createTestContext.js';
-import type { LogLine } from '../../../app/testing/recordingLogger.js';
-import { recordingLogger } from '../../../app/testing/recordingLogger.js';
+import type { TestContext } from '../../../../app/testing/createTestContext.js';
+import { createTestContext } from '../../../../app/testing/createTestContext.js';
+import type { LogLine } from '../../../../app/testing/recordingLogger.js';
+import { recordingLogger } from '../../../../app/testing/recordingLogger.js';
 
 import {
   accessTokens,
   accounts,
   refreshFamilies,
   refreshTokens
-} from '../../../platform/database/schema.js';
-import { PangolinError } from '../pangolin/PangolinClient.js';
-import { challengeFor } from '../service/ProvisioningService.js';
+} from '../../../../platform/database/schema.js';
+import { PangolinError } from '../../pangolin/PangolinClient.js';
+import { challengeFor } from '../../service/ProvisioningService.js';
 
 /* The RFC 7636 example: the verifier and its S256 challenge. */
 const VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 const CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 const REDIRECT_URI = 'dev.playliberty.app://provision';
 const STATE = 'state-0123456789abcdef';
+const NOW = Date.parse('2026-11-01T12:00:00.000Z');
+
+/* Short lives keep expiry reachable in the suite; the config's own defaults are
+ * proven there, not here. */
+const LIFETIMES = {
+  MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: '3600',
+  MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS: '86400',
+  MOBILE_FAMILY_LIFETIME_SECONDS: '604800'
+};
 
 type Injected = Awaited<ReturnType<TestContext['app']['inject']>>;
 
@@ -45,38 +56,36 @@ class FakePangolin implements IPangolinClient {
       throw new PangolinError('Pangolin is down');
     }
 
-    return { id: 'token-id', secret: 'token-secret' };
+    const count = this.calls.length;
+
+    return { id: `token-${count}`, secret: `secret-${count}` };
   }
 }
 
 let context: TestContext | undefined;
+let now = NOW;
 
 afterEach(async () => {
   await context?.cleanup();
   context = undefined;
+  now = NOW;
 });
 
-async function start(
-  env: NodeJS.ProcessEnv = {},
-  pangolin: IPangolinClient = new FakePangolin(),
-  now?: () => number
-): Promise<TestContext> {
-  context = await createTestContext(
-    { MOBILE_REDIRECT_URIS: REDIRECT_URI, ...env },
-    { pangolin, now }
-  );
-
-  return context;
+interface StartOptions {
+  readonly env?: NodeJS.ProcessEnv;
+  readonly pangolin?: IPangolinClient;
+  readonly logger?: FastifyBaseLogger;
+  readonly now?: () => number;
 }
 
-async function startWithLogger(
-  logger: FastifyBaseLogger,
-  pangolin: IPangolinClient = new FakePangolin(),
-  now?: () => number
-): Promise<TestContext> {
+async function start(options: StartOptions = {}): Promise<TestContext> {
   context = await createTestContext(
-    { MOBILE_REDIRECT_URIS: REDIRECT_URI },
-    { pangolin, loggerInstance: logger, now }
+    { MOBILE_REDIRECT_URIS: REDIRECT_URI, ...LIFETIMES, ...options.env },
+    {
+      pangolin: options.pangolin ?? new FakePangolin(),
+      loggerInstance: options.logger,
+      now: options.now ?? (() => now)
+    }
   );
 
   return context;
@@ -147,6 +156,29 @@ function exchangeFrom(
   });
 }
 
+function refresh(
+  testContext: TestContext,
+  body: unknown,
+  options: { forwardedFor?: string; assertion?: string } = {}
+): Promise<Injected> {
+  return testContext.app.inject({
+    method: 'POST',
+    url: '/auth/refresh',
+    remoteAddress: '127.0.0.1',
+    headers: {
+      'content-type': 'application/json',
+      'x-playliberty-client': 'mobile',
+      ...(options.forwardedFor === undefined
+        ? {}
+        : { 'x-forwarded-for': options.forwardedFor }),
+      ...(options.assertion === undefined
+        ? {}
+        : { 'x-playliberty-edge': options.assertion })
+    },
+    payload: JSON.stringify(body)
+  });
+}
+
 function mintedCode(response: Injected): { code: string; state: string } {
   const url = new URL(String(response.headers['location']));
 
@@ -154,6 +186,18 @@ function mintedCode(response: Injected): { code: string; state: string } {
     code: url.searchParams.get('code') ?? '',
     state: url.searchParams.get('state') ?? ''
   };
+}
+
+/** The whole first provisioning: the code and its verifier for the pair. */
+async function issuePair(testContext: TestContext): Promise<MobileToken> {
+  const { code } = mintedCode(await provision(testContext));
+  const response = await exchange(testContext, {
+    code,
+    code_verifier: VERIFIER,
+    redirect_uri: REDIRECT_URI
+  });
+
+  return response.json() as MobileToken;
 }
 
 function accountRows(testContext: TestContext) {
@@ -189,8 +233,8 @@ function expectNoSecrets(lines: LogLine[], code: string): void {
 
   expect(logged).not.toContain(code);
   expect(logged).not.toContain(VERIFIER);
-  expect(logged).not.toContain('token-id');
-  expect(logged).not.toContain('token-secret');
+  expect(logged).not.toContain('token-1');
+  expect(logged).not.toContain('secret-1');
 }
 
 describe('GET /provision', () => {
@@ -255,7 +299,7 @@ describe('GET /provision', () => {
   });
 
   it('answers 503 without creating an account when no callback is configured', async () => {
-    const testContext = await start({ MOBILE_REDIRECT_URIS: '' });
+    const testContext = await start({ env: { MOBILE_REDIRECT_URIS: '' } });
 
     const response = await provision(testContext);
 
@@ -283,16 +327,8 @@ describe('GET /provision', () => {
 
 describe('POST /auth/exchange', () => {
   it('trades a code and its verifier for a token pair bound to the user', async () => {
-    const nowMs = Date.parse('2026-11-01T12:00:00.000Z');
     const pangolin = new FakePangolin();
-    const testContext = await start(
-      {
-        MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: '3600',
-        MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS: '86400'
-      },
-      pangolin,
-      () => nowMs
-    );
+    const testContext = await start({ pangolin });
     const { code } = mintedCode(await provision(testContext));
 
     const response = await exchange(testContext, {
@@ -308,8 +344,8 @@ describe('POST /auth/exchange', () => {
     expect(response.statusCode).toBe(200);
     expect(body).toMatchObject({
       access: {
-        id: 'token-id',
-        secret: 'token-secret',
+        id: 'token-1',
+        secret: 'secret-1',
         expires_at: '2026-11-01T13:00:00.000Z',
         expires_in: 3600
       },
@@ -330,7 +366,7 @@ describe('POST /auth/exchange', () => {
       pangolinUserId: 'p-alice',
       createdAt: '2026-11-01T12:00:00.000Z',
       lastUsedAt: '2026-11-01T12:00:00.000Z',
-      expiresAt: '2027-11-01T12:00:00.000Z',
+      expiresAt: '2026-11-08T12:00:00.000Z',
       revokedAt: null
     });
     expect(refresh?.tokenHash).toBe(
@@ -340,29 +376,12 @@ describe('POST /auth/exchange', () => {
     expect(refresh?.consumedAt).toBeNull();
     expect(accessRows(testContext)).toEqual([
       expect.objectContaining({
-        pangolinTokenId: 'token-id',
+        pangolinTokenId: 'token-1',
         familyId: family?.id,
         expiresAt: '2026-11-01T13:00:00.000Z',
         revokedAt: null
       })
     ]);
-  });
-
-  it('uses the default lifetimes when none are configured', async () => {
-    const pangolin = new FakePangolin();
-    const testContext = await start({}, pangolin);
-    const { code } = mintedCode(await provision(testContext));
-
-    const response = await exchange(testContext, {
-      code,
-      code_verifier: VERIFIER,
-      redirect_uri: REDIRECT_URI
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(pangolin.calls[0]?.validForSeconds).toBe(12 * 60 * 60);
-    expect(response.json().access.expires_in).toBe(12 * 60 * 60);
-    expect(response.json().refresh.expires_in).toBe(180 * 24 * 60 * 60);
   });
 
   it('refuses a wrong verifier and burns the code', async () => {
@@ -398,8 +417,8 @@ describe('POST /auth/exchange', () => {
   });
 
   it('refuses an expired code', async () => {
-    let now = 1_000_000;
-    const testContext = await start({}, new FakePangolin(), () => now);
+    now = 1_000_000;
+    const testContext = await start();
     const { code } = mintedCode(await provision(testContext));
 
     now += 60_001;
@@ -429,6 +448,7 @@ describe('POST /auth/exchange', () => {
 
   it('answers 503 when the instance has no Integration API', async () => {
     context = await createTestContext({ MOBILE_REDIRECT_URIS: REDIRECT_URI });
+
     const response = await exchange(context, {
       code: 'any-code',
       code_verifier: VERIFIER,
@@ -442,7 +462,7 @@ describe('POST /auth/exchange', () => {
   it('answers 502 when Pangolin refuses, after burning the code', async () => {
     const pangolin = new FakePangolin();
     pangolin.fail = true;
-    const testContext = await start({}, pangolin);
+    const testContext = await start({ pangolin });
     const { code } = mintedCode(await provision(testContext));
 
     const response = await exchange(testContext, {
@@ -459,7 +479,9 @@ describe('POST /auth/exchange', () => {
   });
 
   it('needs the edge assertion but no identity', async () => {
-    const testContext = await start({ EDGE_ASSERTION: 'edge-secret' });
+    const testContext = await start({
+      env: { EDGE_ASSERTION: 'edge-secret' }
+    });
     const { code } = mintedCode(
       await provision(testContext, { assertion: 'edge-secret' })
     );
@@ -585,10 +607,215 @@ describe('POST /auth/exchange', () => {
   });
 });
 
-describe('the exchange audit', () => {
+describe('POST /auth/refresh', () => {
+  it('rotates the pair and consumes the presented token', async () => {
+    const pangolin = new FakePangolin();
+    const testContext = await start({ pangolin });
+    const issued = await issuePair(testContext);
+
+    const response = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    const rotated = response.json() as MobileToken;
+    const tokens = refreshRows(testContext);
+    const family = familyRows(testContext)[0];
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(rotated.access).toMatchObject({
+      id: 'token-2',
+      secret: 'secret-2',
+      expires_in: 3600
+    });
+    expect(rotated.refresh.token).not.toBe(issued.refresh.token);
+    expect(rotated.refresh.expires_in).toBe(86400);
+    expect(pangolin.calls[1]?.title).toBe(
+      `PlayLiberty mobile ${String(family?.id).slice(0, 8)}`
+    );
+    expect(tokens).toHaveLength(2);
+    expect(tokens.find(row => row.consumedAt !== null)).toBeDefined();
+    expect(accessRows(testContext)).toHaveLength(2);
+
+    const replay = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(replay.statusCode).toBe(400);
+    expect(replay.json().code).toBe(ProblemCode.InvalidGrant);
+  });
+
+  it('clamps both credentials to the family remaining life', async () => {
+    const testContext = await start({
+      env: {
+        MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: '43200',
+        MOBILE_FAMILY_LIFETIME_SECONDS: '86400'
+      }
+    });
+    const issued = await issuePair(testContext);
+
+    now += 20 * 60 * 60 * 1000;
+    const response = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    const rotated = response.json() as MobileToken;
+
+    expect(rotated.access.expires_in).toBe(4 * 60 * 60);
+    expect(rotated.refresh.expires_in).toBe(4 * 60 * 60);
+    expect(rotated.refresh.expires_at).toBe(
+      new Date(NOW + 24 * 60 * 60 * 1000).toISOString()
+    );
+  });
+
+  it('refuses an unknown token without detail', async () => {
+    const testContext = await start();
+
+    const response = await refresh(testContext, { refresh_token: 'unknown' });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe(ProblemCode.InvalidGrant);
+  });
+
+  it('refuses an expired refresh token', async () => {
+    const testContext = await start();
+    const issued = await issuePair(testContext);
+
+    now += 86_401 * 1000;
+    const response = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe(ProblemCode.InvalidGrant);
+  });
+
+  it('refuses a token in a revoked family', async () => {
+    const testContext = await start();
+    const issued = await issuePair(testContext);
+
+    testContext.database.db
+      .update(refreshFamilies)
+      .set({ revokedAt: new Date(now).toISOString() })
+      .where(eq(refreshFamilies.id, String(familyRows(testContext)[0]?.id)))
+      .run();
+
+    const response = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe(ProblemCode.InvalidGrant);
+  });
+
+  it('refuses a token whose family has expired', async () => {
+    const testContext = await start();
+    const issued = await issuePair(testContext);
+
+    now += 604_801 * 1000;
+    const response = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe(ProblemCode.InvalidGrant);
+  });
+
+  it('answers 503 when the instance has no Integration API', async () => {
+    context = await createTestContext({ MOBILE_REDIRECT_URIS: REDIRECT_URI });
+
+    const response = await refresh(context, { refresh_token: 'any' });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json().code).toBe(ProblemCode.ProvisioningUnavailable);
+  });
+
+  it('preserves the token when Pangolin fails', async () => {
+    const pangolin = new FakePangolin();
+    const testContext = await start({ pangolin });
+    const issued = await issuePair(testContext);
+
+    pangolin.fail = true;
+    const failed = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    pangolin.fail = false;
+    const retried = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(failed.statusCode).toBe(502);
+    expect(failed.json().code).toBe(ProblemCode.ProvisioningFailed);
+    expect(retried.statusCode).toBe(200);
+  });
+
+  it('refuses a body without a refresh token', async () => {
+    const testContext = await start();
+
+    const response = await refresh(testContext, {});
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe(ProblemCode.ValidationFailed);
+  });
+
+  it('rate limits the eleventh attempt from one caller', async () => {
+    const testContext = await start();
+    const statuses: number[] = [];
+
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      const response = await refresh(testContext, { refresh_token: 'unknown' });
+      statuses.push(response.statusCode);
+    }
+
+    expect(statuses.slice(0, 10)).toEqual(Array(10).fill(400));
+    expect(statuses[10]).toBe(429);
+  });
+
+  it('rate limits one family independently of the caller', async () => {
+    const pangolin = new FakePangolin();
+    const testContext = await start({ pangolin });
+    const issued = await issuePair(testContext);
+    const statuses: number[] = [];
+
+    pangolin.fail = true;
+
+    for (let attempt = 1; attempt <= 11; attempt += 1) {
+      const response = await refresh(
+        testContext,
+        { refresh_token: issued.refresh.token },
+        { forwardedFor: `203.0.113.${attempt}` }
+      );
+      statuses.push(response.statusCode);
+    }
+
+    expect(statuses.slice(0, 10)).toEqual(Array(10).fill(502));
+    expect(statuses[10]).toBe(429);
+  });
+
+  it('needs the edge assertion but no identity', async () => {
+    const testContext = await start({
+      env: { EDGE_ASSERTION: 'edge-secret' }
+    });
+
+    const withoutAssertion = await refresh(testContext, {
+      refresh_token: 'unknown'
+    });
+    const withAssertion = await refresh(
+      testContext,
+      { refresh_token: 'unknown' },
+      { assertion: 'edge-secret' }
+    );
+
+    expect(withoutAssertion.statusCode).toBe(401);
+    expect(withAssertion.statusCode).toBe(400);
+  });
+});
+
+describe('the audit', () => {
   it('records an allowed exchange with the Pangolin user id', async () => {
     const { logger, lines } = recordingLogger();
-    const testContext = await startWithLogger(logger);
+    const testContext = await start({ logger });
     const { code } = mintedCode(await provision(testContext));
 
     const response = await exchange(testContext, {
@@ -608,7 +835,7 @@ describe('the exchange audit', () => {
 
   it('records a wrong verifier with the user id', async () => {
     const { logger, lines } = recordingLogger();
-    const testContext = await startWithLogger(logger);
+    const testContext = await start({ logger });
     const { code } = mintedCode(await provision(testContext));
 
     const response = await exchange(testContext, {
@@ -628,7 +855,7 @@ describe('the exchange audit', () => {
 
   it('records a reused code without a user id', async () => {
     const { logger, lines } = recordingLogger();
-    const testContext = await startWithLogger(logger);
+    const testContext = await start({ logger });
     const { code } = mintedCode(await provision(testContext));
     const body = {
       code,
@@ -650,12 +877,8 @@ describe('the exchange audit', () => {
 
   it('records an expired code with the user id', async () => {
     const { logger, lines } = recordingLogger();
-    let now = 1_000_000;
-    const testContext = await startWithLogger(
-      logger,
-      new FakePangolin(),
-      () => now
-    );
+    now = 1_000_000;
+    const testContext = await start({ logger });
     const { code } = mintedCode(await provision(testContext));
     now += 60_001;
 
@@ -676,7 +899,7 @@ describe('the exchange audit', () => {
 
   it('records a redirect mismatch with the user id', async () => {
     const { logger, lines } = recordingLogger();
-    const testContext = await startWithLogger(logger);
+    const testContext = await start({ logger });
     const { code } = mintedCode(await provision(testContext));
 
     const response = await exchange(testContext, {
@@ -696,7 +919,7 @@ describe('the exchange audit', () => {
 
   it('records a rate-limit refusal without a user id', async () => {
     const { logger, lines } = recordingLogger();
-    const testContext = await startWithLogger(logger);
+    const testContext = await start({ logger });
     const body = {
       code: 'not-a-code',
       code_verifier: VERIFIER,
@@ -718,7 +941,7 @@ describe('the exchange audit', () => {
     const { logger, lines } = recordingLogger();
     const pangolin = new FakePangolin();
     pangolin.fail = true;
-    const testContext = await startWithLogger(logger, pangolin);
+    const testContext = await start({ logger, pangolin });
     const { code } = mintedCode(await provision(testContext));
 
     const response = await exchange(testContext, {
@@ -737,6 +960,32 @@ describe('the exchange audit', () => {
       lines.find(line => line.message === 'the token could not be minted')
     ).toMatchObject({ level: 'error' });
     expectNoSecrets(lines, code);
+  });
+
+  it('records the rotation and the refusal without the token', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await start({ logger });
+    const issued = await issuePair(testContext);
+
+    await refresh(testContext, { refresh_token: issued.refresh.token });
+    await refresh(testContext, { refresh_token: 'unknown' });
+
+    const refreshLines = lines.filter(
+      line => line.action === 'session_refresh'
+    );
+    const logged = JSON.stringify(refreshLines);
+
+    expect(refreshLines[0]).toMatchObject({
+      audit: true,
+      outcome: 'allowed',
+      account: 'p-alice'
+    });
+    expect(refreshLines[1]).toMatchObject({
+      outcome: 'refused',
+      reason: 'refresh_token_unknown'
+    });
+    expect(logged).not.toContain(issued.refresh.token);
+    expect(logged).not.toContain('secret-1');
   });
 });
 

@@ -24,11 +24,20 @@ declare module 'fastify' {
 }
 
 // Readiness must answer before a caller is known, so it is exempt from both
-// checks. The exchange's POST is exempt from identity alone: the app has no
-// session yet, but the request still has to come through the edge.
+// checks. The exchange and refresh POSTs are exempt from identity alone: the
+// app holds only the credential in its body, but the request still has to come
+// through the edge. The exemption names the method, so the same path with
+// another method still fails closed.
 const EXEMPT_PATHS = new Set(['/healthz', '/readyz']);
-const ASSERTION_ONLY_ROUTES = new Set(['POST /auth/exchange']);
-const PROVISIONING_PATHS = new Set(['/provision', '/auth/exchange']);
+const ASSERTION_ONLY_ROUTES = new Set([
+  'POST /auth/exchange',
+  'POST /auth/refresh'
+]);
+const PROVISIONING_PATHS = new Set([
+  '/provision',
+  '/auth/exchange',
+  '/auth/refresh'
+]);
 
 /* The edge assertion header, compared in constant time so timing cannot
  * leak the secret a byte at a time. */

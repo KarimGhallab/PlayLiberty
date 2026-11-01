@@ -1,36 +1,42 @@
 # Pangolin edge: mobile provisioning
 
 The mobile app is the one client that cannot use the browser's session. It obtains a per-user resource access token
-through `GET /provision`, then trades the returned code at `POST /auth/exchange`. The exchange is the only request
-that must reach the origin without a Pangolin session, because the app has no credential yet.
+through `GET /provision`, then trades the returned code at `POST /auth/exchange`. That exchange answers a short-lived
+access token and a refresh token, and `POST /auth/refresh` rotates the pair without a Pangolin session. The exchange
+and the refresh are the only two requests that must reach the origin without a session; the exchange has no
+credential yet, and the refresh carries its own in the body.
 
-## The one bypass rule
+## The two bypass rules
 
-On the PlayLiberty resource, under **Authentication → Rules**, add one rule above every other:
+On the PlayLiberty resource, under **Authentication → Rules**, add two rules above every other:
 
 | Priority | Action      | Match type | Value           |
 | -------- | ----------- | ---------- | --------------- |
 | 1        | Bypass Auth | Path       | `auth/exchange` |
+| 2        | Bypass Auth | Path       | `auth/refresh`  |
 
-Path rules match segment by segment, so `auth/exchange` is exact. Do not use `auth/*` or `/*`: a wildcard exposes
-more than the exchange, and every other path must stay behind Platform SSO, `/provision` included.
+Path rules match segment by segment, so both are exact. Do not use `auth/*` or `/*`: a wildcard exposes more than
+these two, and every other path must stay behind Platform SSO, `/provision` included.
 
-The rule only takes effect when the resource has at least one authentication method configured. On a resource with
+The rules only take effect when the resource has at least one authentication method configured. On a resource with
 no auth method, Pangolin does not evaluate path rules at all (Pangolin issue 2551), so keep Platform SSO enabled.
 
-## What still guards the exchange
+## What still guards them
 
-- **No identity, but the assertion.** The bypass removes `Remote-*` from the exchange, which is why the server treats
-  it as assertion-only: nginx still injects `X-PlayLiberty-Edge`, and the server refuses the exchange without it.
-- **One method on one path.** The server's assertion-only exemption is `POST /auth/exchange`. A different method on
-  the same path still needs identity and fails closed with `401`, so the path bypass is not a method bypass.
-- **The code and PKCE.** A single-use 60-second code, bound to the user, the redirect URI and the S256 challenge.
-  An app that intercepts the callback still cannot exchange the code.
-- **The rate limit.** Ten attempts per caller per minute.
+- **No identity, but the assertion.** The bypass removes `Remote-*` from both paths, which is why the server treats
+  them as assertion-only: nginx still injects `X-PlayLiberty-Edge`, and the server refuses either one without it.
+- **One method on one path each.** The server's assertion-only exemptions are `POST /auth/exchange` and
+  `POST /auth/refresh`. A different method on either path still needs identity and fails closed with `401`, so a path
+  bypass is not a method bypass.
+- **The code and PKCE.** A single-use 60-second code, bound to the user, the redirect URI and the S256 challenge. An
+  app that intercepts the callback still cannot exchange the code.
+- **The rotating refresh token.** It is stored only as a hash, travels only in the body, and every use replaces it.
+- **The rate limits.** Ten attempts per caller per minute on the exchange; ten per caller and ten per family per
+  minute on the refresh.
 
 ## The Integration API
 
-The server mints the token through Pangolin's Integration API. On the Pangolin host:
+The server mints access tokens through Pangolin's Integration API. On the Pangolin host:
 
 ```yaml
 # config.yml
@@ -40,8 +46,8 @@ server:
   integration_port: 3003
 ```
 
-Create a root API key under **Server Admin → API Keys**, with permission to create resource access tokens. Then give
-the server:
+Create a root API key under **Server Admin → API Keys**, with permission to create resource access tokens. Then
+give the server:
 
 | Variable                       | Value                                                |
 | ------------------------------ | ---------------------------------------------------- |
@@ -60,4 +66,4 @@ command line.
 build script derives the HTTPS callback from the public origin and adds the scheme.
 
 All three `PANGOLIN_*` values are set together or not at all; a partial set fails the boot. With none of them, the
-exchange answers `503 provisioning_unavailable` and the rest of the instance is unaffected.
+exchange and the refresh answer `503 provisioning_unavailable` and the rest of the instance is unaffected.

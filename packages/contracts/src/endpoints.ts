@@ -159,6 +159,20 @@ export const endpoints = {
       ...VALIDATED_WRITE_ERRORS
     ]
   }),
+  /* The second path outside Pangolin SSO: the refresh token rotates the pair.
+   * Assertion-only and method-scoped, like the exchange. */
+  refresh: defineEndpoint({
+    method: HttpMethod.Post,
+    path: '/auth/refresh',
+    response: MobileTokenSchema,
+    errors: [
+      ProblemCode.InvalidGrant,
+      ProblemCode.ProvisioningUnavailable,
+      ProblemCode.ProvisioningFailed,
+      ProblemCode.RateLimited,
+      ...VALIDATED_WRITE_ERRORS
+    ]
+  }),
   /* The caller's own role is part of the account read, so the client can gate
    * an admin surface without asking a second route. */
   egress: defineEndpoint({

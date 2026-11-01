@@ -2,14 +2,14 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import type { MobileToken } from '@playliberty/contracts';
 
-import type { IPangolinClient } from '../../../shared/pangolin.js';
+import type { IPangolinClient } from '../../../../shared/pangolin.js';
 
-import type { DatabaseHandle } from '../../../platform/database/client.js';
+import type { DatabaseHandle } from '../../../../platform/database/client.js';
 import {
   accessTokens,
   refreshFamilies,
   refreshTokens
-} from '../../../platform/database/schema.js';
+} from '../../../../platform/database/schema.js';
 
 /* A family is one provisioning. Its access tokens are minted before anything is
  * written, so a Pangolin refusal leaves no half-session behind, and the

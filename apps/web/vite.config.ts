@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => {
         '/api': edgeProxy,
         '/provision': edgeProxy,
         '/auth/exchange': edgeProxy,
+        '/auth/refresh': edgeProxy,
         '/healthz': { target: apiTarget, changeOrigin: false }
       }
     },

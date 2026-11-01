@@ -36,9 +36,13 @@ server {
         proxy_pass http://${WEB_UPSTREAM};
     }
 
-    # The one path the edge lets through without SSO. It still reaches nginx,
-    # which adds the assertion; the server refuses it without one.
+    # The two paths the edge lets through without SSO. They still reach nginx,
+    # which adds the assertion; the server refuses them without one.
     location = /auth/exchange {
+        proxy_pass http://${WEB_UPSTREAM};
+    }
+
+    location = /auth/refresh {
         proxy_pass http://${WEB_UPSTREAM};
     }
 

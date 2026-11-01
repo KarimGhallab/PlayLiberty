@@ -24,6 +24,7 @@ export type {
   PlaylistTracksQuery,
   PlaylistWithCounts,
   Problem,
+  RefreshInput,
   RenamePlaylistInput,
   Share,
   SharePlaylistInput,

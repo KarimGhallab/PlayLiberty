@@ -18,6 +18,6 @@ export interface IProvisioningCodes {
   mintCode(input: MintCodeInput): string;
   consumeCode(code: string): ProvisioningCode | null;
   isExpired(entry: ProvisioningCode): boolean;
-  allowExchange(key: string): boolean;
+  allowAttempt(key: string): boolean;
   verifyPkce(verifier: string, challenge: string): boolean;
 }
