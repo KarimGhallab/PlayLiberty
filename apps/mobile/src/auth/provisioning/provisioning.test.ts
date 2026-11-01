@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
+import { USER_AGENT } from '../../api/userAgent';
 import {
   type BrowserResult,
   type ProvisioningDeps,
@@ -165,6 +166,7 @@ describe('completeProvisioning', () => {
       code_verifier: base64Url(VERIFIER_BYTES),
       redirect_uri: SCHEME_URI
     });
+    expect(new Headers(init?.headers).get('User-Agent')).toBe(USER_AGENT);
   });
 
   it('refuses a callback whose state is not the one it sent', async () => {

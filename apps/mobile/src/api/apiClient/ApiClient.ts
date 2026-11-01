@@ -8,10 +8,13 @@ import {
   endpointPath
 } from '@playliberty/contracts';
 
+import { USER_AGENT, USER_AGENT_HEADER } from '../userAgent';
+
 /*
  * The one place the app speaks to the server. Every request carries the token
- * pair the edge issued; a mutation also carries the client header. A `401` means
- * provisioning, never a broken screen.
+ * pair the edge issued and the app's own User-Agent; a mutation also carries
+ * the client header. A `401` buys one renewal and one retry, and only a session
+ * that has ended needs provisioning.
  */
 
 export const API_PREFIX = '/api/v1';
@@ -30,6 +33,7 @@ export type QueryParams = Readonly<Record<string, string | number>>;
 export interface ApiClientOptions {
   readonly baseUrl: string;
   readonly readToken: () => Promise<AccessToken | null>;
+  readonly renewToken: (refused: AccessToken) => Promise<AccessToken | null>;
 }
 
 export class ApiError extends Error {
@@ -116,31 +120,75 @@ export class ApiClient {
       throw new NeedsProvisioningError();
     }
 
+    const response = await this._attempt(
+      token,
+      method,
+      path,
+      params,
+      init,
+      query
+    );
+
+    if (response.status !== 401) {
+      return settle(response);
+    }
+
+    const renewed = await this._options.renewToken(token);
+
+    if (renewed === null) {
+      throw new NeedsProvisioningError();
+    }
+
+    const retried = await this._attempt(
+      renewed,
+      method,
+      path,
+      params,
+      init,
+      query
+    );
+
+    /* A fresh pair refused as well is the request's failure, not a sign-out:
+     * only an ended session needs provisioning. */
+    if (retried.status === 401) {
+      throw new ApiError(401, await readProblem(retried));
+    }
+
+    return settle(retried);
+  }
+
+  async _attempt(
+    token: AccessToken,
+    method: HttpMethod,
+    path: string,
+    params: EndpointParams,
+    init: RequestInit,
+    query: QueryParams
+  ): Promise<Response> {
     const headers = new Headers(init.headers);
     headers.set(ACCESS_TOKEN_ID_HEADER, token.id);
     headers.set(ACCESS_TOKEN_HEADER, token.secret);
+    headers.set(USER_AGENT_HEADER, USER_AGENT);
 
     if (method !== HttpMethod.Get) {
       headers.set(CLIENT_HEADER, CLIENT_HEADER_VALUE);
     }
 
-    const response = await fetch(
+    return fetch(
       `${this._baseUrl()}${API_PREFIX}${endpointPath(path, params)}${queryString(query)}`,
       { ...init, method, headers }
     );
-
-    if (response.status === 401) {
-      throw new NeedsProvisioningError();
-    }
-
-    if (!response.ok) {
-      throw new ApiError(response.status, await readProblem(response));
-    }
-
-    return response;
   }
 
   _baseUrl(): string {
     return this._options.baseUrl.replace(/\/+$/, '');
   }
+}
+
+async function settle(response: Response): Promise<Response> {
+  if (!response.ok) {
+    throw new ApiError(response.status, await readProblem(response));
+  }
+
+  return response;
 }

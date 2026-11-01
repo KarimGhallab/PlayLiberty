@@ -38,7 +38,8 @@ describe('the stream failure classifier', () => {
         method: 'HEAD',
         headers: {
           'P-Access-Token-Id': 'token-id',
-          'P-Access-Token': 'token-secret'
+          'P-Access-Token': 'token-secret',
+          'User-Agent': 'PlayLiberty/1.0 (Android)'
         }
       }
     );

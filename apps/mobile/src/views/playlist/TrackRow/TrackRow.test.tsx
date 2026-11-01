@@ -104,7 +104,8 @@ describe('the track row', () => {
     );
     expect(image.props.source.headers).toEqual({
       'P-Access-Token-Id': 'token-id',
-      'P-Access-Token': 'token-secret'
+      'P-Access-Token': 'token-secret',
+      'User-Agent': 'PlayLiberty/1.0 (Android)'
     });
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('3:02')).toBeOnTheScreen();

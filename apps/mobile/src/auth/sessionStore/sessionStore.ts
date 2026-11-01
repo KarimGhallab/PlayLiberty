@@ -12,6 +12,7 @@ export enum SessionStatus {
 export interface SessionState {
   readonly status: SessionStatus;
   refresh: () => Promise<void>;
+  renew: () => Promise<boolean>;
   expire: () => Promise<void>;
 }
 
@@ -32,6 +33,11 @@ export const useSessionStore = create<SessionState>()(set => ({
     set({
       status: record === null ? SessionStatus.SignedOut : SessionStatus.SignedIn
     });
+  },
+  renew: async () => {
+    const record = await mobileSession.refreshNow();
+
+    return record !== null;
   },
   expire: async () => {
     generation += 1;

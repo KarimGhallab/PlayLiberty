@@ -47,11 +47,6 @@ export function usePlayerAudio(
   }, []);
 
   useEffect(() => {
-    // A new resolver means a new credential or edge; the current track reloads.
-    loadedId.current = null;
-  }, [resolveSource]);
-
-  useEffect(() => {
     observedPlaying.current = false;
   }, [currentId]);
 

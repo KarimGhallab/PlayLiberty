@@ -128,6 +128,30 @@ describe('the player audio', () => {
     expect(audio.__player.replace).toHaveBeenLastCalledWith({ uri: 'b' });
   });
 
+  it('does not rebuild the playing source when the resolver changes', async () => {
+    start(['a', 'b'], 'a');
+    const view = await renderHook(
+      ({ resolver }: { resolver: typeof resolveSource }) =>
+        usePlayerAudio(resolver, classifyFailure),
+      { initialProps: { resolver: resolveSource } }
+    );
+
+    await view.rerender({
+      resolver: (trackId: string) => ({ uri: `${trackId}-renewed` })
+    });
+
+    expect(audio.__player.replace).toHaveBeenCalledTimes(1);
+    expect(audio.__player.replace).toHaveBeenLastCalledWith({ uri: 'a' });
+
+    await act(() => {
+      usePlayerStore.getState().play('b');
+    });
+
+    expect(audio.__player.replace).toHaveBeenLastCalledWith({
+      uri: 'b-renewed'
+    });
+  });
+
   it('plays and pauses the same source with the player state', async () => {
     start(['a'], 'a');
 

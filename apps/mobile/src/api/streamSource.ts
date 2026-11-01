@@ -6,6 +6,7 @@ import {
   API_PREFIX,
   type AccessToken
 } from './apiClient/ApiClient';
+import { USER_AGENT, USER_AGENT_HEADER } from './userAgent';
 
 /** A stream address and the headers the edge expects beside it. */
 export interface StreamSource {
@@ -24,7 +25,8 @@ export function streamSource(
     uri: `${baseUrl.replace(/\/+$/, '')}${API_PREFIX}${path}`,
     headers: {
       [ACCESS_TOKEN_ID_HEADER]: token.id,
-      [ACCESS_TOKEN_HEADER]: token.secret
+      [ACCESS_TOKEN_HEADER]: token.secret,
+      [USER_AGENT_HEADER]: USER_AGENT
     }
   };
 }

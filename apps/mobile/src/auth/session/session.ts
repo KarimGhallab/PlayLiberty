@@ -7,6 +7,7 @@ import {
 
 import { apiBaseUrl } from '../../api/apiBaseUrl';
 import type { AccessToken } from '../../api/apiClient/ApiClient';
+import { USER_AGENT, USER_AGENT_HEADER } from '../../api/userAgent';
 import {
   type SessionRecord,
   accessTokenOf,
@@ -90,6 +91,23 @@ export class Session {
     return renewed === null ? null : accessTokenOf(renewed);
   }
 
+  /** The answer to a pair the edge refused: a pair another caller already
+   * rotated is reused, otherwise one renewal runs. */
+  async renewAccessToken(refused: AccessToken): Promise<AccessToken | null> {
+    const record = await this.load();
+
+    if (
+      record !== null &&
+      (record.accessId !== refused.id || record.accessSecret !== refused.secret)
+    ) {
+      return accessTokenOf(record);
+    }
+
+    const renewed = await this.refreshNow();
+
+    return renewed === null ? null : accessTokenOf(renewed);
+  }
+
   /** One flight at a time, shared by every caller. */
   refreshNow(): Promise<SessionRecord | null> {
     if (this._inFlight !== null) {
@@ -152,6 +170,7 @@ export class Session {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
+            [USER_AGENT_HEADER]: USER_AGENT,
             'x-playliberty-client': 'mobile'
           },
           body: JSON.stringify({ refresh_token: record.refreshToken })

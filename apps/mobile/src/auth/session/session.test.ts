@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 
 import type { MobileToken } from '@playliberty/contracts';
 
+import { USER_AGENT } from '../../api/userAgent';
 import {
   type SessionRecord,
   recordFromToken
@@ -153,6 +154,7 @@ describe('accessToken', () => {
     expect(new Headers(call?.init?.headers).get('x-playliberty-client')).toBe(
       'mobile'
     );
+    expect(new Headers(call?.init?.headers).get('User-Agent')).toBe(USER_AGENT);
     expect(JSON.parse(String(call?.init?.body))).toEqual({
       refresh_token: 'refresh-1'
     });
@@ -209,6 +211,41 @@ describe('accessToken', () => {
 
     expect(token).toEqual({ id: 'access-1', secret: 'secret-1' });
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('renewAccessToken', () => {
+  it('reuses a pair another caller already rotated', async () => {
+    const rotated = record(3_600_000);
+    const store = new MemoryStore(rotated);
+    const { calls, fetchMock } = fetchReturning(() =>
+      jsonResponse(tokenPair())
+    );
+    const session = sessionWith(store, fetchMock);
+
+    const token = await session.renewAccessToken({
+      id: 'access-0',
+      secret: 'secret-0'
+    });
+
+    expect(token).toEqual({ id: 'access-1', secret: 'secret-1' });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('renews the pair the edge refused', async () => {
+    const store = new MemoryStore(record(3_600_000));
+    const { calls, fetchMock } = fetchReturning(() =>
+      jsonResponse(tokenPair('access-2', 'secret-2', 'refresh-2'))
+    );
+    const session = sessionWith(store, fetchMock);
+
+    const token = await session.renewAccessToken({
+      id: 'access-1',
+      secret: 'secret-1'
+    });
+
+    expect(token).toEqual({ id: 'access-2', secret: 'secret-2' });
+    expect(calls).toHaveLength(1);
   });
 });
 

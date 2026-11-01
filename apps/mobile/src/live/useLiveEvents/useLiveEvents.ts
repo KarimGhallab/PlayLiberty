@@ -15,8 +15,9 @@ import {
   LiveEventFailure
 } from '../liveEventStream/liveEventStream';
 
-/* A drop backs off; a refusal ends the session. Nothing polls: the connection
- * is the only timer, and the app's own foregrounding is the catch-up. */
+/* A drop backs off; a refusal renews the pair and reconnects. Nothing polls:
+ * the connection is the only timer, and the app's own foregrounding is the
+ * catch-up. Only a renewal the session ends stops the loop. */
 const BACKOFF_BASE_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
 
@@ -26,7 +27,7 @@ export function useLiveEvents(
   factory: LiveEventFactory
 ): void {
   const queryClient = useQueryClient();
-  const expire = useSessionStore(state => state.expire);
+  const renew = useSessionStore(state => state.renew);
 
   useEffect(() => {
     if (config === null) {
@@ -82,8 +83,25 @@ export function useLiveEvents(
           close();
 
           if (failure === LiveEventFailure.Refused) {
-            stopped = true;
-            void expire();
+            void renew()
+              .then(renewed => {
+                if (stopped) {
+                  return;
+                }
+
+                if (!renewed) {
+                  stopped = true;
+                  return;
+                }
+
+                failures = 0;
+                reconnect();
+              })
+              .catch(() => {
+                if (!stopped) {
+                  reconnect();
+                }
+              });
             return;
           }
 
@@ -111,7 +129,7 @@ export function useLiveEvents(
       subscription.remove();
       close();
     };
-  }, [config, expire, factory, queryClient]);
+  }, [config, factory, queryClient, renew]);
 }
 
 /* An event kind the schema does not know is a missed invalidation, not a lost

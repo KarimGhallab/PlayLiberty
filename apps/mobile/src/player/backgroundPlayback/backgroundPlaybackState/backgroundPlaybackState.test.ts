@@ -59,7 +59,8 @@ describe('the background playback state', () => {
     );
     expect(result.artworkHeaders).toEqual({
       'P-Access-Token-Id': 'token-id',
-      'P-Access-Token': 'token-secret'
+      'P-Access-Token': 'token-secret',
+      'User-Agent': 'PlayLiberty/1.0 (Android)'
     });
     expect(result.playLabel).toBe('Play');
     expect(result.pauseLabel).toBe('Pause');

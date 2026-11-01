@@ -7,12 +7,13 @@ import {
   jest
 } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook } from '@testing-library/react-native';
 import { type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
 import { LiveEventType } from '@playliberty/contracts';
 
+import { USER_AGENT } from '../../api/userAgent';
 import {
   SessionStatus,
   useSessionStore
@@ -119,7 +120,8 @@ describe('the live stream', () => {
     );
     expect(connections[0]?.source.headers).toEqual({
       'P-Access-Token-Id': 'token-id',
-      'P-Access-Token': 'token-secret'
+      'P-Access-Token': 'token-secret',
+      'User-Agent': USER_AGENT
     });
   });
 
@@ -209,8 +211,10 @@ describe('the live stream', () => {
     expect(connections).toHaveLength(2);
   });
 
-  it('stops retrying and signs out when the edge refuses', async () => {
+  it('renews and reconnects when the edge refuses', async () => {
     jest.useFakeTimers();
+    const renew = jest.fn(async () => true);
+    useSessionStore.setState({ renew });
     const { factory, connections } = fakeFactory();
     await renderStream(factory);
 
@@ -218,13 +222,52 @@ describe('the live stream', () => {
       connections[0]?.handlers.onError(LiveEventFailure.Refused);
     });
 
-    await waitFor(() => {
-      expect(useSessionStore.getState().status).toBe(SessionStatus.SignedOut);
+    expect(renew).toHaveBeenCalledTimes(1);
+
+    await act(() => {
+      jest.advanceTimersByTime(1_000);
+    });
+
+    expect(connections).toHaveLength(2);
+    expect(useSessionStore.getState().status).toBe(SessionStatus.SignedIn);
+  });
+
+  it('stops retrying when the renewal ends the session', async () => {
+    jest.useFakeTimers();
+    useSessionStore.setState({ renew: async () => false });
+    const { factory, connections } = fakeFactory();
+    await renderStream(factory);
+
+    await act(async () => {
+      connections[0]?.handlers.onError(LiveEventFailure.Refused);
     });
 
     await act(() => {
       jest.advanceTimersByTime(60_000);
     });
+
     expect(connections).toHaveLength(1);
+  });
+
+  it('backs off when the renewal is transient', async () => {
+    jest.useFakeTimers();
+    useSessionStore.setState({
+      renew: async () => {
+        throw new Error('offline');
+      }
+    });
+    const { factory, connections } = fakeFactory();
+    await renderStream(factory);
+
+    await act(async () => {
+      connections[0]?.handlers.onError(LiveEventFailure.Refused);
+    });
+
+    await act(() => {
+      jest.advanceTimersByTime(1_000);
+    });
+
+    expect(connections).toHaveLength(2);
+    expect(useSessionStore.getState().status).toBe(SessionStatus.SignedIn);
   });
 });
