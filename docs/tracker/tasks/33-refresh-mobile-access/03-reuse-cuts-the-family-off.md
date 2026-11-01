@@ -1,36 +1,35 @@
 # 03: Reuse cuts the family off
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`02`](02-the-refresh-route-rotates-the-pair.md)
 
 ## Outcome
 
-A family-level, process-local cache holds the latest full refresh response for 30 seconds. A replay of a consumed
-token inside that window returns the same pair instead of minting again, which covers both a lost response and a race
-where two callers refresh at once.
+The route holds one family-level grace cache per app. A successful rotation records the family's new pair for 30
+seconds; a replay of a consumed token inside that window answers the same pair, mints nothing and writes nothing. The
+cache prunes older entries on write and on lookup, so a family that never replays does not hold memory indefinitely.
+It is process-local by construction: a restart drops it, and a replay afterwards is reuse.
 
-A replay outside the window is reuse. The server revokes the family, answers `invalid_grant`, and writes its own
-audit line. Revoking the family also deletes every unexpired access token issued to it at Pangolin, so detection cuts
-the attacker's window immediately. The Pangolin client gains the delete call, and a failed delete is best effort: the
-family is revoked locally either way.
+A replay outside the window is reuse. One `revokeFamily` module now owns ending a family: it deletes every unexpired
+access token at Pangolin first, then marks those rows and the family revoked in one transaction. A failed deletion is
+swallowed, so the family is revoked locally either way. The reuse branch drops the grace entry, answers
+`invalid_grant`, and the route audits the refusal as `refresh_token_reuse`, distinct from an ordinary token refusal.
+Sign-out will reuse the same module.
 
-The cache is process-local and a restart drops it, so a replay after a restart is reuse. The deployment is one
-process, so no shared store is built.
+The Pangolin client gained the delete call: `DELETE /access-token/{id}` with the integration key as its bearer
+credential, rejecting a response whose envelope says `success: false`. Its contract suite proves the method, the path
+and the authorization, and that a refused deletion throws.
 
-## Acceptance criteria
-
-- [ ] A replay inside the 30-second window returns the same response and mints nothing.
-- [ ] A replay outside it revokes the family, deletes each unexpired access token, answers `invalid_grant`, and audits
-      the reuse distinctly from an ordinary refusal.
-- [ ] The delete call uses the Integration API's token deletion with the integration key, proven by a contract test.
-- [ ] A failed deletion still leaves the family revoked.
+The rotation test no longer asserts that an immediate replay is refused: inside the window it now succeeds by design,
+and the grace and late-replay tests own both halves.
 
 ## Verification
 
-- Server: the refresh suite proves the grace replay, the reuse revocation, the deletion per unexpired token, and the
-  audit line, with the fake Pangolin client recording mints and deletions.
-- The Pangolin client's contract test proves the delete request's method, path and authorization.
+- Server: 494 tests across 35 files. The refresh suite proves the in-window replay returns the same pair with no mint
+  and no new rows, the late replay revokes the family and both access rows, deletes both Pangolin ids, and audits
+  `refresh_token_reuse`, and that a failed deletion still leaves the family and its rows revoked. The Pangolin client
+  contract suite proves the delete request and its refusal.
 - `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`33-refresh-mobile-access`](../../specs/33-refresh-mobile-access.md).

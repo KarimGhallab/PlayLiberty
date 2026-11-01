@@ -16,4 +16,5 @@ export interface IPangolinClient {
   mintResourceAccessToken(
     input: MintResourceAccessTokenInput
   ): Promise<MintedResourceAccessToken>;
+  deleteResourceAccessToken(tokenId: string): Promise<void>;
 }

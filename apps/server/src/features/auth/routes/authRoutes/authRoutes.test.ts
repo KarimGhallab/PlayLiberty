@@ -45,7 +45,9 @@ type Injected = Awaited<ReturnType<TestContext['app']['inject']>>;
 
 class FakePangolin implements IPangolinClient {
   readonly calls: MintResourceAccessTokenInput[] = [];
+  readonly deleted: string[] = [];
   fail = false;
+  failDelete = false;
 
   async mintResourceAccessToken(
     input: MintResourceAccessTokenInput
@@ -59,6 +61,14 @@ class FakePangolin implements IPangolinClient {
     const count = this.calls.length;
 
     return { id: `token-${count}`, secret: `secret-${count}` };
+  }
+
+  async deleteResourceAccessToken(tokenId: string): Promise<void> {
+    this.deleted.push(tokenId);
+
+    if (this.failDelete) {
+      throw new PangolinError('Pangolin is down');
+    }
   }
 }
 
@@ -636,13 +646,83 @@ describe('POST /auth/refresh', () => {
     expect(tokens).toHaveLength(2);
     expect(tokens.find(row => row.consumedAt !== null)).toBeDefined();
     expect(accessRows(testContext)).toHaveLength(2);
+  });
 
+  it('repeats the pair inside the grace window without minting', async () => {
+    const pangolin = new FakePangolin();
+    const testContext = await start({ pangolin });
+    const issued = await issuePair(testContext);
+    const rotated = (
+      await refresh(testContext, { refresh_token: issued.refresh.token })
+    ).json() as MobileToken;
+
+    const replay = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toEqual(rotated);
+    expect(pangolin.calls).toHaveLength(2);
+    expect(refreshRows(testContext)).toHaveLength(2);
+    expect(accessRows(testContext)).toHaveLength(2);
+  });
+
+  it('revokes the family and its access tokens when a replay comes too late', async () => {
+    const { logger, lines } = recordingLogger();
+    const pangolin = new FakePangolin();
+    const testContext = await start({ logger, pangolin });
+    const issued = await issuePair(testContext);
+    const rotated = (
+      await refresh(testContext, { refresh_token: issued.refresh.token })
+    ).json() as MobileToken;
+
+    now += 30_001;
     const replay = await refresh(testContext, {
       refresh_token: issued.refresh.token
     });
 
     expect(replay.statusCode).toBe(400);
     expect(replay.json().code).toBe(ProblemCode.InvalidGrant);
+    expect(familyRows(testContext)[0]?.revokedAt).toBe(
+      new Date(now).toISOString()
+    );
+    expect(accessRows(testContext).every(row => row.revokedAt !== null)).toBe(
+      true
+    );
+    expect(pangolin.deleted.sort()).toEqual(['token-1', 'token-2']);
+    expect(lines).toContainEqual(
+      expect.objectContaining({
+        action: 'session_refresh',
+        outcome: 'refused',
+        reason: 'refresh_token_reuse'
+      })
+    );
+
+    const afterwards = await refresh(testContext, {
+      refresh_token: rotated.refresh.token
+    });
+
+    expect(afterwards.statusCode).toBe(400);
+  });
+
+  it('keeps the family revoked when a deletion fails', async () => {
+    const pangolin = new FakePangolin();
+    const testContext = await start({ pangolin });
+    const issued = await issuePair(testContext);
+
+    await refresh(testContext, { refresh_token: issued.refresh.token });
+    pangolin.failDelete = true;
+    now += 30_001;
+
+    const replay = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(replay.statusCode).toBe(400);
+    expect(familyRows(testContext)[0]?.revokedAt).not.toBeNull();
+    expect(accessRows(testContext).every(row => row.revokedAt !== null)).toBe(
+      true
+    );
   });
 
   it('clamps both credentials to the family remaining life', async () => {

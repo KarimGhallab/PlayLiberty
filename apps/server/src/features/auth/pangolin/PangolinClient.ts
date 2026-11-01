@@ -8,8 +8,9 @@ import type {
 
 import type { PangolinConfig } from '../../../platform/config/types.js';
 
-/* The one call the server makes to Pangolin: mint a per-user access token for
- * the resource the app talks to. The key never leaves the process. */
+/* The calls the server makes to Pangolin: mint a per-user access token for the
+ * resource the app talks to, and delete it when a family ends. The key never
+ * leaves the process. */
 
 export class PangolinError extends Error {
   constructor(message: string) {
@@ -26,6 +27,11 @@ const TOKEN_RESPONSE_SCHEMA = z.object({
       accessToken: z.string().min(1)
     })
     .nullable(),
+  message: z.string().optional()
+});
+
+const DELETE_RESPONSE_SCHEMA = z.object({
+  success: z.boolean(),
   message: z.string().optional()
 });
 
@@ -74,5 +80,24 @@ export class PangolinClient implements IPangolinClient {
     }
 
     return { id: token.accessTokenId, secret: token.accessToken };
+  }
+
+  async deleteResourceAccessToken(tokenId: string): Promise<void> {
+    const url = `${this._config.apiUrl.replace(/\/+$/, '')}/access-token/${encodeURIComponent(tokenId)}`;
+    const response = await this._fetch(url, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${this._config.apiKey}` },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+    const body: unknown = await response.json().catch(() => null);
+    const parsed = DELETE_RESPONSE_SCHEMA.safeParse(body);
+
+    if (!response.ok || (parsed.success && !parsed.data.success)) {
+      const message = parsed.success
+        ? parsed.data.message
+        : `Pangolin answered ${response.status}`;
+
+      throw new PangolinError(message ?? 'Pangolin refused the token deletion');
+    }
   }
 }

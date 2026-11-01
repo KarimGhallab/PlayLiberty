@@ -16,6 +16,8 @@ import {
   type MobileLifetimes,
   refreshTokenHash
 } from './credentialService/credentialService.js';
+import type { RefreshGraceCache } from './refreshGraceCache/refreshGraceCache.js';
+import { revokeFamily } from './revokeFamily/revokeFamily.js';
 
 /* The rotation: mint first, then consume. A Pangolin failure must leave the
  * presented token usable, because it may be the only credential the app holds.
@@ -24,7 +26,7 @@ import {
 
 export type RefreshRefusalReason =
   | 'refresh_token_unknown'
-  | 'refresh_token_consumed'
+  | 'refresh_token_reuse'
   | 'refresh_token_expired'
   | 'family_revoked'
   | 'family_expired';
@@ -54,6 +56,7 @@ export interface RefreshMobileSessionInput {
   readonly pangolin: IPangolinClient;
   readonly lifetimes: MobileLifetimes;
   readonly refreshToken: string;
+  readonly grace: RefreshGraceCache;
   readonly allowAttempt: (key: string) => boolean;
   readonly now: () => number;
 }
@@ -107,9 +110,25 @@ export async function refreshMobileSession(
   }
 
   if (token.consumedAt !== null) {
+    const replayed = input.grace.pairFor(family.id, nowMs);
+
+    if (replayed !== null) {
+      return { outcome: 'ok', pangolinUserId, pair: replayed };
+    }
+
+    /* Outside the grace window a consumed token is reuse: cut the family and
+     * every access token it still holds. */
+    await revokeFamily({
+      database: input.database,
+      pangolin: input.pangolin,
+      familyId: family.id,
+      now: input.now
+    });
+    input.grace.drop(family.id);
+
     return {
       outcome: 'invalid_grant',
-      reason: 'refresh_token_consumed',
+      reason: 'refresh_token_reuse',
       pangolinUserId
     };
   }
@@ -178,23 +197,23 @@ export async function refreshMobileSession(
       .run();
   });
 
-  return {
-    outcome: 'ok',
-    pangolinUserId,
-    pair: {
-      access: {
-        id: access.id,
-        secret: access.secret,
-        expires_at: new Date(accessExpiresMs).toISOString(),
-        expires_in: accessSeconds
-      },
-      refresh: {
-        token: replacement,
-        expires_at: new Date(refreshExpiresMs).toISOString(),
-        expires_in: refreshSeconds
-      }
+  const pair: MobileToken = {
+    access: {
+      id: access.id,
+      secret: access.secret,
+      expires_at: new Date(accessExpiresMs).toISOString(),
+      expires_in: accessSeconds
+    },
+    refresh: {
+      token: replacement,
+      expires_at: new Date(refreshExpiresMs).toISOString(),
+      expires_in: refreshSeconds
     }
   };
+
+  input.grace.record(family.id, pair, nowMs);
+
+  return { outcome: 'ok', pangolinUserId, pair };
 }
 
 function secondsBetween(fromMs: number, toMs: number): number {

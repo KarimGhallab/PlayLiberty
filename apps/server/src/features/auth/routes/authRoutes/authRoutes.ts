@@ -18,6 +18,7 @@ import {
 import { registerEndpoint } from '../../../../shared/registerEndpoint.js';
 
 import { issueMobileSession } from '../../service/credentialService/credentialService.js';
+import { RefreshGraceCache } from '../../service/refreshGraceCache/refreshGraceCache.js';
 import { refreshMobileSession } from '../../service/refreshService.js';
 import { sendInvalidGrant } from '../refusal.js';
 
@@ -53,7 +54,7 @@ export function registerAuthRoutes(
   context: AppContext
 ): void {
   registerProvisionRoutes(app, context);
-  registerRefreshRoute(app, context);
+  registerRefreshRoute(app, context, new RefreshGraceCache());
 }
 
 function registerProvisionRoutes(
@@ -241,7 +242,11 @@ function registerProvisionRoutes(
   });
 }
 
-function registerRefreshRoute(app: FastifyInstance, context: AppContext): void {
+function registerRefreshRoute(
+  app: FastifyInstance,
+  context: AppContext,
+  grace: RefreshGraceCache
+): void {
   /* The second credential-less mutation: a refresh token for the rotated pair.
    * The identity hook lets the POST through without identity; the token in the
    * body is the only credential, and the server checks it itself. */
@@ -298,6 +303,7 @@ function registerRefreshRoute(app: FastifyInstance, context: AppContext): void {
         familySeconds: context.config.mobileFamilyLifetimeSeconds
       },
       refreshToken: parsed.data.refresh_token,
+      grace,
       allowAttempt: key => context.provisioning.allowAttempt(key),
       now: context.now
     });

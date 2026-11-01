@@ -21,6 +21,8 @@ class FakePangolin implements IPangolinClient {
 
     return { id: 'token-id', secret: 'token-secret' };
   }
+
+  async deleteResourceAccessToken(): Promise<void> {}
 }
 
 describe('issueMobileSession', () => {
