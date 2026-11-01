@@ -30,6 +30,7 @@ import {
   tokenNumber,
   touchTarget
 } from '../../../shared/styles/tokens';
+import { cannotPlayNotice } from '../../../shared/trackLinkNotice/trackLinkNotice';
 import { STATUS_CHIPS } from '../../../shared/trackState/statusChips';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
@@ -69,6 +70,7 @@ import {
   UNDO_WINDOW_MS,
   playlistActionsFor
 } from '../../library/playlistActions/playlistActions';
+import { holdLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
 import AddTrackSheet from '../AddTrackSheet/AddTrackSheet';
 import PlaylistControls from '../PlaylistControls/PlaylistControls';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
@@ -103,6 +105,12 @@ export interface PlaylistDetailProps {
   readonly playlistId: string | null;
   readonly config: ApiConfig | null;
   readonly onBack: () => void;
+  /* The track a shared link names; absent for an ordinary visit. */
+  readonly trackId?: string | null;
+  /* The detail reports the track its address should name, or null. */
+  readonly onAddressChange?: (trackId: string | null) => void;
+  /* A link that cannot open this playlist leaves for the bare track. */
+  readonly onBareTrackRedirect?: (trackId: string) => void;
   readonly now?: Date;
   /* The undo window; the app always uses the six-second default. */
   readonly undoWindowMs?: number;
@@ -115,6 +123,9 @@ export default function PlaylistDetail({
   playlistId,
   config,
   onBack,
+  trackId = null,
+  onAddressChange,
+  onBareTrackRedirect,
   now,
   undoWindowMs = UNDO_WINDOW_MS
 }: PlaylistDetailProps) {
@@ -171,9 +182,17 @@ export default function PlaylistDetail({
   const landed = useRef(false);
   const pendingDelete = pending?.kind === 'delete';
   const start = usePlayerStore(state => state.start);
+  const play = usePlayerStore(state => state.play);
   const applyRefetch = usePlayerStore(state => state.applyRefetch);
   const setShuffle = usePlayerStore(state => state.setShuffle);
   const playerQueue = usePlayerStore(state => state.queue);
+  /* A link's target is read once per mount: the address mirrors the current
+   * track after entry, so a later prop is not a second link. */
+  const linkTarget = useRef<string | null>(trackId).current;
+  const enteredLink = useRef(false);
+  const redirectingLink = useRef(false);
+  const [linkSettled, setLinkSettled] = useState(linkTarget === null);
+  const mirroredAddress = useRef<string | null | undefined>(undefined);
   const drawnRows = tracks.isSuccess
     ? tracks.items.filter(entry => !hiddenTracks.has(entry.track.id))
     : [];
@@ -215,6 +234,112 @@ export default function PlaylistDetail({
 
     applyRefetch(playlistData.id, playerTracks(items));
   }, [applyRefetch, playlistData, queue.data, queue.isSuccess]);
+
+  /* A 404 on an open playlist with a track link is the bare track, silently:
+   * the access model never confirms that the playlist exists. A network or
+   * server failure keeps the detail's normal read failure. */
+  useEffect(() => {
+    if (
+      linkTarget === null ||
+      redirectingLink.current ||
+      !playlist.isError ||
+      !(playlist.error instanceof ApiError) ||
+      playlist.error.status !== 404
+    ) {
+      return;
+    }
+
+    redirectingLink.current = true;
+    onBareTrackRedirect?.(linkTarget);
+  }, [linkTarget, onBareTrackRedirect, playlist.error, playlist.isError]);
+
+  /* A shared link enters the playlist once its reads land: another queue
+   * starts this playlist at the track, this queue jumps to it, and the same
+   * track is a no-op so a repeated link neither restarts nor seeks. A track
+   * that left the playlist leaves for the bare route with its notice; one that
+   * cannot play stays here and says why. */
+  useEffect(() => {
+    if (enteredLink.current || linkTarget === null) {
+      return;
+    }
+
+    if (playlistData === undefined || !queue.isSuccess) {
+      return;
+    }
+
+    const items = queue.data?.items ?? [];
+    const association = items.find(entry => entry.track.id === linkTarget);
+
+    enteredLink.current = true;
+    setLinkSettled(true);
+
+    if (association === undefined) {
+      redirectingLink.current = true;
+      holdLeftPlaylistNotice();
+      onBareTrackRedirect?.(linkTarget);
+      return;
+    }
+
+    if (!isPlayable(association.track)) {
+      setNotice(cannotPlayNotice(association.track, t));
+      return;
+    }
+
+    if (playerPlaylistId === playlistData.id) {
+      if (currentId !== linkTarget && playerQueue.includes(linkTarget)) {
+        play(linkTarget);
+      }
+
+      return;
+    }
+
+    start(
+      playerTracks(items.filter(entry => isPlayable(entry.track))),
+      {
+        id: playlistData.id,
+        name: playlistData.name,
+        coverUpdatedAt: playlistData.coverUpdatedAt,
+        coverTrackId: playlistData.coverTrackId
+      },
+      linkTarget,
+      false
+    );
+  }, [
+    currentId,
+    linkTarget,
+    onBareTrackRedirect,
+    play,
+    playerPlaylistId,
+    playerQueue,
+    playlistData,
+    queue.data,
+    queue.isSuccess,
+    start,
+    t
+  ]);
+
+  /* The address names the playing track while this detail is the queue, and
+   * names none while it is not. A link's target holds its place until entry
+   * settles, so the read does not erase the parameter first. */
+  useEffect(() => {
+    if (onAddressChange === undefined) {
+      return;
+    }
+
+    const next =
+      isQueue && currentId !== null
+        ? currentId
+        : linkSettled
+          ? null
+          : linkTarget;
+
+    if (mirroredAddress.current === next) {
+      return;
+    }
+
+    mirroredAddress.current = next;
+    onAddressChange(next);
+  }, [currentId, isQueue, linkSettled, linkTarget, onAddressChange]);
 
   /* Opening the queue's playlist lands on its current row once; a later start
    * or skip does not move the list under the reader. */

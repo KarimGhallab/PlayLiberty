@@ -26,7 +26,10 @@ must name a playlist the signed-in account owns with at least three playable tra
 of gallery order and of a shared first card. The flows are independent, so any order works.
 `signed-out` leaves the device signed out; the other flows sign in first when they need to. `provisioning` starts from
 either state and leaves the device signed in. The pin flow takes `PIN_PLAYLIST`, which must name an unpinned playlist;
-it finds that card by name in the rest group and leaves it unpinned when it ends.
+it finds that card by name in the rest group and leaves it unpinned when it ends. The track-link flow takes
+`PLAYLIST_ID`, `TRACK_ID` and `TRACK_TITLE`; the title names the track in the bar and its row, so keep it simple
+enough to be a selector. Pick a track above the playlist's last row and long enough for the copy, because the last
+row's lane can sit under the player bar.
 
 ## The cover fixture
 
@@ -67,6 +70,7 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 | `gallery-add`         | a playlist is added from the floating action and appears under Syncing   |
 | `gallery-pin`         | a card is pinned, moves under Pinned, and is unpinned again              |
 | `gallery-cover`       | a cover is chosen, framed, saved, seen again and removed                 |
+| `link-track`          | a track link opens its playlist at the track and copies it               |
 | `detail-play`         | a row plays and its own row says it is playing                           |
 | `detail-arrange`      | the sort round-trips, Failed draws its body, then All returns the list   |
 | `detail-remove-undo`  | Remove defers, Undo restores the row, and the device ends in the gallery |
@@ -83,6 +87,12 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 The development client draws a floating gear over the top right of the app, and its touch area covers the centre of
 the account door. The flows tap the left tenth of the door instead, which is why the `tapOn` for `account-door`
 carries a `point`.
+
+## Why the track-link flow opens a URL
+
+The flow proves the link, not a tap that happens to reach the same screen, so it opens the scheme URL after the app is
+warm. The dev client's launcher takes a cold custom-scheme intent, so the flow launches and signs in first and only
+then opens the link.
 
 ## Why the cover flow taps the picker by point
 
@@ -101,7 +111,8 @@ and the card's own name, and one sideways sweep at 33% height brings the later c
 The sort and the chips share one rail below the header, so `scrollUntilVisible` would scroll the page under the rail
 rather than the rail itself. The arranging flow swipes the chip rail twice to reach Failed and twice back to All.
 Remove and Undo live in a six-second window, so those taps set `waitToSettleTimeoutMs: 0`; a settle wait can outlast
-the window and let the removal commit before Undo lands.
+the window and let the removal commit before Undo lands. The track-link flow's copy confirmation is a four-second
+notice, so its copy tap sets the same timeout.
 
 The batch flow checks the second checkbox in the add sheet. The current playlist is first and preselected, so index
 1 is the next writable playlist on the gallery's first page. A clean batch closes the sheet; a refusal would keep it

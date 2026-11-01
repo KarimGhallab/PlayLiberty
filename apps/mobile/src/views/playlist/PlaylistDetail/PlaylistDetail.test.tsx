@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest
+} from '@jest/globals';
 import {
   act,
   fireEvent,
@@ -61,6 +68,7 @@ import type { ApiConfig } from '../../../auth/useApiConfig';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddAction';
+import { takeLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
 import PlaylistDetail from './PlaylistDetail';
 
 jest.mock('../../../api/usePlaylist', () => ({ usePlaylist: jest.fn() }));
@@ -425,6 +433,7 @@ interface RenderOptions {
   readonly tracks?: typeof page;
   readonly filteredTracks?: Partial<Record<TrackFileStatus, typeof page>>;
   readonly queue?: readonly PlaylistTrack[];
+  readonly trackId?: string | null;
   readonly queueError?: Error;
   readonly queuePending?: boolean;
   readonly queueRefetch?: 'resolve' | 'reject' | 'hold';
@@ -460,6 +469,8 @@ type QueueReadResult = {
 
 async function renderDetail(options: RenderOptions = {}) {
   const onBack = options.onBack ?? jest.fn();
+  const onAddressChange = jest.fn();
+  const onBareTrackRedirect = jest.fn();
   const playlistRefetch = jest.fn();
   const tracksRefetch = jest.fn();
   const tracksFetchNextPage = jest.fn();
@@ -660,6 +671,9 @@ async function renderDetail(options: RenderOptions = {}) {
         <PlaylistDetail
           config={config}
           playlistId="playlist-1"
+          trackId={options.trackId ?? null}
+          onAddressChange={onAddressChange}
+          onBareTrackRedirect={onBareTrackRedirect}
           onBack={onBack}
           now={now}
           undoWindowMs={options.undoWindowMs}
@@ -670,6 +684,8 @@ async function renderDetail(options: RenderOptions = {}) {
 
   return {
     onBack,
+    onAddressChange,
+    onBareTrackRedirect,
     playlistRefetch,
     tracksRefetch,
     tracksFetchNextPage,
@@ -691,12 +707,204 @@ beforeEach(() => {
   jest.restoreAllMocks();
   jest.clearAllMocks();
   copyTextMock.mockReset();
+  takeLeftPlaylistNotice();
   usePlayerStore.setState({
     queue: [],
     sourceQueue: [],
     playlistId: null,
     currentId: null,
     shuffle: false
+  });
+});
+
+describe('a shared track link', () => {
+  afterEach(() => {
+    usePlayerStore.getState().clear();
+  });
+
+  function startPlaylistAt(trackId: string) {
+    usePlayerStore.getState().start(
+      [
+        {
+          id: 'track-1',
+          title: 'First Song',
+          durationSeconds: 182,
+          thumbnailPath: null
+        },
+        {
+          id: 'track-2',
+          title: 'Second Song',
+          durationSeconds: 182,
+          thumbnailPath: null
+        }
+      ],
+      { id: 'playlist-1', name: 'Rain On The Window' },
+      trackId
+    );
+  }
+
+  it('starts the playlist at the link track when another queue plays', async () => {
+    usePlayerStore.getState().start(
+      [
+        {
+          id: 'other-1',
+          title: 'Other',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      { id: 'other-playlist', name: 'Other' },
+      'other-1'
+    );
+
+    const { onAddressChange } = await renderDetail({
+      trackId: 'track-2',
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('track-2');
+    });
+    const player = usePlayerStore.getState();
+
+    expect(player.playlistId).toBe('playlist-1');
+    expect(player.queue).toEqual(['track-1', 'track-2']);
+    expect(player.shuffle).toBe(false);
+    expect(player.isPlaying).toBe(true);
+    expect(onAddressChange).toHaveBeenLastCalledWith('track-2');
+  });
+
+  it('jumps to the link track in the queue it is already in', async () => {
+    startPlaylistAt('track-1');
+    usePlayerStore.getState().setPosition(30);
+
+    await renderDetail({
+      trackId: 'track-2',
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('track-2');
+    });
+    expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().queue).toEqual(['track-1', 'track-2']);
+  });
+
+  it('neither restarts nor seeks when the link names the current track', async () => {
+    startPlaylistAt('track-1');
+    usePlayerStore.getState().setPosition(30);
+    usePlayerStore.getState().setPlaying(false);
+
+    await renderDetail({
+      trackId: 'track-1',
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-screen')).toBeOnTheScreen();
+    });
+    expect(usePlayerStore.getState().currentId).toBe('track-1');
+    expect(usePlayerStore.getState().positionSeconds).toBe(30);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it('does not start a queue for a plain detail path', async () => {
+    const { onAddressChange } = await renderDetail();
+
+    expect(usePlayerStore.getState().currentId).toBeNull();
+    expect(onAddressChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('mirrors the playing track while the detail is the queue', async () => {
+    startPlaylistAt('track-1');
+    const { onAddressChange } = await renderDetail({
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(onAddressChange).toHaveBeenLastCalledWith('track-1');
+    });
+
+    await act(async () => {
+      usePlayerStore.getState().skipNext();
+    });
+
+    await waitFor(() => {
+      expect(onAddressChange).toHaveBeenLastCalledWith('track-2');
+    });
+  });
+
+  it('leaves for the bare track when the playlist is gone', async () => {
+    const { onBareTrackRedirect } = await renderDetail({
+      trackId: 'track-2',
+      playlistError: notFound
+    });
+
+    await waitFor(() => {
+      expect(onBareTrackRedirect).toHaveBeenCalledWith('track-2');
+    });
+    expect(usePlayerStore.getState().currentId).toBeNull();
+  });
+
+  it('keeps the read failure when the playlist read is not a not-found', async () => {
+    const { onBareTrackRedirect } = await renderDetail({
+      trackId: 'track-2',
+      playlistError: playlistFailure
+    });
+
+    await act(async () => {});
+    expect(onBareTrackRedirect).not.toHaveBeenCalled();
+  });
+
+  it('leaves for the bare track when the track left the playlist', async () => {
+    const { onBareTrackRedirect } = await renderDetail({
+      trackId: 'track-3',
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(onBareTrackRedirect).toHaveBeenCalledWith('track-3');
+    });
+    expect(takeLeftPlaylistNotice()).toBe(true);
+    expect(usePlayerStore.getState().currentId).toBeNull();
+  });
+
+  it('keeps the playlist and explains a track that cannot play', async () => {
+    const { onBareTrackRedirect } = await renderDetail({
+      trackId: 'track-1',
+      queue: [failedTrack, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('First Song cannot play.')).toBeOnTheScreen();
+    });
+    expect(screen.getByText('Its download failed.')).toBeOnTheScreen();
+    expect(onBareTrackRedirect).not.toHaveBeenCalled();
+    expect(usePlayerStore.getState().currentId).toBeNull();
+  });
+
+  it('names no track when another queue plays', async () => {
+    usePlayerStore.getState().start(
+      [
+        {
+          id: 'other-1',
+          title: 'Other',
+          durationSeconds: 100,
+          thumbnailPath: null
+        }
+      ],
+      { id: 'other-playlist', name: 'Other' },
+      'other-1'
+    );
+
+    const { onAddressChange, view } = await renderDetail({
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(onAddressChange).toHaveBeenLastCalledWith(null);
+    });
+    view.unmount();
   });
 });
 

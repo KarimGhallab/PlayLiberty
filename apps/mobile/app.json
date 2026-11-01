@@ -11,36 +11,11 @@
     "android": {
       "package": "dev.playliberty.app",
       "versionCode": 1,
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "playliberty.example",
-              "pathPrefix": "/playlists"
-            },
-            {
-              "scheme": "https",
-              "host": "playliberty.example",
-              "pathPrefix": "/tracks"
-            },
-            {
-              "scheme": "https",
-              "host": "playliberty.example",
-              "pathPrefix": "/auth"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ],
       "permissions": ["android.permission.POST_NOTIFICATIONS"]
     },
     "ios": {
       "bundleIdentifier": "dev.playliberty.app",
-      "supportsTablet": false,
-      "associatedDomains": ["applinks:playliberty.example"]
+      "supportsTablet": false
     },
     "plugins": [
       "expo-router",
