@@ -16,10 +16,7 @@ import {
 import { expoProvisioningDeps } from '../expoProvisioning';
 import { completeProvisioning } from '../provisioning/provisioning';
 import { provisioningFailure } from '../provisioningFailure';
-import {
-  recordFromToken,
-  sessionRecordStore
-} from '../sessionRecord/sessionRecord';
+import { mobileSession } from '../session/session';
 import { startProvisioning } from '../startProvisioning';
 
 /* The app's callback, shared by the scheme route and the HTTPS App Link: it
@@ -43,9 +40,7 @@ export default function ProvisionCallback() {
     let active = true;
 
     void completeProvisioning({ code, state }, expoProvisioningDeps)
-      .then(token =>
-        sessionRecordStore.write(recordFromToken(token, Date.now()))
-      )
+      .then(token => mobileSession.adopt(token))
       .then(() => {
         if (active) {
           router.replace('/');

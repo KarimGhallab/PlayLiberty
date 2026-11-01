@@ -18,7 +18,7 @@ import {
   ProvisioningFailure,
   completeProvisioning
 } from '../provisioning/provisioning';
-import { sessionRecordStore } from '../sessionRecord/sessionRecord';
+import { mobileSession } from '../session/session';
 import { startProvisioning } from '../startProvisioning';
 import ProvisionCallback from './ProvisionCallback';
 
@@ -46,20 +46,13 @@ jest.mock('../startProvisioning', () => ({
   startProvisioning: jest.fn()
 }));
 
-jest.mock('../sessionRecord/sessionRecord', () => {
-  const actual = jest.requireActual<
-    typeof import('../sessionRecord/sessionRecord')
-  >('../sessionRecord/sessionRecord');
-
-  return {
-    ...actual,
-    sessionRecordStore: { write: jest.fn() }
-  };
-});
+jest.mock('../session/session', () => ({
+  mobileSession: { adopt: jest.fn() }
+}));
 
 const complete = jest.mocked(completeProvisioning);
 const start = jest.mocked(startProvisioning);
-const writeRecord = jest.mocked(sessionRecordStore.write);
+const adopt = jest.mocked(mobileSession.adopt);
 const mockReplace = jest.mocked(router.replace);
 const mockParams = jest.mocked(useLocalSearchParams);
 
@@ -192,8 +185,8 @@ describe('the provisioning callback', () => {
     ).toBeOnTheScreen();
   });
 
-  it('writes the record and returns to the library on success', async () => {
-    complete.mockResolvedValue({
+  it('adopts the pair and returns to the library on success', async () => {
+    const pair = {
       access: {
         id: 'token-id',
         secret: 'token-secret',
@@ -205,20 +198,13 @@ describe('the provisioning callback', () => {
         expires_at: '2027-04-30T12:00:00.000Z',
         expires_in: 15_552_000
       }
-    });
+    };
+    complete.mockResolvedValue(pair);
 
     await renderCallback();
 
     await waitFor(() => {
-      expect(writeRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          accessId: 'token-id',
-          accessSecret: 'token-secret',
-          accessDeadline: expect.any(Number),
-          refreshToken: 'refresh-token',
-          refreshExpiresAt: '2027-04-30T12:00:00.000Z'
-        })
-      );
+      expect(adopt).toHaveBeenCalledWith(pair);
       expect(mockReplace).toHaveBeenCalledWith('/');
     });
   });
