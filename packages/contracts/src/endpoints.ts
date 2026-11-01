@@ -173,6 +173,14 @@ export const endpoints = {
       ...VALIDATED_WRITE_ERRORS
     ]
   }),
+  /* Sign-out ends the family behind the edge: the access token authenticates,
+   * the body names the refresh token, and the answer is empty whether or not
+   * anything was revoked. */
+  revokeSession: defineCommandEndpoint({
+    method: HttpMethod.Post,
+    path: '/session/revoke',
+    errors: [...VALIDATED_WRITE_ERRORS]
+  }),
   /* The caller's own role is part of the account read, so the client can gate
    * an admin surface without asking a second route. */
   egress: defineEndpoint({

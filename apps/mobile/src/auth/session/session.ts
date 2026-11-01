@@ -2,11 +2,17 @@ import {
   type MobileToken,
   MobileTokenSchema,
   ProblemCode,
-  ProblemSchema
+  ProblemSchema,
+  endpoints
 } from '@playliberty/contracts';
 
 import { apiBaseUrl } from '../../api/apiBaseUrl';
-import type { AccessToken } from '../../api/apiClient/ApiClient';
+import {
+  ACCESS_TOKEN_HEADER,
+  ACCESS_TOKEN_ID_HEADER,
+  API_PREFIX,
+  type AccessToken
+} from '../../api/apiClient/ApiClient';
 import { USER_AGENT, USER_AGENT_HEADER } from '../../api/userAgent';
 import {
   type SessionRecord,
@@ -136,6 +142,39 @@ export class Session {
     return record;
   }
 
+  /** Ends the family at the edge when it can, then clears locally. A refused
+   * or unreachable server never keeps the record on the phone. */
+  async signOut(): Promise<void> {
+    try {
+      const access = await this.accessToken();
+
+      if (access !== null) {
+        const current = await this.load();
+
+        if (current !== null) {
+          await this._deps.fetch(
+            `${this._deps.baseUrl.replace(/\/+$/, '')}${API_PREFIX}${endpoints.revokeSession.path}`,
+            {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                [USER_AGENT_HEADER]: USER_AGENT,
+                'x-playliberty-client': 'mobile',
+                [ACCESS_TOKEN_ID_HEADER]: access.id,
+                [ACCESS_TOKEN_HEADER]: access.secret
+              },
+              body: JSON.stringify({ refresh_token: current.refreshToken })
+            }
+          );
+        }
+      }
+    } catch {
+      /* Best effort: a failure to reach the server must not keep the session. */
+    }
+
+    await this.clear();
+  }
+
   async clear(): Promise<void> {
     await this._deps.store.clear();
 
@@ -232,7 +271,7 @@ async function readProblem(response: Response) {
 /** The app's one session, over the stored record and the configured origin. */
 export const mobileSession = new Session({
   baseUrl: apiBaseUrl(),
-  fetch,
+  fetch: (input, init) => fetch(input, init),
   store: sessionRecordStore,
   now: Date.now
 });

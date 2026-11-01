@@ -25,6 +25,7 @@ export type {
   PlaylistWithCounts,
   Problem,
   RefreshInput,
+  SessionRevokeInput,
   RenamePlaylistInput,
   Share,
   SharePlaylistInput,

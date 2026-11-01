@@ -263,6 +263,12 @@ export const RefreshInputSchema = z.object({
   refresh_token: z.string().min(1)
 });
 
+/* Sign-out names the family by its current refresh token; the edge has already
+ * authenticated the access token in the headers. */
+export const SessionRevokeInputSchema = z.object({
+  refresh_token: z.string().min(1)
+});
+
 /* The access token is the id and secret Pangolin expects in its two headers;
  * the refresh token is the opaque value only the app and the server hold. */
 export const MobileTokenSchema = z.object({

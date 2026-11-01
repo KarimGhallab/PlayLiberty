@@ -322,6 +322,102 @@ describe('the renewal verdict', () => {
   });
 });
 
+describe('signOut', () => {
+  it('revokes the family and clears the record', async () => {
+    const store = new MemoryStore(record(3_600_000));
+    const { calls, fetchMock } = fetchReturning(
+      () => new Response(null, { status: 204 })
+    );
+    const session = sessionWith(store, fetchMock);
+    const seen: Array<SessionRecord | null> = [];
+    session.subscribe(entry => seen.push(entry));
+
+    await session.signOut();
+
+    const [call] = calls;
+    const headers = new Headers(call?.init?.headers);
+
+    expect(call?.url).toBe('https://instance.test/api/v1/session/revoke');
+    expect(call?.init?.method).toBe('POST');
+    expect(headers.get('P-Access-Token-Id')).toBe('access-1');
+    expect(headers.get('P-Access-Token')).toBe('secret-1');
+    expect(headers.get('x-playliberty-client')).toBe('mobile');
+    expect(headers.get('User-Agent')).toBe(USER_AGENT);
+    expect(JSON.parse(String(call?.init?.body))).toEqual({
+      refresh_token: 'refresh-1'
+    });
+    expect(store.record).toBeNull();
+    expect(seen).toEqual([null]);
+  });
+
+  it('refreshes first when the access token has lapsed', async () => {
+    const store = new MemoryStore(record(ACCESS_MARGIN_MS - 1000));
+    const responses = [
+      jsonResponse(tokenPair('access-2', 'secret-2', 'refresh-2')),
+      new Response(null, { status: 204 })
+    ];
+    const calls: FetchCall[] = [];
+    const fetchMock = (async (
+      input: Parameters<typeof fetch>[0],
+      init?: Parameters<typeof fetch>[1]
+    ) => {
+      calls.push({ url: String(input), init });
+
+      return responses[calls.length - 1] ?? new Response(null, { status: 500 });
+    }) as typeof fetch;
+    const session = sessionWith(store, fetchMock);
+
+    await session.signOut();
+
+    const [refreshCall, revokeCall] = calls;
+    const headers = new Headers(revokeCall?.init?.headers);
+
+    expect(calls).toHaveLength(2);
+    expect(refreshCall?.url).toBe(REFRESH_URL);
+    expect(headers.get('P-Access-Token-Id')).toBe('access-2');
+    expect(JSON.parse(String(revokeCall?.init?.body))).toEqual({
+      refresh_token: 'refresh-2'
+    });
+    expect(store.record).toBeNull();
+  });
+
+  it('clears the record when the server cannot be reached', async () => {
+    const store = new MemoryStore(record(3_600_000));
+    const fetchMock = (async () => {
+      throw new Error('offline');
+    }) as typeof fetch;
+    const session = sessionWith(store, fetchMock);
+
+    await session.signOut();
+
+    expect(store.record).toBeNull();
+  });
+
+  it('clears without a request when there is no record', async () => {
+    const store = new MemoryStore(null);
+    const { calls, fetchMock } = fetchReturning(
+      () => new Response(null, { status: 204 })
+    );
+    const session = sessionWith(store, fetchMock);
+
+    await session.signOut();
+
+    expect(calls).toHaveLength(0);
+    expect(store.record).toBeNull();
+  });
+
+  it('does not revoke when the renewal ends the session', async () => {
+    const store = new MemoryStore(record(ACCESS_MARGIN_MS - 1000));
+    const { calls, fetchMock } = fetchReturning(() => invalidGrant());
+    const session = sessionWith(store, fetchMock);
+
+    await session.signOut();
+
+    expect(calls).toHaveLength(1);
+    expect(store.record).toBeNull();
+  });
+});
+
 describe('adopt', () => {
   it('writes the record and tells its subscribers', async () => {
     const store = new MemoryStore(null);

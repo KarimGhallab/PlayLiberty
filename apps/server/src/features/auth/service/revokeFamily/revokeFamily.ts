@@ -14,7 +14,9 @@ import {
 
 export interface RevokeFamilyInput {
   readonly database: DatabaseHandle;
-  readonly pangolin: IPangolinClient;
+  /* Null when the instance has no Integration API; there is then nothing to
+   * delete at the edge, and the local rows still end. */
+  readonly pangolin: IPangolinClient | null;
   readonly familyId: string;
   readonly now: () => number;
 }
@@ -33,11 +35,13 @@ export async function revokeFamily(input: RevokeFamilyInput): Promise<void> {
     )
     .all();
 
-  for (const token of live) {
-    try {
-      await input.pangolin.deleteResourceAccessToken(token.pangolinTokenId);
-    } catch {
-      /* A failed delete must not keep the family alive locally. */
+  if (input.pangolin !== null) {
+    for (const token of live) {
+      try {
+        await input.pangolin.deleteResourceAccessToken(token.pangolinTokenId);
+      } catch {
+        /* A failed delete must not keep the family alive locally. */
+      }
     }
   }
 

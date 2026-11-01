@@ -24,6 +24,7 @@ import { sendProblem } from '../shared/problem.js';
 import { registerAccountRoutes } from '../features/accounts/routes/accountRoutes.js';
 import { PangolinClient } from '../features/auth/pangolin/PangolinClient.js';
 import { registerAuthRoutes } from '../features/auth/routes/authRoutes/authRoutes.js';
+import { registerSessionRoutes } from '../features/auth/routes/sessionRoutes/sessionRoutes.js';
 import { ProvisioningService } from '../features/auth/service/ProvisioningService.js';
 import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
@@ -225,6 +226,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(
     async api => {
       registerAccountRoutes(api, context);
+      registerSessionRoutes(api, context);
       registerEgressRoutes(api, context);
       registerPlaylistRoutes(api, context);
       registerCoverRoutes(api, context);

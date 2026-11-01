@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest
+} from '@jest/globals';
 import * as SecureStore from 'expo-secure-store';
 
 import type { MobileToken } from '@playliberty/contracts';
@@ -41,10 +48,19 @@ const PAIR: MobileToken = {
   }
 };
 
+let fetchMock: jest.SpiedFunction<typeof fetch>;
+
 beforeEach(async () => {
+  fetchMock = jest
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValue(new Response(null, { status: 204 }));
   store.__clear();
   await mobileSession.clear();
   useSessionStore.setState({ status: SessionStatus.Loading });
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe('the session', () => {
@@ -74,6 +90,7 @@ describe('the session', () => {
     await useSessionStore.getState().expire();
 
     expect(await sessionRecordStore.read()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(useSessionStore.getState().status).toBe(SessionStatus.SignedOut);
     expect(usePlayerStore.getState().currentId).toBeNull();
     expect(usePlayerStore.getState().queue).toEqual([]);

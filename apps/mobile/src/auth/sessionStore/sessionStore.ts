@@ -41,7 +41,7 @@ export const useSessionStore = create<SessionState>()(set => ({
   },
   expire: async () => {
     generation += 1;
-    await mobileSession.clear();
+    await mobileSession.signOut();
     usePlayerStore.getState().clear();
     set({ status: SessionStatus.SignedOut });
   }
