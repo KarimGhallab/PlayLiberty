@@ -63,7 +63,7 @@ Tickets `06` and `07` scaffolded the mobile app and provisioned its access. The 
 and `07` is the implementation record of spec [`20`](../specs/20-provision-mobile-access.md); the remaining tickets
 are in [`20-provision-mobile-access/TICKETS.md`](20-provision-mobile-access/TICKETS.md).
 
-Feature-scoped ticket sets live in a folder named for their spec:
+Feature-scoped ticket sets live in a folder named for their spec or their audit:
 
 - [`01-sync-a-playlist/TICKETS.md`](01-sync-a-playlist/TICKETS.md)
 - [`02-store-a-track/TICKETS.md`](02-store-a-track/TICKETS.md)
@@ -97,6 +97,8 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`30-share-a-track/TICKETS.md`](30-share-a-track/TICKETS.md).
 - [`31-manage-the-egress/TICKETS.md`](31-manage-the-egress/TICKETS.md).
 - [`33-refresh-mobile-access/TICKETS.md`](33-refresh-mobile-access/TICKETS.md).
+- [`mobile-ui-audit-1/TICKETS.md`](mobile-ui-audit-%231/TICKETS.md): the mobile UI audit's 19 tickets, from issue
+  [`105`](../issues/105-the-mobile-apps-ui-misses-its-contract.md).
 
 ## Conventions
 
