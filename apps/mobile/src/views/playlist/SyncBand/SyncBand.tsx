@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   stamp: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
+    fontSize: tokenLength('text-sm'),
     fontVariant: ['tabular-nums']
   },
   cells: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   flight: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs')
+    fontSize: tokenLength('text-sm')
   },
   retryFailed: {
     minHeight: touchTarget,

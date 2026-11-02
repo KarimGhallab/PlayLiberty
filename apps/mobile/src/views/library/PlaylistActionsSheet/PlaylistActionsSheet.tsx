@@ -7,7 +7,8 @@ import {
   IconShare,
   IconTrash
 } from '@tabler/icons-react-native';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import type { ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
@@ -41,6 +42,10 @@ export interface PlaylistActionsSheetProps {
   readonly problem?: string | null;
   readonly onSelect: (key: PlaylistActionKey) => void;
   readonly onClose: () => void;
+  /** The status block above the actions: the playlist's sync evidence. */
+  readonly summary?: ReactNode;
+  /** The playlist's own settings below the actions: the skip switch. */
+  readonly extra?: ReactNode;
 }
 
 /* One sheet for one playlist's actions, gated by the caller's access model. A
@@ -50,7 +55,9 @@ export default function PlaylistActionsSheet({
   actions,
   problem = null,
   onSelect,
-  onClose
+  onClose,
+  summary,
+  extra
 }: PlaylistActionsSheetProps) {
   const { t } = useI18n();
 
@@ -61,6 +68,11 @@ export default function PlaylistActionsSheet({
       onRequestClose={onClose}
       testID="playlist-actions-sheet"
       backdropTestID="playlist-actions-backdrop">
+      {summary === undefined ? null : (
+        <View testID="playlist-actions-summary" style={styles.summary}>
+          {summary}
+        </View>
+      )}
       {problem === null ? null : (
         <Text
           testID="playlist-actions-problem"
@@ -98,6 +110,11 @@ export default function PlaylistActionsSheet({
           </Pressable>
         );
       })}
+      {extra === undefined ? null : (
+        <View testID="playlist-actions-extra" style={styles.extra}>
+          {extra}
+        </View>
+      )}
     </Sheet>
   );
 }
@@ -108,6 +125,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-3')
+  },
+  summary: {
+    marginBottom: tokenLength('space-3'),
+    paddingBottom: tokenLength('space-3'),
+    borderBottomWidth: 1,
+    borderBottomColor: tokenColor('line')
+  },
+  extra: {
+    gap: tokenLength('space-3'),
+    marginTop: tokenLength('space-3'),
+    paddingTop: tokenLength('space-3'),
+    borderTopWidth: 1,
+    borderTopColor: tokenColor('line')
   },
   rule: {
     borderBottomWidth: 1,

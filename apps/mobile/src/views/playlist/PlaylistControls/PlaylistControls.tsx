@@ -1,5 +1,10 @@
 import { IconArrowsSort, IconChevronDown } from '@tabler/icons-react-native';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent
+} from 'react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { TrackFileStatus } from '@playliberty/contracts';
@@ -9,7 +14,12 @@ import type {
 } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
+import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
 import Chip from '../../../shared/components/Chip/Chip';
+import {
+  RailFade,
+  useRailEdges
+} from '../../../shared/components/RailFade/RailFade';
 import {
   fontFamily,
   tokenColor,
@@ -25,6 +35,13 @@ import {
 import PlaylistSortSheet from './PlaylistSortSheet';
 import { sortLabelKey } from './sortOptions';
 
+type ChipKey = TrackFileStatus | 'all';
+
+interface ChipRect {
+  readonly x: number;
+  readonly width: number;
+}
+
 export interface PlaylistControlsProps {
   readonly sort: PlaylistSort;
   readonly canEdit: boolean;
@@ -34,6 +51,21 @@ export interface PlaylistControlsProps {
   readonly active: TrackFileStatus | null;
   readonly onSortChange: (sort: PlaylistSort) => void;
   readonly onFilterChange: (status: TrackFileStatus | null) => void;
+}
+
+/* The rail's shape while the playlist read lands, so the chips and the first
+ * row resolve where the skeleton held them. */
+export function PlaylistControlsSkeleton() {
+  return (
+    <View testID="playlist-controls-skeleton" style={styles.skeletonRail}>
+      <View style={[styles.skeletonLine, styles.skeletonSort]} />
+      <View style={styles.skeletonDivider} />
+      <View
+        style={[styles.skeletonChip, { width: tokenLength('space-9') * 2 }]}
+      />
+      <View style={[styles.skeletonChip, { width: tokenLength('space-9') }]} />
+    </View>
+  );
 }
 
 /* The detail's one row below the header: the saved order, a rule, then the
@@ -50,18 +82,79 @@ export default function PlaylistControls({
   onFilterChange
 }: PlaylistControlsProps) {
   const { t } = useI18n();
+  const reduceMotion = useReduceMotion();
   const [open, setOpen] = useState(false);
+  const rail = useRef<ScrollView>(null);
+  const railOffset = useRef(0);
+  const railViewport = useRef(0);
+  const chipsLeft = useRef(0);
+  const chipRects = useRef(new Map<ChipKey, ChipRect>());
+  const { edges, ...edgeHandlers } = useRailEdges();
   const total = totalStatusCount(counts);
   const sortDisabled = !canEdit || saving || shuffled;
 
+  /* A chip selected while half past the rail's edge is scrolled back into
+   * view, so the tap that chose it never hides its own count. */
+  const revealChip = useCallback(
+    (key: ChipKey): void => {
+      const rect = chipRects.current.get(key);
+      const viewport = railViewport.current;
+
+      if (rect === undefined || viewport === 0) {
+        return;
+      }
+
+      const x = chipsLeft.current + rect.x;
+      const margin = tokenLength('space-3');
+      const offset = railOffset.current;
+
+      if (x < offset + margin) {
+        rail.current?.scrollTo({
+          x: Math.max(0, x - margin),
+          animated: !reduceMotion
+        });
+      } else if (x + rect.width > offset + viewport - margin) {
+        rail.current?.scrollTo({
+          x: x + rect.width - viewport + margin,
+          animated: !reduceMotion
+        });
+      }
+    },
+    [reduceMotion]
+  );
+
+  useEffect(() => {
+    revealChip(active ?? 'all');
+  }, [active, revealChip]);
+
+  const readViewport = (event: LayoutChangeEvent): void => {
+    railViewport.current = event.nativeEvent.layout.width;
+    edgeHandlers.onLayout(event);
+  };
+
+  const readRail = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+    railOffset.current = event.nativeEvent.contentOffset.x;
+    edgeHandlers.onScroll(event);
+  };
+
+  const rememberChip = (key: ChipKey) => (event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout;
+    chipRects.current.set(key, { x, width });
+  };
+
   return (
-    <View testID="playlist-controls">
+    <View testID="playlist-controls" style={styles.controls}>
       <ScrollView
+        ref={rail}
         testID="playlist-filter-rail"
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.rail}
-        contentContainerStyle={styles.railContent}>
+        contentContainerStyle={styles.railContent}
+        onLayout={readViewport}
+        onContentSizeChange={edgeHandlers.onContentSizeChange}
+        onScroll={readRail}
+        scrollEventThrottle={16}>
         <Pressable
           testID="detail-sort"
           accessibilityRole="button"
@@ -94,30 +187,37 @@ export default function PlaylistControls({
           testID="playlist-chips"
           accessibilityRole="radiogroup"
           accessibilityLabel={t('detail.filterBy')}
-          style={styles.chips}>
-          <Chip
-            testID="filter-all"
-            label={t('detail.filterAll')}
-            count={total}
-            selected={active === null}
-            disabled={shuffled}
-            onPress={() => onFilterChange(null)}
-          />
-          {STATUS_CHIPS.map(chip => (
+          style={styles.chips}
+          onLayout={event => {
+            chipsLeft.current = event.nativeEvent.layout.x;
+          }}>
+          <View onLayout={rememberChip('all')}>
             <Chip
-              key={chip.value}
-              testID={`filter-${chip.value}`}
-              label={t(chip.label)}
-              count={counts[chip.value]}
-              tone={chip.tone}
-              selected={active === chip.value}
+              testID="filter-all"
+              label={t('detail.filterAll')}
+              count={total}
+              selected={active === null}
               disabled={shuffled}
-              onPress={() => onFilterChange(chip.value)}
+              onPress={() => onFilterChange(null)}
             />
+          </View>
+          {STATUS_CHIPS.map(chip => (
+            <View key={chip.value} onLayout={rememberChip(chip.value)}>
+              <Chip
+                testID={`filter-${chip.value}`}
+                label={t(chip.label)}
+                count={counts[chip.value]}
+                tone={chip.tone}
+                selected={active === chip.value}
+                disabled={shuffled}
+                onPress={() => onFilterChange(chip.value)}
+              />
+            </View>
           ))}
         </View>
       </ScrollView>
-
+      <RailFade side="start" visible={edges.start} />
+      <RailFade side="end" visible={edges.end} />
       <PlaylistSortSheet
         visible={open}
         sort={sort}
@@ -135,6 +235,33 @@ export default function PlaylistControls({
 }
 
 const styles = StyleSheet.create({
+  controls: {
+    position: 'relative'
+  },
+  skeletonRail: {
+    height: touchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-2')
+  },
+  skeletonLine: {
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface-raised')
+  },
+  skeletonSort: {
+    width: tokenLength('space-9') * 1.5,
+    height: tokenLength('space-3')
+  },
+  skeletonDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: tokenColor('line')
+  },
+  skeletonChip: {
+    height: touchTarget,
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface-raised')
+  },
   rail: {
     flexGrow: 0
   },
@@ -149,7 +276,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-2'),
-    paddingHorizontal: tokenLength('space-3'),
     borderRadius: tokenLength('radius-control')
   },
   divider: {

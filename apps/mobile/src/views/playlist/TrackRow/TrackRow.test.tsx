@@ -70,11 +70,13 @@ async function renderRow(
   association: PlaylistTrack = stored,
   options: {
     readonly current?: boolean;
+    readonly playing?: boolean;
     readonly language?: Language;
     readonly onOpenActions?: (trackId: string) => void;
   } = {}
 ) {
   const onPlay = jest.fn();
+  const current = options.current ?? false;
 
   await render(
     <I18nProvider
@@ -83,7 +85,8 @@ async function renderRow(
       <TrackRow
         association={association}
         config={config}
-        current={options.current ?? false}
+        current={current}
+        playing={options.playing ?? current}
         onOpenActions={options.onOpenActions}
         onPlay={onPlay}
       />
@@ -148,6 +151,15 @@ describe('the track row', () => {
     expect(
       screen.getByTestId('track-bars', { includeHiddenElements: true })
     ).toBeOnTheScreen();
+  });
+
+  it('names the paused state on a current row held by a paused queue', async () => {
+    await renderRow(stored, { current: true, playing: false });
+
+    expect(screen.getByText('Paused')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-play').props.accessibilityLabel).toBe(
+      'First Song, Paused, 3:02'
+    );
   });
 
   it('announces the row and starts the queue at its track', async () => {

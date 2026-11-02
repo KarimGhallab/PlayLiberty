@@ -36,7 +36,7 @@ export default function PlaylistRoute() {
       onAddressChange={setAddress}
       onBareTrackRedirect={openBareTrack}
       onBack={() => {
-        router.replace('/');
+        router.dismissTo('/');
       }}
     />
   );

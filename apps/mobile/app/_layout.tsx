@@ -48,7 +48,18 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: tokenColor('bg') }
         }}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="playlists/[playlistId]" />
+        <Stack.Screen
+          name="playlists/[playlistId]"
+          options={{
+            /* The detail rides as a sheet over the gallery, which stays visible
+             * under the drag that returns to it. The screen owns its own
+             * travel, so the stack's animation stays out of the way. */
+            presentation: 'transparentModal',
+            animation: 'none',
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: 'transparent' }
+          }}
+        />
         <Stack.Screen name="tracks/[trackId]" />
         <Stack.Screen name="egress" />
         <Stack.Screen name="provision" />

@@ -155,7 +155,6 @@ export default function PlaylistCard({
               onError={cover.onError}
             />
           )}
-          <View style={styles.scrim} />
         </View>
 
         <View style={styles.nameRow}>
@@ -255,6 +254,7 @@ export default function PlaylistCard({
         disabled={shuffleDisabled}
         style={[
           styles.shuffle,
+          { top: playTop },
           shuffled && !shuffleDisabled && styles.shuffleOn,
           shuffleDisabled && styles.playDisabled
         ]}
@@ -273,7 +273,7 @@ export default function PlaylistCard({
         testID={actionsTestID ?? 'playlist-actions'}
         accessibilityRole="button"
         accessibilityLabel={t('header.actions', { name: playlist.name })}
-        style={[styles.actions, { top: playTop }]}
+        style={styles.actions}
         onPress={onOpenActions}>
         <IconDots size={tokenLength('icon-md')} color={tokenColor('ink')} />
       </PressableScale>
@@ -299,14 +299,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%'
-  },
-  scrim: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '35%',
-    backgroundColor: tokenColor('scrim')
   },
   nameRow: {
     flexDirection: 'row',
@@ -358,7 +350,7 @@ const styles = StyleSheet.create({
   },
   play: {
     position: 'absolute',
-    left: tokenLength('space-2'),
+    right: tokenLength('space-2'),
     width: touchTarget,
     height: touchTarget,
     alignItems: 'center',
@@ -374,8 +366,7 @@ const styles = StyleSheet.create({
   },
   shuffle: {
     position: 'absolute',
-    top: tokenLength('space-2'),
-    right: tokenLength('space-2'),
+    left: tokenLength('space-2'),
     width: touchTarget,
     height: touchTarget,
     alignItems: 'center',
@@ -390,6 +381,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     position: 'absolute',
+    top: tokenLength('space-2'),
     right: tokenLength('space-2'),
     width: touchTarget,
     height: touchTarget,

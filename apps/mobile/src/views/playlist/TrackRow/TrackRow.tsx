@@ -26,6 +26,8 @@ export interface TrackRowProps {
   readonly association: PlaylistTrack;
   readonly config: ApiConfig | null;
   readonly current: boolean;
+  /* Whether the queue is playing, which decides the word and the equalizer. */
+  readonly playing: boolean;
   readonly onPlay: (trackId: string) => void;
   /** Absent leaves the row without a lane; the detail supplies it. */
   readonly onOpenActions?: (trackId: string) => void;
@@ -38,6 +40,7 @@ function TrackRow({
   association,
   config,
   current,
+  playing,
   onPlay,
   onOpenActions
 }: TrackRowProps) {
@@ -57,7 +60,9 @@ function TrackRow({
     track.durationSeconds === null
       ? '--:--'
       : formatDuration(track.durationSeconds);
-  const stateWord = stateLabel ?? (current ? t('trackBars.playing') : null);
+  const stateWord =
+    stateLabel ??
+    (current ? t(playing ? 'trackBars.playing' : 'trackBars.paused') : null);
   const label = [track.title, stateWord, duration]
     .filter((part): part is string => part !== null)
     .join(', ');
@@ -71,7 +76,7 @@ function TrackRow({
     track.failureKind !== null || track.failureReason !== null;
 
   return (
-    <View testID="track-row" style={styles.row}>
+    <View testID="track-row" style={[styles.row, current && styles.rowCurrent]}>
       {playable ? (
         <Pressable
           testID="track-play"
@@ -93,21 +98,27 @@ function TrackRow({
           />
         )}
         {current ? <View style={styles.scrim} /> : null}
-        {current ? <TrackBars /> : null}
+        {current ? <TrackBars playing={playing} /> : null}
       </View>
 
       <View pointerEvents="box-none" style={styles.body}>
         <View pointerEvents="none">
-          <Text testID="track-title" numberOfLines={1} style={styles.title}>
+          <Text
+            testID="track-title"
+            numberOfLines={1}
+            style={[styles.title, current && styles.titleCurrent]}>
             {track.title}
           </Text>
         </View>
         <View pointerEvents="box-none" style={styles.sub}>
           <View pointerEvents="none" style={styles.sub}>
             {current ? (
-              <Text testID="track-now" style={styles.now}>
-                {t('trackBars.playing')}
-              </Text>
+              <View style={styles.nowMark}>
+                <View style={styles.nowDot} />
+                <Text testID="track-now" style={styles.now}>
+                  {t(playing ? 'trackBars.playing' : 'trackBars.paused')}
+                </Text>
+              </View>
             ) : null}
             {stateLabel === null ? null : (
               <Text
@@ -179,6 +190,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: tokenColor('line')
   },
+  rowCurrent: {
+    marginHorizontal: -tokenLength('space-2'),
+    paddingHorizontal: tokenLength('space-2'),
+    borderRadius: tokenLength('radius-card'),
+    backgroundColor: tokenColor('current-surface'),
+    borderBottomColor: 'transparent'
+  },
   art: {
     width: 48,
     height: 48,
@@ -200,6 +218,7 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    minWidth: 0,
     gap: tokenLength('space-1')
   },
   title: {
@@ -208,11 +227,26 @@ const styles = StyleSheet.create({
     fontSize: tokenLength('text-md'),
     fontWeight: '500'
   },
+  /* The current row steps up one weight, so its state survives without colour. */
+  titleCurrent: {
+    fontWeight: '600'
+  },
   sub: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: tokenLength('space-2')
+  },
+  nowMark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-1')
+  },
+  nowDot: {
+    width: 5,
+    height: 5,
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('accent')
   },
   now: {
     color: tokenColor('accent'),

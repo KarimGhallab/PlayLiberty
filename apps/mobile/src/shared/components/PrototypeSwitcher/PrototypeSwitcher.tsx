@@ -20,6 +20,7 @@ export interface PrototypeSwitcherProps {
   readonly onChange: (key: string) => void;
   /** Space the bar must clear under it, such as the player bar. */
   readonly bottomOffset?: number;
+  readonly testID?: string;
 }
 
 /* Throwaway chrome: a pill that cycles a prototype's variants. */
@@ -27,7 +28,8 @@ export default function PrototypeSwitcher({
   variants,
   current,
   onChange,
-  bottomOffset = 0
+  bottomOffset = 0,
+  testID = 'prototype-switcher'
 }: PrototypeSwitcherProps) {
   const insets = useSafeAreaInsets();
   const index = Math.max(
@@ -46,13 +48,13 @@ export default function PrototypeSwitcher({
 
   return (
     <View
-      testID="prototype-switcher"
+      testID={testID}
       style={[
         styles.bar,
         { bottom: insets.bottom + tokenLength('space-3') + bottomOffset }
       ]}>
       <Pressable
-        testID="prototype-previous"
+        testID={`${testID}-previous`}
         accessibilityRole="button"
         accessibilityLabel="Previous variant"
         style={styles.arrow}
@@ -66,7 +68,7 @@ export default function PrototypeSwitcher({
         PROTOTYPE · {active?.label ?? current}
       </Text>
       <Pressable
-        testID="prototype-next"
+        testID={`${testID}-next`}
         accessibilityRole="button"
         accessibilityLabel="Next variant"
         style={styles.arrow}

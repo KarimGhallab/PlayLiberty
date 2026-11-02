@@ -1,6 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  BackHandler,
+  Easing,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions
+} from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets
@@ -15,7 +27,9 @@ import {
   TrackFileStatus
 } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
+import { standardEasingBezier } from '@playliberty/ui-foundation';
 
+import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
 import { copyText } from '../../../shared/clipboard/copyText';
 import ActionDial, {
   actionDialSize
@@ -29,6 +43,7 @@ import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylis
 import {
   fontFamily,
   tokenColor,
+  tokenDuration,
   tokenLength,
   tokenNumber,
   touchTarget
@@ -76,9 +91,15 @@ import {
 } from '../../library/playlistActions/playlistActions';
 import { holdLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
 import AddTrackSheet from '../AddTrackSheet/AddTrackSheet';
-import PlaylistControls from '../PlaylistControls/PlaylistControls';
+import PlaylistControls, {
+  PlaylistControlsSkeleton
+} from '../PlaylistControls/PlaylistControls';
 import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
-import PlaylistIdentity from '../PlaylistIdentity/PlaylistIdentity';
+import PlaylistIdentity, {
+  HEADER_HEIGHT,
+  type PlaylistIdentityProps,
+  PlaylistIdentitySkeleton
+} from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
 import SkipSetting from '../SkipSetting/SkipSetting';
 import SyncBand from '../SyncBand/SyncBand';
@@ -89,6 +110,7 @@ import {
 } from '../TrackActionsSheet/trackActions/trackActions';
 import TrackListSkeleton from '../TrackListSkeleton/TrackListSkeleton';
 import TrackRow from '../TrackRow/TrackRow';
+import { claimsPull, commitsPull } from './pullDismiss';
 
 type PendingAction =
   | {
@@ -104,6 +126,8 @@ type PendingAction =
     };
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
+/* The scroll that takes the header from wide to narrow. */
+const COLLAPSE_DISTANCE = tokenLength('space-9') * 2;
 
 export interface PlaylistDetailProps {
   readonly playlistId: string | null;
@@ -135,6 +159,15 @@ export default function PlaylistDetail({
 }: PlaylistDetailProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const window = useWindowDimensions();
+  const reduceMotion = useReduceMotion();
+  /* The sheet's offset and the two reads its drag needs: the list's offset and
+   * the header's lower edge, both in window coordinates. */
+  const sheetY = useRef(new Animated.Value(window.height)).current;
+  const pullOffset = useRef(0);
+  const headerEdge = useRef(0);
+  const leaving = useRef(false);
+  const entryFrame = useRef<number | null>(null);
   const playlist = usePlaylist(playlistId);
   const playlists = usePlaylists();
   const [filter, setFilter] = useState<TrackFileStatus | null>(null);
@@ -180,8 +213,21 @@ export default function PlaylistDetail({
     readonly message: string;
     readonly detail: string;
   } | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
+  /* The header's lower edge follows its own state, so a pull that starts on it
+   * is told apart from one on the list under it. */
+  useEffect(() => {
+    headerEdge.current =
+      insets.top + (collapsed ? HEADER_HEIGHT.narrow : HEADER_HEIGHT.wide);
+  }, [collapsed, insets.top]);
+  const collapsedRef = useRef(false);
+  const headerProgress = useRef(new Animated.Value(0)).current;
+  const headerTarget = useRef(0);
+  const headerShown = useRef(0);
+  const headerFrame = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scroll = useRef<ScrollView>(null);
+  const scrollViewport = useRef(0);
   const landingPlaylist = useRef<string | null>(null);
   const landingTarget = useRef<string | null>(null);
   const landed = useRef(false);
@@ -433,12 +479,69 @@ export default function PlaylistDetail({
     }
   };
 
-  const landOnRow = (trackId: string, y: number): void => {
+  /* The header chases the list's offset on its own frames: the scroll events set
+   * the target, and the loop keeps the motion even when those events are thin. */
+  const followHeader = (): void => {
+    if (headerFrame.current !== null) {
+      return;
+    }
+
+    const step = (): void => {
+      const target = headerTarget.current;
+      const next = headerShown.current + (target - headerShown.current) * 0.4;
+      const settled = Math.abs(target - next) < 0.002;
+      headerShown.current = settled ? target : next;
+      headerProgress.setValue(headerShown.current);
+
+      if (settled) {
+        headerFrame.current = null;
+        return;
+      }
+
+      headerFrame.current = requestAnimationFrame(step);
+    };
+
+    headerFrame.current = requestAnimationFrame(step);
+  };
+
+  const readScroll = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+    const offset = event.nativeEvent.contentOffset.y;
+    pullOffset.current = offset;
+    headerTarget.current = Math.min(1, Math.max(0, offset / COLLAPSE_DISTANCE));
+    followHeader();
+    const next = offset > COLLAPSE_DISTANCE / 2;
+
+    if (next !== collapsedRef.current) {
+      collapsedRef.current = next;
+      setCollapsed(next);
+    }
+
+    loadMore(event);
+  };
+
+  useEffect(
+    () => () => {
+      if (headerFrame.current !== null) {
+        cancelAnimationFrame(headerFrame.current);
+      }
+    },
+    []
+  );
+
+  const landOnRow = (trackId: string, y: number, height: number): void => {
     if (landed.current || landingTarget.current !== trackId) {
       return;
     }
 
     landed.current = true;
+    const room = scrollViewport.current - playerOffset;
+
+    /* A row already above the fold keeps the list where it is, so the header
+     * stays at its resting state instead of parking in its blend. */
+    if (room > 0 && y + height <= room) {
+      return;
+    }
+
     scroll.current?.scrollTo({
       y: Math.max(0, y - tokenLength('space-4')),
       animated: false
@@ -482,13 +585,158 @@ export default function PlaylistDetail({
     };
   }, []);
 
+  /* The sheet arrives from the bottom; a reduce-motion setting takes it in
+   * place, without the travel. */
+  useEffect(() => {
+    if (reduceMotion) {
+      sheetY.setValue(0);
+      return;
+    }
+
+    entryFrame.current = requestAnimationFrame(() => {
+      entryFrame.current = null;
+
+      if (leaving.current) {
+        return;
+      }
+
+      Animated.timing(sheetY, {
+        toValue: 0,
+        duration: tokenDuration('motion-slow'),
+        easing: Easing.bezier(...standardEasingBezier),
+        useNativeDriver: true
+      }).start();
+    });
+
+    return () => {
+      if (entryFrame.current !== null) {
+        cancelAnimationFrame(entryFrame.current);
+        entryFrame.current = null;
+      }
+    };
+  }, [reduceMotion, sheetY]);
+
+  const settleSheet = useCallback((): void => {
+    if (reduceMotion) {
+      sheetY.setValue(0);
+      return;
+    }
+
+    Animated.timing(sheetY, {
+      toValue: 0,
+      duration: tokenDuration('motion-base'),
+      easing: Easing.bezier(...standardEasingBezier),
+      useNativeDriver: true
+    }).start();
+  }, [reduceMotion, sheetY]);
+
+  const leaveDetail = useCallback((): void => {
+    if (leaving.current) {
+      return;
+    }
+
+    leaving.current = true;
+
+    if (entryFrame.current !== null) {
+      cancelAnimationFrame(entryFrame.current);
+      entryFrame.current = null;
+    }
+
+    if (reduceMotion) {
+      onBack();
+      return;
+    }
+
+    Animated.timing(sheetY, {
+      toValue: window.height,
+      duration: tokenDuration('motion-base'),
+      easing: Easing.bezier(...standardEasingBezier),
+      useNativeDriver: true
+    }).start(({ finished }) => {
+      if (finished) {
+        onBack();
+      }
+    });
+  }, [onBack, reduceMotion, sheetY, window.height]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        leaveDetail();
+        return true;
+      }
+    );
+
+    return () => subscription.remove();
+  }, [leaveDetail]);
+
+  /* The header is a handle at any scroll position; the list is one only at its
+   * top. A downward pull past the threshold leaves; anything less returns. */
+  const pull = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponderCapture: (event, gesture) =>
+          claimsPull({
+            dx: gesture.dx,
+            dy: gesture.dy,
+            offset: pullOffset.current,
+            /* The grant fills y0, so the first move reads its own start. */
+            startY: event.nativeEvent.pageY - gesture.dy,
+            headerBottom: headerEdge.current
+          }),
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_event, gesture) => {
+          if (reduceMotion) {
+            return;
+          }
+
+          sheetY.setValue(Math.max(0, gesture.dy));
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          if (commitsPull(gesture.dy, gesture.vy)) {
+            leaveDetail();
+            return;
+          }
+
+          settleSheet();
+        },
+        onPanResponderTerminate: settleSheet
+      }),
+    [leaveDetail, reduceMotion, settleSheet, sheetY]
+  );
+
+  const sheetScrim = sheetY.interpolate({
+    inputRange: [0, window.height],
+    outputRange: [1, 0],
+    extrapolate: 'clamp'
+  });
+
+  const sheet = (body: ReactNode) => (
+    <View style={styles.sheetHost}>
+      <Animated.View
+        testID="playlist-sheet-scrim"
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, styles.scrim, { opacity: sheetScrim }]}
+      />
+      <Animated.View
+        testID="playlist-sheet"
+        style={[styles.sheet, { transform: [{ translateY: sheetY }] }]}
+        {...pull.panHandlers}>
+        {body}
+      </Animated.View>
+    </View>
+  );
+
   if (playlist.isPending) {
-    return (
+    return sheet(
       <SafeAreaView
         testID="playlist-screen"
         style={styles.screen}
         edges={['top', 'left', 'right']}>
-        <View style={styles.stateBody}>
+        <PlaylistIdentitySkeleton />
+        <View style={styles.skeletonBody}>
+          <PlaylistControlsSkeleton />
           <TrackListSkeleton />
         </View>
       </SafeAreaView>
@@ -499,14 +747,14 @@ export default function PlaylistDetail({
     const notFound =
       playlist.error instanceof ApiError && playlist.error.status === 404;
 
-    return (
+    return sheet(
       <SafeAreaView
         testID="playlist-screen"
         style={styles.screen}
         edges={['top', 'left', 'right']}>
         <View style={styles.stateBody}>
           {notFound ? (
-            <PlaylistNotFound onBack={onBack} />
+            <PlaylistNotFound onBack={leaveDetail} />
           ) : (
             <ReadFailure
               message={playlistFailure}
@@ -749,7 +997,7 @@ export default function PlaylistDetail({
     }
 
     deletePlaylist.mutate(data.id, {
-      onSuccess: onBack,
+      onSuccess: leaveDetail,
       onError: error => {
         setNotice({
           message: problemMessage(error, t('detail.deleteFailed')),
@@ -929,18 +1177,67 @@ export default function PlaylistDetail({
     });
   };
 
-  return (
+  const skipControl = (
+    <SkipSetting
+      skipNonMusic={data.skipNonMusic}
+      canEdit={canWritePlaylist(data)}
+      saving={skipSetting.isPending}
+      onChange={chooseSkip}
+    />
+  );
+
+  const headerProps: PlaylistIdentityProps = {
+    playlist: data,
+    ownerName,
+    config,
+    syncing,
+    now,
+    starting,
+    shuffled: listShuffled,
+    playing: isQueue && currentId !== null && isPlaying,
+    onPlay: queueEmpty
+      ? undefined
+      : () => {
+          if (isQueue && currentId !== null) {
+            setPlaying(!isPlaying);
+            return;
+          }
+
+          void startPlaylist('play');
+        },
+    onShuffle: queueEmpty
+      ? undefined
+      : () => {
+          if (listShuffled) {
+            setShuffle(false);
+            return;
+          }
+
+          void startPlaylist('shuffle');
+        },
+    onOpenActions: openHeaderActions
+  };
+
+  return sheet(
     <SafeAreaView
       testID="playlist-screen"
       style={styles.screen}
       edges={['top', 'left', 'right']}>
+      <PlaylistIdentity
+        {...headerProps}
+        progress={headerProgress}
+        collapsed={collapsed}
+      />
       <ScrollView
         ref={scroll}
         testID="playlist-scroll"
         showsVerticalScrollIndicator={false}
         pointerEvents={pendingDelete ? 'none' : 'auto'}
-        style={pendingDelete ? styles.pending : undefined}
-        onScroll={loadMore}
+        style={[styles.scroll, pendingDelete ? styles.pending : undefined]}
+        onScroll={readScroll}
+        onLayout={event => {
+          scrollViewport.current = event.nativeEvent.layout.height;
+        }}
         scrollEventThrottle={16}
         contentContainerStyle={[
           styles.content,
@@ -953,50 +1250,6 @@ export default function PlaylistDetail({
               playerOffset
           }
         ]}>
-        <PlaylistIdentity
-          playlist={data}
-          ownerName={ownerName}
-          config={config}
-          syncing={syncing}
-          now={now}
-          starting={starting}
-          shuffled={listShuffled}
-          playing={isQueue && currentId !== null && isPlaying}
-          onPlay={
-            queueEmpty
-              ? undefined
-              : () => {
-                  if (isQueue && currentId !== null) {
-                    setPlaying(!isPlaying);
-                    return;
-                  }
-
-                  void startPlaylist('play');
-                }
-          }
-          onShuffle={
-            queueEmpty
-              ? undefined
-              : () => {
-                  if (listShuffled) {
-                    setShuffle(false);
-                    return;
-                  }
-
-                  void startPlaylist('shuffle');
-                }
-          }
-          onOpenActions={
-            headerActions.length > 0 ? openHeaderActions : undefined
-          }>
-          <SkipSetting
-            skipNonMusic={data.skipNonMusic}
-            canEdit={canWritePlaylist(data)}
-            saving={skipSetting.isPending}
-            onChange={chooseSkip}
-          />
-        </PlaylistIdentity>
-        {band}
         {showControls ? (
           <PlaylistControls
             sort={data.sort}
@@ -1060,12 +1313,17 @@ export default function PlaylistDetail({
                 key={entry.track.id}
                 testID={`track-slot-${entry.track.id}`}
                 onLayout={event =>
-                  landOnRow(entry.track.id, event.nativeEvent.layout.y)
+                  landOnRow(
+                    entry.track.id,
+                    event.nativeEvent.layout.y,
+                    event.nativeEvent.layout.height
+                  )
                 }>
                 <TrackRow
                   association={entry}
                   config={config}
                   current={currentId === entry.track.id}
+                  playing={currentId === entry.track.id && isPlaying}
                   onOpenActions={openActions}
                   onPlay={playTrack}
                 />
@@ -1144,6 +1402,8 @@ export default function PlaylistDetail({
         playlistName={headerOpen ? data.name : null}
         actions={headerActions}
         problem={headerProblem}
+        summary={band}
+        extra={skipControl}
         onSelect={chooseHeaderAction}
         onClose={() => {
           setHeaderOpen(false);
@@ -1216,13 +1476,26 @@ export default function PlaylistDetail({
 }
 
 const styles = StyleSheet.create({
+  sheetHost: {
+    flex: 1
+  },
+  scrim: {
+    backgroundColor: tokenColor('scrim')
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: tokenColor('bg')
+  },
   screen: {
     flex: 1,
     backgroundColor: tokenColor('bg')
   },
+  scroll: {
+    flex: 1
+  },
   content: {
     paddingHorizontal: tokenLength('space-4'),
-    paddingTop: tokenLength('space-4'),
+    paddingTop: tokenLength('space-3'),
     gap: tokenLength('space-3')
   },
   append: {
@@ -1278,6 +1551,13 @@ const styles = StyleSheet.create({
   stateBody: {
     flex: 1,
     padding: tokenLength('space-4')
+  },
+  /* The rows hold the list's place under the head's skeleton, so the read lands
+   * without the list moving. */
+  skeletonBody: {
+    gap: tokenLength('space-3'),
+    paddingHorizontal: tokenLength('space-4'),
+    paddingTop: tokenLength('space-3')
   },
   pending: {
     opacity: tokenNumber('opacity-disabled')

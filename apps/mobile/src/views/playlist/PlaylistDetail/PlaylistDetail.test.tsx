@@ -903,14 +903,14 @@ describe('a shared track link', () => {
 });
 
 describe('the playlist detail', () => {
-  it('draws the identity and the first rows in one scroll', async () => {
+  it('draws the header above the list and the first rows in the scroll', async () => {
     await renderDetail();
 
     expect(screen.getByTestId('playlist-screen')).toBeOnTheScreen();
 
     const scroll = screen.getByTestId('playlist-scroll');
 
-    expect(within(scroll).getByTestId('playlist-identity')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-identity')).toBeOnTheScreen();
     expect(within(scroll).getByTestId('track-row')).toBeOnTheScreen();
     expect(screen.getByText('Rain On The Window')).toBeOnTheScreen();
     expect(screen.getByText('12 tracks')).toBeOnTheScreen();
@@ -920,12 +920,10 @@ describe('the playlist detail', () => {
     expect(screen.getByText('3:02')).toBeOnTheScreen();
   });
 
-  it('draws the skip setting inside the identity and writes the flip', async () => {
-    const { skipMutate } = await renderDetail();
-
-    const setting = within(screen.getByTestId('playlist-identity')).getByTestId(
-      'skip-setting'
-    );
+  it('draws the skip setting in the actions sheet and writes the flip', async () => {
+    const { skipMutate } = await openHeaderSheet();
+    const sheet = screen.getByTestId('playlist-actions-sheet');
+    const setting = within(sheet).getByTestId('skip-setting');
 
     expect(setting.props.accessibilityState).toMatchObject({ checked: true });
 
@@ -935,12 +933,13 @@ describe('the playlist detail', () => {
   });
 
   it('keeps the skip setting, disabled, for a read collaborator', async () => {
-    await renderDetail({
+    await openHeaderSheet({
       playlist: { ...playlist, access: ShareLevel.Read }
     });
+    const sheet = screen.getByTestId('playlist-actions-sheet');
 
-    expect(screen.getByText('Skip non-music parts')).toBeOnTheScreen();
-    expect(screen.getByTestId('skip-setting')).toBeDisabled();
+    expect(within(sheet).getByText('Skip non-music parts')).toBeOnTheScreen();
+    expect(within(sheet).getByTestId('skip-setting')).toBeDisabled();
   });
 
   it('explains a refused skip setting in French', async () => {
@@ -951,7 +950,9 @@ describe('the playlist detail', () => {
       code: ProblemCode.InternalError,
       detail: 'Le paramètre est indisponible.'
     });
-    const { skipMutate } = await renderDetail({ language: Language.French });
+    const { skipMutate } = await openHeaderSheet({
+      language: Language.French
+    });
     const mutate = skipMutate as unknown as {
       mockImplementation: (
         fn: (
@@ -980,15 +981,12 @@ describe('the playlist detail', () => {
     ).toMatchObject({ checked: true });
   });
 
-  it('draws the sort and the chips below the identity in one rail', async () => {
+  it('draws the sort and the chips under the header in one rail', async () => {
     await renderDetail();
     const scroll = screen.getByTestId('playlist-scroll');
 
-    expect(
-      within(scroll)
-        .getAllByTestId(/^playlist-(identity|controls)$/)
-        .map(node => node.props.testID)
-    ).toEqual(['playlist-identity', 'playlist-controls']);
+    expect(screen.getByTestId('playlist-identity')).toBeOnTheScreen();
+    expect(within(scroll).getByTestId('playlist-controls')).toBeOnTheScreen();
     expect(screen.getByTestId('playlist-filter-rail').props.horizontal).toBe(
       true
     );
@@ -1167,7 +1165,8 @@ describe('the playlist detail', () => {
     usePlayerStore.setState({
       queue: [],
       playlistId: 'playlist-1',
-      currentId: 'track-1'
+      currentId: 'track-1',
+      isPlaying: true
     });
     await renderDetail();
 
@@ -1183,6 +1182,21 @@ describe('the playlist detail', () => {
       playlistId: 'playlist-1',
       currentId: 'track-1'
     });
+  });
+
+  it('names a current row on a paused queue as paused', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1'],
+      playlistId: 'playlist-1',
+      currentId: 'track-1',
+      isPlaying: false
+    });
+    await renderDetail();
+
+    expect(screen.getByText('Paused')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('track-bars', { includeHiddenElements: true })
+    ).toBeOnTheScreen();
   });
 
   it('appends the next page near the bottom and stops at the end', async () => {
@@ -1294,6 +1308,28 @@ describe('the playlist detail', () => {
 
     await fireEvent(slot, 'layout', layout);
     expect(scrollTo).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the list where it is when the current row is already on screen', async () => {
+    usePlayerStore.setState({
+      queue: ['track-1', 'track-2', 'track-3'],
+      playlistId: 'playlist-1',
+      currentId: 'track-2'
+    });
+    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    await renderDetail({
+      tracks: { ...page, items: [track, secondTrack, thirdTrack], total: 3 },
+      queue: [track, secondTrack, thirdTrack]
+    });
+
+    await fireEvent(screen.getByTestId('playlist-scroll'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 700 } }
+    });
+    await fireEvent(screen.getByTestId('track-slot-track-2'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 120, width: 300, height: 72 } }
+    });
+
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
   it('asks for the page holding the current row when it is not loaded', async () => {
@@ -1654,7 +1690,9 @@ describe('the playlist detail', () => {
         expect.any(Object)
       );
     });
-    expect(onBack).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('explains a failed delete and keeps the detail', async () => {
@@ -1889,12 +1927,14 @@ describe('the playlist detail', () => {
     });
   });
 
-  it('draws no header actions for a read collaborator', async () => {
-    await renderDetail({
+  it('opens the playlist sheet for a read collaborator without write actions', async () => {
+    await openHeaderSheet({
       playlist: { ...playlist, access: ShareLevel.Read }
     });
 
-    expect(screen.queryByTestId('detail-actions')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+    expect(screen.queryByTestId('playlist-action-sync')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('playlist-action-cover')).not.toBeOnTheScreen();
   });
 
   it('renders the delete window in French', async () => {
@@ -1963,6 +2003,7 @@ describe('the playlist detail', () => {
 
     expect(screen.getByTestId('playlist-screen')).toBeOnTheScreen();
     expect(screen.getByTestId('playlist-skeleton')).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-identity-skeleton')).toBeOnTheScreen();
     expect(screen.getByLabelText('Loading tracks.')).toBeOnTheScreen();
     expect(screen.queryByTestId('playlist-identity')).not.toBeOnTheScreen();
     expect(screen.queryByTestId('track-row')).not.toBeOnTheScreen();
@@ -1984,7 +2025,10 @@ describe('the playlist detail', () => {
     expect(screen.queryByTestId('read-failure-retry')).not.toBeOnTheScreen();
 
     fireEvent.press(screen.getByRole('button', { name: 'Back to home' }));
-    expect(onBack).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('draws the playlist read failure with its own retry', async () => {
@@ -2291,15 +2335,22 @@ describe('the playlist detail', () => {
     expect(screen.getByText('Syncing')).toBeOnTheScreen();
   });
 
-  it('draws the run band under the identity and above the controls', async () => {
+  it('draws the run band at the top of the actions sheet', async () => {
     await renderDetail({ latestRun: completedRun });
-    const scroll = screen.getByTestId('playlist-scroll');
 
-    expect(
-      within(scroll)
-        .getAllByTestId(/^(playlist-(identity|controls)|sync-band)$/)
-        .map(node => node.props.testID)
-    ).toEqual(['playlist-identity', 'sync-band', 'playlist-controls']);
+    expect(screen.queryByTestId('sync-band')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Last sync 2 days ago')).not.toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('detail-actions'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+    });
+
+    const sheet = screen.getByTestId('playlist-actions-sheet');
+    const summary = within(sheet).getByTestId('playlist-actions-summary');
+
+    expect(within(summary).getByTestId('sync-band')).toBeOnTheScreen();
     expect(screen.getByText('Last sync 2 days ago')).toBeOnTheScreen();
     expect(screen.getByLabelText('3 kept')).toBeOnTheScreen();
   });
@@ -2310,7 +2361,7 @@ describe('the playlist detail', () => {
       status: SyncRunStatus.Failed,
       error: 'yt-dlp: HTTP 403'
     };
-    const { syncMutate } = await renderDetail({
+    const { syncMutate } = await openHeaderSheet({
       playlist: { ...playlist, syncStatus: PlaylistSyncStatus.Error },
       latestRun: failedRun
     });
@@ -2322,7 +2373,7 @@ describe('the playlist detail', () => {
   });
 
   it('retries the failed set from the band', async () => {
-    const { retryFailedMutate } = await renderDetail({
+    const { retryFailedMutate } = await openHeaderSheet({
       latestRun: completedRun,
       tracks: {
         ...page,
@@ -2335,7 +2386,7 @@ describe('the playlist detail', () => {
   });
 
   it('draws no sync retry for a read collaborator', async () => {
-    await renderDetail({
+    await openHeaderSheet({
       playlist: {
         ...playlist,
         access: ShareLevel.Read,
