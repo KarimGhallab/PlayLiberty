@@ -17,6 +17,9 @@ import {
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import { copyText } from '../../../shared/clipboard/copyText';
+import ActionDial, {
+  actionDialSize
+} from '../../../shared/components/ActionDial/ActionDial';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Spinner from '../../../shared/components/Spinner/Spinner';
@@ -58,10 +61,11 @@ import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { playerTracks } from '../../../player/playerTrack/playerTrack';
 import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
+import {
+  type StartIntent,
+  startPlaylistPlayback
+} from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
 import CoverSheet from '../../library/CoverSheet/CoverSheet';
-import GalleryAddAction, {
-  galleryAddActionSize
-} from '../../library/GalleryAddAction/GalleryAddAction';
 import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
 import RenameSheet from '../../library/RenameSheet/RenameSheet';
 import ShareSheet from '../../library/ShareSheet/ShareSheet';
@@ -135,6 +139,7 @@ export default function PlaylistDetail({
   const playlists = usePlaylists();
   const [filter, setFilter] = useState<TrackFileStatus | null>(null);
   const currentId = usePlayerStore(state => state.currentId);
+  const isPlaying = usePlayerStore(state => state.isPlaying);
   const shuffled = usePlayerStore(state => state.shuffle);
   const playerPlaylistId = usePlayerStore(state => state.playlistId);
   const playlistData = playlist.data;
@@ -185,6 +190,7 @@ export default function PlaylistDetail({
   const play = usePlayerStore(state => state.play);
   const applyRefetch = usePlayerStore(state => state.applyRefetch);
   const setShuffle = usePlayerStore(state => state.setShuffle);
+  const setPlaying = usePlayerStore(state => state.setPlaying);
   const playerQueue = usePlayerStore(state => state.queue);
   /* A link's target is read once per mount: the address mirrors the current
    * track after entry, so a later prop is not a second link. */
@@ -585,9 +591,8 @@ export default function PlaylistDetail({
    * first, so both clear it too. */
   const playerOffset = currentId === null ? 0 : playerBarHeight;
   const floatingOffset =
-    (canWritePlaylist(data)
-      ? galleryAddActionSize + tokenLength('space-3')
-      : 0) + playerOffset;
+    (canWritePlaylist(data) ? actionDialSize + tokenLength('space-3') : 0) +
+    playerOffset;
 
   const openAdd = (): void => {
     addTrack.reset();
@@ -597,6 +602,15 @@ export default function PlaylistDetail({
   const closeAdd = (): void => {
     setAddOpen(false);
     addTrack.reset();
+  };
+
+  /* The dial's sync is the header's verb: a refusal lands in the same slot. */
+  const syncFromDial = (): void => {
+    sync.mutate(data.id, {
+      onError: error => {
+        setHeaderProblem(problemMessage(error, t('library.syncFailed')));
+      }
+    });
   };
 
   const openHeaderActions = (): void => {
@@ -675,49 +689,37 @@ export default function PlaylistDetail({
     return (result.data?.items ?? []).filter(entry => isPlayable(entry.track));
   };
 
-  const startPlaylist = async (intent: 'play' | 'shuffle'): Promise<void> => {
+  const startPlaylist = async (intent: StartIntent): Promise<void> => {
     setStarting(intent);
 
-    try {
-      const items = await readPlayableQueue();
+    const refusal = await startPlaylistPlayback(
+      data,
+      intent,
+      readPlayableQueue
+    );
 
-      if (items.length === 0) {
-        setNotice({
-          message: t('start.empty', { name: data.name }),
-          detail: t('start.emptyDetail')
-        });
-        return;
-      }
+    setStarting(null);
 
-      const index =
-        intent === 'shuffle' ? Math.floor(Math.random() * items.length) : 0;
-      const leader = items[index];
-
-      if (leader === undefined) {
-        return;
-      }
-
-      start(
-        playerTracks(items),
-        {
-          id: data.id,
-          name: data.name,
-          coverUpdatedAt: data.coverUpdatedAt,
-          coverTrackId: data.coverTrackId
-        },
-        leader.track.id,
-        intent === 'shuffle'
-      );
-    } catch (error) {
-      setNotice({
-        message: t('start.unreachable', { name: data.name }),
-        detail:
-          problemDetail(t, error instanceof ApiError ? error.problem : null) ??
-          t('start.unreachableDetail')
-      });
-    } finally {
-      setStarting(null);
+    if (refusal === null) {
+      return;
     }
+
+    if (refusal.kind === 'empty') {
+      setNotice({
+        message: t('start.empty', { name: data.name }),
+        detail: t('start.emptyDetail')
+      });
+      return;
+    }
+
+    setNotice({
+      message: t('start.unreachable', { name: data.name }),
+      detail:
+        problemDetail(
+          t,
+          refusal.error instanceof ApiError ? refusal.error.problem : null
+        ) ?? t('start.unreachableDetail')
+    });
   };
 
   const hideTrack = (trackId: string): void => {
@@ -946,7 +948,7 @@ export default function PlaylistDetail({
             paddingBottom:
               insets.bottom +
               tokenLength('space-4') +
-              galleryAddActionSize +
+              actionDialSize +
               tokenLength('space-3') +
               playerOffset
           }
@@ -959,10 +961,16 @@ export default function PlaylistDetail({
           now={now}
           starting={starting}
           shuffled={listShuffled}
+          playing={isQueue && currentId !== null && isPlaying}
           onPlay={
             queueEmpty
               ? undefined
               : () => {
+                  if (isQueue && currentId !== null) {
+                    setPlaying(!isPlaying);
+                    return;
+                  }
+
                   void startPlaylist('play');
                 }
           }
@@ -1086,12 +1094,32 @@ export default function PlaylistDetail({
         ) : null}
       </ScrollView>
       {canWritePlaylist(data) ? (
-        <GalleryAddAction
-          testID="detail-add-track"
-          label={t('detail.addTrack')}
-          horizontalInset={tokenLength('space-4')}
+        <ActionDial
+          label={t('detail.fabActions')}
+          testID="detail-fab"
+          actions={[
+            {
+              key: 'add',
+              testID: 'detail-add-track',
+              label: t('detail.addTrack'),
+              icon: 'add',
+              onPress: openAdd
+            },
+            {
+              key: 'sync',
+              testID: 'detail-sync',
+              label: syncInFlight
+                ? t('detail.syncingPlaylist')
+                : t('detail.syncPlaylist'),
+              icon: 'sync',
+              accent: true,
+              busy: syncInFlight,
+              onPress: syncFromDial
+            }
+          ]}
+          busy={syncInFlight}
           bottomOffset={playerOffset}
-          onPress={openAdd}
+          rightOffset={tokenLength('space-4')}
         />
       ) : null}
       <AddTrackSheet

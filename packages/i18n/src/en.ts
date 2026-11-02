@@ -39,6 +39,7 @@ export const en = {
   },
   library: {
     add: 'Add a playlist',
+    actions: 'Library actions',
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
     pinned: 'Pinned',
@@ -127,6 +128,7 @@ export const en = {
     back: 'Back to home',
     backShort: 'Back',
     addTrack: 'Add a track',
+    fabActions: 'Playlist actions',
     syncPlaylist: 'Sync the playlist',
     syncPlaylistShort: 'Synchronize',
     syncingPlaylist: 'Syncing the playlist...',

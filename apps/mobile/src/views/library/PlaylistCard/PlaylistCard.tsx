@@ -1,7 +1,7 @@
 import {
+  IconArrowsShuffle,
   IconDots,
-  IconDownload,
-  IconPlayerPlay
+  IconDownload
 } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,6 +10,10 @@ import type { PlaylistWithCounts } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 import { syncStateLabel, trackCountUnit, useI18n } from '@playliberty/i18n';
 
+import PlayPauseGlyph from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
+import PlayingLine from '../../../shared/components/PlayingLine/PlayingLine';
+import PressableScale from '../../../shared/components/PressableScale/PressableScale';
+import Spinner from '../../../shared/components/Spinner/Spinner';
 import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
 import {
   shareMark,
@@ -32,6 +36,13 @@ export interface PlaylistCardProps {
   readonly config: ApiConfig | null;
   readonly onOpen: () => void;
   readonly onOpenActions: () => void;
+  readonly onPlay: () => void;
+  readonly onShuffle: () => void;
+  /** The start this card is waiting on, so that control says so. */
+  readonly starting?: 'play' | 'shuffle' | null;
+  /** Whether this playlist's queue is the one playing. */
+  readonly playing?: boolean;
+  readonly shuffled?: boolean;
   readonly actionsTestID?: string;
 }
 
@@ -85,13 +96,18 @@ function incompleteOf(counts: PlaylistWithCounts['counts']): Incomplete | null {
 }
 
 /* The gallery's one card: the detail's hero arrangement at a phone's width.
- * The play waits for spec 23, so it is drawn and disabled. */
+ * Its play starts the playlist or toggles the queue it owns. */
 export default function PlaylistCard({
   playlist,
   ownerName,
   config,
   onOpen,
   onOpenActions,
+  onPlay,
+  onShuffle,
+  starting = null,
+  playing = false,
+  shuffled = false,
   actionsTestID
 }: PlaylistCardProps) {
   const { t } = useI18n();
@@ -99,9 +115,24 @@ export default function PlaylistCard({
   const mark = shareMark(playlist);
   const incomplete = incompleteOf(playlist.counts);
   const sharedBy = playlist.access === 'owner' ? null : ownerName;
+  /* The card is one target, so its name carries everything the visible parts
+   * say: the mark, the count, the sync state and the owner. */
+  const cardLabel = [
+    playlist.name,
+    t(mark.label),
+    `${playlist.trackCount} ${trackCountUnit(t, playlist.trackCount)}`,
+    syncStateLabel(t, playlist.syncStatus),
+    sharedBy === null ? null : t('header.sharedBy', { name: sharedBy })
+  ]
+    .filter((part): part is string => part !== null)
+    .join(', ');
   const [width, setWidth] = useState(0);
   const shareColor = shareMarkColor(mark);
   const playTop = Math.max(0, width - touchTarget - tokenLength('space-2'));
+  const busy = starting !== null;
+  const nothingStored = playlist.counts.stored === 0;
+  const playDisabled = nothingStored || busy;
+  const shuffleDisabled = nothingStored || busy;
 
   return (
     <View
@@ -176,33 +207,78 @@ export default function PlaylistCard({
       <Pressable
         testID="playlist-card"
         accessibilityRole="button"
-        accessibilityLabel={playlist.name}
+        accessibilityLabel={cardLabel}
         style={StyleSheet.absoluteFill}
         android_ripple={{ color: tokenColor('control-border') }}
         onPress={onOpen}
       />
 
-      <Pressable
+      <PressableScale
         testID="playlist-play"
         accessibilityRole="button"
-        accessibilityLabel={t('header.playNamed', { name: playlist.name })}
-        accessibilityState={{ disabled: true }}
-        disabled
-        style={[styles.play, { top: playTop }, styles.playDisabled]}>
-        <IconPlayerPlay
-          size={tokenLength('icon-md')}
-          color={tokenColor('ink')}
-        />
-      </Pressable>
+        accessibilityLabel={t(
+          playing ? 'header.pauseNamed' : 'header.playNamed',
+          { name: playlist.name }
+        )}
+        accessibilityState={{
+          disabled: playDisabled,
+          busy: starting === 'play'
+        }}
+        disabled={playDisabled}
+        style={[
+          styles.play,
+          { top: playTop },
+          playing && !playDisabled && styles.playOn,
+          playDisabled && styles.playDisabled
+        ]}
+        onPress={onPlay}>
+        {starting === 'play' ? (
+          <Spinner color={tokenColor(playing ? 'bg' : 'muted')} />
+        ) : (
+          <PlayPauseGlyph
+            playing={playing}
+            size={tokenLength('icon-md')}
+            color={tokenColor(playing ? 'bg' : 'ink')}
+          />
+        )}
+      </PressableScale>
 
-      <Pressable
+      <PressableScale
+        testID="playlist-shuffle"
+        accessibilityRole="button"
+        accessibilityLabel={t('header.shuffle', { name: playlist.name })}
+        accessibilityState={{
+          disabled: shuffleDisabled,
+          selected: shuffled,
+          busy: starting === 'shuffle'
+        }}
+        disabled={shuffleDisabled}
+        style={[
+          styles.shuffle,
+          shuffled && !shuffleDisabled && styles.shuffleOn,
+          shuffleDisabled && styles.playDisabled
+        ]}
+        onPress={onShuffle}>
+        {starting === 'shuffle' ? (
+          <Spinner color={tokenColor('muted')} />
+        ) : (
+          <IconArrowsShuffle
+            size={tokenLength('icon-md')}
+            color={shuffled ? tokenColor('accent') : tokenColor('ink')}
+          />
+        )}
+      </PressableScale>
+
+      <PressableScale
         testID={actionsTestID ?? 'playlist-actions'}
         accessibilityRole="button"
         accessibilityLabel={t('header.actions', { name: playlist.name })}
         style={[styles.actions, { top: playTop }]}
         onPress={onOpenActions}>
         <IconDots size={tokenLength('icon-md')} color={tokenColor('ink')} />
-      </Pressable>
+      </PressableScale>
+
+      <PlayingLine playing={playing} />
     </View>
   );
 }
@@ -210,7 +286,7 @@ export default function PlaylistCard({
 const styles = StyleSheet.create({
   card: {
     position: 'relative',
-    gap: tokenLength('space-2')
+    paddingBottom: tokenLength('space-2')
   },
   content: {
     gap: tokenLength('space-2')
@@ -293,6 +369,25 @@ const styles = StyleSheet.create({
   playDisabled: {
     opacity: tokenNumber('opacity-disabled')
   },
+  playOn: {
+    backgroundColor: tokenColor('accent')
+  },
+  shuffle: {
+    position: 'absolute',
+    top: tokenLength('space-2'),
+    right: tokenLength('space-2'),
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: tokenColor('control-border'),
+    borderRadius: tokenLength('radius-control'),
+    backgroundColor: tokenColor('surface')
+  },
+  shuffleOn: {
+    borderColor: tokenColor('accent')
+  },
   actions: {
     position: 'absolute',
     right: tokenLength('space-2'),
@@ -300,7 +395,7 @@ const styles = StyleSheet.create({
     height: touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokenLength('radius-chip'),
+    borderRadius: tokenLength('radius-control'),
     backgroundColor: tokenColor('surface')
   }
 });

@@ -24,8 +24,10 @@ name: A playlist is added from the floating action
     id: account-door
 - extendedWaitUntil:
     visible:
-      id: gallery-add
+      id: gallery-actions
     timeout: 30000
+- tapOn:
+    id: gallery-actions
 - tapOn:
     id: gallery-add
 - extendedWaitUntil:

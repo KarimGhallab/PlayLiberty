@@ -34,7 +34,7 @@ The scale runs from `xs` to `2xl`, the leadings are tight, normal and relaxed, a
 
 - **Space.** A 4px-based scale, used for padding, gaps and margins alike, so the vertical rhythm of a screen is the same arithmetic everywhere.
 - **Shape.** Four radii: artwork, control, card, and the full pill a chip takes. A radius says what an element is, so artwork, controls and cards never share one.
-- **Motion.** Three durations and exactly one curve. Motion is decoration that reports a state change; every animated thing therefore has a resting form that already says the same thing. Menus unfold from the edge they are anchored to and leave faster than they arrive, so an upward menu rises and a downward one drops.
+- **Motion.** Three durations and exactly one curve. Motion is decoration that reports a state change; every animated thing therefore has a resting form that already says the same thing. Menus unfold from the edge they are anchored to and leave faster than they arrive, so an upward menu rises and a downward one drops. A pressed control shrinks a tenth and dims on the fast end of the curve, over a layout box that never moves; reduced motion takes the same state without the tween. A playing playlist's bottom edge carries the amber rule, entering from its start with the queue and withdrawing when it pauses.
 - **Depth tiers.** Base, sticky, player, overlay. The player bar sits below an overlay so a menu or a dialog can cover it.
 
 ## Theme
@@ -74,9 +74,10 @@ the type family, the space scale, the radii, the durations and the one curve are
   console are routes of their own, and the account sheet is a modal over whatever is open. There is no tab bar, no
   drawer and no sidebar; the platform's back gesture is the way back.
 - **The gallery is a two-column card grid.** The card is the detail's hero arrangement: cover above the identity,
-  with the play and overflow controls on the scrim. The pinned section is a heading above one horizontal row that
+  with the shuffle at its top end, the play and overflow controls on its bottom scrim, and the same squarish control
+  shape on the shuffle and the overflow. The pinned section is a heading above one horizontal row that
   peeks the next card and scrolls sideways; the rest is the grid, and the ownership scope and the status chips are
-  one row that scrolls. The bulk sync keeps its count in the header; the web's phone arrangement drops it because
+  one row that scrolls, its hidden side fading into the ground. The bulk sync keeps its count in the header; the web's phone arrangement drops it because
   the browser's header cannot hold the sentence, and the app's header can.
 - **The detail is one column.** The cover, the name and the sync line lead; the sort and the chips follow on one
   rail below the header, with a vertical rule between the sort and the chips, and the rail scrolls sideways past the
@@ -98,7 +99,8 @@ the type family, the space scale, the radii, the durations and the one curve are
   gesture, or a downward drag on its handle.
 - **A target is 44 points, and every control has a name and a role.** Dynamic Type is respected, with a capped
   multiplier only where a fixed layout would break, and reduced motion is read from the system. The focus ring and
-  the keyboard contract are the web's and have no analogue.
+  the keyboard contract are the web's and have no analogue. A gallery card is one target, so its name carries the
+  count, the sync state and the owner that its parts show.
 - **A web-only affordance is either drawn or dropped, never ported.** A hover tip becomes a word in the row, the
   volume rail becomes the device's buttons, a keyboard chord becomes a bar control, the document title becomes the
   screen's heading, and the breakpoint becomes nothing.

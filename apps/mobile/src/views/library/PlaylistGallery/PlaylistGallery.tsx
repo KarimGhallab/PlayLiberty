@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
@@ -17,6 +18,10 @@ import type {
 import { PlaylistSyncStatus, TrackFileStatus } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
+import ActionDial, {
+  type DialAction,
+  actionDialSize
+} from '../../../shared/components/ActionDial/ActionDial';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
@@ -43,12 +48,14 @@ import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import {
+  type StartIntent,
+  readPlayableQueue,
+  startPlaylistPlayback
+} from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
 import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
 import CoverSheet from '../CoverSheet/CoverSheet';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
-import GalleryAddAction, {
-  galleryAddActionSize
-} from '../GalleryAddAction/GalleryAddAction';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
@@ -56,7 +63,15 @@ import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
 import RenameSheet from '../RenameSheet/RenameSheet';
 import ShareSheet from '../ShareSheet/ShareSheet';
-import { scopedPlaylists, visiblePlaylists } from '../bulkSync/bulkSync';
+import {
+  scopedPlaylists,
+  useBulkSync,
+  visiblePlaylists
+} from '../bulkSync/bulkSync';
+import {
+  galleryColumnWidth,
+  galleryPinnedWidth
+} from '../galleryColumns/galleryColumns';
 import type {
   DeleteIntent,
   PlaylistActionKey
@@ -116,11 +131,17 @@ export default function PlaylistGallery({
 }: PlaylistGalleryProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const client = useQueryClient();
   const playerOffset =
     usePlayerStore(state => state.currentId) === null ? 0 : playerBarHeight;
+  const playerPlaylistId = usePlayerStore(state => state.playlistId);
+  const playerPlaying = usePlayerStore(state => state.isPlaying);
+  const playerShuffled = usePlayerStore(state => state.shuffle);
+  const setPlaying = usePlayerStore(state => state.setPlaying);
+  const setShuffle = usePlayerStore(state => state.setShuffle);
   const window = useWindowDimensions();
-  const pinnedCardWidth =
-    (window.width - tokenLength('space-4') * 2 - tokenLength('space-3')) * 0.45;
+  const columnWidth = galleryColumnWidth(window.width);
+  const pinnedCardWidth = galleryPinnedWidth(window.width);
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
   const create = useCreatePlaylist();
@@ -143,6 +164,10 @@ export default function PlaylistGallery({
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [starting, setStarting] = useState<{
+    readonly playlistId: string;
+    readonly intent: StartIntent;
+  } | null>(null);
   const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const createTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pinnedRow = useRef<ScrollView>(null);
@@ -168,6 +193,36 @@ export default function PlaylistGallery({
   const statusCounts = totalStatusCounts(scopedItems);
   const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
   const visibleItems = visiblePlaylists(scopedItems, statusFilter);
+  const bulk = useBulkSync(items, playlists.dataUpdatedAt, scope, statusFilter);
+  const anySyncing = items.some(
+    item => item.syncStatus === PlaylistSyncStatus.Syncing
+  );
+  const syncLabel = bulk.busy
+    ? t('library.syncingAll', { count: bulk.count })
+    : t('library.syncAll', { count: bulk.count });
+  /* Add first, the sync nearest the thumb; the sync keeps the accent mark. */
+  const dialActions: DialAction[] = [
+    {
+      key: 'add',
+      testID: 'gallery-add',
+      label: t('library.add'),
+      icon: 'add',
+      onPress: () => setAddOpen(true)
+    },
+    ...(bulk.count === 0
+      ? []
+      : [
+          {
+            key: 'sync',
+            testID: 'gallery-sync',
+            label: syncLabel,
+            icon: 'sync' as const,
+            accent: true,
+            busy: bulk.busy,
+            onPress: bulk.start
+          }
+        ])
+  ];
 
   /* A status the scope no longer carries cannot stay in force; a live read that
    * drops the last track in it returns the rail to All. */
@@ -220,6 +275,54 @@ export default function PlaylistGallery({
       void playlists.fetchNextPage();
     }
   };
+
+  /* A card's start reads the whole playlist and reports a refusal; the queue it
+   * owns is toggled in place instead. */
+  const startFrom = (
+    playlist: PlaylistWithCounts,
+    intent: StartIntent
+  ): void => {
+    setStarting({ playlistId: playlist.id, intent });
+    void startPlaylistPlayback(playlist, intent, () =>
+      readPlayableQueue(client, playlist.id)
+    )
+      .then(refusal => {
+        if (refusal === null) {
+          return;
+        }
+
+        setNotice(
+          refusal.kind === 'empty'
+            ? t('start.empty', { name: playlist.name })
+            : t('start.unreachable', { name: playlist.name })
+        );
+      })
+      .finally(() =>
+        setStarting(current =>
+          current?.playlistId === playlist.id ? null : current
+        )
+      );
+  };
+
+  const playPlaylist = (playlist: PlaylistWithCounts): void => {
+    if (playerPlaylistId === playlist.id) {
+      setPlaying(!playerPlaying);
+      return;
+    }
+
+    startFrom(playlist, 'play');
+  };
+
+  /* Shuffle starts the whole playlist, or turns off the shuffled order it is
+   * already playing. */
+  const shufflePlaylist = (playlist: PlaylistWithCounts): void => {
+    if (playerPlaylistId === playlist.id && playerShuffled) {
+      setShuffle(false);
+      return;
+    }
+
+    startFrom(playlist, 'shuffle');
+  };
   const cardFor = (playlist: PlaylistWithCounts, groupKey: string) => (
     <PlaylistCard
       playlist={playlist}
@@ -227,6 +330,11 @@ export default function PlaylistGallery({
       config={config}
       onOpen={() => onOpenPlaylist(playlist.id)}
       onOpenActions={() => openActions(playlist.id)}
+      onPlay={() => playPlaylist(playlist)}
+      onShuffle={() => shufflePlaylist(playlist)}
+      starting={starting?.playlistId === playlist.id ? starting.intent : null}
+      playing={playerPlaylistId === playlist.id && playerPlaying}
+      shuffled={playerPlaylistId === playlist.id && playerShuffled}
       actionsTestID={`playlist-actions-${groupKey}`}
     />
   );
@@ -475,9 +583,7 @@ export default function PlaylistGallery({
         detail={pendingDelete.detail}
         onUndo={undoDelete}
         durationMs={UNDO_WINDOW_MS}
-        bottomOffset={
-          galleryAddActionSize + tokenLength('space-3') + playerOffset
-        }
+        bottomOffset={actionDialSize + tokenLength('space-3') + playerOffset}
       />
     );
   const noticeNode =
@@ -486,13 +592,22 @@ export default function PlaylistGallery({
         message={notice}
         onDismiss={() => setNotice(null)}
         bottomOffset={
-          galleryAddActionSize +
+          actionDialSize +
           tokenLength('space-3') +
           playerOffset +
           (pendingDelete === null
             ? 0
             : tokenLength('space-9') + tokenLength('space-4'))
         }
+      />
+    );
+  const bulkNotice =
+    bulk.notice === null ? null : (
+      <Notice
+        message={bulk.notice.message}
+        detail={bulk.notice.detail}
+        onDismiss={bulk.dismissNotice}
+        bottomOffset={actionDialSize + tokenLength('space-3') + playerOffset}
       />
     );
 
@@ -577,7 +692,7 @@ export default function PlaylistGallery({
             paddingBottom:
               insets.bottom +
               tokenLength('space-4') +
-              galleryAddActionSize +
+              actionDialSize +
               tokenLength('space-3') +
               playerOffset
           }
@@ -635,7 +750,7 @@ export default function PlaylistGallery({
             ) : (
               <View style={styles.grid}>
                 {group.items.map(playlist => (
-                  <View key={playlist.id} style={styles.cell}>
+                  <View key={playlist.id} style={{ width: columnWidth }}>
                     {cardFor(playlist, group.key)}
                   </View>
                 ))}
@@ -644,10 +759,12 @@ export default function PlaylistGallery({
           </View>
         ))}
       </ScrollView>
-      <GalleryAddAction
-        label={t('library.add')}
+      <ActionDial
+        label={t('library.actions')}
+        testID="gallery-actions"
+        actions={dialActions}
+        busy={bulk.busy || anySyncing}
         bottomOffset={playerOffset}
-        onPress={() => setAddOpen(true)}
       />
       {addSheet}
       {actionsSheet}
@@ -656,6 +773,7 @@ export default function PlaylistGallery({
       {shareSheet}
       {undoSnackbar}
       {noticeNode}
+      {bulkNotice}
     </View>
   );
 }
@@ -694,8 +812,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: tokenLength('space-3')
-  },
-  cell: {
-    width: '48%'
   }
 });

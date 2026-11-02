@@ -1,8 +1,4 @@
-import {
-  IconArrowsShuffle,
-  IconDots,
-  IconPlayerPlay
-} from '@tabler/icons-react-native';
+import { IconArrowsShuffle, IconDots } from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -15,6 +11,9 @@ import {
   useI18n
 } from '@playliberty/i18n';
 
+import PlayPauseGlyph from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
+import PlayingLine from '../../../shared/components/PlayingLine/PlayingLine';
+import PressableScale from '../../../shared/components/PressableScale/PressableScale';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
 import {
@@ -49,6 +48,8 @@ export interface PlaylistIdentityProps {
   readonly starting?: 'play' | 'shuffle' | null;
   /** Whether this playlist's queue is the shuffled one on screen. */
   readonly shuffled?: boolean;
+  /** Whether this playlist's queue is the one playing. */
+  readonly playing?: boolean;
   readonly children?: ReactNode;
 }
 
@@ -65,6 +66,7 @@ export default function PlaylistIdentity({
   onOpenActions,
   starting = null,
   shuffled = false,
+  playing = false,
   children
 }: PlaylistIdentityProps) {
   const { t } = useI18n();
@@ -117,21 +119,24 @@ export default function PlaylistIdentity({
             </View>
           </View>
 
-          <View style={styles.meta}>
-            <Text
-              testID="playlist-sync-state"
-              style={[styles.state, { color: syncStateColor(status) }]}>
-              {syncStateLabel(t, status)}
-            </Text>
-            <Text
-              accessible={false}
-              importantForAccessibility="no"
-              style={styles.separator}>
-              &middot;
-            </Text>
-            <Text testID="playlist-last-synced" style={styles.time}>
-              {formatLastSynced(t, lastSyncedAt, now)}
-            </Text>
+          <View style={styles.metaWrap}>
+            <View style={styles.meta}>
+              <Text
+                testID="playlist-sync-state"
+                style={[styles.state, { color: syncStateColor(status) }]}>
+                {syncStateLabel(t, status)}
+              </Text>
+              <Text
+                accessible={false}
+                importantForAccessibility="no"
+                style={styles.separator}>
+                &middot;
+              </Text>
+              <Text testID="playlist-last-synced" style={styles.time}>
+                {formatLastSynced(t, lastSyncedAt, now)}
+              </Text>
+            </View>
+            <PlayingLine playing={playing} />
           </View>
 
           <Text testID="playlist-track-count" style={styles.count}>
@@ -149,8 +154,12 @@ export default function PlaylistIdentity({
           <Pressable
             testID="detail-play"
             accessibilityRole="button"
-            accessibilityLabel={t('header.play')}
-            accessibilityState={{ disabled: playDisabled, busy: startingPlay }}
+            accessibilityLabel={t(playing ? 'header.pause' : 'header.play')}
+            accessibilityState={{
+              disabled: playDisabled,
+              busy: startingPlay,
+              selected: playing
+            }}
             disabled={playDisabled}
             style={({ pressed }) => [
               styles.play,
@@ -161,14 +170,15 @@ export default function PlaylistIdentity({
             {startingPlay ? (
               <Spinner color={tokenColor('bg')} />
             ) : (
-              <IconPlayerPlay
+              <PlayPauseGlyph
+                playing={playing}
                 size={tokenLength('icon-md')}
                 color={tokenColor('bg')}
               />
             )}
           </Pressable>
           <View style={styles.secondary}>
-            <Pressable
+            <PressableScale
               testID="detail-shuffle"
               accessibilityRole="button"
               accessibilityLabel={t('header.shuffle', {
@@ -180,11 +190,10 @@ export default function PlaylistIdentity({
                 busy: startingShuffle
               }}
               disabled={shuffleDisabled}
-              style={({ pressed }) => [
+              style={[
                 styles.shuffle,
                 shuffled && !shuffleDisabled && styles.shuffleOn,
-                shuffleDisabled && styles.disabled,
-                pressed && !shuffleDisabled && styles.shufflePressed
+                shuffleDisabled && styles.disabled
               ]}
               onPress={onShuffle}>
               {startingShuffle ? (
@@ -195,24 +204,21 @@ export default function PlaylistIdentity({
                   color={shuffled ? tokenColor('accent') : tokenColor('muted')}
                 />
               )}
-            </Pressable>
+            </PressableScale>
             {onOpenActions === undefined ? null : (
-              <Pressable
+              <PressableScale
                 testID="detail-actions"
                 accessibilityRole="button"
                 accessibilityLabel={t('header.actions', {
                   name: playlist.name
                 })}
-                style={({ pressed }) => [
-                  styles.shuffle,
-                  pressed && styles.shufflePressed
-                ]}
+                style={styles.shuffle}
                 onPress={onOpenActions}>
                 <IconDots
                   size={tokenLength('icon-md')}
                   color={tokenColor('muted')}
                 />
-              </Pressable>
+              </PressableScale>
             )}
           </View>
         </View>
@@ -258,6 +264,9 @@ const styles = StyleSheet.create({
     fontSize: tokenLength('text-lg'),
     fontWeight: '600',
     lineHeight: tokenLength('text-lg') * tokenNumber('leading-tight')
+  },
+  metaWrap: {
+    position: 'relative'
   },
   meta: {
     flexDirection: 'row',
@@ -320,9 +329,6 @@ const styles = StyleSheet.create({
   },
   shuffleOn: {
     borderColor: tokenColor('accent')
-  },
-  shufflePressed: {
-    backgroundColor: tokenColor('surface-raised')
   },
   disabled: {
     opacity: tokenNumber('opacity-disabled')

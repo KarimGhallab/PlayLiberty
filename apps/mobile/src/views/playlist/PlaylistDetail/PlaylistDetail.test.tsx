@@ -38,6 +38,7 @@ import {
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { copyText } from '../../../shared/clipboard/copyText';
+import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
 import { tokenLength, tokenNumber } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
@@ -67,7 +68,6 @@ import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
-import { galleryAddActionSize } from '../../library/GalleryAddAction/GalleryAddAction';
 import { takeLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
 import PlaylistDetail from './PlaylistDetail';
 
@@ -708,13 +708,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   copyTextMock.mockReset();
   takeLeftPlaylistNotice();
-  usePlayerStore.setState({
-    queue: [],
-    sourceQueue: [],
-    playlistId: null,
-    currentId: null,
-    shuffle: false
-  });
+  usePlayerStore.getState().clear();
 });
 
 describe('a shared track link', () => {
@@ -1221,9 +1215,7 @@ describe('the playlist detail', () => {
     expect(
       screen.getByTestId('playlist-scroll').props.contentContainerStyle[1]
         .paddingBottom
-    ).toBe(
-      tokenLength('space-4') + galleryAddActionSize + tokenLength('space-3')
-    );
+    ).toBe(tokenLength('space-4') + actionDialSize + tokenLength('space-3'));
   });
 
   it('clears the player bar under the last row and the add action', async () => {
@@ -1246,11 +1238,11 @@ describe('the playlist detail', () => {
         .paddingBottom
     ).toBe(
       tokenLength('space-4') +
-        galleryAddActionSize +
+        actionDialSize +
         tokenLength('space-3') +
         playerBarHeight
     );
-    expect(screen.getByTestId('detail-add-track')).toHaveStyle({
+    expect(screen.getByTestId('detail-fab-dial')).toHaveStyle({
       bottom: tokenLength('space-4') + playerBarHeight
     });
   });
@@ -2082,6 +2074,31 @@ describe('the playlist detail', () => {
     expect(state.shuffle).toBe(false);
   });
 
+  it('mirrors the player bar play state and toggles it', async () => {
+    await renderDetail();
+
+    expect(screen.getByLabelText('Play this playlist')).toBeOnTheScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('track-1');
+      expect(screen.getByLabelText('Pause this playlist')).toBeOnTheScreen();
+      expect(screen.getByTestId('detail-play')).not.toBeDisabled();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('detail-play'));
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().isPlaying).toBe(false);
+      expect(screen.getByLabelText('Play this playlist')).toBeOnTheScreen();
+    });
+  });
+
   it('shuffles every playable track from a random one', async () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);
     await renderDetail({
@@ -2196,7 +2213,8 @@ describe('the playlist detail', () => {
     expect(screen.getByTestId('detail-shuffle')).toBeDisabled();
     expect(screen.getByTestId('detail-play').props.accessibilityState).toEqual({
       disabled: true,
-      busy: true
+      busy: true,
+      selected: false
     });
   });
 
@@ -2422,8 +2440,25 @@ describe('the playlist detail', () => {
   it('draws the add action for a writer', async () => {
     await renderDetail();
 
+    await fireEvent.press(screen.getByTestId('detail-fab'));
+
     expect(screen.getByTestId('detail-add-track')).toBeOnTheScreen();
     expect(screen.getByLabelText('Add a track')).toBeOnTheScreen();
+  });
+
+  it('syncs the playlist from the dial', async () => {
+    const { syncMutate } = await renderDetail();
+
+    await fireEvent.press(screen.getByTestId('detail-fab'));
+    await fireEvent.press(screen.getByTestId('detail-sync'));
+
+    expect(syncMutate).toHaveBeenCalledWith('playlist-1', expect.any(Object));
+  });
+
+  it('holds the dial while the playlist syncs', async () => {
+    await renderDetail({ syncPending: true });
+
+    expect(screen.getByTestId('detail-fab')).toBeDisabled();
   });
 
   it('draws no add action for a read collaborator', async () => {
@@ -2431,13 +2466,14 @@ describe('the playlist detail', () => {
       playlist: { ...playlist, access: ShareLevel.Read }
     });
 
-    expect(screen.queryByTestId('detail-add-track')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('detail-fab')).not.toBeOnTheScreen();
   });
 
   it('opens the add sheet on the current playlist and the gallery writes', async () => {
     const { view } = await renderDetail();
 
-    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await fireEvent.press(screen.getByTestId('detail-fab'));
+    await fireEvent.press(screen.getByTestId('detail-add-track'));
     await waitFor(() => {
       expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
     });
@@ -2471,7 +2507,8 @@ describe('the playlist detail', () => {
       }
     });
 
-    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await fireEvent.press(screen.getByTestId('detail-fab'));
+    await fireEvent.press(screen.getByTestId('detail-add-track'));
     await waitFor(() => {
       expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
     });
@@ -2503,7 +2540,8 @@ describe('the playlist detail', () => {
       options.onSuccess?.(result);
     });
 
-    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await fireEvent.press(screen.getByTestId('detail-fab'));
+    await fireEvent.press(screen.getByTestId('detail-add-track'));
     await waitFor(() => {
       expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
     });
@@ -2549,7 +2587,8 @@ describe('the playlist detail', () => {
       options.onSuccess?.(result);
     });
 
-    fireEvent.press(screen.getByTestId('detail-add-track'));
+    await fireEvent.press(screen.getByTestId('detail-fab'));
+    await fireEvent.press(screen.getByTestId('detail-add-track'));
     await waitFor(() => {
       expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
     });

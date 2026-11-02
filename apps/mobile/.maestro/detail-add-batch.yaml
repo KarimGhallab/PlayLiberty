@@ -43,6 +43,8 @@ name: A video is added to two playlists, then removed and restored
       id: track-row
     timeout: 30000
 - tapOn:
+    id: detail-fab
+- tapOn:
     id: detail-add-track
 - extendedWaitUntil:
     visible:

@@ -42,6 +42,7 @@ export const fr: Messages = {
   },
   library: {
     add: 'Ajouter une playlist',
+    actions: 'Actions de la bibliothèque',
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
     pinned: 'Épinglées',
@@ -132,6 +133,7 @@ export const fr: Messages = {
      * words it cannot carry. */
     backShort: 'Retour',
     addTrack: 'Ajouter une piste',
+    fabActions: 'Actions de la playlist',
     syncPlaylist: 'Synchroniser la playlist',
     syncPlaylistShort: 'Synchroniser',
     syncingPlaylist: 'Synchronisation de la playlist...',

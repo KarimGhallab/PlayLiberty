@@ -28,7 +28,6 @@ async function renderHeader(overrides: Partial<LibraryHeaderProps> = {}) {
   const props: LibraryHeaderProps = {
     account,
     isAdmin: false,
-    sync: { count: 0, busy: false, onPress: jest.fn() },
     onOpenAccount,
     onOpenEgress,
     ...overrides
@@ -42,8 +41,7 @@ async function renderHeader(overrides: Partial<LibraryHeaderProps> = {}) {
 
   return {
     onOpenAccount,
-    onOpenEgress,
-    onSyncAll: props.sync.onPress
+    onOpenEgress
   };
 }
 
@@ -92,39 +90,5 @@ describe('the library header', () => {
     expect(
       screen.queryByRole('button', { name: 'VPN settings' })
     ).not.toBeOnTheScreen();
-  });
-
-  it('names the bulk sync count and hands over the press', async () => {
-    const { onSyncAll } = await renderHeader({
-      sync: { count: 3, busy: false, onPress: jest.fn() }
-    });
-
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Sync all 3 playlists' })
-    );
-
-    expect(onSyncAll).toHaveBeenCalledTimes(1);
-  });
-
-  it('draws no bulk sync when nothing is syncable', async () => {
-    await renderHeader();
-
-    expect(screen.queryByTestId('bulk-sync')).not.toBeOnTheScreen();
-  });
-
-  it('holds the frozen count and reports work while the batch runs', async () => {
-    await renderHeader({
-      sync: { count: 3, busy: true, onPress: jest.fn() }
-    });
-
-    const control = screen.getByRole('button', {
-      name: 'Syncing 3 playlists...'
-    });
-
-    expect(control).toBeDisabled();
-    expect(control.props.accessibilityState).toEqual({
-      disabled: true,
-      busy: true
-    });
   });
 });

@@ -74,7 +74,7 @@ notification` and `adb -s <phone> shell dumpsys media_session`. Wake the phone w
 | Flow                  | Journey                                                                  |
 | --------------------- | ------------------------------------------------------------------------ |
 | `gallery-card`        | the gallery opens and a card reaches its playlist                        |
-| `gallery-add`         | a playlist is added from the floating action and appears under Syncing   |
+| `gallery-add`         | a playlist is added from the action dial and appears under Syncing       |
 | `gallery-pin`         | a card is pinned, moves under Pinned, and is unpinned again              |
 | `gallery-cover`       | a cover is chosen, framed, saved, seen again and removed                 |
 | `link-track`          | a track link opens its playlist at the track and copies it               |

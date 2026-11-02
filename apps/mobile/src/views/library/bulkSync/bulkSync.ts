@@ -124,7 +124,7 @@ export function batchBusy(
   return pending || syncing || dataUpdatedAt <= batch.at;
 }
 
-/* The header's bulk sync: the count the rail shows, the frozen batch behind the
+/* The gallery's bulk sync: the count the dial shows, the frozen batch behind the
  * press, and the tally the notice draws. */
 export function useBulkSync(
   items: readonly PlaylistWithCounts[],

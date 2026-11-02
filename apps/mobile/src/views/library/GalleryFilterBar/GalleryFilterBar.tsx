@@ -9,6 +9,7 @@ import {
   Text,
   View
 } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { TrackFileStatus } from '@playliberty/contracts';
 import type { TrackFileStatusCounts } from '@playliberty/contracts';
@@ -31,9 +32,79 @@ import {
 
 export type LibraryScope = 'all' | 'shared';
 
+const FADE_WIDTH = tokenLength('space-6');
+
 interface SegmentRect {
   readonly x: number;
   readonly width: number;
+}
+
+interface RailEdges {
+  readonly start: boolean;
+  readonly end: boolean;
+}
+
+interface RailMetrics {
+  x: number;
+  width: number;
+  viewport: number;
+}
+
+interface RailFadeProps {
+  readonly side: 'start' | 'end';
+  readonly visible: boolean;
+}
+
+/* The rail's hidden edge: the ground fades over what the scroll cut, so the rail
+ * reads as continuing rather than as a clipped chip. */
+function RailFade({ side, visible }: RailFadeProps) {
+  const reduceMotion = useReduceMotion();
+  const reveal = useRef(new Animated.Value(visible ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (reduceMotion) {
+      reveal.setValue(visible ? 1 : 0);
+      return;
+    }
+
+    const animation = Animated.timing(reveal, {
+      toValue: visible ? 1 : 0,
+      duration: tokenDuration('motion-base'),
+      easing: Easing.bezier(...standardEasingBezier),
+      useNativeDriver: true
+    });
+    animation.start();
+
+    return () => animation.stop();
+  }, [reduceMotion, reveal, visible]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.fade,
+        side === 'start' ? styles.fadeStart : styles.fadeEnd,
+        { opacity: reveal }
+      ]}>
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id={`rail-fade-${side}`} x1="0" y1="0" x2="1" y2="0">
+            <Stop
+              offset="0"
+              stopColor={tokenColor('bg')}
+              stopOpacity={side === 'start' ? 1 : 0}
+            />
+            <Stop
+              offset="1"
+              stopColor={tokenColor('bg')}
+              stopOpacity={side === 'start' ? 0 : 1}
+            />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill={`url(#rail-fade-${side})`} />
+      </Svg>
+    </Animated.View>
+  );
 }
 
 export interface GalleryFilterBarProps {
@@ -63,6 +134,11 @@ export default function GalleryFilterBar({
   const reduceMotion = useReduceMotion();
   const [allRect, setAllRect] = useState<SegmentRect | null>(null);
   const [sharedRect, setSharedRect] = useState<SegmentRect | null>(null);
+  const [edges, setEdges] = useState<RailEdges>({
+    start: false,
+    end: false
+  });
+  const metrics = useRef<RailMetrics>({ x: 0, width: 0, viewport: 0 });
   const selection = useRef(
     new Animated.Value(scope === 'shared' ? 1 : 0)
   ).current;
@@ -92,150 +168,191 @@ export default function GalleryFilterBar({
     return null;
   }
 
+  /* The fade follows the rail, not the content: a side reports only while
+   * something is still hidden there. */
+  const railMoved = (next: Partial<RailMetrics>): void => {
+    const current = { ...metrics.current, ...next };
+    metrics.current = current;
+    const start = current.x > 1;
+    const end =
+      current.viewport > 0 && current.x + current.viewport < current.width - 1;
+    setEdges(previous =>
+      previous.start === start && previous.end === end
+        ? previous
+        : { start, end }
+    );
+  };
+
   return (
-    <ScrollView
-      testID="gallery-filter-bar"
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.bar}
-      contentContainerStyle={styles.content}>
-      {hasShared ? (
-        <View
-          accessibilityRole="radiogroup"
-          accessibilityLabel={t('library.scopeLabel')}
-          style={styles.pair}>
-          <View style={styles.pairInner}>
-            {measured ? (
-              <Animated.View
-                pointerEvents="none"
+    <View style={styles.rail}>
+      <ScrollView
+        testID="gallery-filter-bar"
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.bar}
+        contentContainerStyle={styles.content}
+        scrollEventThrottle={16}
+        onLayout={event =>
+          railMoved({ viewport: event.nativeEvent.layout.width })
+        }
+        onContentSizeChange={width => railMoved({ width })}
+        onScroll={event => railMoved({ x: event.nativeEvent.contentOffset.x })}>
+        {hasShared ? (
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t('library.scopeLabel')}
+            style={styles.pair}>
+            <View style={styles.pairInner}>
+              {measured ? (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.scopePlate,
+                    {
+                      left: selection.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [allRect.x, sharedRect.x]
+                      }),
+                      width: selection.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [allRect.width, sharedRect.width]
+                      }),
+                      backgroundColor: selection.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [
+                          tokenColor('surface-raised'),
+                          tokenColor('shared-surface')
+                        ]
+                      }),
+                      borderColor: selection.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [
+                          tokenColor('control-border'),
+                          tokenColor('shared-border')
+                        ]
+                      })
+                    }
+                  ]}
+                />
+              ) : null}
+              <Pressable
+                testID="scope-all"
+                accessibilityRole="button"
+                accessibilityState={{ selected: scope === 'all' }}
+                accessibilityLabel={`${t('library.scopeAll')} ${totalCount}`}
                 style={[
-                  styles.scopePlate,
-                  {
-                    left: selection.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [allRect.x, sharedRect.x]
-                    }),
-                    width: selection.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [allRect.width, sharedRect.width]
-                    }),
-                    backgroundColor: selection.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [
-                        tokenColor('surface-raised'),
-                        tokenColor('shared-surface')
-                      ]
-                    }),
-                    borderColor: selection.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [
-                        tokenColor('control-border'),
-                        tokenColor('shared-border')
-                      ]
-                    })
-                  }
+                  styles.segment,
+                  !measured && scope === 'all' && styles.segmentAll
                 ]}
-              />
-            ) : null}
-            <Pressable
-              testID="scope-all"
-              accessibilityRole="button"
-              accessibilityState={{ selected: scope === 'all' }}
-              accessibilityLabel={`${t('library.scopeAll')} ${totalCount}`}
-              style={[
-                styles.segment,
-                !measured && scope === 'all' && styles.segmentAll
-              ]}
-              onLayout={event => {
-                setAllRect({
-                  x: event.nativeEvent.layout.x,
-                  width: event.nativeEvent.layout.width
-                });
-              }}
-              onPress={() => onScopeChange('all')}>
-              <Text
+                onLayout={event => {
+                  setAllRect({
+                    x: event.nativeEvent.layout.x,
+                    width: event.nativeEvent.layout.width
+                  });
+                }}
+                onPress={() => onScopeChange('all')}>
+                <Text
+                  style={[
+                    styles.segmentLabel,
+                    scope === 'all' && styles.segmentLabelAll
+                  ]}>
+                  {t('library.scopeAll')}
+                </Text>
+                <Text style={styles.segmentCount}>{totalCount}</Text>
+              </Pressable>
+              <Pressable
+                testID="scope-shared"
+                accessibilityRole="button"
+                accessibilityState={{ selected: scope === 'shared' }}
+                accessibilityLabel={`${t('library.scopeShared')} ${sharedCount}`}
                 style={[
-                  styles.segmentLabel,
-                  scope === 'all' && styles.segmentLabelAll
-                ]}>
-                {t('library.scopeAll')}
-              </Text>
-              <Text style={styles.segmentCount}>{totalCount}</Text>
-            </Pressable>
-            <Pressable
-              testID="scope-shared"
-              accessibilityRole="button"
-              accessibilityState={{ selected: scope === 'shared' }}
-              accessibilityLabel={`${t('library.scopeShared')} ${sharedCount}`}
-              style={[
-                styles.segment,
-                !measured && scope === 'shared' && styles.segmentShared
-              ]}
-              onLayout={event => {
-                setSharedRect({
-                  x: event.nativeEvent.layout.x,
-                  width: event.nativeEvent.layout.width
-                });
-              }}
-              onPress={() => onScopeChange('shared')}>
-              <IconUserShare
-                size={tokenLength('icon-sm')}
-                color={
-                  scope === 'shared'
-                    ? tokenColor('shared')
-                    : tokenColor('muted')
-                }
-              />
-              <Text
-                style={[
-                  styles.segmentLabel,
-                  scope === 'shared' && styles.segmentLabelShared
-                ]}>
-                {t('library.scopeShared')}
-              </Text>
-              <Text
-                style={[
-                  styles.segmentCount,
-                  scope === 'shared' && styles.segmentCountShared
-                ]}>
-                {sharedCount}
-              </Text>
-            </Pressable>
+                  styles.segment,
+                  !measured && scope === 'shared' && styles.segmentShared
+                ]}
+                onLayout={event => {
+                  setSharedRect({
+                    x: event.nativeEvent.layout.x,
+                    width: event.nativeEvent.layout.width
+                  });
+                }}
+                onPress={() => onScopeChange('shared')}>
+                <IconUserShare
+                  size={tokenLength('icon-sm')}
+                  color={
+                    scope === 'shared'
+                      ? tokenColor('shared')
+                      : tokenColor('muted')
+                  }
+                />
+                <Text
+                  style={[
+                    styles.segmentLabel,
+                    scope === 'shared' && styles.segmentLabelShared
+                  ]}>
+                  {t('library.scopeShared')}
+                </Text>
+                <Text
+                  style={[
+                    styles.segmentCount,
+                    scope === 'shared' && styles.segmentCountShared
+                  ]}>
+                  {sharedCount}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      {hasShared && hasStatus ? <View style={styles.divider} /> : null}
+        {hasShared && hasStatus ? <View style={styles.divider} /> : null}
 
-      {hasStatus ? (
-        <View style={styles.chips}>
-          <Chip
-            label={t(hasShared ? 'library.allTracks' : 'detail.filterAll')}
-            count={total}
-            selected={activeStatus === null}
-            onPress={() => onStatusChange(null)}
-          />
-          {STATUS_CHIPS.filter(status => counts[status.value] > 0).map(
-            status => (
-              <Chip
-                key={status.value}
-                label={t(status.label)}
-                count={counts[status.value]}
-                tone={status.tone}
-                selected={activeStatus === status.value}
-                onPress={() => onStatusChange(status.value)}
-              />
-            )
-          )}
-        </View>
-      ) : null}
-    </ScrollView>
+        {hasStatus ? (
+          <View style={styles.chips}>
+            <Chip
+              label={t(hasShared ? 'library.allTracks' : 'detail.filterAll')}
+              count={total}
+              selected={activeStatus === null}
+              onPress={() => onStatusChange(null)}
+            />
+            {STATUS_CHIPS.filter(status => counts[status.value] > 0).map(
+              status => (
+                <Chip
+                  key={status.value}
+                  label={t(status.label)}
+                  count={counts[status.value]}
+                  tone={status.tone}
+                  selected={activeStatus === status.value}
+                  onPress={() => onStatusChange(status.value)}
+                />
+              )
+            )}
+          </View>
+        ) : null}
+      </ScrollView>
+      <RailFade side="start" visible={edges.start} />
+      <RailFade side="end" visible={edges.end} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  rail: {
+    position: 'relative',
+    flexGrow: 0
+  },
   bar: {
     flexGrow: 0
+  },
+  fade: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: FADE_WIDTH
+  },
+  fadeStart: {
+    left: 0
+  },
+  fadeEnd: {
+    right: 0
   },
   content: {
     flexDirection: 'row',

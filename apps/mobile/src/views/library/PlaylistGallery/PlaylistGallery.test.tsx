@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
+import { QueryClientProvider } from '@tanstack/react-query';
 import {
   fireEvent,
   render,
@@ -22,9 +23,11 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
+import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
 import { tokenLength } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
+import { createAppQueryClient } from '../../../api/queryClient/queryClient';
 import { useAccount } from '../../../api/useAccount';
 import { useAccountDirectory } from '../../../api/useAccountDirectory';
 import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
@@ -37,12 +40,13 @@ import { useRemovePlaylistCover } from '../../../api/useRemovePlaylistCover';
 import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useRevokeShare } from '../../../api/useRevokeShare';
 import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
+import { useSyncAllPlaylists } from '../../../api/useSyncAllPlaylists/useSyncAllPlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
-import { galleryAddActionSize } from '../GalleryAddAction/GalleryAddAction';
+import { startPlaylistPlayback } from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
 import PlaylistGallery from './PlaylistGallery';
 
@@ -60,6 +64,10 @@ jest.mock('../../../api/useUpdatePin', () => ({
 
 jest.mock('../../../api/useSyncPlaylist', () => ({
   useSyncPlaylist: jest.fn()
+}));
+
+jest.mock('../../../api/useSyncAllPlaylists/useSyncAllPlaylists', () => ({
+  useSyncAllPlaylists: jest.fn()
 }));
 
 jest.mock('../../../api/useDeletePlaylist', () => ({
@@ -103,6 +111,14 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn()
 }));
 
+jest.mock(
+  '../../../player/startPlaylistPlayback/startPlaylistPlayback',
+  () => ({
+    readPlayableQueue: jest.fn(),
+    startPlaylistPlayback: jest.fn(async () => null)
+  })
+);
+
 jest.mock('expo-file-system', () => ({
   File: class {
     readonly uri: string;
@@ -127,6 +143,7 @@ const hidden = { includeHiddenElements: true };
 
 afterEach(() => {
   usePlayerStore.getState().clear();
+  jest.mocked(startPlaylistPlayback).mockClear();
 });
 
 const metrics = {
@@ -278,17 +295,20 @@ function GalleryHarness({
 
 async function renderPlaylists(
   result: unknown,
-  accounts: AccountSummary[] = []
+  accounts: AccountSummary[] = [],
+  syncAllResult: ReturnType<typeof mutationResult> = mutationResult()
 ) {
   jest.mocked(usePlaylists).mockReturnValue(result as never);
   jest.mocked(useAccountDirectory).mockReturnValue(queryResult(accounts));
   jest.mocked(useCreatePlaylist).mockReturnValue(mutationResult() as never);
   const pin = mutationResult();
   const syncNow = mutationResult();
+  const syncAll = syncAllResult;
   const remove = mutationResult();
   const rename = mutationResult();
   jest.mocked(useUpdatePin).mockReturnValue(pin as never);
   jest.mocked(useSyncPlaylist).mockReturnValue(syncNow as never);
+  jest.mocked(useSyncAllPlaylists).mockReturnValue(syncAll as never);
   jest.mocked(useDeletePlaylist).mockReturnValue(remove as never);
   jest.mocked(useRenamePlaylist).mockReturnValue(rename as never);
   jest.mocked(usePlaylistShares).mockReturnValue(queryResult([]));
@@ -322,23 +342,31 @@ async function renderPlaylists(
     .mockReturnValue(mutationResult() as never);
 
   const onOpenPlaylist = jest.fn();
+  const client = createAppQueryClient(() => {});
 
   const view = await render(
-    <SafeAreaProvider initialMetrics={metrics}>
-      <I18nProvider initialLanguage={Language.English} storage={store}>
-        <GalleryHarness onOpenPlaylist={onOpenPlaylist} />
-      </I18nProvider>
-    </SafeAreaProvider>
+    <QueryClientProvider client={client}>
+      <SafeAreaProvider initialMetrics={metrics}>
+        <I18nProvider initialLanguage={Language.English} storage={store}>
+          <GalleryHarness onOpenPlaylist={onOpenPlaylist} />
+        </I18nProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 
-  return { onOpenPlaylist, view, pin, syncNow, remove, rename };
+  return { onOpenPlaylist, view, pin, syncNow, syncAll, remove, rename };
 }
 
 async function renderGallery(
   items: readonly PlaylistWithCounts[],
-  accounts: AccountSummary[] = []
+  accounts: AccountSummary[] = [],
+  syncAllResult?: ReturnType<typeof mutationResult>
 ) {
-  return renderPlaylists(queryResult(page(items)), accounts);
+  return renderPlaylists(
+    queryResult(page(items)),
+    accounts,
+    syncAllResult ?? mutationResult()
+  );
 }
 
 describe('the gallery', () => {
@@ -351,7 +379,7 @@ describe('the gallery', () => {
     expect(
       screen
         .getAllByTestId('playlist-card')
-        .map(card => card.props.accessibilityLabel)
+        .map(card => String(card.props.accessibilityLabel).split(',')[0])
     ).toEqual(['Pinned Mix', 'Syncing Mix', 'Rest Mix']);
   });
 
@@ -421,6 +449,76 @@ describe('the gallery', () => {
     expect(
       within(screen.getByTestId('playlist-action-delete')).getByText('Delete')
     ).toBeOnTheScreen();
+  });
+
+  it('starts a shuffled playlist from its card', async () => {
+    await renderGallery([storedItem]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Shuffle Stored Mix' })
+    );
+
+    await waitFor(() => {
+      expect(startPlaylistPlayback).toHaveBeenCalledWith(
+        storedItem,
+        'shuffle',
+        expect.any(Function)
+      );
+    });
+  });
+
+  it('starts a playlist from its card', async () => {
+    await renderGallery([storedItem]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Play Stored Mix' })
+    );
+
+    await waitFor(() => {
+      expect(startPlaylistPlayback).toHaveBeenCalledWith(
+        storedItem,
+        'play',
+        expect.any(Function)
+      );
+    });
+  });
+
+  it('pauses the queue a card already owns', async () => {
+    usePlayerStore.getState().start(
+      [
+        {
+          id: 'track-1',
+          title: 'First Song',
+          durationSeconds: 182,
+          thumbnailPath: null
+        }
+      ],
+      { id: 'playlist-stored', name: 'Stored Mix' },
+      'track-1'
+    );
+    await renderGallery([storedItem]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Pause Stored Mix' })
+    );
+
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(startPlaylistPlayback).not.toHaveBeenCalled();
+  });
+
+  it('explains a refused shuffle on the card', async () => {
+    jest.mocked(startPlaylistPlayback).mockResolvedValueOnce({ kind: 'empty' });
+    await renderGallery([storedItem]);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Shuffle Stored Mix' })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Nothing to play in “Stored Mix”.')
+      ).toBeOnTheScreen();
+    });
   });
 
   it('offers a reader the pin alone', async () => {
@@ -812,9 +910,9 @@ describe('the gallery', () => {
     );
 
     expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
-    expect(screen.getByTestId('playlist-card').props.accessibilityLabel).toBe(
-      'Shared Mix'
-    );
+    expect(
+      screen.getByTestId('playlist-card').props.accessibilityLabel
+    ).toMatch(/^Shared Mix, /);
     expect(
       screen.getByRole('button', { name: 'All tracks 3' })
     ).toBeOnTheScreen();
@@ -826,9 +924,9 @@ describe('the gallery', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Failed 2' }));
 
     expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
-    expect(screen.getByTestId('playlist-card').props.accessibilityLabel).toBe(
-      'Rest Mix'
-    );
+    expect(
+      screen.getByTestId('playlist-card').props.accessibilityLabel
+    ).toMatch(/^Rest Mix, /);
   });
 
   it('clears the scope and the chip when the screen is left', async () => {
@@ -883,9 +981,10 @@ describe('the gallery', () => {
     });
   });
 
-  it('draws the floating add action over a gallery with items', async () => {
+  it('opens the add sheet from the gallery dial', async () => {
     await renderGallery([base]);
 
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
     await fireEvent.press(screen.getByTestId('gallery-add'));
 
     await waitFor(() => {
@@ -893,7 +992,36 @@ describe('the gallery', () => {
     });
   });
 
-  it('clears the player bar under the last row and the add action', async () => {
+  it('starts the bulk sync of the writable playlists from the dial', async () => {
+    const { syncAll } = await renderGallery([base, shared]);
+
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
+    await fireEvent.press(screen.getByTestId('gallery-sync'));
+
+    expect(syncAll.mutate).toHaveBeenCalledWith(
+      ['playlist-rest'],
+      expect.anything()
+    );
+  });
+
+  it('holds the sync row while the batch runs', async () => {
+    await renderGallery([base], [], mutationResult({ isPending: true }));
+
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
+    await fireEvent.press(screen.getByTestId('gallery-sync'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('gallery-sync', hidden)).toBeDisabled();
+    });
+  });
+
+  it('holds the dial while a playlist syncs', async () => {
+    await renderGallery([syncing]);
+
+    expect(screen.getByTestId('gallery-actions')).toBeDisabled();
+  });
+
+  it('clears the player bar under the last row and the dial', async () => {
     usePlayerStore.getState().start(
       [
         {
@@ -913,11 +1041,11 @@ describe('the gallery', () => {
         .paddingBottom
     ).toBe(
       tokenLength('space-4') +
-        galleryAddActionSize +
+        actionDialSize +
         tokenLength('space-3') +
         playerBarHeight
     );
-    expect(screen.getByTestId('gallery-add')).toHaveStyle({
+    expect(screen.getByTestId('gallery-actions-dial')).toHaveStyle({
       bottom: tokenLength('space-4') + playerBarHeight
     });
   });
@@ -928,16 +1056,20 @@ describe('the gallery', () => {
     const create = mutationResult();
     jest.mocked(useCreatePlaylist).mockReturnValue(create as never);
     const onOpenPlaylist = jest.fn();
+    const client = createAppQueryClient(() => {});
 
     const tree = () => (
-      <SafeAreaProvider initialMetrics={metrics}>
-        <I18nProvider initialLanguage={Language.English} storage={store}>
-          <GalleryHarness onOpenPlaylist={onOpenPlaylist} />
-        </I18nProvider>
-      </SafeAreaProvider>
+      <QueryClientProvider client={client}>
+        <SafeAreaProvider initialMetrics={metrics}>
+          <I18nProvider initialLanguage={Language.English} storage={store}>
+            <GalleryHarness onOpenPlaylist={onOpenPlaylist} />
+          </I18nProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
     );
 
     const view = await render(tree());
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
     await fireEvent.press(screen.getByTestId('gallery-add'));
     await waitFor(() => {
       expect(screen.getByTestId('add-sheet')).toBeOnTheScreen();

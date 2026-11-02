@@ -53,12 +53,16 @@ const playlist: PlaylistWithCounts = {
 async function renderCard(overrides: Partial<PlaylistCardProps> = {}) {
   const onOpen = jest.fn();
   const onOpenActions = jest.fn();
+  const onPlay = jest.fn();
+  const onShuffle = jest.fn();
   const props: PlaylistCardProps = {
     playlist,
     ownerName: null,
     config,
     onOpen,
     onOpenActions,
+    onPlay,
+    onShuffle,
     ...overrides
   };
 
@@ -68,7 +72,7 @@ async function renderCard(overrides: Partial<PlaylistCardProps> = {}) {
     </I18nProvider>
   );
 
-  return { onOpen, onOpenActions };
+  return { onOpen, onOpenActions, onPlay, onShuffle };
 }
 
 describe('the playlist card', () => {
@@ -112,11 +116,82 @@ describe('the playlist card', () => {
     });
   });
 
-  it('draws a disabled play control named for its playlist', async () => {
-    await renderCard();
+  it('starts a playlist from its play control', async () => {
+    const { onPlay } = await renderCard();
+
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Play Rain On The Window' })
+    );
+
+    expect(onPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws the pause control while its playlist plays', async () => {
+    const { onPlay } = await renderCard({ playing: true });
+
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Pause Rain On The Window' })
+    );
+
+    expect(onPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the play while nothing is stored', async () => {
+    await renderCard({
+      playlist: {
+        ...playlist,
+        counts: {
+          stored: 0,
+          pending: 1,
+          downloading: 0,
+          failed: 2,
+          unavailable: 0
+        }
+      }
+    });
 
     expect(
       screen.getByRole('button', { name: 'Play Rain On The Window' })
+    ).toBeDisabled();
+  });
+
+  it('starts a shuffled playlist from its shuffle control', async () => {
+    const { onShuffle } = await renderCard();
+
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    );
+
+    expect(onShuffle).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the shuffle while nothing is stored', async () => {
+    await renderCard({
+      playlist: {
+        ...playlist,
+        counts: {
+          stored: 0,
+          pending: 1,
+          downloading: 0,
+          failed: 2,
+          unavailable: 0
+        }
+      }
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
+    ).toBeDisabled();
+  });
+
+  it('holds both starts while one is in flight', async () => {
+    await renderCard({ starting: 'shuffle' });
+
+    expect(
+      screen.getByRole('button', { name: 'Play Rain On The Window' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
     ).toBeDisabled();
   });
 
@@ -163,12 +238,29 @@ describe('the playlist card', () => {
     expect(screen.getByTestId('playlist-share', hidden)).toBeOnTheScreen();
   });
 
-  it('opens the playlist from the card and announces it once with its name', async () => {
+  it('opens the playlist from the card and states its count, state and owner', async () => {
     const { onOpen } = await renderCard();
 
-    expect(screen.getAllByLabelText('Rain On The Window')).toHaveLength(1);
+    expect(
+      screen.getAllByLabelText(
+        'Rain On The Window, Private playlist, 12 tracks, Up to date'
+      )
+    ).toHaveLength(1);
 
     fireEvent.press(screen.getByTestId('playlist-card'));
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the owner on a shared card', async () => {
+    await renderCard({
+      playlist: { ...playlist, access: ShareLevel.Read },
+      ownerName: 'Bea'
+    });
+
+    expect(
+      screen.getByLabelText(
+        'Rain On The Window, You are a collaborator, 12 tracks, Up to date, Shared by Bea'
+      )
+    ).toBeOnTheScreen();
   });
 });

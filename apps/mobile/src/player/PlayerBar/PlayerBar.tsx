@@ -1,6 +1,4 @@
 import {
-  IconPlayerPause,
-  IconPlayerPlay,
   IconPlayerSkipBack,
   IconPlayerSkipForward
 } from '@tabler/icons-react-native';
@@ -11,7 +9,6 @@ import {
   type GestureResponderHandlers,
   Image,
   PanResponder,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -24,6 +21,8 @@ import { useI18n } from '@playliberty/i18n';
 
 import { useReduceMotion } from '../../shared/a11y/useReduceMotion';
 import Notice from '../../shared/components/Notice/Notice';
+import PlayPauseGlyph from '../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
+import PressableScale from '../../shared/components/PressableScale/PressableScale';
 import { type MediaSource, mediaSource } from '../../shared/media/mediaSource';
 import { sleeveColor } from '../../shared/styles/sleeve';
 import {
@@ -233,7 +232,7 @@ function StepButton({
     direction === 'previous' ? IconPlayerSkipBack : IconPlayerSkipForward;
 
   return (
-    <Pressable
+    <PressableScale
       testID={direction === 'previous' ? 'player-previous' : 'player-next'}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -241,17 +240,16 @@ function StepButton({
       disabled={disabled}
       hitSlop={size < touchTarget ? (touchTarget - size) / 2 : 0}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.step,
         { width: size, height: size },
-        disabled && styles.stepDisabled,
-        pressed && styles.stepPressed
+        disabled && styles.stepDisabled
       ]}>
       <Glyph
         size={tokenLength('icon-md')}
         color={disabled ? tokenColor('control-disabled-fg') : tokenColor('ink')}
       />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -269,7 +267,7 @@ function PlayOrb({
   const { t } = useI18n();
 
   return (
-    <Pressable
+    <PressableScale
       testID="player-toggle"
       accessibilityRole="button"
       accessibilityLabel={
@@ -280,25 +278,20 @@ function PlayOrb({
       accessibilityState={{ selected: isPlaying }}
       hitSlop={(touchTarget - size > 0 ? touchTarget - size : 0) / 2 + 4}
       onPress={onToggle}
-      style={({ pressed }) => [
+      style={[
         styles.orb,
-        { width: size, height: size, borderRadius: size / 2 },
-        pressed && styles.orbPressed
+        { width: size, height: size, borderRadius: size / 2 }
       ]}>
       {isPlaying ? (
-        <IconPlayerPause
-          size={size * 0.5}
-          color={tokenColor('bg')}
-          strokeWidth={2.4}
-        />
+        <PlayPauseGlyph playing size={size * 0.5} color={tokenColor('bg')} />
       ) : (
-        <IconPlayerPlay
+        <PlayPauseGlyph
+          playing={false}
           size={size * 0.5}
           color={tokenColor('bg')}
-          strokeWidth={2.4}
         />
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -709,9 +702,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: tokenLength('radius-chip')
   },
-  stepPressed: {
-    backgroundColor: tokenColor('current-surface')
-  },
   stepDisabled: {
     opacity: tokenNumber('opacity-disabled')
   },
@@ -719,8 +709,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokenColor('accent')
-  },
-  orbPressed: {
-    opacity: 0.82
   }
 });
