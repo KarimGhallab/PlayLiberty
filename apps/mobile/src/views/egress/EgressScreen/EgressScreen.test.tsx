@@ -46,14 +46,18 @@ const TWO_HOURS_AGO = new Date(
   Date.now() - 2 * 60 * 60 * 1000 - 60 * 1000
 ).toISOString();
 
+const ONE_HOUR_AGO = new Date(
+  Date.now() - 60 * 60 * 1000 - 60 * 1000
+).toISOString();
+
 const ACTIVE: EgressConfig = {
   name: '01-FR-634',
   endpoint: '185.0.0.1:51820',
   status: EgressStatus.Ok,
   active: true,
   lastAttemptAt: TWO_HOURS_AGO,
-  lastCheckAt: null,
-  lastExitIp: null,
+  lastCheckAt: ONE_HOUR_AGO,
+  lastExitIp: '185.0.0.9',
   lastError: null
 };
 
@@ -181,12 +185,14 @@ describe('the egress console', () => {
     expect(screen.getByText('Egress agent reachable.')).toBeOnTheScreen();
     expect(screen.getByText('01-FR-634')).toBeOnTheScreen();
     expect(screen.getByText('185.0.0.1:51820')).toBeOnTheScreen();
+    expect(screen.getByText('Seen at 185.0.0.9')).toBeOnTheScreen();
     expect(screen.getByText('OK')).toBeOnTheScreen();
     expect(screen.getByText('Unknown')).toBeOnTheScreen();
     expect(screen.getByText('2 hours ago')).toBeOnTheScreen();
-    expect(screen.getByText('Never')).toBeOnTheScreen();
-    expect(screen.getByText('France')).toBeOnTheScreen();
-    expect(screen.getByText('Switzerland')).toBeOnTheScreen();
+    expect(screen.getByText('1 hour ago')).toBeOnTheScreen();
+    expect(screen.getAllByText('Never')).toHaveLength(2);
+    expect(screen.getByLabelText('France')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Switzerland')).toBeOnTheScreen();
     expect(screen.getByText('Active')).toBeOnTheScreen();
     expect(screen.getByTestId('egress-active-01-FR-634')).toBeOnTheScreen();
     expect(
@@ -205,7 +211,7 @@ describe('the egress console', () => {
     try {
       await renderScreen(success(READ));
 
-      expect(screen.getByText('CH')).toBeOnTheScreen();
+      expect(screen.getByLabelText('CH')).toBeOnTheScreen();
     } finally {
       if (descriptor === undefined) {
         delete (Intl as { DisplayNames?: unknown }).DisplayNames;
@@ -213,6 +219,22 @@ describe('the egress console', () => {
         Object.defineProperty(Intl, 'DisplayNames', descriptor);
       }
     }
+  });
+
+  it('names why a failed exit failed and when it was last checked', async () => {
+    const failed: EgressConfig = {
+      ...STANDBY,
+      name: '04-DE-7',
+      status: EgressStatus.Failed,
+      lastCheckAt: TWO_HOURS_AGO,
+      lastError: 'blocked'
+    };
+
+    await renderScreen(success({ agentReachable: true, configs: [failed] }));
+
+    expect(screen.getByText('Failed')).toBeOnTheScreen();
+    expect(screen.getByText('YouTube refused the exit.')).toBeOnTheScreen();
+    expect(screen.getByText('2 hours ago')).toBeOnTheScreen();
   });
 
   it('offers Check on the active exit and Switch on a standby', async () => {

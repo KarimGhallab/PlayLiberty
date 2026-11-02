@@ -82,6 +82,10 @@ the type family, the space scale, the radii, the durations and the one curve are
 - **The detail is one column.** The cover, the name and the sync line lead; the sort and the chips follow on one
   rail below the header, with a vertical rule between the sort and the chips, and the rail scrolls sideways past the
   width. The transport is the player bar's, not the header's, and the header keeps Play and Shuffle.
+- **The egress console is the web card's list.** The agent's reachability reads as a dot and a word, and each exit is a
+  card carrying its endpoint and the address YouTube saw, its state and the reason a failed check was classified as,
+  its last attempt and its last check, then one action that checks the live exit or switches a standby. The active
+  exit's mark is the web's chip, and the action carries the same check or exchange icon.
 - **The player bar is the only persistent chrome and the only transport.** The queue is a sheet above it. There is no
   volume rail, no mute and no keyboard chord: the device's buttons are the volume, and the operating system's
   controls are the transport when the app is in the background.

@@ -1,6 +1,9 @@
+import {
+  IconArrowsExchange,
+  IconCircleCheck
+} from '@tabler/icons-react-native';
 import { useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,6 +19,7 @@ import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 import { countryNameOf, countryOf, flagOf } from '@playliberty/ui-foundation';
 
 import Notice from '../../../shared/components/Notice/Notice';
+import PressableScale from '../../../shared/components/PressableScale/PressableScale';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Screen from '../../../shared/components/Screen/Screen';
 import {
@@ -63,6 +67,32 @@ function statusTone(status: EgressStatus): string {
   }
 }
 
+/* The stored code is the server's classification; an unknown one still gets a
+ * sentence rather than the tool's stderr. */
+function reasonLabel(t: Translator<Messages>, reason: string): string {
+  switch (reason) {
+    case 'blocked':
+      return t('egress.reason.blocked');
+    case 'unavailable':
+    case 'private':
+      return t('egress.reason.unavailable');
+    case 'network':
+      return t('egress.reason.network');
+    default:
+      return t('egress.reason.unknown');
+  }
+}
+
+function timeOf(
+  t: Translator<Messages>,
+  value: string | null,
+  now: number
+): string {
+  return value === null
+    ? t('egress.never')
+    : formatRelativeTime(t, new Date(value), now);
+}
+
 interface ConfigCardProps {
   readonly config: EgressConfig;
   readonly t: Translator<Messages>;
@@ -73,8 +103,7 @@ interface ConfigCardProps {
   readonly onPress: () => void;
 }
 
-/* One exit stacked: its name and country, its facts, then the one action the
- * row allows. */
+/* One exit stacked: its name, its facts, then the one action the row allows. */
 function ConfigCard({
   config,
   t,
@@ -91,12 +120,22 @@ function ConfigCard({
    * to as well. */
   const countryWord = countryName ?? country;
   const flag = country === null ? null : flagOf(country);
-  const lastAttempt =
-    config.lastAttemptAt === null
-      ? t('egress.never')
-      : formatRelativeTime(t, new Date(config.lastAttemptAt), now);
+  const observed =
+    config.lastExitIp === null
+      ? null
+      : t('egress.seen', { ip: config.lastExitIp });
+  const reason =
+    config.status === EgressStatus.Failed && config.lastError !== null
+      ? reasonLabel(t, config.lastError)
+      : null;
   const idle = config.active ? t('egress.check') : t('egress.switch');
   const working = config.active ? t('egress.checking') : t('egress.switching');
+  const ActionIcon = config.active ? IconCircleCheck : IconArrowsExchange;
+  const iconColor = disabled
+    ? tokenColor('control-disabled-fg')
+    : config.active
+      ? tokenColor('ink')
+      : tokenColor('egress');
 
   return (
     <View
@@ -104,7 +143,11 @@ function ConfigCard({
       style={[styles.card, config.active && styles.cardActive]}>
       <View style={styles.identity}>
         {flag === null ? null : (
-          <Text accessible={false} style={styles.flag}>
+          <Text
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={countryWord ?? undefined}
+            style={styles.flag}>
             {flag}
           </Text>
         )}
@@ -117,39 +160,52 @@ function ConfigCard({
           </Text>
         ) : null}
       </View>
-      {countryWord === null ? null : (
-        <Text style={styles.country}>{countryWord}</Text>
-      )}
       <View style={styles.facts}>
         <View style={styles.fact}>
           <Text style={styles.label}>{t('egress.endpoint')}</Text>
           <Text style={styles.value}>{config.endpoint ?? '-'}</Text>
+          {observed === null ? null : (
+            <Text style={styles.sub}>{observed}</Text>
+          )}
         </View>
-        <View style={styles.fact}>
-          <Text style={styles.label}>{t('egress.status')}</Text>
-          <Text style={[styles.value, { color: statusTone(config.status) }]}>
-            {statusLabel(t, config.status)}
-          </Text>
+        <View style={styles.factRow}>
+          <View style={styles.factHalf}>
+            <Text style={styles.label}>{t('egress.status')}</Text>
+            <Text style={[styles.value, { color: statusTone(config.status) }]}>
+              {statusLabel(t, config.status)}
+            </Text>
+            {reason === null ? null : <Text style={styles.sub}>{reason}</Text>}
+          </View>
+          <View style={styles.factHalf}>
+            <Text style={styles.label}>{t('egress.lastAttempt')}</Text>
+            <Text style={styles.value}>
+              {timeOf(t, config.lastAttemptAt, now)}
+            </Text>
+          </View>
         </View>
-        <View style={styles.fact}>
-          <Text style={styles.label}>{t('egress.lastAttempt')}</Text>
-          <Text style={styles.value}>{lastAttempt}</Text>
+        <View style={styles.factRow}>
+          <View style={styles.factHalf}>
+            <Text style={styles.label}>{t('egress.lastCheck')}</Text>
+            <Text style={styles.value}>
+              {timeOf(t, config.lastCheckAt, now)}
+            </Text>
+          </View>
         </View>
       </View>
-      <Pressable
+      <PressableScale
         testID={`egress-action-${config.name}`}
         accessibilityRole="button"
         accessibilityLabel={`${idle} ${config.name}`}
         accessibilityState={{ disabled, busy: pending }}
         disabled={disabled}
-        style={({ pressed }) => [
-          styles.action,
-          pressed && styles.actionPressed,
-          disabled && styles.actionDisabled
-        ]}
+        style={[styles.action, disabled && styles.actionDisabled]}
         onPress={onPress}>
-        <Text style={styles.actionLabel}>{pending ? working : idle}</Text>
-      </Pressable>
+        <ActionIcon size={tokenLength('icon-sm')} color={iconColor} />
+        <Text
+          style={[styles.actionLabel, disabled && styles.actionLabelDisabled]}>
+          {pending ? working : idle}
+        </Text>
+      </PressableScale>
     </View>
   );
 }
@@ -228,7 +284,9 @@ export default function EgressScreen() {
   if (egress.isPending) {
     return (
       <Screen testID="egress-screen" title={t('egress.title')}>
-        <Text style={styles.say}>{t('egress.loading')}</Text>
+        <Text accessibilityLiveRegion="polite" style={styles.say}>
+          {t('egress.loading')}
+        </Text>
       </Screen>
     );
   }
@@ -254,20 +312,33 @@ export default function EgressScreen() {
   return (
     <>
       <Screen testID="egress-screen" title={t('egress.title')}>
-        <Text
-          testID="egress-agent"
-          style={[
-            styles.agent,
-            {
-              color: egress.data.agentReachable
-                ? tokenColor('accent')
-                : tokenColor('tone-failed')
-            }
-          ]}>
-          {egress.data.agentReachable
-            ? t('egress.agentUp')
-            : t('egress.agentDown')}
-        </Text>
+        <View style={styles.agentRow}>
+          <View
+            style={[
+              styles.agentDot,
+              {
+                backgroundColor: egress.data.agentReachable
+                  ? tokenColor('egress')
+                  : tokenColor('tone-failed')
+              }
+            ]}
+          />
+          <Text
+            testID="egress-agent"
+            accessibilityLiveRegion="polite"
+            style={[
+              styles.agent,
+              {
+                color: egress.data.agentReachable
+                  ? tokenColor('muted')
+                  : tokenColor('ink')
+              }
+            ]}>
+            {egress.data.agentReachable
+              ? t('egress.agentUp')
+              : t('egress.agentDown')}
+          </Text>
+        </View>
         <ScrollView
           testID="egress-scroll"
           style={styles.scroll}
@@ -333,10 +404,20 @@ export default function EgressScreen() {
 }
 
 const styles = StyleSheet.create({
+  agentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-2')
+  },
+  agentDot: {
+    width: 7,
+    height: 7,
+    borderRadius: tokenLength('radius-chip')
+  },
   agent: {
+    flexShrink: 1,
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600',
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   scroll: {
@@ -346,7 +427,7 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-3')
   },
   card: {
-    gap: tokenLength('space-2'),
+    gap: tokenLength('space-3'),
     padding: tokenLength('space-3'),
     borderWidth: 1,
     borderColor: tokenColor('line'),
@@ -363,7 +444,8 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2')
   },
   flag: {
-    fontSize: tokenLength('text-lg')
+    fontSize: tokenLength('text-lg'),
+    lineHeight: tokenLength('text-md') * tokenNumber('leading-tight')
   },
   name: {
     flexShrink: 1,
@@ -373,54 +455,75 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   active: {
+    paddingVertical: 1,
+    paddingHorizontal: tokenLength('space-2'),
     color: tokenColor('egress'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    fontWeight: '600'
-  },
-  country: {
-    color: tokenColor('muted'),
-    fontFamily,
-    fontSize: tokenLength('text-xs')
+    fontWeight: '500',
+    backgroundColor: tokenColor('egress-surface'),
+    borderWidth: 1,
+    borderColor: tokenColor('egress-border'),
+    borderRadius: tokenLength('radius-chip')
   },
   facts: {
-    gap: tokenLength('space-2')
+    gap: tokenLength('space-3')
+  },
+  factRow: {
+    flexDirection: 'row',
+    gap: tokenLength('space-4')
   },
   fact: {
+    gap: tokenLength('space-1')
+  },
+  factHalf: {
+    flex: 1,
+    minWidth: 0,
     gap: tokenLength('space-1')
   },
   label: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs')
+    fontSize: tokenLength('text-xs'),
+    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
   },
   value: {
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
+    fontVariant: ['tabular-nums'],
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+  },
+  sub: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-xs'),
+    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
   },
   action: {
     minHeight: touchTarget,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: tokenLength('space-2'),
     paddingHorizontal: tokenLength('space-3'),
     borderWidth: 1,
     borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-control'),
     backgroundColor: tokenColor('surface-raised')
   },
-  actionPressed: {
-    backgroundColor: tokenColor('surface')
-  },
   actionDisabled: {
-    opacity: tokenNumber('opacity-disabled')
+    borderColor: tokenColor('line'),
+    backgroundColor: tokenColor('control-disabled-bg')
   },
   actionLabel: {
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
     fontWeight: '600'
+  },
+  actionLabelDisabled: {
+    color: tokenColor('control-disabled-fg')
   },
   say: {
     color: tokenColor('muted'),
