@@ -15,4 +15,4 @@ Tests hold Space on a focused button (not cancelled, no playback toggle, then th
 
 Amended by #91: the rule holds for the arrows, which navigate controls, but not for Space, which #91 claims back for the transport everywhere except text entry, an open menu and a dialog.
 
-Verification: `pnpm run build` passes; the unit suites pass (tokens 2, i18n 39, youtube 31, ui-foundation 6, server 386, web 533). The touched files lint clean. The repo-wide `pnpm run lint` is currently blocked by the untracked `PrototypeSwitcher` prototype, whose hardcoded copy is unrelated to this issue.
+Verification: `pnpm run build` passes; the unit suites pass (tokens 2, i18n 39, youtube 31, ui-foundation 6, server 386, web 533). The touched files lint clean. The repo-wide `pnpm run lint` was blocked at the time by an untracked prototype component whose hardcoded copy was unrelated to this issue.

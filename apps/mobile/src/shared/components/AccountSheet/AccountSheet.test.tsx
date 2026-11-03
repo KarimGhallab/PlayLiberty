@@ -97,8 +97,8 @@ describe('the account sheet', () => {
   it('announces the language in force as selected', async () => {
     await renderSheet();
 
-    expect(screen.getByRole('button', { name: 'English' })).toBeSelected();
-    expect(screen.getByRole('button', { name: 'Français' })).not.toBeSelected();
+    expect(screen.getByRole('radio', { name: 'English' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Français' })).not.toBeChecked();
   });
 
   it('does not slide when the system asks for less motion', async () => {

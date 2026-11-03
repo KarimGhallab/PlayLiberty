@@ -1,6 +1,6 @@
 # 03: The track list is virtualized
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Source:** [The mobile app's UI misses its contract](../../issues/105-the-mobile-apps-ui-misses-its-contract.md)
 **Blocked by:** None. Can start immediately.
@@ -28,6 +28,21 @@ current-row landing and the header's scroll behaviour are unchanged.
 - [ ] The current-row landing still scrolls to the playing row once per open.
 - [ ] Paging still appends at the end, and a failed append still offers its retry.
 - [ ] The header still follows the scroll and reverses when the list reverses.
+
+## Outcome
+
+The detail's list is a `FlatList`. The identity, the controls, the skeleton, the read failure and the empty bodies are
+its header; the append spinner and its retry are its footer. The rows are the data, keyed by track id, with 12 initial
+rows and a 7-viewport window, so a 1,000-track fixture mounts fewer than 50 rows.
+
+The landing moved to the list: the first viewability pass reports whether the current row is already on screen, and
+when it is not, the list scrolls to the row's index once per open with a 16pt offset. A failed `scrollToIndex` falls
+back to an estimated offset and retries. Paging still runs from the scroll handler at the same distance, and the
+header still follows the offset.
+
+The tests were rewritten to the list's seam: the landing calls `scrollToIndex` once, a visible current row is left
+alone, another playlist's queue does not land, and 1,000 tracks stay bounded. The detail suite passed at 106 tests; the
+emulator scrolled the 71-track playlist at font scale 2.0.
 
 ## Verification
 

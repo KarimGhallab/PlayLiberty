@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import { tokenColor, tokenLength } from '../../../shared/styles/tokens';
 
 const ROWS = 8;
@@ -11,13 +12,15 @@ const ROWS = 8;
  * one announcement. */
 export default function TrackListSkeleton() {
   const { t } = useI18n();
+  const label = t('detail.loadingTracks');
+  const liveRegion = useAnnouncement(label);
 
   return (
     <View
       testID="playlist-skeleton"
       accessible
-      accessibilityLabel={t('detail.loadingTracks')}
-      accessibilityLiveRegion="polite"
+      accessibilityLabel={label}
+      accessibilityLiveRegion={liveRegion}
       style={styles.skeleton}>
       <View
         style={styles.list}
@@ -52,8 +55,8 @@ const styles = StyleSheet.create({
     paddingVertical: tokenLength('space-2')
   },
   art: {
-    width: 48,
-    height: 48,
+    width: tokenLength('space-9'),
+    height: tokenLength('space-9'),
     borderRadius: tokenLength('radius-card'),
     backgroundColor: tokenColor('surface-raised')
   },

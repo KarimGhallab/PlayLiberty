@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
@@ -24,11 +24,7 @@ export interface PlayPauseGlyphProps {
 
 /* The web's play/pause morph: the pinned frames on one clipped strip, stepped
  * a frame at a time rather than drawn per state. */
-export default function PlayPauseGlyph({
-  playing,
-  size,
-  color
-}: PlayPauseGlyphProps) {
+function PlayPauseGlyph({ playing, size, color }: PlayPauseGlyphProps) {
   const reduceMotion = useReduceMotion();
   const travel = (playPauseMorph.stripTravel * size) / FRAME_VIEWBOX;
   const translateX = useRef(new Animated.Value(playing ? travel : 0)).current;
@@ -96,6 +92,8 @@ export default function PlayPauseGlyph({
     </View>
   );
 }
+
+export default memo(PlayPauseGlyph);
 
 const styles = StyleSheet.create({
   window: {

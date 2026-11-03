@@ -18,7 +18,7 @@ This file names roles and rules and never a literal value. The literals live in 
 Three grounds, one text pair, one accent, a shared role, and two families of state:
 
 - **Grounds.** The page ground, a panel on it, and a panel raised above that. Depth is a change of ground, not a shadow: the page is dark, so a dark shadow over it is invisible rather than subtle. A boundary somebody acts through is drawn with the control border, and a rule between rows is drawn with the line.
-- **Text.** Ink for what is read, muted for what qualifies it. Ink is never placed on the accent; where ink must sit on an accent ground, a surface ring separates them.
+- **Text.** Ink for what is read, muted for what qualifies it. Ink is never placed on the accent; where ink must sit on an accent ground, a surface ring separates them. Over artwork, the muted and accent roles take their on-art shades, measured against the brightest cover and the scrim over it.
 - **Accent.** One green, with one hover. It means "this is the action". The playlist detail's play and the player bar's transport keep the fill. The gallery's per-item play is quiet at rest and takes the fill on hover, focus or when its playlist is playing, so the library's accent marks the add and the playing queue rather than every tile. The detail keeps its other accent uses by decision: the switch's on position, the selected chip, the sort's open rule, the seeker and, where a pointer is the input, the volume fill. The current track in the list takes the accent at a quiet ground, with its playback word and the artwork bars, so the playing row is found while scrolling without taking the primary's fill. Its labelled add takes the control border, so in that arrangement the play is the screen's one filled primary; on a phone the floating add keeps the fill in its place. Selection elsewhere uses weight, a rule or a border rather than the accent.
 - **Shared.** A sky names the owner line, the share level in force, and the gallery's shared scope, with a quiet shade on the shared and collaborator marks. It marks a relationship rather than an action: the accent still owns the primary button, and a level is still read from its word. Its surface and boundary are shades of the same hue, so the scope's selected ground never borrows a state tone.
 - **Track states.** Five file-status tones plus one for a removed source, mapped by `ui-foundation/tones`. A removed source takes the removed tone whatever the file status is, because the news is that the source is gone. No state is ever carried by colour alone: every state has a word, and a failure also carries the server's own reason.
@@ -34,7 +34,7 @@ The scale runs from `xs` to `2xl`, the leadings are tight, normal and relaxed, a
 
 - **Space.** A 4px-based scale, used for padding, gaps and margins alike, so the vertical rhythm of a screen is the same arithmetic everywhere.
 - **Shape.** Four radii: artwork, control, card, and the full pill a chip takes. A radius says what an element is, so artwork, controls and cards never share one.
-- **Motion.** Three durations and exactly one curve. Motion is decoration that reports a state change; every animated thing therefore has a resting form that already says the same thing. Menus unfold from the edge they are anchored to and leave faster than they arrive, so an upward menu rises and a downward one drops. A pressed control shrinks a tenth and dims on the fast end of the curve, over a layout box that never moves; reduced motion takes the same state without the tween. A playing playlist's bottom edge carries the amber rule, entering from its start with the queue and withdrawing when it pauses. The current track's equalizer runs while its queue plays, holds the heights it reached when the queue pauses, and carries on from them on resume; reduced motion keeps the still silhouette. The detail rides over the gallery as a sheet: a downward pull from the header follows the finger above the live gallery, the scrim that dims it lifting with the drag, and returns there past the threshold, while a shorter pull springs back and reduced motion takes the cut.
+- **Motion.** Three durations and exactly one curve. Motion is decoration that reports a state change; every animated thing therefore has a resting form that already says the same thing. Menus unfold from the edge they are anchored to and leave faster than they arrive, so an upward menu rises and a downward one drops. A pressed control shrinks a tenth and dims on the fast end of the curve, over a layout box that never moves; reduced motion takes the same state without the tween. The platform ripple is not drawn; the shrink is the press. A playing playlist's bottom edge carries the amber rule, entering from its start with the queue and withdrawing when it pauses. The current track's equalizer runs while its queue plays, holds the heights it reached when the queue pauses, and carries on from them on resume; reduced motion keeps the still silhouette. The detail rides over the gallery as a sheet: a downward pull from the header follows the finger above the live gallery, the scrim that dims it lifting with the drag, and returns there past the threshold, while a shorter pull springs back and reduced motion takes the cut.
 - **Depth tiers.** Base, sticky, player, overlay. The player bar sits below an overlay so a menu or a dialog can cover it.
 
 ## Theme
@@ -73,6 +73,8 @@ the type family, the space scale, the radii, the durations and the one curve are
 - **Four routes and one sheet.** The library is the root, the playlist detail is pushed, a bare track and the egress
   console are routes of their own, and the account sheet is a modal over whatever is open. There is no tab bar, no
   drawer and no sidebar; the platform's back gesture is the way back.
+- **The way back is a bare chevron.** A 44px target whose glyph aligns with the content edge; over artwork the cover
+  carries a scrim wash, so the glyph never needs a plate of its own.
 - **The gallery is a two-column card grid.** The card is the detail's hero arrangement: cover above the identity,
   with the actions door at its top end, the play at its lower right and the shuffle at its lower left, and the same
   squarish control shape on the shuffle and the overflow. The pinned section is a heading above one horizontal row that
@@ -86,16 +88,17 @@ the type family, the space scale, the radii, the durations and the one curve are
   the list moves, following the gesture frame by frame and running backwards when the list does; the wide state
   carries a faint copy of the cover as its ground, with Play leading the action row and Shuffle and the actions door
   closing it, all three on one midline. The sync evidence and the skip setting live in the actions sheet,
-  the run band above the actions and the switch below them, so the page itself keeps only the header's sync line.
+  the run band above the actions and the checkbox below them, so the page itself keeps only the header's sync line.
+  The gallery's card menu carries the same checkbox, without the run band.
   The actions door stays for every access level, because the sheet carries the status and the setting as well as the
   write actions. The transport is the player bar's, not the header's, and the header keeps Play and Shuffle.
 - **The egress console is the web card's list.** The agent's reachability reads as a dot and a word, and each exit is a
   card carrying its endpoint and the address YouTube saw, its state and the reason a failed check was classified as,
   its last attempt and its last check, then one action that checks the live exit or switches a standby. The active
   exit's mark is the web's chip, and the action carries the same check or exchange icon.
-- **The player bar is the only persistent chrome and the only transport.** The queue is a sheet above it. There is no
-  volume rail, no mute and no keyboard chord: the device's buttons are the volume, and the operating system's
-  controls are the transport when the app is in the background.
+- **The player bar is the only persistent chrome and the only transport.** The track list is the queue, and the bar
+  is the transport above it. There is no volume rail, no mute and no keyboard chord: the device's buttons are the
+  volume, and the operating system's controls are the transport when the app is in the background.
 - **The sign-in door is the app's signed-out surface.** Three sleeves fan above the wordmark, the title and the
   browser handoff, with one filled accent action at the bottom of the column. The front sleeve carries the equalizer
   mark, still at its resting scales and moving while provisioning is in flight; the callback's return and the
@@ -107,7 +110,7 @@ the type family, the space scale, the radii, the durations and the one curve are
   a missing avatar falls back to the account's initial on one of the six sleeve hues, derived from the account id,
   so two accounts are told apart at a glance. The admin's VPN settings door is not here: it is an instance-level
   control and sits in the library header beside the account door. The sheet dismisses on the backdrop, the system back
-  gesture, or a downward drag on its handle.
+  gesture, its close control, or a downward drag on its handle.
 - **A target is 44 points, and every control has a name and a role.** Dynamic Type is respected, with a capped
   multiplier only where a fixed layout would break, and reduced motion is read from the system. The focus ring and
   the keyboard contract are the web's and have no analogue. A gallery card is one target, so its name carries the

@@ -1,4 +1,8 @@
-import { IconArrowsShuffle, IconDots } from '@tabler/icons-react-native';
+import {
+  IconArrowsShuffle,
+  IconChevronLeft,
+  IconDots
+} from '@tabler/icons-react-native';
 import {
   Animated,
   Image,
@@ -29,10 +33,12 @@ import {
 } from '../../../shared/playlistIdentity/shareMark';
 import { syncStateColor } from '../../../shared/playlistIdentity/syncStateColor';
 import {
+  coverGroundOpacity,
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber
+  tokenNumber,
+  tokenWeight
 } from '../../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -77,6 +83,8 @@ export interface PlaylistIdentityProps {
   readonly onPlay?: () => void;
   readonly onShuffle?: () => void;
   readonly onOpenActions?: () => void;
+  /** The way out, drawn over the cover's top-left. */
+  readonly onBack?: () => void;
   /** The start waiting on its queue read, so that control says so. */
   readonly starting?: 'play' | 'shuffle' | null;
   /** Whether this playlist's queue is the shuffled one on screen. */
@@ -395,7 +403,7 @@ export default function PlaylistIdentity({
   );
   const backdropOpacity = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.12, 0]
+    outputRange: [coverGroundOpacity, 0]
   });
   const wideOpacity = progress.interpolate({
     inputRange: [0, 0.42, 0.58],
@@ -458,6 +466,7 @@ export default function PlaylistIdentity({
             onError={facts.cover.onError}
           />
         )}
+        <View pointerEvents="none" style={styles.coverWash} />
       </Animated.View>
 
       <Animated.View
@@ -557,6 +566,22 @@ export default function PlaylistIdentity({
         </View>
       </Animated.View>
 
+      {props.onBack === undefined ? null : (
+        <View style={[styles.backSlot, { left: TOP, top: TOP }]}>
+          <PressableScale
+            testID="detail-back"
+            accessibilityRole="button"
+            accessibilityLabel={facts.t('common.back')}
+            style={styles.back}
+            onPress={props.onBack}>
+            <IconChevronLeft
+              size={tokenLength('icon-md')}
+              color={tokenColor('ink')}
+            />
+          </PressableScale>
+        </View>
+      )}
+
       <View pointerEvents="none" style={styles.playingSlot}>
         <PlayingLine playing={props.playing === true} />
       </View>
@@ -626,11 +651,34 @@ const styles = StyleSheet.create({
     borderRadius: tokenLength('radius-card'),
     overflow: 'hidden'
   },
+  /* The wash holds the bare chevron on any artwork; the scrim fades below it. */
+  coverWash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: tokenLength('control-touch') + tokenLength('space-5'),
+    experimental_backgroundImage: `linear-gradient(to bottom, ${tokenColor('scrim')} 0%, ${tokenColor('scrim')} 50%, transparent 100%)`
+  },
   identity: {
     position: 'absolute'
   },
   action: {
     position: 'absolute'
+  },
+  backSlot: {
+    position: 'absolute',
+    width: CONTROL,
+    height: CONTROL
+  },
+  back: {
+    width: CONTROL,
+    height: CONTROL,
+    alignItems: 'center',
+    justifyContent: 'center',
+    /* The glyph aligns with the cover's edge; the target reaches into the
+     * margin. */
+    marginLeft: -(CONTROL - tokenLength('icon-md')) / 2
   },
   actions: {
     position: 'absolute',
@@ -654,7 +702,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-xl'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     lineHeight: tokenLength('text-xl') * tokenNumber('leading-tight')
   },
   meta: {
@@ -665,7 +713,7 @@ const styles = StyleSheet.create({
   state: {
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   separator: {
     color: tokenColor('muted'),

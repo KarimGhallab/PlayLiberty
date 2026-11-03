@@ -1,12 +1,20 @@
 import { IconDots } from '@tabler/icons-react-native';
 import { memo, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
 import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
 import { trackTone } from '@playliberty/ui-foundation';
 
+import { usePressScale } from '../../../shared/components/PressableScale/usePressScale';
 import TrackBars from '../../../shared/components/TrackBars/TrackBars';
 import { mediaSource } from '../../../shared/media/mediaSource';
 import { isPlayable } from '../../../shared/playable/playable';
@@ -15,6 +23,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 import { failureSentence } from '../../../shared/trackState/failureSentence';
@@ -48,6 +57,7 @@ function TrackRow({
   const { track } = association;
   const [revealed, setRevealed] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const { pressTo, style: pressStyle } = usePressScale(false);
   const playable = isPlayable(track);
   const stateLabel = trackStateLabel(
     t,
@@ -76,13 +86,17 @@ function TrackRow({
     track.failureKind !== null || track.failureReason !== null;
 
   return (
-    <View testID="track-row" style={[styles.row, current && styles.rowCurrent]}>
+    <Animated.View
+      testID="track-row"
+      style={[styles.row, current && styles.rowCurrent, pressStyle]}>
       {playable ? (
         <Pressable
           testID="track-play"
           accessibilityRole="button"
           accessibilityLabel={label}
           style={StyleSheet.absoluteFill}
+          onPressIn={() => pressTo(1)}
+          onPressOut={() => pressTo(0)}
           onPress={() => onPlay(track.id)}
         />
       ) : null}
@@ -176,7 +190,7 @@ function TrackRow({
           <IconDots size={tokenLength('icon-md')} color={tokenColor('muted')} />
         </Pressable>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -198,8 +212,8 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent'
   },
   art: {
-    width: 48,
-    height: 48,
+    width: tokenLength('space-9'),
+    height: tokenLength('space-9'),
     borderRadius: tokenLength('radius-card'),
     overflow: 'hidden',
     backgroundColor: tokenColor('surface-raised')
@@ -225,11 +239,11 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   /* The current row steps up one weight, so its state survives without colour. */
   titleCurrent: {
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   sub: {
     flexDirection: 'row',
@@ -243,6 +257,7 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-1')
   },
   nowDot: {
+    /* A 5pt dot is the playing mark, not a control. */
     width: 5,
     height: 5,
     borderRadius: tokenLength('radius-chip'),
@@ -252,12 +267,12 @@ const styles = StyleSheet.create({
     color: tokenColor('accent'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   state: {
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   sentence: {
     color: tokenColor('muted'),
@@ -266,6 +281,8 @@ const styles = StyleSheet.create({
     lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
   },
   reveal: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
     padding: 0
   },
   revealLabel: {

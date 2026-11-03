@@ -1,6 +1,6 @@
 # 13: The player bar isolates the position tick
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Source:** [The mobile app's UI misses its contract](../../issues/105-the-mobile-apps-ui-misses-its-contract.md)
 **Blocked by:** None. Can start immediately.
@@ -24,10 +24,21 @@ re-render.
 
 ## Acceptance criteria
 
-- [ ] The position subscription lives in the seek bar or a child that only draws the fill and the elapsed time.
-- [ ] `Artwork` and `PlayPauseGlyph` are memoized and do not re-render on a position update.
-- [ ] A render-count test asserts that a position change does not re-render the cover or the glyph.
-- [ ] The seek still follows the finger and the store, and the bar's swipe still moves the queue.
+- [x] The position subscription lives in the seek bar or a child that only draws the fill and the elapsed time.
+- [x] `Artwork` and `PlayPauseGlyph` are memoized and do not re-render on a position update.
+- [x] A render-count test asserts that a position change does not re-render the cover or the glyph.
+- [x] The seek still follows the finger and the store, and the bar's swipe still moves the queue.
+
+## Outcome
+
+`useBarState` no longer subscribes to `positionSeconds`; `BarState` and `BarView` no longer carry it. The subscription
+lives in `LiveSeekBar`, a child of the current page that renders only the seek rail, so a tick repaints the fill, the
+elapsed time and the knob and nothing else. The neighbouring page keeps its static zero. `Artwork` and
+`PlayPauseGlyph` are wrapped in `memo`.
+
+The render-count test wraps both components and asserts their counts do not change when `setPosition` runs while the
+elapsed time does. The existing seek, swipe and store tests still pass, and the `player-journey` Maestro flow passes
+on the emulator.
 
 ## Verification
 

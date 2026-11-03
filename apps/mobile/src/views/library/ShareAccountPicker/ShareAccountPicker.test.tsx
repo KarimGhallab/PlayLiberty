@@ -205,19 +205,40 @@ describe('the share account picker', () => {
     expect(page.fetchNextPage).not.toHaveBeenCalled();
   });
 
+  it('gives the next-page retry a full target', async () => {
+    await renderPicker(pageRead({ hasMore: true, isFetchNextPageError: true }));
+
+    expect(screen.getByTestId('share-picker-more-retry')).toHaveStyle({
+      minHeight: 44
+    });
+  });
+
+  it('names the account in each level control', async () => {
+    await renderPicker();
+
+    const row = screen.getAllByTestId('share-picker-row')[0]!;
+
+    expect(
+      within(row).getByRole('radio', { name: 'Can listen, Ada' })
+    ).toBeOnTheScreen();
+    expect(
+      within(row).getByRole('radio', { name: 'Can edit, Ada' })
+    ).toBeOnTheScreen();
+  });
+
   it('marks the level a share already holds', async () => {
     await renderPicker();
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
     expect(
-      within(row).getByRole('button', { name: 'Can listen' }).props
+      within(row).getByRole('radio', { name: 'Can listen, Ada' }).props
         .accessibilityState
-    ).toMatchObject({ selected: true });
+    ).toMatchObject({ checked: true });
     expect(
-      within(row).getByRole('button', { name: 'Can edit' }).props
+      within(row).getByRole('radio', { name: 'Can edit, Ada' }).props
         .accessibilityState
-    ).toMatchObject({ selected: false });
+    ).toMatchObject({ checked: false });
   });
 
   it('sends one grant when the level changes', async () => {
@@ -225,7 +246,7 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(within(row).getByRole('button', { name: 'Can edit' }));
+    fireEvent.press(within(row).getByRole('radio', { name: 'Can edit, Ada' }));
 
     expect(grant.mutate).toHaveBeenCalledTimes(1);
     expect(grant.mutate).toHaveBeenCalledWith(
@@ -239,7 +260,9 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(within(row).getByRole('button', { name: 'Can listen' }));
+    fireEvent.press(
+      within(row).getByRole('radio', { name: 'Can listen, Ada' })
+    );
 
     expect(grant.mutate).not.toHaveBeenCalled();
     expect(props.onClose).toHaveBeenCalledTimes(1);
@@ -257,10 +280,10 @@ describe('the share account picker', () => {
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
     expect(
-      within(row).getByRole('button', { name: 'Can listen' })
+      within(row).getByRole('radio', { name: 'Can listen, Ada' })
     ).toBeDisabled();
     expect(
-      within(row).getByRole('button', { name: 'Can edit' })
+      within(row).getByRole('radio', { name: 'Can edit, Ada' })
     ).toBeDisabled();
   });
 
@@ -286,7 +309,7 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(within(row).getByRole('button', { name: 'Can edit' }));
+    fireEvent.press(within(row).getByRole('radio', { name: 'Can edit, Ada' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -311,7 +334,7 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(within(row).getByRole('button', { name: 'Can edit' }));
+    fireEvent.press(within(row).getByRole('radio', { name: 'Can edit, Ada' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(

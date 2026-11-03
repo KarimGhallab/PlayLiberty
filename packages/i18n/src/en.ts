@@ -31,8 +31,11 @@ export const en = {
     failed: 'Sign-in could not finish.'
   },
   common: {
+    back: 'Back',
+    close: 'Close',
     cancel: 'Cancel',
     undo: 'Undo',
+    moreTime: 'More time',
     discardPrompt: 'Discard this link? The link you pasted will be lost.',
     keepEditing: 'Keep editing',
     discard: 'Discard'

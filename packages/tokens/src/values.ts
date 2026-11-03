@@ -30,6 +30,10 @@ export const colors = {
   'tone-removed': { kind: TokenKind.Color, value: '#8b9299' },
   'control-border': { kind: TokenKind.Color, value: '#6e7379' },
   'accent-hover': { kind: TokenKind.Color, value: '#4cac90' },
+
+  'muted-on-art': { kind: TokenKind.Color, value: '#c2c7cb' },
+  'accent-on-art': { kind: TokenKind.Color, value: '#7fd9b6' },
+
   'current-surface': { kind: TokenKind.Color, value: '#13211f' },
   emphasis: { kind: TokenKind.Color, value: '#e39a3c' },
 

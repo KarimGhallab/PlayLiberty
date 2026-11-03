@@ -12,6 +12,7 @@ import type { AddTrackResult, Playlist } from '@playliberty/contracts';
 import { AddTrackInputSchema, AddTrackOutcome } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import SheetActions from '../../../shared/components/SheetActions/SheetActions';
@@ -20,6 +21,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -84,6 +86,7 @@ export default function AddTrackSheet({
   }
 
   const message = invalid ?? problem;
+  const liveRegion = useAnnouncement(message);
   const dirty = url.trim().length > 0;
   const ordered = [
     currentPlaylist,
@@ -149,8 +152,23 @@ export default function AddTrackSheet({
       visible={visible}
       title={t('addTrackDialog.title')}
       onRequestClose={requestClose}
+      closeLabel={t('common.close')}
       testID="add-track-sheet"
-      backdropTestID="add-track-backdrop">
+      backdropTestID="add-track-backdrop"
+      footer={
+        <SheetActions
+          testIDPrefix="add-track"
+          busy={busy}
+          canSubmit={dirty && chosen.length > 0}
+          addLabel={t('addTrackDialog.add')}
+          addingLabel={t('addTrackDialog.adding')}
+          confirmingDiscard={confirmingDiscard}
+          onAdd={submit}
+          onCancel={requestClose}
+          onDiscard={onClose}
+          onKeepEditing={() => setConfirmingDiscard(false)}
+        />
+      }>
       <Text style={styles.description}>{t('addTrackDialog.description')}</Text>
 
       {result === null ? null : (
@@ -209,7 +227,7 @@ export default function AddTrackSheet({
         {message === null ? null : (
           <Text
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={liveRegion}
             style={styles.message}>
             {message}
           </Text>
@@ -244,19 +262,6 @@ export default function AddTrackSheet({
           />
         ))}
       </ScrollView>
-
-      <SheetActions
-        testIDPrefix="add-track"
-        busy={busy}
-        canSubmit={dirty && chosen.length > 0}
-        addLabel={t('addTrackDialog.add')}
-        addingLabel={t('addTrackDialog.adding')}
-        confirmingDiscard={confirmingDiscard}
-        onAdd={submit}
-        onCancel={requestClose}
-        onDiscard={onClose}
-        onKeepEditing={() => setConfirmingDiscard(false)}
-      />
     </Sheet>
   );
 }
@@ -310,7 +315,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   field: {
     marginTop: tokenLength('space-4')
@@ -340,7 +345,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   pickHeader: {
@@ -351,7 +356,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   note: {
     color: tokenColor('muted'),

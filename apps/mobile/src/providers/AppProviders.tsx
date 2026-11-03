@@ -8,6 +8,7 @@ import { createAppQueryClient } from '../api/queryClient/queryClient';
 import { useSessionStore } from '../auth/sessionStore/sessionStore';
 import { deviceLanguages } from '../i18n/deviceLanguages';
 import { secureLanguageStore } from '../i18n/languageStorage';
+import { PlayerBarSizeProvider } from '../player/playerBarSize/PlayerBarSizeContext';
 import SessionCache from './SessionCache/SessionCache';
 
 export interface AppProvidersProps {
@@ -23,14 +24,16 @@ export default function AppProviders({ children }: AppProvidersProps) {
 
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <SessionCache />
-        <I18nProvider
-          preferred={deviceLanguages()}
-          storage={secureLanguageStore}>
-          {children}
-        </I18nProvider>
-      </QueryClientProvider>
+      <PlayerBarSizeProvider>
+        <QueryClientProvider client={queryClient}>
+          <SessionCache />
+          <I18nProvider
+            preferred={deviceLanguages()}
+            storage={secureLanguageStore}>
+            {children}
+          </I18nProvider>
+        </QueryClientProvider>
+      </PlayerBarSizeProvider>
     </SafeAreaProvider>
   );
 }

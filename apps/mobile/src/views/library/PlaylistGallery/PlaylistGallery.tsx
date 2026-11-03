@@ -22,13 +22,16 @@ import ActionDial, {
   type DialAction,
   actionDialSize
 } from '../../../shared/components/ActionDial/ActionDial';
+import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
+import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
 import {
   fontFamily,
   tokenColor,
-  tokenLength
+  tokenLength,
+  tokenWeight
 } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
@@ -45,8 +48,9 @@ import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
 import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
+import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import type { ApiConfig } from '../../../auth/useApiConfig';
-import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
+import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import {
   type StartIntent,
@@ -110,6 +114,36 @@ function totalStatusCounts(
   return totals;
 }
 
+/* The card's menu carries the skip setting; the draft keeps its move on the
+ * press while the write answers. */
+function GallerySkipSetting({
+  playlist,
+  onError
+}: {
+  readonly playlist: PlaylistWithCounts;
+  readonly onError: (error: Error) => void;
+}) {
+  const { t } = useI18n();
+  const update = useUpdateSkipNonMusic(playlist.id);
+  const [draft, setDraft] = useState<boolean | null>(null);
+
+  return (
+    <Checkbox
+      testID="gallery-skip"
+      label={t('skipSetting.label')}
+      checked={draft ?? playlist.skipNonMusic}
+      disabled={!canWritePlaylist(playlist) || update.isPending}
+      onChange={next => {
+        setDraft(next);
+        update.mutate(next, {
+          onError,
+          onSettled: () => setDraft(null)
+        });
+      }}
+    />
+  );
+}
+
 export interface PlaylistGalleryProps {
   readonly config: ApiConfig | null;
   readonly scope: LibraryScope;
@@ -132,8 +166,9 @@ export default function PlaylistGallery({
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
+  const barHeight = usePlayerBarHeight();
   const playerOffset =
-    usePlayerStore(state => state.currentId) === null ? 0 : playerBarHeight;
+    usePlayerStore(state => state.currentId) === null ? 0 : barHeight;
   const playerPlaylistId = usePlayerStore(state => state.playlistId);
   const playerPlaying = usePlayerStore(state => state.isPlaying);
   const playerShuffled = usePlayerStore(state => state.shuffle);
@@ -168,7 +203,6 @@ export default function PlaylistGallery({
     readonly playlistId: string;
     readonly intent: StartIntent;
   } | null>(null);
-  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const createTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pinnedRow = useRef<ScrollView>(null);
   const pinnedViewport = useRef(0);
@@ -194,9 +228,6 @@ export default function PlaylistGallery({
   const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
   const visibleItems = visiblePlaylists(scopedItems, statusFilter);
   const bulk = useBulkSync(items, playlists.dataUpdatedAt, scope, statusFilter);
-  const anySyncing = items.some(
-    item => item.syncStatus === PlaylistSyncStatus.Syncing
-  );
   const syncLabel = bulk.busy
     ? t('library.syncingAll', { count: bulk.count })
     : t('library.syncAll', { count: bulk.count });
@@ -391,10 +422,6 @@ export default function PlaylistGallery({
 
   useEffect(() => {
     return () => {
-      if (deleteTimer.current !== null) {
-        clearTimeout(deleteTimer.current);
-      }
-
       if (createTimer.current !== null) {
         clearTimeout(createTimer.current);
       }
@@ -414,12 +441,19 @@ export default function PlaylistGallery({
     });
   };
 
-  const undoDelete = (): void => {
-    if (deleteTimer.current !== null) {
-      clearTimeout(deleteTimer.current);
-      deleteTimer.current = null;
+  /* The snackbar owns the window, so a pause or an extension moves the commit
+   * with the bar. */
+  const expireDelete = (): void => {
+    if (pendingDelete === null) {
+      return;
     }
 
+    const intent = pendingDelete;
+    setPendingDelete(null);
+    commitDelete(intent);
+  };
+
+  const undoDelete = (): void => {
     if (pendingDelete !== null) {
       setHidden(previous => {
         const next = new Set(previous);
@@ -435,11 +469,6 @@ export default function PlaylistGallery({
    * losing its request, then opens its own undo window. */
   const startDelete = (target: PlaylistWithCounts): void => {
     if (pendingDelete !== null) {
-      if (deleteTimer.current !== null) {
-        clearTimeout(deleteTimer.current);
-        deleteTimer.current = null;
-      }
-
       commitDelete(pendingDelete);
     }
 
@@ -447,11 +476,6 @@ export default function PlaylistGallery({
 
     setHidden(previous => new Set(previous).add(target.id));
     setPendingDelete(intent);
-    deleteTimer.current = setTimeout(() => {
-      commitDelete(intent);
-      setPendingDelete(null);
-      deleteTimer.current = null;
-    }, UNDO_WINDOW_MS);
   };
 
   const openActions = (playlistId: string): void => {
@@ -521,12 +545,24 @@ export default function PlaylistGallery({
     }
   };
 
+  const skipControl =
+    actionTarget === null ? undefined : (
+      <GallerySkipSetting
+        key={actionTarget.id}
+        playlist={actionTarget}
+        onError={error =>
+          setActionProblem(problemMessage(error, t('detail.settingFailed')))
+        }
+      />
+    );
+
   const actionsSheet = (
     <PlaylistActionsSheet
       playlistName={actionTarget?.name ?? null}
       actions={actions}
       problem={actionProblem}
       onSelect={chooseAction}
+      extra={skipControl}
       onClose={closeActions}
     />
   );
@@ -581,9 +617,11 @@ export default function PlaylistGallery({
         key={pendingDelete.id}
         message={pendingDelete.message}
         detail={pendingDelete.detail}
+        onExpire={expireDelete}
         onUndo={undoDelete}
         durationMs={UNDO_WINDOW_MS}
         bottomOffset={actionDialSize + tokenLength('space-3') + playerOffset}
+        horizontalInset={0}
       />
     );
   const noticeNode =
@@ -591,6 +629,7 @@ export default function PlaylistGallery({
       <Notice
         message={notice}
         onDismiss={() => setNotice(null)}
+        horizontalInset={0}
         bottomOffset={
           actionDialSize +
           tokenLength('space-3') +
@@ -607,6 +646,7 @@ export default function PlaylistGallery({
         message={bulk.notice.message}
         detail={bulk.notice.detail}
         onDismiss={bulk.dismissNotice}
+        horizontalInset={0}
         bottomOffset={actionDialSize + tokenLength('space-3') + playerOffset}
       />
     );
@@ -763,7 +803,7 @@ export default function PlaylistGallery({
         label={t('library.actions')}
         testID="gallery-actions"
         actions={dialActions}
-        busy={bulk.busy || anySyncing}
+        busy={bulk.busy}
         bottomOffset={playerOffset}
       />
       {addSheet}
@@ -806,7 +846,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   grid: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import {
   tokenDuration,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
 import { trackToneColor } from '../../trackState/trackToneColor';
@@ -70,8 +71,8 @@ export default function Chip({
   return (
     <Pressable
       testID={testID}
-      accessibilityRole="button"
-      accessibilityState={{ selected, disabled }}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected, disabled }}
       accessibilityLabel={count === undefined ? label : `${label} ${count}`}
       disabled={disabled}
       style={[styles.chip, disabled && styles.disabled]}
@@ -127,6 +128,7 @@ const styles = StyleSheet.create({
     borderRadius: tokenLength('radius-chip')
   },
   indicator: {
+    /* A 7pt dot reads as a mark, not a control. */
     width: 7,
     height: 7,
     borderRadius: tokenLength('radius-chip')
@@ -134,7 +136,7 @@ const styles = StyleSheet.create({
   label: {
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   count: {
     fontFamily,

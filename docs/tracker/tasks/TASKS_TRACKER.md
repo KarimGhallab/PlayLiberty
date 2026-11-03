@@ -97,7 +97,7 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
 - [`30-share-a-track/TICKETS.md`](30-share-a-track/TICKETS.md).
 - [`31-manage-the-egress/TICKETS.md`](31-manage-the-egress/TICKETS.md).
 - [`33-refresh-mobile-access/TICKETS.md`](33-refresh-mobile-access/TICKETS.md).
-- [`mobile-ui-audit-1/TICKETS.md`](mobile-ui-audit-%231/TICKETS.md): the mobile UI audit's 19 tickets, from issue
+- [`mobile-ui-audit-1/TICKETS.md`](mobile-ui-audit-1/TICKETS.md): the mobile UI audit's 19 tickets, from issue
   [`105`](../issues/105-the-mobile-apps-ui-misses-its-contract.md).
 
 ## Conventions

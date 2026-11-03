@@ -2,11 +2,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../a11y/useAnnouncement';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
 import Spinner from '../Spinner/Spinner';
@@ -41,13 +43,16 @@ export default function SheetActions({
   onKeepEditing
 }: SheetActionsProps) {
   const { t } = useI18n();
+  const liveRegion = useAnnouncement(
+    confirmingDiscard ? t('common.discardPrompt') : null
+  );
 
   if (confirmingDiscard) {
     return (
       <>
         <Text
           accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
+          accessibilityLiveRegion={liveRegion}
           style={styles.discard}>
           {t('common.discardPrompt')}
         </Text>
@@ -117,7 +122,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal'),
     marginTop: tokenLength('space-4')
   },
@@ -165,7 +170,7 @@ const styles = StyleSheet.create({
     color: tokenColor('bg'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   disabled: {
     opacity: tokenNumber('opacity-disabled')

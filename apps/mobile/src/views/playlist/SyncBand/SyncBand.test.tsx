@@ -162,6 +162,9 @@ describe('the sync band', () => {
     ).toBeOnTheScreen();
     expect(screen.getByText(/All 8 tracks are still here/)).toBeOnTheScreen();
     expect(screen.queryByTestId('sync-cell-kept')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('sync-error-reveal')).toHaveStyle({
+      minHeight: 44
+    });
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('sync-error-reveal'));

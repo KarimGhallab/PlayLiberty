@@ -11,13 +11,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
+import { useAnnouncement } from '../../a11y/useAnnouncement';
 import { useReduceMotion } from '../../a11y/useReduceMotion';
 import {
   fontFamily,
   tokenColor,
   tokenDuration,
   tokenLength,
-  tokenNumber
+  tokenNumber,
+  tokenWeight
 } from '../../styles/tokens';
 
 export interface NoticeProps {
@@ -29,6 +31,8 @@ export interface NoticeProps {
   readonly durationMs?: number;
   /** Space the notice must clear under it, such as a floating action. */
   readonly bottomOffset?: number;
+  /** The screen-edge inset; a padded parent passes 0 to keep the same edge. */
+  readonly horizontalInset?: number;
 }
 
 const DEFAULT_DURATION = 4000;
@@ -56,11 +60,15 @@ export default function Notice({
   detail = null,
   onDismiss,
   durationMs = DEFAULT_DURATION,
-  bottomOffset = 0
+  bottomOffset = 0,
+  horizontalInset = tokenLength('space-4')
 }: NoticeProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const reduceMotion = useReduceMotion();
+  const liveRegion = useAnnouncement(
+    detail === null ? message : `${message}. ${detail}`
+  );
   const dismiss = useRef(onDismiss);
   dismiss.current = onDismiss;
   const appearing = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
@@ -184,10 +192,12 @@ export default function Notice({
       testID="notice"
       accessible
       accessibilityRole="alert"
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={liveRegion}
       style={[
         styles.notice,
         {
+          left: horizontalInset,
+          right: horizontalInset,
           bottom: insets.bottom + tokenLength('space-4') + bottomOffset,
           opacity: appearing,
           transform: [{ translateX }, { translateY: settle }]
@@ -203,8 +213,6 @@ export default function Notice({
 const styles = StyleSheet.create({
   notice: {
     position: 'absolute',
-    left: tokenLength('space-4'),
-    right: tokenLength('space-4'),
     gap: tokenLength('space-1'),
     padding: tokenLength('space-3'),
     borderWidth: 1,
@@ -216,7 +224,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   detail: {

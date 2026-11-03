@@ -12,45 +12,46 @@ import { tokenColor, tokenLength } from '../../styles/tokens';
 /** The mark's phases, in bar order, in milliseconds. */
 const PULSES: readonly number[] = [520, 700, 460, 620, 800, 560];
 const BAR_MAX = tokenLength('space-8');
+/* The lowest point of a pulse, as a fraction of the bar's resting height. */
+const PULSE_FLOOR = 0.35;
 
 export interface EqualizerBarsProps {
   readonly busy: boolean;
 }
 
-/** The six-bar mark: still at its resting scales, moving while the door works. */
+/* The six-bar mark: still at its resting scales, moving while the door works. */
 export default function EqualizerBars({ busy }: EqualizerBarsProps) {
   const reduceMotion = useReduceMotion();
   const values = useRef(
-    equalizerRests.map(rest => new Animated.Value(rest * BAR_MAX))
+    equalizerRests.map(() => new Animated.Value(1))
   ).current;
 
   useEffect(() => {
     if (!busy || reduceMotion) {
-      values.forEach((value, index) => {
+      values.forEach(value => {
         value.stopAnimation();
-        value.setValue((equalizerRests[index] ?? 1) * BAR_MAX);
+        value.setValue(1);
       });
 
       return;
     }
 
     const loops = values.map((value, index) => {
-      const rest = (equalizerRests[index] ?? 1) * BAR_MAX;
       const pulse = PULSES[index] ?? 600;
 
       return Animated.loop(
         Animated.sequence([
           Animated.timing(value, {
-            toValue: rest * 0.35,
+            toValue: PULSE_FLOOR,
             duration: pulse,
             easing: Easing.bezier(...standardEasingBezier),
-            useNativeDriver: false
+            useNativeDriver: true
           }),
           Animated.timing(value, {
-            toValue: rest,
+            toValue: 1,
             duration: pulse,
             easing: Easing.bezier(...standardEasingBezier),
-            useNativeDriver: false
+            useNativeDriver: true
           })
         ])
       );
@@ -65,12 +66,20 @@ export default function EqualizerBars({ busy }: EqualizerBarsProps) {
 
   return (
     <View style={styles.bars}>
-      {values.map((value, index) => (
-        <Animated.View
-          key={`${index}:${equalizerRests[index] ?? 0}`}
-          style={[styles.bar, { height: value }]}
-        />
-      ))}
+      {values.map((value, index) => {
+        const rest = equalizerRests[index] ?? 1;
+
+        return (
+          <Animated.View
+            key={`${index}:${rest}`}
+            testID={`equalizer-bar-${index}`}
+            style={[
+              styles.bar,
+              { height: rest * BAR_MAX, transform: [{ scaleY: value }] }
+            ]}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -85,6 +94,7 @@ const styles = StyleSheet.create({
   bar: {
     width: tokenLength('space-2'),
     borderRadius: tokenLength('radius-chip'),
-    backgroundColor: tokenColor('ink')
+    backgroundColor: tokenColor('ink'),
+    transformOrigin: 'bottom'
   }
 });

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { endpoints } from '@playliberty/contracts';
@@ -22,7 +22,7 @@ export interface ArtworkProps {
 
 /** The current track's sleeve, and the way back to its playlist when the
  * queue has one. A new track tries its image again. */
-export default function Artwork({
+function Artwork({
   config,
   track,
   playlistId,
@@ -81,6 +81,8 @@ export default function Artwork({
     </Pressable>
   );
 }
+
+export default memo(Artwork);
 
 const styles = StyleSheet.create({
   art: {

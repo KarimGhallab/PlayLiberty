@@ -4,6 +4,7 @@ import { Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CreatePlaylistInputSchema } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import SheetActions from '../../../shared/components/SheetActions/SheetActions';
@@ -12,6 +13,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -55,6 +57,7 @@ export default function AddPlaylistSheet({
   }
 
   const message = invalid ?? problem;
+  const liveRegion = useAnnouncement(message);
   const dirty = url.trim().length > 0;
 
   function requestClose(): void {
@@ -98,8 +101,23 @@ export default function AddPlaylistSheet({
       visible={visible}
       title={t('addPlaylistDialog.title')}
       onRequestClose={requestClose}
+      closeLabel={t('common.close')}
       testID="add-sheet"
-      backdropTestID="add-backdrop">
+      backdropTestID="add-backdrop"
+      footer={
+        <SheetActions
+          testIDPrefix="add"
+          busy={busy}
+          canSubmit={dirty}
+          addLabel={t('addPlaylistDialog.add')}
+          addingLabel={t('addPlaylistDialog.adding')}
+          confirmingDiscard={confirmingDiscard}
+          onAdd={submit}
+          onCancel={requestClose}
+          onDiscard={onClose}
+          onKeepEditing={() => setConfirmingDiscard(false)}
+        />
+      }>
       <View style={styles.field}>
         <Text style={styles.label}>{t('addPlaylistDialog.linkLabel')}</Text>
         <TextInput
@@ -129,7 +147,7 @@ export default function AddPlaylistSheet({
         {message === null ? null : (
           <Text
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={liveRegion}
             style={styles.message}>
             {message}
           </Text>
@@ -146,19 +164,6 @@ export default function AddPlaylistSheet({
           onChange={setSkipNonMusic}
         />
       </View>
-
-      <SheetActions
-        testIDPrefix="add"
-        busy={busy}
-        canSubmit={dirty}
-        addLabel={t('addPlaylistDialog.add')}
-        addingLabel={t('addPlaylistDialog.adding')}
-        confirmingDiscard={confirmingDiscard}
-        onAdd={submit}
-        onCancel={requestClose}
-        onDiscard={onClose}
-        onKeepEditing={() => setConfirmingDiscard(false)}
-      />
     </Sheet>
   );
 }
@@ -192,7 +197,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   checkBlock: {

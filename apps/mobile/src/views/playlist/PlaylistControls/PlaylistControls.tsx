@@ -25,6 +25,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 import {
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
   },
   skeletonDivider: {
     width: 1,
-    height: 20,
+    height: tokenLength('space-5'),
     backgroundColor: tokenColor('line')
   },
   skeletonChip: {
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: 1,
-    height: 20,
+    height: tokenLength('space-5'),
     backgroundColor: tokenColor('control-border')
   },
   pressed: {
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   chips: {
     flexDirection: 'row',

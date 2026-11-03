@@ -1,12 +1,15 @@
+import { IconArrowUpRight } from '@tabler/icons-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../a11y/useAnnouncement';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
 import SignInDoor from '../SignInDoor/SignInDoor';
@@ -27,6 +30,7 @@ export default function SignedOut({
   onSignIn
 }: SignedOutProps) {
   const { t } = useI18n();
+  const liveRegion = useAnnouncement(failure);
   const label = busy
     ? t('signedOut.busy')
     : (actionLabel ?? t('signedOut.action'));
@@ -40,7 +44,7 @@ export default function SignedOut({
             <View
               accessible
               accessibilityRole="alert"
-              accessibilityLiveRegion="polite"
+              accessibilityLiveRegion={liveRegion}
               style={styles.failure}>
               <Text style={styles.failureText}>{failure}</Text>
             </View>
@@ -58,7 +62,12 @@ export default function SignedOut({
             onPress={onSignIn}>
             {busy ? <Spinner color={tokenColor('bg')} /> : null}
             <Text style={styles.label}>{label}</Text>
-            {busy ? null : <Text style={styles.arrow}>↗</Text>}
+            {busy ? null : (
+              <IconArrowUpRight
+                size={tokenLength('icon-sm')}
+                color={tokenColor('bg')}
+              />
+            )}
           </Pressable>
         </View>
       }>
@@ -93,18 +102,13 @@ const styles = StyleSheet.create({
     color: tokenColor('bg'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
-  },
-  arrow: {
-    color: tokenColor('bg'),
-    fontFamily,
-    fontSize: tokenLength('text-md')
+    fontWeight: tokenWeight('weight-medium')
   },
   title: {
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-lg'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-lg') * tokenNumber('leading-tight'),
     textAlign: 'center',
     width: '100%'
@@ -120,9 +124,9 @@ const styles = StyleSheet.create({
   failure: {
     width: '100%',
     padding: tokenLength('space-3'),
-    borderLeftWidth: 2,
-    borderLeftColor: tokenColor('tone-failed'),
-    borderRadius: tokenLength('radius-control'),
+    borderWidth: 1,
+    borderColor: tokenColor('line'),
+    borderRadius: tokenLength('radius-card'),
     backgroundColor: tokenColor('surface')
   },
   failureText: {

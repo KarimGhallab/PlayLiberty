@@ -3,7 +3,12 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import type { AccountSummary } from '@playliberty/contracts';
 
 import { sleeveColor } from '../../styles/sleeve';
-import { fontFamily, tokenColor, tokenLength } from '../../styles/tokens';
+import {
+  fontFamily,
+  tokenColor,
+  tokenLength,
+  tokenWeight
+} from '../../styles/tokens';
 
 export type AccountAvatarSize = 'sm' | 'md';
 
@@ -63,6 +68,6 @@ const styles = StyleSheet.create({
   label: {
     color: tokenColor('ink'),
     fontFamily,
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   }
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -11,18 +11,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../a11y/useAnnouncement';
 import { useReduceMotion } from '../../a11y/useReduceMotion';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
+
+/* One accessibility action buys this much more time. */
+const EXTEND_MS = 5000;
 
 export interface UndoSnackbarProps {
   readonly message: string;
   readonly detail: string;
+  /** Called when the window truly ends and the request should commit. */
+  readonly onExpire: () => void;
   readonly onUndo: () => void;
   /** The deferred window, which the remaining bar counts down. */
   readonly durationMs: number;
@@ -32,11 +39,12 @@ export interface UndoSnackbarProps {
 }
 
 /* A deferred action's surface: the sentence, the subject, the countdown, and
- * the one control that stops the request. It is interactive, unlike the
- * passive notice. */
+ * the one control that stops the request. Holding the surface, or asking for
+ * more time from the screen reader, moves the commit later. */
 export default function UndoSnackbar({
   message,
   detail,
+  onExpire,
   onUndo,
   durationMs,
   bottomOffset = 0,
@@ -46,29 +54,133 @@ export default function UndoSnackbar({
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
   const remaining = useRef(new Animated.Value(1)).current;
+  const liveRegion = useAnnouncement(
+    detail.length === 0 ? message : `${message}. ${detail}`
+  );
+  const expire = useRef(onExpire);
+  expire.current = onExpire;
+  const quiet = useRef(reduceMotion);
+  quiet.current = reduceMotion;
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdown = useRef<Animated.CompositeAnimation | null>(null);
+  const remainingMs = useRef(durationMs);
+  const startedAt = useRef(0);
+  const paused = useRef(false);
+  const alive = useRef(true);
+
+  const start = useCallback(
+    (ms: number): void => {
+      if (!alive.current) {
+        return;
+      }
+
+      if (timeout.current !== null) {
+        clearTimeout(timeout.current);
+        timeout.current = null;
+      }
+
+      if (ms <= 0) {
+        expire.current();
+        return;
+      }
+
+      remainingMs.current = ms;
+      startedAt.current = Date.now();
+      paused.current = false;
+
+      if (!quiet.current) {
+        countdown.current?.stop();
+        remaining.setValue(Math.min(1, ms / durationMs));
+        const animation = Animated.timing(remaining, {
+          toValue: 0,
+          duration: ms,
+          easing: Easing.linear,
+          useNativeDriver: true
+        });
+
+        countdown.current = animation;
+        animation.start();
+      }
+
+      timeout.current = setTimeout(() => {
+        timeout.current = null;
+        expire.current();
+      }, ms);
+    },
+    [durationMs, remaining]
+  );
 
   useEffect(() => {
-    if (reduceMotion) {
-      remaining.setValue(1);
+    alive.current = true;
+    start(durationMs);
+
+    return () => {
+      alive.current = false;
+
+      if (timeout.current !== null) {
+        clearTimeout(timeout.current);
+        timeout.current = null;
+      }
+
+      countdown.current?.stop();
+      countdown.current = null;
+    };
+  }, [durationMs, remaining, start]);
+
+  const pause = useCallback((): void => {
+    if (!alive.current || paused.current) {
       return;
     }
 
-    remaining.setValue(1);
-    const countdown = Animated.timing(remaining, {
-      toValue: 0,
-      duration: durationMs,
-      easing: Easing.linear,
-      useNativeDriver: true
-    });
+    paused.current = true;
 
-    countdown.start();
+    if (timeout.current !== null) {
+      clearTimeout(timeout.current);
+      timeout.current = null;
+    }
 
-    return () => countdown.stop();
-  }, [durationMs, reduceMotion, remaining]);
+    remainingMs.current = Math.max(
+      0,
+      remainingMs.current - (Date.now() - startedAt.current)
+    );
+    countdown.current?.stop();
+    countdown.current = null;
+  }, []);
+
+  const resume = useCallback((): void => {
+    if (!alive.current || !paused.current) {
+      return;
+    }
+
+    start(remainingMs.current);
+  }, [start]);
+
+  const extend = useCallback((): void => {
+    if (!alive.current) {
+      return;
+    }
+
+    const left = paused.current
+      ? remainingMs.current
+      : Math.max(0, remainingMs.current - (Date.now() - startedAt.current));
+
+    start(left + EXTEND_MS);
+  }, [start]);
+
+  const onAccessibilityAction = (event: {
+    readonly nativeEvent: { readonly actionName: string };
+  }): void => {
+    if (event.nativeEvent.actionName === 'extend') {
+      extend();
+    }
+  };
 
   return (
     <View
       testID="undo-snackbar"
+      onTouchStart={pause}
+      onTouchEnd={resume}
+      onTouchCancel={resume}
       style={[
         styles.snackbar,
         {
@@ -81,7 +193,12 @@ export default function UndoSnackbar({
         <View
           accessible
           accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
+          accessibilityLiveRegion={liveRegion}
+          accessibilityActions={[
+            { name: 'extend', label: t('common.moreTime') }
+          ]}
+          onAccessibilityAction={onAccessibilityAction}
+          testID="undo-snackbar-body"
           style={styles.body}>
           <Text numberOfLines={1} style={styles.message}>
             {message}
@@ -135,7 +252,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   detail: {
@@ -159,7 +276,7 @@ const styles = StyleSheet.create({
     color: tokenColor('accent'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   remaining: {
     height: 2,

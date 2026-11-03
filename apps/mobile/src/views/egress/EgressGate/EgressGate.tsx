@@ -21,12 +21,21 @@ export default function EgressGate() {
   const { status } = useSession();
   const account = useAccount(status === SessionStatus.SignedIn);
   const back = (): void => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
     router.replace('/');
   };
 
   if (status === SessionStatus.Loading) {
     return (
-      <Screen testID="egress-gate-loading" title={t('egress.title')}>
+      <Screen
+        testID="egress-gate-loading"
+        title={t('egress.title')}
+        onBack={back}
+        backLabel={t('common.back')}>
         <View style={styles.loading}>
           <Spinner color={tokenColor('muted')} />
         </View>
@@ -40,7 +49,11 @@ export default function EgressGate() {
 
   if (account.isPending) {
     return (
-      <Screen testID="egress-gate-loading" title={t('egress.title')}>
+      <Screen
+        testID="egress-gate-loading"
+        title={t('egress.title')}
+        onBack={back}
+        backLabel={t('common.back')}>
         <View style={styles.loading}>
           <Spinner color={tokenColor('muted')} />
         </View>
@@ -52,7 +65,7 @@ export default function EgressGate() {
     return <NotFound onBack={back} />;
   }
 
-  return <EgressScreen />;
+  return <EgressScreen onBack={back} />;
 }
 
 const styles = StyleSheet.create({

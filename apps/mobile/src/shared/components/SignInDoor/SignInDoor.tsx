@@ -9,6 +9,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
 import ShelfSleeves from './ShelfSleeves';
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-2xl'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     lineHeight: tokenLength('text-2xl') * tokenNumber('leading-tight'),
     textAlign: 'center'
   }

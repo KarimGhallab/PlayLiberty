@@ -22,6 +22,7 @@ import {
   tokenColor,
   tokenDuration,
   tokenLength,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
 import Spinner from '../Spinner/Spinner';
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   action: {
     width: touchTarget,

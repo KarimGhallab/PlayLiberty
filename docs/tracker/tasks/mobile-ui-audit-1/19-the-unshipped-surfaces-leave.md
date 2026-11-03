@@ -1,6 +1,6 @@
 # 19: The unshipped surfaces leave
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Source:** [The mobile app's UI misses its contract](../../issues/105-the-mobile-apps-ui-misses-its-contract.md)
 **Blocked by:** None. Can start immediately.
@@ -24,10 +24,19 @@ The design document describes what ships, the dead directory is gone, and no pro
 
 ## Acceptance criteria
 
-- [ ] DESIGN.md names the track list as the queue and no longer promises a sheet.
-- [ ] The empty `QueueSheet` directory is deleted.
-- [ ] The prototype route, its view and its switcher are removed.
-- [ ] No remaining reference to either surface exists in the app.
+- [x] DESIGN.md names the track list as the queue and no longer promises a sheet.
+- [x] The empty `QueueSheet` directory is deleted.
+- [x] The prototype route, its view and its switcher are removed.
+- [x] No remaining reference to either surface exists in the app.
+
+## Outcome
+
+`docs/DESIGN.md` now says the track list is the queue and the bar is the transport above it; the sheet promise is
+gone. The empty `QueueSheet` directory, the `app/prototype/notice` route, its `NoticePrototype` view and the
+`PrototypeSwitcher` are deleted. A stale issue 78 note that named the switcher was reworded.
+
+`rg "QueueSheet|prototype/notice|PrototypeSwitcher" apps/mobile docs` returns only this ticket's record. The suites,
+typecheck, lint and build pass.
 
 ## Verification
 

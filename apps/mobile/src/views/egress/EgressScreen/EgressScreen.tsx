@@ -18,6 +18,7 @@ import type { Language, Messages, Translator } from '@playliberty/i18n';
 import { formatRelativeTime, useI18n } from '@playliberty/i18n';
 import { countryNameOf, countryOf, flagOf } from '@playliberty/ui-foundation';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Notice from '../../../shared/components/Notice/Notice';
 import PressableScale from '../../../shared/components/PressableScale/PressableScale';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
@@ -27,6 +28,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -36,7 +38,7 @@ import {
   useEgress,
   useSwitchEgress
 } from '../../../api/useEgress';
-import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
+import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 
 interface ActionNotice {
@@ -214,17 +216,32 @@ function ConfigCard({
  * The operator's pool: the agent's reachability, one card per exit, and the
  * one action each card allows. One action runs at a time.
  */
-export default function EgressScreen() {
+export interface EgressScreenProps {
+  readonly onBack: () => void;
+}
+
+export default function EgressScreen({ onBack }: EgressScreenProps) {
   const { t, language } = useI18n();
   const insets = useSafeAreaInsets();
+  const barHeight = usePlayerBarHeight();
   const egress = useEgress();
   const switchExit = useSwitchEgress();
   const check = useCheckEgress();
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const playerOffset =
-    usePlayerStore(state => state.currentId) === null ? 0 : playerBarHeight;
+    usePlayerStore(state => state.currentId) === null ? 0 : barHeight;
   const now = Date.now();
   const busy = switchExit.isPending || check.isPending;
+  const loadingRegion = useAnnouncement(
+    egress.isPending ? t('egress.loading') : null
+  );
+  const agentRegion = useAnnouncement(
+    egress.data === undefined
+      ? null
+      : egress.data.agentReachable
+        ? t('egress.agentUp')
+        : t('egress.agentDown')
+  );
 
   const detailOf = (error: Error): string | null =>
     error instanceof ApiError ? (error.problem?.detail ?? null) : null;
@@ -283,8 +300,12 @@ export default function EgressScreen() {
 
   if (egress.isPending) {
     return (
-      <Screen testID="egress-screen" title={t('egress.title')}>
-        <Text accessibilityLiveRegion="polite" style={styles.say}>
+      <Screen
+        testID="egress-screen"
+        title={t('egress.title')}
+        onBack={onBack}
+        backLabel={t('common.back')}>
+        <Text accessibilityLiveRegion={loadingRegion} style={styles.say}>
           {t('egress.loading')}
         </Text>
       </Screen>
@@ -293,7 +314,11 @@ export default function EgressScreen() {
 
   if (egress.isError) {
     return (
-      <Screen testID="egress-screen" title={t('egress.title')}>
+      <Screen
+        testID="egress-screen"
+        title={t('egress.title')}
+        onBack={onBack}
+        backLabel={t('common.back')}>
         <ReadFailure
           message={t('egress.readFailed')}
           retrying={egress.isFetching}
@@ -311,7 +336,11 @@ export default function EgressScreen() {
 
   return (
     <>
-      <Screen testID="egress-screen" title={t('egress.title')}>
+      <Screen
+        testID="egress-screen"
+        title={t('egress.title')}
+        onBack={onBack}
+        backLabel={t('common.back')}>
         <View style={styles.agentRow}>
           <View
             style={[
@@ -325,7 +354,7 @@ export default function EgressScreen() {
           />
           <Text
             testID="egress-agent"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={agentRegion}
             style={[
               styles.agent,
               {
@@ -410,6 +439,7 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2')
   },
   agentDot: {
+    /* A 7pt dot reads as a mark, not a control. */
     width: 7,
     height: 7,
     borderRadius: tokenLength('radius-chip')
@@ -452,15 +482,16 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   active: {
+    /* A 1pt vertical nudge keeps the badge on the text baseline. */
     paddingVertical: 1,
     paddingHorizontal: tokenLength('space-2'),
     color: tokenColor('egress'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     backgroundColor: tokenColor('egress-surface'),
     borderWidth: 1,
     borderColor: tokenColor('egress-border'),
@@ -520,7 +551,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   actionLabelDisabled: {
     color: tokenColor('control-disabled-fg')

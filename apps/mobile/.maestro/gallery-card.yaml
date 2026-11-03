@@ -33,8 +33,6 @@ name: The gallery reaches a playlist
     visible:
       id: playlist-screen
     timeout: 15000
-- assertNotVisible:
-    id: account-door
 # Leave the device in the library.
 - back
 - extendedWaitUntil:

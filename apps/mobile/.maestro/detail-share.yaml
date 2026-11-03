@@ -96,7 +96,7 @@ name: A playlist is shared at read, changed to write, then revoked
     timeout: 15000
 - assertVisible:
     id: share-picker-level-read
-    selected: true
+    checked: true
     below:
       text: ${SHARE_ACCOUNT}
 - tapOn:
@@ -117,7 +117,7 @@ name: A playlist is shared at read, changed to write, then revoked
     timeout: 15000
 - assertVisible:
     id: share-picker-level-write
-    selected: true
+    checked: true
     below:
       text: ${SHARE_ACCOUNT}
 - tapOn:

@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../a11y/useAnnouncement';
 import {
   fontFamily,
   tokenColor,
@@ -24,12 +25,13 @@ export default function ReadFailure({
   onRetry
 }: ReadFailureProps) {
   const { t } = useI18n();
+  const liveRegion = useAnnouncement(message);
 
   return (
     <View style={styles.failure}>
       <Text
         accessibilityRole="alert"
-        accessibilityLiveRegion="polite"
+        accessibilityLiveRegion={liveRegion}
         style={styles.message}>
         {message}
       </Text>

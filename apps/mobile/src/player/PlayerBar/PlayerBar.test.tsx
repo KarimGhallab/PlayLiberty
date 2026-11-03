@@ -6,11 +6,17 @@ import {
   screen,
   waitFor
 } from '@testing-library/react-native';
+import type { ComponentProps } from 'react';
+import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import type { ApiConfig } from '../../auth/useApiConfig';
+import {
+  PlayerBarSizeProvider,
+  usePlayerBarHeight
+} from '../playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 import PlayerBar from './PlayerBar';
@@ -19,9 +25,51 @@ jest.mock('expo-router', () => ({
   router: { navigate: jest.fn() }
 }));
 
+jest.mock('./Artwork', () => {
+  const actual = jest.requireActual<typeof import('./Artwork')>('./Artwork');
+  const runtime = jest.requireActual<typeof import('react')>('react');
+  const render = jest.fn();
+
+  return {
+    __esModule: true,
+    default: function ArtworkWithCount(
+      props: ComponentProps<typeof actual.default>
+    ) {
+      render();
+      return runtime.createElement(actual.default, props);
+    },
+    artworkRender: render
+  };
+});
+
+jest.mock('../../shared/components/PlayPauseGlyph/PlayPauseGlyph', () => {
+  const actual = jest.requireActual<
+    typeof import('../../shared/components/PlayPauseGlyph/PlayPauseGlyph')
+  >('../../shared/components/PlayPauseGlyph/PlayPauseGlyph');
+  const runtime = jest.requireActual<typeof import('react')>('react');
+  const render = jest.fn();
+
+  return {
+    __esModule: true,
+    default: function GlyphWithCount(
+      props: ComponentProps<typeof actual.default>
+    ) {
+      render();
+      return runtime.createElement(actual.default, props);
+    },
+    glyphRender: render
+  };
+});
+
 const { router } = jest.requireMock<{
   router: { navigate: jest.Mock };
 }>('expo-router');
+const artworkRender = jest.requireMock<{ artworkRender: jest.Mock }>(
+  './Artwork'
+).artworkRender;
+const glyphRender = jest.requireMock<{ glyphRender: jest.Mock }>(
+  '../../shared/components/PlayPauseGlyph/PlayPauseGlyph'
+).glyphRender;
 
 const store = { getItem: () => null, setItem: () => {} };
 
@@ -64,6 +112,12 @@ function startPlaylist(): void {
     .start([track], { id: 'playlist-1', name: 'Rain On The Window' }, track.id);
 }
 
+function HeightProbe() {
+  const height = usePlayerBarHeight();
+
+  return <Text testID="bar-height">{height}</Text>;
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   usePlayerStore.getState().clear();
@@ -94,6 +148,45 @@ describe('the player bar', () => {
       'P-Access-Token': 'token-secret',
       'User-Agent': 'PlayLiberty/1.0 (Android)'
     });
+  });
+
+  it('publishes a taller bar when its content grows', async () => {
+    startPlaylist();
+    await render(
+      <I18nProvider initialLanguage={Language.English} storage={store}>
+        <SafeAreaProvider initialMetrics={metrics}>
+          <PlayerBarSizeProvider>
+            <PlayerBar config={config} />
+            <HeightProbe />
+          </PlayerBarSizeProvider>
+        </SafeAreaProvider>
+      </I18nProvider>
+    );
+
+    expect(screen.getByTestId('bar-height')).toHaveTextContent('98');
+    expect(screen.getByTestId('player-bar')).toHaveStyle({ height: 92 });
+
+    await act(() => {
+      screen.getByTestId('player-bar-capsule').props.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 370, height: 120 } }
+      });
+    });
+
+    expect(screen.getByTestId('bar-height')).toHaveTextContent('126');
+    expect(screen.getByTestId('player-bar')).toHaveStyle({ height: 120 });
+    expect(screen.getByTestId('player-bar-capsule')).toHaveStyle({
+      minHeight: 92
+    });
+    expect(screen.getByTestId('player-bar-capsule')).not.toHaveStyle({
+      height: 92
+    });
+  });
+
+  it('gives the seek rail a 44pt target', async () => {
+    startPlaylist();
+    await renderBar();
+
+    expect(screen.getByTestId('player-seek')).toHaveStyle({ height: 44 });
   });
 
   it('pauses and resumes the same track from one control', async () => {
@@ -215,6 +308,22 @@ describe('the player bar', () => {
     expect(
       screen.getByTestId('player-seek').props.accessibilityValue.text
     ).toBe('0:30 of 3:02');
+  });
+
+  it('does not re-render the cover or the glyph on a position tick', async () => {
+    startPlaylist();
+    await renderBar();
+
+    const artworkBefore = artworkRender.mock.calls.length;
+    const glyphBefore = glyphRender.mock.calls.length;
+
+    await act(() => {
+      usePlayerStore.getState().setPosition(30);
+    });
+
+    expect(screen.getByTestId('player-elapsed')).toHaveTextContent('0:30');
+    expect(artworkRender).toHaveBeenCalledTimes(artworkBefore);
+    expect(glyphRender).toHaveBeenCalledTimes(glyphBefore);
   });
 
   it('seeks once on release and resumes a playing player', async () => {

@@ -20,6 +20,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-lg'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     fontVariant: ['tabular-nums']
   },
   word: {
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   error: {
     gap: tokenLength('space-3')
@@ -327,8 +328,9 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-3'),
     paddingVertical: tokenLength('space-3'),
     paddingHorizontal: tokenLength('space-4'),
-    borderLeftWidth: 2,
-    borderLeftColor: tokenColor('tone-failed'),
+    borderWidth: 1,
+    borderColor: tokenColor('line'),
+    borderRadius: tokenLength('radius-card'),
     backgroundColor: tokenColor('surface')
   },
   errorSay: {
@@ -360,9 +362,11 @@ const styles = StyleSheet.create({
     color: tokenColor('bg'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   reveal: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
     alignSelf: 'flex-start'
   },
   revealLabel: {
@@ -372,7 +376,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline'
   },
   rawBox: {
-    maxHeight: 120
+    maxHeight: tokenLength('space-6') * 5
   },
   raw: {
     color: tokenColor('muted'),

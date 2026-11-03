@@ -9,6 +9,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-lg'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   prose: {
     color: tokenColor('muted'),
@@ -110,6 +111,6 @@ const styles = StyleSheet.create({
     color: tokenColor('bg'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   }
 });

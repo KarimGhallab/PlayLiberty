@@ -136,6 +136,7 @@ function mutationResult(overrides: Record<string, unknown> = {}) {
 
 let switchExit = mutationResult();
 let check = mutationResult();
+let onBack = jest.fn();
 
 interface MutateOptions {
   readonly onSuccess: (read: EgressRead) => void;
@@ -159,7 +160,7 @@ function renderScreen(result: unknown) {
   return render(
     <SafeAreaProvider initialMetrics={metrics}>
       <I18nProvider initialLanguage={Language.English} storage={store}>
-        <EgressScreen />
+        <EgressScreen onBack={onBack} />
       </I18nProvider>
     </SafeAreaProvider>
   );
@@ -171,6 +172,7 @@ beforeEach(() => {
   usePlayerStore.getState().clear();
   switchExit = mutationResult();
   check = mutationResult();
+  onBack = jest.fn();
 });
 
 afterEach(() => {
@@ -179,6 +181,14 @@ afterEach(() => {
 });
 
 describe('the egress console', () => {
+  it('leaves through the header back control', async () => {
+    await renderScreen(success(READ));
+
+    fireEvent.press(screen.getByTestId('screen-back'));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it('draws the pool with its agent, facts and active mark', async () => {
     await renderScreen(success(READ));
 

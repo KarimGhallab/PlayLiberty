@@ -2,11 +2,12 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import { tokenColor, tokenLength } from '../../../shared/styles/tokens';
 
 import { galleryColumnWidth } from '../galleryColumns/galleryColumns';
 
-/* Six fills the first screen at two columns and three rows. */
+/* Six fills two rows at three columns and three at two. */
 const ITEMS = 6;
 
 /* The shape of the gallery rather than a sentence about waiting, so the read
@@ -15,13 +16,15 @@ export default function GallerySkeleton() {
   const { t } = useI18n();
   const window = useWindowDimensions();
   const columnWidth = galleryColumnWidth(window.width);
+  const label = t('library.loading');
+  const liveRegion = useAnnouncement(label);
 
   return (
     <View
       testID="gallery-skeleton"
       accessible
-      accessibilityLabel={t('library.loading')}
-      accessibilityLiveRegion="polite"
+      accessibilityLabel={label}
+      accessibilityLiveRegion={liveRegion}
       style={styles.skeleton}>
       <View
         style={styles.grid}

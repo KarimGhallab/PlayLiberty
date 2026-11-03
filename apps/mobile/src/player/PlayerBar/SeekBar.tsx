@@ -177,7 +177,7 @@ export default function SeekBar({
 
 const styles = StyleSheet.create({
   row: {
-    height: tokenLength('space-7'),
+    height: tokenLength('control-touch'),
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-2')
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   time: {
     width: tokenLength('space-9'),
-    color: tokenColor('muted'),
+    color: tokenColor('muted-on-art'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
     lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal'),
@@ -195,14 +195,15 @@ const styles = StyleSheet.create({
   },
   rail: {
     flex: 1,
-    height: tokenLength('space-7'),
+    height: tokenLength('control-touch'),
     justifyContent: 'center'
   },
   track: {
+    /* A 3pt track keeps the 44pt rail's visual weight without a layout jump. */
     height: 3,
     overflow: 'hidden',
     borderRadius: tokenLength('focus-width'),
-    backgroundColor: tokenColor('control-border')
+    backgroundColor: tokenColor('muted-on-art')
   },
   fill: {
     height: '100%',
@@ -210,8 +211,10 @@ const styles = StyleSheet.create({
   },
   knob: {
     position: 'absolute',
+    top: '50%',
     width: tokenLength('space-2'),
     height: tokenLength('space-2'),
+    marginTop: -tokenLength('space-1'),
     marginLeft: -tokenLength('space-1'),
     borderRadius: tokenLength('radius-chip'),
     backgroundColor: tokenColor('ink')

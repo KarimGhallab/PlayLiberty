@@ -203,6 +203,19 @@ describe('the share sheet', () => {
     expect(screen.getAllByTestId('share-row')).toHaveLength(2);
   });
 
+  it('names the account on the revoke control', async () => {
+    await renderSheet(queryResult([ada, bea]));
+
+    const rows = screen.getAllByTestId('share-row');
+
+    expect(
+      within(rows[0]!).getByRole('button', { name: 'Revoke, Ada' })
+    ).toBeOnTheScreen();
+    expect(
+      within(rows[1]!).getByRole('button', { name: 'Revoke, Bea' })
+    ).toBeOnTheScreen();
+  });
+
   it('asks once before revoking', async () => {
     const { revoke } = await renderSheet(queryResult([ada]));
 

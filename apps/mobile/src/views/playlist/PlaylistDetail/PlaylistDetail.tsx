@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import type {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ViewToken
+} from 'react-native';
 import {
   Animated,
   BackHandler,
   Easing,
+  FlatList,
   PanResponder,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -34,6 +38,7 @@ import { copyText } from '../../../shared/clipboard/copyText';
 import ActionDial, {
   actionDialSize
 } from '../../../shared/components/ActionDial/ActionDial';
+import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Spinner from '../../../shared/components/Spinner/Spinner';
@@ -46,6 +51,7 @@ import {
   tokenDuration,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 import { cannotPlayNotice } from '../../../shared/trackLinkNotice/trackLinkNotice';
@@ -72,7 +78,7 @@ import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import { useUpdateSort } from '../../../api/useUpdateSort';
 import type { ApiConfig } from '../../../auth/useApiConfig';
-import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
+import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { playerTracks } from '../../../player/playerTrack/playerTrack';
 import { orderTracksByQueue } from '../../../player/queueOrder/queueOrder';
@@ -101,7 +107,6 @@ import PlaylistIdentity, {
   PlaylistIdentitySkeleton
 } from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
-import SkipSetting from '../SkipSetting/SkipSetting';
 import SyncBand from '../SyncBand/SyncBand';
 import TrackActionsSheet from '../TrackActionsSheet/TrackActionsSheet';
 import {
@@ -161,6 +166,7 @@ export default function PlaylistDetail({
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
   const reduceMotion = useReduceMotion();
+  const barHeight = usePlayerBarHeight();
   /* The sheet's offset and the two reads its drag needs: the list's offset and
    * the header's lower edge, both in window coordinates. */
   const sheetY = useRef(new Animated.Value(window.height)).current;
@@ -201,6 +207,7 @@ export default function PlaylistDetail({
     () => new Set()
   );
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const [pendingWindow, setPendingWindow] = useState(0);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerProblem, setHeaderProblem] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -225,12 +232,27 @@ export default function PlaylistDetail({
   const headerTarget = useRef(0);
   const headerShown = useRef(0);
   const headerFrame = useRef<number | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scroll = useRef<ScrollView>(null);
-  const scrollViewport = useRef(0);
+  const scroll = useRef<FlatList<PlaylistTrack>>(null);
   const landingPlaylist = useRef<string | null>(null);
   const landingTarget = useRef<string | null>(null);
   const landed = useRef(false);
+  const [viewable, setViewable] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const [viewabilityReady, setViewabilityReady] = useState(false);
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { readonly viewableItems: readonly ViewToken[] }) => {
+      setViewable(
+        new Set(
+          viewableItems.flatMap(item => (item.key === null ? [] : [item.key]))
+        )
+      );
+      setViewabilityReady(true);
+    }
+  ).current;
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 100
+  }).current;
   const pendingDelete = pending?.kind === 'delete';
   const start = usePlayerStore(state => state.start);
   const play = usePlayerStore(state => state.play);
@@ -528,25 +550,12 @@ export default function PlaylistDetail({
     []
   );
 
-  const landOnRow = (trackId: string, y: number, height: number): void => {
-    if (landed.current || landingTarget.current !== trackId) {
-      return;
-    }
-
-    landed.current = true;
-    const room = scrollViewport.current - playerOffset;
-
-    /* A row already above the fold keeps the list where it is, so the header
-     * stays at its resting state instead of parking in its blend. */
-    if (room > 0 && y + height <= room) {
-      return;
-    }
-
-    scroll.current?.scrollTo({
-      y: Math.max(0, y - tokenLength('space-4')),
-      animated: false
-    });
-  };
+  /* A new playlist starts the viewability pass over, so the old list's visible
+   * keys cannot land the new one. */
+  useEffect(() => {
+    setViewable(new Set());
+    setViewabilityReady(false);
+  }, [playlistId]);
 
   /* A current row beyond the loaded pages is awaited page by page; the row's
    * own layout does the scroll once it exists. */
@@ -577,13 +586,33 @@ export default function PlaylistDetail({
     tracks.isSuccess
   ]);
 
+  /* The list owns the scroll: once the target is loaded and the first
+   * viewability pass says it is not on screen, the list jumps to its index. */
   useEffect(() => {
-    return () => {
-      if (timer.current !== null) {
-        clearTimeout(timer.current);
-      }
-    };
-  }, []);
+    const target = landingTarget.current;
+
+    if (target === null || landed.current || !tracks.isSuccess || landing) {
+      return;
+    }
+
+    const index = rows.findIndex(entry => entry.track.id === target);
+
+    if (index < 0 || !viewabilityReady) {
+      return;
+    }
+
+    landed.current = true;
+
+    if (viewable.has(target)) {
+      return;
+    }
+
+    scroll.current?.scrollToIndex({
+      index,
+      animated: false,
+      viewOffset: tokenLength('space-4')
+    });
+  }, [landing, rows, tracks.isSuccess, viewabilityReady, viewable]);
 
   /* The sheet arrives from the bottom; a reduce-motion setting takes it in
    * place, without the travel. */
@@ -642,34 +671,23 @@ export default function PlaylistDetail({
       entryFrame.current = null;
     }
 
-    if (reduceMotion) {
-      onBack();
+    onBack();
+  }, [onBack]);
+
+  /* A delete's undo window owns the screen, so back waits for it. Otherwise the
+   * system owns the gesture and the stack's pop animation. */
+  useEffect(() => {
+    if (!pendingDelete) {
       return;
     }
 
-    Animated.timing(sheetY, {
-      toValue: window.height,
-      duration: tokenDuration('motion-base'),
-      easing: Easing.bezier(...standardEasingBezier),
-      useNativeDriver: true
-    }).start(({ finished }) => {
-      if (finished) {
-        onBack();
-      }
-    });
-  }, [onBack, reduceMotion, sheetY, window.height]);
-
-  useEffect(() => {
     const subscription = BackHandler.addEventListener(
       'hardwareBackPress',
-      () => {
-        leaveDetail();
-        return true;
-      }
+      () => true
     );
 
     return () => subscription.remove();
-  }, [leaveDetail]);
+  }, [pendingDelete]);
 
   /* The header is a handle at any scroll position; the list is one only at its
    * top. A downward pull past the threshold leaves; anything less returns. */
@@ -810,12 +828,8 @@ export default function PlaylistDetail({
 
   const chooseSkip = (value: boolean): void => {
     skipSetting.mutate(value, {
-      onError: error => {
-        setNotice({
-          message: t('detail.settingNotice'),
-          detail: problemMessage(error, t('detail.settingFailed'))
-        });
-      }
+      onError: error =>
+        setHeaderProblem(problemMessage(error, t('detail.settingFailed')))
     });
   };
 
@@ -837,7 +851,7 @@ export default function PlaylistDetail({
   /* The floating action owns the bottom-right corner, so a notice or snackbar
    * clears its height rather than sitting under it. The bar owns the bottom
    * first, so both clear it too. */
-  const playerOffset = currentId === null ? 0 : playerBarHeight;
+  const playerOffset = currentId === null ? 0 : barHeight;
   const floatingOffset =
     (canWritePlaylist(data) ? actionDialSize + tokenLength('space-3') : 0) +
     playerOffset;
@@ -1007,14 +1021,21 @@ export default function PlaylistDetail({
     });
   };
 
+  /* The snackbar owns the window, so a pause or an extension moves the commit
+   * with the bar. */
+  const expirePending = (): void => {
+    if (pending === null) {
+      return;
+    }
+
+    const action = pending;
+    setPending(null);
+    commitPending(action);
+  };
+
   /* One window at a time: a second action sends the first now rather than
    * losing its request, then opens its own countdown. */
   const startPending = (next: PendingAction): void => {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-
     if (pending !== null) {
       commitPending(pending);
     }
@@ -1024,19 +1045,10 @@ export default function PlaylistDetail({
     }
 
     setPending(next);
-    timer.current = setTimeout(() => {
-      commitPending(next);
-      setPending(null);
-      timer.current = null;
-    }, undoWindowMs);
+    setPendingWindow(current => current + 1);
   };
 
   const undoPending = (): void => {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-
     if (pending?.kind === 'remove') {
       unhideTrack(pending.trackId);
     }
@@ -1178,10 +1190,11 @@ export default function PlaylistDetail({
   };
 
   const skipControl = (
-    <SkipSetting
-      skipNonMusic={data.skipNonMusic}
-      canEdit={canWritePlaylist(data)}
-      saving={skipSetting.isPending}
+    <Checkbox
+      testID="detail-skip"
+      label={t('skipSetting.label')}
+      checked={data.skipNonMusic}
+      disabled={!canWritePlaylist(data) || skipSetting.isPending}
       onChange={chooseSkip}
     />
   );
@@ -1215,7 +1228,8 @@ export default function PlaylistDetail({
 
           void startPlaylist('shuffle');
         },
-    onOpenActions: openHeaderActions
+    onOpenActions: openHeaderActions,
+    onBack: leaveDetail
   };
 
   return sheet(
@@ -1228,16 +1242,117 @@ export default function PlaylistDetail({
         progress={headerProgress}
         collapsed={collapsed}
       />
-      <ScrollView
+      <FlatList
         ref={scroll}
         testID="playlist-scroll"
+        data={
+          tracks.isSuccess && !landing && !filterEmpty && data.trackCount > 0
+            ? rows
+            : []
+        }
+        keyExtractor={entry => entry.track.id}
+        renderItem={({ item: entry }) => (
+          <View testID={`track-slot-${entry.track.id}`}>
+            <TrackRow
+              association={entry}
+              config={config}
+              current={currentId === entry.track.id}
+              playing={currentId === entry.track.id && isPlaying}
+              onOpenActions={openActions}
+              onPlay={playTrack}
+            />
+          </View>
+        )}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            {showControls ? (
+              <PlaylistControls
+                sort={data.sort}
+                canEdit={canWritePlaylist(data)}
+                shuffled={listShuffled}
+                saving={sort.isPending}
+                counts={tracks.counts}
+                active={activeFilter}
+                onSortChange={chooseSort}
+                onFilterChange={setFilter}
+              />
+            ) : null}
+            {tracks.isPending || landing ? <TrackListSkeleton /> : null}
+            {tracks.isError ? (
+              <View style={styles.tracksState}>
+                <ReadFailure
+                  message={tracksFailure}
+                  retrying={tracks.isFetching}
+                  onRetry={tracks.refetch}
+                />
+              </View>
+            ) : null}
+            {tracks.isSuccess && data.trackCount === 0 ? (
+              data.lastSyncedAt === null ? (
+                <PlaylistEmpty
+                  onSync={
+                    canWritePlaylist(data)
+                      ? () => {
+                          sync.mutate(data.id);
+                        }
+                      : undefined
+                  }
+                  syncing={syncInFlight}
+                />
+              ) : (
+                <Text testID="playlist-no-tracks" style={styles.note}>
+                  {t('detail.noTracks')}
+                </Text>
+              )
+            ) : null}
+            {filterEmpty && emptyFilterChip !== undefined ? (
+              <View testID="filter-empty" style={styles.filterEmpty}>
+                <Text style={styles.filterEmptyText}>
+                  {t(emptyFilterChip.empty)}
+                </Text>
+                <Pressable
+                  testID="filter-show-all"
+                  accessibilityRole="button"
+                  accessibilityLabel={t('detail.filterShowAll')}
+                  style={styles.filterShowAll}
+                  onPress={() => setFilter(null)}>
+                  <Text style={styles.filterShowAllLabel}>
+                    {t('detail.filterShowAll')}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+        }
+        ListFooterComponent={
+          <>
+            {!landing && tracks.isFetchingNextPage ? (
+              <View testID="tracks-append" style={styles.append}>
+                <Spinner color={tokenColor('muted')} />
+                <Text style={styles.appendLabel}>
+                  {t('detail.loadMoreLoading')}
+                </Text>
+              </View>
+            ) : null}
+            {tracks.isFetchNextPageError ? (
+              <Pressable
+                testID="tracks-append-retry"
+                accessibilityRole="button"
+                accessibilityLabel={t('detail.loadMoreRetry')}
+                style={styles.appendRetry}
+                onPress={tracks.fetchNextPage}>
+                <Text style={styles.appendRetryLabel}>
+                  {t('detail.loadMoreRetry')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </>
+        }
+        extraData={`${currentId ?? ''}:${isPlaying}`}
         showsVerticalScrollIndicator={false}
         pointerEvents={pendingDelete ? 'none' : 'auto'}
         style={[styles.scroll, pendingDelete ? styles.pending : undefined]}
         onScroll={readScroll}
-        onLayout={event => {
-          scrollViewport.current = event.nativeEvent.layout.height;
-        }}
         scrollEventThrottle={16}
         contentContainerStyle={[
           styles.content,
@@ -1249,108 +1364,25 @@ export default function PlaylistDetail({
               tokenLength('space-3') +
               playerOffset
           }
-        ]}>
-        {showControls ? (
-          <PlaylistControls
-            sort={data.sort}
-            canEdit={canWritePlaylist(data)}
-            shuffled={listShuffled}
-            saving={sort.isPending}
-            counts={tracks.counts}
-            active={activeFilter}
-            onSortChange={chooseSort}
-            onFilterChange={setFilter}
-          />
-        ) : null}
-        {tracks.isPending || landing ? <TrackListSkeleton /> : null}
-        {tracks.isError ? (
-          <View style={styles.tracksState}>
-            <ReadFailure
-              message={tracksFailure}
-              retrying={tracks.isFetching}
-              onRetry={tracks.refetch}
-            />
-          </View>
-        ) : null}
-        {tracks.isSuccess && data.trackCount === 0 ? (
-          data.lastSyncedAt === null ? (
-            <PlaylistEmpty
-              onSync={
-                canWritePlaylist(data)
-                  ? () => {
-                      sync.mutate(data.id);
-                    }
-                  : undefined
-              }
-              syncing={syncInFlight}
-            />
-          ) : (
-            <Text testID="playlist-no-tracks" style={styles.note}>
-              {t('detail.noTracks')}
-            </Text>
-          )
-        ) : null}
-        {filterEmpty && emptyFilterChip !== undefined ? (
-          <View testID="filter-empty" style={styles.filterEmpty}>
-            <Text style={styles.filterEmptyText}>
-              {t(emptyFilterChip.empty)}
-            </Text>
-            <Pressable
-              testID="filter-show-all"
-              accessibilityRole="button"
-              accessibilityLabel={t('detail.filterShowAll')}
-              style={styles.filterShowAll}
-              onPress={() => setFilter(null)}>
-              <Text style={styles.filterShowAllLabel}>
-                {t('detail.filterShowAll')}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-        {tracks.isSuccess && !landing && !filterEmpty && data.trackCount > 0
-          ? rows.map(entry => (
-              <View
-                key={entry.track.id}
-                testID={`track-slot-${entry.track.id}`}
-                onLayout={event =>
-                  landOnRow(
-                    entry.track.id,
-                    event.nativeEvent.layout.y,
-                    event.nativeEvent.layout.height
-                  )
-                }>
-                <TrackRow
-                  association={entry}
-                  config={config}
-                  current={currentId === entry.track.id}
-                  playing={currentId === entry.track.id && isPlaying}
-                  onOpenActions={openActions}
-                  onPlay={playTrack}
-                />
-              </View>
-            ))
-          : null}
-        {!landing && tracks.isFetchingNextPage ? (
-          <View testID="tracks-append" style={styles.append}>
-            <Spinner color={tokenColor('muted')} />
-            <Text style={styles.appendLabel}>
-              {t('detail.loadMoreLoading')}
-            </Text>
-          </View>
-        ) : null}
-        {tracks.isFetchNextPageError ? (
-          <Pressable
-            testID="tracks-append-retry"
-            accessibilityRole="button"
-            accessibilityLabel={t('detail.loadMoreRetry')}
-            style={styles.appendRetry}
-            onPress={tracks.fetchNextPage}>
-            <Text style={styles.appendRetryLabel}>
-              {t('detail.loadMoreRetry')}
-            </Text>
-          </Pressable>
-        ) : null}
-      </ScrollView>
+        ]}
+        initialNumToRender={12}
+        windowSize={7}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        onScrollToIndexFailed={info => {
+          scroll.current?.scrollToOffset({
+            offset: info.averageItemLength * info.index,
+            animated: false
+          });
+          setTimeout(() => {
+            scroll.current?.scrollToIndex({
+              index: info.index,
+              animated: false,
+              viewOffset: tokenLength('space-4')
+            });
+          }, 50);
+        }}
+      />
       {canWritePlaylist(data) ? (
         <ActionDial
           label={t('detail.fabActions')}
@@ -1449,12 +1481,13 @@ export default function PlaylistDetail({
       />
       {pending === null ? null : (
         <UndoSnackbar
-          key={pending.kind === 'remove' ? pending.trackId : 'delete'}
+          key={`${pending.kind === 'remove' ? pending.trackId : 'delete'}:${pendingWindow}`}
           message={pending.message}
           detail={pending.detail}
           durationMs={undoWindowMs}
           bottomOffset={floatingOffset}
           horizontalInset={tokenLength('space-4')}
+          onExpire={expirePending}
           onUndo={undoPending}
         />
       )}
@@ -1498,6 +1531,9 @@ const styles = StyleSheet.create({
     paddingTop: tokenLength('space-3'),
     gap: tokenLength('space-3')
   },
+  header: {
+    gap: tokenLength('space-3')
+  },
   append: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1512,6 +1548,8 @@ const styles = StyleSheet.create({
   },
   appendRetry: {
     alignSelf: 'center',
+    minHeight: touchTarget,
+    justifyContent: 'center',
     paddingHorizontal: tokenLength('space-4'),
     paddingVertical: tokenLength('space-2'),
     borderWidth: 1,
@@ -1546,7 +1584,7 @@ const styles = StyleSheet.create({
     color: tokenColor('accent'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   stateBody: {
     flex: 1,

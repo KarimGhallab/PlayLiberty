@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@jest/globals';
-import { render, screen } from '@testing-library/react-native';
+import { describe, expect, it, jest } from '@jest/globals';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -37,5 +37,17 @@ describe('Screen', () => {
 
     expect(screen.queryByRole('header')).not.toBeOnTheScreen();
     expect(screen.getByText('Body')).toBeOnTheScreen();
+  });
+
+  it('draws the way back before the title', async () => {
+    const onBack = jest.fn();
+
+    await render(<Screen title="Egress" onBack={onBack} backLabel="Back" />, {
+      wrapper
+    });
+
+    fireEvent.press(screen.getByLabelText('Back'));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

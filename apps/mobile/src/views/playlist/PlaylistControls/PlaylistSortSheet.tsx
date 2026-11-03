@@ -34,30 +34,35 @@ export default function PlaylistSortSheet({
       visible={visible}
       title={t('detail.sortBy')}
       onRequestClose={onClose}
+      closeLabel={t('common.close')}
       testID="playlist-sort-sheet"
       backdropTestID="playlist-sort-backdrop">
-      {SORT_OPTIONS.map((option, index) => {
-        const checked = sort === option.value;
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel={t('detail.sortBy')}>
+        {SORT_OPTIONS.map((option, index) => {
+          const checked = sort === option.value;
 
-        return (
-          <Pressable
-            key={option.value}
-            testID={option.testID}
-            accessibilityRole="radio"
-            accessibilityState={{ checked }}
-            style={({ pressed }) => [
-              styles.row,
-              index < SORT_OPTIONS.length - 1 && styles.rule,
-              pressed && styles.pressed
-            ]}
-            onPress={() => onSelect(option.value)}>
-            <View style={[styles.radio, checked && styles.radioOn]}>
-              {checked ? <View style={styles.dot} /> : null}
-            </View>
-            <Text style={styles.label}>{t(option.label)}</Text>
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              key={option.value}
+              testID={option.testID}
+              accessibilityRole="radio"
+              accessibilityState={{ checked }}
+              style={({ pressed }) => [
+                styles.row,
+                index < SORT_OPTIONS.length - 1 && styles.rule,
+                pressed && styles.pressed
+              ]}
+              onPress={() => onSelect(option.value)}>
+              <View style={[styles.radio, checked && styles.radioOn]}>
+                {checked ? <View style={styles.dot} /> : null}
+              </View>
+              <Text style={styles.label}>{t(option.label)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </Sheet>
   );
 }
@@ -77,8 +82,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokenColor('surface-raised')
   },
   radio: {
-    width: 20,
-    height: 20,
+    width: tokenLength('space-5'),
+    height: tokenLength('space-5'),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

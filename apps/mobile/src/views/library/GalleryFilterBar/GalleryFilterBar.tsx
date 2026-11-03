@@ -26,6 +26,7 @@ import {
   tokenColor,
   tokenDuration,
   tokenLength,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 import {
@@ -34,6 +35,11 @@ import {
 } from '../../../shared/trackState/statusChips';
 
 export type LibraryScope = 'all' | 'shared';
+
+/* The pair's 2pt padding and 1pt border on each side leave 6pt; the hit box
+ * takes half above and half below. */
+const SEGMENT_INSET = 6;
+const SEGMENT_HIT = SEGMENT_INSET / 2;
 
 interface SegmentRect {
   readonly x: number;
@@ -149,9 +155,10 @@ export default function GalleryFilterBar({
               ) : null}
               <Pressable
                 testID="scope-all"
-                accessibilityRole="button"
-                accessibilityState={{ selected: scope === 'all' }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: scope === 'all' }}
                 accessibilityLabel={`${t('library.scopeAll')} ${totalCount}`}
+                hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
                 style={[
                   styles.segment,
                   !measured && scope === 'all' && styles.segmentAll
@@ -174,9 +181,10 @@ export default function GalleryFilterBar({
               </Pressable>
               <Pressable
                 testID="scope-shared"
-                accessibilityRole="button"
-                accessibilityState={{ selected: scope === 'shared' }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: scope === 'shared' }}
                 accessibilityLabel={`${t('library.scopeShared')} ${sharedCount}`}
+                hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
                 style={[
                   styles.segment,
                   !measured && scope === 'shared' && styles.segmentShared
@@ -218,7 +226,10 @@ export default function GalleryFilterBar({
         {hasShared && hasStatus ? <View style={styles.divider} /> : null}
 
         {hasStatus ? (
-          <View style={styles.chips}>
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t('detail.filterBy')}
+            style={styles.chips}>
             <Chip
               label={t(hasShared ? 'library.allTracks' : 'detail.filterAll')}
               count={total}
@@ -260,7 +271,7 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2')
   },
   pair: {
-    padding: 2,
+    padding: tokenLength('space-1') / 2,
     borderWidth: 1,
     borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-chip'),
@@ -268,7 +279,7 @@ const styles = StyleSheet.create({
   },
   pairInner: {
     flexDirection: 'row',
-    gap: 2,
+    gap: tokenLength('space-1') / 2,
     position: 'relative'
   },
   scopePlate: {
@@ -279,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: tokenLength('radius-chip')
   },
   segment: {
-    height: touchTarget - 6,
+    height: touchTarget - SEGMENT_INSET,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-2'),
@@ -300,7 +311,7 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   segmentLabelAll: {
     color: tokenColor('ink')
@@ -319,7 +330,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: 1,
-    height: 20,
+    height: tokenLength('space-5'),
     backgroundColor: tokenColor('control-border')
   },
   chips: {

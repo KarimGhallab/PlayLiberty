@@ -4,7 +4,7 @@ import {
   IconDownload
 } from '@tabler/icons-react-native';
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { PlaylistWithCounts } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
@@ -25,6 +25,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -135,9 +136,13 @@ export default function PlaylistCard({
   const shuffleDisabled = nothingStored || busy;
 
   return (
-    <View
+    <PressableScale
+      testID="playlist-card"
+      accessibilityRole="button"
+      accessibilityLabel={cardLabel}
       style={styles.card}
-      onLayout={event => setWidth(event.nativeEvent.layout.width)}>
+      onLayout={event => setWidth(event.nativeEvent.layout.width)}
+      onPress={onOpen}>
       <View
         style={styles.content}
         pointerEvents="none"
@@ -202,15 +207,6 @@ export default function PlaylistCard({
           </Text>
         )}
       </View>
-
-      <Pressable
-        testID="playlist-card"
-        accessibilityRole="button"
-        accessibilityLabel={cardLabel}
-        style={StyleSheet.absoluteFill}
-        android_ripple={{ color: tokenColor('control-border') }}
-        onPress={onOpen}
-      />
 
       <PressableScale
         testID="playlist-play"
@@ -279,7 +275,7 @@ export default function PlaylistCard({
       </PressableScale>
 
       <PlayingLine playing={playing} />
-    </View>
+    </PressableScale>
   );
 }
 
@@ -310,7 +306,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   meta: {
     flexDirection: 'row',

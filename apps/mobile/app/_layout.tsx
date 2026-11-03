@@ -51,12 +51,11 @@ export default function RootLayout() {
         <Stack.Screen
           name="playlists/[playlistId]"
           options={{
-            /* The detail rides as a sheet over the gallery, which stays visible
-             * under the drag that returns to it. The screen owns its own
-             * travel, so the stack's animation stays out of the way. */
+            /* The detail rides as a sheet over the gallery. The system owns the
+             * back gesture and the stack's slide, so the gallery stays behind. */
             presentation: 'transparentModal',
-            animation: 'none',
-            gestureEnabled: false,
+            animation: 'slide_from_bottom',
+            gestureEnabled: true,
             contentStyle: { backgroundColor: 'transparent' }
           }}
         />

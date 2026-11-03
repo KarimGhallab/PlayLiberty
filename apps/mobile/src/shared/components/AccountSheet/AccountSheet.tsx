@@ -12,6 +12,7 @@ import { type Account, UserRole } from '@playliberty/contracts';
 import { Language, useI18n } from '@playliberty/i18n';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
+import { useAnnouncement } from '../../a11y/useAnnouncement';
 import { useReduceMotion } from '../../a11y/useReduceMotion';
 import {
   fontFamily,
@@ -19,6 +20,7 @@ import {
   tokenDuration,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
 import AccountAvatar from '../AccountAvatar/AccountAvatar';
@@ -48,6 +50,7 @@ export default function AccountSheet({
   onSignOut
 }: AccountSheetProps) {
   const { t, language, setLanguage } = useI18n();
+  const liveRegion = useAnnouncement(failure);
   const reduceMotion = useReduceMotion();
   const [trackWidth, setTrackWidth] = useState(0);
   const thumb = useRef(new Animated.Value(0)).current;
@@ -84,13 +87,14 @@ export default function AccountSheet({
       visible={visible}
       title={t('account.title')}
       onRequestClose={onClose}
+      closeLabel={t('common.close')}
       testID="account-sheet"
       backdropTestID="account-backdrop">
       {failure === null ? null : (
         <View
           accessible
           accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
+          accessibilityLiveRegion={liveRegion}
           style={styles.failure}>
           <Text style={styles.failureText}>{failure}</Text>
         </View>
@@ -111,6 +115,8 @@ export default function AccountSheet({
       <View style={styles.languageBlock}>
         <Text style={styles.label}>{t('language.label')}</Text>
         <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('language.label')}
           style={styles.segmentTrack}
           onLayout={event => setTrackWidth(event.nativeEvent.layout.width)}>
           <Animated.View
@@ -127,8 +133,8 @@ export default function AccountSheet({
               <Pressable
                 key={option.value}
                 testID={`language-${option.value}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
                 style={styles.segment}
                 onPress={() => setLanguage(option.value)}>
                 <Text
@@ -172,7 +178,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
   },
   mark: {
     color: tokenColor('muted'),
@@ -220,7 +226,7 @@ const styles = StyleSheet.create({
   },
   segmentLabelSelected: {
     color: tokenColor('ink'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   hairline: {
     height: 1,

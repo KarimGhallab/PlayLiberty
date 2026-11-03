@@ -14,7 +14,7 @@ import {
   waitFor,
   within
 } from '@testing-library/react-native';
-import { ScrollView } from 'react-native';
+import { BackHandler, FlatList } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -466,6 +466,20 @@ type QueueReadResult = {
   readonly data: { readonly items: readonly PlaylistTrack[] } | undefined;
   readonly error: Error | null;
 };
+
+async function reportViewable(keys: readonly string[]) {
+  await act(() => {
+    screen.getByTestId('playlist-scroll').props.onViewableItemsChanged({
+      viewableItems: keys.map(key => ({
+        key,
+        index: null,
+        isViewable: true,
+        item: null
+      })),
+      changed: []
+    });
+  });
+}
 
 async function renderDetail(options: RenderOptions = {}) {
   const onBack = options.onBack ?? jest.fn();
@@ -923,7 +937,7 @@ describe('the playlist detail', () => {
   it('draws the skip setting in the actions sheet and writes the flip', async () => {
     const { skipMutate } = await openHeaderSheet();
     const sheet = screen.getByTestId('playlist-actions-sheet');
-    const setting = within(sheet).getByTestId('skip-setting');
+    const setting = within(sheet).getByTestId('detail-skip');
 
     expect(setting.props.accessibilityState).toMatchObject({ checked: true });
 
@@ -939,7 +953,7 @@ describe('the playlist detail', () => {
     const sheet = screen.getByTestId('playlist-actions-sheet');
 
     expect(within(sheet).getByText('Skip non-music parts')).toBeOnTheScreen();
-    expect(within(sheet).getByTestId('skip-setting')).toBeDisabled();
+    expect(within(sheet).getByTestId('detail-skip')).toBeDisabled();
   });
 
   it('explains a refused skip setting in French', async () => {
@@ -969,15 +983,15 @@ describe('the playlist detail', () => {
     expect(
       screen.getByText('Ignorer les parties non musicales')
     ).toBeOnTheScreen();
-    fireEvent.press(screen.getByTestId('skip-setting'));
+    fireEvent.press(screen.getByTestId('detail-skip'));
 
     await waitFor(() => {
       expect(
-        screen.getByText("Le paramètre n'a pas été modifié.")
+        screen.getByText('Le paramètre est indisponible.')
       ).toBeOnTheScreen();
     });
     expect(
-      screen.getByTestId('skip-setting').props.accessibilityState
+      screen.getByTestId('detail-skip').props.accessibilityState
     ).toMatchObject({ checked: true });
   });
 
@@ -1028,10 +1042,10 @@ describe('the playlist detail', () => {
     );
     expect(
       screen.getByTestId('filter-failed').props.accessibilityState
-    ).toMatchObject({ selected: true });
+    ).toMatchObject({ checked: true });
     expect(
       screen.getByTestId('filter-all').props.accessibilityState
-    ).toMatchObject({ selected: false });
+    ).toMatchObject({ checked: false });
   });
 
   it('names an empty filter and returns the whole list from Show all', async () => {
@@ -1275,6 +1289,9 @@ describe('the playlist detail', () => {
     });
 
     expect(screen.getByText('Try again')).toBeOnTheScreen();
+    expect(screen.getByTestId('tracks-append-retry')).toHaveStyle({
+      minHeight: 44
+    });
 
     fireEvent.press(screen.getByTestId('tracks-append-retry'));
     expect(tracksFetchNextPage).toHaveBeenCalledTimes(1);
@@ -1286,28 +1303,26 @@ describe('the playlist detail', () => {
       playlistId: 'playlist-1',
       currentId: 'track-2'
     });
-    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    const scrollToIndex = jest
+      .spyOn(FlatList.prototype, 'scrollToIndex')
+      .mockImplementation(() => {});
     await renderDetail({
       tracks: { ...page, items: [track, secondTrack, thirdTrack], total: 3 },
       queue: [track, secondTrack, thirdTrack]
     });
 
-    const slot = screen.getByTestId('track-slot-track-2');
-    const layout = {
-      nativeEvent: { layout: { x: 0, y: 500, width: 300, height: 72 } }
-    };
-
     expect(screen.queryByTestId('playlist-skeleton')).not.toBeOnTheScreen();
 
-    await fireEvent(slot, 'layout', layout);
+    await reportViewable([]);
 
-    expect(scrollTo).toHaveBeenCalledWith({
-      y: 500 - tokenLength('space-4'),
-      animated: false
+    expect(scrollToIndex).toHaveBeenCalledWith({
+      index: 1,
+      animated: false,
+      viewOffset: tokenLength('space-4')
     });
 
-    await fireEvent(slot, 'layout', layout);
-    expect(scrollTo).toHaveBeenCalledTimes(1);
+    await reportViewable([]);
+    expect(scrollToIndex).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the list where it is when the current row is already on screen', async () => {
@@ -1316,20 +1331,17 @@ describe('the playlist detail', () => {
       playlistId: 'playlist-1',
       currentId: 'track-2'
     });
-    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    const scrollToIndex = jest
+      .spyOn(FlatList.prototype, 'scrollToIndex')
+      .mockImplementation(() => {});
     await renderDetail({
       tracks: { ...page, items: [track, secondTrack, thirdTrack], total: 3 },
       queue: [track, secondTrack, thirdTrack]
     });
 
-    await fireEvent(screen.getByTestId('playlist-scroll'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 700 } }
-    });
-    await fireEvent(screen.getByTestId('track-slot-track-2'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 120, width: 300, height: 72 } }
-    });
+    await reportViewable(['track-2']);
 
-    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scrollToIndex).not.toHaveBeenCalled();
   });
 
   it('asks for the page holding the current row when it is not loaded', async () => {
@@ -1372,14 +1384,28 @@ describe('the playlist detail', () => {
       playlistId: 'playlist-2',
       currentId: 'track-1'
     });
-    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    const scrollToIndex = jest
+      .spyOn(FlatList.prototype, 'scrollToIndex')
+      .mockImplementation(() => {});
     await renderDetail();
 
-    await fireEvent(screen.getByTestId('track-slot-track-1'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 500, width: 300, height: 72 } }
+    await reportViewable([]);
+
+    expect(scrollToIndex).not.toHaveBeenCalled();
+  });
+
+  it('mounts a bounded number of rows for a long playlist', async () => {
+    const many = Array.from({ length: 1000 }, (_, index) => ({
+      ...track,
+      track: { ...track.track, id: `track-${index}`, title: `Track ${index}` }
+    }));
+
+    await renderDetail({
+      tracks: { ...page, items: many, total: many.length },
+      queue: []
     });
 
-    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId('track-row').length).toBeLessThan(50);
   });
 
   it('draws no play control for an unplayable row', async () => {
@@ -1666,6 +1692,30 @@ describe('the playlist detail', () => {
       expect(screen.queryByTestId('undo-snackbar')).not.toBeOnTheScreen();
     });
     expect(deleteMutate).not.toHaveBeenCalled();
+  });
+
+  it('leaves the back gesture to the system when no delete is pending', async () => {
+    const addEventListener = jest.spyOn(BackHandler, 'addEventListener');
+
+    await renderDetail();
+
+    expect(addEventListener).not.toHaveBeenCalled();
+  });
+
+  it('keeps the back gesture out while a delete is pending', async () => {
+    const addEventListener = jest.spyOn(BackHandler, 'addEventListener');
+    const { onBack } = await openHeaderSheet({ undoWindowMs: 2000 });
+
+    fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(addEventListener).toHaveBeenCalled();
+    });
+
+    const listener = addEventListener.mock.calls.at(-1)?.[1];
+
+    expect(listener?.({} as never)).toBe(true);
+    expect(onBack).not.toHaveBeenCalled();
   });
 
   it('commits the delete after the window and pops to the gallery', async () => {
@@ -2007,6 +2057,16 @@ describe('the playlist detail', () => {
     expect(screen.getByLabelText('Loading tracks.')).toBeOnTheScreen();
     expect(screen.queryByTestId('playlist-identity')).not.toBeOnTheScreen();
     expect(screen.queryByTestId('track-row')).not.toBeOnTheScreen();
+  });
+
+  it('leaves through the header back control', async () => {
+    const { onBack } = await renderDetail();
+
+    fireEvent.press(screen.getByTestId('detail-back'));
+
+    await waitFor(() => {
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('draws the identity over the skeleton while the tracks page is pending', async () => {

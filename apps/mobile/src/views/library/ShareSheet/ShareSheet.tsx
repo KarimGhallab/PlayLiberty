@@ -5,6 +5,7 @@ import type { AccountSummary, Share } from '@playliberty/contracts';
 import { ShareLevel } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import AccountAvatar from '../../../shared/components/AccountAvatar/AccountAvatar';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Sheet from '../../../shared/components/Sheet/Sheet';
@@ -13,6 +14,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -46,6 +48,7 @@ export default function ShareSheet({
   const [refusal, setRefusal] = useState<RevokeRefusal | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [wasVisible, setWasVisible] = useState(visible);
+  const liveRegion = useAnnouncement(refusal?.message ?? null);
 
   /* A fresh open must not inherit the last question or refusal. */
   if (visible !== wasVisible) {
@@ -104,6 +107,7 @@ export default function ShareSheet({
             <Pressable
               testID="share-revoke"
               accessibilityRole="button"
+              accessibilityLabel={`${t('shareDialog.revoke')}, ${name}`}
               accessibilityState={{ disabled: busy }}
               disabled={busy}
               style={({ pressed }) => [
@@ -159,7 +163,7 @@ export default function ShareSheet({
         {refusal?.accountId === share.accountId ? (
           <Text
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={liveRegion}
             style={styles.message}>
             {refusal.message}
           </Text>
@@ -173,8 +177,23 @@ export default function ShareSheet({
       visible={visible}
       title={t('shareDialog.title')}
       onRequestClose={onClose}
+      closeLabel={t('common.close')}
       testID="share-sheet"
-      backdropTestID="share-backdrop">
+      backdropTestID="share-backdrop"
+      footer={
+        <View style={styles.footer}>
+          <Pressable
+            testID="share-done"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.done,
+              pressed && styles.donePressed
+            ]}
+            onPress={onClose}>
+            <Text style={styles.doneLabel}>{t('shareDialog.done')}</Text>
+          </Pressable>
+        </View>
+      }>
       {shares.isPending ? (
         <Text style={styles.note}>{t('shareDialog.loading')}</Text>
       ) : null}
@@ -209,16 +228,6 @@ export default function ShareSheet({
           <Text style={styles.addLabel}>{t('shareDialog.add')}</Text>
         </Pressable>
       ) : null}
-
-      <View style={styles.footer}>
-        <Pressable
-          testID="share-done"
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.done, pressed && styles.donePressed]}
-          onPress={onClose}>
-          <Text style={styles.doneLabel}>{t('shareDialog.done')}</Text>
-        </Pressable>
-      </View>
 
       <ShareAccountPicker
         visible={pickerOpen}
@@ -264,7 +273,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   level: {
     color: tokenColor('muted'),
@@ -288,7 +297,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   confirm: {
     marginTop: tokenLength('space-2'),
@@ -339,14 +348,14 @@ const styles = StyleSheet.create({
     color: tokenColor('bg'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   message: {
     marginTop: tokenLength('space-2'),
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   add: {
@@ -365,7 +374,7 @@ const styles = StyleSheet.create({
     color: tokenColor('accent'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   footer: {
     flexDirection: 'row',

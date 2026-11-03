@@ -47,6 +47,7 @@ export default function TrackActionsSheet({
       visible={trackTitle !== null}
       title={trackTitle ?? ''}
       onRequestClose={onClose}
+      closeLabel={t('common.close')}
       testID="track-actions-sheet"
       backdropTestID="track-actions-backdrop">
       {actions.map((action, index) => {

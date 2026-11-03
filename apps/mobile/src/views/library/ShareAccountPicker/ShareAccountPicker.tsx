@@ -6,6 +6,7 @@ import type { AccountSummary, Share } from '@playliberty/contracts';
 import { ShareLevel } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import AccountAvatar from '../../../shared/components/AccountAvatar/AccountAvatar';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Sheet from '../../../shared/components/Sheet/Sheet';
@@ -14,6 +15,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -53,6 +55,7 @@ export default function ShareAccountPicker({
   const grant = useGrantShare(playlistId);
   const [refusal, setRefusal] = useState<GrantRefusal | null>(null);
   const [wasVisible, setWasVisible] = useState(visible);
+  const liveRegion = useAnnouncement(refusal?.message ?? null);
 
   if (visible !== wasVisible) {
     setWasVisible(visible);
@@ -130,7 +133,10 @@ export default function ShareAccountPicker({
             {account.displayName}
           </Text>
         </View>
-        <View style={styles.levels}>
+        <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel={account.displayName}
+          style={styles.levels}>
           {LEVELS.map(level => {
             const selected = held === level;
 
@@ -138,8 +144,9 @@ export default function ShareAccountPicker({
               <Pressable
                 key={level}
                 testID={`share-picker-level-${level}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected, disabled: busy }}
+                accessibilityRole="radio"
+                accessibilityLabel={`${labelOf(level)}, ${account.displayName}`}
+                accessibilityState={{ checked: selected, disabled: busy }}
                 disabled={busy}
                 style={({ pressed }) => [
                   styles.level,
@@ -162,7 +169,7 @@ export default function ShareAccountPicker({
         {refusal?.accountId === account.id ? (
           <Text
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={liveRegion}
             style={styles.message}>
             {refusal.message}
           </Text>
@@ -176,8 +183,23 @@ export default function ShareAccountPicker({
       visible={visible}
       title={t('shareDialog.pickerTitle')}
       onRequestClose={onClose}
+      closeLabel={t('common.close')}
       testID="share-picker"
-      backdropTestID="share-picker-backdrop">
+      backdropTestID="share-picker-backdrop"
+      footer={
+        <View style={styles.footer}>
+          <Pressable
+            testID="share-picker-done"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.done,
+              pressed && styles.donePressed
+            ]}
+            onPress={onClose}>
+            <Text style={styles.doneLabel}>{t('common.cancel')}</Text>
+          </Pressable>
+        </View>
+      }>
       {loading ? (
         <Text style={styles.note}>{t('shareDialog.loading')}</Text>
       ) : null}
@@ -223,16 +245,6 @@ export default function ShareAccountPicker({
           )}
         </>
       ) : null}
-
-      <View style={styles.footer}>
-        <Pressable
-          testID="share-picker-done"
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.done, pressed && styles.donePressed]}
-          onPress={onClose}>
-          <Text style={styles.doneLabel}>{t('common.cancel')}</Text>
-        </Pressable>
-      </View>
     </Sheet>
   );
 }
@@ -269,7 +281,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   levels: {
     flexDirection: 'row',
@@ -299,17 +311,19 @@ const styles = StyleSheet.create({
   },
   levelLabelSelected: {
     color: tokenColor('accent'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   message: {
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   moreRetry: {
     alignSelf: 'center',
+    minHeight: touchTarget,
+    justifyContent: 'center',
     paddingHorizontal: tokenLength('space-4'),
     paddingVertical: tokenLength('space-2')
   },

@@ -2,7 +2,12 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
-import { tokenColor, tokenLength, touchTarget } from '../../styles/tokens';
+import {
+  fontFamily,
+  tokenColor,
+  tokenLength,
+  touchTarget
+} from '../../styles/tokens';
 import Screen from '../Screen/Screen';
 
 export interface NotFoundProps {
@@ -40,6 +45,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: tokenColor('ink'),
+    fontFamily,
     fontSize: tokenLength('text-md')
   }
 });

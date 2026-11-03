@@ -46,8 +46,9 @@ name: A row plays from the detail
     visible:
       id: track-now
     timeout: 15000
-# Leave the device in the library.
-- back
+# Leave the device in the library through the header's control.
+- tapOn:
+    id: detail-back
 - extendedWaitUntil:
     visible:
       id: account-door

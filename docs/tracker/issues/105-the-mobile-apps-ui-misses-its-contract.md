@@ -58,5 +58,5 @@ P3:
 
 ## Work
 
-The tickets are in [`mobile-ui-audit-1/TICKETS.md`](../tasks/mobile-ui-audit-%231/TICKETS.md). This issue stays open
+The tickets are in [`mobile-ui-audit-1/TICKETS.md`](../tasks/mobile-ui-audit-1/TICKETS.md). This issue stays open
 until every ticket resolves.

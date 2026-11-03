@@ -11,6 +11,7 @@ import {
 import { RenamePlaylistInputSchema } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import {
@@ -18,6 +19,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -58,6 +60,7 @@ export default function RenameSheet({
   }
 
   const message = invalid ?? problem;
+  const liveRegion = useAnnouncement(message);
   const canSubmit = name.trim().length > 0;
 
   function submit(): void {
@@ -92,8 +95,42 @@ export default function RenameSheet({
       visible={visible}
       title={t('renameDialog.title')}
       onRequestClose={requestClose}
+      closeLabel={t('common.close')}
       testID="rename-sheet"
-      backdropTestID="rename-backdrop">
+      backdropTestID="rename-backdrop"
+      footer={
+        <View style={styles.actions}>
+          <Pressable
+            testID="rename-cancel"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy }}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.secondary,
+              pressed && styles.secondaryPressed,
+              busy && styles.disabled
+            ]}
+            onPress={requestClose}>
+            <Text style={styles.secondaryLabel}>{t('common.cancel')}</Text>
+          </Pressable>
+          <Pressable
+            testID="rename-submit"
+            accessibilityRole="button"
+            accessibilityState={{ disabled, busy }}
+            disabled={disabled}
+            style={({ pressed }) => [
+              styles.primary,
+              pressed && styles.primaryPressed,
+              disabled && styles.disabled
+            ]}
+            onPress={submit}>
+            {busy ? <Spinner color={tokenColor('bg')} /> : null}
+            <Text style={styles.primaryLabel}>
+              {busy ? t('renameDialog.saving') : t('renameDialog.save')}
+            </Text>
+          </Pressable>
+        </View>
+      }>
       <Text style={styles.description}>{t('renameDialog.description')}</Text>
 
       <View style={styles.field}>
@@ -123,43 +160,11 @@ export default function RenameSheet({
         {message === null ? null : (
           <Text
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={liveRegion}
             style={styles.message}>
             {message}
           </Text>
         )}
-      </View>
-
-      <View style={styles.actions}>
-        <Pressable
-          testID="rename-cancel"
-          accessibilityRole="button"
-          accessibilityState={{ disabled: busy }}
-          disabled={busy}
-          style={({ pressed }) => [
-            styles.secondary,
-            pressed && styles.secondaryPressed,
-            busy && styles.disabled
-          ]}
-          onPress={requestClose}>
-          <Text style={styles.secondaryLabel}>{t('common.cancel')}</Text>
-        </Pressable>
-        <Pressable
-          testID="rename-submit"
-          accessibilityRole="button"
-          accessibilityState={{ disabled, busy }}
-          disabled={disabled}
-          style={({ pressed }) => [
-            styles.primary,
-            pressed && styles.primaryPressed,
-            disabled && styles.disabled
-          ]}
-          onPress={submit}>
-          {busy ? <Spinner color={tokenColor('bg')} /> : null}
-          <Text style={styles.primaryLabel}>
-            {busy ? t('renameDialog.saving') : t('renameDialog.save')}
-          </Text>
-        </Pressable>
       </View>
     </Sheet>
   );
@@ -201,7 +206,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   actions: {
@@ -248,7 +253,7 @@ const styles = StyleSheet.create({
     color: tokenColor('bg'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   disabled: {
     opacity: tokenNumber('opacity-disabled')

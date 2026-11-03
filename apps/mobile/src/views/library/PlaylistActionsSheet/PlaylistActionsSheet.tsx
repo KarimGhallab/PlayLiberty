@@ -12,6 +12,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import {
   fontFamily,
@@ -60,12 +61,14 @@ export default function PlaylistActionsSheet({
   extra
 }: PlaylistActionsSheetProps) {
   const { t } = useI18n();
+  const liveRegion = useAnnouncement(problem);
 
   return (
     <Sheet
       visible={playlistName !== null}
       title={playlistName ?? ''}
       onRequestClose={onClose}
+      closeLabel={t('common.close')}
       testID="playlist-actions-sheet"
       backdropTestID="playlist-actions-backdrop">
       {summary === undefined ? null : (
@@ -77,7 +80,7 @@ export default function PlaylistActionsSheet({
         <Text
           testID="playlist-actions-problem"
           accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
+          accessibilityLiveRegion={liveRegion}
           style={styles.problem}>
           {problem}
         </Text>

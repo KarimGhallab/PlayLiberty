@@ -25,6 +25,7 @@ import {
   shortEdge
 } from '@playliberty/ui-foundation';
 
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
@@ -33,6 +34,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -89,6 +91,13 @@ export default function CoverSheet({
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [wasOpen, setWasOpen] = useState(playlist !== null);
+  const liveProblem = useAnnouncement(problem);
+  const liveDiscard = useAnnouncement(
+    confirmingDiscard ? t('coverDialog.discardPrompt') : null
+  );
+  const liveRemove = useAnnouncement(
+    confirmingRemove ? t('coverDialog.removePrompt') : null
+  );
   const drag = useRef<Point | null>(null);
   const zoomRail = useRef(0);
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
@@ -471,6 +480,7 @@ export default function CoverSheet({
       visible={playlist !== null}
       title={t('coverDialog.title')}
       onRequestClose={requestClose}
+      closeLabel={t('common.close')}
       testID="cover-sheet"
       backdropTestID="cover-backdrop">
       <Text style={styles.description}>{t('coverDialog.description')}</Text>
@@ -535,7 +545,7 @@ export default function CoverSheet({
         <Text
           testID="cover-problem"
           accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
+          accessibilityLiveRegion={liveProblem}
           style={styles.problem}>
           {problem}
         </Text>
@@ -545,7 +555,7 @@ export default function CoverSheet({
         <>
           <Text
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={liveDiscard}
             style={styles.prompt}>
             {t('coverDialog.discardPrompt')}
           </Text>
@@ -578,7 +588,7 @@ export default function CoverSheet({
         <>
           <Text
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={liveRemove}
             style={styles.prompt}>
             {t('coverDialog.removePrompt')}
           </Text>
@@ -820,7 +830,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     textAlign: 'right'
   },
   reset: {
@@ -839,7 +849,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   prompt: {
@@ -847,7 +857,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: '500',
+    fontWeight: tokenWeight('weight-medium'),
     lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   choose: {
@@ -916,7 +926,7 @@ const styles = StyleSheet.create({
     color: tokenColor('bg'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '500'
+    fontWeight: tokenWeight('weight-medium')
   },
   destructive: {
     minHeight: touchTarget,

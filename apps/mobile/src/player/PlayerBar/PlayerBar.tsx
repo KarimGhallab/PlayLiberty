@@ -26,19 +26,26 @@ import PressableScale from '../../shared/components/PressableScale/PressableScal
 import { type MediaSource, mediaSource } from '../../shared/media/mediaSource';
 import { sleeveColor } from '../../shared/styles/sleeve';
 import {
+  barScrimOpacity,
+  barVeilOpacity,
   fontFamily,
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../auth/useApiConfig';
+import {
+  usePlayerBarHeight,
+  useSetPlayerBarHeight
+} from '../playerBarSize/PlayerBarSizeContext';
 import { playerBarHeight } from '../playerBarSize/playerBarSize';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 import Artwork from './Artwork';
-import SeekBar from './SeekBar';
+import SeekBar, { type SeekBarProps } from './SeekBar';
 
 /*
  * The player bar: absent at rest and once playback exists it persists across
@@ -61,7 +68,6 @@ interface BarState {
   readonly hasNext: boolean;
   readonly previousId: string | null;
   readonly nextId: string | null;
-  readonly positionSeconds: number;
   readonly queueLabel: string;
   readonly queueIndex: number;
   readonly queueLength: number;
@@ -81,7 +87,6 @@ interface BarView {
   readonly playlistCoverUpdatedAt: string | null;
   readonly playlistCoverTrackId: string | null;
   readonly isPlaying: boolean;
-  readonly positionSeconds: number;
   readonly queueLabel: string;
 }
 
@@ -105,7 +110,6 @@ function useBarState(): BarState | null {
   const skipNext = usePlayerStore(state => state.skipNext);
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
   const play = usePlayerStore(state => state.play);
-  const positionSeconds = usePlayerStore(state => state.positionSeconds);
   const seekToFraction = usePlayerStore(state => state.seekToFraction);
   const seekBy = usePlayerStore(state => state.seekBy);
 
@@ -127,7 +131,6 @@ function useBarState(): BarState | null {
     hasNext: nextId !== null,
     previousId,
     nextId,
-    positionSeconds,
     queueLabel: index >= 0 ? `${index + 1}/${queue.length}` : '',
     queueIndex: index,
     queueLength: queue.length,
@@ -149,7 +152,6 @@ function currentView(bar: BarState): BarView {
     playlistCoverUpdatedAt: bar.playlistCoverUpdatedAt,
     playlistCoverTrackId: bar.playlistCoverTrackId,
     isPlaying: bar.isPlaying,
-    positionSeconds: bar.positionSeconds,
     queueLabel: bar.queueLabel
   };
 }
@@ -172,7 +174,6 @@ function neighbourView(
     playlistCoverUpdatedAt: bar.playlistCoverUpdatedAt,
     playlistCoverTrackId: bar.playlistCoverTrackId,
     isPlaying: bar.isPlaying,
-    positionSeconds: 0,
     queueLabel: `${bar.queueIndex + offset + 1}/${bar.queueLength}`
   };
 }
@@ -321,12 +322,20 @@ function Meta({ view }: { readonly view: BarView }) {
   );
 }
 
+/* The one subscription to the position: only this rail repaints on a tick. */
+function LiveSeekBar(props: Omit<SeekBarProps, 'positionSeconds'>) {
+  const positionSeconds = usePlayerStore(state => state.positionSeconds);
+
+  return <SeekBar {...props} positionSeconds={positionSeconds} />;
+}
+
 interface BarPageProps {
   readonly config: ApiConfig | null;
   readonly bar: BarState;
   readonly view: BarView;
   readonly translateX: Animated.Value | Animated.AnimatedAddition<number>;
   readonly interactive: boolean;
+  readonly onHeight?: (height: number) => void;
   readonly panHandlers?: GestureResponderHandlers;
 }
 
@@ -336,6 +345,7 @@ function BarPage({
   view,
   translateX,
   interactive,
+  onHeight,
   panHandlers
 }: BarPageProps) {
   const { t } = useI18n();
@@ -369,6 +379,8 @@ function BarPage({
 
   return (
     <Animated.View
+      testID={interactive ? 'player-bar-capsule' : undefined}
+      onLayout={event => onHeight?.(event.nativeEvent.layout.height)}
       pointerEvents={interactive ? 'auto' : 'none'}
       importantForAccessibility={interactive ? 'auto' : 'no-hide-descendants'}
       accessibilityElementsHidden={!interactive}
@@ -417,15 +429,26 @@ function BarPage({
           size={tokenLength('space-7') + 8}
         />
         <View style={styles.rail}>
-          <SeekBar
-            key={view.track.id}
-            durationSeconds={view.track.durationSeconds}
-            positionSeconds={view.positionSeconds}
-            onSeekStart={startScrub}
-            onSeekEnd={endScrub}
-            onSeek={bar.seekToFraction}
-            onSeekBy={bar.seekBy}
-          />
+          {interactive ? (
+            <LiveSeekBar
+              key={view.track.id}
+              durationSeconds={view.track.durationSeconds}
+              onSeekStart={startScrub}
+              onSeekEnd={endScrub}
+              onSeek={bar.seekToFraction}
+              onSeekBy={bar.seekBy}
+            />
+          ) : (
+            <SeekBar
+              key={view.track.id}
+              durationSeconds={view.track.durationSeconds}
+              positionSeconds={0}
+              onSeekStart={startScrub}
+              onSeekEnd={endScrub}
+              onSeek={bar.seekToFraction}
+              onSeekBy={bar.seekBy}
+            />
+          )}
         </View>
         <StepButton
           direction="next"
@@ -446,6 +469,8 @@ export default function PlayerBar({ config }: PlayerBarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const bar = useBarState();
+  const publishedHeight = usePlayerBarHeight();
+  const setBarHeight = useSetPlayerBarHeight();
   const reduceMotion = useReduceMotion();
   const swipe = useRef(new Animated.Value(0)).current;
   const [direction, setDirection] = useState<SwipeDirection | null>(null);
@@ -468,6 +493,13 @@ export default function PlayerBar({ config }: PlayerBarProps) {
   const previousId = bar?.previousId ?? null;
   const nextId = bar?.nextId ?? null;
   const play = bar?.play;
+
+  /* The capsule plus the 4pt bottom offset and the 2pt gap the screens keep
+   * above it, so a 92pt capsule publishes the 98pt the constant named. */
+  const publishHeight = useCallback(
+    (height: number) => setBarHeight(height + 6),
+    [setBarHeight]
+  );
 
   const previousView =
     bar !== null && previousId !== null
@@ -583,7 +615,10 @@ export default function PlayerBar({ config }: PlayerBarProps) {
       <View
         testID="player-bar"
         pointerEvents="box-none"
-        style={[styles.deck, { bottom: insets.bottom + 4 }]}>
+        style={[
+          styles.deck,
+          { bottom: insets.bottom + 4, height: publishedHeight - 6 }
+        ]}>
         {incoming === null ? null : (
           <BarPage
             config={config}
@@ -602,6 +637,7 @@ export default function PlayerBar({ config }: PlayerBarProps) {
           view={currentView(bar)}
           translateX={swipe}
           interactive
+          onHeight={publishHeight}
           panHandlers={pan.panHandlers}
         />
       </View>
@@ -610,13 +646,13 @@ export default function PlayerBar({ config }: PlayerBarProps) {
           message={t('playerBar.failed', { title: failureTitle })}
           detail={t('playerBar.failedDetail')}
           onDismiss={dismissPlaybackFailure}
-          bottomOffset={playerBarHeight + tokenLength('space-2')}
+          bottomOffset={publishedHeight + tokenLength('space-2')}
         />
       ) : backgroundNotice ? (
         <Notice
           message={t('playerBar.notificationRefused')}
           onDismiss={dismissBackgroundNotice}
-          bottomOffset={playerBarHeight + tokenLength('space-2')}
+          bottomOffset={publishedHeight + tokenLength('space-2')}
         />
       ) : null}
     </>
@@ -628,7 +664,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: playerBarHeight - 6,
     zIndex: tokenNumber('z-player')
   },
   capsule: {
@@ -638,7 +673,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: 'hidden',
     elevation: tokenNumber('z-player') + 2,
-    height: playerBarHeight - 6,
+    minHeight: playerBarHeight - 6,
     gap: tokenLength('space-1'),
     paddingHorizontal: tokenLength('space-3'),
     paddingVertical: tokenLength('space-1'),
@@ -647,14 +682,14 @@ const styles = StyleSheet.create({
     borderColor: tokenColor('line')
   },
   veilImage: {
-    opacity: 0.45
+    opacity: barVeilOpacity
   },
   veilScrim: {
     backgroundColor: tokenColor('bg'),
-    opacity: 0.5
+    opacity: barScrimOpacity
   },
   top: {
-    flex: 1,
+    minHeight: tokenLength('space-9'),
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-3')
@@ -675,7 +710,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     lineHeight: tokenLength('text-md') * tokenNumber('leading-tight')
   },
   meta: {
@@ -685,16 +720,16 @@ const styles = StyleSheet.create({
   },
   playlist: {
     flexShrink: 1,
-    color: tokenColor('muted'),
+    color: tokenColor('muted-on-art'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
     lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
   },
   count: {
-    color: tokenColor('accent'),
+    color: tokenColor('accent-on-art'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
   },
   step: {

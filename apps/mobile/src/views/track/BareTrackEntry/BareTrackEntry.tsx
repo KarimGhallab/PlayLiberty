@@ -17,7 +17,7 @@ import {
   SessionStatus,
   useSessionStore
 } from '../../../auth/sessionStore/sessionStore';
-import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
+import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { takeLeftPlaylistNotice } from '../leftPlaylistNotice/leftPlaylistNotice';
 
@@ -50,8 +50,8 @@ export default function BareTrackEntry({ trackId }: BareTrackEntryProps) {
   const startBareTrack = usePlayerStore(state => state.startBareTrack);
   const playlistId = usePlayerStore(state => state.playlistId);
   const currentId = usePlayerStore(state => state.currentId);
-  const playerOffset =
-    usePlayerStore(state => state.currentId) === null ? 0 : playerBarHeight;
+  const barHeight = usePlayerBarHeight();
+  const playerOffset = currentId === null ? 0 : barHeight;
   const [notice, setNotice] = useState<TrackLinkNotice | null>(null);
   const decided = useRef(false);
   const baseline = useRef<string | null>(null);

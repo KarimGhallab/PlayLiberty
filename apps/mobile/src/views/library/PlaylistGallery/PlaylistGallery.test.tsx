@@ -43,6 +43,7 @@ import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
 import { useSyncAllPlaylists } from '../../../api/useSyncAllPlaylists/useSyncAllPlaylists';
 import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
 import { useUpdatePin } from '../../../api/useUpdatePin';
+import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -60,6 +61,10 @@ jest.mock('../../../api/useCreatePlaylist/useCreatePlaylist', () => ({
 
 jest.mock('../../../api/useUpdatePin', () => ({
   useUpdatePin: jest.fn()
+}));
+
+jest.mock('../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic', () => ({
+  useUpdateSkipNonMusic: jest.fn()
 }));
 
 jest.mock('../../../api/useSyncPlaylist', () => ({
@@ -241,6 +246,7 @@ function queryResult<T>(data: T, overrides: Record<string, unknown> = {}) {
     isError: false,
     isFetching: false,
     isRefetching: false,
+    dataUpdatedAt: 0,
     hasNextPage: false,
     isFetchingNextPage: false,
     fetchNextPage: jest.fn(),
@@ -306,11 +312,13 @@ async function renderPlaylists(
   const syncAll = syncAllResult;
   const remove = mutationResult();
   const rename = mutationResult();
+  const skipSetting = mutationResult();
   jest.mocked(useUpdatePin).mockReturnValue(pin as never);
   jest.mocked(useSyncPlaylist).mockReturnValue(syncNow as never);
   jest.mocked(useSyncAllPlaylists).mockReturnValue(syncAll as never);
   jest.mocked(useDeletePlaylist).mockReturnValue(remove as never);
   jest.mocked(useRenamePlaylist).mockReturnValue(rename as never);
+  jest.mocked(useUpdateSkipNonMusic).mockReturnValue(skipSetting as never);
   jest.mocked(usePlaylistShares).mockReturnValue(queryResult([]));
   jest.mocked(useRevokeShare).mockReturnValue(mutationResult() as never);
   jest.mocked(useAccount).mockReturnValue(
@@ -354,7 +362,16 @@ async function renderPlaylists(
     </QueryClientProvider>
   );
 
-  return { onOpenPlaylist, view, pin, syncNow, syncAll, remove, rename };
+  return {
+    onOpenPlaylist,
+    view,
+    pin,
+    syncNow,
+    syncAll,
+    remove,
+    rename,
+    skipSetting
+  };
 }
 
 async function renderGallery(
@@ -449,6 +466,44 @@ describe('the gallery', () => {
     expect(
       within(screen.getByTestId('playlist-action-delete')).getByText('Delete')
     ).toBeOnTheScreen();
+  });
+
+  it('carries the skip setting in a card actions sheet', async () => {
+    const { skipSetting } = await renderPlaylists(queryResult(page([base])));
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Rest Mix' })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+    });
+
+    const skip = screen.getByRole('checkbox', {
+      name: 'Skip non-music parts'
+    });
+
+    expect(skip).toBeChecked();
+
+    await fireEvent.press(skip);
+
+    expect(skipSetting.mutate).toHaveBeenCalledWith(false, expect.anything());
+  });
+
+  it('keeps the skip setting disabled for a read-only share', async () => {
+    await renderPlaylists(queryResult(page([shared])));
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'More actions for Shared Mix' })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
+    });
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Skip non-music parts' })
+    ).toBeDisabled();
   });
 
   it('starts a shuffled playlist from its card', async () => {
@@ -872,21 +927,25 @@ describe('the gallery', () => {
   it('draws the scope and the chips with their counts', async () => {
     await renderGallery([shared, base], directory);
 
-    expect(screen.getByRole('button', { name: 'All 2' })).toBeSelected();
+    expect(screen.getByRole('radio', { name: 'All 2' })).toBeChecked();
+    expect(screen.getByTestId('scope-all').props.hitSlop).toEqual({
+      top: 3,
+      bottom: 3
+    });
     expect(
-      screen.getByRole('button', { name: 'Shared with me 1' })
-    ).not.toBeSelected();
-    expect(screen.getByRole('button', { name: 'All tracks 6' })).toBeSelected();
-    expect(screen.getByRole('button', { name: 'Pending 2' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Failed 4' })).toBeOnTheScreen();
+      screen.getByRole('radio', { name: 'Shared with me 1' })
+    ).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'All tracks 6' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Pending 2' })).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'Failed 4' })).toBeOnTheScreen();
     expect(
-      screen.queryByRole('button', { name: /Stored/ })
+      screen.queryByRole('radio', { name: /Stored/ })
     ).not.toBeOnTheScreen();
     expect(
-      screen.queryByRole('button', { name: /Downloading/ })
+      screen.queryByRole('radio', { name: /Downloading/ })
     ).not.toBeOnTheScreen();
     expect(
-      screen.queryByRole('button', { name: /Unavailable/ })
+      screen.queryByRole('radio', { name: /Unavailable/ })
     ).not.toBeOnTheScreen();
   });
 
@@ -894,19 +953,19 @@ describe('the gallery', () => {
     await renderGallery([base]);
 
     expect(
-      screen.queryByRole('button', { name: 'Shared with me 1' })
+      screen.queryByRole('radio', { name: 'Shared with me 1' })
     ).not.toBeOnTheScreen();
     expect(
-      screen.queryByRole('button', { name: 'All 1' })
+      screen.queryByRole('radio', { name: 'All 1' })
     ).not.toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'All 3' })).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'All 3' })).toBeOnTheScreen();
   });
 
   it('filters the grid to the shared scope', async () => {
     await renderGallery([shared, base], directory);
 
     await fireEvent.press(
-      screen.getByRole('button', { name: 'Shared with me 1' })
+      screen.getByRole('radio', { name: 'Shared with me 1' })
     );
 
     expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
@@ -914,14 +973,14 @@ describe('the gallery', () => {
       screen.getByTestId('playlist-card').props.accessibilityLabel
     ).toMatch(/^Shared Mix, /);
     expect(
-      screen.getByRole('button', { name: 'All tracks 3' })
+      screen.getByRole('radio', { name: 'All tracks 3' })
     ).toBeOnTheScreen();
   });
 
   it('filters the grid by a status chip', async () => {
     await renderGallery([storedItem, base]);
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Failed 2' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Failed 2' }));
 
     expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
     expect(
@@ -933,15 +992,15 @@ describe('the gallery', () => {
     const { view } = await renderGallery([shared, base], directory);
 
     await fireEvent.press(
-      screen.getByRole('button', { name: 'Shared with me 1' })
+      screen.getByRole('radio', { name: 'Shared with me 1' })
     );
-    await fireEvent.press(screen.getByRole('button', { name: 'Failed 2' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Failed 2' }));
 
     await view.unmount();
     await renderGallery([shared, base], directory);
 
-    expect(screen.getByRole('button', { name: 'All 2' })).toBeSelected();
-    expect(screen.getByRole('button', { name: 'All tracks 6' })).toBeSelected();
+    expect(screen.getByRole('radio', { name: 'All 2' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'All tracks 6' })).toBeChecked();
   });
 
   it('scrolls the filter row horizontally', async () => {
@@ -1015,10 +1074,28 @@ describe('the gallery', () => {
     });
   });
 
-  it('holds the dial while a playlist syncs', async () => {
+  it('keeps the add trigger live while one playlist syncs', async () => {
     await renderGallery([syncing]);
 
-    expect(screen.getByTestId('gallery-actions')).toBeDisabled();
+    expect(screen.getByTestId('gallery-actions')).toBeEnabled();
+
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
+    await fireEvent.press(screen.getByTestId('gallery-add'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-sheet')).toBeOnTheScreen();
+    });
+  });
+
+  it('holds the dial while the bulk sync runs', async () => {
+    await renderGallery([base]);
+
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
+    await fireEvent.press(screen.getByTestId('gallery-sync'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('gallery-actions')).toBeDisabled();
+    });
   });
 
   it('clears the player bar under the last row and the dial', async () => {

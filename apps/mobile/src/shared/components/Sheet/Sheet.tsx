@@ -1,3 +1,4 @@
+import { IconX } from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -9,6 +10,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View
@@ -23,16 +25,21 @@ import {
   tokenColor,
   tokenDuration,
   tokenLength,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
+import PressableScale from '../PressableScale/PressableScale';
 
 export interface SheetProps {
   readonly visible: boolean;
   readonly title: string;
   readonly onRequestClose: () => void;
+  readonly closeLabel: string;
   readonly testID: string;
   readonly backdropTestID: string;
   readonly children: ReactNode;
+  /** The actions that stay on screen while the body scrolls. */
+  readonly footer?: ReactNode;
 }
 
 const DISMISS_DISTANCE = tokenLength('space-8') * 2;
@@ -53,9 +60,11 @@ export default function Sheet({
   visible,
   title,
   onRequestClose,
+  closeLabel,
   testID,
   backdropTestID,
-  children
+  children,
+  footer
 }: SheetProps) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
@@ -103,13 +112,13 @@ export default function Sheet({
           toValue: 0,
           duration: tokenDuration('motion-base'),
           easing: EASE,
-          useNativeDriver: false
+          useNativeDriver: true
         }),
         Animated.timing(scrimOpacity, {
           toValue: 1,
           duration: tokenDuration('motion-base'),
           easing: EASE,
-          useNativeDriver: false
+          useNativeDriver: true
         })
       ]).start();
       return;
@@ -138,13 +147,13 @@ export default function Sheet({
         toValue: travel,
         duration: tokenDuration('motion-fast'),
         easing: EASE,
-        useNativeDriver: false
+        useNativeDriver: true
       }),
       Animated.timing(scrimOpacity, {
         toValue: 0,
         duration: tokenDuration('motion-fast'),
         easing: EASE,
-        useNativeDriver: false
+        useNativeDriver: true
       })
     ]).start(({ finished }) => {
       exiting.current = false;
@@ -176,13 +185,13 @@ export default function Sheet({
           toValue: 0,
           duration: tokenDuration('motion-base'),
           easing: EASE,
-          useNativeDriver: false
+          useNativeDriver: true
         }),
         Animated.timing(scrimOpacity, {
           toValue: 1,
           duration: tokenDuration('motion-base'),
           easing: EASE,
-          useNativeDriver: false
+          useNativeDriver: true
         })
       ]).start();
     };
@@ -252,8 +261,25 @@ export default function Sheet({
             <Text accessibilityRole="header" style={styles.title}>
               {title}
             </Text>
+            <PressableScale
+              testID={`${testID}-close`}
+              accessibilityRole="button"
+              accessibilityLabel={closeLabel}
+              style={styles.close}
+              onPress={onRequestClose}>
+              <IconX size={tokenLength('icon-md')} color={tokenColor('ink')} />
+            </PressableScale>
           </View>
-          {children}
+          <ScrollView
+            testID={`${testID}-body`}
+            style={styles.body}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
+          {footer === undefined ? null : (
+            <View style={styles.footer}>{footer}</View>
+          )}
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -289,13 +315,33 @@ const styles = StyleSheet.create({
     backgroundColor: tokenColor('control-border')
   },
   header: {
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokenLength('space-2'),
     minHeight: touchTarget
   },
   title: {
+    flexShrink: 1,
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-lg'),
-    fontWeight: '600'
+    fontWeight: tokenWeight('weight-semibold')
+  },
+  close: {
+    width: touchTarget,
+    height: touchTarget,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
+    /* The glyph aligns with the sheet's content edge; the target reaches into
+     * the padding. */
+    marginRight: -(touchTarget - tokenLength('icon-md')) / 2
+  },
+  body: {
+    flexShrink: 1
+  },
+  footer: {
+    flexShrink: 0
   }
 });

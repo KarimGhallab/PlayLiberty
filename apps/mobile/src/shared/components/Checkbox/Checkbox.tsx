@@ -1,5 +1,5 @@
 import { IconCheck } from '@tabler/icons-react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -42,6 +42,7 @@ export default function Checkbox({
 }: CheckboxProps) {
   const reduceMotion = useReduceMotion();
   const reveal = useRef(new Animated.Value(checked ? 1 : 0)).current;
+  const [pressed, setPressed] = useState(false);
 
   useEffect(() => {
     const target = checked ? 1 : 0;
@@ -69,12 +70,18 @@ export default function Checkbox({
         accessibilityState={{ checked, disabled }}
         disabled={disabled}
         style={styles.row}
+        onPressIn={() => setPressed(true)}
+        onPressOut={() => setPressed(false)}
         onPress={() => onChange(!checked)}>
         <View
           accessible={false}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={styles.box}>
+          style={[
+            styles.box,
+            pressed && styles.boxPressed,
+            disabled && styles.boxDisabled
+          ]}>
           <Animated.View
             pointerEvents="none"
             style={[styles.fill, { opacity: reveal }]}
@@ -130,6 +137,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-control')
+  },
+  /* The press reads on the box, not as a ripple across the whole row. */
+  boxPressed: {
+    opacity: 0.8
+  },
+  /* The label stays readable; only the control says it cannot move. */
+  boxDisabled: {
+    opacity: tokenNumber('opacity-disabled')
   },
   fill: {
     position: 'absolute',

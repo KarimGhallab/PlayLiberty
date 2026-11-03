@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Animated, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { tokenLength } from '../../styles/tokens';
@@ -28,6 +28,7 @@ async function renderSheet(bottomInset = 0) {
         visible
         title="Account"
         onRequestClose={onRequestClose}
+        closeLabel="Close"
         testID="sheet"
         backdropTestID="sheet-backdrop">
         <Text>Content</Text>
@@ -55,6 +56,21 @@ describe('the sheet frame', () => {
     expect(screen.getByTestId('sheet')).toBeOnTheScreen();
   });
 
+  it('closes from its labelled control', async () => {
+    const { onRequestClose } = await renderSheet();
+
+    fireEvent.press(screen.getByLabelText('Close'));
+
+    expect(onRequestClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('scrolls the body between the title and the footer', async () => {
+    await renderSheet();
+
+    expect(screen.getByTestId('sheet-body')).toBeOnTheScreen();
+    expect(screen.getByText('Content')).toBeOnTheScreen();
+  });
+
   it('clears the bottom safe inset', async () => {
     await renderSheet(24);
 
@@ -72,6 +88,24 @@ describe('the sheet frame', () => {
 
     expect(modal?.props.animationType).toBe('none');
     expect(screen.getByTestId('sheet-scrim')).toBeOnTheScreen();
+  });
+
+  it('runs its entry motion on the native driver', async () => {
+    const timing = jest.spyOn(Animated, 'timing');
+
+    await renderSheet();
+
+    await act(async () => {
+      fireEvent(screen.getByTestId('sheet'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 400 } }
+      });
+    });
+
+    expect(timing).toHaveBeenCalled();
+
+    for (const [, config] of timing.mock.calls) {
+      expect(config.useNativeDriver).toBe(true);
+    }
   });
 
   it('dismisses on a long drag or a fast flick, not on a short drag', () => {

@@ -9,6 +9,7 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
+  tokenWeight,
   touchTarget
 } from '../../styles/tokens';
 import AccountAvatar from '../AccountAvatar/AccountAvatar';
@@ -82,7 +83,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-lg'),
-    fontWeight: '600',
+    fontWeight: tokenWeight('weight-semibold'),
     lineHeight: tokenLength('text-lg') * tokenNumber('leading-tight')
   },
   actions: {

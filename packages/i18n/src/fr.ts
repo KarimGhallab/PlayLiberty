@@ -34,8 +34,11 @@ export const fr: Messages = {
     failed: "La connexion n'a pas abouti."
   },
   common: {
+    back: 'Retour',
+    close: 'Fermer',
     cancel: 'Annuler',
     undo: 'Annuler',
+    moreTime: 'Plus de temps',
     discardPrompt: 'Abandonner ce lien ? Le lien collé sera perdu.',
     keepEditing: 'Continuer la saisie',
     discard: 'Abandonner'

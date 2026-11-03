@@ -4,6 +4,7 @@ import { StyleSheet, Text } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { useAnnouncement } from '../../shared/a11y/useAnnouncement';
 import SignInDoor from '../../shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../../shared/components/SignedOut/SignedOut';
 import {
@@ -30,6 +31,9 @@ export default function ProvisionCallback() {
   }>();
   const [failure, setFailure] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const liveRegion = useAnnouncement(
+    failure === null ? t('signedOut.busy') : null
+  );
 
   useEffect(() => {
     if (code === undefined || state === undefined) {
@@ -74,7 +78,7 @@ export default function ProvisionCallback() {
   if (failure === null) {
     return (
       <SignInDoor busy>
-        <Text accessibilityLiveRegion="polite" style={styles.waiting}>
+        <Text accessibilityLiveRegion={liveRegion} style={styles.waiting}>
           {t('signedOut.busy')}
         </Text>
       </SignInDoor>

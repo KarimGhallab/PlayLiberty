@@ -127,6 +127,9 @@ describe('the track row', () => {
     await renderRow(failed);
 
     expect(screen.getByText('YouTube could not be reached.')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-details')).toHaveStyle({
+      minHeight: 44
+    });
     expect(screen.queryByTestId('track-reason')).not.toBeOnTheScreen();
 
     fireEvent.press(screen.getByTestId('track-details'));
