@@ -15,11 +15,13 @@ import { usePlayerStore } from '../playerStore/playerStore';
 import { ownsArrowKey, ownsGlobalKey } from '../transportKeys';
 import { SeekDirection, currentTrack, hasNext } from '../types';
 import styles from './PlayerBar.module.scss';
+import { usePlayerBarCover } from './usePlayerBarCover';
 
 /*
- * The player bar: absent at rest; once playback exists it persists across both
- * routes, like the music. Its transport is always drawn, unlike the header's,
- * so a control never appears and disappears.
+ * The player bar: a floating dock, absent at rest and persistent once playback
+ * exists. Its surface is the playing playlist's cover, blurred behind a veil;
+ * the transport sits on the dock's centre line on the wide arrangement, and the
+ * seek line rides the top edge with a touch-safe target.
  */
 
 /* Pointer capture keeps a drag alive when the pointer leaves the track. A host
@@ -47,6 +49,8 @@ export default function PlayerBar() {
   const skipPrevious = usePlayerStore(state => state.skipPrevious);
   const canSkipNext = usePlayerStore(hasNext);
   const touch = useMediaQuery(TOUCH_QUERY);
+  const cover = usePlayerBarCover();
+  const [coverFailed, setCoverFailed] = useState(false);
   const scrubRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   /* The dragged position stays local until release, so the element is asked to
@@ -55,6 +59,10 @@ export default function PlayerBar() {
   const wasPlayingRef = useRef(false);
   const [dragFraction, setDragFraction] = useState<number | null>(null);
   const { run, endRun } = usePlayPauseMorph(isPlaying);
+
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [cover]);
 
   /* The keyboard transport, on the window so a press reaches it wherever focus
    * sits. Space is the transport's wherever it is not text entry or an open
@@ -163,6 +171,26 @@ export default function PlayerBar() {
         decoding="async"
       />
     );
+  const art =
+    playlist === null ? (
+      <span
+        className={styles.playerBar__art}
+        data-art={artwork === null ? 'no-art' : 'art'}
+        aria-hidden="true">
+        {artworkImage}
+      </span>
+    ) : (
+      <Link
+        to="/playlists/$playlistId"
+        params={{ playlistId: playlist.id }}
+        className={styles.playerBar__art}
+        data-art={artwork === null ? 'no-art' : 'art'}
+        aria-hidden="true"
+        tabIndex={-1}
+        disabled={onCurrentPlaylist}>
+        {artworkImage}
+      </Link>
+    );
 
   /* The pointer's x as a fraction of the track's own box, bounded: the store
    * owns the fraction-to-seconds conversion. */
@@ -183,13 +211,13 @@ export default function PlayerBar() {
       return;
     }
 
-    const fraction = fractionAt(event.clientX);
+    const target = fractionAt(event.clientX);
 
     draggingRef.current = true;
-    dragFractionRef.current = fraction;
+    dragFractionRef.current = target;
     wasPlayingRef.current = usePlayerStore.getState().isPlaying;
     capturePointer(event.currentTarget, event.pointerId);
-    setDragFraction(fraction);
+    setDragFraction(target);
 
     if (wasPlayingRef.current) {
       setPlaying(false);
@@ -201,10 +229,10 @@ export default function PlayerBar() {
       return;
     }
 
-    const fraction = fractionAt(event.clientX);
+    const target = fractionAt(event.clientX);
 
-    dragFractionRef.current = fraction;
-    setDragFraction(fraction);
+    dragFractionRef.current = target;
+    setDragFraction(target);
   };
 
   const endScrub = (event: PointerEvent<HTMLDivElement>): void => {
@@ -215,13 +243,13 @@ export default function PlayerBar() {
     draggingRef.current = false;
     releasePointer(event.currentTarget, event.pointerId);
 
-    const fraction = dragFractionRef.current;
+    const target = dragFractionRef.current;
 
     dragFractionRef.current = null;
     setDragFraction(null);
 
-    if (fraction !== null) {
-      seekToFraction(fraction);
+    if (target !== null) {
+      seekToFraction(target);
     }
 
     /* Only a scrub that interrupted playback resumes it; a paused player stays
@@ -236,28 +264,71 @@ export default function PlayerBar() {
       className={styles.playerBar}
       aria-label={t('playerBar.label')}
       data-state={isPlaying ? 'playing' : 'paused'}>
-      {playlist === null ? (
-        <span
-          className={styles.playerBar__art}
-          data-art={artwork === null ? 'no-art' : 'art'}
-          aria-hidden="true">
-          {artworkImage}
-        </span>
-      ) : (
-        <Link
-          to="/playlists/$playlistId"
-          params={{ playlistId: playlist.id }}
-          className={styles.playerBar__art}
-          data-art={artwork === null ? 'no-art' : 'art'}
-          aria-hidden="true"
-          tabIndex={-1}
-          disabled={onCurrentPlaylist}>
-          {artworkImage}
-        </Link>
-      )}
-      <div className={styles.playerBar__top}>
-        <div className={styles.playerBar__id}>
-          <span className={styles.playerBar__name}>
+      <span className={styles.playerBar__cover} aria-hidden="true">
+        {cover === null || coverFailed ? (
+          <span className={styles.playerBar__coverFallback} />
+        ) : (
+          <img
+            className={styles.playerBar__coverImage}
+            src={cover}
+            alt=""
+            decoding="async"
+            onError={() => setCoverFailed(true)}
+          />
+        )}
+      </span>
+      <span className={styles.playerBar__veil} aria-hidden="true" />
+      <div
+        ref={scrubRef}
+        className={styles.playerBar__scrub}
+        role="slider"
+        tabIndex={0}
+        aria-label={t('playerBar.position')}
+        aria-valuemin={0}
+        aria-valuemax={duration}
+        aria-valuenow={shownElapsed}
+        aria-valuetext={t('playerBar.positionValue', {
+          elapsed: formatDuration(shownElapsed),
+          duration: formatDuration(duration)
+        })}
+        data-dragging={dragFraction === null ? undefined : 'true'}
+        onPointerDown={startScrub}
+        onPointerMove={moveScrub}
+        onPointerUp={endScrub}
+        onPointerCancel={endScrub}
+        onKeyDown={event => {
+          if (
+            (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+            !event.metaKey &&
+            !event.ctrlKey &&
+            !event.altKey
+          ) {
+            event.preventDefault();
+            seekBy(
+              event.key === 'ArrowRight'
+                ? SeekDirection.Forward
+                : SeekDirection.Backward
+            );
+            return;
+          }
+
+          if (event.key === 'Home') {
+            seekToStart();
+          }
+
+          if (event.key === 'End') {
+            seekToEnd();
+          }
+        }}>
+        <div
+          className={styles.playerBar__fill}
+          style={{ transform: `scaleX(${shownFraction})` }}
+        />
+      </div>
+      <div className={styles.playerBar__body}>
+        <div className={styles.playerBar__lead}>
+          {art}
+          <span className={styles.playerBar__identity}>
             <span className={styles.playerBar__title}>{current.title}</span>
             {playlist === null ? null : (
               <Link
@@ -332,71 +403,19 @@ export default function PlayerBar() {
             </span>
           </span>
         </div>
-      </div>
-      <div className={styles.playerBar__position}>
-        <span className={styles.playerBar__time}>
-          {formatDuration(shownElapsed)}
-        </span>
-        <div
-          ref={scrubRef}
-          className={styles.playerBar__scrub}
-          role="slider"
-          tabIndex={0}
-          aria-label={t('playerBar.position')}
-          aria-valuemin={0}
-          aria-valuemax={duration}
-          aria-valuenow={shownElapsed}
-          aria-valuetext={t('playerBar.positionValue', {
-            elapsed: formatDuration(shownElapsed),
-            duration: formatDuration(duration)
-          })}
-          data-dragging={dragFraction === null ? undefined : 'true'}
-          onPointerDown={startScrub}
-          onPointerMove={moveScrub}
-          onPointerUp={endScrub}
-          onPointerCancel={endScrub}
-          onKeyDown={event => {
-            if (
-              (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
-              !event.metaKey &&
-              !event.ctrlKey &&
-              !event.altKey
-            ) {
-              event.preventDefault();
-              seekBy(
-                event.key === 'ArrowRight'
-                  ? SeekDirection.Forward
-                  : SeekDirection.Backward
-              );
-              return;
-            }
-
-            if (event.key === 'Home') {
-              seekToStart();
-            }
-
-            if (event.key === 'End') {
-              seekToEnd();
-            }
-          }}>
-          <div
-            className={styles.playerBar__fill}
-            style={{ transform: `scaleX(${shownFraction})` }}
-          />
-          <div
-            className={styles.playerBar__knob}
-            style={{ left: `${shownFraction * 100}%` }}
-          />
+        <div className={styles.playerBar__trail}>
+          <span className={styles.playerBar__times}>
+            <span>{formatDuration(shownElapsed)}</span>
+            <span className={styles.playerBar__divider}>/</span>
+            <span>{formatDuration(duration)}</span>
+          </span>
+          {touch ? null : (
+            <div className={styles.playerBar__volume}>
+              <VolumeControl />
+            </div>
+          )}
         </div>
-        <span className={styles.playerBar__time}>
-          {formatDuration(duration)}
-        </span>
       </div>
-      {touch ? null : (
-        <div className={styles.playerBar__volume}>
-          <VolumeControl />
-        </div>
-      )}
     </footer>
   );
 }

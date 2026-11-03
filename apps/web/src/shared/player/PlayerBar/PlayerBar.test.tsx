@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   Outlet,
   RouterProvider,
@@ -50,11 +51,17 @@ async function renderBar(initialEntry = '/') {
 
   await router.load();
 
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } }
+  });
+
   return {
     ...render(
-      <I18nProvider preferred={['en']}>
-        <RouterProvider router={router} />
-      </I18nProvider>
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider preferred={['en']}>
+          <RouterProvider router={router} />
+        </I18nProvider>
+      </QueryClientProvider>
     ),
     router
   };

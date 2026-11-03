@@ -1,66 +1,161 @@
 /*
- * The player bar. Artwork is a left rail spanning the bar's height, not a 40px
- * top-row square. The boundary is `--line`, not a shadow: dark on dark reads
- * invisible. The flush phone arrangement is the media query at the foot.
+ * The player bar: a floating dock over the page, with the playing playlist's
+ * cover blurred behind a dark veil. The transport sits on the dock's centre
+ * line; the seek line rides the top edge with a touch-safe target.
  */
 .player-bar {
   position: fixed;
-  inset-block-end: 0;
-  inset-inline: 0;
+  inset-block-end: var(--space-4);
+  inset-inline: var(--space-4);
   z-index: var(--z-player);
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-rows: auto auto;
-  align-items: center;
-  align-content: center;
-  height: var(--player-bar-height);
-  column-gap: var(--space-3);
-  row-gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  max-width: 1180px;
+  margin-inline: auto;
   background: var(--surface-raised);
-  border-block-start: 1px solid var(--line);
-  /* The bar is the music arriving: it rises from the edge it lives on. */
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius-card) + var(--space-1));
+  box-shadow:
+    0 18px 44px rgb(0 0 0 / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
   animation: player-bar-arrive var(--motion-slow) var(--ease-standard);
 
-  /*
-   * The third column: the control sits on the bar's foot, and the column
-   * stretches full height so the rail opens just above the button.
-   */
-  &__volume {
-    grid-column: 3;
-    grid-row: 1 / -1;
-    align-self: stretch;
-    display: flex;
-    align-items: flex-end;
+  /* The cover is a layer, not a background image, so it clips to the dock's
+   * radius while the seek target still reaches over the top edge. */
+  &__cover {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
   }
 
-  &__top {
-    grid-column: 2;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    column-gap: var(--space-4);
-    min-width: 0;
-  }
-
-  &__id {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-  }
-
-  /* A square of the fixed bar height: a stretched height fed width back into
-   * height and inflated the bar, so the height is fixed to break the loop. */
-  &__art {
-    grid-row: 1 / -1;
-    position: relative;
-    display: block;
+  &__coverImage {
+    width: 100%;
     height: 100%;
-    aspect-ratio: 1;
-    align-self: stretch;
+    object-fit: cover;
+    filter: blur(16px) saturate(1.25);
+    transform: scale(1.18);
+  }
+
+  &__coverFallback {
+    position: absolute;
+    inset: -12%;
+    background:
+      radial-gradient(
+        circle at 18% 30%,
+        var(--sleeve-2) 0 26%,
+        transparent 58%
+      ),
+      radial-gradient(
+        circle at 78% 72%,
+        var(--sleeve-5) 0 24%,
+        transparent 62%
+      ),
+      linear-gradient(135deg, var(--sleeve-3), var(--surface-raised));
+    filter: blur(16px);
+  }
+
+  &__veil {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      100deg,
+      rgb(11 13 16 / 0.78),
+      rgb(11 13 16 / 0.56) 60%,
+      rgb(11 13 16 / 0.7)
+    );
+    pointer-events: none;
+  }
+
+  &__body {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-4) var(--space-3);
+  }
+
+  /* The lead and the trail take equal columns, so the transport sits on the
+   * dock's centre line rather than after the title. */
+  &__lead {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  &__trail {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  &__scrub {
+    position: absolute;
+    inset-block-start: var(--space-3);
+    inset-inline: var(--space-4);
+    z-index: 2;
+    height: 3px;
+    background: var(--control-border);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    /* The drag is the seeker's, not the page's: without this a touch gesture is
+     * claimed by the browser's scroll and cancelled before the release. */
+    touch-action: none;
+
+    /* A 44px target centred on the line, with an 8px lip above the dock: a
+     * near-miss at the top edge seeks instead of reaching the page behind. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -20px 0 -21px;
+    }
+
+    /* A thumb is wider than a cursor, so the target leans further over the top
+     * edge: a 15px lip keeps a border tap on the seeker. */
+    @media (any-pointer: coarse) {
+      &::before {
+        inset: -28px 0 -13px;
+      }
+    }
+
+    &[data-dragging='true'] {
+      cursor: grabbing;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: 4px;
+    }
+  }
+
+  &__fill {
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    border-radius: inherit;
+    transform-origin: left center;
+    transition: transform var(--motion-slow) var(--ease-standard);
+  }
+
+  /* The scrub and the fill follow the finger, so they must not ease behind it. */
+  &__scrub[data-dragging='true'] &__fill {
+    transition: none;
+  }
+
+  &__art {
+    display: block;
+    width: 56px;
+    height: 56px;
     flex-shrink: 0;
     overflow: hidden;
-    background-color: var(--surface-raised);
+    background-color: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-artwork);
 
@@ -71,6 +166,10 @@
         transparent 5px 12px
       );
     }
+
+    &[aria-disabled='true'] {
+      cursor: default;
+    }
   }
 
   &__image {
@@ -79,7 +178,7 @@
     object-fit: cover;
   }
 
-  &__name {
+  &__identity {
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -88,6 +187,7 @@
   &__title {
     color: var(--ink);
     font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-normal);
     white-space: nowrap;
     overflow: hidden;
@@ -125,7 +225,9 @@
   &__transport {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    justify-content: center;
+    justify-self: center;
+    gap: var(--space-2);
     flex-shrink: 0;
   }
 
@@ -178,8 +280,8 @@
     position: relative;
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     flex-shrink: 0;
     padding: 0;
     color: var(--muted);
@@ -198,13 +300,13 @@
     }
 
     /*
-     * A 44px target grown outward six a side by a box that paints nothing; six
-     * is half the 12px gap, so two targets meet without overlapping.
+     * A 44px target grown 4px each side by a box that paints nothing; the 8px
+     * gap between steps means two targets meet without overlapping.
      */
     &::before {
       content: '';
       position: absolute;
-      inset: -6px;
+      inset: -4px;
     }
 
     &:focus-visible {
@@ -214,16 +316,16 @@
   }
 
   &__step-icon {
-    width: var(--icon-sm);
-    height: var(--icon-sm);
+    width: var(--icon-md);
+    height: var(--icon-md);
   }
 
   &__play {
     position: relative;
     display: grid;
     place-items: center;
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
     padding: 0;
     background: var(--accent);
@@ -270,15 +372,10 @@
     animation-direction: reverse;
   }
 
-  &__position {
-    grid-column: 2;
+  &__times {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-  }
-
-  &__time {
+    gap: var(--space-1);
     flex-shrink: 0;
     color: var(--muted);
     font-size: var(--text-xs);
@@ -286,65 +383,13 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /*
-   * 4px, not a hairline: a 2px line is a report, a 4px track a target. The knob
-   * is ink in a surface ring, because ink straight onto accent is forbidden.
-   */
-  &__scrub {
-    position: relative;
-    width: 480px;
-    height: 4px;
-    flex-shrink: 0;
-    border-radius: var(--radius-chip);
-    background: var(--control-border);
-    cursor: pointer;
-    /* The drag is the seeker's, not the page's: without this a touch gesture is
-     * claimed by the browser's scroll and cancelled before the release. */
-    touch-action: none;
-
-    &[data-dragging='true'] {
-      cursor: grabbing;
-    }
-
-    /*
-     * The track stays 4px and the target grows to 44px through a box that
-     * paints nothing, the pattern the transport's steps carry.
-     */
-    &::before {
-      content: '';
-      position: absolute;
-      inset: -20px 0;
-    }
-
-    &:focus-visible {
-      outline: var(--focus-width) solid var(--accent);
-      outline-offset: var(--focus-offset);
-    }
+  &__divider {
+    opacity: 0.5;
   }
 
-  &__fill {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: var(--accent);
-    transform-origin: left center;
-    transition: transform var(--motion-slow) var(--ease-standard);
-  }
-
-  /* The knob and the fill follow the finger, so they must not ease behind it. */
-  &__scrub[data-dragging='true'] &__fill {
-    transition: none;
-  }
-
-  &__knob {
-    position: absolute;
-    top: 50%;
-    width: 12px;
-    height: 12px;
-    translate: -50% -50%;
-    border-radius: var(--radius-chip);
-    background: var(--ink);
-    border: 2px solid var(--surface-raised);
+  &__volume {
+    display: flex;
+    align-items: center;
   }
 }
 
@@ -369,34 +414,33 @@
 }
 
 /*
- * Flush arrangement, 767px and under: the centre needs the room a 390px bar
- * lacks and the 480px cap does not fit, so the seeker flexes.
+ * Narrow arrangement, 767px and under: the trail needs the room a 390px bar
+ * lacks, so the identity and the transport take the row and the times hide.
  */
 @media (max-width: 767px) {
   .player-bar {
-    /* A tighter box than the desk's, so the rail and the two rows keep more of
-     * their width for the title. */
-    padding: var(--space-3);
+    inset-inline: var(--space-2);
+    inset-block-end: var(--space-2);
 
-    /*
-     * Two columns rather than three: the identity flexes and the transport
-     * lands on the right edge. The volume is the third and is unchanged.
-     */
-    &__top {
-      grid-template-columns: 1fr auto;
+    &__body {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-2);
+      padding: var(--space-5) var(--space-3) var(--space-2);
     }
 
-    /*
-     * The seeker gives up its 4px gap to the times on a phone: an elapsed time
-     * is a datum, not a label, so it stays against the track's end.
-     */
-    &__position {
-      justify-content: stretch;
+    &__art {
+      width: 44px;
+      height: 44px;
     }
 
-    &__scrub {
-      width: auto;
-      flex: 1;
+    &__trail {
+      display: none;
     }
+  }
+}
+
+@media (hover: none) {
+  .player-bar__volume {
+    display: none;
   }
 }
