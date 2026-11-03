@@ -29,6 +29,7 @@ import Sheet from '../Sheet/Sheet';
 export interface AccountSheetProps {
   readonly visible: boolean;
   readonly account: Account | null;
+  readonly loading: boolean;
   readonly failure: string | null;
   readonly onClose: () => void;
   readonly onSignOut: () => void;
@@ -45,14 +46,22 @@ const LANGUAGES = [
 export default function AccountSheet({
   visible,
   account,
+  loading,
   failure,
   onClose,
   onSignOut
 }: AccountSheetProps) {
   const { t, language, setLanguage } = useI18n();
   const liveRegion = useAnnouncement(failure);
+  const loadingLiveRegion = useAnnouncement(
+    loading && account === null ? t('account.loading') : null
+  );
   const reduceMotion = useReduceMotion();
   const [trackWidth, setTrackWidth] = useState(0);
+  const [arming, setArming] = useState(false);
+  const [wasVisible, setWasVisible] = useState(visible);
+  const ask = t('account.signOutAsk');
+  const askLiveRegion = useAnnouncement(arming ? ask : null);
   const thumb = useRef(new Animated.Value(0)).current;
   const positioned = useRef(false);
   const selectedIndex = Math.max(
@@ -60,6 +69,12 @@ export default function AccountSheet({
     LANGUAGES.findIndex(option => option.value === language)
   );
   const thumbWidth = Math.max(0, (trackWidth - tokenLength('space-1') * 3) / 2);
+
+  /* A fresh open must not inherit the last question. */
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    setArming(false);
+  }
 
   useEffect(() => {
     if (trackWidth === 0) {
@@ -100,7 +115,28 @@ export default function AccountSheet({
         </View>
       )}
 
-      {account === null ? null : (
+      {account === null ? (
+        loading ? (
+          <View
+            testID="account-identity-loading"
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={t('account.loading')}
+            accessibilityLiveRegion={loadingLiveRegion}
+            style={[styles.identity, styles.identityLoading]}>
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={styles.identityShape}>
+              <View style={styles.avatarPlaceholder} />
+              <View style={styles.lines}>
+                <View style={styles.namePlaceholder} />
+                <View style={styles.markPlaceholder} />
+              </View>
+            </View>
+          </View>
+        ) : null
+      ) : (
         <View style={styles.identity}>
           <AccountAvatar account={account} />
           <View style={styles.who}>
@@ -152,13 +188,46 @@ export default function AccountSheet({
 
       <View style={styles.hairline} />
 
-      <Pressable
-        testID="account-sign-out"
-        accessibilityRole="button"
-        style={styles.row}
-        onPress={onSignOut}>
-        <Text style={styles.rowDestructive}>{t('account.signOut')}</Text>
-      </Pressable>
+      {arming ? (
+        <View style={styles.confirm}>
+          <Text
+            accessibilityRole="alert"
+            accessibilityLiveRegion={askLiveRegion}
+            style={styles.ask}>
+            {ask}
+          </Text>
+          <View style={styles.confirmActions}>
+            <Pressable
+              testID="account-sign-out-cancel"
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.cancel,
+                pressed && styles.cancelPressed
+              ]}
+              onPress={() => setArming(false)}>
+              <Text style={styles.cancelLabel}>{t('common.cancel')}</Text>
+            </Pressable>
+            <Pressable
+              testID="account-sign-out-confirm"
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.confirmAction,
+                pressed && styles.confirmPressed
+              ]}
+              onPress={onSignOut}>
+              <Text style={styles.confirmLabel}>{t('account.signOut')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          testID="account-sign-out"
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+          onPress={() => setArming(true)}>
+          <Text style={styles.rowDestructive}>{t('account.signOut')}</Text>
+        </Pressable>
+      )}
     </Sheet>
   );
 }
@@ -169,6 +238,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokenLength('space-3'),
     marginTop: tokenLength('space-3')
+  },
+  identityLoading: {
+    minHeight: tokenLength('space-9')
+  },
+  identityShape: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-3')
+  },
+  avatarPlaceholder: {
+    width: tokenLength('space-9'),
+    height: tokenLength('space-9'),
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface-raised')
+  },
+  lines: {
+    flex: 1,
+    gap: tokenLength('space-1')
+  },
+  namePlaceholder: {
+    width: '55%',
+    height: tokenLength('text-md'),
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface-raised')
+  },
+  markPlaceholder: {
+    width: '30%',
+    height: tokenLength('text-xs'),
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface-raised')
   },
   who: {
     flexShrink: 1,
@@ -241,6 +341,60 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-md')
+  },
+  confirm: {
+    gap: tokenLength('space-2'),
+    paddingVertical: tokenLength('space-2')
+  },
+  ask: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: tokenLength('space-2')
+  },
+  cancel: {
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: tokenLength('space-4'),
+    borderWidth: 1,
+    borderColor: tokenColor('control-border'),
+    borderRadius: tokenLength('radius-control')
+  },
+  cancelLabel: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-sm')
+  },
+  cancelPressed: {
+    backgroundColor: tokenColor('surface-raised')
+  },
+  confirmAction: {
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: tokenLength('space-4'),
+    borderRadius: tokenLength('radius-control'),
+    backgroundColor: tokenColor('tone-failed')
+  },
+  confirmPressed: {
+    opacity: tokenNumber('opacity-disabled')
+  },
+  confirmLabel: {
+    color: tokenColor('bg'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    fontWeight: tokenWeight('weight-medium')
+  },
+  rowPressed: {
+    backgroundColor: tokenColor('surface-raised')
   },
   failure: {
     padding: tokenLength('space-3'),

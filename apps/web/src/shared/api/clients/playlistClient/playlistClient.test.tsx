@@ -85,7 +85,8 @@ describe('useRetryFailedTracks', () => {
             counts: {
               ...EMPTY_COUNTS,
               [TrackFileStatus.Failed]: all.length
-            }
+            },
+            remoteRemoved: 0
           });
         }
       ),

@@ -6,7 +6,11 @@ import { endpoints } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import { mediaSource } from '../../shared/media/mediaSource';
-import { tokenColor, tokenLength } from '../../shared/styles/tokens';
+import {
+  tokenColor,
+  tokenLength,
+  touchTarget
+} from '../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../auth/useApiConfig';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
@@ -38,6 +42,9 @@ function Artwork({
       ? null
       : mediaSource(config, endpoints.trackThumbnail, { trackId: track.id });
   const box = { width: size, height: size, borderRadius: radius };
+  /* The painted sleeve is 44; the target reaches the 48dp token without growing
+   * the art or the bar. */
+  const hit = Math.max(0, (touchTarget - size) / 2);
 
   const image =
     artwork === null ? (
@@ -70,6 +77,7 @@ function Artwork({
       accessibilityLabel={t('playerBar.openPlaylist', {
         name: playlistName ?? ''
       })}
+      hitSlop={hit}
       style={[styles.art, box]}
       onPress={() =>
         router.navigate({

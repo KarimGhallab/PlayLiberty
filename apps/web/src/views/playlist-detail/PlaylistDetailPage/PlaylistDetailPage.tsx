@@ -847,6 +847,8 @@ export default function PlaylistDetailPage() {
                   run={latestRun.data}
                   now={new Date()}
                   failedCount={failedCount}
+                  remoteRemoved={tracks.remoteRemoved ?? 0}
+                  provider={playlist.data?.provider ?? Provider.Youtube}
                   downloadingCount={downloadingCount}
                   onRetryFailed={
                     canWrite && activeState !== TrackFileStatus.Failed

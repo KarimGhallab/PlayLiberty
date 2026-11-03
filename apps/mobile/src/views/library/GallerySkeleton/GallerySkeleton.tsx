@@ -3,7 +3,11 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 
 import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
-import { tokenColor, tokenLength } from '../../../shared/styles/tokens';
+import {
+  tokenColor,
+  tokenLength,
+  touchTarget
+} from '../../../shared/styles/tokens';
 
 import { galleryColumnWidth } from '../galleryColumns/galleryColumns';
 
@@ -26,6 +30,18 @@ export default function GallerySkeleton() {
       accessibilityLabel={label}
       accessibilityLiveRegion={liveRegion}
       style={styles.skeleton}>
+      {/* The rail the gallery always draws at the head of its list, held so the
+       * grid does not drop when the counts land. The pinned heading is not held:
+       * a first read cannot know whether anything is pinned. */}
+      <View
+        testID="gallery-skeleton-rail"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.rail}>
+        <View style={styles.railChip} />
+        <View style={[styles.railChip, styles.railChipShort]} />
+        <View style={styles.railChip} />
+      </View>
       <View
         style={styles.grid}
         accessibilityElementsHidden
@@ -44,7 +60,23 @@ export default function GallerySkeleton() {
 
 const styles = StyleSheet.create({
   skeleton: {
-    flex: 1
+    flex: 1,
+    gap: tokenLength('space-3')
+  },
+  rail: {
+    height: touchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-2')
+  },
+  railChip: {
+    height: touchTarget,
+    width: tokenLength('space-9') * 2,
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('surface-raised')
+  },
+  railChipShort: {
+    width: tokenLength('space-9')
   },
   grid: {
     flexDirection: 'row',

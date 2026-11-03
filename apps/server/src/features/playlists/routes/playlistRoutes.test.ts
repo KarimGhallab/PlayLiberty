@@ -1634,6 +1634,64 @@ describe('the state filter and the counts', () => {
     expect(page.counts.unavailable).toBe(0);
   });
 
+  it('counts the stored tracks whose source removed them beside the buckets', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Stored,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      0
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database).trackId,
+      1
+    );
+    /* Never stored, so the retention promise does not cover it. */
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Failed,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      2
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Unavailable,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      3
+    );
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    /* The promise is stored plus removed; a removed source that was never
+     * stored is the Unavailable bucket's news, not this figure. */
+    expect(page.remoteRemoved).toBe(1);
+    /* The five buckets still sum to the playlist's size, so the figure above is
+     * a subset of stored and not a sixth bucket. */
+    expect(
+      Object.values(page.counts).reduce((sum, count) => sum + count, 0)
+    ).toBe(4);
+  });
+
   it('refuses a state that is not one of the five', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);

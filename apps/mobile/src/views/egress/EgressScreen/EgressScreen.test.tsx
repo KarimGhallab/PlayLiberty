@@ -37,6 +37,9 @@ const useSwitchEgressMock = useSwitchEgress as jest.MockedFunction<
 >;
 
 const store = { getItem: () => null, setItem: () => {} };
+/* The fact's painted text is hidden from the accessibility tree; its label is
+ * the fact's composed name. */
+const hidden = { includeHiddenElements: true };
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
   insets: { top: 0, left: 0, right: 0, bottom: 0 }
@@ -194,13 +197,17 @@ describe('the egress console', () => {
 
     expect(screen.getByText('Egress agent reachable.')).toBeOnTheScreen();
     expect(screen.getByText('01-FR-634')).toBeOnTheScreen();
-    expect(screen.getByText('185.0.0.1:51820')).toBeOnTheScreen();
-    expect(screen.getByText('Seen at 185.0.0.9')).toBeOnTheScreen();
-    expect(screen.getByText('OK')).toBeOnTheScreen();
-    expect(screen.getByText('Unknown')).toBeOnTheScreen();
-    expect(screen.getByText('2 hours ago')).toBeOnTheScreen();
-    expect(screen.getByText('1 hour ago')).toBeOnTheScreen();
-    expect(screen.getAllByText('Never')).toHaveLength(2);
+    expect(screen.getByText('185.0.0.1:51820', hidden)).toBeOnTheScreen();
+    expect(
+      screen.getByText('Provider saw 185.0.0.9', hidden)
+    ).toBeOnTheScreen();
+    expect(screen.getByText('OK', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('Unknown', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('2 hours ago', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('1 hour ago', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('No attempt yet', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('Not checked yet', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('Not set', hidden)).toBeOnTheScreen();
     expect(screen.getByLabelText('France')).toBeOnTheScreen();
     expect(screen.getByLabelText('Switzerland')).toBeOnTheScreen();
     expect(screen.getByText('Active')).toBeOnTheScreen();
@@ -208,6 +215,27 @@ describe('the egress console', () => {
     expect(
       screen.queryByTestId('egress-active-02-CH-182')
     ).not.toBeOnTheScreen();
+  });
+
+  it('reads each fact as one label and value', async () => {
+    await renderScreen(success(READ));
+
+    expect(
+      screen.getByLabelText('Endpoint, 185.0.0.1:51820, Provider saw 185.0.0.9')
+    ).toBeOnTheScreen();
+    expect(screen.getByLabelText('Status, OK')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Last attempt, 2 hours ago')
+    ).toBeOnTheScreen();
+    expect(screen.getByLabelText('Last check, 1 hour ago')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Endpoint, Not set')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Status, Unknown')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Last attempt, No attempt yet')
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Last check, Not checked yet')
+    ).toBeOnTheScreen();
   });
 
   it('falls back to the country code when the runtime cannot name it', async () => {
@@ -242,9 +270,11 @@ describe('the egress console', () => {
 
     await renderScreen(success({ agentReachable: true, configs: [failed] }));
 
-    expect(screen.getByText('Failed')).toBeOnTheScreen();
-    expect(screen.getByText('YouTube refused the exit.')).toBeOnTheScreen();
-    expect(screen.getByText('2 hours ago')).toBeOnTheScreen();
+    expect(screen.getByText('Failed', hidden)).toBeOnTheScreen();
+    expect(
+      screen.getByText('YouTube refused the exit.', hidden)
+    ).toBeOnTheScreen();
+    expect(screen.getByText('2 hours ago', hidden)).toBeOnTheScreen();
   });
 
   it('offers Check on the active exit and Switch on a standby', async () => {

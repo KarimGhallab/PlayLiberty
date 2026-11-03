@@ -1,4 +1,4 @@
-import { requireOptionalNativeModule } from 'expo';
+import BackgroundPlaybackModule from '../../../modules/background-playback/src/index';
 
 import type { BackgroundPlaybackState } from './backgroundPlaybackState/backgroundPlaybackState';
 
@@ -31,8 +31,7 @@ export interface BackgroundPlaybackClient {
   ): NativeSubscription;
 }
 
-const native =
-  requireOptionalNativeModule<NativeBackgroundPlayback>('BackgroundPlayback');
+const native = BackgroundPlaybackModule as NativeBackgroundPlayback | null;
 
 /* Android only. On another platform the module is absent and the player keeps
  * its foreground behaviour, so every call is optional. */

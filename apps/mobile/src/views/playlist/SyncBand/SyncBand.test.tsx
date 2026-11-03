@@ -105,6 +105,22 @@ describe('the sync band', () => {
     expect(screen.queryByText('Nothing changed')).not.toBeOnTheScreen();
   });
 
+  it('draws the playlist’s retained tracks beside the run counts', async () => {
+    await renderBand({ remoteRemoved: 2 });
+
+    expect(
+      screen.getByText('2 tracks removed from YouTube are still stored')
+    ).toBeOnTheScreen();
+  });
+
+  it('says nothing about retention while it holds none', async () => {
+    await renderBand();
+
+    expect(
+      screen.queryByText(/removed from YouTube are still stored/)
+    ).not.toBeOnTheScreen();
+  });
+
   it('says nothing changed when the run drew no count', async () => {
     await renderBand({
       run: {

@@ -19,6 +19,7 @@ import {
 } from '../../../auth/sessionStore/sessionStore';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import BareTrackLoading from '../BareTrackLoading/BareTrackLoading';
 import { takeLeftPlaylistNotice } from '../leftPlaylistNotice/leftPlaylistNotice';
 
 export interface BareTrackEntryProps {
@@ -142,6 +143,13 @@ export default function BareTrackEntry({ trackId }: BareTrackEntryProps) {
     redirected.current = true;
     router.replace('/');
   }, [currentId, playlistId]);
+
+  const loading =
+    trackId !== null && status === SessionStatus.SignedIn && track.isPending;
+
+  if (loading) {
+    return <BareTrackLoading />;
+  }
 
   return notice === null ? null : (
     <Notice

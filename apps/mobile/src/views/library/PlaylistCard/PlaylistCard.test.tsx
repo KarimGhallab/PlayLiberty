@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import {
   PlaylistSort,
@@ -119,9 +119,7 @@ describe('the playlist card', () => {
   it('starts a playlist from its play control', async () => {
     const { onPlay } = await renderCard();
 
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Play Rain On The Window' })
-    );
+    fireEvent.press(screen.getByTestId('playlist-play', hidden));
 
     expect(onPlay).toHaveBeenCalledTimes(1);
   });
@@ -129,9 +127,7 @@ describe('the playlist card', () => {
   it('draws the pause control while its playlist plays', async () => {
     const { onPlay } = await renderCard({ playing: true });
 
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Pause Rain On The Window' })
-    );
+    fireEvent.press(screen.getByTestId('playlist-play', hidden));
 
     expect(onPlay).toHaveBeenCalledTimes(1);
   });
@@ -150,17 +146,13 @@ describe('the playlist card', () => {
       }
     });
 
-    expect(
-      screen.getByRole('button', { name: 'Play Rain On The Window' })
-    ).toBeDisabled();
+    expect(screen.getByTestId('playlist-play', hidden)).toBeDisabled();
   });
 
   it('starts a shuffled playlist from its shuffle control', async () => {
     const { onShuffle } = await renderCard();
 
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
-    );
+    fireEvent.press(screen.getByTestId('playlist-shuffle', hidden));
 
     expect(onShuffle).toHaveBeenCalledTimes(1);
   });
@@ -179,30 +171,20 @@ describe('the playlist card', () => {
       }
     });
 
-    expect(
-      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
-    ).toBeDisabled();
+    expect(screen.getByTestId('playlist-shuffle', hidden)).toBeDisabled();
   });
 
   it('holds both starts while one is in flight', async () => {
     await renderCard({ starting: 'shuffle' });
 
-    expect(
-      screen.getByRole('button', { name: 'Play Rain On The Window' })
-    ).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: 'Shuffle Rain On The Window' })
-    ).toBeDisabled();
+    expect(screen.getByTestId('playlist-play', hidden)).toBeDisabled();
+    expect(screen.getByTestId('playlist-shuffle', hidden)).toBeDisabled();
   });
 
   it('opens the actions from its overflow control', async () => {
     const { onOpenActions } = await renderCard();
 
-    fireEvent.press(
-      screen.getByRole('button', {
-        name: 'More actions for Rain On The Window'
-      })
-    );
+    fireEvent.press(screen.getByTestId('playlist-actions', hidden));
 
     expect(onOpenActions).toHaveBeenCalledTimes(1);
   });
@@ -222,10 +204,12 @@ describe('the playlist card', () => {
     expect(screen.queryByText('Shared by Bea', hidden)).not.toBeOnTheScreen();
   });
 
-  it('draws the incomplete count without a breakdown', async () => {
+  it('draws the incomplete count with its word', async () => {
     await renderCard();
 
-    expect(screen.getByText('3', hidden)).toBeOnTheScreen();
+    expect(
+      screen.getByText('3 tracks are not stored', hidden)
+    ).toBeOnTheScreen();
     expect(screen.queryByText('Pending', hidden)).not.toBeOnTheScreen();
     expect(screen.queryByText('Failed', hidden)).not.toBeOnTheScreen();
   });
@@ -251,12 +235,59 @@ describe('the playlist card', () => {
     }
   });
 
-  it('opens the playlist from the card and states its count, state and owner', async () => {
+  it('keeps the card one focus stop and offers its actions there', async () => {
+    const { onPlay, onShuffle, onOpenActions } = await renderCard();
+    const card = screen.getByLabelText(
+      'Rain On The Window, Private playlist, 12 tracks, 3 tracks are not stored, Up to date'
+    );
+
+    expect(screen.queryByRole('button', { name: /^Play / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Shuffle / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^More actions/ })).toBeNull();
+
+    await act(async () => {
+      for (const actionName of ['play', 'shuffle', 'openActions']) {
+        fireEvent(card, 'accessibilityAction', {
+          nativeEvent: { actionName }
+        });
+      }
+    });
+
+    expect(onPlay).toHaveBeenCalledTimes(1);
+    expect(onShuffle).toHaveBeenCalledTimes(1);
+    expect(onOpenActions).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no start action while nothing is stored', async () => {
+    const { onPlay } = await renderCard({
+      playlist: {
+        ...playlist,
+        counts: {
+          stored: 0,
+          pending: 1,
+          downloading: 0,
+          failed: 2,
+          unavailable: 0
+        }
+      }
+    });
+    const card = screen.getByTestId('playlist-card');
+
+    await act(async () => {
+      fireEvent(card, 'accessibilityAction', {
+        nativeEvent: { actionName: 'play' }
+      });
+    });
+
+    expect(onPlay).not.toHaveBeenCalled();
+  });
+
+  it('opens the playlist from the card and states its count, its unkept tracks and its state', async () => {
     const { onOpen } = await renderCard();
 
     expect(
       screen.getAllByLabelText(
-        'Rain On The Window, Private playlist, 12 tracks, Up to date'
+        'Rain On The Window, Private playlist, 12 tracks, 3 tracks are not stored, Up to date'
       )
     ).toHaveLength(1);
 
@@ -272,7 +303,7 @@ describe('the playlist card', () => {
 
     expect(
       screen.getByLabelText(
-        'Rain On The Window, You are a collaborator, 12 tracks, Up to date, Shared by Bea'
+        'Rain On The Window, You are a collaborator, 12 tracks, 3 tracks are not stored, Up to date, Shared by Bea'
       )
     ).toBeOnTheScreen();
   });

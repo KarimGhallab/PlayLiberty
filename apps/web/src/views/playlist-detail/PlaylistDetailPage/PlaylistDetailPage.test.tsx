@@ -264,6 +264,57 @@ describe('PlaylistDetailPage', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('names the tracks whose source removed them and that are still stored', async () => {
+    const kept = [
+      trackJson('track-1', 'Sao Paulo', 0),
+      trackJson('track-2', 'Blue In Green', 1)
+    ];
+
+    server.use(
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-1',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Completed,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-10-08T11:00:00.000Z',
+            finishedAt: '2026-10-08T11:05:00.000Z',
+            error: null
+          })
+      ),
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: kept.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: kept,
+            total: kept.length,
+            limit: 100,
+            offset: 0,
+            counts: countsOf(kept),
+            remoteRemoved: 2
+          })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: kept })
+      )
+    );
+
+    renderDetail();
+
+    expect(
+      await screen.findByText('2 tracks removed from YouTube are still stored')
+    ).toBeInTheDocument();
+  });
+
   it('holds the list with the skeleton while unshuffling a long queue', async () => {
     const many = Array.from({ length: 60 }, (_, index) =>
       trackJson(`track-${index}`, `Track ${index}`, index)
@@ -289,7 +340,8 @@ describe('PlaylistDetailPage', () => {
             total: many.length,
             limit: 100,
             offset: 0,
-            counts: countsOf(many)
+            counts: countsOf(many),
+            remoteRemoved: 0
           })
       ),
       http.get(
@@ -411,7 +463,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 1,
             offset,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           });
         }
       )
@@ -464,7 +517,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 1,
             offset,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           });
         }
       )
@@ -618,7 +672,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 2,
             offset,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           });
         }
       )
@@ -662,7 +717,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 1,
             offset: 0,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           })
       ),
       http.get(
@@ -702,7 +758,8 @@ describe('PlaylistDetailPage', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            counts: { ...EMPTY_COUNTS, pending: 1 }
+            counts: { ...EMPTY_COUNTS, pending: 1 },
+            remoteRemoved: 0
           })
       ),
       http.get(
@@ -862,7 +919,8 @@ describe('PlaylistDetailPage', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            counts: { ...EMPTY_COUNTS, failed: 1 }
+            counts: { ...EMPTY_COUNTS, failed: 1 },
+            remoteRemoved: 0
           })
       ),
       http.post(
@@ -1549,7 +1607,8 @@ describe('PlaylistDetailPage', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            counts: { ...EMPTY_COUNTS, stored: 1 }
+            counts: { ...EMPTY_COUNTS, stored: 1 },
+            remoteRemoved: 0
           });
         }
       )
@@ -1632,7 +1691,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 50,
             offset: 0,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           })
       )
     );
@@ -1990,7 +2050,8 @@ describe('PlaylistDetailPage sort control', () => {
             total: items.length,
             limit: 50,
             offset: 0,
-            counts: countsOf(items)
+            counts: countsOf(items),
+            remoteRemoved: 0
           });
         }
       )
@@ -2133,7 +2194,8 @@ describe('PlaylistDetailPage filter chips', () => {
             total: all.length,
             limit: 50,
             offset: 0,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           })
       ),
       http.post(mockUrl(endpoints.retryTrack), async ({ request }) => {

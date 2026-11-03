@@ -35,8 +35,8 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 import {
-  STATUS_CHIPS,
-  totalStatusCount
+  totalStatusCount,
+  visibleStatusChips
 } from '../../../shared/trackState/statusChips';
 
 export type LibraryScope = 'all' | 'shared';
@@ -91,8 +91,10 @@ export default function GalleryFilterBar({
   const railViewport = useRef(0);
   const chipsLeft = useRef(0);
   const chipRects = useRef(new Map<ChipKey, ChipRect>());
-  /* The rail stays at its start until the user picks a chip, so the default
-   * never scrolls the scope pair away. */
+  /* The rail stays at its start for the default selection, so the scope pair is
+   * never scrolled away on a fresh library. A restored non-default chip is
+   * revealed on the first measurement, without the tween. */
+  const restored = useRef(activeStatus !== null);
   const chosen = useRef(false);
   const selectedChip: ChipKey = activeStatus ?? 'all';
   const selection = useRef(
@@ -105,7 +107,7 @@ export default function GalleryFilterBar({
   /* A chip selected while half past the rail's edge is scrolled back into
    * view, so the tap that chose it never hides its own count. */
   const revealChip = useCallback(
-    (key: ChipKey): void => {
+    (key: ChipKey, animate: boolean): void => {
       const rect = chipRects.current.get(key);
       const viewport = railViewport.current;
 
@@ -116,35 +118,41 @@ export default function GalleryFilterBar({
       const x = chipsLeft.current + rect.x;
       const margin = tokenLength('space-3');
       const offset = railOffset.current;
+      const animated = animate && !reduceMotion;
 
       if (x < offset + margin) {
         scroller.current?.scrollTo({
           x: Math.max(0, x - margin),
-          animated: !reduceMotion
+          animated
         });
       } else if (x + rect.width > offset + viewport - margin) {
         scroller.current?.scrollTo({
           x: x + rect.width - viewport + margin,
-          animated: !reduceMotion
+          animated
         });
       }
     },
     [reduceMotion]
   );
 
+  const revealSelection = (animate: boolean): void => {
+    if (!chosen.current && !restored.current) {
+      return;
+    }
+
+    revealChip(selectedChip, animate);
+  };
+
   const chooseStatus = (status: TrackFileStatus | null): void => {
     chosen.current = true;
     onStatusChange(status);
-    revealChip(status ?? 'all');
+    revealChip(status ?? 'all', true);
   };
 
   const readViewport = (event: LayoutChangeEvent): void => {
     railViewport.current = event.nativeEvent.layout.width;
     rail.onLayout(event);
-
-    if (chosen.current) {
-      revealChip(selectedChip);
-    }
+    revealSelection(false);
   };
 
   const readRail = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
@@ -154,10 +162,7 @@ export default function GalleryFilterBar({
 
   const readContent = (width: number): void => {
     rail.onContentSizeChange(width);
-
-    if (chosen.current) {
-      revealChip(selectedChip);
-    }
+    revealSelection(false);
   };
 
   const rememberChip = (key: ChipKey) => (event: LayoutChangeEvent) => {
@@ -166,8 +171,8 @@ export default function GalleryFilterBar({
       width: event.nativeEvent.layout.width
     });
 
-    if (chosen.current && key === selectedChip) {
-      revealChip(key);
+    if (key === selectedChip) {
+      revealSelection(false);
     }
   };
 
@@ -324,6 +329,7 @@ export default function GalleryFilterBar({
             style={styles.chips}
             onLayout={event => {
               chipsLeft.current = event.nativeEvent.layout.x;
+              revealSelection(false);
             }}>
             <View testID="gallery-chip-all" onLayout={rememberChip('all')}>
               <Chip
@@ -333,22 +339,20 @@ export default function GalleryFilterBar({
                 onPress={() => chooseStatus(null)}
               />
             </View>
-            {STATUS_CHIPS.filter(status => counts[status.value] > 0).map(
-              status => (
-                <View
-                  key={status.value}
-                  testID={`gallery-chip-${status.value}`}
-                  onLayout={rememberChip(status.value)}>
-                  <Chip
-                    label={t(status.label)}
-                    count={counts[status.value]}
-                    tone={status.tone}
-                    selected={activeStatus === status.value}
-                    onPress={() => chooseStatus(status.value)}
-                  />
-                </View>
-              )
-            )}
+            {visibleStatusChips(counts, activeStatus).map(status => (
+              <View
+                key={status.value}
+                testID={`gallery-chip-${status.value}`}
+                onLayout={rememberChip(status.value)}>
+                <Chip
+                  label={t(status.label)}
+                  count={counts[status.value]}
+                  tone={status.tone}
+                  selected={activeStatus === status.value}
+                  onPress={() => chooseStatus(status.value)}
+                />
+              </View>
+            ))}
           </View>
         ) : null}
       </ScrollView>

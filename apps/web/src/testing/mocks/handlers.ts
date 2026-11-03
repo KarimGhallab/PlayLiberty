@@ -341,7 +341,8 @@ function tracksPageOf(url: string): PlaylistTracksPage {
     total: items.length,
     limit: 50,
     offset: 0,
-    counts: countsOf(PLAYLIST_ONE_TRACKS)
+    counts: countsOf(PLAYLIST_ONE_TRACKS),
+    remoteRemoved: 0
   };
 }
 

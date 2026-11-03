@@ -9,7 +9,7 @@ import {
   within
 } from '@testing-library/react-native';
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { Dimensions, ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -26,7 +26,7 @@ import {
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
-import { tokenLength } from '../../../shared/styles/tokens';
+import { tokenLength, touchTarget } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { createAppQueryClient } from '../../../api/queryClient/queryClient';
@@ -51,6 +51,11 @@ import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { startPlaylistPlayback } from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
 import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
+import {
+  galleryColumnCount,
+  galleryColumnWidth,
+  galleryPinnedWidth
+} from '../galleryColumns/galleryColumns';
 import PlaylistGallery from './PlaylistGallery';
 
 jest.mock('../../../api/usePlaylists/usePlaylists', () => ({
@@ -147,6 +152,18 @@ jest.mock('../../../api/useAccountDirectory', () => {
 
 const store = { getItem: () => null, setItem: () => {} };
 const hidden = { includeHiddenElements: true };
+
+/* A card is one accessibility target, so its controls are reached from it. */
+function cardOf(name: string) {
+  return screen.getByLabelText(new RegExp(`^${name}, `));
+}
+
+function controlOf(control: string, name: string) {
+  return within(cardOf(name)).getByTestId(
+    control === 'actions' ? /^playlist-actions/ : `playlist-${control}`,
+    hidden
+  );
+}
 
 afterEach(() => {
   usePlayerStore.getState().clear();
@@ -280,13 +297,15 @@ function hasSuccessHandler(
 }
 
 function GalleryHarness({
-  onOpenPlaylist
+  onOpenPlaylist,
+  initialStatus = null
 }: {
   readonly onOpenPlaylist: (playlistId: string) => void;
+  readonly initialStatus?: TrackFileStatus | null;
 }) {
   const [scope, setScope] = useState<LibraryScope>('all');
   const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
-    null
+    initialStatus
   );
 
   return (
@@ -304,7 +323,8 @@ function GalleryHarness({
 async function renderPlaylists(
   result: unknown,
   accounts: AccountSummary[] = [],
-  syncAllResult: ReturnType<typeof mutationResult> = mutationResult()
+  syncAllResult: ReturnType<typeof mutationResult> = mutationResult(),
+  initialStatus: TrackFileStatus | null = null
 ) {
   jest.mocked(usePlaylists).mockReturnValue(result as never);
   jest.mocked(useAccountDirectory).mockReturnValue(queryResult(accounts));
@@ -358,7 +378,10 @@ async function renderPlaylists(
     <QueryClientProvider client={client}>
       <SafeAreaProvider initialMetrics={metrics}>
         <I18nProvider initialLanguage={Language.English} storage={store}>
-          <GalleryHarness onOpenPlaylist={onOpenPlaylist} />
+          <GalleryHarness
+            onOpenPlaylist={onOpenPlaylist}
+            initialStatus={initialStatus}
+          />
         </I18nProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
@@ -408,6 +431,29 @@ describe('the gallery', () => {
     expect(screen.getByTestId('pinned-row').props.horizontal).toBe(true);
   });
 
+  it('mounts only the pinned cards the viewport needs', async () => {
+    const many = Array.from({ length: 12 }, (_, index) => ({
+      ...pinned,
+      id: `pinned-${index}`,
+      name: `Pinned ${index}`
+    }));
+    await renderGallery([...many, base]);
+
+    const windowWidth = Dimensions.get('window').width;
+    const columnWidth = galleryColumnWidth(windowWidth);
+    const columns = galleryColumnCount(windowWidth);
+    const gap = tokenLength('space-3');
+    const viewport = columns * columnWidth + (columns - 1) * gap;
+    const bound = Math.max(
+      2,
+      Math.ceil(viewport / (galleryPinnedWidth(windowWidth) + gap))
+    );
+    const drawn = screen.getAllByTestId('pinned-card').length;
+
+    expect(drawn).toBeLessThanOrEqual(bound);
+    expect(drawn).toBeLessThan(many.length);
+  });
+
   it('draws no pinned row when nothing is pinned', async () => {
     await renderGallery([base]);
 
@@ -432,12 +478,12 @@ describe('the gallery', () => {
     expect(screen.getByText('Shared by Bea', hidden)).toBeOnTheScreen();
   });
 
-  it('draws the incomplete count', async () => {
+  it('draws the incomplete count with its word', async () => {
     await renderGallery([base]);
 
     expect(
       within(screen.getByTestId('playlist-incomplete', hidden)).getByText(
-        '3',
+        '3 tracks are not stored',
         hidden
       )
     ).toBeOnTheScreen();
@@ -454,9 +500,7 @@ describe('the gallery', () => {
   it('opens the owner actions sheet from a card', async () => {
     await renderGallery([base]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
 
     await waitFor(() => {
       expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
@@ -473,9 +517,7 @@ describe('the gallery', () => {
   it('carries the skip setting in a card actions sheet', async () => {
     const { skipSetting } = await renderPlaylists(queryResult(page([base])));
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
 
     await waitFor(() => {
       expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
@@ -495,9 +537,7 @@ describe('the gallery', () => {
   it('keeps the skip setting disabled for a read-only share', async () => {
     await renderPlaylists(queryResult(page([shared])));
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Shared Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Shared Mix'));
 
     await waitFor(() => {
       expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
@@ -511,9 +551,7 @@ describe('the gallery', () => {
   it('starts a shuffled playlist from its card', async () => {
     await renderGallery([storedItem]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Shuffle Stored Mix' })
-    );
+    await fireEvent.press(controlOf('shuffle', 'Stored Mix'));
 
     await waitFor(() => {
       expect(startPlaylistPlayback).toHaveBeenCalledWith(
@@ -527,9 +565,7 @@ describe('the gallery', () => {
   it('starts a playlist from its card', async () => {
     await renderGallery([storedItem]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Play Stored Mix' })
-    );
+    await fireEvent.press(controlOf('play', 'Stored Mix'));
 
     await waitFor(() => {
       expect(startPlaylistPlayback).toHaveBeenCalledWith(
@@ -555,9 +591,7 @@ describe('the gallery', () => {
     );
     await renderGallery([storedItem]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Pause Stored Mix' })
-    );
+    await fireEvent.press(controlOf('play', 'Stored Mix'));
 
     expect(usePlayerStore.getState().isPlaying).toBe(false);
     expect(startPlaylistPlayback).not.toHaveBeenCalled();
@@ -567,9 +601,7 @@ describe('the gallery', () => {
     jest.mocked(startPlaylistPlayback).mockResolvedValueOnce({ kind: 'empty' });
     await renderGallery([storedItem]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Shuffle Stored Mix' })
-    );
+    await fireEvent.press(controlOf('shuffle', 'Stored Mix'));
 
     await waitFor(() => {
       expect(
@@ -581,9 +613,7 @@ describe('the gallery', () => {
   it('offers a reader the pin alone', async () => {
     await renderGallery([shared], directory);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Shared Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Shared Mix'));
 
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
@@ -600,9 +630,7 @@ describe('the gallery', () => {
   it('reads Unpin on a pinned card', async () => {
     await renderGallery([pinned]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Pinned Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Pinned Mix'));
 
     await waitFor(() => {
       expect(
@@ -614,9 +642,7 @@ describe('the gallery', () => {
   it('offers a write collaborator the pin, Cover and Sync', async () => {
     await renderGallery([{ ...base, access: ShareLevel.Write }]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
 
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
@@ -642,9 +668,7 @@ describe('the gallery', () => {
       }
     });
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
     });
@@ -672,9 +696,7 @@ describe('the gallery', () => {
       }
     });
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
     });
@@ -701,9 +723,7 @@ describe('the gallery', () => {
       }
     });
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
     });
@@ -720,9 +740,7 @@ describe('the gallery', () => {
   it('removes a card on delete and restores it on Undo without sending', async () => {
     const { remove } = await renderGallery([base]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-delete')).toBeOnTheScreen();
     });
@@ -750,9 +768,7 @@ describe('the gallery', () => {
   it('renames a playlist from its card', async () => {
     const { rename } = await renderGallery([base]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-rename')).toBeOnTheScreen();
     });
@@ -803,9 +819,7 @@ describe('the gallery', () => {
       }
     });
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-rename')).toBeOnTheScreen();
     });
@@ -833,9 +847,7 @@ describe('the gallery', () => {
   it('opens the share sheet from a card', async () => {
     await renderGallery([base]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-share')).toBeOnTheScreen();
     });
@@ -857,9 +869,7 @@ describe('the gallery', () => {
   it('opens the cover sheet from a card', async () => {
     await renderGallery([base]);
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'More actions for Rest Mix' })
-    );
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
     await waitFor(() => {
       expect(screen.getByTestId('playlist-action-cover')).toBeOnTheScreen();
     });
@@ -1045,6 +1055,68 @@ describe('the gallery', () => {
     scrollTo.mockRestore();
   });
 
+  it('reveals a restored status chip without animating', async () => {
+    const scrollTo = jest
+      .spyOn(ScrollView.prototype, 'scrollTo')
+      .mockImplementation(() => {});
+    await renderPlaylists(
+      queryResult(page([shared, base])),
+      directory,
+      undefined,
+      TrackFileStatus.Failed
+    );
+
+    await act(async () => {
+      screen.getByTestId('gallery-filter-bar').props.onLayout({
+        nativeEvent: { layout: { width: 200 } }
+      });
+      screen.getByTestId('gallery-status-chips').props.onLayout({
+        nativeEvent: { layout: { x: 150, width: 300 } }
+      });
+      screen.getByTestId('gallery-chip-failed').props.onLayout({
+        nativeEvent: { layout: { x: 226, width: 90 } }
+      });
+    });
+
+    expect(scrollTo).toHaveBeenCalledWith({
+      x: 150 + 226 + 90 - 200 + 12,
+      animated: false
+    });
+
+    scrollTo.mockRestore();
+  });
+
+  it('reveals a restored chip at a capped text scale', async () => {
+    const scrollTo = jest
+      .spyOn(ScrollView.prototype, 'scrollTo')
+      .mockImplementation(() => {});
+    await renderPlaylists(
+      queryResult(page([shared, base])),
+      directory,
+      undefined,
+      TrackFileStatus.Failed
+    );
+
+    await act(async () => {
+      screen.getByTestId('gallery-filter-bar').props.onLayout({
+        nativeEvent: { layout: { width: 200 } }
+      });
+      screen.getByTestId('gallery-status-chips').props.onLayout({
+        nativeEvent: { layout: { x: 150, width: 300 } }
+      });
+      screen.getByTestId('gallery-chip-failed').props.onLayout({
+        nativeEvent: { layout: { x: 260, width: 117 } }
+      });
+    });
+
+    expect(scrollTo).toHaveBeenCalledWith({
+      x: 150 + 260 + 117 - 200 + 12,
+      animated: false
+    });
+
+    scrollTo.mockRestore();
+  });
+
   it('mounts a bounded number of cards for a large library', async () => {
     const many = Array.from({ length: 200 }, (_, index) => ({
       ...base,
@@ -1061,6 +1133,11 @@ describe('the gallery', () => {
     await renderPlaylists(queryResult(undefined, { isPending: true }));
 
     expect(screen.getByTestId('gallery-skeleton')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('gallery-skeleton-rail', {
+        includeHiddenElements: true
+      })
+    ).toHaveStyle({ height: touchTarget });
     expect(screen.queryByText('No playlists yet')).not.toBeOnTheScreen();
   });
 

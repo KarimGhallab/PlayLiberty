@@ -50,7 +50,7 @@ describe('the library header', () => {
     await renderHeader();
 
     expect(
-      screen.getByRole('header', { name: 'PlayLiberty' })
+      screen.getByRole('header', { name: 'PlayLiberté' })
     ).toBeOnTheScreen();
   });
 

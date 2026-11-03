@@ -14,7 +14,7 @@ import {
   waitFor,
   within
 } from '@testing-library/react-native';
-import { BackHandler, FlatList } from 'react-native';
+import { AccessibilityInfo, BackHandler, FlatList } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -344,6 +344,13 @@ const page = {
   limit: 100,
   offset: 0,
   counts
+};
+
+/* The Failed chip is hidden at zero, so tests that press it start from a page
+ * whose whole counts include one failed track. */
+const pageWithFailed = {
+  ...page,
+  counts: { ...counts, [TrackFileStatus.Failed]: 1 }
 };
 
 const emptyPage = {
@@ -1010,13 +1017,15 @@ describe('the playlist detail', () => {
     expect(screen.getByTestId('filter-all').props.accessibilityLabel).toBe(
       'All 1'
     );
-    expect(screen.getByTestId('filter-failed').props.accessibilityLabel).toBe(
-      'Failed 0'
+    expect(screen.getByTestId('filter-stored').props.accessibilityLabel).toBe(
+      'Stored 1'
     );
+    expect(screen.queryByTestId('filter-failed')).not.toBeOnTheScreen();
   });
 
   it('filters the read by state while the chips keep the whole counts', async () => {
     await renderDetail({
+      tracks: pageWithFailed,
       filteredTracks: {
         [TrackFileStatus.Failed]: {
           ...page,
@@ -1051,6 +1060,7 @@ describe('the playlist detail', () => {
 
   it('names an empty filter and returns the whole list from Show all', async () => {
     await renderDetail({
+      tracks: pageWithFailed,
       filteredTracks: {
         [TrackFileStatus.Failed]: { ...emptyPage, counts }
       }
@@ -1063,6 +1073,7 @@ describe('the playlist detail', () => {
     });
     expect(screen.getByText('No failed tracks')).toBeOnTheScreen();
     expect(screen.getByText('Show all')).toBeOnTheScreen();
+    expect(screen.getByTestId('filter-failed')).toBeOnTheScreen();
 
     fireEvent.press(screen.getByTestId('filter-show-all'));
 
@@ -1148,7 +1159,7 @@ describe('the playlist detail', () => {
       currentId: 'track-1',
       shuffle: true
     });
-    await renderDetail();
+    await renderDetail({ tracks: pageWithFailed });
 
     expect(screen.getByTestId('detail-sort')).toBeDisabled();
     expect(screen.getByTestId('filter-all')).toBeDisabled();
@@ -1157,6 +1168,7 @@ describe('the playlist detail', () => {
 
   it('keeps the filter out of what Play starts', async () => {
     await renderDetail({
+      tracks: pageWithFailed,
       queue: [track, secondTrack],
       filteredTracks: {
         [TrackFileStatus.Failed]: { ...emptyPage, counts }
@@ -1793,22 +1805,22 @@ describe('the playlist detail', () => {
     expect(screen.getByTestId('detail-actions')).toBeOnTheScreen();
   });
 
-  it('offers the owner share, rename, cover, sync and delete, without the pin', async () => {
+  it('offers the owner share, rename, cover and delete, without the pin', async () => {
     await openHeaderSheet();
 
-    for (const key of ['share', 'rename', 'cover', 'sync', 'delete']) {
+    for (const key of ['share', 'rename', 'cover', 'delete']) {
       expect(screen.getByTestId(`playlist-action-${key}`)).toBeOnTheScreen();
     }
     expect(screen.queryByTestId('playlist-action-pin')).not.toBeOnTheScreen();
   });
 
-  it('offers a write collaborator cover and sync alone', async () => {
+  it('offers a write collaborator cover alone', async () => {
     await openHeaderSheet({
       playlist: { ...playlist, access: ShareLevel.Write }
     });
 
     expect(screen.getByTestId('playlist-action-cover')).toBeOnTheScreen();
-    expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
+    expect(screen.queryByTestId('playlist-action-sync')).not.toBeOnTheScreen();
     expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
     expect(
       screen.queryByTestId('playlist-action-rename')
@@ -1817,60 +1829,6 @@ describe('the playlist detail', () => {
       screen.queryByTestId('playlist-action-delete')
     ).not.toBeOnTheScreen();
     expect(screen.queryByTestId('playlist-action-pin')).not.toBeOnTheScreen();
-  });
-
-  it('starts the playlist sync from the sheet and closes it on success', async () => {
-    const { syncMutate } = await openHeaderSheet();
-    const mutate = syncMutate as unknown as {
-      mockImplementation: (
-        fn: (playlistId: string, options: { onSuccess?: () => void }) => void
-      ) => void;
-    };
-
-    mutate.mockImplementation((_playlistId, options) => {
-      options.onSuccess?.();
-    });
-
-    fireEvent.press(screen.getByTestId('playlist-action-sync'));
-
-    expect(syncMutate).toHaveBeenCalledWith('playlist-1', expect.any(Object));
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId('playlist-actions-sheet')
-      ).not.toBeOnTheScreen();
-    });
-  });
-
-  it('keeps a refused sync in the sheet with the problem sentence', async () => {
-    const failure = new ApiError(503, {
-      type: 'about:blank',
-      title: 'Service unavailable',
-      status: 503,
-      code: ProblemCode.InternalError,
-      detail: 'The playlist could not be synced.'
-    });
-    const { syncMutate } = await openHeaderSheet();
-    const mutate = syncMutate as unknown as {
-      mockImplementation: (
-        fn: (
-          playlistId: string,
-          options: { onError?: (error: Error) => void }
-        ) => void
-      ) => void;
-    };
-
-    mutate.mockImplementation((_playlistId, options) => {
-      options.onError?.(failure);
-    });
-
-    fireEvent.press(screen.getByTestId('playlist-action-sync'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('playlist-actions-problem')).toHaveTextContent(
-        'The playlist could not be synced.'
-      );
-    });
-    expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
   });
 
   it('prefills and renames from the detail header', async () => {
@@ -2155,7 +2113,9 @@ describe('the playlist detail', () => {
     });
 
     expect(screen.getByTestId('empty-sync')).toBeDisabled();
-    expect(screen.getByText('Syncing')).toBeOnTheScreen();
+    expect(
+      within(screen.getByTestId('empty-sync')).getByText('Syncing')
+    ).toBeOnTheScreen();
   });
 
   it('starts at the first playable track from the whole queue', async () => {
@@ -2494,6 +2454,7 @@ describe('the playlist detail', () => {
   it('renders the controls, sort sheet and empty filter in French', async () => {
     await renderDetail({
       language: Language.French,
+      tracks: pageWithFailed,
       filteredTracks: {
         [TrackFileStatus.Failed]: { ...emptyPage, counts }
       }
@@ -2539,7 +2500,9 @@ describe('the playlist detail', () => {
     });
 
     expect(screen.getByText('Rien pour le moment')).toBeOnTheScreen();
-    expect(screen.getByText('Synchroniser')).toBeOnTheScreen();
+    expect(
+      within(screen.getByTestId('empty-sync')).getByText('Synchroniser')
+    ).toBeOnTheScreen();
   });
 
   it('renders the not-found body in French', async () => {
@@ -2567,6 +2530,47 @@ describe('the playlist detail', () => {
     await fireEvent.press(screen.getByTestId('detail-sync'));
 
     expect(syncMutate).toHaveBeenCalledWith('playlist-1', expect.any(Object));
+  });
+
+  it('syncs from the state line for a writer', async () => {
+    const { syncMutate } = await renderDetail();
+
+    await fireEvent.press(screen.getByTestId('detail-sync-control'));
+
+    expect(syncMutate).toHaveBeenCalledWith('playlist-1', expect.any(Object));
+    expect(
+      screen.getByRole('button', { name: 'Sync, Rain On The Window' })
+    ).toBeOnTheScreen();
+  });
+
+  it('keeps the state line reachable through the wide action layer', async () => {
+    await renderDetail();
+
+    expect(screen.getByTestId('detail-actions-wide').props.pointerEvents).toBe(
+      'box-none'
+    );
+  });
+
+  it('draws no state-line sync for a reader', async () => {
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    expect(screen.queryByTestId('detail-sync-control')).not.toBeOnTheScreen();
+  });
+
+  it('draws the state-line sync for a write collaborator', async () => {
+    await renderDetail({
+      playlist: { ...playlist, access: ShareLevel.Write }
+    });
+
+    expect(screen.getByTestId('detail-sync-control')).toBeOnTheScreen();
+  });
+
+  it('holds the state-line sync while a run is live', async () => {
+    await renderDetail({ syncPending: true });
+
+    expect(screen.getByTestId('detail-sync-control')).toBeDisabled();
   });
 
   it('holds the dial while the playlist syncs', async () => {
@@ -2706,15 +2710,15 @@ describe('the playlist detail', () => {
     await waitFor(() => {
       expect(screen.getByTestId('add-track-sheet')).toBeOnTheScreen();
     });
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByLabelText('Video link'),
       'https://youtube.com/watch?v=dQw4w9WgXcQ'
     );
-    fireEvent.press(screen.getByTestId('add-track-pick-playlist-2'));
+    await fireEvent.press(screen.getByTestId('add-track-pick-playlist-2'));
     await waitFor(() => {
       expect(screen.getByTestId('add-track-submit')).toBeEnabled();
     });
-    fireEvent.press(screen.getByTestId('add-track-submit'));
+    await fireEvent.press(screen.getByTestId('add-track-submit'));
 
     expect(
       screen.getByTestId('add-track-outcome-playlist-2')
@@ -2729,5 +2733,23 @@ describe('the playlist detail', () => {
     );
 
     view.unmount();
+  });
+
+  it('tracks the header without a tween when the system asks for less motion', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+    await renderDetail();
+    const frame = jest.spyOn(globalThis, 'requestAnimationFrame');
+
+    await fireEvent.scroll(screen.getByTestId('playlist-scroll'), {
+      nativeEvent: {
+        contentOffset: { y: 1000 },
+        contentSize: { height: 2000 },
+        layoutMeasurement: { height: 400 }
+      }
+    });
+
+    expect(frame).not.toHaveBeenCalled();
   });
 });

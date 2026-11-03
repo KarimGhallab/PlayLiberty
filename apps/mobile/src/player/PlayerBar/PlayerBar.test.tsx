@@ -7,10 +7,18 @@ import {
   waitFor
 } from '@testing-library/react-native';
 import type { ComponentProps } from 'react';
-import { Text } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  PanResponder,
+  StyleSheet,
+  Text
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
+
+import { tokenLength, touchTarget } from '../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../auth/useApiConfig';
 import {
@@ -148,6 +156,19 @@ describe('the player bar', () => {
       'P-Access-Token': 'token-secret',
       'User-Agent': 'PlayLiberty/1.0 (Android)'
     });
+  });
+
+  it('gives the artwork a 48dp target without growing its paint', async () => {
+    startPlaylist();
+    await renderBar();
+
+    const art = screen.getByTestId('player-open-playlist');
+    const paint = tokenLength('space-9') - tokenLength('space-1');
+    const hit = art.props.hitSlop as number;
+
+    expect(art).toHaveStyle({ width: paint, height: paint });
+    expect(hit).toBe((touchTarget - paint) / 2);
+    expect(paint + hit * 2).toBeGreaterThanOrEqual(touchTarget);
   });
 
   it('publishes a taller bar when its content grows', async () => {
@@ -464,5 +485,42 @@ describe('the player bar', () => {
       { name: 'increment', label: 'Avancer de dix secondes' },
       { name: 'decrement', label: 'Reculer de dix secondes' }
     ]);
+  });
+
+  it('settles a refused swipe at once when the system asks for less motion', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+
+    let release: ((event: unknown, gesture: unknown) => void) | null = null;
+    const create = PanResponder.create.bind(PanResponder);
+
+    jest.spyOn(PanResponder, 'create').mockImplementation(config => {
+      release = config.onPanResponderRelease as unknown as typeof release;
+      return create(config);
+    });
+
+    usePlayerStore
+      .getState()
+      .start(
+        [track, secondTrack],
+        { id: 'playlist-1', name: 'Rain On The Window' },
+        secondTrack.id
+      );
+    await renderBar();
+
+    const spring = jest.spyOn(Animated, 'spring');
+
+    await act(() => {
+      release?.({}, { dx: -20, vx: -0.1 });
+    });
+
+    expect(spring).not.toHaveBeenCalled();
+
+    const transform = StyleSheet.flatten(
+      screen.getByTestId('player-bar-capsule').props.style
+    ).transform as { translateX: number }[];
+
+    expect(transform[0]?.translateX).toBe(0);
   });
 });

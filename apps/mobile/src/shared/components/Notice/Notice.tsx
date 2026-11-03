@@ -172,6 +172,11 @@ export default function Notice({
         },
         onPanResponderRelease: (_event, gesture) => {
           if (!dismissesOnSwipe(gesture.dx, gesture.vx, travelWidth.current)) {
+            if (reduceMotion) {
+              translateX.setValue(0);
+              return;
+            }
+
             Animated.spring(translateX, {
               toValue: 0,
               bounciness: 0,
@@ -198,6 +203,11 @@ export default function Notice({
           });
         },
         onPanResponderTerminate: () => {
+          if (reduceMotion) {
+            translateX.setValue(0);
+            return;
+          }
+
           Animated.spring(translateX, {
             toValue: 0,
             bounciness: 0,

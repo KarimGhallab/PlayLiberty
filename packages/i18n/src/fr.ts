@@ -21,8 +21,10 @@ export const fr: Messages = {
   account: {
     title: 'Compte',
     admin: 'Admin',
+    loading: 'Chargement du compte.',
     egress: 'Paramètres VPN',
-    signOut: 'Se déconnecter'
+    signOut: 'Se déconnecter',
+    signOutAsk: 'Êtes-vous sur de vouloir vous déconnecter ?'
   },
   signedOut: {
     title: "Connectez-vous pour entrer dans l'application",
@@ -117,7 +119,8 @@ export const fr: Messages = {
       switchFailed: "La sortie n'a pas pu être changée."
     },
     actions: 'Actions',
-    seen: 'Vu à {ip}',
+    seen: 'Le fournisseur a vu {ip}',
+    noEndpoint: 'Non défini',
     reason: {
       blocked: 'YouTube a refusé la sortie.',
       unavailable: 'La vidéo de vérification est indisponible.',
@@ -125,7 +128,8 @@ export const fr: Messages = {
       unknown: 'La vérification a échoué.'
     },
     active: 'Active',
-    never: 'Jamais',
+    neverAttempted: 'Aucune tentative',
+    neverChecked: 'Pas encore vérifié',
     statusOk: 'OK',
     statusFailed: 'Échec',
     statusUnknown: 'Inconnu'
@@ -205,6 +209,7 @@ export const fr: Messages = {
   },
   trackLink: {
     cannotPlay: 'Impossible de lire {title}.',
+    loading: 'Ouverture de la piste.',
     notStored: "La piste n'est pas encore stockée.",
     downloadFailed: 'Son téléchargement a échoué.',
     unavailableDetail: "Sa vidéo a disparu et aucun fichier n'a été stocké.",
@@ -367,6 +372,7 @@ export const fr: Messages = {
     pin: 'Épingler',
     unpin: 'Désépingler',
     syncNow: 'Synchroniser',
+    sync: 'Synchroniser',
     delete: 'Supprimer',
     play: 'Lire cette playlist',
     playNamed: 'Lire {name}',
@@ -491,6 +497,10 @@ export const fr: Messages = {
     lastSync: 'Dernière synchronisation : {time}',
     noChanges: 'Aucun changement',
     downloading: '{count} en téléchargement.',
+    retained: {
+      one: '1 piste retirée de {provider} est toujours stockée',
+      other: '{count} pistes retirées de {provider} sont toujours stockées'
+    },
     syncing: 'Synchronisation'
   },
   syncError: {

@@ -120,11 +120,15 @@ export default function PlaylistCard({
   const incomplete = incompleteOf(playlist.counts);
   const sharedBy = playlist.access === 'owner' ? null : ownerName;
   /* The card is one target, so its name carries everything the visible parts
-   * say: the mark, the count, the sync state and the owner. */
+   * say: the mark, the count, the tracks not stored, the sync state and the
+   * owner. */
   const cardLabel = [
     playlist.name,
     t(mark.label),
     `${playlist.trackCount} ${trackCountUnit(t, playlist.trackCount)}`,
+    incomplete === null
+      ? null
+      : t('library.notDownloaded', { count: incomplete.missing }),
     syncStateLabel(t, playlist.syncStatus),
     sharedBy === null ? null : t('header.sharedBy', { name: sharedBy })
   ]
@@ -137,12 +141,49 @@ export default function PlaylistCard({
   const nothingStored = playlist.counts.stored === 0;
   const playDisabled = nothingStored || busy;
   const shuffleDisabled = nothingStored || busy;
+  /* The parts are drawn over the cover and hidden from the tree, so their
+   * actions ride on the card: one stop per playlist. */
+  const actions = [
+    playDisabled
+      ? null
+      : {
+          name: 'play',
+          label: t(playing ? 'header.pauseNamed' : 'header.playNamed', {
+            name: playlist.name
+          })
+        },
+    shuffleDisabled
+      ? null
+      : {
+          name: 'shuffle',
+          label: t('header.shuffle', { name: playlist.name })
+        },
+    { name: 'openActions', label: t('header.actions', { name: playlist.name }) }
+  ].filter(
+    (action): action is { name: string; label: string } => action !== null
+  );
 
   return (
     <PressableScale
       testID="playlist-card"
       accessibilityRole="button"
       accessibilityLabel={cardLabel}
+      accessibilityActions={actions}
+      onAccessibilityAction={event => {
+        const chosen = event.nativeEvent.actionName;
+
+        if (chosen === 'play' && !playDisabled) {
+          onPlay();
+        }
+
+        if (chosen === 'shuffle' && !shuffleDisabled) {
+          onShuffle();
+        }
+
+        if (chosen === 'openActions') {
+          onOpenActions();
+        }
+      }}
       style={styles.card}
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
       onPress={onOpen}>
@@ -182,32 +223,33 @@ export default function PlaylistCard({
               style={styles.count}>
               {playlist.trackCount} {trackCountUnit(t, playlist.trackCount)}
             </Text>
-            {incomplete === null ? null : (
-              <View testID="playlist-incomplete" style={styles.incomplete}>
-                <IconDownload
-                  size={tokenLength('icon-sm')}
-                  color={tokenColor(TONE_COLORS[incomplete.tone])}
-                />
-                <Text
-                  maxFontSizeMultiplier={MAX_CARD_SCALE}
-                  style={[
-                    styles.incompleteCount,
-                    { color: tokenColor(TONE_COLORS[incomplete.tone]) }
-                  ]}>
-                  {incomplete.missing}
-                </Text>
-              </View>
-            )}
+            <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={MAX_CARD_SCALE}
+              style={[
+                styles.state,
+                { color: syncStateColor(playlist.syncStatus) }
+              ]}>
+              {syncStateLabel(t, playlist.syncStatus)}
+            </Text>
           </View>
-          <Text
-            numberOfLines={1}
-            maxFontSizeMultiplier={MAX_CARD_SCALE}
-            style={[
-              styles.state,
-              { color: syncStateColor(playlist.syncStatus) }
-            ]}>
-            {syncStateLabel(t, playlist.syncStatus)}
-          </Text>
+          {incomplete === null ? null : (
+            <View testID="playlist-incomplete" style={styles.incomplete}>
+              <IconDownload
+                size={tokenLength('icon-sm')}
+                color={tokenColor(TONE_COLORS[incomplete.tone])}
+              />
+              <Text
+                numberOfLines={2}
+                maxFontSizeMultiplier={MAX_CARD_SCALE}
+                style={[
+                  styles.incompleteCount,
+                  { color: tokenColor(TONE_COLORS[incomplete.tone]) }
+                ]}>
+                {t('library.notDownloaded', { count: incomplete.missing })}
+              </Text>
+            </View>
+          )}
         </View>
 
         {sharedBy === null ? null : (
@@ -220,17 +262,13 @@ export default function PlaylistCard({
         )}
       </View>
 
+      {/* The three controls are drawn over the cover; the card owns their
+        actions, so they carry no accessibility element of their own. */}
       <PressableScale
         testID="playlist-play"
-        accessibilityRole="button"
-        accessibilityLabel={t(
-          playing ? 'header.pauseNamed' : 'header.playNamed',
-          { name: playlist.name }
-        )}
-        accessibilityState={{
-          disabled: playDisabled,
-          busy: starting === 'play'
-        }}
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         disabled={playDisabled}
         style={[
           styles.play,
@@ -252,13 +290,9 @@ export default function PlaylistCard({
 
       <PressableScale
         testID="playlist-shuffle"
-        accessibilityRole="button"
-        accessibilityLabel={t('header.shuffle', { name: playlist.name })}
-        accessibilityState={{
-          disabled: shuffleDisabled,
-          selected: shuffled,
-          busy: starting === 'shuffle'
-        }}
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         disabled={shuffleDisabled}
         style={[
           styles.shuffle,
@@ -279,8 +313,9 @@ export default function PlaylistCard({
 
       <PressableScale
         testID={actionsTestID ?? 'playlist-actions'}
-        accessibilityRole="button"
-        accessibilityLabel={t('header.actions', { name: playlist.name })}
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         style={styles.actions}
         onPress={onOpenActions}>
         <IconDots size={tokenLength('icon-md')} color={tokenColor('ink')} />
@@ -321,19 +356,16 @@ const styles = StyleSheet.create({
     fontWeight: tokenWeight('weight-semibold')
   },
   meta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: tokenLength('space-2')
+    gap: tokenLength('space-1')
   },
   countRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokenLength('space-1'),
-    flexShrink: 1
+    justifyContent: 'space-between',
+    gap: tokenLength('space-2')
   },
   count: {
+    flexShrink: 1,
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-xs')
@@ -341,9 +373,10 @@ const styles = StyleSheet.create({
   incomplete: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2
+    gap: tokenLength('space-1')
   },
   incompleteCount: {
+    flexShrink: 1,
     fontFamily,
     fontSize: tokenLength('text-xs')
   },

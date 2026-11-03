@@ -76,10 +76,11 @@ function reasonLabel(t: Translator<Messages>, reason: string): string {
 function timeOf(
   t: Translator<Messages>,
   value: string | null,
-  now: number
+  now: number,
+  never: 'egress.neverAttempted' | 'egress.neverChecked'
 ): string {
   return value === null
-    ? t('egress.never')
+    ? t(never)
     : formatRelativeTime(t, new Date(value), now);
 }
 
@@ -234,7 +235,7 @@ function ConfigCard({
           className={`${styles.egress__fact} ${styles['egress__fact--wide']}`}>
           <dt>{t('egress.endpoint')}</dt>
           <dd>
-            {config.endpoint ?? '-'}
+            {config.endpoint ?? t('egress.noEndpoint')}
             {config.lastExitIp === null ? null : (
               <span className={styles.egress__observed}>
                 {t('egress.seen', { ip: config.lastExitIp })}
@@ -250,11 +251,13 @@ function ConfigCard({
         </div>
         <div className={styles.egress__fact}>
           <dt>{t('egress.lastAttempt')}</dt>
-          <dd>{timeOf(t, config.lastAttemptAt, now)}</dd>
+          <dd>
+            {timeOf(t, config.lastAttemptAt, now, 'egress.neverAttempted')}
+          </dd>
         </div>
         <div className={styles.egress__fact}>
           <dt>{t('egress.lastCheck')}</dt>
-          <dd>{timeOf(t, config.lastCheckAt, now)}</dd>
+          <dd>{timeOf(t, config.lastCheckAt, now, 'egress.neverChecked')}</dd>
         </div>
       </dl>
       <ConfigAction
@@ -473,7 +476,7 @@ export default function EgressPage() {
                         />
                       </th>
                       <td className={styles.egress__mono}>
-                        {config.endpoint ?? '-'}
+                        {config.endpoint ?? t('egress.noEndpoint')}
                         {config.lastExitIp === null ? null : (
                           <span className={styles.egress__observed}>
                             {t('egress.seen', { ip: config.lastExitIp })}
@@ -484,10 +487,20 @@ export default function EgressPage() {
                         <ConfigState t={t} config={config} />
                       </td>
                       <td className={styles.egress__mono}>
-                        {timeOf(t, config.lastAttemptAt, now)}
+                        {timeOf(
+                          t,
+                          config.lastAttemptAt,
+                          now,
+                          'egress.neverAttempted'
+                        )}
                       </td>
                       <td className={styles.egress__mono}>
-                        {timeOf(t, config.lastCheckAt, now)}
+                        {timeOf(
+                          t,
+                          config.lastCheckAt,
+                          now,
+                          'egress.neverChecked'
+                        )}
                       </td>
                       <td>
                         <ConfigAction

@@ -1,7 +1,8 @@
 import {
   IconArrowsShuffle,
   IconChevronLeft,
-  IconDots
+  IconDots,
+  IconRefresh
 } from '@tabler/icons-react-native';
 import {
   Animated,
@@ -57,13 +58,16 @@ const PLAY = 52;
 const CONTROL = touchTarget;
 const SMALL = 36;
 const GAP = 8;
+const SMALL_HIT = (CONTROL - SMALL) / 2;
+/* The compact pair's gap keeps the two 48dp grown boxes apart: the hit boxes
+ * meet with 4pt of air, not an overlap. */
+const NARROW_CONTROL_GAP = SMALL_HIT * 2 + tokenLength('space-1');
 const WIDE_ACTIONS_TOP = TOP + WIDE_COVER + 12;
 const NARROW_SMALL_TOP = TOP + NARROW_COVER - SMALL;
-const NARROW_BLOCK = SMALL * 2 + GAP;
+const NARROW_BLOCK = SMALL * 2 + NARROW_CONTROL_GAP;
 const WIDE_HEIGHT = WIDE_ACTIONS_TOP + PLAY + 12 + 2;
 const NARROW_HEIGHT = TOP + NARROW_COVER + 12 + 2;
 const NARROW_IDENTITY_RIGHT = TOP + NARROW_BLOCK + 12;
-const SMALL_HIT = (CONTROL - SMALL) / 2;
 
 /* The compact header keeps a fixed height, so its identity stops scaling before
  * the fourth line would spill into the list. */
@@ -74,6 +78,32 @@ export const HEADER_HEIGHT = {
   wide: WIDE_HEIGHT,
   narrow: NARROW_HEIGHT
 } as const;
+
+export interface HeaderControlBox {
+  readonly left: number;
+  readonly size: number;
+  readonly hit: number;
+}
+
+/* The compact header's pair, so the painted size and the grown target are one
+ * piece of arithmetic for the component and its test. */
+export function narrowControlBoxes(width: number): {
+  readonly shuffle: HeaderControlBox;
+  readonly actions: HeaderControlBox;
+} {
+  return {
+    shuffle: {
+      left: width - TOP - NARROW_BLOCK,
+      size: SMALL,
+      hit: SMALL_HIT
+    },
+    actions: {
+      left: width - TOP - SMALL,
+      size: SMALL,
+      hit: SMALL_HIT
+    }
+  };
+}
 
 export interface PlaylistIdentityProps {
   readonly playlist: Playlist;
@@ -89,6 +119,8 @@ export interface PlaylistIdentityProps {
   readonly onBack?: () => void;
   /** The start waiting on its queue read, so that control says so. */
   readonly starting?: 'play' | 'shuffle' | null;
+  /** Starts a sync for this playlist; absent for a reader. */
+  readonly onSync?: () => void;
   /** Whether this playlist's queue is the shuffled one on screen. */
   readonly shuffled?: boolean;
   /** Whether this playlist's queue is the one playing. */
@@ -172,10 +204,12 @@ function PlayControl({
 
 function ShuffleControl({
   props,
-  ghost = false
+  ghost = false,
+  small = false
 }: {
   readonly props: PlaylistIdentityProps;
   readonly ghost?: boolean;
+  readonly small?: boolean;
 }) {
   const { t } = useI18n();
   const starting = props.starting === 'shuffle';
@@ -189,7 +223,7 @@ function ShuffleControl({
       accessibilityLabel={t('header.shuffle', { name: props.playlist.name })}
       accessibilityState={{ disabled, selected: shuffled, busy: starting }}
       disabled={disabled}
-      hitSlop={SMALL_HIT}
+      hitSlop={small ? SMALL_HIT : 0}
       style={[
         styles.secondary,
         styles.fill,
@@ -209,12 +243,53 @@ function ShuffleControl({
   );
 }
 
+function SyncControl({
+  props,
+  compact
+}: {
+  readonly props: PlaylistIdentityProps;
+  readonly compact: boolean;
+}) {
+  const { t } = useI18n();
+
+  if (props.onSync === undefined) {
+    return null;
+  }
+
+  const busy = props.syncing === true;
+  const size = compact ? tokenLength('space-6') : tokenLength('space-7');
+
+  return (
+    <PressableScale
+      testID="detail-sync-control"
+      accessibilityRole="button"
+      accessibilityLabel={`${t('header.sync')}, ${props.playlist.name}`}
+      accessibilityState={{ disabled: busy, busy }}
+      disabled={busy}
+      hitSlop={(touchTarget - size) / 2}
+      style={[
+        styles.sync,
+        { width: size, height: size },
+        busy && styles.disabled
+      ]}
+      onPress={props.onSync}>
+      {busy ? (
+        <Spinner color={tokenColor('ink')} />
+      ) : (
+        <IconRefresh size={tokenLength('icon-sm')} color={tokenColor('ink')} />
+      )}
+    </PressableScale>
+  );
+}
+
 function ActionsControl({
   props,
-  ghost = false
+  ghost = false,
+  small = false
 }: {
   readonly props: PlaylistIdentityProps;
   readonly ghost?: boolean;
+  readonly small?: boolean;
 }) {
   const { t } = useI18n();
 
@@ -227,7 +302,7 @@ function ActionsControl({
       testID={ghost ? undefined : 'detail-actions'}
       accessibilityRole="button"
       accessibilityLabel={t('header.actions', { name: props.playlist.name })}
-      hitSlop={SMALL_HIT}
+      hitSlop={small ? SMALL_HIT : 0}
       style={[styles.secondary, styles.fill]}
       onPress={props.onOpenActions}>
       <IconDots size={tokenLength('icon-md')} color={tokenColor('muted')} />
@@ -238,11 +313,13 @@ function ActionsControl({
 function IdentityBlock({
   props,
   facts,
-  lines
+  lines,
+  compact
 }: {
   readonly props: PlaylistIdentityProps;
   readonly facts: ReturnType<typeof useFacts>;
   readonly lines: number;
+  readonly compact: boolean;
 }) {
   return (
     <View style={styles.body}>
@@ -274,20 +351,27 @@ function IdentityBlock({
           style={[styles.state, { color: facts.stateColor }]}>
           {facts.state}
         </Text>
-        <Text
-          accessible={false}
-          importantForAccessibility="no"
-          maxFontSizeMultiplier={MAX_IDENTITY_SCALE}
-          style={styles.separator}>
-          &middot;
-        </Text>
-        <Text
-          testID="playlist-last-synced"
-          numberOfLines={1}
-          maxFontSizeMultiplier={MAX_IDENTITY_SCALE}
-          style={styles.time}>
-          {facts.time}
-        </Text>
+        {/* The compact header keeps the state and the action; the time is the
+         * first thing to go. */}
+        {compact ? null : (
+          <>
+            <Text
+              accessible={false}
+              importantForAccessibility="no"
+              maxFontSizeMultiplier={MAX_IDENTITY_SCALE}
+              style={styles.separator}>
+              &middot;
+            </Text>
+            <Text
+              testID="playlist-last-synced"
+              numberOfLines={1}
+              maxFontSizeMultiplier={MAX_IDENTITY_SCALE}
+              style={styles.time}>
+              {facts.time}
+            </Text>
+          </>
+        )}
+        <SyncControl props={props} compact={compact} />
       </View>
       <Text
         testID="playlist-track-count"
@@ -393,6 +477,7 @@ export default function PlaylistIdentity({
   const insets = useSafeAreaInsets();
   const column = contentColumn(window.width, insets.left, insets.right);
   const width = column.width;
+  const compactControls = narrowControlBoxes(width);
 
   const height = progress.interpolate({
     inputRange: [0, 1],
@@ -492,11 +577,13 @@ export default function PlaylistIdentity({
             props={props}
             facts={facts}
             lines={collapsed ? 1 : 2}
+            compact={collapsed}
           />
         </Animated.View>
 
         <Animated.View
-          pointerEvents={collapsed ? 'none' : 'auto'}
+          testID="detail-actions-wide"
+          pointerEvents={collapsed ? 'none' : 'box-none'}
           accessibilityElementsHidden={collapsed}
           importantForAccessibility={collapsed ? 'no-hide-descendants' : 'auto'}
           style={[
@@ -542,7 +629,8 @@ export default function PlaylistIdentity({
         </Animated.View>
 
         <Animated.View
-          pointerEvents={collapsed ? 'auto' : 'none'}
+          testID="detail-actions-narrow"
+          pointerEvents={collapsed ? 'box-none' : 'none'}
           accessibilityElementsHidden={!collapsed}
           importantForAccessibility={collapsed ? 'auto' : 'no-hide-descendants'}
           style={[styles.actions, { opacity: narrowOpacity }]}>
@@ -562,25 +650,25 @@ export default function PlaylistIdentity({
             style={[
               styles.action,
               {
-                left: width - TOP - NARROW_BLOCK,
+                left: compactControls.shuffle.left,
                 top: NARROW_SMALL_TOP,
-                width: SMALL,
-                height: SMALL
+                width: compactControls.shuffle.size,
+                height: compactControls.shuffle.size
               }
             ]}>
-            <ShuffleControl props={props} ghost={!collapsed} />
+            <ShuffleControl props={props} ghost={!collapsed} small />
           </View>
           <View
             style={[
               styles.action,
               {
-                left: width - TOP - SMALL,
+                left: compactControls.actions.left,
                 top: NARROW_SMALL_TOP,
-                width: SMALL,
-                height: SMALL
+                width: compactControls.actions.size,
+                height: compactControls.actions.size
               }
             ]}>
-            <ActionsControl props={props} ghost={!collapsed} />
+            <ActionsControl props={props} ghost={!collapsed} small />
           </View>
         </Animated.View>
 
@@ -737,12 +825,19 @@ const styles = StyleSheet.create({
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokenLength('space-1')
+    gap: tokenLength('space-2')
   },
   state: {
     fontFamily,
     fontSize: tokenLength('text-xs'),
     fontWeight: tokenWeight('weight-semibold')
+  },
+  sync: {
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: tokenLength('radius-control'),
+    backgroundColor: tokenColor('surface')
   },
   separator: {
     color: tokenColor('muted'),

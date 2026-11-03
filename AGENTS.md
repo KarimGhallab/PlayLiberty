@@ -29,6 +29,25 @@ and consumed with `workspace:*`.
 - Apps are leaves: never import an app from a package (enforced by the `no-apps-import` dependency-cruiser rule).
 - A test earns its place only if it fails when behavior a user relies on changes, with one owner test per behavior plus at most one assembly test. See the testing guideline (`~/.config/opencode/refs/guidelines/testing.md`).
 
+## Audits
+
+### Mobile UI audit
+
+The design detector is blind to `apps/mobile`. `impeccable detect --json apps/mobile/src apps/mobile/app` exits 0 with
+an empty array over every file because the engine resolves markup and CSS, not JSX and React Native style objects; the
+same colour and size values produce four findings as a CSS declaration and none as a `StyleSheet`. An empty result is
+not a pass, and no issue may cite one as evidence about this client.
+
+A mobile audit reads the device and the tokens instead:
+
+| Check          | Command or file                                                                                                                                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Touch targets  | `adb -s emulator-5554 shell uiautomator dump /sdcard/ui.xml >/dev/null && adb -s emulator-5554 shell cat /sdcard/ui.xml`; every `clickable="true"` node's `bounds` is at least 48dp, converted at `adb -s emulator-5554 shell wm density`. |
+| Labels, roles  | The same dump: `content-desc` is the name; `class`, `checkable`, `checked` and `enabled` carry the role and the state.                                                                                                                     |
+| Contrast       | `pnpm --filter @playliberty/mobile exec jest src/shared/styles/tokens.test.ts`; a pair it does not cover is computed from `packages/tokens/src/values.ts`.                                                                                 |
+| Text scale     | `adb -s emulator-5554 shell settings put system font_scale 1.0`, then `1.3`, then `2.0`, reading every screen at each.                                                                                                                     |
+| Reduced motion | `adb -s emulator-5554 shell settings put global transition_animation_scale 0`, restored to `1`.                                                                                                                                            |
+
 ## Agent skills
 
 ### Issue tracker

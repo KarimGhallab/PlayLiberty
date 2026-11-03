@@ -29,8 +29,8 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 import {
-  STATUS_CHIPS,
-  totalStatusCount
+  totalStatusCount,
+  visibleStatusChips
 } from '../../../shared/trackState/statusChips';
 
 import PlaylistSortSheet from './PlaylistSortSheet';
@@ -202,7 +202,7 @@ export default function PlaylistControls({
               onPress={() => onFilterChange(null)}
             />
           </View>
-          {STATUS_CHIPS.map(chip => (
+          {visibleStatusChips(counts, active).map(chip => (
             <View key={chip.value} onLayout={rememberChip(chip.value)}>
               <Chip
                 testID={`filter-${chip.value}`}

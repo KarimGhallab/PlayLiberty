@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { type Account, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
+import { tokenLength } from '../../styles/tokens';
 import AccountSheet, { type AccountSheetProps } from './AccountSheet';
 
 const store = { getItem: () => null, setItem: () => {} };
@@ -32,10 +33,14 @@ const account: Account = {
   role: UserRole.User
 };
 
-async function renderSheet(overrides: Partial<AccountSheetProps> = {}) {
+async function renderSheet(
+  overrides: Partial<AccountSheetProps> = {},
+  language = Language.English
+) {
   const props: AccountSheetProps = {
     visible: true,
     account,
+    loading: false,
     failure: null,
     onClose: jest.fn(),
     onSignOut: jest.fn(),
@@ -44,7 +49,7 @@ async function renderSheet(overrides: Partial<AccountSheetProps> = {}) {
 
   const view = await render(
     <SafeAreaProvider initialMetrics={metrics}>
-      <I18nProvider initialLanguage={Language.English} storage={store}>
+      <I18nProvider initialLanguage={language} storage={store}>
         <AccountSheet {...props} />
       </I18nProvider>
     </SafeAreaProvider>
@@ -58,6 +63,25 @@ describe('the account sheet', () => {
     await renderSheet();
 
     expect(screen.getByText('Milloser')).toBeOnTheScreen();
+  });
+
+  it('holds the identity block while the account is read', async () => {
+    await renderSheet({ account: null, loading: true });
+
+    expect(screen.getByLabelText('Loading the account.')).toBeOnTheScreen();
+    expect(screen.getByTestId('account-identity-loading')).toHaveStyle({
+      minHeight: tokenLength('space-9')
+    });
+    expect(screen.getByRole('radio', { name: 'English' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeOnTheScreen();
+  });
+
+  it('draws no identity block once the read has failed', async () => {
+    await renderSheet({ account: null, loading: false });
+
+    expect(
+      screen.queryByLabelText('Loading the account.')
+    ).not.toBeOnTheScreen();
   });
 
   it('draws the avatar only when the account has one', async () => {
@@ -118,11 +142,47 @@ describe('the account sheet', () => {
     });
   });
 
-  it('signs out', async () => {
+  it('asks before signing out', async () => {
     const { props } = await renderSheet();
 
-    fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
+
+    expect(props.onSignOut).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Are you sure you want to sign out?')
+    ).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
+
     expect(props.onSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('disarms the question on cancel', async () => {
+    const { props } = await renderSheet();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      screen.queryByText('Are you sure you want to sign out?')
+    ).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
+
+    expect(props.onSignOut).not.toHaveBeenCalled();
+  });
+
+  it('asks in French', async () => {
+    const { props } = await renderSheet({}, Language.French);
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Se déconnecter' })
+    );
+
+    expect(
+      screen.getByText('Êtes-vous sur de vouloir vous déconnecter ?')
+    ).toBeOnTheScreen();
+    expect(props.onSignOut).not.toHaveBeenCalled();
   });
 
   it('closes when the backdrop is pressed', async () => {

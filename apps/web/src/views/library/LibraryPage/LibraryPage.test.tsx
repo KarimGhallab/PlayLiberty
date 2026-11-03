@@ -1884,7 +1884,7 @@ describe('the egress link', () => {
   it('is absent for everyone else', async () => {
     renderLibraryPage();
 
-    await screen.findByRole('heading', { name: 'PlayLiberty' });
+    await screen.findByRole('heading', { name: 'PlayLiberté' });
 
     expect(
       screen.queryByRole('link', { name: 'VPN settings' })

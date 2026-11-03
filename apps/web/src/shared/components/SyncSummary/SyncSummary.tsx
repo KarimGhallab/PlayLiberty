@@ -1,6 +1,6 @@
-import { SyncRunStatus } from '@playliberty/contracts';
+import { Provider, SyncRunStatus } from '@playliberty/contracts';
 import type { SyncRun } from '@playliberty/contracts';
-import { formatRelativeTime, useI18n } from '@playliberty/i18n';
+import { formatRelativeTime, providerLabel, useI18n } from '@playliberty/i18n';
 
 import RetryFailedControl from '../RetryFailedControl/RetryFailedControl';
 import styles from './SyncSummary.module.scss';
@@ -16,6 +16,10 @@ interface SyncSummaryProps {
   now: Date;
   /* The whole playlist's failed tracks, the same aggregate the chips draw. */
   failedCount: number;
+  /* Stored tracks whose source removed them: the playlist's retention, not the
+   * run's, so it survives a run that changed nothing. */
+  remoteRemoved: number;
+  provider: Provider;
   /* How many of the tracks this client holds are downloading. Passed only while
    * a run is active, because that is the only time the line is drawn. */
   downloadingCount?: number;
@@ -39,6 +43,8 @@ export default function SyncSummary({
   run,
   now,
   failedCount,
+  remoteRemoved,
+  provider,
   downloadingCount = 0,
   onRetryFailed,
   retryingFailed = false,
@@ -106,6 +112,14 @@ export default function SyncSummary({
       {running && downloadingCount > 0 ? (
         <p className={styles.syncSummary__flight}>
           {t('syncSummary.downloading', { count: downloadingCount })}
+        </p>
+      ) : null}
+      {remoteRemoved > 0 ? (
+        <p className={styles.syncSummary__retained}>
+          {t('syncSummary.retained', {
+            count: remoteRemoved,
+            provider: providerLabel(t, provider)
+          })}
         </p>
       ) : null}
     </div>

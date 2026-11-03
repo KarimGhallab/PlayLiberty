@@ -38,6 +38,8 @@ export interface SyncBandProps {
   readonly onRetryFailed: () => void;
   /* A control above may already name the run, so its stamp can step aside. */
   readonly showRunningStamp?: boolean;
+  /* Stored tracks whose source removed them: the promise, not the last run. */
+  readonly remoteRemoved?: number;
 }
 
 interface SummaryCell {
@@ -59,15 +61,15 @@ export default function SyncBand({
   onSync,
   retryingFailed,
   onRetryFailed,
-  showRunningStamp = true
+  showRunningStamp = true,
+  remoteRemoved = 0
 }: SyncBandProps) {
   const { t } = useI18n();
   const [revealed, setRevealed] = useState(false);
   const failedCount = counts[TrackFileStatus.Failed];
+  const provider = providerLabel(t, playlist.provider);
 
   if (playlist.syncStatus === PlaylistSyncStatus.Error) {
-    const provider = providerLabel(t, playlist.provider);
-
     return (
       <View testID="sync-band" style={styles.error}>
         <View style={styles.errorBody}>
@@ -244,6 +246,14 @@ export default function SyncBand({
           {t('syncSummary.downloading', { count: downloading })}
         </Text>
       ) : null}
+      {remoteRemoved > 0 ? (
+        <Text testID="sync-remote-removed" style={styles.retained}>
+          {t('syncSummary.retained', {
+            count: remoteRemoved,
+            provider
+          })}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -300,6 +310,12 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-sm')
+  },
+  retained: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
   },
   retryFailed: {
     minHeight: touchTarget,

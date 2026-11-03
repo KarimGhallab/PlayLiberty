@@ -516,6 +516,12 @@ export default function PlayerBar({ config }: PlayerBarProps) {
         : null;
 
   const settleBack = useCallback((): void => {
+    if (reduceMotion) {
+      swipe.setValue(0);
+      setDirection(null);
+      return;
+    }
+
     /* The incoming page stays mounted while the deck retracts, so it leaves
      * with the current one instead of vanishing. A new drag supersedes the
      * spring, which reports unfinished and keeps the newer direction. */
@@ -529,7 +535,7 @@ export default function PlayerBar({ config }: PlayerBarProps) {
         setDirection(null);
       }
     });
-  }, [swipe]);
+  }, [reduceMotion, swipe]);
 
   const complete = useCallback(
     (trackId: string, toValue: number): void => {

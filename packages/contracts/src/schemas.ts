@@ -112,7 +112,8 @@ export const PlaylistTracksPageSchema = z.object({
   total: z.number().int().nonnegative(),
   limit: z.number().int().positive(),
   offset: z.number().int().nonnegative(),
-  counts: TrackFileStatusCountsSchema
+  counts: TrackFileStatusCountsSchema,
+  remoteRemoved: nonNegative
 });
 
 export const ShareSchema = z.object({

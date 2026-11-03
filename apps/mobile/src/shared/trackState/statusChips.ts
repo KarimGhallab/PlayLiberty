@@ -47,3 +47,14 @@ export const STATUS_CHIPS: readonly StatusChip[] = [
 export function totalStatusCount(counts: TrackFileStatusCounts): number {
   return STATUS_CHIPS.reduce((sum, chip) => sum + counts[chip.value], 0);
 }
+
+/* One rule for both rails: a state with nothing in it is not a filter worth
+ * offering, except the one in force, so an empty view keeps its way back. */
+export function visibleStatusChips(
+  counts: TrackFileStatusCounts,
+  active: TrackFileStatus | null
+): readonly StatusChip[] {
+  return STATUS_CHIPS.filter(
+    chip => counts[chip.value] > 0 || chip.value === active
+  );
+}

@@ -6,9 +6,12 @@ import { useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   Text,
+  type TextStyle,
   View,
+  type ViewStyle,
   useWindowDimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -90,11 +93,46 @@ function reasonLabel(t: Translator<Messages>, reason: string): string {
 function timeOf(
   t: Translator<Messages>,
   value: string | null,
-  now: number
+  now: number,
+  never: 'egress.neverAttempted' | 'egress.neverChecked'
 ): string {
   return value === null
-    ? t('egress.never')
+    ? t(never)
     : formatRelativeTime(t, new Date(value), now);
+}
+
+interface FactProps {
+  readonly label: string;
+  readonly value: string;
+  readonly sub?: string | null;
+  readonly style?: StyleProp<ViewStyle>;
+  readonly valueStyle?: StyleProp<TextStyle>;
+}
+
+/* One fact is one announcement: the label, the value and the sentence under it
+ * are read once, and the painted pieces stay out of the tree. */
+function Fact({ label, value, sub = null, style, valueStyle }: FactProps) {
+  const name = [label, value, sub]
+    .filter((part): part is string => part !== null)
+    .join(', ');
+
+  return (
+    <View
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={name}
+      style={style}>
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.factBody}>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.value, valueStyle]}>{value}</Text>
+        {sub === null ? null : <Text style={styles.sub}>{sub}</Text>}
+      </View>
+    </View>
+  );
 }
 
 interface ConfigCardProps {
@@ -167,35 +205,36 @@ function ConfigCard({
         ) : null}
       </View>
       <View style={styles.facts}>
-        <View style={styles.fact}>
-          <Text style={styles.label}>{t('egress.endpoint')}</Text>
-          <Text style={styles.value}>{config.endpoint ?? '-'}</Text>
-          {observed === null ? null : (
-            <Text style={styles.sub}>{observed}</Text>
-          )}
+        <Fact
+          label={t('egress.endpoint')}
+          value={config.endpoint ?? t('egress.noEndpoint')}
+          sub={observed}
+        />
+        <View style={[styles.factRow, stacked && styles.factRowStacked]}>
+          <Fact
+            label={t('egress.status')}
+            value={statusLabel(t, config.status)}
+            valueStyle={{ color: statusTone(config.status) }}
+            sub={reason}
+            style={[styles.factHalf, stacked && styles.factHalfStacked]}
+          />
+          <Fact
+            label={t('egress.lastAttempt')}
+            value={timeOf(
+              t,
+              config.lastAttemptAt,
+              now,
+              'egress.neverAttempted'
+            )}
+            style={[styles.factHalf, stacked && styles.factHalfStacked]}
+          />
         </View>
         <View style={[styles.factRow, stacked && styles.factRowStacked]}>
-          <View style={[styles.factHalf, stacked && styles.factHalfStacked]}>
-            <Text style={styles.label}>{t('egress.status')}</Text>
-            <Text style={[styles.value, { color: statusTone(config.status) }]}>
-              {statusLabel(t, config.status)}
-            </Text>
-            {reason === null ? null : <Text style={styles.sub}>{reason}</Text>}
-          </View>
-          <View style={[styles.factHalf, stacked && styles.factHalfStacked]}>
-            <Text style={styles.label}>{t('egress.lastAttempt')}</Text>
-            <Text style={styles.value}>
-              {timeOf(t, config.lastAttemptAt, now)}
-            </Text>
-          </View>
-        </View>
-        <View style={[styles.factRow, stacked && styles.factRowStacked]}>
-          <View style={[styles.factHalf, stacked && styles.factHalfStacked]}>
-            <Text style={styles.label}>{t('egress.lastCheck')}</Text>
-            <Text style={styles.value}>
-              {timeOf(t, config.lastCheckAt, now)}
-            </Text>
-          </View>
+          <Fact
+            label={t('egress.lastCheck')}
+            value={timeOf(t, config.lastCheckAt, now, 'egress.neverChecked')}
+            style={[styles.factHalf, stacked && styles.factHalfStacked]}
+          />
         </View>
       </View>
       <PressableScale
@@ -512,13 +551,12 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: tokenLength('space-2')
   },
-  fact: {
+  factBody: {
     gap: tokenLength('space-1')
   },
   factHalf: {
     flex: 1,
-    minWidth: 0,
-    gap: tokenLength('space-1')
+    minWidth: 0
   },
   factHalfStacked: {
     flex: 0,

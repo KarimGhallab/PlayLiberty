@@ -128,6 +128,8 @@ function nextTracksPageParam(lastPage: PlaylistTracksPage): number | undefined {
 export interface PlaylistTracksRead {
   readonly tracks: PlaylistTracksPage['items'];
   readonly counts: PlaylistTracksPage['counts'] | undefined;
+  /* Stored tracks whose source removed them, beside the five buckets. */
+  readonly remoteRemoved: PlaylistTracksPage['remoteRemoved'] | undefined;
   readonly total: PlaylistTracksPage['total'] | undefined;
   readonly isPlaceholderData: boolean;
   readonly isPending: boolean;
@@ -175,6 +177,7 @@ export function usePlaylistTracks(
   return {
     tracks,
     counts: firstPage?.counts,
+    remoteRemoved: firstPage?.remoteRemoved,
     total: firstPage?.total,
     isPlaceholderData: query.isPlaceholderData,
     isPending: query.isPending,

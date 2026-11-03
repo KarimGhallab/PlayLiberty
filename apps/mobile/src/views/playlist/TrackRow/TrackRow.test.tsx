@@ -210,6 +210,32 @@ describe('the track row', () => {
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
 
+  it('plays on a tap but not on a drag', async () => {
+    const { onPlay } = await renderRow();
+    const play = screen.getByTestId('track-play');
+    const touchAt = (x: number, y: number) => ({
+      nativeEvent: { touches: [{ pageX: x, pageY: y }] }
+    });
+
+    await fireEvent(play, 'touchStart', touchAt(10, 20));
+    await fireEvent.press(play);
+
+    expect(onPlay).toHaveBeenCalledTimes(1);
+
+    onPlay.mockClear();
+    await fireEvent(play, 'touchStart', touchAt(10, 20));
+    await fireEvent(play, 'touchMove', touchAt(60, 24));
+    await fireEvent.press(play);
+
+    expect(onPlay).not.toHaveBeenCalled();
+
+    await fireEvent(play, 'touchStart', touchAt(10, 20));
+    await fireEvent(play, 'touchMove', touchAt(14, 70));
+    await fireEvent.press(play);
+
+    expect(onPlay).not.toHaveBeenCalled();
+  });
+
   it('reads a playable row once, keeping the sentence, the disclosure and the lane', async () => {
     const onOpenActions = jest.fn();
     await renderRow(storedWithReason, { onOpenActions });

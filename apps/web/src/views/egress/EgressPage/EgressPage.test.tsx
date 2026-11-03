@@ -106,7 +106,8 @@ describe('the egress page', () => {
     expect(screen.getByRole('cell', { name: 'OK' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Unknown' })).toBeInTheDocument();
     expect(screen.getByText('2 hours ago')).toBeInTheDocument();
-    expect(screen.getAllByText('Never')[0]).toBeInTheDocument();
+    expect(screen.getByText('No attempt yet')).toBeInTheDocument();
+    expect(screen.getAllByText('Not checked yet')[0]).toBeInTheDocument();
     expect(screen.getByText('Egress agent reachable.')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'France' })).toBeInTheDocument();
     expect(
@@ -229,7 +230,9 @@ describe('the one action per row', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Check' }));
 
-    expect(await screen.findByText('Seen at 185.0.0.9')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Provider saw 185.0.0.9')
+    ).toBeInTheDocument();
     expect(within(activeRow('01-fr')).getByText('Active')).toBeInTheDocument();
     expect(
       within(activeRow('01-fr')).getByRole('button', { name: 'Check' })
@@ -396,7 +399,9 @@ describe('the one action per row', () => {
 
     release?.();
 
-    expect(await screen.findByText('Seen at 185.0.0.9')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Provider saw 185.0.0.9')
+    ).toBeInTheDocument();
   });
 
   it('reports a check that could not be completed', async () => {

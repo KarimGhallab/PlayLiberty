@@ -28,9 +28,11 @@ export default function LibraryShell() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const { data: account, error: accountError } = useAccount(
-    status === SessionStatus.SignedIn
-  );
+  const {
+    data: account,
+    error: accountError,
+    isPending: accountPending
+  } = useAccount(status === SessionStatus.SignedIn);
   const readFailure =
     accountError instanceof ApiError
       ? problemDetail(t, accountError.problem)
@@ -86,6 +88,7 @@ export default function LibraryShell() {
       <AccountSheet
         visible={accountOpen}
         account={account ?? null}
+        loading={accountPending}
         failure={readFailure}
         onClose={() => setAccountOpen(false)}
         onSignOut={() => {

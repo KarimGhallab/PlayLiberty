@@ -4,7 +4,7 @@
  */
 export const en = {
   app: {
-    name: 'PlayLiberty',
+    name: 'PlayLiberté',
     title: {
       playlist: '{app} - {name}',
       track: '{app} - {playlist} ({track})',
@@ -19,8 +19,10 @@ export const en = {
   account: {
     title: 'Account',
     admin: 'Admin',
+    loading: 'Loading the account.',
     egress: 'VPN settings',
-    signOut: 'Sign out'
+    signOut: 'Sign out',
+    signOutAsk: 'Are you sure you want to sign out?'
   },
   signedOut: {
     title: 'Sign in to enter the app',
@@ -114,7 +116,8 @@ export const en = {
       switchFailed: 'The exit could not be switched.'
     },
     actions: 'Actions',
-    seen: 'Seen at {ip}',
+    seen: 'Provider saw {ip}',
+    noEndpoint: 'Not set',
     reason: {
       blocked: 'YouTube refused the exit.',
       unavailable: 'The check video is unavailable.',
@@ -122,7 +125,8 @@ export const en = {
       unknown: 'The check failed.'
     },
     active: 'Active',
-    never: 'Never',
+    neverAttempted: 'No attempt yet',
+    neverChecked: 'Not checked yet',
     statusOk: 'OK',
     statusFailed: 'Failed',
     statusUnknown: 'Unknown'
@@ -199,6 +203,7 @@ export const en = {
   },
   trackLink: {
     cannotPlay: '{title} cannot play.',
+    loading: 'Opening the track.',
     notStored: 'It is not stored yet.',
     downloadFailed: 'Its download failed.',
     unavailableDetail: 'Its video is gone and no file was stored.',
@@ -357,6 +362,7 @@ export const en = {
     pin: 'Pin',
     unpin: 'Unpin',
     syncNow: 'Sync now',
+    sync: 'Sync',
     delete: 'Delete',
     play: 'Play this playlist',
     playNamed: 'Play {name}',
@@ -480,6 +486,10 @@ export const en = {
     lastSync: 'Last sync {time}',
     noChanges: 'Nothing changed',
     downloading: '{count} downloading',
+    retained: {
+      one: '1 track removed from {provider} is still stored',
+      other: '{count} tracks removed from {provider} are still stored'
+    },
     syncing: 'Syncing'
   },
   syncError: {

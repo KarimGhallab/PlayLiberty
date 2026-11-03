@@ -15,7 +15,8 @@ import type {
 import {
   PlaylistSort,
   PlaylistSyncStatus,
-  TrackFileStatus
+  TrackFileStatus,
+  TrackSourceStatus
 } from '@playliberty/contracts';
 
 import type { Entry } from '../../shared/access/entry.js';
@@ -604,6 +605,28 @@ function fileStatusCounts(
   );
 }
 
+/* The one fact the five buckets cannot name: a stored track whose source
+ * removed it. It is an overlay on `stored`, so it is counted beside them. */
+function remoteRemovedCount(
+  database: DatabaseHandle,
+  playlistId: string
+): number {
+  const row = database.db
+    .select({ count: sql<number>`count(*)` })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(
+      and(
+        eq(associations.playlistId, playlistId),
+        eq(tracks.fileStatus, TrackFileStatus.Stored),
+        eq(tracks.sourceStatus, TrackSourceStatus.Removed)
+      )
+    )
+    .get();
+
+  return row?.count ?? 0;
+}
+
 export function listPlaylistTracksForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -654,7 +677,8 @@ export function listPlaylistTracksForAccount(
           query.state === undefined ? playlist.trackCount : counts[query.state],
         limit: query.limit,
         offset: query.offset,
-        counts
+        counts,
+        remoteRemoved: remoteRemovedCount(database, playlistId)
       };
     }
   );

@@ -26,18 +26,18 @@ const TRACK: PlayerTrack = {
 
 describe('documentTitle', () => {
   it('names the app alone when nothing is open', () => {
-    expect(documentTitle(english, null, null)).toBe('PlayLiberty');
+    expect(documentTitle(english, null, null)).toBe('PlayLiberté');
   });
 
   it('names the open playlist', () => {
     expect(documentTitle(english, 'Rain On The Window', null)).toBe(
-      'PlayLiberty - Rain On The Window'
+      'PlayLiberté - Rain On The Window'
     );
   });
 
   it('names the playing track under its own playlist', () => {
     expect(documentTitle(english, 'Rain On The Window', TRACK)).toBe(
-      'PlayLiberty - Rain On The Window (Blue In Green)'
+      'PlayLiberté - Rain On The Window (Blue In Green)'
     );
   });
 
@@ -49,7 +49,7 @@ describe('documentTitle', () => {
     };
 
     expect(documentTitle(english, null, bare)).toBe(
-      'PlayLiberty - Blue In Green'
+      'PlayLiberté - Blue In Green'
     );
     expect(documentTitle(french, null, bare)).toBe(
       'PlayLiberté - Blue In Green'

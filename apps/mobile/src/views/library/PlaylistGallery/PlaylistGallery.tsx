@@ -5,7 +5,6 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
   FlatList,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -217,6 +216,15 @@ export default function PlaylistGallery({
   const columns = galleryColumnCount(window.width);
   const columnWidth = galleryColumnWidth(window.width);
   const pinnedCardWidth = galleryPinnedWidth(window.width);
+  const pinnedCardGap = tokenLength('space-3');
+  /* The first paint mounts the visible cards including the one that peeks, so a
+   * row of pinned playlists costs the viewport rather than the library. */
+  const pinnedViewportWidth =
+    columns * columnWidth + (columns - 1) * pinnedCardGap;
+  const pinnedBatch = Math.max(
+    2,
+    Math.ceil(pinnedViewportWidth / (pinnedCardWidth + pinnedCardGap))
+  );
   const playlists = usePlaylists();
   const directory = useAccountDirectory();
   const create = useCreatePlaylist();
@@ -244,7 +252,7 @@ export default function PlaylistGallery({
     readonly intent: StartIntent;
   } | null>(null);
   const createTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pinnedRow = useRef<ScrollView>(null);
+  const pinnedRow = useRef<FlatList<PlaylistWithCounts>>(null);
   const pinnedViewport = useRef(0);
   const pinnedOffset = useRef(0);
   const loadedItems = (playlists.data?.items ?? []).filter(
@@ -729,14 +737,29 @@ export default function PlaylistGallery({
           style={styles.heading}>
           {t('library.pinned')}
         </Text>
-        <ScrollView
+        <FlatList
           ref={pinnedRow}
           testID="pinned-row"
+          data={pinned}
+          keyExtractor={playlist => playlist.id}
+          renderItem={({ item }) => (
+            <View testID="pinned-card" style={{ width: pinnedCardWidth }}>
+              {cardFor(item, 'pinned')}
+            </View>
+          )}
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.pinnedRow}
           contentContainerStyle={styles.pinnedContent}
           scrollEventThrottle={16}
+          initialNumToRender={pinnedBatch}
+          maxToRenderPerBatch={pinnedBatch}
+          windowSize={3}
+          getItemLayout={(_, index) => ({
+            length: pinnedCardWidth + pinnedCardGap,
+            offset: (pinnedCardWidth + pinnedCardGap) * index,
+            index
+          })}
           onLayout={event => {
             pinnedViewport.current = event.nativeEvent.layout.width;
           }}
@@ -755,19 +778,14 @@ export default function PlaylistGallery({
             );
 
             if (clamped !== pinnedOffset.current) {
-              pinnedRow.current?.scrollTo({
-                x: clamped,
+              pinnedRow.current?.scrollToOffset({
+                offset: clamped,
                 animated: false
               });
               pinnedOffset.current = clamped;
             }
-          }}>
-          {pinned.map(playlist => (
-            <View key={playlist.id} style={{ width: pinnedCardWidth }}>
-              {cardFor(playlist, 'pinned')}
-            </View>
-          ))}
-        </ScrollView>
+          }}
+        />
       </View>
     );
 

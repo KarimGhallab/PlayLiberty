@@ -1,7 +1,8 @@
 import { IconDots } from '@tabler/icons-react-native';
-import { memo, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import {
   Animated,
+  type GestureResponderEvent,
   Image,
   PixelRatio,
   Pressable,
@@ -35,6 +36,11 @@ import type { ApiConfig } from '../../../auth/useApiConfig';
 /* Above this scale the title takes a second line rather than losing its name. */
 const MAX_SINGLE_LINE_SCALE = 1.3;
 
+/* A press plays; a drag scrolls. The travel is measured from the touch itself,
+ * because a Pressable still reports a release inside its own bounds as a press.
+ * The threshold stays under the 12pt a swipe needs to claim a pan. */
+const DRAG_THRESHOLD = tokenLength('space-2');
+
 export interface TrackRowProps {
   readonly association: PlaylistTrack;
   readonly config: ApiConfig | null;
@@ -62,6 +68,8 @@ function TrackRow({
   const [revealed, setRevealed] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const { pressTo, style: pressStyle } = usePressScale(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
   const playable = isPlayable(track);
   const stateLabel = trackStateLabel(
     t,
@@ -98,6 +106,35 @@ function TrackRow({
       }
     : {};
 
+  const beginTouch = (event: GestureResponderEvent): void => {
+    const touch = event.nativeEvent.touches[0];
+    touchStart.current =
+      touch === undefined ? null : { x: touch.pageX, y: touch.pageY };
+    dragged.current = false;
+  };
+
+  const trackTouch = (event: GestureResponderEvent): void => {
+    const origin = touchStart.current;
+    const touch = event.nativeEvent.touches[0];
+
+    if (origin === null || touch === undefined) {
+      return;
+    }
+
+    if (
+      Math.hypot(touch.pageX - origin.x, touch.pageY - origin.y) >
+      DRAG_THRESHOLD
+    ) {
+      dragged.current = true;
+    }
+  };
+
+  const play = (): void => {
+    if (!dragged.current) {
+      onPlay(track.id);
+    }
+  };
+
   return (
     <Animated.View
       testID="track-row"
@@ -108,9 +145,11 @@ function TrackRow({
           accessibilityRole="button"
           accessibilityLabel={label}
           style={StyleSheet.absoluteFill}
+          onTouchStart={beginTouch}
+          onTouchMove={trackTouch}
           onPressIn={() => pressTo(1)}
           onPressOut={() => pressTo(0)}
-          onPress={() => onPlay(track.id)}
+          onPress={play}
         />
       ) : null}
 

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SyncRun } from '@playliberty/contracts';
-import { SyncRunStatus } from '@playliberty/contracts';
+import { Provider, SyncRunStatus } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import SyncSummary from './SyncSummary';
@@ -33,7 +33,12 @@ function run(overrides: Partial<SyncRun> = {}): SyncRun {
 type SummaryExtras = Partial<
   Pick<
     Parameters<typeof SyncSummary>[0],
-    'downloadingCount' | 'onRetryFailed' | 'retryingFailed' | 'showRunningStamp'
+    | 'downloadingCount'
+    | 'onRetryFailed'
+    | 'retryingFailed'
+    | 'showRunningStamp'
+    | 'remoteRemoved'
+    | 'provider'
   >
 >;
 
@@ -48,6 +53,8 @@ function renderSummary(
         run={summary}
         now={NOW}
         failedCount={failedCount}
+        remoteRemoved={0}
+        provider={Provider.Youtube}
         {...extras}
       />
     </I18nProvider>
@@ -55,6 +62,22 @@ function renderSummary(
 }
 
 describe('SyncSummary', () => {
+  it('names the stored tracks whose source removed them', () => {
+    renderSummary(run(), 1, { provider: Provider.Youtube, remoteRemoved: 2 });
+
+    expect(
+      screen.getByText('2 tracks removed from YouTube are still stored')
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing about retention while it holds none', () => {
+    renderSummary(run(), 1, { provider: Provider.Youtube });
+
+    expect(
+      screen.queryByText(/removed from YouTube are still stored/)
+    ).not.toBeInTheDocument();
+  });
+
   it('draws the four figures the last sync produced', () => {
     renderSummary(run(), 1);
 
@@ -98,7 +121,13 @@ describe('SyncSummary', () => {
   it('writes the French stamp as one sentence', () => {
     render(
       <I18nProvider preferred={['fr']}>
-        <SyncSummary run={run()} now={NOW} failedCount={1} />
+        <SyncSummary
+          run={run()}
+          now={NOW}
+          failedCount={1}
+          remoteRemoved={0}
+          provider={Provider.Youtube}
+        />
       </I18nProvider>
     );
 

@@ -501,8 +501,15 @@ export default function PlaylistDetail({
   };
 
   /* The header chases the list's offset on its own frames: the scroll events set
-   * the target, and the loop keeps the motion even when those events are thin. */
+   * the target, and the loop keeps the motion even when those events are thin.
+   * Reduced motion drops the tween and tracks the target on the event itself. */
   const followHeader = (): void => {
+    if (reduceMotion) {
+      headerShown.current = headerTarget.current;
+      headerProgress.setValue(headerShown.current);
+      return;
+    }
+
     if (headerFrame.current !== null) {
       return;
     }
@@ -770,7 +777,10 @@ export default function PlaylistDetail({
     problemDetail(t, error instanceof ApiError ? error.problem : null) ??
     fallback;
 
-  const headerActions = playlistActionsFor(data, { includePin: false });
+  /* The state line's cell is the detail's sync; the menu does not repeat it. */
+  const headerActions = playlistActionsFor(data, { includePin: false }).filter(
+    action => action.key !== 'sync'
+  );
 
   const chooseSort = (value: PlaylistSort): void => {
     sort.mutate(value, {
@@ -823,7 +833,8 @@ export default function PlaylistDetail({
     addTrack.reset();
   };
 
-  /* The dial's sync is the header's verb: a refusal lands in the same slot. */
+  /* The header's and the dial's sync share one verb: a refusal lands in the
+   * same slot. */
   const syncFromDial = (): void => {
     sync.mutate(data.id, {
       onError: error => {
@@ -874,6 +885,7 @@ export default function PlaylistDetail({
         playlist={data}
         run={bandRun}
         counts={bandCounts}
+        remoteRemoved={tracks.remoteRemoved ?? 0}
         now={now}
         canWrite={canWritePlaylist(data)}
         syncing={syncInFlight}
@@ -1038,19 +1050,6 @@ export default function PlaylistDetail({
       return;
     }
 
-    if (key === 'sync') {
-      sync.mutate(data.id, {
-        onSuccess: () => {
-          setHeaderOpen(false);
-          setHeaderProblem(null);
-        },
-        onError: error => {
-          setHeaderProblem(problemMessage(error, t('library.syncFailed')));
-        }
-      });
-      return;
-    }
-
     if (key === 'rename') {
       setHeaderOpen(false);
       setHeaderProblem(null);
@@ -1160,11 +1159,12 @@ export default function PlaylistDetail({
     playlist: data,
     ownerName,
     config,
-    syncing,
+    syncing: syncInFlight,
     now,
     starting,
     shuffled: listShuffled,
     playing: isQueue && currentId !== null && isPlaying,
+    onSync: canWritePlaylist(data) ? syncFromDial : undefined,
     onPlay: queueEmpty
       ? undefined
       : () => {

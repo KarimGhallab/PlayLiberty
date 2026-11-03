@@ -29,6 +29,8 @@ export interface PlaylistTracksRead {
   readonly items: readonly PlaylistTrack[];
   /* The whole-playlist counts, which only the first page carries. */
   readonly counts: TrackFileStatusCounts | undefined;
+  /* Stored tracks whose source removed them, beside the counts. */
+  readonly remoteRemoved: number | undefined;
   readonly total: number | undefined;
   readonly isPending: boolean;
   readonly isError: boolean;
@@ -87,6 +89,7 @@ export function usePlaylistTracks(
   return {
     items,
     counts: firstPage?.counts,
+    remoteRemoved: firstPage?.remoteRemoved,
     total: firstPage?.total,
     isPending: query.isPending,
     isError: query.isError,

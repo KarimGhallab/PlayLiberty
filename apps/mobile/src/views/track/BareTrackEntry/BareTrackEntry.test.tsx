@@ -16,6 +16,7 @@ import {
   SessionStatus,
   useSessionStore
 } from '../../../auth/sessionStore/sessionStore';
+import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import {
   holdLeftPlaylistNotice,
@@ -81,6 +82,17 @@ function failedResult(error: Error) {
   } as never;
 }
 
+function pendingResult() {
+  return {
+    data: undefined,
+    isPending: true,
+    isError: false,
+    isSuccess: false,
+    isFetching: true,
+    error: null
+  } as never;
+}
+
 function renderEntry(trackId = 'track-1') {
   return render(
     <SafeAreaProvider initialMetrics={metrics}>
@@ -107,12 +119,34 @@ beforeEach(() => {
 });
 
 describe('the bare track entry', () => {
+  it('holds the bar while the track read lands', async () => {
+    useTrackMock.mockReturnValue(pendingResult());
+
+    await renderEntry();
+
+    expect(screen.getByLabelText('Opening the track.')).toBeOnTheScreen();
+    expect(screen.getByTestId('bare-track-loading')).toHaveStyle({
+      height: playerBarHeight - 6
+    });
+    expect(usePlayerStore.getState().currentId).toBeNull();
+  });
+
+  it('does not hold the bar when the session cannot read', async () => {
+    useSessionStore.setState({ status: SessionStatus.SignedOut });
+    useTrackMock.mockReturnValue(pendingResult());
+
+    await renderEntry();
+
+    expect(screen.queryByLabelText('Opening the track.')).not.toBeOnTheScreen();
+  });
+
   it('starts the one-track queue with no playlist context', async () => {
     await renderEntry();
 
     await waitFor(() => {
       expect(usePlayerStore.getState().currentId).toBe('track-1');
     });
+    expect(screen.queryByLabelText('Opening the track.')).not.toBeOnTheScreen();
     const player = usePlayerStore.getState();
 
     expect(useTrackMock).toHaveBeenCalledWith('track-1', true);

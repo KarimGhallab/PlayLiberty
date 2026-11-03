@@ -1,10 +1,13 @@
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { useReduceMotion } from '../src/shared/a11y/useReduceMotion';
 import { tokenColor } from '../src/shared/styles/tokens';
 
+import plexSans from '../assets/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf';
 import { streamSource } from '../src/api/streamSource';
 import { useApiConfig } from '../src/auth/useApiConfig';
 import LiveEvents from '../src/live/LiveEvents';
@@ -17,9 +20,23 @@ import {
 } from '../src/player/streamFailure/streamFailure';
 import AppProviders from '../src/providers/AppProviders';
 
+/* The first frame has to carry the family the type scale was measured in, so
+ * the splash waits for it. */
+void SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({ 'IBM Plex Sans': plexSans });
   const config = useApiConfig();
   const reduceMotion = useReduceMotion();
+
+  useEffect(() => {
+    /* A font that cannot load must not hold the app on the splash: the platform
+     * face is the fallback. */
+    if (fontsLoaded || fontError !== null) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
   const resolveSource = useCallback(
     (trackId: string) =>
       config === null
@@ -35,6 +52,11 @@ export default function RootLayout() {
     [config]
   );
 
+  /* The splash covers this frame, so the app never paints in the fallback. */
+  if (!fontsLoaded && fontError === null) {
+    return null;
+  }
+
   return (
     <AppProviders>
       <StatusBar style="light" />
@@ -47,7 +69,8 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: tokenColor('bg') }
+          contentStyle: { backgroundColor: tokenColor('bg') },
+          animation: reduceMotion ? 'none' : 'default'
         }}>
         <Stack.Screen name="index" />
         <Stack.Screen
