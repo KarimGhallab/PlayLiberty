@@ -41,7 +41,7 @@ describe('the not-found body', () => {
       minWidth: touchTarget
     });
 
-    fireEvent.press(home);
+    await fireEvent.press(home);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

@@ -46,7 +46,7 @@ describe('Screen', () => {
       wrapper
     });
 
-    fireEvent.press(screen.getByLabelText('Back'));
+    await fireEvent.press(screen.getByLabelText('Back'));
 
     expect(onBack).toHaveBeenCalledTimes(1);
   });

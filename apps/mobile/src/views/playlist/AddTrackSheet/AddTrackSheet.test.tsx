@@ -96,7 +96,7 @@ async function renderSheet(overrides: Partial<AddTrackSheetProps> = {}) {
 /* React 19 defers the state an event writes, so the test waits for the field to
  * hold what was typed before pressing a control that reads it. */
 async function typeLink(value: string) {
-  fireEvent.changeText(screen.getByLabelText('Video link'), value);
+  await fireEvent.changeText(screen.getByLabelText('Video link'), value);
 
   await waitFor(
     () => {
@@ -115,7 +115,7 @@ async function pressAdd() {
     },
     { timeout: 3000 }
   );
-  fireEvent.press(add);
+  await fireEvent.press(add);
 }
 
 describe('the add-track sheet', () => {
@@ -138,7 +138,7 @@ describe('the add-track sheet', () => {
     const { props } = await renderSheet();
 
     await typeLink(` ${link} `);
-    fireEvent.press(screen.getByTestId('add-track-pick-playlist-2'));
+    await fireEvent.press(screen.getByTestId('add-track-pick-playlist-2'));
     await pressAdd();
 
     expect(props.onSubmit).toHaveBeenCalledWith(link, [
@@ -176,25 +176,25 @@ describe('the add-track sheet', () => {
     const { props } = await renderSheet();
 
     await typeLink(link);
-    fireEvent.press(screen.getByTestId('add-track-backdrop'));
+    await fireEvent.press(screen.getByTestId('add-track-backdrop'));
 
     await waitFor(() => {
       expect(screen.getByText(/Discard this link\?/)).toBeOnTheScreen();
     });
     expect(props.onClose).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('add-track-keep-editing'));
+    await fireEvent.press(screen.getByTestId('add-track-keep-editing'));
 
     await waitFor(() => {
       expect(screen.queryByText(/Discard this link\?/)).not.toBeOnTheScreen();
     });
     expect(screen.getByLabelText('Video link')).toHaveDisplayValue(link);
 
-    fireEvent.press(screen.getByTestId('add-track-backdrop'));
+    await fireEvent.press(screen.getByTestId('add-track-backdrop'));
     await waitFor(() => {
       expect(screen.getByTestId('add-track-discard')).toBeOnTheScreen();
     });
-    fireEvent.press(screen.getByTestId('add-track-discard'));
+    await fireEvent.press(screen.getByTestId('add-track-discard'));
 
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
@@ -264,10 +264,10 @@ describe('the add-track sheet', () => {
     const adding = screen.getByRole('button', { name: 'Adding' });
     expect(adding).toBeDisabled();
 
-    fireEvent.press(adding);
+    await fireEvent.press(adding);
     expect(props.onSubmit).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('add-track-backdrop'));
+    await fireEvent.press(screen.getByTestId('add-track-backdrop'));
     expect(props.onClose).not.toHaveBeenCalled();
   });
 

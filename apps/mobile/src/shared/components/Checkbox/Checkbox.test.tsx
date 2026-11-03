@@ -25,7 +25,7 @@ describe('the checkbox', () => {
 
     expect(box).toBeChecked();
 
-    fireEvent.press(box);
+    await fireEvent.press(box);
 
     expect(onChange).toHaveBeenCalledWith(false);
   });
@@ -48,7 +48,7 @@ describe('the checkbox', () => {
 
     expect(box).toBeDisabled();
 
-    fireEvent.press(box);
+    await fireEvent.press(box);
 
     expect(onChange).not.toHaveBeenCalled();
   });

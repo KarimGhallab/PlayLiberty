@@ -789,7 +789,7 @@ describe('the gallery', () => {
       }
     });
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByLabelText('Playlist name'),
       '  New Name  '
     );
@@ -798,7 +798,7 @@ describe('the gallery', () => {
         '  New Name  '
       );
     });
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
 
     expect(rename.mutate).toHaveBeenCalledWith(
       { playlistId: 'playlist-rest', name: 'New Name' },
@@ -828,13 +828,16 @@ describe('the gallery', () => {
       expect(screen.getByTestId('rename-sheet')).toBeOnTheScreen();
     });
 
-    fireEvent.changeText(screen.getByLabelText('Playlist name'), 'New Name');
+    await fireEvent.changeText(
+      screen.getByLabelText('Playlist name'),
+      'New Name'
+    );
     await waitFor(() => {
       expect(screen.getByLabelText('Playlist name')).toHaveDisplayValue(
         'New Name'
       );
     });
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -1046,7 +1049,7 @@ describe('the gallery', () => {
 
     expect(scrollTo).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByRole('radio', { name: 'Failed 4' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Failed 4' }));
 
     expect(scrollTo).toHaveBeenCalledWith(
       expect.objectContaining({ x: 150 + 226 + 90 - 200 + 12 })

@@ -14,7 +14,7 @@ describe('the pressable scale', () => {
       </PressableScale>
     );
 
-    fireEvent.press(screen.getByTestId('pressable'));
+    await fireEvent.press(screen.getByTestId('pressable'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });

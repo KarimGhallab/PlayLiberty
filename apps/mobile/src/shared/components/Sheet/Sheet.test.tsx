@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Animated, Text } from 'react-native';
+import { AccessibilityInfo, Animated, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { tokenLength } from '../../styles/tokens';
@@ -50,7 +50,7 @@ describe('the sheet frame', () => {
   it('asks to close when the backdrop is pressed', async () => {
     const { onRequestClose } = await renderSheet();
 
-    fireEvent.press(screen.getByTestId('sheet-backdrop'));
+    await fireEvent.press(screen.getByTestId('sheet-backdrop'));
 
     expect(onRequestClose).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('sheet')).toBeOnTheScreen();
@@ -59,7 +59,7 @@ describe('the sheet frame', () => {
   it('closes from its labelled control', async () => {
     const { onRequestClose } = await renderSheet();
 
-    fireEvent.press(screen.getByLabelText('Close'));
+    await fireEvent.press(screen.getByLabelText('Close'));
 
     expect(onRequestClose).toHaveBeenCalledTimes(1);
   });
@@ -91,12 +91,15 @@ describe('the sheet frame', () => {
   });
 
   it('runs its entry motion on the native driver', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(false);
     const timing = jest.spyOn(Animated, 'timing');
 
     await renderSheet();
 
     await act(async () => {
-      fireEvent(screen.getByTestId('sheet'), 'layout', {
+      await fireEvent(screen.getByTestId('sheet'), 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 400 } }
       });
     });

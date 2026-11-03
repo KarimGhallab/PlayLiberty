@@ -62,7 +62,7 @@ describe('the undo snackbar', () => {
     const view = await render(snackbar({ onUndo }));
 
     await act(async () => {
-      fireEvent.press(view.getByText('common.undo'));
+      await fireEvent.press(view.getByText('common.undo'));
     });
 
     expect(onUndo).toHaveBeenCalledTimes(1);
@@ -91,7 +91,7 @@ describe('the undo snackbar', () => {
     expect(onExpire).not.toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent.press(view.getByText('common.undo'));
+      await fireEvent.press(view.getByText('common.undo'));
     });
 
     expect(onUndo).toHaveBeenCalledTimes(1);
@@ -103,14 +103,14 @@ describe('the undo snackbar', () => {
 
     await sleep(80);
     await act(async () => {
-      fireEvent(view.getByTestId('undo-snackbar'), 'touchStart');
+      await fireEvent(view.getByTestId('undo-snackbar'), 'touchStart');
     });
 
     await sleep(HOLD_MS);
     expect(onExpire).not.toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent(view.getByTestId('undo-snackbar'), 'touchEnd');
+      await fireEvent(view.getByTestId('undo-snackbar'), 'touchEnd');
     });
 
     await waitFor(

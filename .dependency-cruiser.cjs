@@ -226,7 +226,7 @@ module.exports = {
     },
 
     exclude: {
-      path: ['dist', 'scripts/validate-tsconfig-paths.cjs']
+      path: ['dist', 'scripts/validate-tsconfig-paths.cjs', 'apps/mobile/jest/']
     },
 
     includeOnly: ['^apps/', '^packages/'],

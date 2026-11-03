@@ -119,7 +119,7 @@ describe('the playlist card', () => {
   it('starts a playlist from its play control', async () => {
     const { onPlay } = await renderCard();
 
-    fireEvent.press(screen.getByTestId('playlist-play', hidden));
+    await fireEvent.press(screen.getByTestId('playlist-play', hidden));
 
     expect(onPlay).toHaveBeenCalledTimes(1);
   });
@@ -127,7 +127,7 @@ describe('the playlist card', () => {
   it('draws the pause control while its playlist plays', async () => {
     const { onPlay } = await renderCard({ playing: true });
 
-    fireEvent.press(screen.getByTestId('playlist-play', hidden));
+    await fireEvent.press(screen.getByTestId('playlist-play', hidden));
 
     expect(onPlay).toHaveBeenCalledTimes(1);
   });
@@ -152,7 +152,7 @@ describe('the playlist card', () => {
   it('starts a shuffled playlist from its shuffle control', async () => {
     const { onShuffle } = await renderCard();
 
-    fireEvent.press(screen.getByTestId('playlist-shuffle', hidden));
+    await fireEvent.press(screen.getByTestId('playlist-shuffle', hidden));
 
     expect(onShuffle).toHaveBeenCalledTimes(1);
   });
@@ -184,7 +184,7 @@ describe('the playlist card', () => {
   it('opens the actions from its overflow control', async () => {
     const { onOpenActions } = await renderCard();
 
-    fireEvent.press(screen.getByTestId('playlist-actions', hidden));
+    await fireEvent.press(screen.getByTestId('playlist-actions', hidden));
 
     expect(onOpenActions).toHaveBeenCalledTimes(1);
   });
@@ -247,7 +247,7 @@ describe('the playlist card', () => {
 
     await act(async () => {
       for (const actionName of ['play', 'shuffle', 'openActions']) {
-        fireEvent(card, 'accessibilityAction', {
+        await fireEvent(card, 'accessibilityAction', {
           nativeEvent: { actionName }
         });
       }
@@ -274,7 +274,7 @@ describe('the playlist card', () => {
     const card = screen.getByTestId('playlist-card');
 
     await act(async () => {
-      fireEvent(card, 'accessibilityAction', {
+      await fireEvent(card, 'accessibilityAction', {
         nativeEvent: { actionName: 'play' }
       });
     });
@@ -291,7 +291,7 @@ describe('the playlist card', () => {
       )
     ).toHaveLength(1);
 
-    fireEvent.press(screen.getByTestId('playlist-card'));
+    await fireEvent.press(screen.getByTestId('playlist-card'));
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 

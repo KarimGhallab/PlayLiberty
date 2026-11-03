@@ -166,7 +166,7 @@ describe('the track row', () => {
     });
     expect(screen.queryByTestId('track-reason')).not.toBeOnTheScreen();
 
-    fireEvent.press(screen.getByTestId('track-details'));
+    await fireEvent.press(screen.getByTestId('track-details'));
 
     await waitFor(() => {
       expect(screen.getByTestId('track-reason')).toHaveTextContent(
@@ -174,7 +174,7 @@ describe('the track row', () => {
       );
     });
 
-    fireEvent.press(screen.getByTestId('track-details'));
+    await fireEvent.press(screen.getByTestId('track-details'));
 
     await waitFor(() => {
       expect(screen.queryByTestId('track-reason')).not.toBeOnTheScreen();
@@ -205,7 +205,7 @@ describe('the track row', () => {
 
     expect(play.props.accessibilityLabel).toBe('First Song, Playing, 3:02');
 
-    fireEvent.press(play);
+    await fireEvent.press(play);
 
     expect(onPlay).toHaveBeenCalledWith('track-1');
   });
@@ -251,7 +251,7 @@ describe('the track row', () => {
       screen.getByRole('button', { name: 'Actions for First Song' })
     ).toBeOnTheScreen();
 
-    fireEvent.press(screen.getByTestId('track-actions'));
+    await fireEvent.press(screen.getByTestId('track-actions'));
 
     expect(onOpenActions).toHaveBeenCalledWith('track-1');
   });
@@ -268,7 +268,7 @@ describe('the track row', () => {
     const onOpenActions = jest.fn();
     await renderRow(stored, { onOpenActions });
 
-    fireEvent.press(screen.getByTestId('track-actions'));
+    await fireEvent.press(screen.getByTestId('track-actions'));
 
     expect(onOpenActions).toHaveBeenCalledWith('track-1');
   });

@@ -114,7 +114,7 @@ describe('the provisioning callback', () => {
       })
     );
 
-    fireEvent.press(action);
+    await fireEvent.press(action);
 
     await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
     expect(

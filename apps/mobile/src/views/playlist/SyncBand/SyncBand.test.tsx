@@ -183,14 +183,14 @@ describe('the sync band', () => {
     });
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('sync-error-reveal'));
+      await fireEvent.press(screen.getByTestId('sync-error-reveal'));
     });
     await waitFor(() => {
       expect(screen.getByText('yt-dlp: HTTP 403')).toBeOnTheScreen();
     });
     expect(screen.getByText('Hide details')).toBeOnTheScreen();
 
-    fireEvent.press(screen.getByTestId('sync-error-retry'));
+    await fireEvent.press(screen.getByTestId('sync-error-retry'));
     expect(onSync).toHaveBeenCalledTimes(1);
   });
 
@@ -209,7 +209,7 @@ describe('the sync band', () => {
     const { onRetryFailed } = await renderBand();
 
     expect(screen.getByText('Retry all 2 failed tracks')).toBeOnTheScreen();
-    fireEvent.press(screen.getByTestId('sync-retry-failed'));
+    await fireEvent.press(screen.getByTestId('sync-retry-failed'));
     expect(onRetryFailed).toHaveBeenCalledTimes(1);
   });
 

@@ -77,7 +77,7 @@ describe('the track actions sheet', () => {
   it('selects an item', async () => {
     const { onSelect } = await renderSheet();
 
-    fireEvent.press(screen.getByTestId('track-action-retry'));
+    await fireEvent.press(screen.getByTestId('track-action-retry'));
 
     expect(onSelect).toHaveBeenCalledWith('retry');
   });
@@ -85,7 +85,7 @@ describe('the track actions sheet', () => {
   it('closes from the backdrop', async () => {
     const { onClose } = await renderSheet();
 
-    fireEvent.press(screen.getByTestId('track-actions-backdrop'));
+    await fireEvent.press(screen.getByTestId('track-actions-backdrop'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

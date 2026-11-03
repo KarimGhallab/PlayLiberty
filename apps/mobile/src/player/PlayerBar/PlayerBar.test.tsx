@@ -214,7 +214,7 @@ describe('the player bar', () => {
     startPlaylist();
     await renderBar();
 
-    fireEvent.press(screen.getByLabelText('Pause First Song'));
+    await fireEvent.press(screen.getByLabelText('Pause First Song'));
 
     expect(usePlayerStore.getState().isPlaying).toBe(false);
 
@@ -222,7 +222,7 @@ describe('the player bar', () => {
       expect(screen.getByLabelText('Play First Song')).toBeOnTheScreen();
     });
 
-    fireEvent.press(screen.getByLabelText('Play First Song'));
+    await fireEvent.press(screen.getByLabelText('Play First Song'));
 
     expect(usePlayerStore.getState().isPlaying).toBe(true);
 
@@ -248,7 +248,7 @@ describe('the player bar', () => {
       /Play it again to retry, or choose another track/
     );
 
-    fireEvent.press(screen.getByLabelText('Play First Song'));
+    await fireEvent.press(screen.getByLabelText('Play First Song'));
 
     await waitFor(() => {
       expect(screen.queryByTestId('notice')).not.toBeOnTheScreen();
@@ -290,7 +290,7 @@ describe('the player bar', () => {
 
     expect(screen.getByLabelText('Next track, First Song')).not.toBeDisabled();
 
-    fireEvent.press(screen.getByLabelText('Next track, First Song'));
+    await fireEvent.press(screen.getByLabelText('Next track, First Song'));
 
     await waitFor(() => {
       expect(screen.getByText('Second Song')).toBeOnTheScreen();
@@ -310,7 +310,7 @@ describe('the player bar', () => {
       );
     await renderBar();
 
-    fireEvent.press(screen.getByLabelText('Previous track, Second Song'));
+    await fireEvent.press(screen.getByLabelText('Previous track, Second Song'));
 
     await waitFor(() => {
       expect(screen.getByText('First Song')).toBeOnTheScreen();
@@ -452,7 +452,7 @@ describe('the player bar', () => {
     startPlaylist();
     await renderBar();
 
-    fireEvent.press(screen.getByTestId('player-open-playlist'));
+    await fireEvent.press(screen.getByTestId('player-open-playlist'));
 
     expect(router.navigate).toHaveBeenCalledWith({
       pathname: '/playlists/[playlistId]',

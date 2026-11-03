@@ -178,7 +178,7 @@ describe('the share account picker', () => {
   it('asks for the next page at the end of the list', async () => {
     const { page } = await renderPicker(pageRead({ hasMore: true }));
 
-    fireEvent.scroll(screen.getByTestId('share-picker-list'), {
+    await fireEvent.scroll(screen.getByTestId('share-picker-list'), {
       nativeEvent: {
         contentOffset: { y: 900 },
         contentSize: { height: 1000 },
@@ -194,7 +194,7 @@ describe('the share account picker', () => {
       pageRead({ hasMore: true, isFetchingNextPage: true })
     );
 
-    fireEvent.scroll(screen.getByTestId('share-picker-list'), {
+    await fireEvent.scroll(screen.getByTestId('share-picker-list'), {
       nativeEvent: {
         contentOffset: { y: 900 },
         contentSize: { height: 1000 },
@@ -246,7 +246,9 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(within(row).getByRole('radio', { name: 'Can edit, Ada' }));
+    await fireEvent.press(
+      within(row).getByRole('radio', { name: 'Can edit, Ada' })
+    );
 
     expect(grant.mutate).toHaveBeenCalledTimes(1);
     expect(grant.mutate).toHaveBeenCalledWith(
@@ -260,7 +262,7 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(
+    await fireEvent.press(
       within(row).getByRole('radio', { name: 'Can listen, Ada' })
     );
 
@@ -309,7 +311,9 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(within(row).getByRole('radio', { name: 'Can edit, Ada' }));
+    await fireEvent.press(
+      within(row).getByRole('radio', { name: 'Can edit, Ada' })
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -334,7 +338,9 @@ describe('the share account picker', () => {
 
     const row = screen.getAllByTestId('share-picker-row')[0]!;
 
-    fireEvent.press(within(row).getByRole('radio', { name: 'Can edit, Ada' }));
+    await fireEvent.press(
+      within(row).getByRole('radio', { name: 'Can edit, Ada' })
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -350,7 +356,7 @@ describe('the share account picker', () => {
       within(screen.getByTestId('share-picker-done')).getByText('Done')
     ).toBeOnTheScreen();
 
-    fireEvent.press(screen.getByTestId('share-picker-done'));
+    await fireEvent.press(screen.getByTestId('share-picker-done'));
 
     expect(grant.mutate).not.toHaveBeenCalled();
     expect(props.onClose).toHaveBeenCalledTimes(1);
@@ -366,7 +372,7 @@ describe('the share account picker', () => {
     await renderPicker(page);
 
     expect(screen.getByText('Accounts could not be loaded.')).toBeOnTheScreen();
-    fireEvent.press(screen.getByTestId('read-failure-retry'));
+    await fireEvent.press(screen.getByTestId('read-failure-retry'));
 
     expect(page.refetch).toHaveBeenCalledTimes(1);
   });

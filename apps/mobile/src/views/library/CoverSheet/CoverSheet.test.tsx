@@ -156,7 +156,7 @@ async function choose(asset: Partial<ImagePicker.ImagePickerAsset>) {
     ]
   });
 
-  fireEvent.press(screen.getByTestId('cover-choose'));
+  await fireEvent.press(screen.getByTestId('cover-choose'));
 
   await waitFor(() => {
     expect(launchLibrary).toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe('the cover sheet', () => {
     expect(saveButton().props.accessibilityState).toMatchObject({
       disabled: true
     });
-    fireEvent.press(saveButton());
+    await fireEvent.press(saveButton());
 
     expect(setCover.mutate).not.toHaveBeenCalled();
   });
@@ -194,7 +194,7 @@ describe('the cover sheet', () => {
       disabled: false
     });
 
-    fireEvent.press(saveButton());
+    await fireEvent.press(saveButton());
 
     expect(setCover.mutate).toHaveBeenCalledWith(
       {
@@ -219,7 +219,7 @@ describe('the cover sheet', () => {
     await waitFor(() => {
       expect(screen.getByTestId('cover-preview')).toBeOnTheScreen();
     });
-    fireEvent.press(saveButton());
+    await fireEvent.press(saveButton());
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
@@ -267,7 +267,7 @@ describe('the cover sheet', () => {
     await waitFor(() => {
       expect(screen.getByTestId('cover-preview')).toBeOnTheScreen();
     });
-    fireEvent.press(saveButton());
+    await fireEvent.press(saveButton());
 
     await waitFor(() => {
       expect(screen.getByTestId('cover-problem')).toHaveTextContent(
@@ -285,23 +285,23 @@ describe('the cover sheet', () => {
       expect(screen.getByTestId('cover-preview')).toBeOnTheScreen();
     });
 
-    fireEvent.press(screen.getByTestId('cover-cancel'));
+    await fireEvent.press(screen.getByTestId('cover-cancel'));
 
     await waitFor(() => {
       expect(screen.getByText(/Discard this image/)).toBeOnTheScreen();
     });
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('cover-keep-editing'));
+    await fireEvent.press(screen.getByTestId('cover-keep-editing'));
     await waitFor(() => {
       expect(screen.queryByText(/Discard this image/)).not.toBeOnTheScreen();
     });
 
-    fireEvent.press(screen.getByTestId('cover-cancel'));
+    await fireEvent.press(screen.getByTestId('cover-cancel'));
     await waitFor(() => {
       expect(screen.getByTestId('cover-discard')).toBeOnTheScreen();
     });
-    fireEvent.press(screen.getByTestId('cover-discard'));
+    await fireEvent.press(screen.getByTestId('cover-discard'));
 
     expect(onClose).toHaveBeenCalled();
   });
@@ -309,7 +309,7 @@ describe('the cover sheet', () => {
   it('cannot be dismissed while the save is in flight', async () => {
     const { onClose } = await renderSheet({}, { setPending: true });
 
-    fireEvent.press(screen.getByTestId('cover-backdrop'));
+    await fireEvent.press(screen.getByTestId('cover-backdrop'));
 
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -322,24 +322,24 @@ describe('the cover sheet', () => {
       options?.onSuccess?.();
     });
 
-    fireEvent.press(screen.getByTestId('cover-remove'));
+    await fireEvent.press(screen.getByTestId('cover-remove'));
     await waitFor(() => {
       expect(screen.getByText(/Remove the custom cover/)).toBeOnTheScreen();
     });
     expect(removeCover.mutate).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('cover-remove-keep'));
+    await fireEvent.press(screen.getByTestId('cover-remove-keep'));
     await waitFor(() => {
       expect(
         screen.queryByText(/Remove the custom cover/)
       ).not.toBeOnTheScreen();
     });
 
-    fireEvent.press(screen.getByTestId('cover-remove'));
+    await fireEvent.press(screen.getByTestId('cover-remove'));
     await waitFor(() => {
       expect(screen.getByTestId('cover-remove-confirm')).toBeOnTheScreen();
     });
-    fireEvent.press(screen.getByTestId('cover-remove-confirm'));
+    await fireEvent.press(screen.getByTestId('cover-remove-confirm'));
 
     expect(removeCover.mutate).toHaveBeenCalledWith(
       'playlist-1',
@@ -383,14 +383,14 @@ describe('the crop stage', () => {
   it('sends the four fractions of a zoomed stage', async () => {
     const mutate = await openStage();
 
-    fireEvent(screen.getByTestId('cover-zoom'), 'accessibilityAction', {
+    await fireEvent(screen.getByTestId('cover-zoom'), 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' }
     });
 
     await waitFor(() => {
       expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.1x');
     });
-    fireEvent.press(saveButton());
+    await fireEvent.press(saveButton());
 
     const crop = savedCrop(mutate) as {
       readonly x: number;
@@ -419,7 +419,7 @@ describe('the crop stage', () => {
       screen.getByTestId('cover-reset').props.accessibilityState
     ).toMatchObject({ disabled: true });
 
-    fireEvent(screen.getByTestId('cover-zoom'), 'accessibilityAction', {
+    await fireEvent(screen.getByTestId('cover-zoom'), 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' }
     });
 
@@ -429,7 +429,7 @@ describe('the crop stage', () => {
       ).toMatchObject({ disabled: false });
     });
 
-    fireEvent.press(screen.getByTestId('cover-reset'));
+    await fireEvent.press(screen.getByTestId('cover-reset'));
 
     await waitFor(() => {
       expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.0x');
@@ -438,7 +438,7 @@ describe('the crop stage', () => {
       screen.getByTestId('cover-reset').props.accessibilityState
     ).toMatchObject({ disabled: true });
 
-    fireEvent.press(saveButton());
+    await fireEvent.press(saveButton());
 
     expect(savedCrop(mutate)).toBeNull();
   });
@@ -452,13 +452,13 @@ describe('the crop stage', () => {
         nativeEvent: { layout: { width: 100, height: 48 } }
       });
     });
-    fireEvent.press(rail, { nativeEvent: { locationX: 100 } });
+    await fireEvent.press(rail, { nativeEvent: { locationX: 100 } });
 
     await waitFor(() => {
       expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.3x');
     });
 
-    fireEvent.press(rail, { nativeEvent: { locationX: 100 } });
+    await fireEvent.press(rail, { nativeEvent: { locationX: 100 } });
 
     await waitFor(() => {
       expect(screen.getByTestId('cover-zoom-value')).toHaveTextContent('1.3x');

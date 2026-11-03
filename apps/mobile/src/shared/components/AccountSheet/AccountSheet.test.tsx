@@ -188,7 +188,7 @@ describe('the account sheet', () => {
   it('closes when the backdrop is pressed', async () => {
     const { props } = await renderSheet();
 
-    fireEvent.press(screen.getByTestId('account-backdrop'));
+    await fireEvent.press(screen.getByTestId('account-backdrop'));
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 

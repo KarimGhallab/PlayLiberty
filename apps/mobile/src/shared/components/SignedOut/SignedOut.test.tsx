@@ -44,7 +44,7 @@ describe('the signed-out state', () => {
       minWidth: touchTarget
     });
 
-    fireEvent.press(action);
+    await fireEvent.press(action);
     expect(onSignIn).toHaveBeenCalledTimes(1);
   });
 

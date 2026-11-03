@@ -54,7 +54,7 @@ async function renderSheet(overrides: Partial<AddPlaylistSheetProps> = {}) {
 /* React 19 defers the state an event writes, so the test waits for the field to
  * hold what was typed before pressing a control that reads it. */
 async function typeLink(value: string) {
-  fireEvent.changeText(screen.getByLabelText('Playlist link'), value);
+  await fireEvent.changeText(screen.getByLabelText('Playlist link'), value);
 
   await waitFor(
     () => {
@@ -66,7 +66,7 @@ async function typeLink(value: string) {
 
 async function turnSkipOff() {
   const skip = screen.getByRole('checkbox', { name: 'Skip non-music parts' });
-  fireEvent.press(skip);
+  await fireEvent.press(skip);
 
   await waitFor(
     () => {
@@ -85,7 +85,7 @@ async function pressAdd() {
     },
     { timeout: 3000 }
   );
-  fireEvent.press(add);
+  await fireEvent.press(add);
 }
 
 describe('the add sheet', () => {
@@ -148,10 +148,10 @@ describe('the add sheet', () => {
     const adding = screen.getByRole('button', { name: 'Adding' });
     expect(adding).toBeDisabled();
 
-    fireEvent.press(adding);
+    await fireEvent.press(adding);
     expect(onSubmit).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('add-backdrop'));
+    await fireEvent.press(screen.getByTestId('add-backdrop'));
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -159,25 +159,25 @@ describe('the add sheet', () => {
     const { onClose } = await renderSheet();
 
     await typeLink(link);
-    fireEvent.press(screen.getByTestId('add-backdrop'));
+    await fireEvent.press(screen.getByTestId('add-backdrop'));
 
     await waitFor(() => {
       expect(screen.getByText(/Discard this link\?/)).toBeOnTheScreen();
     });
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
 
     await waitFor(() => {
       expect(screen.queryByText(/Discard this link\?/)).not.toBeOnTheScreen();
     });
     expect(screen.getByLabelText('Playlist link')).toHaveDisplayValue(link);
 
-    fireEvent.press(screen.getByTestId('add-backdrop'));
+    await fireEvent.press(screen.getByTestId('add-backdrop'));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Discard' })).toBeOnTheScreen();
     });
-    fireEvent.press(screen.getByRole('button', { name: 'Discard' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Discard' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -185,7 +185,7 @@ describe('the add sheet', () => {
   it('closes at once when nothing was typed', async () => {
     const { onClose } = await renderSheet();
 
-    fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

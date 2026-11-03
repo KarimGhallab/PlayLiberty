@@ -64,7 +64,7 @@ describe('the library header', () => {
       minWidth: touchTarget
     });
 
-    fireEvent.press(door);
+    await fireEvent.press(door);
     expect(onOpenAccount).toHaveBeenCalledTimes(1);
   });
 
@@ -82,7 +82,7 @@ describe('the library header', () => {
   it('offers the egress console to an admin', async () => {
     const { onOpenEgress } = await renderHeader({ isAdmin: true });
 
-    fireEvent.press(screen.getByRole('button', { name: 'VPN settings' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'VPN settings' }));
 
     expect(onOpenEgress).toHaveBeenCalledTimes(1);
   });

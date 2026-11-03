@@ -188,7 +188,7 @@ describe('the share sheet', () => {
     await renderSheet(shares);
 
     expect(screen.getByText('Accounts could not be loaded.')).toBeOnTheScreen();
-    fireEvent.press(screen.getByTestId('read-failure-retry'));
+    await fireEvent.press(screen.getByTestId('read-failure-retry'));
 
     expect(shares.refetch).toHaveBeenCalledTimes(1);
   });
@@ -219,7 +219,7 @@ describe('the share sheet', () => {
   it('asks once before revoking', async () => {
     const { revoke } = await renderSheet(queryResult([ada]));
 
-    fireEvent.press(screen.getByTestId('share-revoke'));
+    await fireEvent.press(screen.getByTestId('share-revoke'));
 
     await waitFor(() => {
       expect(screen.getByTestId('share-revoke-confirm')).toBeOnTheScreen();
@@ -229,7 +229,7 @@ describe('the share sheet', () => {
     ).toBeOnTheScreen();
     expect(revoke.mutate).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('share-revoke-confirm'));
+    await fireEvent.press(screen.getByTestId('share-revoke-confirm'));
 
     expect(revoke.mutate).toHaveBeenCalledTimes(1);
     expect(revoke.mutate).toHaveBeenCalledWith(
@@ -241,11 +241,11 @@ describe('the share sheet', () => {
   it('cancels the question without sending a revoke', async () => {
     const { revoke } = await renderSheet(queryResult([ada]));
 
-    fireEvent.press(screen.getByTestId('share-revoke'));
+    await fireEvent.press(screen.getByTestId('share-revoke'));
     await waitFor(() => {
       expect(screen.getByTestId('share-revoke-cancel')).toBeOnTheScreen();
     });
-    fireEvent.press(screen.getByTestId('share-revoke-cancel'));
+    await fireEvent.press(screen.getByTestId('share-revoke-cancel'));
 
     await waitFor(() => {
       expect(
@@ -284,11 +284,11 @@ describe('the share sheet', () => {
       errorHandler(options).onError?.(failure);
     });
 
-    fireEvent.press(screen.getByTestId('share-revoke'));
+    await fireEvent.press(screen.getByTestId('share-revoke'));
     await waitFor(() => {
       expect(screen.getByTestId('share-revoke-confirm')).toBeOnTheScreen();
     });
-    fireEvent.press(screen.getByTestId('share-revoke-confirm'));
+    await fireEvent.press(screen.getByTestId('share-revoke-confirm'));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -312,11 +312,11 @@ describe('the share sheet', () => {
       errorHandler(options).onError?.(new Error('Network request failed'));
     });
 
-    fireEvent.press(screen.getByTestId('share-revoke'));
+    await fireEvent.press(screen.getByTestId('share-revoke'));
     await waitFor(() => {
       expect(screen.getByTestId('share-revoke-confirm')).toBeOnTheScreen();
     });
-    fireEvent.press(screen.getByTestId('share-revoke-confirm'));
+    await fireEvent.press(screen.getByTestId('share-revoke-confirm'));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -328,7 +328,7 @@ describe('the share sheet', () => {
   it('opens the account picker from the Add row', async () => {
     await renderSheet(queryResult([ada]));
 
-    fireEvent.press(screen.getByTestId('share-add'));
+    await fireEvent.press(screen.getByTestId('share-add'));
 
     await waitFor(() => {
       expect(screen.getByTestId('share-picker')).toBeOnTheScreen();
@@ -350,12 +350,12 @@ describe('the share sheet', () => {
       (options as { onSuccess?: () => void }).onSuccess?.();
     });
 
-    fireEvent.press(screen.getByTestId('share-add'));
+    await fireEvent.press(screen.getByTestId('share-add'));
     await waitFor(() => {
       expect(screen.getByTestId('share-picker')).toBeOnTheScreen();
     });
 
-    fireEvent.press(screen.getByTestId('share-picker-level-write'));
+    await fireEvent.press(screen.getByTestId('share-picker-level-write'));
 
     await waitFor(() => {
       expect(screen.queryByTestId('share-picker')).not.toBeOnTheScreen();

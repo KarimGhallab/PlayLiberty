@@ -81,7 +81,7 @@ describe('the notice', () => {
     ]);
 
     await act(async () => {
-      fireEvent(body, 'accessibilityAction', {
+      await fireEvent(body, 'accessibilityAction', {
         nativeEvent: { actionName: 'extend' }
       });
     });

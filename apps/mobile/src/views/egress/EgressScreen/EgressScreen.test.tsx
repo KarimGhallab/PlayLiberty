@@ -187,7 +187,7 @@ describe('the egress console', () => {
   it('leaves through the header back control', async () => {
     await renderScreen(success(READ));
 
-    fireEvent.press(screen.getByTestId('screen-back'));
+    await fireEvent.press(screen.getByTestId('screen-back'));
 
     expect(onBack).toHaveBeenCalledTimes(1);
   });
@@ -292,7 +292,7 @@ describe('the egress console', () => {
     await renderScreen(success(READ));
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
+      await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
       mutateCall(switchExit.mutate).options.onSuccess(SWITCHED);
     });
 
@@ -308,7 +308,7 @@ describe('the egress console', () => {
     await renderScreen(success(READ));
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('egress-action-01-FR-634'));
+      await fireEvent.press(screen.getByTestId('egress-action-01-FR-634'));
       mutateCall(check.mutate).options.onSuccess(READ);
     });
 
@@ -371,7 +371,7 @@ describe('the egress console', () => {
     await renderScreen(success(READ));
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
+      await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
       mutateCall(switchExit.mutate).options.onError(
         new ApiError(502, {
           type: 'about:blank',
@@ -397,7 +397,7 @@ describe('the egress console', () => {
     await renderScreen(success(READ));
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
+      await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
       mutateCall(switchExit.mutate).options.onSuccess({
         ...READ,
         agentReachable: false
@@ -437,7 +437,7 @@ describe('the egress console', () => {
     expect(
       screen.getByText('The configurations could not be loaded.')
     ).toBeOnTheScreen();
-    fireEvent.press(screen.getByTestId('read-failure-retry'));
+    await fireEvent.press(screen.getByTestId('read-failure-retry'));
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 

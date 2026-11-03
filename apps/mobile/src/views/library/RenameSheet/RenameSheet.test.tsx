@@ -50,7 +50,7 @@ async function renderSheet(overrides: Partial<RenameSheetProps> = {}) {
 /* React 19 defers the state an event writes, so the test waits for the field to
  * hold what was typed before pressing a control that reads it. */
 async function typeName(value: string) {
-  fireEvent.changeText(screen.getByLabelText('Playlist name'), value);
+  await fireEvent.changeText(screen.getByLabelText('Playlist name'), value);
 
   await waitFor(
     () => {
@@ -78,7 +78,7 @@ describe('the rename sheet', () => {
     const save = screen.getByRole('button', { name: 'Save' });
 
     expect(save).toBeDisabled();
-    fireEvent.press(save);
+    await fireEvent.press(save);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -86,7 +86,7 @@ describe('the rename sheet', () => {
     const { onSubmit } = await renderSheet();
 
     await typeName('a'.repeat(201));
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -100,7 +100,7 @@ describe('the rename sheet', () => {
     const { onSubmit } = await renderSheet();
 
     await typeName('  New Name  ');
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
 
     expect(onSubmit).toHaveBeenCalledWith('New Name');
     expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -123,10 +123,10 @@ describe('the rename sheet', () => {
     const saving = screen.getByRole('button', { name: 'Saving' });
 
     expect(saving).toBeDisabled();
-    fireEvent.press(saving);
+    await fireEvent.press(saving);
     expect(onSubmit).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('rename-backdrop'));
+    await fireEvent.press(screen.getByTestId('rename-backdrop'));
     expect(onClose).not.toHaveBeenCalled();
   });
 });
