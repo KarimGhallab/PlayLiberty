@@ -209,7 +209,7 @@ describe('the share account picker', () => {
     await renderPicker(pageRead({ hasMore: true, isFetchNextPageError: true }));
 
     expect(screen.getByTestId('share-picker-more-retry')).toHaveStyle({
-      minHeight: 44
+      minHeight: 48
     });
   });
 
@@ -345,6 +345,10 @@ describe('the share account picker', () => {
 
   it('closes without a choice and sends nothing', async () => {
     const { grant, props } = await renderPicker();
+
+    expect(
+      within(screen.getByTestId('share-picker-done')).getByText('Done')
+    ).toBeOnTheScreen();
 
     fireEvent.press(screen.getByTestId('share-picker-done'));
 

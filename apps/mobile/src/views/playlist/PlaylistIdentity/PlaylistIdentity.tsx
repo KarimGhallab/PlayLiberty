@@ -38,7 +38,8 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
-  tokenWeight
+  tokenWeight,
+  touchTarget
 } from '../../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';
@@ -52,7 +53,7 @@ const NARROW_COVER = 96;
 const WIDE_GAP = 16;
 const NARROW_GAP = 12;
 const PLAY = 52;
-const CONTROL = 44;
+const CONTROL = touchTarget;
 const SMALL = 36;
 const GAP = 8;
 const WIDE_ACTIONS_TOP = TOP + WIDE_COVER + 12;
@@ -657,7 +658,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: tokenLength('control-touch') + tokenLength('space-5'),
+    height: touchTarget + tokenLength('space-5'),
     experimental_backgroundImage: `linear-gradient(to bottom, ${tokenColor('scrim')} 0%, ${tokenColor('scrim')} 50%, transparent 100%)`
   },
   identity: {

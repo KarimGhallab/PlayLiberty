@@ -72,7 +72,10 @@ describe('the library header', () => {
     await renderHeader();
 
     expect(
-      within(screen.getByTestId('account-door')).getByTestId('account-monogram')
+      within(screen.getByTestId('account-door')).getByTestId(
+        'account-monogram',
+        { includeHiddenElements: true }
+      )
     ).toBeOnTheScreen();
   });
 

@@ -46,6 +46,9 @@ export default function AccountAvatar({
   return (
     <View
       testID="account-monogram"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={[
         styles.monogram,
         { width: box, height: box, backgroundColor: sleeveColor(account.id) }

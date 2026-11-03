@@ -73,13 +73,13 @@ the type family, the space scale, the radii, the durations and the one curve are
 - **Four routes and one sheet.** The library is the root, the playlist detail is pushed, a bare track and the egress
   console are routes of their own, and the account sheet is a modal over whatever is open. There is no tab bar, no
   drawer and no sidebar; the platform's back gesture is the way back.
-- **The way back is a bare chevron.** A 44px target whose glyph aligns with the content edge; over artwork the cover
+- **The way back is a bare chevron.** A 48dp target whose glyph aligns with the content edge; over artwork the cover
   carries a scrim wash, so the glyph never needs a plate of its own.
 - **The gallery is a two-column card grid.** The card is the detail's hero arrangement: cover above the identity,
   with the actions door at its top end, the play at its lower right and the shuffle at its lower left, and the same
   squarish control shape on the shuffle and the overflow. The pinned section is a heading above one horizontal row that
   peeks the next card and scrolls sideways; the rest is the grid, and the ownership scope and the status chips are
-  one row that scrolls, its hidden side fading into the ground. The bulk sync keeps its count in the header; the web's phone arrangement drops it because
+  one row that scrolls, its hidden side fading into the ground and a chip the user picks brought fully into view. The bulk sync keeps its count in the header; the web's phone arrangement drops it because
   the browser's header cannot hold the sentence, and the app's header can.
 - **The detail is one column, under a header that follows the scroll.** The cover, the name and the sync line lead,
   and the sort and the chips follow on one rail below the header, with a vertical rule between the sort and the
@@ -111,7 +111,7 @@ the type family, the space scale, the radii, the durations and the one curve are
   so two accounts are told apart at a glance. The admin's VPN settings door is not here: it is an instance-level
   control and sits in the library header beside the account door. The sheet dismisses on the backdrop, the system back
   gesture, its close control, or a downward drag on its handle.
-- **A target is 44 points, and every control has a name and a role.** Dynamic Type is respected, with a capped
+- **A target is 48dp, and every control has a name and a role.** Dynamic Type is respected, with a capped
   multiplier only where a fixed layout would break, and reduced motion is read from the system. The focus ring and
   the keyboard contract are the web's and have no analogue. A gallery card is one target, so its name carries the
   count, the sync state and the owner that its parts show.

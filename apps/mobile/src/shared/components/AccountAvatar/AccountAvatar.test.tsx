@@ -13,6 +13,8 @@ const account: Account = {
   role: UserRole.User
 };
 
+const hidden = { includeHiddenElements: true };
+
 describe('the account avatar', () => {
   it('draws the avatar image when the account has one', async () => {
     await render(
@@ -31,8 +33,18 @@ describe('the account avatar', () => {
   it('draws the initial when the account has no avatar', async () => {
     await render(<AccountAvatar account={account} />);
 
-    expect(screen.getByTestId('account-monogram')).toBeOnTheScreen();
-    expect(screen.getByText('M')).toBeOnTheScreen();
+    expect(screen.getByTestId('account-monogram', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('M', hidden)).toBeOnTheScreen();
     expect(screen.queryByTestId('account-avatar')).not.toBeOnTheScreen();
+  });
+
+  it('keeps the monogram out of the accessibility tree', async () => {
+    await render(<AccountAvatar account={account} />);
+
+    expect(
+      screen.getByTestId('account-monogram', hidden).props
+        .importantForAccessibility
+    ).toBe('no-hide-descendants');
+    expect(screen.queryByText('M')).not.toBeOnTheScreen();
   });
 });

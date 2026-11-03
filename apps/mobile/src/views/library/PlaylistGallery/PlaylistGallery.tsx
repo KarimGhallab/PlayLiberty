@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import type { ReactElement } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
+  FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -73,6 +75,7 @@ import {
   visiblePlaylists
 } from '../bulkSync/bulkSync';
 import {
+  galleryColumnCount,
   galleryColumnWidth,
   galleryPinnedWidth
 } from '../galleryColumns/galleryColumns';
@@ -91,6 +94,42 @@ const TRACK_STATUSES: readonly TrackFileStatus[] =
   Object.values(TrackFileStatus);
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
+
+type GalleryRow =
+  | {
+      readonly kind: 'heading';
+      readonly key: string;
+      readonly group: 'syncing';
+      readonly title: string;
+    }
+  | {
+      readonly kind: 'cards';
+      readonly key: string;
+      readonly group: 'syncing' | 'rest';
+      readonly items: readonly PlaylistWithCounts[];
+    };
+
+/* The grid rows are pre-chunked, so one list row is one line of cards. */
+function cardRows(
+  items: readonly PlaylistWithCounts[],
+  columns: number,
+  group: 'syncing' | 'rest'
+): GalleryRow[] {
+  const rows: GalleryRow[] = [];
+
+  for (let start = 0; start < items.length; start += columns) {
+    const chunk = items.slice(start, start + columns);
+
+    rows.push({
+      kind: 'cards',
+      key: chunk[0]?.id ?? `${group}-${start}`,
+      group,
+      items: chunk
+    });
+  }
+
+  return rows;
+}
 
 /* The chips read the scope they are drawn over: one total per status over every
  * playlist in that scope. */
@@ -175,6 +214,7 @@ export default function PlaylistGallery({
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const setShuffle = usePlayerStore(state => state.setShuffle);
   const window = useWindowDimensions();
+  const columns = galleryColumnCount(window.width);
   const columnWidth = galleryColumnWidth(window.width);
   const pinnedCardWidth = galleryPinnedWidth(window.width);
   const playlists = usePlaylists();
@@ -278,11 +318,19 @@ export default function PlaylistGallery({
   const rest = unpinned.filter(
     item => item.syncStatus !== PlaylistSyncStatus.Syncing
   );
-  const groups = [
-    { key: 'pinned', heading: t('library.pinned'), items: pinned },
-    { key: 'syncing', heading: t('library.syncing'), items: syncing },
-    { key: 'rest', heading: null, items: rest }
-  ].filter(group => group.items.length > 0);
+  const rows: GalleryRow[] = [];
+
+  if (syncing.length > 0) {
+    rows.push({
+      kind: 'heading',
+      key: 'syncing-heading',
+      group: 'syncing',
+      title: t('library.syncing')
+    });
+    rows.push(...cardRows(syncing, columns, 'syncing'));
+  }
+
+  rows.push(...cardRows(rest, columns, 'rest'));
   const failureMessage =
     problemDetail(
       t,
@@ -651,6 +699,78 @@ export default function PlaylistGallery({
       />
     );
 
+  const renderRow = ({ item }: { item: GalleryRow }): ReactElement =>
+    item.kind === 'heading' ? (
+      <Text
+        accessibilityRole="header"
+        testID={`gallery-heading-${item.group}`}
+        style={styles.heading}>
+        {item.title}
+      </Text>
+    ) : (
+      <View style={styles.row}>
+        {item.items.map(playlist => (
+          <View
+            key={playlist.id}
+            testID="gallery-cell"
+            style={{ width: columnWidth }}>
+            {cardFor(playlist, item.group)}
+          </View>
+        ))}
+      </View>
+    );
+
+  const pinnedHeader =
+    pinned.length === 0 ? null : (
+      <View style={styles.pinnedGroup}>
+        <Text
+          accessibilityRole="header"
+          testID="gallery-heading-pinned"
+          style={styles.heading}>
+          {t('library.pinned')}
+        </Text>
+        <ScrollView
+          ref={pinnedRow}
+          testID="pinned-row"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.pinnedRow}
+          contentContainerStyle={styles.pinnedContent}
+          scrollEventThrottle={16}
+          onLayout={event => {
+            pinnedViewport.current = event.nativeEvent.layout.width;
+          }}
+          onScroll={event => {
+            pinnedOffset.current = event.nativeEvent.contentOffset.x;
+          }}
+          onContentSizeChange={width => {
+            const viewport =
+              pinnedViewport.current === 0
+                ? window.width
+                : pinnedViewport.current;
+            const clamped = clampScrollOffset(
+              pinnedOffset.current,
+              width,
+              viewport
+            );
+
+            if (clamped !== pinnedOffset.current) {
+              pinnedRow.current?.scrollTo({
+                x: clamped,
+                animated: false
+              });
+              pinnedOffset.current = clamped;
+            }
+          }}>
+          {pinned.map(playlist => (
+            <View key={playlist.id} style={{ width: pinnedCardWidth }}>
+              {cardFor(playlist, 'pinned')}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+
   if (playlists.isPending) {
     return (
       <View
@@ -710,8 +830,12 @@ export default function PlaylistGallery({
         activeStatus={statusFilter}
         onStatusChange={onStatusChange}
       />
-      <ScrollView
+      <FlatList
         testID="gallery-scroll"
+        data={rows}
+        keyExtractor={row => row.key}
+        renderItem={renderRow}
+        ListHeaderComponent={pinnedHeader}
         style={styles.gallery}
         refreshControl={
           <RefreshControl
@@ -736,69 +860,8 @@ export default function PlaylistGallery({
               tokenLength('space-3') +
               playerOffset
           }
-        ]}>
-        {groups.map(group => (
-          <View key={group.key} style={styles.group}>
-            {group.heading === null ? null : (
-              <Text
-                accessibilityRole="header"
-                testID={`gallery-heading-${group.key}`}
-                style={styles.heading}>
-                {group.heading}
-              </Text>
-            )}
-            {group.key === 'pinned' ? (
-              <ScrollView
-                ref={pinnedRow}
-                testID="pinned-row"
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.pinnedRow}
-                contentContainerStyle={styles.pinnedContent}
-                scrollEventThrottle={16}
-                onLayout={event => {
-                  pinnedViewport.current = event.nativeEvent.layout.width;
-                }}
-                onScroll={event => {
-                  pinnedOffset.current = event.nativeEvent.contentOffset.x;
-                }}
-                onContentSizeChange={width => {
-                  const viewport =
-                    pinnedViewport.current === 0
-                      ? window.width
-                      : pinnedViewport.current;
-                  const clamped = clampScrollOffset(
-                    pinnedOffset.current,
-                    width,
-                    viewport
-                  );
-
-                  if (clamped !== pinnedOffset.current) {
-                    pinnedRow.current?.scrollTo({
-                      x: clamped,
-                      animated: false
-                    });
-                    pinnedOffset.current = clamped;
-                  }
-                }}>
-                {group.items.map(playlist => (
-                  <View key={playlist.id} style={{ width: pinnedCardWidth }}>
-                    {cardFor(playlist, group.key)}
-                  </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.grid}>
-                {group.items.map(playlist => (
-                  <View key={playlist.id} style={{ width: columnWidth }}>
-                    {cardFor(playlist, group.key)}
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+        ]}
+      />
       <ActionDial
         label={t('library.actions')}
         testID="gallery-actions"
@@ -829,11 +892,14 @@ const styles = StyleSheet.create({
   gallery: {
     flex: 1
   },
-  content: {
-    gap: tokenLength('space-4')
+  content: {},
+  row: {
+    flexDirection: 'row',
+    gap: tokenLength('space-3'),
+    marginBottom: tokenLength('space-3')
   },
-  group: {
-    gap: tokenLength('space-2')
+  pinnedGroup: {
+    marginBottom: tokenLength('space-4')
   },
   pinnedRow: {
     flexGrow: 0
@@ -843,14 +909,10 @@ const styles = StyleSheet.create({
     paddingRight: tokenLength('space-4')
   },
   heading: {
+    marginBottom: tokenLength('space-2'),
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
     fontWeight: tokenWeight('weight-semibold')
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: tokenLength('space-3')
   }
 });

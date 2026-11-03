@@ -196,7 +196,7 @@ export default function ShareAccountPicker({
               pressed && styles.donePressed
             ]}
             onPress={onClose}>
-            <Text style={styles.doneLabel}>{t('common.cancel')}</Text>
+            <Text style={styles.doneLabel}>{t('shareDialog.done')}</Text>
           </Pressable>
         </View>
       }>

@@ -1,5 +1,10 @@
 import { IconUserShare } from '@tabler/icons-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent
+} from 'react-native';
 import {
   Animated,
   Easing,
@@ -46,6 +51,13 @@ interface SegmentRect {
   readonly width: number;
 }
 
+type ChipKey = TrackFileStatus | 'all';
+
+interface ChipRect {
+  readonly x: number;
+  readonly width: number;
+}
+
 export interface GalleryFilterBarProps {
   readonly hasShared: boolean;
   readonly totalCount: number;
@@ -74,12 +86,90 @@ export default function GalleryFilterBar({
   const [allRect, setAllRect] = useState<SegmentRect | null>(null);
   const [sharedRect, setSharedRect] = useState<SegmentRect | null>(null);
   const { edges, ...rail } = useRailEdges();
+  const scroller = useRef<ScrollView>(null);
+  const railOffset = useRef(0);
+  const railViewport = useRef(0);
+  const chipsLeft = useRef(0);
+  const chipRects = useRef(new Map<ChipKey, ChipRect>());
+  /* The rail stays at its start until the user picks a chip, so the default
+   * never scrolls the scope pair away. */
+  const chosen = useRef(false);
+  const selectedChip: ChipKey = activeStatus ?? 'all';
   const selection = useRef(
     new Animated.Value(scope === 'shared' ? 1 : 0)
   ).current;
   const total = totalStatusCount(counts);
   const hasStatus = total > 0;
   const measured = allRect !== null && sharedRect !== null;
+
+  /* A chip selected while half past the rail's edge is scrolled back into
+   * view, so the tap that chose it never hides its own count. */
+  const revealChip = useCallback(
+    (key: ChipKey): void => {
+      const rect = chipRects.current.get(key);
+      const viewport = railViewport.current;
+
+      if (rect === undefined || viewport === 0) {
+        return;
+      }
+
+      const x = chipsLeft.current + rect.x;
+      const margin = tokenLength('space-3');
+      const offset = railOffset.current;
+
+      if (x < offset + margin) {
+        scroller.current?.scrollTo({
+          x: Math.max(0, x - margin),
+          animated: !reduceMotion
+        });
+      } else if (x + rect.width > offset + viewport - margin) {
+        scroller.current?.scrollTo({
+          x: x + rect.width - viewport + margin,
+          animated: !reduceMotion
+        });
+      }
+    },
+    [reduceMotion]
+  );
+
+  const chooseStatus = (status: TrackFileStatus | null): void => {
+    chosen.current = true;
+    onStatusChange(status);
+    revealChip(status ?? 'all');
+  };
+
+  const readViewport = (event: LayoutChangeEvent): void => {
+    railViewport.current = event.nativeEvent.layout.width;
+    rail.onLayout(event);
+
+    if (chosen.current) {
+      revealChip(selectedChip);
+    }
+  };
+
+  const readRail = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+    railOffset.current = event.nativeEvent.contentOffset.x;
+    rail.onScroll(event);
+  };
+
+  const readContent = (width: number): void => {
+    rail.onContentSizeChange(width);
+
+    if (chosen.current) {
+      revealChip(selectedChip);
+    }
+  };
+
+  const rememberChip = (key: ChipKey) => (event: LayoutChangeEvent) => {
+    chipRects.current.set(key, {
+      x: event.nativeEvent.layout.x,
+      width: event.nativeEvent.layout.width
+    });
+
+    if (chosen.current && key === selectedChip) {
+      revealChip(key);
+    }
+  };
 
   /* The selected ground is one plate that slides between the pair, so the
    * scope reads as a single choice rather than two repainted boxes. */
@@ -106,15 +196,16 @@ export default function GalleryFilterBar({
   return (
     <View style={styles.rail}>
       <ScrollView
+        ref={scroller}
         testID="gallery-filter-bar"
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.bar}
         contentContainerStyle={styles.content}
         scrollEventThrottle={16}
-        onLayout={rail.onLayout}
-        onContentSizeChange={rail.onContentSizeChange}
-        onScroll={rail.onScroll}>
+        onLayout={readViewport}
+        onContentSizeChange={readContent}
+        onScroll={readRail}>
         {hasShared ? (
           <View
             accessibilityRole="radiogroup"
@@ -227,25 +318,35 @@ export default function GalleryFilterBar({
 
         {hasStatus ? (
           <View
+            testID="gallery-status-chips"
             accessibilityRole="radiogroup"
             accessibilityLabel={t('detail.filterBy')}
-            style={styles.chips}>
-            <Chip
-              label={t(hasShared ? 'library.allTracks' : 'detail.filterAll')}
-              count={total}
-              selected={activeStatus === null}
-              onPress={() => onStatusChange(null)}
-            />
+            style={styles.chips}
+            onLayout={event => {
+              chipsLeft.current = event.nativeEvent.layout.x;
+            }}>
+            <View testID="gallery-chip-all" onLayout={rememberChip('all')}>
+              <Chip
+                label={t(hasShared ? 'library.allTracks' : 'detail.filterAll')}
+                count={total}
+                selected={activeStatus === null}
+                onPress={() => chooseStatus(null)}
+              />
+            </View>
             {STATUS_CHIPS.filter(status => counts[status.value] > 0).map(
               status => (
-                <Chip
+                <View
                   key={status.value}
-                  label={t(status.label)}
-                  count={counts[status.value]}
-                  tone={status.tone}
-                  selected={activeStatus === status.value}
-                  onPress={() => onStatusChange(status.value)}
-                />
+                  testID={`gallery-chip-${status.value}`}
+                  onLayout={rememberChip(status.value)}>
+                  <Chip
+                    label={t(status.label)}
+                    count={counts[status.value]}
+                    tone={status.tone}
+                    selected={activeStatus === status.value}
+                    onPress={() => chooseStatus(status.value)}
+                  />
+                </View>
               )
             )}
           </View>

@@ -8,7 +8,8 @@ import {
   tokenColor,
   tokenLength,
   tokenNumber,
-  tokenWeight
+  tokenWeight,
+  touchTarget
 } from '../../styles/tokens';
 import PressableScale from '../PressableScale/PressableScale';
 
@@ -96,13 +97,13 @@ const styles = StyleSheet.create({
     flexShrink: 1
   },
   back: {
-    width: tokenLength('control-touch'),
-    height: tokenLength('control-touch'),
+    width: touchTarget,
+    height: touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
     /* The glyph aligns with the title's edge; the target reaches into the
      * margin. */
-    marginLeft: -(tokenLength('control-touch') - tokenLength('icon-md')) / 2
+    marginLeft: -(touchTarget - tokenLength('icon-md')) / 2
   },
   title: {
     color: tokenColor('ink'),

@@ -25,13 +25,28 @@ export default function ShelfSleeves({ busy }: ShelfSleevesProps) {
   return (
     <View style={styles.fan}>
       <View style={[styles.sleeve, styles.backLeft]}>
-        <Image source={ART.left} style={styles.art} />
+        <Image
+          testID="shelf-art"
+          accessible={false}
+          source={ART.left}
+          style={styles.art}
+        />
       </View>
       <View style={[styles.sleeve, styles.backRight]}>
-        <Image source={ART.right} style={styles.art} />
+        <Image
+          testID="shelf-art"
+          accessible={false}
+          source={ART.right}
+          style={styles.art}
+        />
       </View>
       <View style={[styles.sleeve, styles.front]}>
-        <Image source={ART.front} style={styles.art} />
+        <Image
+          testID="shelf-art"
+          accessible={false}
+          source={ART.front}
+          style={styles.art}
+        />
         <View style={styles.strip}>
           <View style={[StyleSheet.absoluteFill, styles.scrim]} />
           <EqualizerBars busy={busy} />

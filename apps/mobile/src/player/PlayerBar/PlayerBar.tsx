@@ -46,6 +46,7 @@ import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 import Artwork from './Artwork';
 import SeekBar, { type SeekBarProps } from './SeekBar';
+import { swipeMotion } from './swipeMotion/swipeMotion';
 
 /*
  * The player bar: absent at rest and once playback exists it persists across
@@ -543,8 +544,8 @@ export default function PlayerBar({ config }: PlayerBarProps) {
 
       Animated.timing(swipe, {
         toValue,
-        duration: 260,
-        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        duration: swipeMotion.duration,
+        easing: Easing.bezier(...swipeMotion.curve),
         useNativeDriver: true
       }).start(({ finished }) => {
         if (finished) {

@@ -5,6 +5,7 @@ import {
   screen,
   waitFor
 } from '@testing-library/react-native';
+import { PixelRatio } from 'react-native';
 
 import {
   AssociationOrigin,
@@ -23,6 +24,7 @@ import type { ApiConfig } from '../../../auth/useApiConfig';
 import TrackRow from './TrackRow';
 
 const store = { getItem: () => null, setItem: () => {} };
+const hidden = { includeHiddenElements: true };
 
 const config: ApiConfig = {
   baseUrl: 'https://instance.test',
@@ -61,6 +63,16 @@ const failed: PlaylistTrack = {
   track: {
     ...track,
     fileStatus: TrackFileStatus.Failed,
+    failureKind: FailureKind.Network,
+    failureReason: 'yt-dlp: HTTP 403'
+  }
+};
+
+/* A stored file whose source broke still plays, and still offers its reason. */
+const storedWithReason: PlaylistTrack = {
+  ...stored,
+  track: {
+    ...track,
     failureKind: FailureKind.Network,
     failureReason: 'yt-dlp: HTTP 403'
   }
@@ -110,8 +122,30 @@ describe('the track row', () => {
       'P-Access-Token': 'token-secret',
       'User-Agent': 'PlayLiberty/1.0 (Android)'
     });
-    expect(screen.getByText('First Song')).toBeOnTheScreen();
-    expect(screen.getByText('3:02')).toBeOnTheScreen();
+    expect(screen.getByText('First Song', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('3:02', hidden)).toBeOnTheScreen();
+  });
+
+  it('gives the title a second line above 1.3', async () => {
+    const scale = jest.spyOn(PixelRatio, 'getFontScale').mockReturnValue(2);
+    await renderRow();
+
+    expect(screen.getByTestId('track-title', hidden).props.numberOfLines).toBe(
+      2
+    );
+
+    scale.mockRestore();
+  });
+
+  it('keeps the title on one line at 1.3', async () => {
+    const scale = jest.spyOn(PixelRatio, 'getFontScale').mockReturnValue(1.3);
+    await renderRow();
+
+    expect(screen.getByTestId('track-title', hidden).props.numberOfLines).toBe(
+      1
+    );
+
+    scale.mockRestore();
   });
 
   it('draws the state word and its tone', async () => {
@@ -128,7 +162,7 @@ describe('the track row', () => {
 
     expect(screen.getByText('YouTube could not be reached.')).toBeOnTheScreen();
     expect(screen.getByTestId('track-details')).toHaveStyle({
-      minHeight: 44
+      minHeight: 48
     });
     expect(screen.queryByTestId('track-reason')).not.toBeOnTheScreen();
 
@@ -150,7 +184,7 @@ describe('the track row', () => {
   it('marks the current row with its word and bars', async () => {
     await renderRow(stored, { current: true });
 
-    expect(screen.getByText('Playing')).toBeOnTheScreen();
+    expect(screen.getByText('Playing', hidden)).toBeOnTheScreen();
     expect(
       screen.getByTestId('track-bars', { includeHiddenElements: true })
     ).toBeOnTheScreen();
@@ -159,7 +193,7 @@ describe('the track row', () => {
   it('names the paused state on a current row held by a paused queue', async () => {
     await renderRow(stored, { current: true, playing: false });
 
-    expect(screen.getByText('Paused')).toBeOnTheScreen();
+    expect(screen.getByText('Paused', hidden)).toBeOnTheScreen();
     expect(screen.getByTestId('track-play').props.accessibilityLabel).toBe(
       'First Song, Paused, 3:02'
     );
@@ -174,6 +208,34 @@ describe('the track row', () => {
     fireEvent.press(play);
 
     expect(onPlay).toHaveBeenCalledWith('track-1');
+  });
+
+  it('reads a playable row once, keeping the sentence, the disclosure and the lane', async () => {
+    const onOpenActions = jest.fn();
+    await renderRow(storedWithReason, { onOpenActions });
+
+    expect(
+      screen.getByRole('button', { name: 'First Song, 3:02' })
+    ).toBeOnTheScreen();
+    expect(screen.queryByText('First Song')).not.toBeOnTheScreen();
+    expect(screen.queryByText('3:02')).not.toBeOnTheScreen();
+    expect(screen.getByText('YouTube could not be reached.')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-details')).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: 'Actions for First Song' })
+    ).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('track-actions'));
+
+    expect(onOpenActions).toHaveBeenCalledWith('track-1');
+  });
+
+  it('exposes the copy of a row that cannot play', async () => {
+    await renderRow(failed);
+
+    expect(screen.getByText('First Song')).toBeOnTheScreen();
+    expect(screen.getByText('3:02')).toBeOnTheScreen();
+    expect(screen.getByTestId('track-details')).toBeOnTheScreen();
   });
 
   it('opens the lane for its track', async () => {

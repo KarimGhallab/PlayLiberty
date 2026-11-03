@@ -8,7 +8,8 @@ import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber
+  tokenNumber,
+  touchTarget
 } from '../../shared/styles/tokens';
 
 const SEEK_STEP_SECONDS = 10;
@@ -177,7 +178,7 @@ export default function SeekBar({
 
 const styles = StyleSheet.create({
   row: {
-    height: tokenLength('control-touch'),
+    height: touchTarget,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-2')
@@ -195,11 +196,11 @@ const styles = StyleSheet.create({
   },
   rail: {
     flex: 1,
-    height: tokenLength('control-touch'),
+    height: touchTarget,
     justifyContent: 'center'
   },
   track: {
-    /* A 3pt track keeps the 44pt rail's visual weight without a layout jump. */
+    /* A 3pt track keeps the rail's visual weight without a layout jump. */
     height: 3,
     overflow: 'hidden',
     borderRadius: tokenLength('focus-width'),

@@ -88,6 +88,7 @@ export const lengths = {
   'radius-chip': { kind: TokenKind.Length, value: 999 },
   'control-height': { kind: TokenKind.Length, value: 36 },
   'control-touch': { kind: TokenKind.Length, value: 44 },
+  'control-touch-android': { kind: TokenKind.Length, value: 48 },
   'control-size-check': { kind: TokenKind.Length, value: 18 },
   'control-size-inline': { kind: TokenKind.Length, value: 28 },
   'player-bar-height': { kind: TokenKind.Length, value: 98 },

@@ -167,13 +167,11 @@ export default function PlaylistDetail({
   const window = useWindowDimensions();
   const reduceMotion = useReduceMotion();
   const barHeight = usePlayerBarHeight();
-  /* The sheet's offset and the two reads its drag needs: the list's offset and
-   * the header's lower edge, both in window coordinates. */
-  const sheetY = useRef(new Animated.Value(window.height)).current;
+  /* The sheet's offset, which only the drag moves: the route owns the entry
+   * and the exit. */
+  const sheetY = useRef(new Animated.Value(0)).current;
   const pullOffset = useRef(0);
   const headerEdge = useRef(0);
-  const leaving = useRef(false);
-  const entryFrame = useRef<number | null>(null);
   const playlist = usePlaylist(playlistId);
   const playlists = usePlaylists();
   const [filter, setFilter] = useState<TrackFileStatus | null>(null);
@@ -614,37 +612,6 @@ export default function PlaylistDetail({
     });
   }, [landing, rows, tracks.isSuccess, viewabilityReady, viewable]);
 
-  /* The sheet arrives from the bottom; a reduce-motion setting takes it in
-   * place, without the travel. */
-  useEffect(() => {
-    if (reduceMotion) {
-      sheetY.setValue(0);
-      return;
-    }
-
-    entryFrame.current = requestAnimationFrame(() => {
-      entryFrame.current = null;
-
-      if (leaving.current) {
-        return;
-      }
-
-      Animated.timing(sheetY, {
-        toValue: 0,
-        duration: tokenDuration('motion-slow'),
-        easing: Easing.bezier(...standardEasingBezier),
-        useNativeDriver: true
-      }).start();
-    });
-
-    return () => {
-      if (entryFrame.current !== null) {
-        cancelAnimationFrame(entryFrame.current);
-        entryFrame.current = null;
-      }
-    };
-  }, [reduceMotion, sheetY]);
-
   const settleSheet = useCallback((): void => {
     if (reduceMotion) {
       sheetY.setValue(0);
@@ -660,17 +627,6 @@ export default function PlaylistDetail({
   }, [reduceMotion, sheetY]);
 
   const leaveDetail = useCallback((): void => {
-    if (leaving.current) {
-      return;
-    }
-
-    leaving.current = true;
-
-    if (entryFrame.current !== null) {
-      cancelAnimationFrame(entryFrame.current);
-      entryFrame.current = null;
-    }
-
     onBack();
   }, [onBack]);
 

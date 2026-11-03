@@ -3,6 +3,7 @@ import { memo, useState } from 'react';
 import {
   Animated,
   Image,
+  PixelRatio,
   Pressable,
   StyleSheet,
   Text,
@@ -30,6 +31,9 @@ import { failureSentence } from '../../../shared/trackState/failureSentence';
 import { trackToneColor } from '../../../shared/trackState/trackToneColor';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';
+
+/* Above this scale the title takes a second line rather than losing its name. */
+const MAX_SINGLE_LINE_SCALE = 1.3;
 
 export interface TrackRowProps {
   readonly association: PlaylistTrack;
@@ -84,6 +88,15 @@ function TrackRow({
         });
   const withFailure =
     track.failureKind !== null || track.failureReason !== null;
+  const titleLines = PixelRatio.getFontScale() > MAX_SINGLE_LINE_SCALE ? 2 : 1;
+  /* The play layer carries the row's name, so the painted copy is not a second
+   * stop; the sentence, the disclosure and the lane stay outside it. */
+  const copyProps = playable
+    ? {
+        accessibilityElementsHidden: true,
+        importantForAccessibility: 'no-hide-descendants' as const
+      }
+    : {};
 
   return (
     <Animated.View
@@ -116,16 +129,16 @@ function TrackRow({
       </View>
 
       <View pointerEvents="box-none" style={styles.body}>
-        <View pointerEvents="none">
+        <View {...copyProps} pointerEvents="none">
           <Text
             testID="track-title"
-            numberOfLines={1}
+            numberOfLines={titleLines}
             style={[styles.title, current && styles.titleCurrent]}>
             {track.title}
           </Text>
         </View>
         <View pointerEvents="box-none" style={styles.sub}>
-          <View pointerEvents="none" style={styles.sub}>
+          <View {...copyProps} pointerEvents="none" style={styles.sub}>
             {current ? (
               <View style={styles.nowMark}>
                 <View style={styles.nowDot} />
@@ -141,12 +154,12 @@ function TrackRow({
                 {stateLabel}
               </Text>
             )}
-            {withFailure ? (
-              <Text testID="track-failure" style={styles.sentence}>
-                {failureSentence(t, track.failureKind)}
-              </Text>
-            ) : null}
           </View>
+          {withFailure ? (
+            <Text testID="track-failure" style={styles.sentence}>
+              {failureSentence(t, track.failureKind)}
+            </Text>
+          ) : null}
           {track.failureReason === null ? null : (
             <Pressable
               testID="track-details"
@@ -174,7 +187,7 @@ function TrackRow({
         ) : null}
       </View>
 
-      <View pointerEvents="none">
+      <View {...copyProps} pointerEvents="none">
         <Text testID="track-duration" style={styles.duration}>
           {duration}
         </Text>

@@ -182,11 +182,11 @@ describe('the player bar', () => {
     });
   });
 
-  it('gives the seek rail a 44pt target', async () => {
+  it('gives the seek rail a full target', async () => {
     startPlaylist();
     await renderBar();
 
-    expect(screen.getByTestId('player-seek')).toHaveStyle({ height: 44 });
+    expect(screen.getByTestId('player-seek')).toHaveStyle({ height: 48 });
   });
 
   it('pauses and resumes the same track from one control', async () => {

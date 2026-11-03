@@ -238,6 +238,19 @@ describe('the playlist card', () => {
     expect(screen.getByTestId('playlist-share', hidden)).toBeOnTheScreen();
   });
 
+  it('caps the card meta so it cannot collide at large text', async () => {
+    await renderCard({
+      ownerName: 'Bea',
+      playlist: { ...playlist, access: ShareLevel.Read }
+    });
+
+    for (const text of ['12 tracks', 'Up to date', 'Shared by Bea']) {
+      expect(screen.getByText(text, hidden).props.maxFontSizeMultiplier).toBe(
+        1.3
+      );
+    }
+  });
+
   it('opens the playlist from the card and states its count, state and owner', async () => {
     const { onOpen } = await renderCard();
 

@@ -135,59 +135,67 @@ export default function ActionDial({
             { opacity: reveal, transform: [{ translateY: rise }] }
           ]}>
           {actions.map(action => (
-            <View key={action.key} style={styles.row}>
-              <View style={styles.label}>
-                <Text numberOfLines={1} style={styles.labelText}>
-                  {action.label}
-                </Text>
-              </View>
-              <Pressable
-                testID={action.testID}
-                accessibilityRole="button"
-                accessibilityLabel={action.label}
-                accessibilityState={{
-                  disabled: action.busy ?? false,
-                  busy: action.busy ?? false
-                }}
-                disabled={action.busy ?? false}
-                style={({ pressed }) => [
-                  styles.action,
-                  action.accent === true ? styles.accentAction : styles.plain,
-                  pressed && styles.pressed
-                ]}
-                onPress={() => {
-                  close();
-                  action.onPress();
-                }}>
-                {action.busy === true ? (
-                  <Spinner
-                    color={
+            <Pressable
+              key={action.key}
+              testID={action.testID}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+              accessibilityState={{
+                disabled: action.busy ?? false,
+                busy: action.busy ?? false
+              }}
+              disabled={action.busy ?? false}
+              style={styles.row}
+              onPress={() => {
+                close();
+                action.onPress();
+              }}>
+              {({ pressed }) => (
+                <>
+                  <View style={[styles.label, pressed && styles.pressed]}>
+                    <Text numberOfLines={1} style={styles.labelText}>
+                      {action.label}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.action,
                       action.accent === true
-                        ? tokenColor('accent')
-                        : tokenColor('ink')
-                    }
-                  />
-                ) : action.icon === 'add' ? (
-                  <IconMusicPlus
-                    size={tokenLength('icon-md')}
-                    color={
-                      action.accent === true
-                        ? tokenColor('bg')
-                        : tokenColor('ink')
-                    }
-                  />
-                ) : (
-                  <IconRotate
-                    size={tokenLength('icon-md')}
-                    color={
-                      action.accent === true
-                        ? tokenColor('accent')
-                        : tokenColor('ink')
-                    }
-                  />
-                )}
-              </Pressable>
-            </View>
+                        ? styles.accentAction
+                        : styles.plain,
+                      pressed && styles.pressed
+                    ]}>
+                    {action.busy === true ? (
+                      <Spinner
+                        color={
+                          action.accent === true
+                            ? tokenColor('accent')
+                            : tokenColor('ink')
+                        }
+                      />
+                    ) : action.icon === 'add' ? (
+                      <IconMusicPlus
+                        size={tokenLength('icon-md')}
+                        color={
+                          action.accent === true
+                            ? tokenColor('bg')
+                            : tokenColor('ink')
+                        }
+                      />
+                    ) : (
+                      <IconRotate
+                        size={tokenLength('icon-md')}
+                        color={
+                          action.accent === true
+                            ? tokenColor('accent')
+                            : tokenColor('ink')
+                        }
+                      />
+                    )}
+                  </View>
+                </>
+              )}
+            </Pressable>
           ))}
         </Animated.View>
         <Pressable

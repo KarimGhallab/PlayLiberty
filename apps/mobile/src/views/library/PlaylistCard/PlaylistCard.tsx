@@ -68,6 +68,9 @@ const SEVERITY: readonly MissingState[] = [
   TrackFileStatus.Pending
 ];
 
+/* The card's cell is fixed, so its meta stops scaling before the row collides. */
+const MAX_CARD_SCALE = 1.3;
+
 const TONE_COLORS: Record<
   MissingState,
   'tone-pending' | 'tone-downloading' | 'tone-failed' | 'tone-unavailable'
@@ -173,7 +176,10 @@ export default function PlaylistCard({
 
         <View style={styles.meta}>
           <View style={styles.countRow}>
-            <Text style={styles.count}>
+            <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={MAX_CARD_SCALE}
+              style={styles.count}>
               {playlist.trackCount} {trackCountUnit(t, playlist.trackCount)}
             </Text>
             {incomplete === null ? null : (
@@ -183,6 +189,7 @@ export default function PlaylistCard({
                   color={tokenColor(TONE_COLORS[incomplete.tone])}
                 />
                 <Text
+                  maxFontSizeMultiplier={MAX_CARD_SCALE}
                   style={[
                     styles.incompleteCount,
                     { color: tokenColor(TONE_COLORS[incomplete.tone]) }
@@ -193,6 +200,8 @@ export default function PlaylistCard({
             )}
           </View>
           <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={MAX_CARD_SCALE}
             style={[
               styles.state,
               { color: syncStateColor(playlist.syncStatus) }
@@ -202,7 +211,10 @@ export default function PlaylistCard({
         </View>
 
         {sharedBy === null ? null : (
-          <Text numberOfLines={1} style={styles.owner}>
+          <Text
+            numberOfLines={2}
+            maxFontSizeMultiplier={MAX_CARD_SCALE}
+            style={styles.owner}>
             {t('header.sharedBy', { name: sharedBy })}
           </Text>
         )}
@@ -310,6 +322,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: tokenLength('space-2')

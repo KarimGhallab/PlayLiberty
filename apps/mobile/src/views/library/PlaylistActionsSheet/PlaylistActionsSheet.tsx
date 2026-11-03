@@ -62,6 +62,9 @@ export default function PlaylistActionsSheet({
 }: PlaylistActionsSheetProps) {
   const { t } = useI18n();
   const liveRegion = useAnnouncement(problem);
+  /* Without actions the settings' top rule is the only one the two blocks
+   * need, so the summary does not draw a second. */
+  const summaryRule = actions.length > 0;
 
   return (
     <Sheet
@@ -72,7 +75,9 @@ export default function PlaylistActionsSheet({
       testID="playlist-actions-sheet"
       backdropTestID="playlist-actions-backdrop">
       {summary === undefined ? null : (
-        <View testID="playlist-actions-summary" style={styles.summary}>
+        <View
+          testID="playlist-actions-summary"
+          style={[styles.summary, !summaryRule && styles.summaryWithoutRule]}>
           {summary}
         </View>
       )}
@@ -134,6 +139,9 @@ const styles = StyleSheet.create({
     paddingBottom: tokenLength('space-3'),
     borderBottomWidth: 1,
     borderBottomColor: tokenColor('line')
+  },
+  summaryWithoutRule: {
+    borderBottomWidth: 0
   },
   extra: {
     gap: tokenLength('space-3'),

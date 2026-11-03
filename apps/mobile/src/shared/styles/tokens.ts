@@ -36,7 +36,7 @@ export function tokenDuration(name: keyof typeof durations): number {
 export const fontFamily = families['font-ui'].value;
 
 /** Every touch target owes this box, whatever it draws. */
-export const touchTarget = tokenLength('control-touch');
+export const touchTarget = tokenLength('control-touch-android');
 
 /** The header's cover ground: faint enough that the failed word on it clears 4.5:1. */
 export const coverGroundOpacity = 0.07;

@@ -216,6 +216,7 @@ const useAccountDirectoryMock = useAccountDirectory as jest.MockedFunction<
 >;
 
 const store = { getItem: () => null, setItem: () => {} };
+const hidden = { includeHiddenElements: true };
 
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -930,8 +931,8 @@ describe('the playlist detail', () => {
     expect(screen.getByText('12 tracks')).toBeOnTheScreen();
     expect(screen.getByText('Up to date')).toBeOnTheScreen();
     expect(screen.getByText('Synced 2 days ago')).toBeOnTheScreen();
-    expect(screen.getByText('First Song')).toBeOnTheScreen();
-    expect(screen.getByText('3:02')).toBeOnTheScreen();
+    expect(screen.getByText('First Song', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('3:02', hidden)).toBeOnTheScreen();
   });
 
   it('draws the skip setting in the actions sheet and writes the flip', async () => {
@@ -1184,7 +1185,7 @@ describe('the playlist detail', () => {
     });
     await renderDetail();
 
-    expect(screen.getByText('Playing')).toBeOnTheScreen();
+    expect(screen.getByText('Playing', hidden)).toBeOnTheScreen();
     expect(
       screen.getByTestId('track-bars', { includeHiddenElements: true })
     ).toBeOnTheScreen();
@@ -1207,7 +1208,7 @@ describe('the playlist detail', () => {
     });
     await renderDetail();
 
-    expect(screen.getByText('Paused')).toBeOnTheScreen();
+    expect(screen.getByText('Paused', hidden)).toBeOnTheScreen();
     expect(
       screen.getByTestId('track-bars', { includeHiddenElements: true })
     ).toBeOnTheScreen();
@@ -1290,7 +1291,7 @@ describe('the playlist detail', () => {
 
     expect(screen.getByText('Try again')).toBeOnTheScreen();
     expect(screen.getByTestId('tracks-append-retry')).toHaveStyle({
-      minHeight: 44
+      minHeight: 48
     });
 
     fireEvent.press(screen.getByTestId('tracks-append-retry'));
@@ -2238,7 +2239,9 @@ describe('the playlist detail', () => {
     });
 
     const titles = (): readonly string[] =>
-      screen.getAllByTestId('track-title').map(node => node.props.children);
+      screen
+        .getAllByTestId('track-title', hidden)
+        .map(node => node.props.children);
 
     expect(titles()).toEqual(['Third Song', 'Second Song', 'First Song']);
     expect(

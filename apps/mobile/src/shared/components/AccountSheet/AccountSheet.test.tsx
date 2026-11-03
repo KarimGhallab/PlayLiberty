@@ -85,7 +85,9 @@ describe('the account sheet', () => {
   it('draws the account initial when it has no avatar', async () => {
     await renderSheet();
 
-    expect(screen.getByText('M')).toBeOnTheScreen();
+    expect(
+      screen.getByText('M', { includeHiddenElements: true })
+    ).toBeOnTheScreen();
   });
 
   it('names its heading', async () => {

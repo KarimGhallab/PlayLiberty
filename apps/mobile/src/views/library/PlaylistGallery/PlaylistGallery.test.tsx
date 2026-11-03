@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -8,6 +9,7 @@ import {
   within
 } from '@testing-library/react-native';
 import { useState } from 'react';
+import { ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -1009,6 +1011,50 @@ describe('the gallery', () => {
     expect(screen.getByTestId('gallery-filter-bar').props.horizontal).toBe(
       true
     );
+  });
+
+  it('leaves the rail at its start until a chip is chosen', async () => {
+    const scrollTo = jest
+      .spyOn(ScrollView.prototype, 'scrollTo')
+      .mockImplementation(() => {});
+    await renderGallery([shared, base], directory);
+
+    await act(async () => {
+      screen.getByTestId('gallery-filter-bar').props.onLayout({
+        nativeEvent: { layout: { width: 200 } }
+      });
+      screen.getByTestId('gallery-status-chips').props.onLayout({
+        nativeEvent: { layout: { x: 150, width: 300 } }
+      });
+      screen.getByTestId('gallery-chip-all').props.onLayout({
+        nativeEvent: { layout: { x: 0, width: 120 } }
+      });
+      screen.getByTestId('gallery-chip-failed').props.onLayout({
+        nativeEvent: { layout: { x: 226, width: 90 } }
+      });
+    });
+
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByRole('radio', { name: 'Failed 4' }));
+
+    expect(scrollTo).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 150 + 226 + 90 - 200 + 12 })
+    );
+
+    scrollTo.mockRestore();
+  });
+
+  it('mounts a bounded number of cards for a large library', async () => {
+    const many = Array.from({ length: 200 }, (_, index) => ({
+      ...base,
+      id: `playlist-${index}`,
+      name: `Playlist ${index}`
+    }));
+
+    await renderGallery(many);
+
+    expect(screen.getAllByTestId('playlist-card').length).toBeLessThan(200);
   });
 
   it('draws the skeleton while the read is pending', async () => {

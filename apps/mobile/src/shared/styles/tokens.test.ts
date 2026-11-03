@@ -60,7 +60,7 @@ describe('the style helpers', () => {
   });
 
   it('names the touch target', () => {
-    expect(touchTarget).toBe(44);
+    expect(touchTarget).toBe(48);
   });
 });
 

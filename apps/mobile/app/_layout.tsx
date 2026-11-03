@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback } from 'react';
 
+import { useReduceMotion } from '../src/shared/a11y/useReduceMotion';
 import { tokenColor } from '../src/shared/styles/tokens';
 
 import { streamSource } from '../src/api/streamSource';
@@ -18,6 +19,7 @@ import AppProviders from '../src/providers/AppProviders';
 
 export default function RootLayout() {
   const config = useApiConfig();
+  const reduceMotion = useReduceMotion();
   const resolveSource = useCallback(
     (trackId: string) =>
       config === null
@@ -51,10 +53,10 @@ export default function RootLayout() {
         <Stack.Screen
           name="playlists/[playlistId]"
           options={{
-            /* The detail rides as a sheet over the gallery. The system owns the
-             * back gesture and the stack's slide, so the gallery stays behind. */
+            /* The route owns the sheet's one entry and exit, so the gallery
+             * stays behind it; reduced motion cuts both. */
             presentation: 'transparentModal',
-            animation: 'slide_from_bottom',
+            animation: reduceMotion ? 'none' : 'slide_from_bottom',
             gestureEnabled: true,
             contentStyle: { backgroundColor: 'transparent' }
           }}
