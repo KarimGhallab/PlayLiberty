@@ -101,6 +101,8 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
   [`105`](../issues/105-the-mobile-apps-ui-misses-its-contract.md).
 - [`mobile-ui-audit-2/TICKETS.md`](mobile-ui-audit-2/TICKETS.md): the second mobile UI audit's 12 tickets, from issue
   [`106`](../issues/106-the-mobile-ui-still-misses-its-contract.md).
+- [`mobile-ui-audit-3/TICKETS.md`](mobile-ui-audit-3/TICKETS.md): the third mobile UI audit's 5 tickets, from issue
+  [`107`](../issues/107-five-gaps-remain-in-the-mobile-ui.md).
 
 ## Conventions
 

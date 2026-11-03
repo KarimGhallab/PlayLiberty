@@ -8,7 +8,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
+  useWindowDimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -40,6 +41,7 @@ import {
 } from '../../../api/useEgress';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import { stackFacts } from './egressFacts';
 
 interface ActionNotice {
   readonly message: string;
@@ -115,6 +117,8 @@ function ConfigCard({
   pending,
   onPress
 }: ConfigCardProps) {
+  const { fontScale } = useWindowDimensions();
+  const stacked = stackFacts(fontScale);
   const country = countryOf(config.name);
   const countryName =
     country === null ? null : countryNameOf(country, language);
@@ -170,23 +174,23 @@ function ConfigCard({
             <Text style={styles.sub}>{observed}</Text>
           )}
         </View>
-        <View style={styles.factRow}>
-          <View style={styles.factHalf}>
+        <View style={[styles.factRow, stacked && styles.factRowStacked]}>
+          <View style={[styles.factHalf, stacked && styles.factHalfStacked]}>
             <Text style={styles.label}>{t('egress.status')}</Text>
             <Text style={[styles.value, { color: statusTone(config.status) }]}>
               {statusLabel(t, config.status)}
             </Text>
             {reason === null ? null : <Text style={styles.sub}>{reason}</Text>}
           </View>
-          <View style={styles.factHalf}>
+          <View style={[styles.factHalf, stacked && styles.factHalfStacked]}>
             <Text style={styles.label}>{t('egress.lastAttempt')}</Text>
             <Text style={styles.value}>
               {timeOf(t, config.lastAttemptAt, now)}
             </Text>
           </View>
         </View>
-        <View style={styles.factRow}>
-          <View style={styles.factHalf}>
+        <View style={[styles.factRow, stacked && styles.factRowStacked]}>
+          <View style={[styles.factHalf, stacked && styles.factHalfStacked]}>
             <Text style={styles.label}>{t('egress.lastCheck')}</Text>
             <Text style={styles.value}>
               {timeOf(t, config.lastCheckAt, now)}
@@ -504,6 +508,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: tokenLength('space-4')
   },
+  factRowStacked: {
+    flexDirection: 'column',
+    gap: tokenLength('space-2')
+  },
   fact: {
     gap: tokenLength('space-1')
   },
@@ -511,6 +519,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: tokenLength('space-1')
+  },
+  factHalfStacked: {
+    flex: 0,
+    minWidth: 0
   },
   label: {
     color: tokenColor('muted'),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { contentWidth } from '../../../shared/styles/contentColumn/contentColumn';
 import { tokenLength } from '../../../shared/styles/tokens';
 
 import {
@@ -23,11 +24,17 @@ describe('the gallery columns', () => {
   it('fills the content box with its columns and gaps', () => {
     for (const windowWidth of [320, 390, 600, 840]) {
       const count = galleryColumnCount(windowWidth);
+      const box = contentWidth(windowWidth) - inset * 2;
 
       expect(galleryColumnWidth(windowWidth) * count + gap * (count - 1)).toBe(
-        windowWidth - inset * 2
+        box
       );
     }
+  });
+
+  it('keeps the columns inside the capped column on a tablet', () => {
+    expect(contentWidth(840)).toBe(720);
+    expect(galleryColumnWidth(840) * 3 + gap * 2).toBe(720 - inset * 2);
   });
 
   it('keeps a 320pt phone at two usable columns', () => {

@@ -117,6 +117,7 @@ Work is tracked as local markdown under `docs/tracker/`. The engineering skills 
 | [`104-the-landing-draws-every-paged-list-on-the-way`](104-the-landing-draws-every-paged-list-on-the-way.md)                                               | `resolved` | `bug`         | The landing holds the skeleton while it pages to the current track instead of drawing every page on the way.                         |
 | [`105-the-mobile-apps-ui-misses-its-contract`](105-the-mobile-apps-ui-misses-its-contract.md)                                                             | `open`     | `bug`         | The mobile UI fails contrast over artwork, clips at large text, and leaves six controls below its own 44pt rule.                     |
 | [`106-the-mobile-ui-still-misses-its-contract`](106-the-mobile-ui-still-misses-its-contract.md)                                                           | `open`     | `bug`         | A second audit scores 14/20: track rows are read twice, targets are 44dp, and font scale 2.0 breaks the card.                        |
+| [`107-five-gaps-remain-in-the-mobile-ui`](107-five-gaps-remain-in-the-mobile-ui.md)                                                                       | `open`     | `bug`         | A third audit scores 17/20: hour-long durations clip at 2.0, the tablet stretches, and the egress facts wrap.                        |
 
 ## Conventions
 

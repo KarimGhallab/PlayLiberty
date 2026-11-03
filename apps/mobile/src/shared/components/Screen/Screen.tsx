@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MAX_CONTENT_WIDTH } from '../../styles/contentColumn/contentColumn';
 import {
   fontFamily,
   tokenColor,
@@ -85,6 +86,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
     padding: tokenLength('space-4'),
     gap: tokenLength('space-3')
   },

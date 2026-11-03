@@ -32,6 +32,7 @@ import {
   shareMarkColor
 } from '../../../shared/playlistIdentity/shareMark';
 import { syncStateColor } from '../../../shared/playlistIdentity/syncStateColor';
+import { contentColumn } from '../../../shared/styles/contentColumn/contentColumn';
 import {
   coverGroundOpacity,
   fontFamily,
@@ -309,63 +310,73 @@ function IdentityBlock({
 /* The head's shape while the playlist read lands: the cover, the identity's
  * lines and the action row in the places the real header will take. */
 export function PlaylistIdentitySkeleton() {
+  const window = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const column = contentColumn(window.width, insets.left, insets.right);
+
   return (
     <View testID="playlist-identity-skeleton" style={styles.skeletonRoot}>
       <View
         style={[
-          styles.skeletonCover,
-          {
-            left: TOP,
-            top: TOP,
-            width: WIDE_COVER,
-            height: WIDE_COVER
-          }
-        ]}
-      />
-      <View
-        style={[
-          styles.skeletonIdentity,
-          { left: TOP + WIDE_COVER + WIDE_GAP, top: TOP, right: TOP }
+          styles.skeletonColumn,
+          { left: column.left, width: column.width }
         ]}>
-        <View style={[styles.skeletonLine, styles.skeletonTitle]} />
-        <View style={[styles.skeletonLine, styles.skeletonMeta]} />
-        <View style={[styles.skeletonLine, styles.skeletonMetaShort]} />
-        <View style={[styles.skeletonLine, styles.skeletonOwner]} />
+        <View
+          style={[
+            styles.skeletonCover,
+            {
+              left: TOP,
+              top: TOP,
+              width: WIDE_COVER,
+              height: WIDE_COVER
+            }
+          ]}
+        />
+        <View
+          style={[
+            styles.skeletonIdentity,
+            { left: TOP + WIDE_COVER + WIDE_GAP, top: TOP, right: TOP }
+          ]}>
+          <View style={[styles.skeletonLine, styles.skeletonTitle]} />
+          <View style={[styles.skeletonLine, styles.skeletonMeta]} />
+          <View style={[styles.skeletonLine, styles.skeletonMetaShort]} />
+          <View style={[styles.skeletonLine, styles.skeletonOwner]} />
+        </View>
+        <View
+          style={[
+            styles.skeletonPlay,
+            {
+              left: TOP,
+              top: WIDE_ACTIONS_TOP,
+              width: PLAY,
+              height: PLAY,
+              borderRadius: PLAY / 2
+            }
+          ]}
+        />
+        <View
+          style={[
+            styles.skeletonControl,
+            {
+              right: TOP + CONTROL + GAP,
+              top: WIDE_ACTIONS_TOP + (PLAY - CONTROL) / 2,
+              width: CONTROL,
+              height: CONTROL
+            }
+          ]}
+        />
+        <View
+          style={[
+            styles.skeletonControl,
+            {
+              right: TOP,
+              top: WIDE_ACTIONS_TOP + (PLAY - CONTROL) / 2,
+              width: CONTROL,
+              height: CONTROL
+            }
+          ]}
+        />
       </View>
-      <View
-        style={[
-          styles.skeletonPlay,
-          {
-            left: TOP,
-            top: WIDE_ACTIONS_TOP,
-            width: PLAY,
-            height: PLAY,
-            borderRadius: PLAY / 2
-          }
-        ]}
-      />
-      <View
-        style={[
-          styles.skeletonControl,
-          {
-            right: TOP + CONTROL + GAP,
-            top: WIDE_ACTIONS_TOP + (PLAY - CONTROL) / 2,
-            width: CONTROL,
-            height: CONTROL
-          }
-        ]}
-      />
-      <View
-        style={[
-          styles.skeletonControl,
-          {
-            right: TOP,
-            top: WIDE_ACTIONS_TOP + (PLAY - CONTROL) / 2,
-            width: CONTROL,
-            height: CONTROL
-          }
-        ]}
-      />
     </View>
   );
 }
@@ -380,7 +391,8 @@ export default function PlaylistIdentity({
   const facts = useFacts(props);
   const window = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const width = window.width - insets.left - insets.right;
+  const column = contentColumn(window.width, insets.left, insets.right);
+  const width = column.width;
 
   const height = progress.interpolate({
     inputRange: [0, 1],
@@ -445,146 +457,152 @@ export default function PlaylistIdentity({
         )}
       </Animated.View>
 
-      <Animated.View
-        testID="playlist-cover"
-        style={[
-          styles.cover,
-          {
-            width: coverSize,
-            height: coverSize,
-            left: TOP,
-            top: TOP,
-            backgroundColor: facts.cover.sleeve
-          }
-        ]}>
-        {facts.cover.source === null ? null : (
-          <Image
-            testID="playlist-cover-image"
-            accessible={false}
-            resizeMode="cover"
-            source={facts.cover.source}
-            style={styles.fill}
-            onError={facts.cover.onError}
-          />
-        )}
-        <View pointerEvents="none" style={styles.coverWash} />
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.identity,
-          { left: identityLeft, top: TOP, width: identityWidth }
-        ]}>
-        <IdentityBlock props={props} facts={facts} lines={collapsed ? 1 : 2} />
-      </Animated.View>
-
-      <Animated.View
-        pointerEvents={collapsed ? 'none' : 'auto'}
-        accessibilityElementsHidden={collapsed}
-        importantForAccessibility={collapsed ? 'no-hide-descendants' : 'auto'}
-        style={[
-          styles.actions,
-          { opacity: wideOpacity, transform: [{ translateY: wideShift }] }
-        ]}>
-        <View
+      <View style={[styles.column, { left: column.left, width }]}>
+        <Animated.View
+          testID="playlist-cover"
           style={[
-            styles.action,
+            styles.cover,
             {
+              width: coverSize,
+              height: coverSize,
               left: TOP,
-              top: WIDE_ACTIONS_TOP,
-              width: PLAY,
-              height: PLAY
-            }
-          ]}>
-          <PlayControl props={props} size={PLAY} ghost={collapsed} />
-        </View>
-        <View
-          style={[
-            styles.action,
-            {
-              left: wideSecondaryLeft,
-              top: wideActionsTop,
-              width: CONTROL,
-              height: CONTROL
-            }
-          ]}>
-          <ShuffleControl props={props} ghost={collapsed} />
-        </View>
-        <View
-          style={[
-            styles.action,
-            {
-              left: width - TOP - CONTROL,
-              top: wideActionsTop,
-              width: CONTROL,
-              height: CONTROL
-            }
-          ]}>
-          <ActionsControl props={props} ghost={collapsed} />
-        </View>
-      </Animated.View>
-
-      <Animated.View
-        pointerEvents={collapsed ? 'auto' : 'none'}
-        accessibilityElementsHidden={!collapsed}
-        importantForAccessibility={collapsed ? 'auto' : 'no-hide-descendants'}
-        style={[styles.actions, { opacity: narrowOpacity }]}>
-        <View
-          style={[
-            styles.action,
-            {
-              left: width - TOP - PLAY,
               top: TOP,
-              width: PLAY,
-              height: PLAY
+              backgroundColor: facts.cover.sleeve
             }
           ]}>
-          <PlayControl props={props} size={PLAY} ghost={!collapsed} />
-        </View>
-        <View
-          style={[
-            styles.action,
-            {
-              left: width - TOP - NARROW_BLOCK,
-              top: NARROW_SMALL_TOP,
-              width: SMALL,
-              height: SMALL
-            }
-          ]}>
-          <ShuffleControl props={props} ghost={!collapsed} />
-        </View>
-        <View
-          style={[
-            styles.action,
-            {
-              left: width - TOP - SMALL,
-              top: NARROW_SMALL_TOP,
-              width: SMALL,
-              height: SMALL
-            }
-          ]}>
-          <ActionsControl props={props} ghost={!collapsed} />
-        </View>
-      </Animated.View>
-
-      {props.onBack === undefined ? null : (
-        <View style={[styles.backSlot, { left: TOP, top: TOP }]}>
-          <PressableScale
-            testID="detail-back"
-            accessibilityRole="button"
-            accessibilityLabel={facts.t('common.back')}
-            style={styles.back}
-            onPress={props.onBack}>
-            <IconChevronLeft
-              size={tokenLength('icon-md')}
-              color={tokenColor('ink')}
+          {facts.cover.source === null ? null : (
+            <Image
+              testID="playlist-cover-image"
+              accessible={false}
+              resizeMode="cover"
+              source={facts.cover.source}
+              style={styles.fill}
+              onError={facts.cover.onError}
             />
-          </PressableScale>
-        </View>
-      )}
+          )}
+          <View pointerEvents="none" style={styles.coverWash} />
+        </Animated.View>
 
-      <View pointerEvents="none" style={styles.playingSlot}>
-        <PlayingLine playing={props.playing === true} />
+        <Animated.View
+          style={[
+            styles.identity,
+            { left: identityLeft, top: TOP, width: identityWidth }
+          ]}>
+          <IdentityBlock
+            props={props}
+            facts={facts}
+            lines={collapsed ? 1 : 2}
+          />
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents={collapsed ? 'none' : 'auto'}
+          accessibilityElementsHidden={collapsed}
+          importantForAccessibility={collapsed ? 'no-hide-descendants' : 'auto'}
+          style={[
+            styles.actions,
+            { opacity: wideOpacity, transform: [{ translateY: wideShift }] }
+          ]}>
+          <View
+            style={[
+              styles.action,
+              {
+                left: TOP,
+                top: WIDE_ACTIONS_TOP,
+                width: PLAY,
+                height: PLAY
+              }
+            ]}>
+            <PlayControl props={props} size={PLAY} ghost={collapsed} />
+          </View>
+          <View
+            style={[
+              styles.action,
+              {
+                left: wideSecondaryLeft,
+                top: wideActionsTop,
+                width: CONTROL,
+                height: CONTROL
+              }
+            ]}>
+            <ShuffleControl props={props} ghost={collapsed} />
+          </View>
+          <View
+            style={[
+              styles.action,
+              {
+                left: width - TOP - CONTROL,
+                top: wideActionsTop,
+                width: CONTROL,
+                height: CONTROL
+              }
+            ]}>
+            <ActionsControl props={props} ghost={collapsed} />
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents={collapsed ? 'auto' : 'none'}
+          accessibilityElementsHidden={!collapsed}
+          importantForAccessibility={collapsed ? 'auto' : 'no-hide-descendants'}
+          style={[styles.actions, { opacity: narrowOpacity }]}>
+          <View
+            style={[
+              styles.action,
+              {
+                left: width - TOP - PLAY,
+                top: TOP,
+                width: PLAY,
+                height: PLAY
+              }
+            ]}>
+            <PlayControl props={props} size={PLAY} ghost={!collapsed} />
+          </View>
+          <View
+            style={[
+              styles.action,
+              {
+                left: width - TOP - NARROW_BLOCK,
+                top: NARROW_SMALL_TOP,
+                width: SMALL,
+                height: SMALL
+              }
+            ]}>
+            <ShuffleControl props={props} ghost={!collapsed} />
+          </View>
+          <View
+            style={[
+              styles.action,
+              {
+                left: width - TOP - SMALL,
+                top: NARROW_SMALL_TOP,
+                width: SMALL,
+                height: SMALL
+              }
+            ]}>
+            <ActionsControl props={props} ghost={!collapsed} />
+          </View>
+        </Animated.View>
+
+        {props.onBack === undefined ? null : (
+          <View style={[styles.backSlot, { left: TOP, top: TOP }]}>
+            <PressableScale
+              testID="detail-back"
+              accessibilityRole="button"
+              accessibilityLabel={facts.t('common.back')}
+              style={styles.back}
+              onPress={props.onBack}>
+              <IconChevronLeft
+                size={tokenLength('icon-md')}
+                color={tokenColor('ink')}
+              />
+            </PressableScale>
+          </View>
+        )}
+
+        <View pointerEvents="none" style={styles.playingSlot}>
+          <PlayingLine playing={props.playing === true} />
+        </View>
       </View>
     </Animated.View>
   );
@@ -593,6 +611,11 @@ export default function PlaylistIdentity({
 const styles = StyleSheet.create({
   skeletonRoot: {
     height: WIDE_HEIGHT
+  },
+  skeletonColumn: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0
   },
   skeletonCover: {
     position: 'absolute',
@@ -635,6 +658,11 @@ const styles = StyleSheet.create({
   root: {
     overflow: 'hidden',
     backgroundColor: tokenColor('bg')
+  },
+  column: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0
   },
   fill: {
     width: '100%',

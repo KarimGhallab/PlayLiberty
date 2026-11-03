@@ -1,22 +1,22 @@
 # Architecture
 
-PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, shared contracts, design tokens, shared UI decisions, localization package, and YouTube adapter exist; the mobile client is specified by specs `19` to `32` and not yet built. The non-obvious choices are stated in [Decisions](#decisions).
+PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, mobile client, shared contracts, design tokens, shared UI decisions, localization package, shared query keys, and YouTube adapter exist. The mobile app runs as a development build; spec `32` owns its signed release. The non-obvious choices are stated in [Decisions](#decisions).
 
 ## Components
 
 ### The applications
 
 - `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See [The server stack](#the-server-stack) and [The server's folder boundaries](#the-servers-folder-boundaries).
-- `apps/web` - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
+- `apps/web` - React 19.3 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
 - `apps/egress-agent` - the system-scoped host agent that runs yt-dlp in the `playliberty-egress` network namespace. See [The YouTube egress runs in a host network namespace](#the-youtube-egress-runs-in-a-host-network-namespace).
-- `apps/mobile` (specified, not built) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
+- `apps/mobile` - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
 
 ### The packages
 
 - `packages/contracts` - the Zod schemas that define the `/api/v1` REST surface and the types inferred from them, shared by both clients and the server, so a change to the API breaks the build rather than the user.
 - `packages/tokens` - the design values as the single source of truth, with the emitter that writes the flat custom-property stylesheet the web client loads and the module the mobile client reads.
 - `packages/ui-foundation` - the shared, non-rendering UI decisions language cannot touch: the curve to `Easing.bezier` argument mapping, the sleeve hue, and the track state tone.
-- `packages/i18n` - the shared localization: the `en` and `fr` catalogs, the hand-rolled runtime, the locale resolution, the formatters and the React binding, consumed by the web client and the future mobile client.
+- `packages/i18n` - the shared localization: the `en` and `fr` catalogs, the hand-rolled runtime, the locale resolution, the formatters and the React binding, consumed by the web client and the mobile client.
 - `packages/youtube` - the single seam around yt-dlp and source metadata. No other module shells out to yt-dlp or parses YouTube.
 
 ### The stores
@@ -70,7 +70,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - Raw SQL lives in `platform/database/` and in `shared/access/`, and nowhere else. Everywhere else goes through Drizzle, so the schema stays the one description of the storage. Enforced by the `no-restricted-syntax` override in `eslint.config.js`, which exists because a `.prepare()` call is a member expression and not an import, so dependency-cruiser cannot see it.
 - Only the server touches the database and the media root, and only `packages/youtube` invokes yt-dlp. Clients reach all of it through the API.
 - Every mutating API request carries `X-PlayLiberty-Client` and passes the `Origin` and `Sec-Fetch-Site` checks. Never mutate on `GET`.
-- `POST /auth/exchange` is the only path exempt from Pangolin SSO; the server owns its code, PKCE, lifetime, and rate-limit checks.
+- `POST /auth/exchange` and `POST /auth/refresh` are the only paths exempt from Pangolin SSO; the server owns the exchange's code, PKCE and lifetime checks, and the refresh token's rotation and revocation.
 - Workspace dependencies use `workspace:*` and mirror their source paths in `tsconfig.depcruise.json`. The workspace pins one React and one React Native version.
 - The application and package scope is `@playliberty/*`.
 
@@ -88,7 +88,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `docs/runbooks/egress-agent.md` - the host install, verification and reboot runbook.
 - `apps/web/src/` - the web SPA, views under `src/views/` and shared pieces under `src/shared/`. A module split across two or more files is one folder named after it, holding the module, its test and its stylesheet; a single-file module stays flat.
 - `apps/web/deploy/nginx.conf.template` - the static serving and `/api` proxy configuration, rendered by the nginx entrypoint at container start.
-- `apps/mobile/src/` and `apps/mobile/app/` (specified, not built) - the Expo app, routes and feature modules.
+- `apps/mobile/src/` and `apps/mobile/app/` - the Expo app, routes and feature modules.
 - `packages/contracts/src/` - the API Zod schemas and inferred types.
 - `packages/youtube/src/` - the yt-dlp adapter.
 - `scripts/validate-tsconfig-paths.cjs` - keeps `tsconfig.depcruise.json` paths aligned with the workspace.
@@ -100,7 +100,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 ## Deployment shapes
 
 - Local development: `pnpm install`, then `pnpm run build` or `pnpm run watch`. The Vite dev server proxies `/api` to the running server; the mobile app runs as a development build against the public origin.
-- Production: private, behind the Pangolin authenticating edge. The nginx origin serves the SPA and proxies the API to the server over the pod-local loopback; the concrete network and container rules live in [Deployment behind the Pangolin edge](#deployment-behind-the-pangolin-edge). The mobile app is distributed as a sideloaded Android APK. The server and web `Containerfile`s, the dev `compose.yaml`, and the production units exist: the user-scoped `deploy/quadlet/playliberty-web.kube` runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network, and the system-scoped `deploy/systemd/playliberty-egress.service` runs the YouTube egress in its own namespace. The pod mounts `/run/playliberty` read-only for the agent socket. The host is prepared by `pnpm deploy:build-for-production`, which builds the images, creates `/srv/playliberty`, prepares the egress host, and ensures `playliberty_edge_assertion`, `playliberty_public_origin` and the optional `pangolin_admin_user`. The unit maps the deploying user to container UID 1000 with `UserNS=keep-id:uid=1000,gid=1000`. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
+- Production: private, behind the Pangolin authenticating edge. The nginx origin serves the SPA and proxies the API to the server over the pod-local loopback; the concrete network and container rules live in [Deployment behind the Pangolin edge](#deployment-behind-the-pangolin-edge). The mobile app runs as a development build; the signed, sideloaded Android APK is the remaining release step (spec `32`). The server and web `Containerfile`s, the dev `compose.yaml`, and the production units exist: the user-scoped `deploy/quadlet/playliberty-web.kube` runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network, and the system-scoped `deploy/systemd/playliberty-egress.service` runs the YouTube egress in its own namespace. The pod mounts `/run/playliberty` read-only for the agent socket. The host is prepared by `pnpm deploy:build-for-production`, which builds the images, creates `/srv/playliberty`, prepares the egress host, and ensures `playliberty_edge_assertion`, `playliberty_public_origin` and the optional `pangolin_admin_user`. The unit maps the deploying user to container UID 1000 with `UserNS=keep-id:uid=1000,gid=1000`. `06-scaffold-mobile` built the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
 - Clients: the web client is served through the edge; the mobile client carries its own per-user token and streams through the same edge.
 
 ## Decisions
@@ -141,11 +141,11 @@ One Node 26 process built with Fastify 5 and compiled by `tsc`, owning a local S
 
 ### The web stack
 
-`apps/web` is a client-only single-page application: React 19.2 with the React Compiler enabled, built by Vite 8 (Rolldown) with TypeScript 6, routed by TanStack Router, server state in TanStack Query v5, the player and queue in a Zustand 5 store, styling SCSS with CSS Modules and BEM over CSS custom-property design tokens, dark only. Playback is a single global HTML5 audio element with the Media Session API, and the queue and position persist in `sessionStorage`. A dedicated nginx container is the single public origin: it serves the built assets and reverse-proxies `/api` and `/healthz`, so the browser sees one origin and no CORS is needed.
+`apps/web` is a client-only single-page application: React 19.3 with the React Compiler enabled, built by Vite 8 (Rolldown) with TypeScript 6, routed by TanStack Router, server state in TanStack Query v5, the player and queue in a Zustand 5 store, styling SCSS with CSS Modules and BEM over CSS custom-property design tokens, dark only. Playback is a single global HTML5 audio element with the Media Session API, and the queue and position persist in `sessionStorage`. A dedicated nginx container is the single public origin: it serves the built assets and reverse-proxies `/api` and `/healthz`, so the browser sees one origin and no CORS is needed.
 
 ### The mobile stack
 
-`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.2, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The credential record, the access pair and the refresh token, lives in `expo-secure-store`; the access token renews silently before its deadline. Distribution in v1 is a development build and a sideloaded Android APK; the code stays cross-platform but iOS is not built or tested.
+`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.3, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The credential record, the access pair and the refresh token, lives in `expo-secure-store`; the access token renews silently before its deadline. Distribution in v1 is a development build today and a signed, sideloaded Android APK at release; the code stays cross-platform but iOS is not built or tested.
 
 ### Mobile provisioning
 

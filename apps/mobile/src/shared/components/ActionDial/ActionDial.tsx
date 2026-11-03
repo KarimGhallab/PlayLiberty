@@ -10,13 +10,15 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  View
+  View,
+  useWindowDimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { contentColumn } from '../../styles/contentColumn/contentColumn';
 import {
   fontFamily,
   tokenColor,
@@ -67,8 +69,20 @@ export default function ActionDial({
   rightOffset = 0
 }: ActionDialProps) {
   const insets = useSafeAreaInsets();
+  const window = useWindowDimensions();
   const reduceMotion = useReduceMotion();
   const [open, setOpen] = useState(false);
+  const column = contentColumn(window.width, insets.left, insets.right);
+  /* The label starts at the content inset and wraps rather than leaving the
+   * screen on a long locale. */
+  const labelMax = Math.max(
+    0,
+    column.width -
+      tokenLength('space-4') * 2 -
+      rightOffset -
+      actionDialSize -
+      tokenLength('space-2')
+  );
   const reveal = useRef(new Animated.Value(0)).current;
   const shown = open && !busy;
   const rise = reveal.interpolate({
@@ -152,8 +166,13 @@ export default function ActionDial({
               }}>
               {({ pressed }) => (
                 <>
-                  <View style={[styles.label, pressed && styles.pressed]}>
-                    <Text numberOfLines={1} style={styles.labelText}>
+                  <View
+                    style={[
+                      styles.label,
+                      { maxWidth: labelMax },
+                      pressed && styles.pressed
+                    ]}>
+                    <Text numberOfLines={2} style={styles.labelText}>
                       {action.label}
                     </Text>
                   </View>
@@ -243,15 +262,17 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2')
   },
   label: {
-    height: touchTarget,
+    minHeight: touchTarget,
     justifyContent: 'center',
     paddingHorizontal: tokenLength('space-3'),
+    paddingVertical: tokenLength('space-1'),
     borderWidth: 1,
     borderColor: tokenColor('line'),
     borderRadius: tokenLength('radius-chip'),
     backgroundColor: tokenColor('surface-raised')
   },
   labelText: {
+    flexShrink: 1,
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),

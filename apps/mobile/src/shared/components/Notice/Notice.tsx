@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { IconX } from '@tabler/icons-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
   PanResponder,
+  Pressable,
   StyleSheet,
   Text,
+  View,
   useWindowDimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useI18n } from '@playliberty/i18n';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useAnnouncement } from '../../a11y/useAnnouncement';
@@ -19,7 +23,8 @@ import {
   tokenDuration,
   tokenLength,
   tokenNumber,
-  tokenWeight
+  tokenWeight,
+  touchTarget
 } from '../../styles/tokens';
 
 export interface NoticeProps {
@@ -63,9 +68,11 @@ export default function Notice({
   bottomOffset = 0,
   horizontalInset = tokenLength('space-4')
 }: NoticeProps) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const reduceMotion = useReduceMotion();
+  const [windowKey, setWindowKey] = useState(0);
   const liveRegion = useAnnouncement(
     detail === null ? message : `${message}. ${detail}`
   );
@@ -132,7 +139,21 @@ export default function Notice({
     const timer = setTimeout(leave, durationMs);
 
     return () => clearTimeout(timer);
-  }, [detail, durationMs, leave, message]);
+  }, [detail, durationMs, leave, message, windowKey]);
+
+  /* The screen reader's action restarts the window, so the notice does not
+   * vanish while it is being read. */
+  const extend = useCallback((): void => {
+    setWindowKey(key => key + 1);
+  }, []);
+
+  const onAccessibilityAction = (event: {
+    readonly nativeEvent: { readonly actionName: string };
+  }): void => {
+    if (event.nativeEvent.actionName === 'extend') {
+      extend();
+    }
+  };
 
   const settle = appearing.interpolate({
     inputRange: [0, 1],
@@ -190,9 +211,6 @@ export default function Notice({
   return (
     <Animated.View
       testID="notice"
-      accessible
-      accessibilityRole="alert"
-      accessibilityLiveRegion={liveRegion}
       style={[
         styles.notice,
         {
@@ -204,8 +222,25 @@ export default function Notice({
         }
       ]}
       {...pan.panHandlers}>
-      <Text style={styles.message}>{message}</Text>
-      {detail === null ? null : <Text style={styles.detail}>{detail}</Text>}
+      <View
+        testID="notice-body"
+        accessible
+        accessibilityRole="alert"
+        accessibilityLiveRegion={liveRegion}
+        accessibilityActions={[{ name: 'extend', label: t('common.moreTime') }]}
+        onAccessibilityAction={onAccessibilityAction}
+        style={styles.body}>
+        <Text style={styles.message}>{message}</Text>
+        {detail === null ? null : <Text style={styles.detail}>{detail}</Text>}
+      </View>
+      <Pressable
+        testID="notice-close"
+        accessibilityRole="button"
+        accessibilityLabel={t('common.close')}
+        style={styles.close}
+        onPress={leave}>
+        <IconX size={tokenLength('icon-sm')} color={tokenColor('ink')} />
+      </Pressable>
     </Animated.View>
   );
 }
@@ -213,12 +248,26 @@ export default function Notice({
 const styles = StyleSheet.create({
   notice: {
     position: 'absolute',
-    gap: tokenLength('space-1'),
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokenLength('space-2'),
     padding: tokenLength('space-3'),
     borderWidth: 1,
     borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-card'),
     backgroundColor: tokenColor('surface-raised')
+  },
+  body: {
+    flex: 1,
+    gap: tokenLength('space-1')
+  },
+  close: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -tokenLength('space-2'),
+    marginRight: -tokenLength('space-2')
   },
   message: {
     color: tokenColor('ink'),

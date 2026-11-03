@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -45,6 +45,7 @@ import Spinner from '../../../shared/components/Spinner/Spinner';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
 import { isPlayable } from '../../../shared/playable/playable';
 import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
+import { MAX_CONTENT_WIDTH } from '../../../shared/styles/contentColumn/contentColumn';
 import {
   fontFamily,
   tokenColor,
@@ -709,7 +710,7 @@ export default function PlaylistDetail({
         style={styles.screen}
         edges={['top', 'left', 'right']}>
         <PlaylistIdentitySkeleton />
-        <View style={styles.skeletonBody}>
+        <View style={[styles.skeletonBody, styles.column]}>
           <PlaylistControlsSkeleton />
           <TrackListSkeleton />
         </View>
@@ -726,7 +727,7 @@ export default function PlaylistDetail({
         testID="playlist-screen"
         style={styles.screen}
         edges={['top', 'left', 'right']}>
-        <View style={styles.stateBody}>
+        <View style={[styles.stateBody, styles.column]}>
           {notFound ? (
             <PlaylistNotFound onBack={leaveDetail} />
           ) : (
@@ -1307,7 +1308,11 @@ export default function PlaylistDetail({
         extraData={`${currentId ?? ''}:${isPlaying}`}
         showsVerticalScrollIndicator={false}
         pointerEvents={pendingDelete ? 'none' : 'auto'}
-        style={[styles.scroll, pendingDelete ? styles.pending : undefined]}
+        style={[
+          styles.scroll,
+          styles.column,
+          pendingDelete ? styles.pending : undefined
+        ]}
         onScroll={readScroll}
         scrollEventThrottle={16}
         contentContainerStyle={[
@@ -1481,6 +1486,11 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1
+  },
+  column: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center'
   },
   content: {
     paddingHorizontal: tokenLength('space-4'),

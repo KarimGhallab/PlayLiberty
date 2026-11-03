@@ -10,7 +10,7 @@ import {
   tokenLength,
   tokenNumber,
   touchTarget
-} from '../../shared/styles/tokens';
+} from '../../../shared/styles/tokens';
 
 const SEEK_STEP_SECONDS = 10;
 
@@ -117,7 +117,11 @@ export default function SeekBar({
 
   return (
     <View style={[styles.row, !enabled && styles.disabled]}>
-      <Text testID="player-elapsed" accessible={false} style={styles.time}>
+      <Text
+        testID="player-elapsed"
+        accessible={false}
+        numberOfLines={1}
+        style={styles.time}>
         {formatDuration(shownElapsed)}
       </Text>
       <View
@@ -169,7 +173,11 @@ export default function SeekBar({
           style={[styles.knob, { left: `${shownFraction * 100}%` }]}
         />
       </View>
-      <Text testID="player-duration" accessible={false} style={styles.time}>
+      <Text
+        testID="player-duration"
+        accessible={false}
+        numberOfLines={1}
+        style={styles.time}>
         {formatDuration(duration)}
       </Text>
     </View>
@@ -187,7 +195,7 @@ const styles = StyleSheet.create({
     opacity: tokenNumber('opacity-disabled')
   },
   time: {
-    width: tokenLength('space-9'),
+    minWidth: tokenLength('space-9'),
     color: tokenColor('muted-on-art'),
     fontFamily,
     fontSize: tokenLength('text-xs'),

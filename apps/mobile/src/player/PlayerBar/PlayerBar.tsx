@@ -45,7 +45,7 @@ import { playerBarHeight } from '../playerBarSize/playerBarSize';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 import Artwork from './Artwork';
-import SeekBar, { type SeekBarProps } from './SeekBar';
+import SeekBar, { type SeekBarProps } from './SeekBar/SeekBar';
 import { swipeMotion } from './swipeMotion/swipeMotion';
 
 /*

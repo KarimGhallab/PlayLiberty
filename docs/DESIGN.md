@@ -67,8 +67,9 @@ The shapes are decisions, and the screens implement them:
 ## The mobile client
 
 The app is the phone frame the web client already draws at 390, at whatever width the device has. It has one column
-at every width: the web's content column and its breakpoint are the browser's and do not exist here. The token set,
-the type family, the space scale, the radii, the durations and the one curve are the same values.
+at every width, capped at 720 and centred on a wider screen, so a tablet keeps the phone's measure instead of
+stretching its chrome. The web's content column and its breakpoint are the browser's and do not exist here. The token
+set, the type family, the space scale, the radii, the durations and the one curve are the same values.
 
 - **Four routes and one sheet.** The library is the root, the playlist detail is pushed, a bare track and the egress
   console are routes of their own, and the account sheet is a modal over whatever is open. There is no tab bar, no
