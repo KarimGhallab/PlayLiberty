@@ -15,10 +15,16 @@ import {
 } from '../../styles/tokens';
 import { trackToneColor } from '../../trackState/trackToneColor';
 
-export type ChipTone = 'accent' | TrackTone;
+export type ChipTone = 'accent' | 'retained' | TrackTone;
 
 function toneColor(tone: ChipTone): string {
-  return tone === 'accent' ? tokenColor('accent') : trackToneColor(tone);
+  if (tone === 'accent') {
+    return tokenColor('accent');
+  }
+
+  return tone === 'retained'
+    ? tokenColor('tone-retained')
+    : trackToneColor(tone);
 }
 
 export interface ChipProps {

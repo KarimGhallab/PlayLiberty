@@ -1,6 +1,6 @@
 # 01: The shared layer learns a retained view
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Source:** [The filter cannot show the tracks a removal left behind](../../issues/109-the-filter-cannot-show-the-tracks-a-removal-left-behind.md)
 **Blocked by:** None. Can start immediately. Blocks [`02`](02-the-phone-shows-the-retained-view.md) and
@@ -51,12 +51,32 @@ One shared layer that both clients can build on:
 
 ## Acceptance criteria
 
-- [ ] `state=remoteRemoved` returns only stored tracks whose source is removed, and `total` equals the page's
+- [x] `state=remoteRemoved` returns only stored tracks whose source is removed, and `total` equals the page's
       `remoteRemoved` figure.
-- [ ] The five counts are unchanged by the filter and still sum to `trackCount`; an unknown state is still refused.
-- [ ] `PlaylistWithCounts.remoteRemoved` is required, filled for every playlist in one query, and `0` when nothing is
+- [x] The five counts are unchanged by the filter and still sum to `trackCount`; an unknown state is still refused.
+- [x] `PlaylistWithCounts.remoteRemoved` is required, filled for every playlist in one query, and `0` when nothing is
       retained.
-- [ ] `tone-retained` reaches both clients' styles, and nothing reads it as a track state.
-- [ ] The chip's word and empty sentence exist in both catalogs, at parity, with the provider interpolated.
-- [ ] `docs/DESIGN.md` states the rail/partition and the filter-tone rule once.
-- [ ] Tests: the predicate, the total, the refusals, the per-playlist figure, and the copy in both languages.
+- [x] `tone-retained` reaches both clients' styles, and nothing reads it as a track state.
+- [x] The chip's word and empty sentence exist in both catalogs, at parity, with the provider interpolated.
+- [x] `docs/DESIGN.md` states the rail/partition and the filter-tone rule once.
+- [x] Tests: the predicate, the total, the refusals, the per-playlist figure, and the copy in both languages.
+
+## Outcome
+
+`TrackFilterState` is the file-status enum plus the `REMOTE_REMOVED` literal, so the filter is a view and never a sixth
+file status. The tracks query accepts it and the server branches once: the retained view is `stored` plus `removed`, and
+its total is the same `remoteRemovedCount` the page reports.
+
+`PlaylistWithCounts.remoteRemoved` is required. The list fills it from one grouped query that counts every page's
+playlists at once, beside the five buckets, and `0` when nothing is retained. The existing statement-count test proves
+the figure adds no per-row lookup.
+
+`tone-retained` is the plum colour token, emitted to the web stylesheet and read by the mobile token module; it is not a
+`TrackTone`. The chip's word is `trackState.removedFromChip` (`PluralMessage`, so French can say "Retirées"), and the
+empty sentence is `detail.filterEmpty.remoteRemoved`, both interpolating the provider. `docs/DESIGN.md` records the
+rail/partition rule and the filter-tone rule.
+
+## Verification
+
+`pnpm run build`, `pnpm run lint:check`, the mobile suite (617 tests), the web suite (625 tests) and the server suite
+(504 tests) pass, along with the i18n, tokens and ui-foundation packages.

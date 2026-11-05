@@ -1,6 +1,6 @@
 # 02: The phone shows the retained view
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Source:** [The filter cannot show the tracks a removal left behind](../../issues/109-the-filter-cannot-show-the-tracks-a-removal-left-behind.md)
 **Blocked by:** [`01`](01-the-shared-layer-learns-a-retained-view.md), for the token, the copy, the contract and the
@@ -45,11 +45,31 @@ hidden at zero, and filtering the detail's list to the retained tracks and the g
 
 ## Acceptance criteria
 
-- [ ] The chip is drawn last in the detail's rail and the gallery's rail, and not at all when its count is zero.
-- [ ] Selecting it narrows the detail to the retained tracks, and the chips keep the whole-playlist counts.
-- [ ] The empty state names the provider and uses the negated retention sentence; "Show all" restores the list.
-- [ ] The gallery aggregates retained tracks across the scoped playlists, shows only the playlists holding one, and
+- [x] The chip is drawn last in the detail's rail and the gallery's rail, and not at all when its count is zero.
+- [x] Selecting it narrows the detail to the retained tracks, and the chips keep the whole-playlist counts.
+- [x] The empty state names the provider and uses the negated retention sentence; "Show all" restores the list.
+- [x] The gallery aggregates retained tracks across the scoped playlists, shows only the playlists holding one, and
       clears the filter when the scoped count reaches zero.
-- [ ] The chip's tone is the plum token; the rows it reveals keep the removed grey.
-- [ ] The chip is a 48dp target with a name, a role, and its count in the accessible label.
-- [ ] Tests cover the chip's presence, the two filters, the empty sentence in both languages, and the zero rule.
+- [x] The chip's tone is the plum token; the rows it reveals keep the removed grey.
+- [x] The chip is a 48dp target with a name, a role, and its count in the accessible label.
+- [x] Tests cover the chip's presence, the two filters, the empty sentence in both languages, and the zero rule.
+
+## Outcome
+
+`statusChips.ts` widens its value to `TrackFilterState` and adds the retained entry last, with `tone: 'retained'` and
+`detail.filterEmpty.remoteRemoved`. `statusCount` and `statusChipCount` read the retained figure from `remoteRemoved`
+and every other chip from the five buckets; `totalStatusCount` still sums only those five. `visibleStatusChips` hides
+the retained chip at zero even while its view is in force, and keeps the existing active-at-zero rule for the buckets.
+
+`Chip` accepts the `retained` tone and maps it to `tokenColor('tone-retained')`, so the selected label, border and dot
+take the plum. Rows still use `TrackTone` and keep the removed grey.
+
+`PlaylistControls` and `GalleryFilterBar` take the retained count and the provider, so the chip's word and empty
+sentence interpolate `YouTube` (or another provider later). The detail's filter state is the union and passes it to the
+tracks read. The gallery aggregates `remoteRemoved` beside the five counts over the scoped playlists, filters playlists
+by `remoteRemoved > 0`, and keeps clearing a filter whose scoped count reaches zero.
+
+## Verification
+
+`pnpm run build`, `pnpm run lint:check` and the mobile suite (629 tests) pass. The new tests cover the retained chip's
+last position, its two filters, the zero rule on both rails, and the empty sentence in English and French.

@@ -7,12 +7,13 @@ import type {
 } from 'react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { TrackFileStatus } from '@playliberty/contracts';
 import type {
   PlaylistSort,
-  TrackFileStatusCounts
+  Provider,
+  TrackFileStatusCounts,
+  TrackFilterState
 } from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
+import { providerLabel, useI18n } from '@playliberty/i18n';
 
 import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
 import Chip from '../../../shared/components/Chip/Chip';
@@ -29,6 +30,7 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 import {
+  statusChipCount,
   totalStatusCount,
   visibleStatusChips
 } from '../../../shared/trackState/statusChips';
@@ -36,7 +38,7 @@ import {
 import PlaylistSortSheet from './PlaylistSortSheet';
 import { sortLabelKey } from './sortOptions';
 
-type ChipKey = TrackFileStatus | 'all';
+type ChipKey = TrackFilterState | 'all';
 
 interface ChipRect {
   readonly x: number;
@@ -49,9 +51,11 @@ export interface PlaylistControlsProps {
   readonly shuffled: boolean;
   readonly saving: boolean;
   readonly counts: TrackFileStatusCounts;
-  readonly active: TrackFileStatus | null;
+  readonly remoteRemoved: number;
+  readonly provider: Provider;
+  readonly active: TrackFilterState | null;
   readonly onSortChange: (sort: PlaylistSort) => void;
-  readonly onFilterChange: (status: TrackFileStatus | null) => void;
+  readonly onFilterChange: (status: TrackFilterState | null) => void;
 }
 
 /* The rail's shape while the playlist read lands, so the chips and the first
@@ -78,6 +82,8 @@ export default function PlaylistControls({
   shuffled,
   saving,
   counts,
+  remoteRemoved,
+  provider,
   active,
   onSortChange,
   onFilterChange
@@ -202,19 +208,26 @@ export default function PlaylistControls({
               onPress={() => onFilterChange(null)}
             />
           </View>
-          {visibleStatusChips(counts, active).map(chip => (
-            <View key={chip.value} onLayout={rememberChip(chip.value)}>
-              <Chip
-                testID={`filter-${chip.value}`}
-                label={t(chip.label)}
-                count={counts[chip.value]}
-                tone={chip.tone}
-                selected={active === chip.value}
-                disabled={shuffled}
-                onPress={() => onFilterChange(chip.value)}
-              />
-            </View>
-          ))}
+          {visibleStatusChips(counts, remoteRemoved, active).map(chip => {
+            const count = statusChipCount(chip, counts, remoteRemoved);
+
+            return (
+              <View key={chip.value} onLayout={rememberChip(chip.value)}>
+                <Chip
+                  testID={`filter-${chip.value}`}
+                  label={t(chip.label, {
+                    count,
+                    provider: providerLabel(t, provider)
+                  })}
+                  count={count}
+                  tone={chip.tone}
+                  selected={active === chip.value}
+                  disabled={shuffled}
+                  onPress={() => onFilterChange(chip.value)}
+                />
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
       <RailFade side="start" visible={edges.start} />

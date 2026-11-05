@@ -3,8 +3,8 @@ import { useCallback, useMemo } from 'react';
 
 import type {
   PlaylistTrack,
-  TrackFileStatus,
-  TrackFileStatusCounts
+  TrackFileStatusCounts,
+  TrackFilterState
 } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
 import { playlistTracksKey } from '@playliberty/query';
@@ -48,7 +48,7 @@ export interface PlaylistTracksRead {
 /** The playlist's tracks, page by page; `null` disables the read. */
 export function usePlaylistTracks(
   playlistId: string | null,
-  state?: TrackFileStatus
+  state?: TrackFilterState
 ): PlaylistTracksRead {
   const query = useInfiniteQuery({
     queryKey: playlistTracksKey(playlistId ?? '', state),

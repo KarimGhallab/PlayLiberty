@@ -9,6 +9,7 @@ import {
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
+  REMOTE_REMOVED,
   ShareLevel,
   SyncRunStatus,
   TrackFileStatus,
@@ -98,9 +99,11 @@ export const TrackFileStatusCountsSchema = z.object({
 });
 
 /* The playlist read plus file-status counts over the whole playlist, never the
- * page's rows; their sum is `trackCount`. */
+ * page's rows; their sum is `trackCount`. `remoteRemoved` is the retained
+ * overlay on `stored`, so it is counted beside the buckets. */
 export const PlaylistWithCountsSchema = PlaylistSchema.extend({
-  counts: TrackFileStatusCountsSchema
+  counts: TrackFileStatusCountsSchema,
+  remoteRemoved: nonNegative
 });
 
 export const PlaylistPageSchema = createPageSchema(PlaylistWithCountsSchema);
@@ -282,8 +285,13 @@ export const MobileTokenSchema = z.object({
   })
 });
 
+export const TrackFilterStateSchema = z.union([
+  z.enum(TrackFileStatus),
+  z.literal(REMOTE_REMOVED)
+]);
+
 export const PlaylistTracksQuerySchema = PageQuerySchema.extend({
-  state: z.enum(TrackFileStatus).optional()
+  state: TrackFilterStateSchema.optional()
 });
 
 export function createPageSchema<TItem extends z.ZodType>(

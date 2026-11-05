@@ -15,9 +15,12 @@ import {
   View
 } from 'react-native';
 
-import { TrackFileStatus } from '@playliberty/contracts';
-import type { TrackFileStatusCounts } from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
+import type {
+  Provider,
+  TrackFileStatusCounts,
+  TrackFilterState
+} from '@playliberty/contracts';
+import { providerLabel, useI18n } from '@playliberty/i18n';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
@@ -35,6 +38,7 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 import {
+  statusChipCount,
   totalStatusCount,
   visibleStatusChips
 } from '../../../shared/trackState/statusChips';
@@ -51,7 +55,7 @@ interface SegmentRect {
   readonly width: number;
 }
 
-type ChipKey = TrackFileStatus | 'all';
+type ChipKey = TrackFilterState | 'all';
 
 interface ChipRect {
   readonly x: number;
@@ -65,8 +69,10 @@ export interface GalleryFilterBarProps {
   readonly scope: LibraryScope;
   readonly onScopeChange: (scope: LibraryScope) => void;
   readonly counts: TrackFileStatusCounts;
-  readonly activeStatus: TrackFileStatus | null;
-  readonly onStatusChange: (status: TrackFileStatus | null) => void;
+  readonly remoteRemoved: number;
+  readonly provider: Provider;
+  readonly activeStatus: TrackFilterState | null;
+  readonly onStatusChange: (status: TrackFilterState | null) => void;
 }
 
 /* One rail above the grid: the ownership scope leads, the status chips follow.
@@ -78,6 +84,8 @@ export default function GalleryFilterBar({
   scope,
   onScopeChange,
   counts,
+  remoteRemoved,
+  provider,
   activeStatus,
   onStatusChange
 }: GalleryFilterBarProps) {
@@ -143,7 +151,7 @@ export default function GalleryFilterBar({
     revealChip(selectedChip, animate);
   };
 
-  const chooseStatus = (status: TrackFileStatus | null): void => {
+  const chooseStatus = (status: TrackFilterState | null): void => {
     chosen.current = true;
     onStatusChange(status);
     revealChip(status ?? 'all', true);
@@ -339,20 +347,29 @@ export default function GalleryFilterBar({
                 onPress={() => chooseStatus(null)}
               />
             </View>
-            {visibleStatusChips(counts, activeStatus).map(status => (
-              <View
-                key={status.value}
-                testID={`gallery-chip-${status.value}`}
-                onLayout={rememberChip(status.value)}>
-                <Chip
-                  label={t(status.label)}
-                  count={counts[status.value]}
-                  tone={status.tone}
-                  selected={activeStatus === status.value}
-                  onPress={() => chooseStatus(status.value)}
-                />
-              </View>
-            ))}
+            {visibleStatusChips(counts, remoteRemoved, activeStatus).map(
+              status => {
+                const count = statusChipCount(status, counts, remoteRemoved);
+
+                return (
+                  <View
+                    key={status.value}
+                    testID={`gallery-chip-${status.value}`}
+                    onLayout={rememberChip(status.value)}>
+                    <Chip
+                      label={t(status.label, {
+                        count,
+                        provider: providerLabel(t, provider)
+                      })}
+                      count={count}
+                      tone={status.tone}
+                      selected={activeStatus === status.value}
+                      onPress={() => chooseStatus(status.value)}
+                    />
+                  </View>
+                );
+              }
+            )}
           </View>
         ) : null}
       </ScrollView>

@@ -1,6 +1,6 @@
 # 03: The web shows the retained view
 
-**Status:** open
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Source:** [The filter cannot show the tracks a removal left behind](../../issues/109-the-filter-cannot-show-the-tracks-a-removal-left-behind.md)
 **Blocked by:** [`01`](01-the-shared-layer-learns-a-retained-view.md), for the token, the copy, the contract and the
@@ -44,11 +44,33 @@ filtering the detail's list to the retained tracks and the gallery to the playli
 
 ## Acceptance criteria
 
-- [ ] The chip is drawn last in both rails, hidden at zero, in the plum tone.
-- [ ] Selecting it narrows the detail to the retained tracks; the chips keep the whole-playlist counts; All restores.
-- [ ] The empty state names the provider; the library shows only the playlists holding a retained track and clears the
+- [x] The chip is drawn last in both rails, hidden at zero, in the plum tone.
+- [x] Selecting it narrows the detail to the retained tracks; the chips keep the whole-playlist counts; All restores.
+- [x] The empty state names the provider; the library shows only the playlists holding a retained track and clears the
       filter when the scoped count reaches zero.
-- [ ] Keyboard: the chip is a button in the tab order, with its count in the accessible name, and the rail's focus ring
+- [x] Keyboard: the chip is a button in the tab order, with its count in the accessible name, and the rail's focus ring
       is unchanged.
-- [ ] No axe violations on either rail.
-- [ ] Tests cover the chip's presence, both filters, the empty copy, the reset, and the zero rule.
+- [x] No axe violations on either rail.
+- [x] Tests cover the chip's presence, both filters, the empty copy, the reset, and the zero rule.
+
+## Outcome
+
+`PlaylistFilterChips` widens its value to `TrackFilterState`, adds the retained entry last, and takes `remoteRemoved`
+and `provider`. Its count comes from `remoteRemoved`; the five buckets and `totalOf` are unchanged. The retained chip is
+hidden at zero even when `showEmpty` draws the bucket zeros, and it carries the plum `retained` tone.
+
+`Chip` accepts `retained` and `Chip.module.scss` maps it to `--tone-retained`, so the selected word, border and dot take
+the plum. The other tones and the focus ring are unchanged.
+
+`PlaylistDetailPage` holds the filter as the union, passes the retained count and provider to the rail, and branches
+the empty sentence so the retained view names the provider while the bucket views keep their template lookup.
+
+`LibraryPage` aggregates `remoteRemoved` beside the five counts over the scoped playlists, filters by
+`remoteRemoved > 0`, and clears the filter when the scoped retained count reaches zero. `LibraryFilterBar` forwards the
+retained count and provider to the shared rail.
+
+## Verification
+
+`pnpm run build`, `pnpm run lint:check` and the web suite (631 tests) pass. The tests cover the retained chip's last
+position and count, its detail and gallery filters, the provider-named empty state, the scope reset, the zero rule, and
+the rail's axe result.

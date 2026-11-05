@@ -37,6 +37,7 @@ const base: PlaylistWithCounts = {
     failed: 2,
     unavailable: 0
   },
+  remoteRemoved: 0,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-29T12:00:00.000Z'
 };

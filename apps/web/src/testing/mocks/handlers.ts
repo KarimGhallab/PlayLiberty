@@ -238,11 +238,13 @@ const PLAYLIST_PAGE: PlaylistPage = {
     {
       ...PLAYLIST_ONE,
       trackCount: 1,
-      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 1 }
+      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 1 },
+      remoteRemoved: 0
     },
     {
       ...PLAYLIST_TWO,
-      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 4 }
+      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 4 },
+      remoteRemoved: 0
     }
   ],
   total: 2,

@@ -181,7 +181,8 @@ export const fr: Messages = {
       pending: 'Aucune piste en attente',
       downloading: 'Aucune piste en téléchargement',
       failed: 'Aucune piste en échec',
-      unavailable: 'Aucune piste indisponible'
+      unavailable: 'Aucune piste indisponible',
+      remoteRemoved: "Aucune piste retirée de {provider} n'est toujours stockée"
     }
   },
   trackRow: {
@@ -458,6 +459,10 @@ export const fr: Messages = {
   },
   trackState: {
     removedFrom: 'Retirée de {provider}',
+    removedFromChip: {
+      one: 'Retirée de {provider}',
+      other: 'Retirées de {provider}'
+    },
     stored: 'Stockée',
     pending: 'En attente',
     downloading: 'Téléchargement',

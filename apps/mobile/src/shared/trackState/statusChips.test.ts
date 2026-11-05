@@ -1,9 +1,13 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { TrackFileStatus } from '@playliberty/contracts';
+import { REMOTE_REMOVED, TrackFileStatus } from '@playliberty/contracts';
 import type { TrackFileStatusCounts } from '@playliberty/contracts';
 
-import { visibleStatusChips } from './statusChips';
+import {
+  statusCount,
+  totalStatusCount,
+  visibleStatusChips
+} from './statusChips';
 
 function counts(
   overrides: Partial<TrackFileStatusCounts> = {}
@@ -20,7 +24,7 @@ function counts(
 
 describe('the status chips', () => {
   it('hides a state with nothing in it', () => {
-    const drawn = visibleStatusChips(counts({ stored: 2 }), null);
+    const drawn = visibleStatusChips(counts({ stored: 2 }), 0, null);
 
     expect(drawn.map(chip => chip.value)).toEqual([TrackFileStatus.Stored]);
   });
@@ -28,6 +32,7 @@ describe('the status chips', () => {
   it('keeps the state in force even at zero', () => {
     const drawn = visibleStatusChips(
       counts({ stored: 2 }),
+      0,
       TrackFileStatus.Failed
     );
 
@@ -44,6 +49,7 @@ describe('the status chips', () => {
         failed: 1,
         [TrackFileStatus.Unavailable]: 1
       }),
+      0,
       null
     );
 
@@ -52,5 +58,27 @@ describe('the status chips', () => {
       TrackFileStatus.Failed,
       TrackFileStatus.Unavailable
     ]);
+  });
+
+  it('draws the retained view last, only while it holds a track', () => {
+    const drawn = visibleStatusChips(counts({ stored: 2 }), 2, null);
+
+    expect(drawn.map(chip => chip.value)).toEqual([
+      TrackFileStatus.Stored,
+      REMOTE_REMOVED
+    ]);
+    expect(
+      visibleStatusChips(counts({ stored: 2 }), 0, REMOTE_REMOVED).map(
+        chip => chip.value
+      )
+    ).toEqual([TrackFileStatus.Stored]);
+  });
+
+  it('counts the retained figure beside the buckets, not inside them', () => {
+    const whole = counts({ stored: 2, failed: 1 });
+
+    expect(totalStatusCount(whole)).toBe(3);
+    expect(statusCount(REMOTE_REMOVED, whole, 2)).toBe(2);
+    expect(statusCount(TrackFileStatus.Stored, whole, 2)).toBe(2);
   });
 });

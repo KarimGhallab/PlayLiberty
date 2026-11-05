@@ -3,10 +3,13 @@ import { Fragment, useEffect, useId, useState } from 'react';
 
 import type {
   PlaylistWithCounts,
-  TrackFileStatusCounts
+  TrackFileStatusCounts,
+  TrackFilterState
 } from '@playliberty/contracts';
 import {
   PlaylistSyncStatus,
+  Provider,
+  REMOTE_REMOVED,
   TrackFileStatus,
   UserRole
 } from '@playliberty/contracts';
@@ -61,25 +64,30 @@ import styles from './LibraryPage.module.scss';
 const TRACK_STATUSES = Object.values(TrackFileStatus);
 
 /* The gallery's status filter reads the scope it is drawn over: one total per
- * status over every playlist in that scope. */
-function totalStatusCounts(
-  items: readonly PlaylistWithCounts[]
-): TrackFileStatusCounts {
-  const totals: TrackFileStatusCounts = {
+ * status over every playlist in that scope, with the retained figure beside the
+ * five buckets. */
+function scopeTotals(items: readonly PlaylistWithCounts[]): {
+  readonly counts: TrackFileStatusCounts;
+  readonly remoteRemoved: number;
+} {
+  const counts: TrackFileStatusCounts = {
     [TrackFileStatus.Stored]: 0,
     [TrackFileStatus.Pending]: 0,
     [TrackFileStatus.Downloading]: 0,
     [TrackFileStatus.Failed]: 0,
     [TrackFileStatus.Unavailable]: 0
   };
+  let remoteRemoved = 0;
 
   for (const item of items) {
     for (const status of TRACK_STATUSES) {
-      totals[status] += item.counts[status];
+      counts[status] += item.counts[status];
     }
+
+    remoteRemoved += item.remoteRemoved;
   }
 
-  return totals;
+  return { counts, remoteRemoved };
 }
 
 /*
@@ -138,7 +146,7 @@ export default function LibraryPage() {
     readonly ids: readonly string[];
     readonly at: number;
   } | null>(null);
-  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
+  const [statusFilter, setStatusFilter] = useState<TrackFilterState | null>(
     null
   );
   const pinnedHeadingId = useId();
@@ -161,11 +169,17 @@ export default function LibraryPage() {
   const sharedItems = items.filter(playlist => playlist.access !== 'owner');
   const hasShared = sharedItems.length > 0;
   const scopedItems = scope === 'shared' ? sharedItems : items;
-  const statusCounts = totalStatusCounts(scopedItems);
+  const { counts: statusCounts, remoteRemoved } = scopeTotals(scopedItems);
   const hasStatusCounts = TRACK_STATUSES.some(
     status => statusCounts[status] > 0
   );
-  const activeCount = statusFilter === null ? 0 : statusCounts[statusFilter];
+  const activeCount =
+    statusFilter === null
+      ? 0
+      : statusFilter === REMOTE_REMOVED
+        ? remoteRemoved
+        : statusCounts[statusFilter];
+  const provider = scopedItems[0]?.provider ?? Provider.Youtube;
 
   /*
    * A status the scope no longer carries cannot stay in force; a live read
@@ -187,7 +201,9 @@ export default function LibraryPage() {
   const visibleItems =
     statusFilter === null
       ? scopedItems
-      : scopedItems.filter(playlist => playlist.counts[statusFilter] > 0);
+      : statusFilter === REMOTE_REMOVED
+        ? scopedItems.filter(playlist => playlist.remoteRemoved > 0)
+        : scopedItems.filter(playlist => playlist.counts[statusFilter] > 0);
 
   /*
    * The bulk sync covers what the filters show and the account can write, less
@@ -387,6 +403,8 @@ export default function LibraryPage() {
           scope={scope}
           onScopeChange={setScope}
           counts={statusCounts}
+          remoteRemoved={remoteRemoved}
+          provider={provider}
           showStatus={hasStatusCounts}
           activeStatus={statusFilter}
           onStatusChange={setStatusFilter}

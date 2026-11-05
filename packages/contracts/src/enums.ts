@@ -41,6 +41,10 @@ export enum TrackSourceStatus {
   Removed = 'removed'
 }
 
+export const REMOTE_REMOVED = 'remoteRemoved';
+
+export type TrackFilterState = TrackFileStatus | typeof REMOTE_REMOVED;
+
 /* What a failed read meant. The row renders this kind's sentence, never the
  * vendor's own output. */
 export enum FailureKind {

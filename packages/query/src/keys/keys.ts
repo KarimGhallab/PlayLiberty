@@ -1,4 +1,4 @@
-import type { TrackFileStatus } from '@playliberty/contracts';
+import type { TrackFilterState } from '@playliberty/contracts';
 
 /* The one place a query key is written. `['playlist', id]` is a prefix on
  * purpose: the playlist, its tracks, its queue, its sync run and its shares all
@@ -25,7 +25,7 @@ export const playlistKey = (playlistId: string | null) =>
 
 export const playlistTracksKey = (
   playlistId: string,
-  state?: TrackFileStatus
+  state?: TrackFilterState
 ) => ['playlist', playlistId, 'tracks', state ?? 'all'] as const;
 
 export const playlistQueueKey = (playlistId: string) =>

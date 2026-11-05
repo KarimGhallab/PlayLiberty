@@ -3,11 +3,11 @@
 Tickets for [issue 109](../../issues/109-the-filter-cannot-show-the-tracks-a-removal-left-behind.md), the retained view
 in the track filter. One file per ticket, numbered by layer, each declaring its blocking edges.
 
-| Ticket                                                                                        | Status | Blocked by | Blocks |
-| --------------------------------------------------------------------------------------------- | ------ | ---------- | ------ |
-| [`01-the-shared-layer-learns-a-retained-view`](01-the-shared-layer-learns-a-retained-view.md) | open   | none       | 02, 03 |
-| [`02-the-phone-shows-the-retained-view`](02-the-phone-shows-the-retained-view.md)             | open   | 01         | none   |
-| [`03-the-web-shows-the-retained-view`](03-the-web-shows-the-retained-view.md)                 | open   | 01         | none   |
+| Ticket                                                                                        | Status   | Blocked by | Blocks |
+| --------------------------------------------------------------------------------------------- | -------- | ---------- | ------ |
+| [`01-the-shared-layer-learns-a-retained-view`](01-the-shared-layer-learns-a-retained-view.md) | resolved | none       | 02, 03 |
+| [`02-the-phone-shows-the-retained-view`](02-the-phone-shows-the-retained-view.md)             | resolved | 01         | none   |
+| [`03-the-web-shows-the-retained-view`](03-the-web-shows-the-retained-view.md)                 | resolved | 01         | none   |
 
 ## Conventions
 

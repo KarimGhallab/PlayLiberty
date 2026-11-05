@@ -28,6 +28,7 @@ export const colors = {
   'tone-failed': { kind: TokenKind.Color, value: '#e0625e' },
   'tone-unavailable': { kind: TokenKind.Color, value: '#b87570' },
   'tone-removed': { kind: TokenKind.Color, value: '#8b9299' },
+  'tone-retained': { kind: TokenKind.Color, value: '#d886b6' },
   'control-border': { kind: TokenKind.Color, value: '#6e7379' },
   'accent-hover': { kind: TokenKind.Color, value: '#4cac90' },
 

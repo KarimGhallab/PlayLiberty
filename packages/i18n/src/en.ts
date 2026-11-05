@@ -175,7 +175,8 @@ export const en = {
       pending: 'No pending tracks',
       downloading: 'No downloading tracks',
       failed: 'No failed tracks',
-      unavailable: 'No unavailable tracks'
+      unavailable: 'No unavailable tracks',
+      remoteRemoved: 'No track removed from {provider} is still stored'
     }
   },
   trackRow: {
@@ -447,6 +448,10 @@ export const en = {
   },
   trackState: {
     removedFrom: 'Removed from {provider}',
+    removedFromChip: {
+      one: 'Removed from {provider}',
+      other: 'Removed from {provider}'
+    },
     stored: 'Stored',
     pending: 'Pending',
     downloading: 'Downloading',

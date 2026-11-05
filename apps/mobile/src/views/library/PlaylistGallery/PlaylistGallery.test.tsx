@@ -20,9 +20,11 @@ import {
   type PlaylistWithCounts,
   ProblemCode,
   Provider,
+  REMOTE_REMOVED,
   ShareLevel,
   TrackFileStatus
 } from '@playliberty/contracts';
+import type { TrackFilterState } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
@@ -203,6 +205,7 @@ const base: PlaylistWithCounts = {
     failed: 2,
     unavailable: 0
   },
+  remoteRemoved: 0,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-29T12:00:00.000Z'
 };
@@ -240,6 +243,20 @@ const storedItem: PlaylistWithCounts = {
     failed: 0,
     unavailable: 0
   }
+};
+
+const retainedItem: PlaylistWithCounts = {
+  ...base,
+  id: 'playlist-retained',
+  name: 'Retained Mix',
+  counts: {
+    stored: 2,
+    pending: 0,
+    downloading: 0,
+    failed: 0,
+    unavailable: 0
+  },
+  remoteRemoved: 2
 };
 
 const directory: AccountSummary[] = [
@@ -301,10 +318,10 @@ function GalleryHarness({
   initialStatus = null
 }: {
   readonly onOpenPlaylist: (playlistId: string) => void;
-  readonly initialStatus?: TrackFileStatus | null;
+  readonly initialStatus?: TrackFilterState | null;
 }) {
   const [scope, setScope] = useState<LibraryScope>('all');
-  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
+  const [statusFilter, setStatusFilter] = useState<TrackFilterState | null>(
     initialStatus
   );
 
@@ -324,7 +341,7 @@ async function renderPlaylists(
   result: unknown,
   accounts: AccountSummary[] = [],
   syncAllResult: ReturnType<typeof mutationResult> = mutationResult(),
-  initialStatus: TrackFileStatus | null = null
+  initialStatus: TrackFilterState | null = null
 ) {
   jest.mocked(usePlaylists).mockReturnValue(result as never);
   jest.mocked(useAccountDirectory).mockReturnValue(queryResult(accounts));
@@ -1001,6 +1018,75 @@ describe('the gallery', () => {
     expect(
       screen.getByTestId('playlist-card').props.accessibilityLabel
     ).toMatch(/^Rest Mix, /);
+  });
+
+  it('draws the retained chip last and filters to the playlists holding one', async () => {
+    await renderGallery([retainedItem, storedItem, base]);
+
+    const chips = within(
+      screen.getByTestId('gallery-status-chips')
+    ).getAllByRole('radio');
+
+    expect(chips.at(-1)?.props.accessibilityLabel).toBe(
+      'Removed from YouTube 2'
+    );
+
+    await fireEvent.press(
+      screen.getByRole('radio', { name: 'Removed from YouTube 2' })
+    );
+
+    expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
+    expect(
+      screen.getByTestId('playlist-card').props.accessibilityLabel
+    ).toMatch(/^Retained Mix, /);
+  });
+
+  it('hides the retained chip when no playlist holds one', async () => {
+    await renderGallery([storedItem, base]);
+
+    expect(
+      screen.queryByRole('radio', { name: /Removed from/ })
+    ).not.toBeOnTheScreen();
+  });
+
+  it('aggregates the retained view over the scope', async () => {
+    const sharedRetained: PlaylistWithCounts = {
+      ...shared,
+      counts: { ...shared.counts, stored: 1 },
+      remoteRemoved: 1
+    };
+
+    await renderGallery([sharedRetained, retainedItem, base], directory);
+
+    expect(
+      screen.getByRole('radio', { name: 'Removed from YouTube 3' })
+    ).toBeOnTheScreen();
+
+    await fireEvent.press(
+      screen.getByRole('radio', { name: 'Shared with me 1' })
+    );
+    await fireEvent.press(
+      screen.getByRole('radio', { name: 'Removed from YouTube 1' })
+    );
+
+    expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
+    expect(
+      screen.getByTestId('playlist-card').props.accessibilityLabel
+    ).toMatch(/^Shared Mix, /);
+  });
+
+  it('clears the retained filter when its count reaches zero', async () => {
+    await renderPlaylists(
+      queryResult(page([base])),
+      [],
+      undefined,
+      REMOTE_REMOVED
+    );
+
+    expect(screen.getByRole('radio', { name: 'All 3' })).toBeChecked();
+    expect(
+      screen.queryByRole('radio', { name: /Removed from/ })
+    ).not.toBeOnTheScreen();
   });
 
   it('clears the scope and the chip when the screen is left', async () => {

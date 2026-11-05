@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ProblemCode,
+  REMOTE_REMOVED,
   SortPlaylistInputSchema,
   SyncRunStatus,
   TrackFileStatus,
@@ -1919,6 +1920,7 @@ describe('PlaylistDetailPage', () => {
               hasShares: false,
               pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 3 },
+              remoteRemoved: 0,
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             },
@@ -1939,6 +1941,7 @@ describe('PlaylistDetailPage', () => {
               hasShares: false,
               pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 3 },
+              remoteRemoved: 0,
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             }
@@ -2168,6 +2171,109 @@ describe('PlaylistDetailPage filter chips', () => {
       expect(screen.getByText('Flamenco Sketches')).toBeInTheDocument()
     );
     expect(screen.queryByText('No failed tracks')).not.toBeInTheDocument();
+  });
+
+  it('draws the retained view last, filters to it, and All restores', async () => {
+    const retained = trackJson('retained-1', 'Kept One', 0);
+    retained.track.sourceStatus = 'removed';
+    const fresh = trackJson('fresh-1', 'Fresh One', 1);
+    const all = [retained, fresh];
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        ({ request }) => {
+          const state = new URL(request.url).searchParams.get('state');
+          const items = state === REMOTE_REMOVED ? [retained] : all;
+
+          return HttpResponse.json({
+            items,
+            total: items.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all),
+            remoteRemoved: 1
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Kept One' });
+
+    const rail = screen.getByRole('group', { name: 'Filter by' });
+    const chips = within(rail).getAllByRole('button');
+
+    expect(chips.at(-1)).toHaveAttribute(
+      'aria-label',
+      'Removed from YouTube 1'
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Removed from YouTube 1' })
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText('Fresh One')).not.toBeInTheDocument()
+    );
+    expect(screen.getByText('Kept One')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 2' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'All 2' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Fresh One')).toBeInTheDocument()
+    );
+  });
+
+  it('names the empty retained view with the provider, and Show all restores', async () => {
+    const retained = trackJson('retained-1', 'Kept One', 0);
+    retained.track.sourceStatus = 'removed';
+    const all = [retained];
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        ({ request }) => {
+          const state = new URL(request.url).searchParams.get('state');
+          const items = state === REMOTE_REMOVED ? [] : all;
+
+          return HttpResponse.json({
+            items,
+            total: items.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all),
+            remoteRemoved: 1
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Kept One' });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Removed from YouTube 1' })
+    );
+
+    expect(
+      await screen.findByText('No track removed from YouTube is still stored')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Kept One')).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByText('No track removed from YouTube is still stored')
+    ).not.toBeInTheDocument();
   });
 
   it('retries every failed track from one counted control on the failed view', async () => {

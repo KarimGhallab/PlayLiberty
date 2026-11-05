@@ -27,10 +27,10 @@ import {
   AddTrackOutcome,
   PlaylistSort,
   PlaylistSyncStatus,
-  SyncRunStatus,
-  TrackFileStatus
+  SyncRunStatus
 } from '@playliberty/contracts';
-import { problemDetail, useI18n } from '@playliberty/i18n';
+import type { TrackFilterState } from '@playliberty/contracts';
+import { problemDetail, providerLabel, useI18n } from '@playliberty/i18n';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
@@ -180,7 +180,7 @@ export default function PlaylistDetail({
   const headerEdge = useRef(0);
   const playlist = usePlaylist(playlistId);
   const playlists = usePlaylists();
-  const [filter, setFilter] = useState<TrackFileStatus | null>(null);
+  const [filter, setFilter] = useState<TrackFilterState | null>(null);
   const currentId = usePlayerStore(state => state.currentId);
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const shuffled = usePlayerStore(state => state.shuffle);
@@ -1310,6 +1310,8 @@ export default function PlaylistDetail({
                 shuffled={listShuffled}
                 saving={sort.isPending}
                 counts={tracks.counts}
+                remoteRemoved={tracks.remoteRemoved ?? 0}
+                provider={data.provider}
                 active={activeFilter}
                 onSortChange={chooseSort}
                 onFilterChange={setFilter}
@@ -1346,7 +1348,9 @@ export default function PlaylistDetail({
             {filterEmpty && emptyFilterChip !== undefined ? (
               <View testID="filter-empty" style={styles.filterEmpty}>
                 <Text style={styles.filterEmptyText}>
-                  {t(emptyFilterChip.empty)}
+                  {t(emptyFilterChip.empty, {
+                    provider: providerLabel(t, data.provider)
+                  })}
                 </Text>
                 <Pressable
                   testID="filter-show-all"

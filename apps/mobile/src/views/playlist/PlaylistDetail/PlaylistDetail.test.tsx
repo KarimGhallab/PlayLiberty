@@ -36,10 +36,12 @@ import {
   type PlaylistTrack,
   ProblemCode,
   Provider,
+  REMOTE_REMOVED,
   ShareLevel,
   type SyncRun,
   SyncRunStatus,
   TrackFileStatus,
+  type TrackFilterState,
   TrackSourceStatus
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
@@ -354,7 +356,8 @@ const page = {
   total: 1,
   limit: 100,
   offset: 0,
-  counts
+  counts,
+  remoteRemoved: 0
 };
 
 /* The Failed chip is hidden at zero, so tests that press it start from a page
@@ -364,12 +367,18 @@ const pageWithFailed = {
   counts: { ...counts, [TrackFileStatus.Failed]: 1 }
 };
 
+const pageWithRetained = {
+  ...page,
+  remoteRemoved: 1
+};
+
 const emptyPage = {
   items: [],
   total: 0,
   limit: 100,
   offset: 0,
-  counts: emptyCounts
+  counts: emptyCounts,
+  remoteRemoved: 0
 };
 
 const completedRun: SyncRun = {
@@ -450,7 +459,7 @@ interface RenderOptions {
   readonly playlist?: Playlist;
   readonly gallery?: GalleryPage;
   readonly tracks?: typeof page;
-  readonly filteredTracks?: Partial<Record<TrackFileStatus, typeof page>>;
+  readonly filteredTracks?: Partial<Record<TrackFilterState, typeof page>>;
   readonly queue?: readonly PlaylistTrack[];
   readonly trackId?: string | null;
   readonly queueError?: Error;
@@ -604,6 +613,7 @@ async function renderDetail(options: RenderOptions = {}) {
     ({
       items: data.items,
       counts: data.counts,
+      remoteRemoved: data.remoteRemoved,
       total: data.total,
       isPending: false,
       isError: false,
@@ -618,7 +628,7 @@ async function renderDetail(options: RenderOptions = {}) {
       refetch: tracksRefetch,
       ...overrides
     }) as never;
-  const pageFor = (state?: TrackFileStatus) => {
+  const pageFor = (state?: TrackFilterState) => {
     const filtered =
       state === undefined ? undefined : options.filteredTracks?.[state];
 
@@ -1121,6 +1131,119 @@ describe('the playlist detail', () => {
       );
     });
     expect(screen.queryByTestId('filter-empty')).not.toBeOnTheScreen();
+  });
+
+  it('draws the retained view last with the retained count', async () => {
+    await renderDetail({ tracks: pageWithRetained });
+
+    const chips = within(screen.getByTestId('playlist-chips')).getAllByRole(
+      'radio'
+    );
+
+    expect(chips.at(-1)?.props.accessibilityLabel).toBe(
+      'Removed from YouTube 1'
+    );
+    expect(screen.getByTestId('filter-remoteRemoved')).toBeOnTheScreen();
+  });
+
+  it('filters the read to the retained tracks', async () => {
+    await renderDetail({
+      tracks: pageWithRetained,
+      filteredTracks: {
+        [REMOTE_REMOVED]: pageWithRetained
+      }
+    });
+
+    await fireEvent.press(screen.getByTestId('filter-remoteRemoved'));
+
+    await waitFor(() => {
+      expect(usePlaylistTracksMock).toHaveBeenLastCalledWith(
+        'playlist-1',
+        REMOTE_REMOVED
+      );
+    });
+    expect(
+      screen.getByTestId('filter-remoteRemoved').props.accessibilityState
+    ).toMatchObject({ checked: true });
+    expect(
+      screen.getByTestId('filter-remoteRemoved').props.accessibilityLabel
+    ).toBe('Removed from YouTube 1');
+    expect(screen.getByTestId('filter-all').props.accessibilityLabel).toBe(
+      'All 1'
+    );
+  });
+
+  it('names an empty retained view with the provider', async () => {
+    await renderDetail({
+      tracks: pageWithRetained,
+      filteredTracks: {
+        [REMOTE_REMOVED]: { ...emptyPage, remoteRemoved: 1 }
+      }
+    });
+
+    await fireEvent.press(screen.getByTestId('filter-remoteRemoved'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-empty')).toBeOnTheScreen();
+    });
+    expect(
+      screen.getByText('No track removed from YouTube is still stored')
+    ).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('filter-show-all'));
+
+    await waitFor(() => {
+      expect(usePlaylistTracksMock).toHaveBeenLastCalledWith(
+        'playlist-1',
+        undefined
+      );
+    });
+  });
+
+  it('words the empty retained view in French', async () => {
+    await renderDetail({
+      language: Language.French,
+      tracks: pageWithRetained,
+      filteredTracks: {
+        [REMOTE_REMOVED]: { ...emptyPage, remoteRemoved: 1 }
+      }
+    });
+
+    await fireEvent.press(screen.getByTestId('filter-remoteRemoved'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Aucune piste retirée de YouTube n'est toujours stockée"
+        )
+      ).toBeOnTheScreen();
+    });
+  });
+
+  it('hides the retained chip at zero while its view stays in force', async () => {
+    await renderDetail({
+      tracks: pageWithRetained,
+      filteredTracks: {
+        [REMOTE_REMOVED]: { ...emptyPage, remoteRemoved: 0 }
+      }
+    });
+
+    await fireEvent.press(screen.getByTestId('filter-remoteRemoved'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-empty')).toBeOnTheScreen();
+    });
+    expect(screen.queryByTestId('filter-remoteRemoved')).not.toBeOnTheScreen();
+    expect(screen.getByText('Show all')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('filter-show-all'));
+
+    await waitFor(() => {
+      expect(usePlaylistTracksMock).toHaveBeenLastCalledWith(
+        'playlist-1',
+        undefined
+      );
+    });
   });
 
   it('writes the chosen sort from the sheet', async () => {

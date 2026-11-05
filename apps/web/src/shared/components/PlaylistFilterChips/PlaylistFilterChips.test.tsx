@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
 
-import { TrackFileStatus } from '@playliberty/contracts';
+import {
+  Provider,
+  REMOTE_REMOVED,
+  TrackFileStatus
+} from '@playliberty/contracts';
 import type { TrackFileStatusCounts } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
@@ -25,6 +29,8 @@ function renderChips(
     <I18nProvider preferred={['en']}>
       <PlaylistFilterChips
         counts={COUNTS}
+        remoteRemoved={0}
+        provider={Provider.Youtube}
         active={null}
         onChange={vi.fn()}
         {...props}
@@ -72,6 +78,42 @@ describe('PlaylistFilterChips', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('draws the retained view last, hidden at zero', () => {
+    const { unmount } = renderChips({ remoteRemoved: 2 });
+    const chips = screen.getAllByRole('button');
+
+    expect(chips.at(-1)).toHaveAttribute(
+      'aria-label',
+      'Removed from YouTube 2'
+    );
+
+    unmount();
+    renderChips();
+
+    expect(
+      screen.queryByRole('button', { name: /Removed from/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('asks for the retained view on a press', () => {
+    const onChange = vi.fn();
+    renderChips({ remoteRemoved: 2, onChange });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Removed from YouTube 2' })
+    );
+
+    expect(onChange).toHaveBeenCalledWith(REMOTE_REMOVED);
+  });
+
+  it('marks the retained chip in force', () => {
+    renderChips({ remoteRemoved: 2, active: REMOTE_REMOVED });
+
+    expect(
+      screen.getByRole('button', { name: 'Removed from YouTube 2' })
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('marks the chip in force and asks for a state on a press', () => {
     const onChange = vi.fn();
     renderChips({ active: TrackFileStatus.Pending, onChange });
@@ -117,7 +159,7 @@ describe('PlaylistFilterChips', () => {
   });
 
   it('has no axe violations', async () => {
-    const { container } = renderChips();
+    const { container } = renderChips({ remoteRemoved: 2 });
 
     const results = await axe.run(container, {
       rules: { 'color-contrast': { enabled: false } }

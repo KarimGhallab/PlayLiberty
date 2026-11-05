@@ -10,11 +10,13 @@ import type {
   PlaylistTrack,
   PlaylistTracksPage,
   PlaylistWithCounts,
-  TrackFileStatusCounts
+  TrackFileStatusCounts,
+  TrackFilterState
 } from '@playliberty/contracts';
 import {
   PlaylistSort,
   PlaylistSyncStatus,
+  REMOTE_REMOVED,
   TrackFileStatus,
   TrackSourceStatus
 } from '@playliberty/contracts';
@@ -210,6 +212,10 @@ export function listPlaylistsForAccount(
     database,
     playlistRows.map(row => row.id)
   );
+  const retainedByPlaylist = remoteRemovedCountsByPlaylist(
+    database,
+    playlistRows.map(row => row.id)
+  );
 
   return {
     /* A visible row the access resolver did not answer is left out rather than
@@ -230,7 +236,8 @@ export function listPlaylistsForAccount(
             pinnedAt !== null,
             covers.get(playlist.id) ?? null
           ),
-          counts: countsByPlaylist.get(playlist.id) ?? noCounts()
+          counts: countsByPlaylist.get(playlist.id) ?? noCounts(),
+          remoteRemoved: retainedByPlaylist.get(playlist.id) ?? 0
         }
       ];
     }),
@@ -506,7 +513,7 @@ export function removeTrackForAccount(
 export interface ListPlaylistTracksQuery {
   limit: number;
   offset: number;
-  state?: TrackFileStatus;
+  state?: TrackFilterState;
 }
 
 export type ReadPlaylistTracksResult =
@@ -607,24 +614,47 @@ function fileStatusCounts(
 
 /* The one fact the five buckets cannot name: a stored track whose source
  * removed it. It is an overlay on `stored`, so it is counted beside them. */
-function remoteRemovedCount(
+function remoteRemovedCountsByPlaylist(
   database: DatabaseHandle,
-  playlistId: string
-): number {
-  const row = database.db
-    .select({ count: sql<number>`count(*)` })
+  playlistIds: readonly string[]
+): Map<string, number> {
+  const counts = new Map(playlistIds.map(playlistId => [playlistId, 0]));
+
+  if (playlistIds.length === 0) {
+    return counts;
+  }
+
+  const rows = database.db
+    .select({
+      playlistId: associations.playlistId,
+      count: sql<number>`count(*)`
+    })
     .from(associations)
     .innerJoin(tracks, eq(associations.trackId, tracks.id))
     .where(
       and(
-        eq(associations.playlistId, playlistId),
+        inArray(associations.playlistId, [...playlistIds]),
         eq(tracks.fileStatus, TrackFileStatus.Stored),
         eq(tracks.sourceStatus, TrackSourceStatus.Removed)
       )
     )
-    .get();
+    .groupBy(associations.playlistId)
+    .all();
 
-  return row?.count ?? 0;
+  for (const row of rows) {
+    counts.set(row.playlistId, row.count);
+  }
+
+  return counts;
+}
+
+function remoteRemovedCount(
+  database: DatabaseHandle,
+  playlistId: string
+): number {
+  return (
+    remoteRemovedCountsByPlaylist(database, [playlistId]).get(playlistId) ?? 0
+  );
 }
 
 export function listPlaylistTracksForAccount(
@@ -650,6 +680,7 @@ export function listPlaylistTracksForAccount(
       }
 
       const counts = fileStatusCounts(database, playlistId);
+      const retained = remoteRemovedCount(database, playlistId);
 
       // The state narrows the page and never the counts beside it.
       const rows = database.db
@@ -659,10 +690,16 @@ export function listPlaylistTracksForAccount(
         .where(
           query.state === undefined
             ? eq(associations.playlistId, playlistId)
-            : and(
-                eq(associations.playlistId, playlistId),
-                eq(tracks.fileStatus, query.state)
-              )
+            : query.state === REMOTE_REMOVED
+              ? and(
+                  eq(associations.playlistId, playlistId),
+                  eq(tracks.fileStatus, TrackFileStatus.Stored),
+                  eq(tracks.sourceStatus, TrackSourceStatus.Removed)
+                )
+              : and(
+                  eq(associations.playlistId, playlistId),
+                  eq(tracks.fileStatus, query.state)
+                )
         )
         .orderBy(...playlistTrackOrder(playlist.sort))
         .limit(query.limit)
@@ -671,14 +708,19 @@ export function listPlaylistTracksForAccount(
 
       return {
         items: rows.map(toPlaylistTrackView),
-        /* Unfiltered: the maintained count; filtered: the state's bucket.
-         * Either way the total is filtered, not the whole playlist. */
+        /* Unfiltered: the maintained count; filtered: the state's bucket, or
+         * the retained figure. Either way the total is filtered, not the whole
+         * playlist. */
         total:
-          query.state === undefined ? playlist.trackCount : counts[query.state],
+          query.state === undefined
+            ? playlist.trackCount
+            : query.state === REMOTE_REMOVED
+              ? retained
+              : counts[query.state],
         limit: query.limit,
         offset: query.offset,
         counts,
-        remoteRemoved: remoteRemovedCount(database, playlistId)
+        remoteRemoved: retained
       };
     }
   );

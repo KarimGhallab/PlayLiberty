@@ -20,10 +20,12 @@ import {
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
+  REMOTE_REMOVED,
   TrackFileStatus,
   UserRole
 } from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
+import type { TrackFilterState } from '@playliberty/contracts';
+import { providerLabel, useI18n } from '@playliberty/i18n';
 
 import {
   ownerNameFrom,
@@ -171,7 +173,7 @@ export default function PlaylistDetailPage() {
    * The filter lasts for the visit only, and is not applied while the shuffled
    * queue is on screen; the choice survives until the shuffle is turned off.
    */
-  const [trackState, setTrackState] = useState<TrackFileStatus | null>(null);
+  const [trackState, setTrackState] = useState<TrackFilterState | null>(null);
   /* The exchange of the queue's order, which is held behind the skeleton. */
   const [rebuilding, setRebuilding] = useState(false);
   /*
@@ -637,7 +639,16 @@ export default function PlaylistDetailPage() {
   const filterEmpty =
     activeState !== null && !tracks.isPlaceholderData && tracks.total === 0;
   const filterEmptyMessage =
-    activeState === null ? null : t(`detail.filterEmpty.${activeState}`);
+    activeState === null
+      ? null
+      : activeState === REMOTE_REMOVED
+        ? t('detail.filterEmpty.remoteRemoved', {
+            provider: providerLabel(
+              t,
+              playlist.data?.provider ?? Provider.Youtube
+            )
+          })
+        : t(`detail.filterEmpty.${activeState}`);
 
   /*
    * The whole playlist's downloading count, an aggregate the read folds in, so
@@ -882,6 +893,8 @@ export default function PlaylistDetailPage() {
               />
               <PlaylistFilterChips
                 counts={counts}
+                remoteRemoved={tracks.remoteRemoved ?? 0}
+                provider={playlist.data?.provider ?? Provider.Youtube}
                 active={activeState}
                 disabled={listShuffled}
                 onChange={setTrackState}

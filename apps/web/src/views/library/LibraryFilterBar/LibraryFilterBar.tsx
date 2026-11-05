@@ -2,8 +2,9 @@ import { IconUserShare } from '@tabler/icons-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import type {
-  TrackFileStatus,
-  TrackFileStatusCounts
+  Provider,
+  TrackFileStatusCounts,
+  TrackFilterState
 } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
@@ -25,9 +26,11 @@ interface LibraryFilterBarProps {
   readonly scope: LibraryScope;
   readonly onScopeChange: (scope: LibraryScope) => void;
   readonly counts: TrackFileStatusCounts;
+  readonly remoteRemoved: number;
+  readonly provider: Provider;
   readonly showStatus: boolean;
-  readonly activeStatus: TrackFileStatus | null;
-  readonly onStatusChange: (status: TrackFileStatus | null) => void;
+  readonly activeStatus: TrackFilterState | null;
+  readonly onStatusChange: (status: TrackFilterState | null) => void;
 }
 
 export default function LibraryFilterBar({
@@ -37,6 +40,8 @@ export default function LibraryFilterBar({
   scope,
   onScopeChange,
   counts,
+  remoteRemoved,
+  provider,
   showStatus,
   activeStatus,
   onStatusChange
@@ -148,6 +153,8 @@ export default function LibraryFilterBar({
         <div className={styles.status}>
           <PlaylistFilterChips
             counts={counts}
+            remoteRemoved={remoteRemoved}
+            provider={provider}
             active={activeStatus}
             showEmpty={false}
             allLabelKey={hasShared ? 'library.allTracks' : undefined}

@@ -2,9 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type {
   PlaylistWithCounts,
-  TrackFileStatus
+  TrackFilterState
 } from '@playliberty/contracts';
-import { PlaylistSyncStatus, ShareLevel } from '@playliberty/contracts';
+import {
+  PlaylistSyncStatus,
+  REMOTE_REMOVED,
+  ShareLevel
+} from '@playliberty/contracts';
 import type { Messages, Translator } from '@playliberty/i18n';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
@@ -53,10 +57,14 @@ export function scopedPlaylists(
 
 export function visiblePlaylists(
   scopedItems: readonly PlaylistWithCounts[],
-  statusFilter: TrackFileStatus | null
+  statusFilter: TrackFilterState | null
 ): readonly PlaylistWithCounts[] {
-  return statusFilter === null
-    ? scopedItems
+  if (statusFilter === null) {
+    return scopedItems;
+  }
+
+  return statusFilter === REMOTE_REMOVED
+    ? scopedItems.filter(item => item.remoteRemoved > 0)
     : scopedItems.filter(item => item.counts[statusFilter] > 0);
 }
 
@@ -65,7 +73,7 @@ export function visiblePlaylists(
 export function syncablePlaylists(
   items: readonly PlaylistWithCounts[],
   scope: LibraryScope,
-  statusFilter: TrackFileStatus | null
+  statusFilter: TrackFilterState | null
 ): PlaylistWithCounts[] {
   return visiblePlaylists(scopedPlaylists(items, scope), statusFilter).filter(
     item =>
@@ -130,7 +138,7 @@ export function useBulkSync(
   items: readonly PlaylistWithCounts[],
   dataUpdatedAt: number,
   scope: LibraryScope,
-  statusFilter: TrackFileStatus | null
+  statusFilter: TrackFilterState | null
 ): BulkSync {
   const { t } = useI18n();
   const syncAll = useSyncAllPlaylists();

@@ -6,7 +6,13 @@ import styles from './Chip.module.scss';
  */
 
 export type ChipTone =
-  'accent' | 'stored' | 'pending' | 'downloading' | 'failed' | 'unavailable';
+  | 'accent'
+  | 'retained'
+  | 'stored'
+  | 'pending'
+  | 'downloading'
+  | 'failed'
+  | 'unavailable';
 
 interface ChipProps {
   readonly label: string;

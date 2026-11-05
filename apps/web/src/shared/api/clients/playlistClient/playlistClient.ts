@@ -20,7 +20,8 @@ import type {
   Share,
   ShareLevel,
   SyncRun,
-  Track
+  Track,
+  TrackFilterState
 } from '@playliberty/contracts';
 import {
   PlaylistSort,
@@ -105,7 +106,7 @@ const PLAYLIST_TRACKS_PAGE_SIZE = 100;
 async function fetchPlaylistTrackPage(
   playlistId: string,
   offset: number,
-  state?: TrackFileStatus
+  state?: TrackFilterState
 ): Promise<PlaylistTracksPage> {
   const query = new URLSearchParams({
     limit: String(PLAYLIST_TRACKS_PAGE_SIZE),
@@ -146,7 +147,7 @@ export interface PlaylistTracksRead {
 
 export function usePlaylistTracks(
   playlistId: string,
-  state?: TrackFileStatus
+  state?: TrackFilterState
 ): PlaylistTracksRead {
   const query = useInfiniteQuery({
     queryKey: playlistTracksKey(playlistId, state),

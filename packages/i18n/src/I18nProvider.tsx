@@ -9,9 +9,9 @@ import {
   useSyncExternalStore
 } from 'react';
 
-import { catalogs } from './catalogs.js';
-import { createTranslator } from './createTranslator/createTranslator.js';
+import { catalogs } from './catalogs/catalogs.js';
 import type { Translator } from './createTranslator/createTranslator.js';
+import { createTranslator } from './createTranslator/createTranslator.js';
 import type { Messages } from './en.js';
 import { createLanguageController } from './languageController/languageController.js';
 import type { LanguageStore } from './languageStorage/languageStorage.js';

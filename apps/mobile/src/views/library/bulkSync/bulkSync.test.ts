@@ -6,6 +6,7 @@ import {
   type PlaylistWithCounts,
   ProblemCode,
   Provider,
+  REMOTE_REMOVED,
   ShareLevel,
   TrackFileStatus
 } from '@playliberty/contracts';
@@ -39,6 +40,7 @@ const base: PlaylistWithCounts = {
   hasShares: false,
   pinned: false,
   counts,
+  remoteRemoved: 0,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z'
 };
@@ -87,6 +89,16 @@ describe('the syncable set', () => {
         item => item.id
       )
     ).toEqual(['failed']);
+  });
+
+  it('narrows to the retained view', () => {
+    expect(
+      syncablePlaylists(
+        [...items, playlist('retained', { remoteRemoved: 1 })],
+        'all',
+        REMOTE_REMOVED
+      ).map(item => item.id)
+    ).toEqual(['retained']);
   });
 });
 

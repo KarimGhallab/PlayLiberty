@@ -1,4 +1,4 @@
-export { catalogs } from './catalogs.js';
+export { catalogs } from './catalogs/catalogs.js';
 export { createTranslator } from './createTranslator/createTranslator.js';
 export type {
   MessageKey,

@@ -1,7 +1,14 @@
 # 109: The filter cannot show the tracks a removal left behind
 
-**State:** `open`
+**State:** `resolved`
 **Category:** `enhancement`
+
+## Outcome
+
+Resolved by the three tickets in [`removed-source-view`](../tasks/removed-source-view/TICKETS.md). The shared layer adds
+`TrackFilterState`, the `remoteRemoved` figure on `PlaylistWithCounts`, the `tone-retained` token and the retained
+copy. The phone and the web each draw the retained chip last, hide it at zero, filter their lists with it, and name the
+provider in the empty sentence.
 
 ## Observed
 

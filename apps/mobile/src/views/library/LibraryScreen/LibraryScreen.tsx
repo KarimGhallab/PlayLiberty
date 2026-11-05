@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { Account, TrackFileStatus } from '@playliberty/contracts';
+import type { Account, TrackFilterState } from '@playliberty/contracts';
 
 import LibraryHeader from '../../../shared/components/LibraryHeader/LibraryHeader';
 
@@ -28,7 +28,7 @@ export default function LibraryScreen({
   onOpenPlaylist
 }: LibraryScreenProps) {
   const [scope, setScope] = useState<LibraryScope>('all');
-  const [statusFilter, setStatusFilter] = useState<TrackFileStatus | null>(
+  const [statusFilter, setStatusFilter] = useState<TrackFilterState | null>(
     null
   );
 

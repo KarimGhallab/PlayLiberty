@@ -64,6 +64,7 @@ export function createPlaylistPlaceholder(
       failed: 0,
       unavailable: 0
     },
+    remoteRemoved: 0,
     createdAt: now,
     updatedAt: now
   };
