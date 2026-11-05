@@ -15,6 +15,7 @@ pnpm-lock.yaml
 *.otf
 *.woff
 *.woff2
+*.m4a
 
 *.sh
 

@@ -42,15 +42,24 @@ interface Scenario {
   /* A per-download delay; zero or missing is immediate. A test watching a row
    * move to playable sets it so the intermediate state stays observable. */
   downloadDelayMs?: number;
+  /* The audio every successful download copies. The short one is the default;
+     the long one outlasts a journey that seeks and advances the queue. */
+  audioFixture?: 'short' | 'long';
 }
 
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
-const AUDIO_FIXTURE = join(FIXTURES_DIR, 'test-audio.m4a');
 const THUMBNAIL_FIXTURE = join(FIXTURES_DIR, 'test-thumbnail.jpg');
 
-/* The fixture's length, pinned rather than probed: the file is committed, so
- * re-reading it would only move the cost. */
-const AUDIO_FIXTURE_SECONDS = 2;
+/* A fixture's length, pinned rather than probed: the files are committed, so
+ * re-reading them would only move the cost. */
+const AUDIO_FIXTURES = {
+  short: { file: join(FIXTURES_DIR, 'test-audio.m4a'), seconds: 2 },
+  long: { file: join(FIXTURES_DIR, 'test-audio-long.m4a'), seconds: 60 }
+} as const;
+
+function audioOf(scenario: Scenario) {
+  return AUDIO_FIXTURES[scenario.audioFixture ?? 'short'];
+}
 
 function readScenario(scriptPath: string): Scenario {
   const raw = readFileSync(scriptPath, 'utf8');
@@ -68,11 +77,11 @@ function readScenario(scriptPath: string): Scenario {
   return parsed as Scenario;
 }
 
-function entryOf(entry: ScenarioEntry): YoutubeSourceEntry {
+function entryOf(entry: ScenarioEntry, seconds: number): YoutubeSourceEntry {
   return {
     videoId: entry.videoId,
     title: entry.title,
-    durationSeconds: entry.durationSeconds ?? AUDIO_FIXTURE_SECONDS,
+    durationSeconds: entry.durationSeconds ?? seconds,
     thumbnailUrl: `https://i.ytimg.com/vi/${entry.videoId}/hq.jpg`
   };
 }
@@ -93,7 +102,9 @@ function sourceFor(scenario: Scenario, url: string): YoutubeSource {
     kind: info.kind,
     sourceId: info.sourceId,
     title: scripted.title ?? 'E2E Playlist',
-    entries: scripted.entries.map(entryOf)
+    entries: scripted.entries.map(entry =>
+      entryOf(entry, audioOf(scenario).seconds)
+    )
   };
 }
 
@@ -125,12 +136,12 @@ export function createE2eYoutube(scriptPath: string): IYoutubeClient {
       }
 
       await mkdir(dirname(request.outputPath), { recursive: true });
-      await copyFile(AUDIO_FIXTURE, request.outputPath);
+      await copyFile(audioOf(scenario).file, request.outputPath);
 
       return {
         videoId: request.videoId,
         filePath: request.outputPath,
-        durationSeconds: AUDIO_FIXTURE_SECONDS
+        durationSeconds: audioOf(scenario).seconds
       };
     },
 

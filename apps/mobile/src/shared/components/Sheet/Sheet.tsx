@@ -34,6 +34,7 @@ export interface SheetProps {
   readonly visible: boolean;
   readonly title: string;
   readonly onRequestClose: () => void;
+  readonly onExited?: () => void;
   readonly closeLabel: string;
   readonly testID: string;
   readonly backdropTestID: string;
@@ -60,6 +61,7 @@ export default function Sheet({
   visible,
   title,
   onRequestClose,
+  onExited,
   closeLabel,
   testID,
   backdropTestID,
@@ -80,6 +82,8 @@ export default function Sheet({
   const scrimOpacity = useRef(new Animated.Value(visible ? 0 : 1)).current;
   const closeRef = useRef(onRequestClose);
   closeRef.current = onRequestClose;
+  const exitedRef = useRef(onExited);
+  exitedRef.current = onExited;
 
   useEffect(() => {
     if (visible) {
@@ -139,6 +143,7 @@ export default function Sheet({
       scrimOpacity.setValue(0);
       exiting.current = false;
       setRendered(false);
+      exitedRef.current?.();
       return;
     }
 
@@ -160,6 +165,7 @@ export default function Sheet({
 
       if (finished && motion.current === token) {
         setRendered(false);
+        exitedRef.current?.();
       }
     });
   }, [
@@ -223,7 +229,7 @@ export default function Sheet({
       navigationBarTranslucent
       transparent>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.scrim}>
         <Animated.View
           testID={`${testID}-scrim`}

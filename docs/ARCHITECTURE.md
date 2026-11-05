@@ -89,6 +89,9 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `apps/web/src/` - the web SPA, views under `src/views/` and shared pieces under `src/shared/`. A module split across two or more files is one folder named after it, holding the module, its test and its stylesheet; a single-file module stays flat.
 - `apps/web/deploy/nginx.conf.template` - the static serving and `/api` proxy configuration, rendered by the nginx entrypoint at container start.
 - `apps/mobile/src/` and `apps/mobile/app/` - the Expo app, routes and feature modules.
+- `e2e/web/` - the Playwright journeys: specs, support, per-worker server and web stacks, and the parallel runner.
+- `e2e/mobile/` - the Maestro flows, the device-only flow, the harness shell, the seed and the Maestro runner.
+- `e2e/shared/` - the scenario contract and the playlist and video URL builders both suites use.
 - `packages/contracts/src/` - the API Zod schemas and inferred types.
 - `packages/youtube/src/` - the yt-dlp adapter.
 - `scripts/validate-tsconfig-paths.cjs` - keeps `tsconfig.depcruise.json` paths aligned with the workspace.

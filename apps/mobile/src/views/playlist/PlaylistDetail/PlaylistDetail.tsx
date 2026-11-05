@@ -134,6 +134,9 @@ type PendingAction =
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
 /* The scroll that takes the header from wide to narrow. */
 const COLLAPSE_DISTANCE = tokenLength('space-9') * 2;
+/* The request waits one beat after the window so a gesture already queued when
+ * the timer fired can still be read; only the clock decides the undo. */
+const COMMIT_GRACE_MS = 150;
 
 export interface PlaylistDetailProps {
   readonly playlistId: string | null;
@@ -207,6 +210,9 @@ export default function PlaylistDetail({
   );
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [pendingWindow, setPendingWindow] = useState(0);
+  const pendingRef = useRef<PendingAction | null>(null);
+  const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [undoWindowOpen, setUndoWindowOpen] = useState(true);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerProblem, setHeaderProblem] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -991,55 +997,95 @@ export default function PlaylistDetail({
   };
 
   /* The snackbar owns the window, so a pause or an extension moves the commit
-   * with the bar. */
+   * with the bar. The action is read from the ref, not from the state the
+   * timer is about to clear. */
   const expirePending = (): void => {
-    if (pending === null) {
+    const action = pendingRef.current;
+
+    if (action === null || commitTimer.current !== null) {
       return;
     }
 
-    const action = pending;
-    setPending(null);
-    commitPending(action);
+    commitTimer.current = setTimeout(() => {
+      commitTimer.current = null;
+
+      if (pendingRef.current !== action) {
+        return;
+      }
+
+      pendingRef.current = null;
+      setPending(null);
+      commitPending(action);
+    }, COMMIT_GRACE_MS);
   };
 
   /* One window at a time: a second action sends the first now rather than
    * losing its request, then opens its own countdown. */
-  const startPending = (next: PendingAction): void => {
-    if (pending !== null) {
-      commitPending(pending);
+  const startPending = (next: PendingAction, waitForSheet: boolean): void => {
+    if (pendingRef.current !== null) {
+      const previous = pendingRef.current;
+
+      if (commitTimer.current !== null) {
+        clearTimeout(commitTimer.current);
+        commitTimer.current = null;
+      }
+
+      pendingRef.current = null;
+      commitPending(previous);
     }
 
     if (next.kind === 'remove') {
       hideTrack(next.trackId);
     }
 
+    pendingRef.current = next;
     setPending(next);
+    setUndoWindowOpen(!waitForSheet);
     setPendingWindow(current => current + 1);
   };
 
   const undoPending = (): void => {
-    if (pending?.kind === 'remove') {
-      unhideTrack(pending.trackId);
+    const action = pendingRef.current;
+
+    if (action === null) {
+      return;
+    }
+
+    pendingRef.current = null;
+
+    if (commitTimer.current !== null) {
+      clearTimeout(commitTimer.current);
+      commitTimer.current = null;
+    }
+
+    if (action.kind === 'remove') {
+      unhideTrack(action.trackId);
     }
 
     setPending(null);
   };
 
   const startRemove = (target: PlaylistTrack): void => {
-    startPending({
-      kind: 'remove',
-      trackId: target.track.id,
-      message: t('detail.removeDeferred'),
-      detail: target.track.title
-    });
+    startPending(
+      {
+        kind: 'remove',
+        trackId: target.track.id,
+        message: t('detail.removeDeferred'),
+        detail: target.track.title
+      },
+      true
+    );
   };
 
   const startDelete = (): void => {
-    startPending({
-      kind: 'delete',
-      message: t('detail.deleteDeferred'),
-      detail: data.name
-    });
+    startPending(
+      {
+        kind: 'delete',
+        message: t('detail.deleteDeferred'),
+        detail: data.name
+      },
+      true
+    );
   };
 
   const chooseHeaderAction = (key: PlaylistActionKey): void => {
@@ -1390,6 +1436,7 @@ export default function PlaylistDetail({
         actions={actions}
         onSelect={chooseTrackAction}
         onClose={() => setActionTargetId(null)}
+        onExited={() => setUndoWindowOpen(true)}
       />
       <PlaylistActionsSheet
         playlistName={headerOpen ? data.name : null}
@@ -1398,6 +1445,7 @@ export default function PlaylistDetail({
         summary={band}
         extra={skipControl}
         onSelect={chooseHeaderAction}
+        onExited={() => setUndoWindowOpen(true)}
         onClose={() => {
           setHeaderOpen(false);
           setHeaderProblem(null);
@@ -1440,7 +1488,7 @@ export default function PlaylistDetail({
         playlistId={data.id}
         onClose={() => setShareOpen(false)}
       />
-      {pending === null ? null : (
+      {pending === null || !undoWindowOpen ? null : (
         <UndoSnackbar
           key={`${pending.kind === 'remove' ? pending.trackId : 'delete'}:${pendingWindow}`}
           message={pending.message}
@@ -1459,7 +1507,7 @@ export default function PlaylistDetail({
           onDismiss={() => setNotice(null)}
           bottomOffset={
             floatingOffset +
-            (pending === null
+            (pending === null || !undoWindowOpen
               ? 0
               : tokenLength('space-9') + tokenLength('space-4'))
           }

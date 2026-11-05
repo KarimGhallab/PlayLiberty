@@ -1,0 +1,17 @@
+{
+  "name": "@playliberty/e2e-mobile",
+  "version": "0.1.0",
+  "description": "PlayLiberty mobile end-to-end journeys: Maestro flows and their harness.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bash scripts/mobile-journeys.sh",
+    "test:live": "node scripts/run-maestro.mjs"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "packageManager": "pnpm@12.15.0",
+  "dependencies": {
+    "@playliberty/e2e-shared": "workspace:*"
+  }
+}

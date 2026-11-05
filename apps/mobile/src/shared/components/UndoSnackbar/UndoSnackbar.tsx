@@ -25,6 +25,13 @@ import {
 /* One accessibility action buys this much more time. */
 const EXTEND_MS = 5000;
 
+/* A touch event's timestamp is milliseconds since boot, the same clock
+ * `performance.now()` reads; the window is decided on it, not on which callback
+ * the thread happened to run first. */
+function now(): number {
+  return performance.now();
+}
+
 export interface UndoSnackbarProps {
   readonly message: string;
   readonly detail: string;
@@ -65,6 +72,8 @@ export default function UndoSnackbar({
   const countdown = useRef<Animated.CompositeAnimation | null>(null);
   const remainingMs = useRef(durationMs);
   const startedAt = useRef(0);
+  const deadline = useRef(0);
+  const pressedAt = useRef(0);
   const paused = useRef(false);
   const alive = useRef(true);
 
@@ -85,7 +94,8 @@ export default function UndoSnackbar({
       }
 
       remainingMs.current = ms;
-      startedAt.current = Date.now();
+      startedAt.current = now();
+      deadline.current = startedAt.current + ms;
       paused.current = false;
 
       if (!quiet.current) {
@@ -112,6 +122,7 @@ export default function UndoSnackbar({
 
   useEffect(() => {
     alive.current = true;
+    pressedAt.current = 0;
     start(durationMs);
 
     return () => {
@@ -141,7 +152,7 @@ export default function UndoSnackbar({
 
     remainingMs.current = Math.max(
       0,
-      remainingMs.current - (Date.now() - startedAt.current)
+      remainingMs.current - (now() - startedAt.current)
     );
     countdown.current?.stop();
     countdown.current = null;
@@ -162,10 +173,20 @@ export default function UndoSnackbar({
 
     const left = paused.current
       ? remainingMs.current
-      : Math.max(0, remainingMs.current - (Date.now() - startedAt.current));
+      : Math.max(0, remainingMs.current - (now() - startedAt.current));
 
     start(left + EXTEND_MS);
   }, [start]);
+
+  /* A press whose gesture began inside the window is honoured even if the
+   * timer has already fired; a press outside it is not an undo. */
+  const undo = (): void => {
+    const at = pressedAt.current === 0 ? now() : pressedAt.current;
+
+    if (at <= deadline.current) {
+      onUndo();
+    }
+  };
 
   const onAccessibilityAction = (event: {
     readonly nativeEvent: { readonly actionName: string };
@@ -178,7 +199,15 @@ export default function UndoSnackbar({
   return (
     <View
       testID="undo-snackbar"
-      onTouchStart={pause}
+      onTouchStart={event => {
+        const timestamp = event?.nativeEvent?.timestamp;
+
+        if (typeof timestamp === 'number') {
+          pressedAt.current = timestamp;
+        }
+
+        pause();
+      }}
       onTouchEnd={resume}
       onTouchCancel={resume}
       style={[
@@ -214,7 +243,7 @@ export default function UndoSnackbar({
             styles.action,
             pressed && styles.actionPressed
           ]}
-          onPress={onUndo}>
+          onPress={undo}>
           <Text style={styles.actionLabel}>{t('common.undo')}</Text>
         </Pressable>
       </View>

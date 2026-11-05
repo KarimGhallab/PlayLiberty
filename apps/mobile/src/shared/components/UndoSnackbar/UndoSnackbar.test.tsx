@@ -120,4 +120,44 @@ describe('the undo snackbar', () => {
       { timeout: 2000 }
     );
   });
+
+  it('honours a press that began inside the window after it expired', async () => {
+    const onUndo = jest.fn();
+    const onExpire = jest.fn();
+    const view = await render(snackbar({ onUndo, onExpire }));
+    const inside = performance.now();
+
+    await sleep(WINDOW_MS + 50);
+    expect(onExpire).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await fireEvent(view.getByTestId('undo-snackbar'), 'touchStart', {
+        nativeEvent: { timestamp: inside }
+      });
+    });
+    await act(async () => {
+      await fireEvent.press(view.getByText('common.undo'));
+    });
+
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a press that began after the window', async () => {
+    const onUndo = jest.fn();
+    const view = await render(snackbar({ onUndo }));
+
+    await sleep(WINDOW_MS + 50);
+    const outside = performance.now();
+
+    await act(async () => {
+      await fireEvent(view.getByTestId('undo-snackbar'), 'touchStart', {
+        nativeEvent: { timestamp: outside }
+      });
+    });
+    await act(async () => {
+      await fireEvent.press(view.getByText('common.undo'));
+    });
+
+    expect(onUndo).not.toHaveBeenCalled();
+  });
 });

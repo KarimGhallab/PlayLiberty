@@ -2,11 +2,13 @@ todo.md
 apps/server/data
 
 # E2E runtime artifacts: the fake's scenario file, the test database and media
-e2e/.scenario/
-e2e/.data
-e2e/.media
-e2e/test-results
-e2e/playwright-report
+e2e/web/.scenario/
+e2e/web/.data
+e2e/web/.media
+e2e/web/test-results
+e2e/web/playwright-report
+e2e/mobile/.mobile/
+e2e/mobile/.mobile-runs/
 
 # Logs
 logs
@@ -101,6 +103,7 @@ apps/mobile/ios
 .env.test.local
 .env.production.local
 .env.local
+.env.e2e
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

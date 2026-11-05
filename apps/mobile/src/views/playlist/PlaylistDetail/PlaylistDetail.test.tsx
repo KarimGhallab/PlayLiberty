@@ -1648,6 +1648,93 @@ describe('the playlist detail', () => {
     expect(removeMutate).not.toHaveBeenCalled();
   });
 
+  it('starts the undo window only after the row sheet has left', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(false);
+
+    await openStoredSheet();
+
+    await fireEvent.press(screen.getByTestId('track-action-remove'));
+
+    expect(screen.getByTestId('track-actions-sheet')).toBeOnTheScreen();
+    expect(screen.queryByTestId('undo-snackbar')).not.toBeOnTheScreen();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('track-actions-sheet')).not.toBeOnTheScreen();
+    });
+    expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+  });
+
+  it('undoes a press that began inside the window after it expired', async () => {
+    const { removeMutate } = await openStoredSheet({ undoWindowMs: 1000 });
+
+    await fireEvent.press(screen.getByTestId('track-action-remove'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+    });
+
+    const openedAt = performance.now();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+
+    await act(async () => {
+      await fireEvent(screen.getByTestId('undo-snackbar'), 'touchStart', {
+        nativeEvent: { timestamp: openedAt }
+      });
+    });
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('undo-snackbar-action'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('track-row')).toBeOnTheScreen();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(removeMutate).not.toHaveBeenCalled();
+  });
+
+  it('leaves the removal committed when the press began after the window', async () => {
+    const { removeMutate } = await openStoredSheet({ undoWindowMs: 1000 });
+
+    await fireEvent.press(screen.getByTestId('track-action-remove'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
+    });
+
+    const openedAt = performance.now();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    await act(async () => {
+      await fireEvent(screen.getByTestId('undo-snackbar'), 'touchStart', {
+        nativeEvent: { timestamp: openedAt + 1001 }
+      });
+    });
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('undo-snackbar-action'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(removeMutate).toHaveBeenCalledWith('track-1', expect.any(Object));
+    expect(screen.queryByTestId('undo-snackbar')).not.toBeOnTheScreen();
+  });
+
   it('commits the removal after the window', async () => {
     const { removeMutate } = await openStoredSheet({ undoWindowMs: 20 });
 

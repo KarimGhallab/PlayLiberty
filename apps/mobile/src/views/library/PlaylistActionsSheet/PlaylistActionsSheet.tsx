@@ -43,6 +43,7 @@ export interface PlaylistActionsSheetProps {
   readonly problem?: string | null;
   readonly onSelect: (key: PlaylistActionKey) => void;
   readonly onClose: () => void;
+  readonly onExited?: () => void;
   /** The status block above the actions: the playlist's sync evidence. */
   readonly summary?: ReactNode;
   /** The playlist's own settings below the actions: the skip switch. */
@@ -57,6 +58,7 @@ export default function PlaylistActionsSheet({
   problem = null,
   onSelect,
   onClose,
+  onExited,
   summary,
   extra
 }: PlaylistActionsSheetProps) {
@@ -71,6 +73,7 @@ export default function PlaylistActionsSheet({
       visible={playlistName !== null}
       title={playlistName ?? ''}
       onRequestClose={onClose}
+      onExited={onExited}
       closeLabel={t('common.close')}
       testID="playlist-actions-sheet"
       backdropTestID="playlist-actions-backdrop">

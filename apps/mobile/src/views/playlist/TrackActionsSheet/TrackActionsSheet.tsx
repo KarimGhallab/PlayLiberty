@@ -30,6 +30,7 @@ export interface TrackActionsSheetProps {
   readonly actions: readonly TrackAction[];
   readonly onSelect: (key: TrackActionKey) => void;
   readonly onClose: () => void;
+  readonly onExited?: () => void;
 }
 
 /* One sheet for one track's actions. The lane opens it; the caller owns the
@@ -38,7 +39,8 @@ export default function TrackActionsSheet({
   trackTitle,
   actions,
   onSelect,
-  onClose
+  onClose,
+  onExited
 }: TrackActionsSheetProps) {
   const { t } = useI18n();
 
@@ -47,6 +49,7 @@ export default function TrackActionsSheet({
       visible={trackTitle !== null}
       title={trackTitle ?? ''}
       onRequestClose={onClose}
+      onExited={onExited}
       closeLabel={t('common.close')}
       testID="track-actions-sheet"
       backdropTestID="track-actions-backdrop">

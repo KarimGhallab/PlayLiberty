@@ -1,0 +1,58 @@
+appId: dev.playliberty.app
+name: The egress console switches a standby
+# It needs a real egress agent and a standby pool exit, which CI has neither of.
+tags:
+  - egress
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+# The door is the admin's; a normal account never sees it.
+- extendedWaitUntil:
+    visible:
+      id: egress-door
+    timeout: 15000
+- tapOn:
+    id: egress-door
+- extendedWaitUntil:
+    visible:
+      id: egress-screen
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: egress-action-${EGRESS_STANDBY}
+    direction: DOWN
+    timeout: 30000
+# The named exit must start as a standby; the switch moves the active mark.
+- assertNotVisible:
+    id: egress-active-${EGRESS_STANDBY}
+- tapOn:
+    id: egress-action-${EGRESS_STANDBY}
+- extendedWaitUntil:
+    visible:
+      id: egress-active-${EGRESS_STANDBY}
+    timeout: 30000
+# Leave the console for the library.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000

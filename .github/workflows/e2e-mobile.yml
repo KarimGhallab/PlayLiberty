@@ -1,0 +1,51 @@
+name: E2E mobile
+
+on:
+  workflow_call:
+
+jobs:
+  e2e:
+    name: E2E
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build the workspace
+        run: pnpm run build
+
+      - name: Build the e2e harness the journeys drive
+        run: pnpm --filter @playliberty/server run build:e2e
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/app.json') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Generate the Android project
+        run: pnpm --filter @playliberty/mobile exec expo prebuild --platform android --no-install
+
+      - name: Boot the emulator and run the journeys
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: MOBILE_INSTALL_APP=1 bash e2e/mobile/scripts/mobile-journeys.sh

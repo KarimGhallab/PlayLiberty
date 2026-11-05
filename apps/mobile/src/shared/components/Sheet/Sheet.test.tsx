@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor
+} from '@testing-library/react-native';
+import { useState } from 'react';
 import { AccessibilityInfo, Animated, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -109,6 +116,41 @@ describe('the sheet frame', () => {
     for (const [, config] of timing.mock.calls) {
       expect(config.useNativeDriver).toBe(true);
     }
+  });
+
+  it('reports its exit once the modal is gone', async () => {
+    const onExited = jest.fn();
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+
+      return (
+        <SafeAreaProvider initialMetrics={metrics}>
+          <Sheet
+            visible={open}
+            title="Account"
+            onRequestClose={() => setOpen(false)}
+            onExited={onExited}
+            closeLabel="Close"
+            testID="sheet"
+            backdropTestID="sheet-backdrop">
+            <Text>Content</Text>
+          </Sheet>
+        </SafeAreaProvider>
+      );
+    }
+
+    await render(<Harness />);
+
+    expect(onExited).not.toHaveBeenCalled();
+    expect(screen.getByTestId('sheet')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByLabelText('Close'));
+
+    await waitFor(() => {
+      expect(onExited).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByTestId('sheet')).not.toBeOnTheScreen();
   });
 
   it('dismisses on a long drag or a fast flick, not on a short drag', () => {
