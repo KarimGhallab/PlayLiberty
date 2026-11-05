@@ -14,7 +14,14 @@ import {
   waitFor,
   within
 } from '@testing-library/react-native';
-import { AccessibilityInfo, BackHandler, FlatList } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  BackHandler,
+  Dimensions,
+  FlatList,
+  PanResponder
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -39,7 +46,11 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { copyText } from '../../../shared/clipboard/copyText';
 import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
-import { tokenLength, tokenNumber } from '../../../shared/styles/tokens';
+import {
+  tokenDuration,
+  tokenLength,
+  tokenNumber
+} from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
 import { useAccount } from '../../../api/useAccount';
@@ -487,6 +498,24 @@ async function reportViewable(keys: readonly string[]) {
       changed: []
     });
   });
+}
+
+/* The pull's responder is rebuilt whenever its motion answer changes, so the
+ * latest config is the one a release should use. Its capture hook is what tells
+ * it apart from the sheets' own responders. */
+function capturePull() {
+  let release: ((event: object, gesture: object) => void) | null = null;
+  const create = PanResponder.create.bind(PanResponder);
+
+  jest.spyOn(PanResponder, 'create').mockImplementation(config => {
+    if (config.onMoveShouldSetPanResponderCapture !== undefined) {
+      release = config.onPanResponderRelease as unknown as typeof release;
+    }
+
+    return create(config);
+  });
+
+  return () => release;
 }
 
 async function renderDetail(options: RenderOptions = {}) {
@@ -2121,6 +2150,60 @@ describe('the playlist detail', () => {
     await waitFor(() => {
       expect(onBack).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('finishes a committed pull before it leaves for the gallery', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(false);
+    const pullRelease = capturePull();
+    const { onBack } = await renderDetail();
+    await act(async () => {});
+    let finish: ((result: { finished: boolean }) => void) | null = null;
+    const timing = jest.spyOn(Animated, 'timing').mockImplementation(
+      () =>
+        ({
+          start: (callback?: (result: { finished: boolean }) => void) => {
+            finish = callback ?? null;
+          },
+          stop: jest.fn(),
+          reset: jest.fn()
+        }) as never
+    );
+
+    await act(() => {
+      pullRelease()?.({}, { dy: 300, vy: 0 });
+    });
+
+    expect(timing).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        toValue: Dimensions.get('window').height,
+        duration: tokenDuration('motion-slow'),
+        useNativeDriver: true
+      })
+    );
+    expect(onBack).not.toHaveBeenCalled();
+
+    await act(() => {
+      finish?.({ finished: true });
+    });
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves at once on a committed pull without motion', async () => {
+    const pullRelease = capturePull();
+    const { onBack } = await renderDetail();
+    await act(async () => {});
+    const timing = jest.spyOn(Animated, 'timing');
+
+    await act(() => {
+      pullRelease()?.({}, { dy: 300, vy: 0 });
+    });
+
+    expect(timing).not.toHaveBeenCalled();
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it('draws the identity over the skeleton while the tracks page is pending', async () => {

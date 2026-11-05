@@ -171,9 +171,11 @@ export default function PlaylistDetail({
   const window = useWindowDimensions();
   const reduceMotion = useReduceMotion();
   const barHeight = usePlayerBarHeight();
-  /* The sheet's offset, which only the drag moves: the route owns the entry
-   * and the exit. */
+  /* The sheet's offset, moved by the drag and the pull's own completion; the
+   * route owns the entry. */
   const sheetY = useRef(new Animated.Value(0)).current;
+  const exiting = useRef(false);
+  const exitMotion = useRef<Animated.CompositeAnimation | null>(null);
   const pullOffset = useRef(0);
   const headerEdge = useRef(0);
   const playlist = usePlaylist(playlistId);
@@ -644,6 +646,30 @@ export default function PlaylistDetail({
     onBack();
   }, [onBack]);
 
+  /* The pull completes on its own tween: the native dismissal would restart
+   * from rest, freezing the sheet and carrying the scrim down with it. */
+  const dismissSheet = useCallback((): void => {
+    if (reduceMotion) {
+      leaveDetail();
+      return;
+    }
+
+    exiting.current = true;
+    exitMotion.current = Animated.timing(sheetY, {
+      toValue: window.height,
+      duration: tokenDuration('motion-slow'),
+      easing: Easing.bezier(...standardEasingBezier),
+      useNativeDriver: true
+    });
+    exitMotion.current.start(({ finished }) => {
+      if (finished) {
+        leaveDetail();
+      }
+    });
+  }, [leaveDetail, reduceMotion, sheetY, window.height]);
+
+  useEffect(() => () => exitMotion.current?.stop(), []);
+
   /* A delete's undo window owns the screen, so back waits for it. Otherwise the
    * system owns the gesture and the stack's pop animation. */
   useEffect(() => {
@@ -665,6 +691,7 @@ export default function PlaylistDetail({
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponderCapture: (event, gesture) =>
+          !exiting.current &&
           claimsPull({
             dx: gesture.dx,
             dy: gesture.dy,
@@ -675,23 +702,31 @@ export default function PlaylistDetail({
           }),
         onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_event, gesture) => {
-          if (reduceMotion) {
+          if (reduceMotion || exiting.current) {
             return;
           }
 
           sheetY.setValue(Math.max(0, gesture.dy));
         },
         onPanResponderRelease: (_event, gesture) => {
+          if (exiting.current) {
+            return;
+          }
+
           if (commitsPull(gesture.dy, gesture.vy)) {
-            leaveDetail();
+            dismissSheet();
             return;
           }
 
           settleSheet();
         },
-        onPanResponderTerminate: settleSheet
+        onPanResponderTerminate: () => {
+          if (!exiting.current) {
+            settleSheet();
+          }
+        }
       }),
-    [leaveDetail, reduceMotion, settleSheet, sheetY]
+    [dismissSheet, reduceMotion, settleSheet, sheetY]
   );
 
   const sheetScrim = sheetY.interpolate({

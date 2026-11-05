@@ -212,6 +212,7 @@ export default function Sheet({
       onPanResponderRelease: (_, gesture) => {
         if (dismissesOnDrag(gesture.dy, gesture.vy)) {
           closeRef.current();
+          return;
         }
 
         settle();

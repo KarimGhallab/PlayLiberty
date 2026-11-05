@@ -7,7 +7,7 @@ import {
   waitFor
 } from '@testing-library/react-native';
 import { useState } from 'react';
-import { AccessibilityInfo, Animated, Text } from 'react-native';
+import { AccessibilityInfo, Animated, PanResponder, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { tokenLength } from '../../styles/tokens';
@@ -158,6 +158,58 @@ describe('the sheet frame', () => {
     expect(dismissesOnDrag(80, 0)).toBe(false);
     expect(dismissesOnDrag(0, 0.6)).toBe(true);
     expect(dismissesOnDrag(0, 0.5)).toBe(false);
+  });
+
+  it('leaves a dismissing drag to the exit instead of settling it back', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(false);
+
+    let release: ((event: object, gesture: object) => void) | null = null;
+    const create = PanResponder.create.bind(PanResponder);
+
+    jest.spyOn(PanResponder, 'create').mockImplementation(config => {
+      if (config.onStartShouldSetPanResponder !== undefined) {
+        release = config.onPanResponderRelease as unknown as typeof release;
+      }
+
+      return create(config);
+    });
+
+    const onExited = jest.fn();
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+
+      return (
+        <SafeAreaProvider initialMetrics={metrics}>
+          <Sheet
+            visible={open}
+            title="Account"
+            onRequestClose={() => setOpen(false)}
+            onExited={onExited}
+            closeLabel="Close"
+            testID="sheet"
+            backdropTestID="sheet-backdrop">
+            <Text>Content</Text>
+          </Sheet>
+        </SafeAreaProvider>
+      );
+    }
+
+    await render(<Harness />);
+    const motion = jest.spyOn(Animated, 'parallel');
+    motion.mockClear();
+
+    await act(() => {
+      release?.({}, { dy: 200, vy: 0 });
+    });
+
+    await waitFor(() => {
+      expect(onExited).toHaveBeenCalledTimes(1);
+    });
+
+    expect(motion).toHaveBeenCalledTimes(1);
   });
 
   it('keeps its sheet and handle reachable by test id', async () => {

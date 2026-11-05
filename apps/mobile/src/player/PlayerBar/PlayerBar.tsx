@@ -2,6 +2,7 @@ import {
   IconPlayerSkipBack,
   IconPlayerSkipForward
 } from '@tabler/icons-react-native';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -9,6 +10,7 @@ import {
   type GestureResponderHandlers,
   Image,
   PanResponder,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -323,6 +325,56 @@ function Meta({ view }: { readonly view: BarView }) {
   );
 }
 
+/* The art and the words are one door into the queue's playlist, whose list
+ * lands on the playing row. A bare queue has no door. */
+function BarIdentity({
+  config,
+  view
+}: {
+  readonly config: ApiConfig | null;
+  readonly view: BarView;
+}) {
+  const { t } = useI18n();
+  const body = (
+    <>
+      <Artwork
+        config={config}
+        track={view.track}
+        size={tokenLength('space-9') - tokenLength('space-1')}
+        radius={tokenLength('space-2')}
+      />
+      <View style={styles.identity}>
+        <Title view={view} />
+        <Meta view={view} />
+      </View>
+    </>
+  );
+
+  if (view.playlistId === null) {
+    return <View style={styles.identityGroup}>{body}</View>;
+  }
+
+  const playlistId = view.playlistId;
+
+  return (
+    <Pressable
+      testID="player-open-playlist"
+      accessibilityRole="button"
+      accessibilityLabel={t('playerBar.openPlaylist', {
+        name: view.playlistName ?? ''
+      })}
+      onPress={() =>
+        router.navigate({
+          pathname: '/playlists/[playlistId]',
+          params: { playlistId }
+        })
+      }
+      style={styles.identityGroup}>
+      {body}
+    </Pressable>
+  );
+}
+
 /* The one subscription to the position: only this rail repaints on a tick. */
 function LiveSeekBar(props: Omit<SeekBarProps, 'positionSeconds'>) {
   const positionSeconds = usePlayerStore(state => state.positionSeconds);
@@ -403,18 +455,7 @@ function BarPage({
         </>
       ) : null}
       <View style={styles.top}>
-        <Artwork
-          config={config}
-          track={view.track}
-          playlistId={view.playlistId}
-          playlistName={view.playlistName}
-          size={tokenLength('space-9') - tokenLength('space-1')}
-          radius={tokenLength('space-2')}
-        />
-        <View style={styles.identity}>
-          <Title view={view} />
-          <Meta view={view} />
-        </View>
+        <BarIdentity config={config} view={view} />
         <PlayOrb
           isPlaying={view.isPlaying}
           title={view.track.title}
@@ -712,6 +753,13 @@ const styles = StyleSheet.create({
   identity: {
     flex: 1,
     gap: 2
+  },
+  identityGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: touchTarget,
+    gap: tokenLength('space-3')
   },
   title: {
     color: tokenColor('ink'),

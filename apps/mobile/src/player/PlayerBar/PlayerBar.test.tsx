@@ -18,7 +18,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { tokenLength, touchTarget } from '../../shared/styles/tokens';
+import { touchTarget } from '../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../auth/useApiConfig';
 import {
@@ -158,17 +158,13 @@ describe('the player bar', () => {
     });
   });
 
-  it('gives the artwork a 48dp target without growing its paint', async () => {
+  it('gives the bar identity a full target', async () => {
     startPlaylist();
     await renderBar();
 
-    const art = screen.getByTestId('player-open-playlist');
-    const paint = tokenLength('space-9') - tokenLength('space-1');
-    const hit = art.props.hitSlop as number;
-
-    expect(art).toHaveStyle({ width: paint, height: paint });
-    expect(hit).toBe((touchTarget - paint) / 2);
-    expect(paint + hit * 2).toBeGreaterThanOrEqual(touchTarget);
+    expect(screen.getByTestId('player-open-playlist')).toHaveStyle({
+      minHeight: touchTarget
+    });
   });
 
   it('publishes a taller bar when its content grows', async () => {
@@ -448,11 +444,11 @@ describe('the player bar', () => {
     expect(screen.queryByTestId('player-open-playlist')).not.toBeOnTheScreen();
   });
 
-  it('opens the playlist from the artwork', async () => {
+  it('opens the playing playlist from the bar', async () => {
     startPlaylist();
     await renderBar();
 
-    await fireEvent.press(screen.getByTestId('player-open-playlist'));
+    await fireEvent.press(screen.getByTestId('player-title'));
 
     expect(router.navigate).toHaveBeenCalledWith({
       pathname: '/playlists/[playlistId]',
