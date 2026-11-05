@@ -3,14 +3,16 @@ import {
   IconDots,
   IconDownload
 } from '@tabler/icons-react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { PlaylistWithCounts } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 import { syncStateLabel, trackCountUnit, useI18n } from '@playliberty/i18n';
 
-import PlayPauseGlyph from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
+import PlayPauseGlyph, {
+  type PlayPauseGlyphHandle
+} from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
 import PlayingLine from '../../../shared/components/PlayingLine/PlayingLine';
 import PressableScale from '../../../shared/components/PressableScale/PressableScale';
 import Spinner from '../../../shared/components/Spinner/Spinner';
@@ -115,6 +117,7 @@ export default function PlaylistCard({
   actionsTestID
 }: PlaylistCardProps) {
   const { t } = useI18n();
+  const glyph = useRef<PlayPauseGlyphHandle>(null);
   const cover = usePlaylistCover(playlist, config);
   const mark = shareMark(playlist);
   const incomplete = incompleteOf(playlist.counts);
@@ -173,6 +176,7 @@ export default function PlaylistCard({
         const chosen = event.nativeEvent.actionName;
 
         if (chosen === 'play' && !playDisabled) {
+          glyph.current?.morphTo(!playing);
           onPlay();
         }
 
@@ -276,11 +280,15 @@ export default function PlaylistCard({
           playing && !playDisabled && styles.playOn,
           playDisabled && styles.playDisabled
         ]}
-        onPress={onPlay}>
+        onPress={() => {
+          glyph.current?.morphTo(!playing);
+          onPlay();
+        }}>
         {starting === 'play' ? (
           <Spinner color={tokenColor(playing ? 'bg' : 'muted')} />
         ) : (
           <PlayPauseGlyph
+            ref={glyph}
             playing={playing}
             size={tokenLength('icon-md')}
             color={tokenColor(playing ? 'bg' : 'ink')}

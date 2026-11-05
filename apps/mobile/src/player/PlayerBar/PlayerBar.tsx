@@ -23,7 +23,9 @@ import { useI18n } from '@playliberty/i18n';
 
 import { useReduceMotion } from '../../shared/a11y/useReduceMotion';
 import Notice from '../../shared/components/Notice/Notice';
-import PlayPauseGlyph from '../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
+import PlayPauseGlyph, {
+  type PlayPauseGlyphHandle
+} from '../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
 import PressableScale from '../../shared/components/PressableScale/PressableScale';
 import { type MediaSource, mediaSource } from '../../shared/media/mediaSource';
 import { sleeveColor } from '../../shared/styles/sleeve';
@@ -269,6 +271,7 @@ function PlayOrb({
   readonly size: number;
 }) {
   const { t } = useI18n();
+  const glyph = useRef<PlayPauseGlyphHandle>(null);
 
   return (
     <PressableScale
@@ -281,20 +284,20 @@ function PlayOrb({
       }
       accessibilityState={{ selected: isPlaying }}
       hitSlop={(touchTarget - size > 0 ? touchTarget - size : 0) / 2 + 4}
-      onPress={onToggle}
+      onPress={() => {
+        glyph.current?.morphTo(!isPlaying);
+        onToggle();
+      }}
       style={[
         styles.orb,
         { width: size, height: size, borderRadius: size / 2 }
       ]}>
-      {isPlaying ? (
-        <PlayPauseGlyph playing size={size * 0.5} color={tokenColor('bg')} />
-      ) : (
-        <PlayPauseGlyph
-          playing={false}
-          size={size * 0.5}
-          color={tokenColor('bg')}
-        />
-      )}
+      <PlayPauseGlyph
+        ref={glyph}
+        playing={isPlaying}
+        size={size * 0.5}
+        color={tokenColor('bg')}
+      />
     </PressableScale>
   );
 }

@@ -18,6 +18,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
+import type { PlayPauseGlyphHandle } from '../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
 import { touchTarget } from '../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../auth/useApiConfig';
@@ -59,12 +60,13 @@ jest.mock('../../shared/components/PlayPauseGlyph/PlayPauseGlyph', () => {
 
   return {
     __esModule: true,
-    default: function GlyphWithCount(
-      props: ComponentProps<typeof actual.default>
-    ) {
+    default: runtime.forwardRef<
+      PlayPauseGlyphHandle,
+      ComponentProps<typeof actual.default>
+    >(function GlyphWithCount(props, ref) {
       render();
-      return runtime.createElement(actual.default, props);
-    },
+      return runtime.createElement(actual.default, { ...props, ref });
+    }),
     glyphRender: render
   };
 });

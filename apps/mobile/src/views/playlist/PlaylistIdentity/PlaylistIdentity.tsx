@@ -4,6 +4,7 @@ import {
   IconDots,
   IconRefresh
 } from '@tabler/icons-react-native';
+import { useRef } from 'react';
 import {
   Animated,
   Image,
@@ -23,7 +24,9 @@ import {
   useI18n
 } from '@playliberty/i18n';
 
-import PlayPauseGlyph from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
+import PlayPauseGlyph, {
+  type PlayPauseGlyphHandle
+} from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
 import PlayingLine from '../../../shared/components/PlayingLine/PlayingLine';
 import PressableScale from '../../../shared/components/PressableScale/PressableScale';
 import Spinner from '../../../shared/components/Spinner/Spinner';
@@ -172,6 +175,7 @@ function PlayControl({
   readonly ghost?: boolean;
 }) {
   const { t } = useI18n();
+  const glyph = useRef<PlayPauseGlyphHandle>(null);
   const starting = props.starting === 'play';
   const disabled = props.onPlay === undefined || props.starting !== null;
   const playing = props.playing === true;
@@ -188,11 +192,15 @@ function PlayControl({
         { width: size, height: size, borderRadius: size / 2 },
         disabled && styles.disabled
       ]}
-      onPress={props.onPlay}>
+      onPress={() => {
+        glyph.current?.morphTo(!playing);
+        props.onPlay?.();
+      }}>
       {starting ? (
         <Spinner color={tokenColor('bg')} />
       ) : (
         <PlayPauseGlyph
+          ref={glyph}
           playing={playing}
           size={tokenLength('icon-md')}
           color={tokenColor('bg')}
