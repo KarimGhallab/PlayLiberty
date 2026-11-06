@@ -15,6 +15,10 @@ import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
@@ -44,6 +48,7 @@ export default function RenameSheet({
   onSubmit,
   onClose
 }: RenameSheetProps) {
+  const scale = useTextScale();
   const { t } = useI18n();
   const [name, setName] = useState(currentName);
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -131,7 +136,13 @@ export default function RenameSheet({
           </Pressable>
         </View>
       }>
-      <Text style={styles.description}>{t('renameDialog.description')}</Text>
+      <Text
+        style={[
+          styles.description,
+          { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+        ]}>
+        {t('renameDialog.description')}
+      </Text>
 
       <View style={styles.field}>
         <Text style={styles.label}>{t('renameDialog.nameLabel')}</Text>
@@ -161,7 +172,10 @@ export default function RenameSheet({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={liveRegion}
-            style={styles.message}>
+            style={[
+              styles.message,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
             {message}
           </Text>
         )}
@@ -175,7 +189,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal'),
     marginTop: tokenLength('space-3')
   },
   field: {
@@ -206,8 +219,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-medium')
   },
   actions: {
     flexDirection: 'row',

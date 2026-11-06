@@ -4,12 +4,13 @@ import {
   IconDownload
 } from '@tabler/icons-react-native';
 import { useRef, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { PlaylistWithCounts } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 import { syncStateLabel, trackCountUnit, useI18n } from '@playliberty/i18n';
 
+import AppImage from '../../../shared/components/AppImage/AppImage';
 import PlayPauseGlyph, {
   type PlayPauseGlyphHandle
 } from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
@@ -49,23 +50,22 @@ export interface PlaylistCardProps {
   readonly actionsTestID?: string;
 }
 
-type MissingState =
+type ShortfallState =
   | TrackFileStatus.Pending
   | TrackFileStatus.Downloading
-  | TrackFileStatus.Failed
-  | TrackFileStatus.Unavailable;
+  | TrackFileStatus.Failed;
 
-const MISSING: readonly MissingState[] = [
+/* A shortfall is work the product can still do. A track whose video was gone
+ * before storage is not work, it is a closed fact. */
+const MISSING: readonly ShortfallState[] = [
   TrackFileStatus.Pending,
   TrackFileStatus.Downloading,
-  TrackFileStatus.Failed,
-  TrackFileStatus.Unavailable
+  TrackFileStatus.Failed
 ];
 
 /* Worst wins, because a break is louder news than a wait. */
-const SEVERITY: readonly MissingState[] = [
+const SEVERITY: readonly ShortfallState[] = [
   TrackFileStatus.Failed,
-  TrackFileStatus.Unavailable,
   TrackFileStatus.Downloading,
   TrackFileStatus.Pending
 ];
@@ -74,31 +74,36 @@ const SEVERITY: readonly MissingState[] = [
 const MAX_CARD_SCALE = 1.3;
 
 const TONE_COLORS: Record<
-  MissingState,
-  'tone-pending' | 'tone-downloading' | 'tone-failed' | 'tone-unavailable'
+  ShortfallState,
+  'tone-pending' | 'tone-downloading' | 'tone-failed'
 > = {
   [TrackFileStatus.Pending]: 'tone-pending',
   [TrackFileStatus.Downloading]: 'tone-downloading',
-  [TrackFileStatus.Failed]: 'tone-failed',
-  [TrackFileStatus.Unavailable]: 'tone-unavailable'
+  [TrackFileStatus.Failed]: 'tone-failed'
 };
 
 interface Incomplete {
+  /* Work that can still finish. */
   readonly missing: number;
-  readonly tone: MissingState;
+  /* Tracks whose video was already gone; terminal, never a download. */
+  readonly gone: number;
+  readonly tone: ShortfallState | null;
 }
 
 function incompleteOf(counts: PlaylistWithCounts['counts']): Incomplete | null {
   const missing = MISSING.reduce((sum, state) => sum + counts[state], 0);
+  const gone = counts[TrackFileStatus.Unavailable];
 
-  if (missing === 0) {
+  if (missing === 0 && gone === 0) {
     return null;
   }
 
   const tone =
-    SEVERITY.find(state => counts[state] > 0) ?? TrackFileStatus.Pending;
+    missing === 0
+      ? null
+      : (SEVERITY.find(state => counts[state] > 0) ?? TrackFileStatus.Pending);
 
-  return { missing, tone };
+  return { missing, gone, tone };
 }
 
 /* The gallery's one card: the detail's hero arrangement at a phone's width.
@@ -129,9 +134,12 @@ export default function PlaylistCard({
     playlist.name,
     t(mark.label),
     `${playlist.trackCount} ${trackCountUnit(t, playlist.trackCount)}`,
-    incomplete === null
+    incomplete === null || incomplete.missing === 0
       ? null
       : t('library.notDownloaded', { count: incomplete.missing }),
+    incomplete === null || incomplete.gone === 0
+      ? null
+      : t('library.neverStored', { count: incomplete.gone }),
     syncStateLabel(t, playlist.syncStatus),
     sharedBy === null ? null : t('header.sharedBy', { name: sharedBy })
   ]
@@ -200,7 +208,7 @@ export default function PlaylistCard({
           testID="playlist-cover"
           style={[styles.cover, { backgroundColor: cover.sleeve }]}>
           {cover.source === null ? null : (
-            <Image
+            <AppImage
               testID="playlist-cover-image"
               accessible={false}
               source={cover.source}
@@ -237,7 +245,7 @@ export default function PlaylistCard({
               {syncStateLabel(t, playlist.syncStatus)}
             </Text>
           </View>
-          {incomplete === null ? null : (
+          {incomplete === null || incomplete.tone === null ? null : (
             <View testID="playlist-incomplete" style={styles.incomplete}>
               <IconDownload
                 size={tokenLength('icon-sm')}
@@ -253,6 +261,15 @@ export default function PlaylistCard({
                 {t('library.notDownloaded', { count: incomplete.missing })}
               </Text>
             </View>
+          )}
+          {incomplete === null || incomplete.gone === 0 ? null : (
+            <Text
+              testID="playlist-gone"
+              numberOfLines={2}
+              maxFontSizeMultiplier={MAX_CARD_SCALE}
+              style={styles.gone}>
+              {t('library.neverStored', { count: incomplete.gone })}
+            </Text>
           )}
         </View>
 
@@ -336,10 +353,14 @@ export default function PlaylistCard({
 
 const styles = StyleSheet.create({
   card: {
+    /* The gallery's cell is as tall as its row, so the card fills it; a card
+     * with a shorter identity keeps the row's floor rather than ending early. */
+    flex: 1,
     position: 'relative',
     paddingBottom: tokenLength('space-2')
   },
   content: {
+    flex: 1,
     gap: tokenLength('space-2')
   },
   cover: {
@@ -388,12 +409,20 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-xs')
   },
+  gone: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-xs')
+  },
   state: {
     flexShrink: 0,
     fontFamily,
     fontSize: tokenLength('text-xs')
   },
   owner: {
+    /* The optional owner line sits on the card's floor, so two cards in a row
+     * put their shared banners on the same baseline. */
+    marginTop: 'auto',
     color: tokenColor('shared'),
     fontFamily,
     fontSize: tokenLength('text-xs')

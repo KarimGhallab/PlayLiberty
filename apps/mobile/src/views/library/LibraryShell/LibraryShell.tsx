@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { UserRole } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
+import { useCoveredScreen } from '../../../shared/a11y/useCoveredScreen';
 import AccountSheet from '../../../shared/components/AccountSheet/AccountSheet';
 import Screen from '../../../shared/components/Screen/Screen';
 import SignInDoor from '../../../shared/components/SignInDoor/SignInDoor';
@@ -23,6 +24,7 @@ import LibraryScreen from '../LibraryScreen/LibraryScreen';
  */
 export default function LibraryShell() {
   const { t } = useI18n();
+  const covered = useCoveredScreen();
   const { status, signOut } = useSession();
   const config = useApiConfig();
   const [accountOpen, setAccountOpen] = useState(false);
@@ -68,7 +70,7 @@ export default function LibraryShell() {
   }
 
   return (
-    <Screen>
+    <Screen testID="library-screen" covered={covered}>
       <LibraryScreen
         account={account ?? null}
         config={config}

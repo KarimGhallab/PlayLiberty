@@ -8,7 +8,6 @@ import {
   Animated,
   Easing,
   type GestureResponderHandlers,
-  Image,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -22,6 +21,7 @@ import { endpoints } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
 import { useReduceMotion } from '../../shared/a11y/useReduceMotion';
+import AppImage from '../../shared/components/AppImage/AppImage';
 import Notice from '../../shared/components/Notice/Notice';
 import PlayPauseGlyph, {
   type PlayPauseGlyphHandle
@@ -29,6 +29,7 @@ import PlayPauseGlyph, {
 import PressableScale from '../../shared/components/PressableScale/PressableScale';
 import { type MediaSource, mediaSource } from '../../shared/media/mediaSource';
 import { sleeveColor } from '../../shared/styles/sleeve';
+import { lineHeightFor, useTextScale } from '../../shared/styles/textMetrics';
 import {
   barScrimOpacity,
   barVeilOpacity,
@@ -50,6 +51,7 @@ import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 import Artwork from './Artwork';
 import SeekBar, { type SeekBarProps } from './SeekBar/SeekBar';
+import { MAX_BAR_TEXT_SCALE } from './barTextScale';
 import { swipeMotion } from './swipeMotion/swipeMotion';
 
 /*
@@ -282,7 +284,6 @@ function PlayOrb({
           ? t('playerBar.pauseNamed', { title })
           : t('playerBar.playNamed', { title })
       }
-      accessibilityState={{ selected: isPlaying }}
       hitSlop={(touchTarget - size > 0 ? touchTarget - size : 0) / 2 + 4}
       onPress={() => {
         glyph.current?.morphTo(!isPlaying);
@@ -303,25 +304,46 @@ function PlayOrb({
 }
 
 function Title({ view }: { readonly view: BarView }) {
+  const scale = useTextScale(MAX_BAR_TEXT_SCALE);
+
   return (
-    <Text testID="player-title" numberOfLines={1} style={styles.title}>
+    <Text
+      testID="player-title"
+      numberOfLines={1}
+      maxFontSizeMultiplier={MAX_BAR_TEXT_SCALE}
+      style={[
+        styles.title,
+        { lineHeight: lineHeightFor('text-md', 'leading-tight', scale) }
+      ]}>
       {view.track.title}
     </Text>
   );
 }
 
 function Meta({ view }: { readonly view: BarView }) {
+  const scale = useTextScale(MAX_BAR_TEXT_SCALE);
+
   return (
     <View style={styles.meta}>
       {view.playlistName === null ? null : (
         <Text
           testID="player-playlist"
           numberOfLines={1}
-          style={styles.playlist}>
+          maxFontSizeMultiplier={MAX_BAR_TEXT_SCALE}
+          style={[
+            styles.playlist,
+            { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+          ]}>
           {view.playlistName}
         </Text>
       )}
-      <Text testID="player-queue" style={styles.count}>
+      <Text
+        testID="player-queue"
+        maxFontSizeMultiplier={MAX_BAR_TEXT_SCALE}
+        style={[
+          styles.count,
+          { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+        ]}>
         {view.queueLabel}
       </Text>
     </View>
@@ -364,7 +386,8 @@ function BarIdentity({
       testID="player-open-playlist"
       accessibilityRole="button"
       accessibilityLabel={t('playerBar.openPlaylist', {
-        name: view.playlistName ?? ''
+        name: view.playlistName ?? '',
+        position: view.queueLabel
       })}
       onPress={() =>
         router.navigate({
@@ -447,7 +470,7 @@ function BarPage({
       ]}>
       {cover !== null && !coverFailed ? (
         <>
-          <Image
+          <AppImage
             testID="player-cover-veil"
             source={cover}
             resizeMode="cover"
@@ -614,6 +637,12 @@ export default function PlayerBar({ config }: PlayerBarProps) {
           Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.3,
         onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_event, gesture) => {
+          /* Reduced motion cuts the queue change; the deck does not follow the
+           * finger across a page to show it. */
+          if (reduceMotion) {
+            return;
+          }
+
           const directionNow: SwipeDirection =
             gesture.dx > 0 ? 'previous' : 'next';
           const allowed =
@@ -651,7 +680,7 @@ export default function PlayerBar({ config }: PlayerBarProps) {
         },
         onPanResponderTerminate: settleBack
       }),
-    [complete, nextId, previousId, settleBack, swipe, width]
+    [complete, nextId, previousId, reduceMotion, settleBack, swipe, width]
   );
 
   if (bar === null) {
@@ -768,8 +797,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-tight')
+    fontWeight: tokenWeight('weight-semibold')
   },
   meta: {
     flexDirection: 'row',
@@ -780,15 +808,13 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: tokenColor('muted-on-art'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   },
   count: {
     color: tokenColor('accent-on-art'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-semibold')
   },
   step: {
     alignItems: 'center',

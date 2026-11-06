@@ -36,6 +36,8 @@ export interface DialAction {
   readonly testID: string;
   readonly label: string;
   readonly icon: DialIcon;
+  /** A one-line reason under the label, such as an excluded set. */
+  readonly detail?: string;
   /** The action's own mark: the accent border and glyph. */
   readonly accent?: boolean;
   readonly busy?: boolean;
@@ -154,6 +156,7 @@ export default function ActionDial({
               testID={action.testID}
               accessibilityRole="button"
               accessibilityLabel={action.label}
+              accessibilityHint={action.detail}
               accessibilityState={{
                 disabled: action.busy ?? false,
                 busy: action.busy ?? false
@@ -175,6 +178,11 @@ export default function ActionDial({
                     <Text numberOfLines={2} style={styles.labelText}>
                       {action.label}
                     </Text>
+                    {action.detail === undefined ? null : (
+                      <Text numberOfLines={1} style={styles.detailText}>
+                        {action.detail}
+                      </Text>
+                    )}
                   </View>
                   <View
                     style={[
@@ -277,6 +285,12 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-sm'),
     fontWeight: tokenWeight('weight-medium')
+  },
+  detailText: {
+    flexShrink: 1,
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-xs')
   },
   action: {
     width: touchTarget,

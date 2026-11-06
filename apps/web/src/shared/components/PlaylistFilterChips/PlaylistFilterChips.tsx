@@ -64,12 +64,12 @@ const CHIPS: readonly Chip[] = [
   },
   {
     value: TrackFileStatus.Unavailable,
-    labelKey: 'trackState.unavailable',
+    labelKey: 'trackState.unavailableChip',
     tone: 'unavailable'
   },
   {
     value: REMOTE_REMOVED,
-    labelKey: 'trackState.removedFromChip',
+    labelKey: 'trackState.retainedChip',
     tone: 'retained'
   }
 ];

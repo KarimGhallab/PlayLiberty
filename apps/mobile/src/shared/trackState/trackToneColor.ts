@@ -8,7 +8,8 @@ const TONE_COLORS = {
   [TrackTone.Downloading]: 'tone-downloading',
   [TrackTone.Failed]: 'tone-failed',
   [TrackTone.Unavailable]: 'tone-unavailable',
-  [TrackTone.Removed]: 'tone-removed'
+  [TrackTone.Removed]: 'tone-removed',
+  [TrackTone.Retained]: 'tone-retained'
 } as const;
 
 /** The token colour a track state's word carries. */

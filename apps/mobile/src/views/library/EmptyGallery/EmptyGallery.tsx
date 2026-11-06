@@ -3,10 +3,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
@@ -19,13 +22,20 @@ export interface EmptyGalleryProps {
  * that exists, this one has nothing to sync. */
 export default function EmptyGallery({ onAdd }: EmptyGalleryProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
 
   return (
     <View style={styles.empty}>
       <Text accessibilityRole="header" style={styles.heading}>
         {t('library.empty.heading')}
       </Text>
-      <Text style={styles.promise}>{t('library.empty.promise')}</Text>
+      <Text
+        style={[
+          styles.promise,
+          { lineHeight: lineHeightFor('text-md', 'leading-relaxed', scale) }
+        ]}>
+        {t('library.empty.promise')}
+      </Text>
       <Pressable
         testID="empty-add"
         accessibilityRole="button"
@@ -58,7 +68,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-relaxed'),
     textAlign: 'center'
   },
   action: {

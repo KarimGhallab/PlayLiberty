@@ -55,9 +55,12 @@ export function usePlaylistCover(
   const trackSource =
     playlist.coverTrackId === null
       ? null
-      : mediaSource(config, endpoints.trackThumbnail, {
-          trackId: playlist.coverTrackId
-        });
+      : withVersion(
+          mediaSource(config, endpoints.trackThumbnail, {
+            trackId: playlist.coverTrackId
+          }),
+          playlist.coverTrackId
+        );
 
   const showingCustom = customSource !== null && failure === CoverFailure.None;
   const source = showingCustom

@@ -29,6 +29,7 @@ import ActionDial, {
   actionDialSize
 } from '../../../shared/components/ActionDial/ActionDial';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
+import { verticalListChrome } from '../../../shared/components/List/listChrome';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
@@ -289,6 +290,9 @@ export default function PlaylistGallery({
       : statusCount(statusFilter, statusCounts, remoteRemoved);
   const provider = scopedItems[0]?.provider ?? Provider.Youtube;
   const visibleItems = visiblePlaylists(scopedItems, statusFilter);
+  const readOnlyCount = visibleItems.filter(
+    item => !canWritePlaylist(item)
+  ).length;
   const bulk = useBulkSync(items, playlists.dataUpdatedAt, scope, statusFilter);
   const syncLabel = bulk.busy
     ? t('library.syncingAll', { count: bulk.count })
@@ -309,6 +313,10 @@ export default function PlaylistGallery({
             key: 'sync',
             testID: 'gallery-sync',
             label: syncLabel,
+            detail:
+              readOnlyCount === 0
+                ? undefined
+                : t('library.syncAllReadOnly', { count: readOnlyCount }),
             icon: 'sync' as const,
             accent: true,
             busy: bulk.busy,
@@ -852,18 +860,20 @@ export default function PlaylistGallery({
 
   return (
     <View style={styles.list}>
-      <GalleryFilterBar
-        hasShared={hasShared}
-        totalCount={items.length}
-        sharedCount={sharedItems.length}
-        scope={scope}
-        onScopeChange={onScopeChange}
-        counts={statusCounts}
-        remoteRemoved={remoteRemoved}
-        provider={provider}
-        activeStatus={statusFilter}
-        onStatusChange={onStatusChange}
-      />
+      <View style={styles.filterBar}>
+        <GalleryFilterBar
+          hasShared={hasShared}
+          totalCount={items.length}
+          sharedCount={sharedItems.length}
+          scope={scope}
+          onScopeChange={onScopeChange}
+          counts={statusCounts}
+          remoteRemoved={remoteRemoved}
+          provider={provider}
+          activeStatus={statusFilter}
+          onStatusChange={onStatusChange}
+        />
+      </View>
       <FlatList
         testID="gallery-scroll"
         data={rows}
@@ -871,6 +881,7 @@ export default function PlaylistGallery({
         renderItem={renderRow}
         ListHeaderComponent={pinnedHeader}
         style={styles.gallery}
+        {...verticalListChrome}
         refreshControl={
           <RefreshControl
             testID="gallery-refresh"
@@ -902,6 +913,7 @@ export default function PlaylistGallery({
         actions={dialActions}
         busy={bulk.busy}
         bottomOffset={playerOffset}
+        rightOffset={tokenLength('space-4')}
       />
       {addSheet}
       {actionsSheet}
@@ -919,9 +931,15 @@ const styles = StyleSheet.create({
   state: {
     flex: 1
   },
+  /* The gallery runs edge to edge so the pinned row can show its next card;
+   * every band inside restores the page inset itself. */
   list: {
     flex: 1,
-    gap: tokenLength('space-3')
+    gap: tokenLength('space-3'),
+    marginHorizontal: -tokenLength('space-4')
+  },
+  filterBar: {
+    paddingHorizontal: tokenLength('space-4')
   },
   gallery: {
     flex: 1
@@ -930,7 +948,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: tokenLength('space-3'),
-    marginBottom: tokenLength('space-3')
+    marginBottom: tokenLength('space-3'),
+    paddingHorizontal: tokenLength('space-4')
   },
   pinnedGroup: {
     marginBottom: tokenLength('space-4')
@@ -940,10 +959,12 @@ const styles = StyleSheet.create({
   },
   pinnedContent: {
     gap: tokenLength('space-3'),
+    paddingLeft: tokenLength('space-4'),
     paddingRight: tokenLength('space-4')
   },
   heading: {
     marginBottom: tokenLength('space-2'),
+    paddingHorizontal: tokenLength('space-4'),
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),

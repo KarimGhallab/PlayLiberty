@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AccountSummary, Share } from '@playliberty/contracts';
 import { ShareLevel } from '@playliberty/contracts';
@@ -10,6 +10,10 @@ import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import AccountAvatar from '../../../shared/components/AccountAvatar/AccountAvatar';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Sheet from '../../../shared/components/Sheet/Sheet';
+import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
@@ -49,6 +53,15 @@ export default function ShareAccountPicker({
   shares,
   onClose
 }: ShareAccountPickerProps) {
+  const scale = useTextScale();
+  const noteStyle = [
+    styles.note,
+    { lineHeight: lineHeightFor('text-md', 'leading-normal', scale) }
+  ];
+  const messageStyle = [
+    styles.message,
+    { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+  ];
   const { t } = useI18n();
   const me = useAccount(visible);
   const directory = useAccountPage(visible);
@@ -126,7 +139,7 @@ export default function ShareAccountPicker({
     const busy = working === account.id;
 
     return (
-      <View key={account.id} testID="share-picker-row" style={styles.row}>
+      <View testID="share-picker-row" style={styles.row}>
         <View style={styles.line}>
           <AccountAvatar account={account} size="sm" />
           <Text numberOfLines={1} style={styles.name}>
@@ -170,7 +183,7 @@ export default function ShareAccountPicker({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={liveRegion}
-            style={styles.message}>
+            style={messageStyle}>
             {refusal.message}
           </Text>
         ) : null}
@@ -201,7 +214,7 @@ export default function ShareAccountPicker({
         </View>
       }>
       {loading ? (
-        <Text style={styles.note}>{t('shareDialog.loading')}</Text>
+        <Text style={noteStyle}>{t('shareDialog.loading')}</Text>
       ) : null}
 
       {failed ? (
@@ -218,30 +231,40 @@ export default function ShareAccountPicker({
       {directory.isSuccess && me.isSuccess ? (
         <>
           {candidates.length === 0 && !directory.hasMore ? (
-            <Text style={styles.note}>{t('shareDialog.noAccounts')}</Text>
+            <Text style={noteStyle}>{t('shareDialog.noAccounts')}</Text>
           ) : (
-            <ScrollView
+            <FlatList
               testID="share-picker-list"
               style={styles.list}
               contentContainerStyle={styles.listContent}
+              data={candidates}
+              keyExtractor={account => account.id}
+              renderItem={({ item }) => row(item)}
               scrollEventThrottle={16}
-              onScroll={loadMore}>
-              {candidates.map(row)}
-              {directory.isFetchingNextPage ? (
-                <Text style={styles.note}>{t('shareDialog.loading')}</Text>
-              ) : null}
-              {directory.isFetchNextPageError ? (
-                <Pressable
-                  testID="share-picker-more-retry"
-                  accessibilityRole="button"
-                  style={styles.moreRetry}
-                  onPress={directory.fetchNextPage}>
-                  <Text style={styles.moreRetryLabel}>
-                    {t('readFailure.retry')}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </ScrollView>
+              onScroll={loadMore}
+              nestedScrollEnabled
+              initialNumToRender={12}
+              maxToRenderPerBatch={12}
+              windowSize={5}
+              ListFooterComponent={
+                <>
+                  {directory.isFetchingNextPage ? (
+                    <Text style={noteStyle}>{t('shareDialog.loading')}</Text>
+                  ) : null}
+                  {directory.isFetchNextPageError ? (
+                    <Pressable
+                      testID="share-picker-more-retry"
+                      accessibilityRole="button"
+                      style={styles.moreRetry}
+                      onPress={directory.fetchNextPage}>
+                      <Text style={styles.moreRetryLabel}>
+                        {t('readFailure.retry')}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </>
+              }
+            />
           )}
         </>
       ) : null}
@@ -254,8 +277,7 @@ const styles = StyleSheet.create({
     marginTop: tokenLength('space-3'),
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-md'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-md')
   },
   list: {
     maxHeight: touchTarget * 8,
@@ -317,8 +339,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-medium')
   },
   moreRetry: {
     alignSelf: 'center',

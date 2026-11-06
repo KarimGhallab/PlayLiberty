@@ -14,9 +14,10 @@ import styles from './SyncError.module.scss';
  */
 
 interface SyncErrorProps {
-  /* How many tracks are still here, for the reassurance; null when the count is
-   * not known, in which case the reassurance is absent. */
-  trackCount: number | null;
+  /* How many tracks are stored, for the reassurance; null when the count is
+   * not known, in which case the reassurance is absent. Never the playlist's
+   * association count: the tracks that were never stored are not here. */
+  storedCount: number | null;
   provider: Provider;
   /* The server's own diagnostic, behind the reveal control. Null when there is
    * nothing to reveal, which is the no-run case. */
@@ -28,7 +29,7 @@ interface SyncErrorProps {
 }
 
 export default function SyncError({
-  trackCount,
+  storedCount,
   provider,
   rawError,
   onRetry,
@@ -44,9 +45,12 @@ export default function SyncError({
         <p className={styles.syncError__say}>
           {t('syncError.reach', { provider: providerName })}
         </p>
-        {trackCount === null || trackCount === 0 ? null : (
+        {storedCount === null || storedCount === 0 ? null : (
           <p className={styles.syncError__safe}>
-            {t('syncError.safe', { count: trackCount, provider: providerName })}
+            {t('syncError.safe', {
+              count: storedCount,
+              provider: providerName
+            })}
           </p>
         )}
         {onRetry === undefined ? null : (

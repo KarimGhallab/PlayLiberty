@@ -1,8 +1,9 @@
 import { memo, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { endpoints } from '@playliberty/contracts';
 
+import AppImage from '../../shared/components/AppImage/AppImage';
 import { mediaSource } from '../../shared/media/mediaSource';
 import { tokenColor, tokenLength } from '../../shared/styles/tokens';
 
@@ -37,7 +38,7 @@ function Artwork({
         style={[styles.noArtwork, { borderRadius: radius }]}
       />
     ) : (
-      <Image
+      <AppImage
         testID="player-bar-artwork"
         accessible={false}
         source={artwork}

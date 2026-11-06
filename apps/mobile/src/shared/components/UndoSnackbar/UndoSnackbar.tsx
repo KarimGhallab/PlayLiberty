@@ -13,11 +13,11 @@ import { useI18n } from '@playliberty/i18n';
 
 import { useAnnouncement } from '../../a11y/useAnnouncement';
 import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../styles/tokens';
@@ -57,6 +57,7 @@ export default function UndoSnackbar({
   bottomOffset = 0,
   horizontalInset = 0
 }: UndoSnackbarProps) {
+  const scale = useTextScale();
   const { t } = useI18n();
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
@@ -229,10 +230,20 @@ export default function UndoSnackbar({
           onAccessibilityAction={onAccessibilityAction}
           testID="undo-snackbar-body"
           style={styles.body}>
-          <Text numberOfLines={1} style={styles.message}>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.message,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
             {message}
           </Text>
-          <Text numberOfLines={1} style={styles.detail}>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.detail,
+              { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+            ]}>
             {detail}
           </Text>
         </View>
@@ -281,14 +292,12 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-semibold')
   },
   detail: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   },
   action: {
     minHeight: touchTarget,

@@ -108,6 +108,8 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
   from issue [`108`](../issues/108-a-design-critique-scores-the-mobile-app-26-40.md).
 - [`removed-source-view/TICKETS.md`](removed-source-view/TICKETS.md): the retained view in the track filter's 3 tickets,
   from issue [`109`](../issues/109-the-filter-cannot-show-the-tracks-a-removal-left-behind.md).
+- [`mobile-ui-critique-2/TICKETS.md`](mobile-ui-critique-2/TICKETS.md): the second mobile design critique's 19 tickets,
+  from issue [`123`](../issues/123-a-second-design-critique-scores-the-mobile-app-26-40.md).
 - [`shared-client-modules/TICKETS.md`](shared-client-modules/TICKETS.md): the cross-client duplication review's 8
   tickets, from the architecture review of 3 November 2026.
 

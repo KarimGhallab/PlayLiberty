@@ -103,7 +103,7 @@ export default function PlaylistControls({
   /* A chip selected while half past the rail's edge is scrolled back into
    * view, so the tap that chose it never hides its own count. */
   const revealChip = useCallback(
-    (key: ChipKey): void => {
+    (key: ChipKey, animate: boolean): void => {
       const rect = chipRects.current.get(key);
       const viewport = railViewport.current;
 
@@ -118,20 +118,24 @@ export default function PlaylistControls({
       if (x < offset + margin) {
         rail.current?.scrollTo({
           x: Math.max(0, x - margin),
-          animated: !reduceMotion
+          animated: animate && !reduceMotion
         });
       } else if (x + rect.width > offset + viewport - margin) {
         rail.current?.scrollTo({
           x: x + rect.width - viewport + margin,
-          animated: !reduceMotion
+          animated: animate && !reduceMotion
         });
       }
     },
     [reduceMotion]
   );
 
+  /* The default chip stays put; only a chosen or restored filter is brought
+   * back into view. A restored one is revealed on its first measurement. */
   useEffect(() => {
-    revealChip(active ?? 'all');
+    if (active !== null) {
+      revealChip(active, true);
+    }
   }, [active, revealChip]);
 
   const readViewport = (event: LayoutChangeEvent): void => {
@@ -147,6 +151,10 @@ export default function PlaylistControls({
   const rememberChip = (key: ChipKey) => (event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
     chipRects.current.set(key, { x, width });
+
+    if (key === active) {
+      revealChip(key, false);
+    }
   };
 
   return (
@@ -212,7 +220,10 @@ export default function PlaylistControls({
             const count = statusChipCount(chip, counts, remoteRemoved);
 
             return (
-              <View key={chip.value} onLayout={rememberChip(chip.value)}>
+              <View
+                key={chip.value}
+                testID={`filter-chip-${chip.value}`}
+                onLayout={rememberChip(chip.value)}>
                 <Chip
                   testID={`filter-${chip.value}`}
                   label={t(chip.label, {

@@ -16,6 +16,10 @@ import { formatRelativeTime, providerLabel, useI18n } from '@playliberty/i18n';
 
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
@@ -65,21 +69,33 @@ export default function SyncBand({
   remoteRemoved = 0
 }: SyncBandProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
   const [revealed, setRevealed] = useState(false);
   const failedCount = counts[TrackFileStatus.Failed];
+  const storedCount = counts[TrackFileStatus.Stored];
   const provider = providerLabel(t, playlist.provider);
 
   if (playlist.syncStatus === PlaylistSyncStatus.Error) {
     return (
       <View testID="sync-band" style={styles.error}>
         <View style={styles.errorBody}>
-          <Text style={styles.errorSay}>
+          <Text
+            style={[
+              styles.errorSay,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
             {t('syncError.reach', { provider })}
           </Text>
-          {playlist.trackCount === 0 ? null : (
-            <Text style={styles.errorSafe}>
+          {storedCount === 0 ? null : (
+            <Text
+              style={[
+                styles.errorSafe,
+                {
+                  lineHeight: lineHeightFor('text-xs', 'leading-normal', scale)
+                }
+              ]}>
               {t('syncError.safe', {
-                count: playlist.trackCount,
+                count: storedCount,
                 provider
               })}
             </Text>
@@ -129,7 +145,19 @@ export default function SyncBand({
                   testID="sync-error-raw-box"
                   nestedScrollEnabled
                   style={styles.rawBox}>
-                  <Text testID="sync-error-raw" selectable style={styles.raw}>
+                  <Text
+                    testID="sync-error-raw"
+                    selectable
+                    style={[
+                      styles.raw,
+                      {
+                        lineHeight: lineHeightFor(
+                          'text-xs',
+                          'leading-normal',
+                          scale
+                        )
+                      }
+                    ]}>
                     {run.error}
                   </Text>
                 </ScrollView>
@@ -247,7 +275,12 @@ export default function SyncBand({
         </Text>
       ) : null}
       {remoteRemoved > 0 ? (
-        <Text testID="sync-remote-removed" style={styles.retained}>
+        <Text
+          testID="sync-remote-removed"
+          style={[
+            styles.retained,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
           {t('syncSummary.retained', {
             count: remoteRemoved,
             provider
@@ -314,8 +347,7 @@ const styles = StyleSheet.create({
   retained: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   },
   retryFailed: {
     minHeight: touchTarget,
@@ -352,14 +384,12 @@ const styles = StyleSheet.create({
   errorSay: {
     color: tokenColor('tone-failed'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   },
   errorSafe: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   },
   retry: {
     minHeight: touchTarget,
@@ -398,7 +428,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal'),
     padding: tokenLength('space-3'),
     borderWidth: 1,
     borderColor: tokenColor('line'),

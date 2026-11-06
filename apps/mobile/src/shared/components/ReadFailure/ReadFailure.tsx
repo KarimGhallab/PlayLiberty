@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 
 import { useAnnouncement } from '../../a11y/useAnnouncement';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
@@ -25,6 +26,7 @@ export default function ReadFailure({
   onRetry
 }: ReadFailureProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
   const liveRegion = useAnnouncement(message);
 
   return (
@@ -32,7 +34,10 @@ export default function ReadFailure({
       <Text
         accessibilityRole="alert"
         accessibilityLiveRegion={liveRegion}
-        style={styles.message}>
+        style={[
+          styles.message,
+          { lineHeight: lineHeightFor('text-md', 'leading-normal', scale) }
+        ]}>
         {message}
       </Text>
       <Pressable
@@ -64,7 +69,6 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-normal'),
     textAlign: 'center'
   },
   retry: {

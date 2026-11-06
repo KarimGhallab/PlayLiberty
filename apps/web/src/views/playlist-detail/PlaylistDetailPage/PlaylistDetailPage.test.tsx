@@ -1260,7 +1260,7 @@ describe('PlaylistDetailPage', () => {
         container
           .querySelector('[data-arrangement="card"] img')
           ?.getAttribute('src')
-      ).toBe('/api/v1/tracks/track-9/thumbnail')
+      ).toBe('/api/v1/tracks/track-9/thumbnail?v=track-9')
     );
   });
 
@@ -1741,7 +1741,7 @@ describe('PlaylistDetailPage', () => {
       )
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/All 3 tracks are still here and will never be deleted/)
+      screen.getByText(/All 2 tracks are still here and will never be deleted/)
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sync' })).toBeInTheDocument();
     expect(screen.queryByText('kept')).not.toBeInTheDocument();
@@ -2207,14 +2207,9 @@ describe('PlaylistDetailPage filter chips', () => {
     const rail = screen.getByRole('group', { name: 'Filter by' });
     const chips = within(rail).getAllByRole('button');
 
-    expect(chips.at(-1)).toHaveAttribute(
-      'aria-label',
-      'Removed from YouTube 1'
-    );
+    expect(chips.at(-1)).toHaveAttribute('aria-label', 'Retained 1');
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Removed from YouTube 1' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retained 1' }));
 
     await waitFor(() =>
       expect(screen.queryByText('Fresh One')).not.toBeInTheDocument()
@@ -2258,12 +2253,10 @@ describe('PlaylistDetailPage filter chips', () => {
     renderDetail();
 
     await screen.findByRole('button', { name: 'Play Kept One' });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Removed from YouTube 1' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retained 1' }));
 
     expect(
-      await screen.findByText('No track removed from YouTube is still stored')
+      await screen.findByText('No track was retained after a YouTube removal')
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
@@ -2272,7 +2265,7 @@ describe('PlaylistDetailPage filter chips', () => {
       expect(screen.getByText('Kept One')).toBeInTheDocument()
     );
     expect(
-      screen.queryByText('No track removed from YouTube is still stored')
+      screen.queryByText('No track was retained after a YouTube removal')
     ).not.toBeInTheDocument();
   });
 

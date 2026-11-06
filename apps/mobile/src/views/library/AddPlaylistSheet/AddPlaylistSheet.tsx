@@ -9,6 +9,10 @@ import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import SheetActions from '../../../shared/components/SheetActions/SheetActions';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
@@ -38,6 +42,7 @@ export default function AddPlaylistSheet({
   onClose
 }: AddPlaylistSheetProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
   const [url, setUrl] = useState('');
   const [skipNonMusic, setSkipNonMusic] = useState(true);
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -148,7 +153,10 @@ export default function AddPlaylistSheet({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={liveRegion}
-            style={styles.message}>
+            style={[
+              styles.message,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
             {message}
           </Text>
         )}
@@ -197,8 +205,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-medium')
   },
   checkBlock: {
     marginTop: tokenLength('space-4')

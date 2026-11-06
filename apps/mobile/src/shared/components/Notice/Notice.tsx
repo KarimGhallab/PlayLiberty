@@ -17,12 +17,12 @@ import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useAnnouncement } from '../../a11y/useAnnouncement';
 import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
   tokenDuration,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../styles/tokens';
@@ -71,6 +71,7 @@ export default function Notice({
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const scale = useTextScale();
   const reduceMotion = useReduceMotion();
   const [windowKey, setWindowKey] = useState(0);
   const liveRegion = useAnnouncement(
@@ -240,8 +241,22 @@ export default function Notice({
         accessibilityActions={[{ name: 'extend', label: t('common.moreTime') }]}
         onAccessibilityAction={onAccessibilityAction}
         style={styles.body}>
-        <Text style={styles.message}>{message}</Text>
-        {detail === null ? null : <Text style={styles.detail}>{detail}</Text>}
+        <Text
+          style={[
+            styles.message,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
+          {message}
+        </Text>
+        {detail === null ? null : (
+          <Text
+            style={[
+              styles.detail,
+              { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+            ]}>
+            {detail}
+          </Text>
+        )}
       </View>
       <Pressable
         testID="notice-close"
@@ -283,13 +298,11 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-semibold')
   },
   detail: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   }
 });

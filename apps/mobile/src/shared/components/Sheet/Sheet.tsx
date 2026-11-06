@@ -205,6 +205,12 @@ export default function Sheet({
     return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gesture) => {
+        /* Reduced motion keeps the panel still; the release still decides by
+         * the same distance and velocity. */
+        if (reduceMotion) {
+          return;
+        }
+
         const dy = Math.max(0, gesture.dy);
         translateY.setValue(dy);
         scrimOpacity.setValue(Math.max(0, 1 - dy / Math.max(1, height)));

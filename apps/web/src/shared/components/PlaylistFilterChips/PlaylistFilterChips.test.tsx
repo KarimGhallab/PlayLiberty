@@ -49,7 +49,9 @@ describe('PlaylistFilterChips', () => {
     /* A zero is drawn as well: the count is what the choice is made on. */
     expect(screen.getByRole('button', { name: 'Downloading 0' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Failed 0' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Unavailable 0' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Never stored 0' })
+    ).toBeDefined();
   });
 
   it('names All as the caller asks where another All is on screen', () => {
@@ -74,7 +76,7 @@ describe('PlaylistFilterChips', () => {
       screen.queryByRole('button', { name: 'Failed 0' })
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Unavailable 0' })
+      screen.queryByRole('button', { name: 'Never stored 0' })
     ).not.toBeInTheDocument();
   });
 
@@ -82,16 +84,13 @@ describe('PlaylistFilterChips', () => {
     const { unmount } = renderChips({ remoteRemoved: 2 });
     const chips = screen.getAllByRole('button');
 
-    expect(chips.at(-1)).toHaveAttribute(
-      'aria-label',
-      'Removed from YouTube 2'
-    );
+    expect(chips.at(-1)).toHaveAttribute('aria-label', 'Retained 2');
 
     unmount();
     renderChips();
 
     expect(
-      screen.queryByRole('button', { name: /Removed from/ })
+      screen.queryByRole('button', { name: /Retained/ })
     ).not.toBeInTheDocument();
   });
 
@@ -99,9 +98,7 @@ describe('PlaylistFilterChips', () => {
     const onChange = vi.fn();
     renderChips({ remoteRemoved: 2, onChange });
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Removed from YouTube 2' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retained 2' }));
 
     expect(onChange).toHaveBeenCalledWith(REMOTE_REMOVED);
   });
@@ -109,9 +106,10 @@ describe('PlaylistFilterChips', () => {
   it('marks the retained chip in force', () => {
     renderChips({ remoteRemoved: 2, active: REMOTE_REMOVED });
 
-    expect(
-      screen.getByRole('button', { name: 'Removed from YouTube 2' })
-    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Retained 2' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
   it('marks the chip in force and asks for a state on a press', () => {

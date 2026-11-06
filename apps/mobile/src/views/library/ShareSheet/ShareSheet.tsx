@@ -10,6 +10,10 @@ import AccountAvatar from '../../../shared/components/AccountAvatar/AccountAvata
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
@@ -41,6 +45,19 @@ export default function ShareSheet({
   playlistId,
   onClose
 }: ShareSheetProps) {
+  const scale = useTextScale();
+  const noteStyle = [
+    styles.note,
+    { lineHeight: lineHeightFor('text-md', 'leading-normal', scale) }
+  ];
+  const askStyle = [
+    styles.ask,
+    { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+  ];
+  const messageStyle = [
+    styles.message,
+    { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+  ];
   const { t } = useI18n();
   const shares = usePlaylistShares(visible ? playlistId : null);
   const revoke = useRevokeShare(playlistId);
@@ -126,7 +143,7 @@ export default function ShareSheet({
 
         {asking ? (
           <View style={styles.confirm}>
-            <Text style={styles.ask}>{t('shareDialog.revokeAsk')}</Text>
+            <Text style={askStyle}>{t('shareDialog.revokeAsk')}</Text>
             <View style={styles.confirmActions}>
               <Pressable
                 testID="share-revoke-cancel"
@@ -164,7 +181,7 @@ export default function ShareSheet({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={liveRegion}
-            style={styles.message}>
+            style={messageStyle}>
             {refusal.message}
           </Text>
         ) : null}
@@ -195,7 +212,7 @@ export default function ShareSheet({
         </View>
       }>
       {shares.isPending ? (
-        <Text style={styles.note}>{t('shareDialog.loading')}</Text>
+        <Text style={noteStyle}>{t('shareDialog.loading')}</Text>
       ) : null}
 
       {shares.isError ? (
@@ -207,7 +224,7 @@ export default function ShareSheet({
       ) : null}
 
       {shares.isSuccess && shares.data.length === 0 ? (
-        <Text style={styles.note}>{t('shareDialog.private')}</Text>
+        <Text style={noteStyle}>{t('shareDialog.private')}</Text>
       ) : null}
 
       {shares.isSuccess && shares.data.length > 0 ? (
@@ -244,8 +261,7 @@ const styles = StyleSheet.create({
     marginTop: tokenLength('space-4'),
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-md'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-md')
   },
   list: {
     maxHeight: touchTarget * 7,
@@ -306,8 +322,7 @@ const styles = StyleSheet.create({
   ask: {
     color: tokenColor('ink'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   },
   confirmActions: {
     flexDirection: 'row',
@@ -355,8 +370,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-medium')
   },
   add: {
     minHeight: touchTarget,

@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { AccountSummary } from '@playliberty/contracts';
 
@@ -9,6 +9,7 @@ import {
   tokenLength,
   tokenWeight
 } from '../../styles/tokens';
+import AppImage from '../AppImage/AppImage';
 
 export type AccountAvatarSize = 'sm' | 'md';
 
@@ -32,7 +33,7 @@ export default function AccountAvatar({
 
   if (account.avatarUrl !== null) {
     return (
-      <Image
+      <AppImage
         accessible={false}
         testID="account-avatar"
         source={{ uri: account.avatarUrl }}

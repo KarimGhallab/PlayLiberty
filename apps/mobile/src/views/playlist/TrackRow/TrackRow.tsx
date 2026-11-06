@@ -3,8 +3,6 @@ import { memo, useRef, useState } from 'react';
 import {
   Animated,
   type GestureResponderEvent,
-  Image,
-  PixelRatio,
   Pressable,
   StyleSheet,
   Text,
@@ -13,18 +11,22 @@ import {
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
-import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
-import { trackTone } from '@playliberty/ui-foundation';
+import { formatDuration, trackStateFacts, useI18n } from '@playliberty/i18n';
+import { fileTone, trackTone } from '@playliberty/ui-foundation';
 
+import AppImage from '../../../shared/components/AppImage/AppImage';
 import { usePressScale } from '../../../shared/components/PressableScale/usePressScale';
 import TrackBars from '../../../shared/components/TrackBars/TrackBars';
 import { mediaSource } from '../../../shared/media/mediaSource';
 import { isPlayable } from '../../../shared/playable/playable';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
@@ -32,9 +34,6 @@ import { failureSentence } from '../../../shared/trackState/failureSentence';
 import { trackToneColor } from '../../../shared/trackState/trackToneColor';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';
-
-/* Above this scale the title takes a second line rather than losing its name. */
-const MAX_SINGLE_LINE_SCALE = 1.3;
 
 /* A press plays; a drag scrolls. The travel is measured from the touch itself,
  * because a Pressable still reports a release inside its own bounds as a press.
@@ -64,6 +63,7 @@ function TrackRow({
   onOpenActions
 }: TrackRowProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
   const { track } = association;
   const [revealed, setRevealed] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
@@ -71,21 +71,22 @@ function TrackRow({
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const dragged = useRef(false);
   const playable = isPlayable(track);
-  const stateLabel = trackStateLabel(
+  const duration =
+    track.durationSeconds === null
+      ? '--:--'
+      : formatDuration(track.durationSeconds);
+  const facts = trackStateFacts(
     t,
     track.fileStatus,
     track.sourceStatus,
     track.provider
   );
-  const tone = trackTone(track.fileStatus, track.sourceStatus);
-  const duration =
-    track.durationSeconds === null
-      ? '--:--'
-      : formatDuration(track.durationSeconds);
+  const stateTone = fileTone(track.fileStatus, track.sourceStatus);
+  const sourceTone = trackTone(track.fileStatus, track.sourceStatus);
   const stateWord =
-    stateLabel ??
+    facts.file ??
     (current ? t(playing ? 'trackBars.playing' : 'trackBars.paused') : null);
-  const label = [track.title, stateWord, duration]
+  const label = [track.title, stateWord, facts.source, duration]
     .filter((part): part is string => part !== null)
     .join(', ');
   const artwork =
@@ -96,7 +97,6 @@ function TrackRow({
         });
   const withFailure =
     track.failureKind !== null || track.failureReason !== null;
-  const titleLines = PixelRatio.getFontScale() > MAX_SINGLE_LINE_SCALE ? 2 : 1;
   /* The play layer carries the row's name, so the painted copy is not a second
    * stop; the sentence, the disclosure and the lane stay outside it. */
   const copyProps = playable
@@ -155,7 +155,7 @@ function TrackRow({
 
       <View testID="track-artwork" pointerEvents="none" style={styles.art}>
         {artwork === null ? null : (
-          <Image
+          <AppImage
             testID="track-artwork-image"
             accessible={false}
             source={artwork}
@@ -171,7 +171,7 @@ function TrackRow({
         <View {...copyProps} pointerEvents="none">
           <Text
             testID="track-title"
-            numberOfLines={titleLines}
+            numberOfLines={2}
             style={[styles.title, current && styles.titleCurrent]}>
             {track.title}
           </Text>
@@ -186,16 +186,44 @@ function TrackRow({
                 </Text>
               </View>
             ) : null}
-            {stateLabel === null ? null : (
+            {facts.file === null ? null : (
               <Text
                 testID="track-state"
-                style={[styles.state, { color: trackToneColor(tone) }]}>
-                {stateLabel}
+                style={[styles.state, { color: trackToneColor(stateTone) }]}>
+                {facts.file}
               </Text>
+            )}
+            {facts.source === null ? null : (
+              <>
+                {facts.file === null ? null : (
+                  <Text
+                    testID="track-separator"
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                    style={styles.separator}>
+                    ·
+                  </Text>
+                )}
+                <Text
+                  testID="track-source"
+                  style={[
+                    styles.source,
+                    { color: trackToneColor(sourceTone) }
+                  ]}>
+                  {facts.source}
+                </Text>
+              </>
             )}
           </View>
           {withFailure ? (
-            <Text testID="track-failure" style={styles.sentence}>
+            <Text
+              testID="track-failure"
+              style={[
+                styles.sentence,
+                {
+                  lineHeight: lineHeightFor('text-xs', 'leading-normal', scale)
+                }
+              ]}>
               {failureSentence(t, track.failureKind)}
             </Text>
           ) : null}
@@ -220,7 +248,13 @@ function TrackRow({
           )}
         </View>
         {revealed && track.failureReason !== null ? (
-          <Text testID="track-reason" selectable style={styles.raw}>
+          <Text
+            testID="track-reason"
+            selectable
+            style={[
+              styles.raw,
+              { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+            ]}>
             {track.failureReason}
           </Text>
         ) : null}
@@ -326,11 +360,19 @@ const styles = StyleSheet.create({
     fontSize: tokenLength('text-xs'),
     fontWeight: tokenWeight('weight-semibold')
   },
+  separator: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-xs')
+  },
+  source: {
+    fontFamily,
+    fontSize: tokenLength('text-xs')
+  },
   sentence: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   },
   reveal: {
     minHeight: touchTarget,
@@ -347,7 +389,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal'),
     padding: tokenLength('space-2'),
     borderWidth: 1,
     borderColor: tokenColor('line'),

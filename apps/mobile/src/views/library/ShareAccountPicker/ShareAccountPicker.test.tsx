@@ -156,6 +156,21 @@ function errorHandler(options: unknown): {
 }
 
 describe('the share account picker', () => {
+  it('mounts a bounded window when the directory is large', async () => {
+    const many = Array.from({ length: 200 }, (_, index) => ({
+      id: `account-${index}`,
+      displayName: `Person ${index}`,
+      avatarUrl: null
+    }));
+
+    await renderPicker(pageRead({ items: [me, ...many] }));
+
+    const rows = screen.getAllByTestId('share-picker-row');
+
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThan(many.length);
+  });
+
   it('leaves the owner out and keeps the directory order', async () => {
     await renderPicker(pageRead({ items: [me, cy, ada, bea] }));
 

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 
 import { useAnnouncement } from '../../a11y/useAnnouncement';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
@@ -43,6 +44,7 @@ export default function SheetActions({
   onKeepEditing
 }: SheetActionsProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
   const liveRegion = useAnnouncement(
     confirmingDiscard ? t('common.discardPrompt') : null
   );
@@ -53,7 +55,10 @@ export default function SheetActions({
         <Text
           accessibilityRole="alert"
           accessibilityLiveRegion={liveRegion}
-          style={styles.discard}>
+          style={[
+            styles.discard,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
           {t('common.discardPrompt')}
         </Text>
         <View style={styles.actions}>
@@ -123,7 +128,6 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-sm'),
     fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal'),
     marginTop: tokenLength('space-4')
   },
   actions: {

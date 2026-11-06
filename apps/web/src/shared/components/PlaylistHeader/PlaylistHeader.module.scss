@@ -975,6 +975,9 @@
       'identity'
       'actions';
     grid-template-columns: minmax(0, 1fr);
+    /* The identity row takes the cell's spare height, so the actions row and
+     * the playing line sit on the row's floor however much an owner line adds. */
+    grid-template-rows: auto 1fr auto;
     gap: var(--space-3);
     padding: var(--space-2);
     border-radius: var(--radius-card);

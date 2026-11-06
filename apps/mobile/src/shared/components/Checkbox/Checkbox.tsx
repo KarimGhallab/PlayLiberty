@@ -12,6 +12,7 @@ import {
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
@@ -40,6 +41,7 @@ export default function Checkbox({
   disabled = false,
   testID
 }: CheckboxProps) {
+  const scale = useTextScale();
   const reduceMotion = useReduceMotion();
   const reveal = useRef(new Animated.Value(checked ? 1 : 0)).current;
   const [pressed, setPressed] = useState(false);
@@ -111,7 +113,10 @@ export default function Checkbox({
         <Text
           accessibilityElementsHidden
           importantForAccessibility="no"
-          style={styles.hint}>
+          style={[
+            styles.hint,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
           {hint}
         </Text>
       )}
@@ -165,7 +170,6 @@ const styles = StyleSheet.create({
   hint: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   }
 });

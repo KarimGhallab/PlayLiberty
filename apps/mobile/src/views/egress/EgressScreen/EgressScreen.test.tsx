@@ -221,17 +221,19 @@ describe('the egress console', () => {
     await renderScreen(success(READ));
 
     expect(
-      screen.getByLabelText('Endpoint, 185.0.0.1:51820, Provider saw 185.0.0.9')
+      screen.getByLabelText(
+        'Exit endpoint, 185.0.0.1:51820, Provider saw 185.0.0.9'
+      )
     ).toBeOnTheScreen();
-    expect(screen.getByLabelText('Status, OK')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Check result, OK')).toBeOnTheScreen();
     expect(
-      screen.getByLabelText('Last attempt, 2 hours ago')
+      screen.getByLabelText('Last switch attempt, 2 hours ago')
     ).toBeOnTheScreen();
     expect(screen.getByLabelText('Last check, 1 hour ago')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Endpoint, Not set')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Status, Unknown')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Exit endpoint, Not set')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Check result, Unknown')).toBeOnTheScreen();
     expect(
-      screen.getByLabelText('Last attempt, No attempt yet')
+      screen.getByLabelText('Last switch attempt, No attempt yet')
     ).toBeOnTheScreen();
     expect(
       screen.getByLabelText('Last check, Not checked yet')
@@ -288,11 +290,31 @@ describe('the egress console', () => {
     ).toBeOnTheScreen();
   });
 
+  it('asks once before switching a standby exit', async () => {
+    await renderScreen(success(READ));
+
+    await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
+
+    expect(switchExit.mutate).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Switch this exit to 02-CH-182?')
+    ).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('egress-cancel-02-CH-182'));
+
+    expect(
+      screen.queryByText('Switch this exit to 02-CH-182?')
+    ).not.toBeOnTheScreen();
+    expect(switchExit.mutate).not.toHaveBeenCalled();
+  });
+
   it('runs the standby switch and reports the new exit', async () => {
     await renderScreen(success(READ));
 
+    await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
+    await fireEvent.press(screen.getByTestId('egress-confirm-02-CH-182'));
+
     await act(async () => {
-      await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
       mutateCall(switchExit.mutate).options.onSuccess(SWITCHED);
     });
 
@@ -370,8 +392,10 @@ describe('the egress console', () => {
   it('reports a refused switch with its detail and leaves the cards as read', async () => {
     await renderScreen(success(READ));
 
+    await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
+    await fireEvent.press(screen.getByTestId('egress-confirm-02-CH-182'));
+
     await act(async () => {
-      await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
       mutateCall(switchExit.mutate).options.onError(
         new ApiError(502, {
           type: 'about:blank',
@@ -396,8 +420,10 @@ describe('the egress console', () => {
   it('treats an unreachable agent as a failure', async () => {
     await renderScreen(success(READ));
 
+    await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
+    await fireEvent.press(screen.getByTestId('egress-confirm-02-CH-182'));
+
     await act(async () => {
-      await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
       mutateCall(switchExit.mutate).options.onSuccess({
         ...READ,
         agentReachable: false

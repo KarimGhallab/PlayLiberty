@@ -50,7 +50,7 @@ export const en = {
     pinned: 'Pinned',
     syncing: 'Syncing',
     scopeAll: 'All',
-    scopeShared: 'Shared with me',
+    scopeShared: 'Shared',
     scopeLabel: 'Filter by owner',
     allTracks: 'All tracks',
     pinFailed: 'The pin could not be changed.',
@@ -60,9 +60,17 @@ export const en = {
       one: '{count} track is not stored',
       other: '{count} tracks are not stored'
     },
+    neverStored: {
+      one: '1 track never stored',
+      other: '{count} tracks never stored'
+    },
     syncAll: {
       one: 'Sync 1 playlist',
       other: 'Sync all {count} playlists'
+    },
+    syncAllReadOnly: {
+      one: '1 read-only playlist is not included',
+      other: '{count} read-only playlists are not included'
     },
     syncAllShort: 'Synchronize all',
     syncingAll: {
@@ -99,11 +107,12 @@ export const en = {
     agentDown:
       'Egress agent unreachable. The configurations below are the last known states.',
     name: 'Name',
-    endpoint: 'Endpoint',
-    status: 'Status',
-    lastAttempt: 'Last attempt',
+    endpoint: 'Exit endpoint',
+    status: 'Check result',
+    lastAttempt: 'Last switch attempt',
     lastCheck: 'Last check',
     switch: 'Switch',
+    switchAsk: 'Switch this exit to {name}?',
     switching: 'Switching...',
     check: 'Check',
     checking: 'Checking...',
@@ -175,8 +184,8 @@ export const en = {
       pending: 'No pending tracks',
       downloading: 'No downloading tracks',
       failed: 'No failed tracks',
-      unavailable: 'No unavailable tracks',
-      remoteRemoved: 'No track removed from {provider} is still stored'
+      unavailable: 'No track was left without a copy',
+      remoteRemoved: 'No track was retained after a {provider} removal'
     }
   },
   trackRow: {
@@ -306,7 +315,7 @@ export const en = {
     pauseNamed: 'Pause {title}',
     previousNamed: 'Previous track, {title}',
     nextNamed: 'Next track, {title}',
-    openPlaylist: 'Open {name}',
+    openPlaylist: 'Open {name}, {position}',
     seekForward: 'Forward ten seconds',
     seekBackward: 'Back ten seconds',
     failed: 'Playback failed: {title}',
@@ -447,16 +456,21 @@ export const en = {
     blocked: 'Source unreachable'
   },
   trackState: {
-    removedFrom: 'Removed from {provider}',
-    removedFromChip: {
-      one: 'Removed from {provider}',
-      other: 'Removed from {provider}'
+    retained: 'Retained',
+    retainedChip: {
+      one: 'Retained',
+      other: 'Retained'
     },
+    removedFrom: 'Removed from {provider}',
     stored: 'Stored',
     pending: 'Pending',
     downloading: 'Downloading',
     failed: 'Failed',
-    unavailable: 'Unavailable'
+    unavailable: 'Never stored',
+    unavailableChip: {
+      one: 'Never stored',
+      other: 'Never stored'
+    }
   },
   provider: {
     youtube: 'YouTube'

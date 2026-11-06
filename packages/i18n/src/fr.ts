@@ -53,7 +53,7 @@ export const fr: Messages = {
     pinned: 'Épinglées',
     syncing: 'Synchronisation en cours',
     scopeAll: 'Toutes',
-    scopeShared: 'Partagées avec moi',
+    scopeShared: 'Partagées',
     scopeLabel: 'Filtrer par propriétaire',
     allTracks: 'Toutes les pistes',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
@@ -63,9 +63,17 @@ export const fr: Messages = {
       one: "{count} piste n'est pas stockée",
       other: '{count} pistes ne sont pas stockées'
     },
+    neverStored: {
+      one: '1 piste jamais stockée',
+      other: '{count} pistes jamais stockées'
+    },
     syncAll: {
       one: 'Synchroniser 1 playlist',
       other: 'Synchroniser les {count} playlists'
+    },
+    syncAllReadOnly: {
+      one: '1 playlist en lecture seule exclue',
+      other: '{count} playlists en lecture seule exclues'
     },
     syncAllShort: 'Tout synchroniser',
     syncingAll: {
@@ -102,11 +110,12 @@ export const fr: Messages = {
     agentDown:
       'Agent egress injoignable. Les configurations ci-dessous sont les derniers états connus.',
     name: 'Nom',
-    endpoint: 'Point de terminaison',
-    status: 'État',
-    lastAttempt: 'Dernière tentative',
-    lastCheck: 'Dernière vérification',
+    endpoint: 'Adresse de sortie',
+    status: 'Status',
+    lastAttempt: 'Dernière tentative de bascule',
+    lastCheck: 'Dernier contrôle',
     switch: 'Changer',
+    switchAsk: 'Basculer la configuration vers {name} ?',
     switching: 'Changement...',
     check: 'Vérifier',
     checking: 'Vérification...',
@@ -181,8 +190,8 @@ export const fr: Messages = {
       pending: 'Aucune piste en attente',
       downloading: 'Aucune piste en téléchargement',
       failed: 'Aucune piste en échec',
-      unavailable: 'Aucune piste indisponible',
-      remoteRemoved: "Aucune piste retirée de {provider} n'est toujours stockée"
+      unavailable: 'Aucune piste laissée sans copie',
+      remoteRemoved: 'Aucune piste conservée après un retrait de {provider}'
     }
   },
   trackRow: {
@@ -315,7 +324,7 @@ export const fr: Messages = {
     pauseNamed: 'Mettre en pause {title}',
     previousNamed: 'Piste précédente, {title}',
     nextNamed: 'Piste suivante, {title}',
-    openPlaylist: 'Ouvrir {name}',
+    openPlaylist: 'Ouvrir {name}, {position}',
     seekForward: 'Avancer de dix secondes',
     seekBackward: 'Reculer de dix secondes',
     failed: 'La lecture a échoué : {title}',
@@ -458,16 +467,21 @@ export const fr: Messages = {
     blocked: 'Source inaccessible'
   },
   trackState: {
-    removedFrom: 'Retirée de {provider}',
-    removedFromChip: {
-      one: 'Retirée de {provider}',
-      other: 'Retirées de {provider}'
+    retained: 'Conservée',
+    retainedChip: {
+      one: 'Conservée',
+      other: 'Conservées'
     },
+    removedFrom: 'Retirée de {provider}',
     stored: 'Stockée',
     pending: 'En attente',
     downloading: 'Téléchargement',
     failed: 'Échec',
-    unavailable: 'Indisponible'
+    unavailable: 'Jamais stockée',
+    unavailableChip: {
+      one: 'Jamais stockée',
+      other: 'Jamais stockées'
+    }
   },
   provider: {
     youtube: 'YouTube'

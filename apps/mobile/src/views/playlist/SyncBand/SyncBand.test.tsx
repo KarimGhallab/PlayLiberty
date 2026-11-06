@@ -176,7 +176,7 @@ describe('the sync band', () => {
         'Could not reach YouTube, the playlist may not be up to date.'
       )
     ).toBeOnTheScreen();
-    expect(screen.getByText(/All 8 tracks are still here/)).toBeOnTheScreen();
+    expect(screen.getByText(/All 5 tracks are still here/)).toBeOnTheScreen();
     expect(screen.queryByTestId('sync-cell-kept')).not.toBeOnTheScreen();
     expect(screen.getByTestId('sync-error-reveal')).toHaveStyle({
       minHeight: 48

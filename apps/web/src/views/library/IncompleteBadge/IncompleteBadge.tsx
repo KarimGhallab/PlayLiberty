@@ -11,10 +11,18 @@ import styles from './IncompleteBadge.module.scss';
  * The sync state cannot carry this: a run that finished hours ago leaves a
  * playlist reading "Up to date" with four failed tracks. The counts group by
  * file status alone, so a stored file whose video was removed is stored.
+ *
+ * A track whose video was gone before storage is not a download that can still
+ * finish. It is counted apart, in the muted role, with no glyph.
  */
 
+type Shortfall =
+  | TrackFileStatus.Pending
+  | TrackFileStatus.Downloading
+  | TrackFileStatus.Failed;
+
 interface MissingState {
-  readonly state: TrackFileStatus;
+  readonly state: Shortfall;
   readonly labelKey: MessageKey<Messages>;
 }
 
@@ -22,14 +30,12 @@ interface MissingState {
 const MISSING: readonly MissingState[] = [
   { state: TrackFileStatus.Pending, labelKey: 'trackState.pending' },
   { state: TrackFileStatus.Downloading, labelKey: 'trackState.downloading' },
-  { state: TrackFileStatus.Failed, labelKey: 'trackState.failed' },
-  { state: TrackFileStatus.Unavailable, labelKey: 'trackState.unavailable' }
+  { state: TrackFileStatus.Failed, labelKey: 'trackState.failed' }
 ];
 
 /* Worst wins, because a break is louder news than a wait. */
-const SEVERITY: readonly TrackFileStatus[] = [
+const SEVERITY: readonly Shortfall[] = [
   TrackFileStatus.Failed,
-  TrackFileStatus.Unavailable,
   TrackFileStatus.Downloading,
   TrackFileStatus.Pending
 ];
@@ -56,14 +62,14 @@ export default function IncompleteBadge({
     labelKey: entry.labelKey,
     count: counts[entry.state]
   }));
+  const terminal = counts[TrackFileStatus.Unavailable];
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && terminal === 0) {
     return null;
   }
 
   const missing = rows.reduce((sum, row) => sum + row.count, 0);
-  const tone =
-    SEVERITY.find(state => counts[state] > 0) ?? TrackFileStatus.Pending;
+  const tone = SEVERITY.find(state => rows.some(row => row.state === state));
 
   /*
    * A `role="img"`'s children are not read out, so the breakdown rides in the
@@ -75,32 +81,46 @@ export default function IncompleteBadge({
   ].join(' · ');
 
   return (
-    <span
-      className={styles.incompleteBadge}
-      data-tone={tone}
-      data-tip={tipEdge}
-      role="img"
-      aria-label={label}>
-      <IconDownload
-        className={styles.incompleteBadge__icon}
-        aria-hidden="true"
-        focusable="false"
-      />
-      <span className={styles.incompleteBadge__count}>{missing}</span>
-      <span className={styles.incompleteBadge__tip} role="presentation">
-        {rows.map(row => (
-          <span
-            key={row.state}
-            className={styles.incompleteBadge__row}
-            data-tone={row.state}>
-            <span className={styles.incompleteBadge__dot} aria-hidden="true" />
-            <span className={styles.incompleteBadge__word}>
-              {t(row.labelKey)}
-            </span>
-            <span className={styles.incompleteBadge__value}>{row.count}</span>
+    <>
+      {tone === undefined ? null : (
+        <span
+          className={styles.incompleteBadge}
+          data-tone={tone}
+          data-tip={tipEdge}
+          role="img"
+          aria-label={label}>
+          <IconDownload
+            className={styles.incompleteBadge__icon}
+            aria-hidden="true"
+            focusable="false"
+          />
+          <span className={styles.incompleteBadge__count}>{missing}</span>
+          <span className={styles.incompleteBadge__tip} role="presentation">
+            {rows.map(row => (
+              <span
+                key={row.state}
+                className={styles.incompleteBadge__row}
+                data-tone={row.state}>
+                <span
+                  className={styles.incompleteBadge__dot}
+                  aria-hidden="true"
+                />
+                <span className={styles.incompleteBadge__word}>
+                  {t(row.labelKey)}
+                </span>
+                <span className={styles.incompleteBadge__value}>
+                  {row.count}
+                </span>
+              </span>
+            ))}
           </span>
-        ))}
-      </span>
-    </span>
+        </span>
+      )}
+      {terminal === 0 ? null : (
+        <span className={styles.neverStored}>
+          {`${t('trackState.unavailableChip', { count: terminal })} ${terminal}`}
+        </span>
+      )}
+    </>
   );
 }

@@ -131,7 +131,7 @@ describe('the egress page', () => {
 
       const [first, second] = screen.getAllByRole('listitem');
       expect(within(first).getByText('01-fr')).toBeInTheDocument();
-      expect(within(first).getByText('Endpoint')).toBeInTheDocument();
+      expect(within(first).getByText('Exit endpoint')).toBeInTheDocument();
       expect(within(first).getByText('185.0.0.1:51820')).toBeInTheDocument();
       expect(within(first).getByText('OK')).toBeInTheDocument();
       expect(within(first).getByText('Active')).toBeInTheDocument();

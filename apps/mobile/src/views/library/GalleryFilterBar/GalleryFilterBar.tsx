@@ -12,7 +12,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
+  useWindowDimensions
 } from 'react-native';
 
 import type {
@@ -49,6 +50,16 @@ export type LibraryScope = 'all' | 'shared';
  * takes half above and half below. */
 const SEGMENT_INSET = 6;
 const SEGMENT_HIT = SEGMENT_INSET / 2;
+
+/* Above this scale the scope pair takes a row of its own, so the status rail
+ * keeps the viewport and its first chip stays whole. */
+export const SCOPE_STACK_SCALE = 1.3;
+
+/** Whether the scope pair moves above the rail at this text scale. */
+export function stacksScope(fontScale: number): boolean {
+  /* The platform stores 1.3 as a float just under it, so the line has air. */
+  return fontScale >= SCOPE_STACK_SCALE - 0.005;
+}
 
 interface SegmentRect {
   readonly x: number;
@@ -90,6 +101,8 @@ export default function GalleryFilterBar({
   onStatusChange
 }: GalleryFilterBarProps) {
   const { t } = useI18n();
+  const { fontScale } = useWindowDimensions();
+  const stackScope = hasShared && stacksScope(fontScale);
   const reduceMotion = useReduceMotion();
   const [allRect, setAllRect] = useState<SegmentRect | null>(null);
   const [sharedRect, setSharedRect] = useState<SegmentRect | null>(null);
@@ -202,12 +215,119 @@ export default function GalleryFilterBar({
     }).start();
   }, [reduceMotion, scope, selection]);
 
+  const scopePair = hasShared ? (
+    <View
+      accessibilityRole="radiogroup"
+      accessibilityLabel={t('library.scopeLabel')}
+      style={styles.pair}>
+      <View style={styles.pairInner}>
+        {measured ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.scopePlate,
+              {
+                left: selection.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [allRect.x, sharedRect.x]
+                }),
+                width: selection.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [allRect.width, sharedRect.width]
+                }),
+                backgroundColor: selection.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [
+                    tokenColor('surface-raised'),
+                    tokenColor('shared-surface')
+                  ]
+                }),
+                borderColor: selection.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [
+                    tokenColor('control-border'),
+                    tokenColor('shared-border')
+                  ]
+                })
+              }
+            ]}
+          />
+        ) : null}
+        <Pressable
+          testID="scope-all"
+          accessibilityRole="radio"
+          accessibilityState={{ checked: scope === 'all' }}
+          accessibilityLabel={`${t('library.scopeAll')} ${totalCount}`}
+          hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
+          style={[
+            styles.segment,
+            !measured && scope === 'all' && styles.segmentAll
+          ]}
+          onLayout={event => {
+            setAllRect({
+              x: event.nativeEvent.layout.x,
+              width: event.nativeEvent.layout.width
+            });
+          }}
+          onPress={() => onScopeChange('all')}>
+          <Text
+            style={[
+              styles.segmentLabel,
+              scope === 'all' && styles.segmentLabelAll
+            ]}>
+            {t('library.scopeAll')}
+          </Text>
+          <Text style={styles.segmentCount}>{totalCount}</Text>
+        </Pressable>
+        <Pressable
+          testID="scope-shared"
+          accessibilityRole="radio"
+          accessibilityState={{ checked: scope === 'shared' }}
+          accessibilityLabel={`${t('library.scopeShared')} ${sharedCount}`}
+          hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
+          style={[
+            styles.segment,
+            !measured && scope === 'shared' && styles.segmentShared
+          ]}
+          onLayout={event => {
+            setSharedRect({
+              x: event.nativeEvent.layout.x,
+              width: event.nativeEvent.layout.width
+            });
+          }}
+          onPress={() => onScopeChange('shared')}>
+          <IconUserShare
+            size={tokenLength('icon-sm')}
+            color={
+              scope === 'shared' ? tokenColor('shared') : tokenColor('muted')
+            }
+          />
+          <Text
+            style={[
+              styles.segmentLabel,
+              scope === 'shared' && styles.segmentLabelShared
+            ]}>
+            {t('library.scopeShared')}
+          </Text>
+          <Text
+            style={[
+              styles.segmentCount,
+              scope === 'shared' && styles.segmentCountShared
+            ]}>
+            {sharedCount}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  ) : null;
+
   if (!hasShared && !hasStatus) {
     return null;
   }
 
   return (
     <View style={styles.rail}>
+      {stackScope ? <View style={styles.scopeRow}>{scopePair}</View> : null}
       <ScrollView
         ref={scroller}
         testID="gallery-filter-bar"
@@ -219,115 +339,11 @@ export default function GalleryFilterBar({
         onLayout={readViewport}
         onContentSizeChange={readContent}
         onScroll={readRail}>
-        {hasShared ? (
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel={t('library.scopeLabel')}
-            style={styles.pair}>
-            <View style={styles.pairInner}>
-              {measured ? (
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.scopePlate,
-                    {
-                      left: selection.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [allRect.x, sharedRect.x]
-                      }),
-                      width: selection.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [allRect.width, sharedRect.width]
-                      }),
-                      backgroundColor: selection.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [
-                          tokenColor('surface-raised'),
-                          tokenColor('shared-surface')
-                        ]
-                      }),
-                      borderColor: selection.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [
-                          tokenColor('control-border'),
-                          tokenColor('shared-border')
-                        ]
-                      })
-                    }
-                  ]}
-                />
-              ) : null}
-              <Pressable
-                testID="scope-all"
-                accessibilityRole="radio"
-                accessibilityState={{ checked: scope === 'all' }}
-                accessibilityLabel={`${t('library.scopeAll')} ${totalCount}`}
-                hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
-                style={[
-                  styles.segment,
-                  !measured && scope === 'all' && styles.segmentAll
-                ]}
-                onLayout={event => {
-                  setAllRect({
-                    x: event.nativeEvent.layout.x,
-                    width: event.nativeEvent.layout.width
-                  });
-                }}
-                onPress={() => onScopeChange('all')}>
-                <Text
-                  style={[
-                    styles.segmentLabel,
-                    scope === 'all' && styles.segmentLabelAll
-                  ]}>
-                  {t('library.scopeAll')}
-                </Text>
-                <Text style={styles.segmentCount}>{totalCount}</Text>
-              </Pressable>
-              <Pressable
-                testID="scope-shared"
-                accessibilityRole="radio"
-                accessibilityState={{ checked: scope === 'shared' }}
-                accessibilityLabel={`${t('library.scopeShared')} ${sharedCount}`}
-                hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
-                style={[
-                  styles.segment,
-                  !measured && scope === 'shared' && styles.segmentShared
-                ]}
-                onLayout={event => {
-                  setSharedRect({
-                    x: event.nativeEvent.layout.x,
-                    width: event.nativeEvent.layout.width
-                  });
-                }}
-                onPress={() => onScopeChange('shared')}>
-                <IconUserShare
-                  size={tokenLength('icon-sm')}
-                  color={
-                    scope === 'shared'
-                      ? tokenColor('shared')
-                      : tokenColor('muted')
-                  }
-                />
-                <Text
-                  style={[
-                    styles.segmentLabel,
-                    scope === 'shared' && styles.segmentLabelShared
-                  ]}>
-                  {t('library.scopeShared')}
-                </Text>
-                <Text
-                  style={[
-                    styles.segmentCount,
-                    scope === 'shared' && styles.segmentCountShared
-                  ]}>
-                  {sharedCount}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
+        {stackScope ? null : scopePair}
 
-        {hasShared && hasStatus ? <View style={styles.divider} /> : null}
+        {!stackScope && hasShared && hasStatus ? (
+          <View style={styles.divider} />
+        ) : null}
 
         {hasStatus ? (
           <View
@@ -341,7 +357,7 @@ export default function GalleryFilterBar({
             }}>
             <View testID="gallery-chip-all" onLayout={rememberChip('all')}>
               <Chip
-                label={t(hasShared ? 'library.allTracks' : 'detail.filterAll')}
+                label={t('detail.filterAll')}
                 count={total}
                 selected={activeStatus === null}
                 onPress={() => chooseStatus(null)}
@@ -386,6 +402,10 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexGrow: 0
+  },
+  scopeRow: {
+    alignItems: 'flex-start',
+    paddingBottom: tokenLength('space-2')
   },
   content: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  FlatList,
   Keyboard,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,10 @@ import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import SheetActions from '../../../shared/components/SheetActions/SheetActions';
+import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
@@ -66,6 +71,23 @@ export default function AddTrackSheet({
   onSubmit,
   onClose
 }: AddTrackSheetProps) {
+  const scale = useTextScale();
+  const descriptionStyle = [
+    styles.description,
+    { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+  ];
+  const outcomeNameStyle = [
+    styles.outcomeName,
+    { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+  ];
+  const messageStyle = [
+    styles.message,
+    { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+  ];
+  const noteStyle = [
+    styles.note,
+    { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+  ];
   const { t } = useI18n();
   const [url, setUrl] = useState('');
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -169,7 +191,7 @@ export default function AddTrackSheet({
           onKeepEditing={() => setConfirmingDiscard(false)}
         />
       }>
-      <Text style={styles.description}>{t('addTrackDialog.description')}</Text>
+      <Text style={descriptionStyle}>{t('addTrackDialog.description')}</Text>
 
       {result === null ? null : (
         <ScrollView
@@ -183,7 +205,7 @@ export default function AddTrackSheet({
               key={entry.playlistId}
               testID={`add-track-outcome-${entry.playlistId}`}
               style={styles.outcome}>
-              <Text numberOfLines={1} style={styles.outcomeName}>
+              <Text numberOfLines={1} style={outcomeNameStyle}>
                 {nameOf(entry.playlistId)}
               </Text>
               <Text
@@ -228,7 +250,7 @@ export default function AddTrackSheet({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={liveRegion}
-            style={styles.message}>
+            style={messageStyle}>
             {message}
           </Text>
         )}
@@ -239,29 +261,33 @@ export default function AddTrackSheet({
           {t('addTrackDialog.playlistsLabel')}
         </Text>
         {truncated && firstPageLimit !== null ? (
-          <Text testID="add-track-first-page" style={styles.note}>
+          <Text testID="add-track-first-page" style={noteStyle}>
             {t('addTrackDialog.firstPage', { count: firstPageLimit })}
           </Text>
         ) : null}
       </View>
 
-      <ScrollView
+      <FlatList
         testID="add-track-pick"
+        data={ordered}
+        keyExtractor={playlist => playlist.id}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
         style={styles.pick}
-        contentContainerStyle={styles.pickContent}>
-        {ordered.map(playlist => (
+        contentContainerStyle={styles.pickContent}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={5}
+        renderItem={({ item }) => (
           <Checkbox
-            key={playlist.id}
-            testID={`add-track-pick-${playlist.id}`}
-            label={playlist.name}
-            checked={chosen.includes(playlist.id)}
+            testID={`add-track-pick-${item.id}`}
+            label={item.name}
+            checked={chosen.includes(item.id)}
             disabled={busy}
-            onChange={() => toggle(playlist.id)}
+            onChange={() => toggle(item.id)}
           />
-        ))}
-      </ScrollView>
+        )}
+      />
     </Sheet>
   );
 }
@@ -282,8 +308,7 @@ const styles = StyleSheet.create({
   description: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   },
   outcomes: {
     maxHeight: touchTarget * 3,
@@ -308,8 +333,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     color: tokenColor('ink'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   },
   outcomeWord: {
     flexShrink: 0,
@@ -345,8 +369,7 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-medium')
   },
   pickHeader: {
     gap: tokenLength('space-1'),
@@ -361,8 +384,7 @@ const styles = StyleSheet.create({
   note: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   },
   pick: {
     maxHeight: touchTarget * 7,

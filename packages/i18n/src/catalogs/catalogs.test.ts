@@ -15,21 +15,23 @@ describe('the catalogs', () => {
     const en = createTranslator(catalogs[Language.English], Language.English);
     const fr = createTranslator(catalogs[Language.French], Language.French);
 
-    expect(
-      en('trackState.removedFromChip', { count: 2, provider: 'YouTube' })
-    ).toBe('Removed from YouTube');
-    expect(
-      fr('trackState.removedFromChip', { count: 2, provider: 'YouTube' })
-    ).toBe('Retirées de YouTube');
-    expect(
-      fr('trackState.removedFromChip', { count: 1, provider: 'YouTube' })
-    ).toBe('Retirée de YouTube');
+    expect(en('trackState.retainedChip', { count: 2 })).toBe('Retained');
+    expect(fr('trackState.retainedChip', { count: 2 })).toBe('Conservées');
+    expect(fr('trackState.retainedChip', { count: 1 })).toBe('Conservée');
+
+    expect(en('trackState.unavailableChip', { count: 2 })).toBe('Never stored');
+    expect(fr('trackState.unavailableChip', { count: 2 })).toBe(
+      'Jamais stockées'
+    );
+    expect(fr('trackState.unavailableChip', { count: 1 })).toBe(
+      'Jamais stockée'
+    );
 
     expect(
       en('detail.filterEmpty.remoteRemoved', { provider: 'YouTube' })
-    ).toBe('No track removed from YouTube is still stored');
+    ).toBe('No track was retained after a YouTube removal');
     expect(
       fr('detail.filterEmpty.remoteRemoved', { provider: 'YouTube' })
-    ).toBe("Aucune piste retirée de YouTube n'est toujours stockée");
+    ).toBe('Aucune piste conservée après un retrait de YouTube');
   });
 });

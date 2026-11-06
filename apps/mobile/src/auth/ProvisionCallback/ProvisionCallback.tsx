@@ -7,11 +7,11 @@ import { useI18n } from '@playliberty/i18n';
 import { useAnnouncement } from '../../shared/a11y/useAnnouncement';
 import SignInDoor from '../../shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../../shared/components/SignedOut/SignedOut';
+import { lineHeightFor, useTextScale } from '../../shared/styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
-  tokenLength,
-  tokenNumber
+  tokenLength
 } from '../../shared/styles/tokens';
 
 import { expoProvisioningDeps } from '../expoProvisioning';
@@ -25,6 +25,7 @@ import { startProvisioning } from '../startProvisioning';
  * on the not-found page. */
 export default function ProvisionCallback() {
   const { t } = useI18n();
+  const scale = useTextScale();
   const { code, state } = useLocalSearchParams<{
     code?: string;
     state?: string;
@@ -78,7 +79,12 @@ export default function ProvisionCallback() {
   if (failure === null) {
     return (
       <SignInDoor busy>
-        <Text accessibilityLiveRegion={liveRegion} style={styles.waiting}>
+        <Text
+          accessibilityLiveRegion={liveRegion}
+          style={[
+            styles.waiting,
+            { lineHeight: lineHeightFor('text-md', 'leading-normal', scale) }
+          ]}>
           {t('signedOut.busy')}
         </Text>
       </SignInDoor>
@@ -102,7 +108,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-normal'),
     textAlign: 'center',
     width: '100%'
   }

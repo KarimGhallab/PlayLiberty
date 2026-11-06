@@ -318,7 +318,7 @@ describe('CoverDialog', () => {
     );
     expect(onRemove).not.toHaveBeenCalled();
     expect(container.querySelector('img')?.getAttribute('src')).toBe(
-      '/api/v1/tracks/track-9/thumbnail'
+      '/api/v1/tracks/track-9/thumbnail?v=track-9'
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));

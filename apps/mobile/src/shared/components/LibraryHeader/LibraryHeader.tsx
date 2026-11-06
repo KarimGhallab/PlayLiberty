@@ -4,11 +4,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { Account } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../styles/tokens';
@@ -31,10 +31,16 @@ export default function LibraryHeader({
   onOpenEgress
 }: LibraryHeaderProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
 
   return (
     <View style={styles.header}>
-      <Text accessibilityRole="header" style={styles.brand}>
+      <Text
+        accessibilityRole="header"
+        style={[
+          styles.brand,
+          { lineHeight: lineHeightFor('text-lg', 'leading-tight', scale) }
+        ]}>
         {t('app.name')}
       </Text>
       <View style={styles.actions}>
@@ -83,8 +89,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-lg'),
-    fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-lg') * tokenNumber('leading-tight')
+    fontWeight: tokenWeight('weight-semibold')
   },
   actions: {
     flexDirection: 'row',

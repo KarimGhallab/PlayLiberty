@@ -15,10 +15,13 @@ import { useI18n } from '@playliberty/i18n';
 import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   touchTarget
 } from '../../../shared/styles/tokens';
 
@@ -62,6 +65,7 @@ export default function PlaylistActionsSheet({
   summary,
   extra
 }: PlaylistActionsSheetProps) {
+  const scale = useTextScale();
   const { t } = useI18n();
   const liveRegion = useAnnouncement(problem);
   /* Without actions the settings' top rule is the only one the two blocks
@@ -89,7 +93,10 @@ export default function PlaylistActionsSheet({
           testID="playlist-actions-problem"
           accessibilityRole="alert"
           accessibilityLiveRegion={liveRegion}
-          style={styles.problem}>
+          style={[
+            styles.problem,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
           {problem}
         </Text>
       )}
@@ -172,7 +179,6 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal'),
     marginBottom: tokenLength('space-3')
   }
 });

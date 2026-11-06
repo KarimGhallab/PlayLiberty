@@ -26,9 +26,14 @@ import {
 } from '@playliberty/ui-foundation';
 
 import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
+import AppImage from '../../../shared/components/AppImage/AppImage';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
+import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
@@ -79,6 +84,7 @@ export default function CoverSheet({
   onClose
 }: CoverSheetProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
   const cover = usePlaylistCover(playlist, config);
   const setCover = useSetPlaylistCover();
   const removeCover = useRemovePlaylistCover();
@@ -499,7 +505,7 @@ export default function CoverSheet({
         ) : null}
         {chosen === null ? (
           cover.source === null ? null : (
-            <Image
+            <AppImage
               testID="cover-current"
               source={cover.source}
               resizeMode="cover"
@@ -508,10 +514,11 @@ export default function CoverSheet({
             />
           )
         ) : natural === null || stageSize === 0 ? (
-          <Image
+          <AppImage
             testID="cover-preview"
             source={{ uri: chosen.uri }}
             resizeMode="cover"
+            natural
             style={styles.image}
           />
         ) : (
@@ -526,9 +533,10 @@ export default function CoverSheet({
                 ]
               }
             ]}>
-            <Image
+            <AppImage
               testID="cover-preview"
               source={{ uri: chosen.uri }}
+              natural
               style={{
                 position: 'absolute',
                 left: (stageSize - shownWidth) / 2,
@@ -546,7 +554,10 @@ export default function CoverSheet({
           testID="cover-problem"
           accessibilityRole="alert"
           accessibilityLiveRegion={liveProblem}
-          style={styles.problem}>
+          style={[
+            styles.problem,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
           {problem}
         </Text>
       )}
@@ -556,7 +567,10 @@ export default function CoverSheet({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={liveDiscard}
-            style={styles.prompt}>
+            style={[
+              styles.prompt,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
             {t('coverDialog.discardPrompt')}
           </Text>
           <View style={styles.actions}>
@@ -589,7 +603,10 @@ export default function CoverSheet({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={liveRemove}
-            style={styles.prompt}>
+            style={[
+              styles.prompt,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
             {t('coverDialog.removePrompt')}
           </Text>
           <View style={styles.actions}>
@@ -849,16 +866,14 @@ const styles = StyleSheet.create({
     color: tokenColor('tone-failed'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-medium')
   },
   prompt: {
     marginTop: tokenLength('space-4'),
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontWeight: tokenWeight('weight-medium')
   },
   choose: {
     minHeight: touchTarget,

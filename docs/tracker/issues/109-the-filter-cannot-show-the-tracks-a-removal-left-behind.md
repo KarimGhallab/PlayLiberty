@@ -41,6 +41,10 @@ under an Unavailable row, though this view excludes those tracks. The counts dif
 source fact, and re-wording the row would reopen the one-word-per-state rule settled by
 [ticket 84](84-one-word-per-track-state.md).
 
+**Superseded on 2026-11-05.** That ambiguity is now a defect, and the user chose to change the rule rather than keep it:
+a row states two facts, one word each, so a kept track reads **retained** and a lost one **never stored**, and the chip
+is **retained** too. The work is [ticket 01 of mobile-ui-critique-2](../tasks/mobile-ui-critique-2/01-the-row-cannot-tell-a-kept-track-from-a-lost-one.md).
+
 Consequences worth stating: the rail stops being a partition of the playlist, since the chip's count is a subset of
 Stored and All stays the playlist size; the chip's tone is not a track-state tone, so `ui-foundation`'s `TrackTone`
 mapping stays as it is; the French label needs a plural form because it names many tracks, unlike the row's singular.

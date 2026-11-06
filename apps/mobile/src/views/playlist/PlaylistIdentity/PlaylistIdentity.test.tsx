@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { narrowControlBoxes } from './PlaylistIdentity';
+import { narrowControlBoxes, narrowHeaderHeightFor } from './PlaylistIdentity';
 
 describe('the compact header', () => {
   it('keeps both targets at 48dp and disjoint', () => {
@@ -19,5 +19,10 @@ describe('the compact header', () => {
       expect(actions.end - actions.start).toBe(48);
       expect(shuffle.end).toBeLessThanOrEqual(actions.start);
     }
+  });
+
+  it('grows the compact header rather than clip the owner at large text', () => {
+    expect(narrowHeaderHeightFor(1)).toBe(126);
+    expect(narrowHeaderHeightFor(1.3)).toBeGreaterThan(126);
   });
 });

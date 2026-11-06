@@ -473,7 +473,7 @@ describe('LibraryPage', () => {
     });
     const all = within(scope).getByRole('button', { name: 'All 2' });
     const shared = within(scope).getByRole('button', {
-      name: 'Shared with me 1'
+      name: 'Shared 1'
     });
 
     expect(all).toHaveAttribute('aria-pressed', 'true');
@@ -606,20 +606,15 @@ describe('LibraryPage', () => {
     const rail = screen.getByRole('group', { name: 'Filter by' });
     const chips = within(rail).getAllByRole('button');
 
-    expect(chips.at(-1)).toHaveAttribute(
-      'aria-label',
-      'Removed from YouTube 2'
-    );
+    expect(chips.at(-1)).toHaveAttribute('aria-label', 'Retained 2');
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Removed from YouTube 2' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retained 2' }));
 
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
     expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
     expect(screen.queryByText('Shared Mix')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Shared with me 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Shared 1' }));
 
     expect(await screen.findByText('Shared Mix')).toBeInTheDocument();
     expect(
@@ -834,7 +829,7 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
 
     expect(dialog.querySelector('img')?.getAttribute('src')).toBe(
-      '/api/v1/tracks/track-9/thumbnail'
+      '/api/v1/tracks/track-9/thumbnail?v=track-9'
     );
     fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
 
@@ -846,7 +841,7 @@ describe('LibraryPage', () => {
         container
           .querySelector('[data-arrangement="tile"] img')
           ?.getAttribute('src')
-      ).toBe('/api/v1/tracks/track-9/thumbnail')
+      ).toBe('/api/v1/tracks/track-9/thumbnail?v=track-9')
     );
   });
 
@@ -1797,7 +1792,7 @@ describe('LibraryPage', () => {
       await screen.findByRole('button', { name: 'Sync all 2 playlists' })
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Shared with me 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Shared 1' }));
 
     expect(
       await screen.findByRole('button', { name: 'Sync 1 playlist' })

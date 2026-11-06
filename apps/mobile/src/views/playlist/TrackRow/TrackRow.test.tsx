@@ -5,7 +5,6 @@ import {
   screen,
   waitFor
 } from '@testing-library/react-native';
-import { PixelRatio } from 'react-native';
 
 import {
   AssociationOrigin,
@@ -68,6 +67,22 @@ const failed: PlaylistTrack = {
   }
 };
 
+/* A stored file whose video was removed: the promise of the product. */
+const retained: PlaylistTrack = {
+  ...stored,
+  track: { ...track, sourceStatus: TrackSourceStatus.Removed }
+};
+
+/* A video that was gone before the first sync: never fetched. */
+const neverStored: PlaylistTrack = {
+  ...stored,
+  track: {
+    ...track,
+    fileStatus: TrackFileStatus.Unavailable,
+    sourceStatus: TrackSourceStatus.Removed
+  }
+};
+
 /* A stored file whose source broke still plays, and still offers its reason. */
 const storedWithReason: PlaylistTrack = {
   ...stored,
@@ -122,30 +137,17 @@ describe('the track row', () => {
       'P-Access-Token': 'token-secret',
       'User-Agent': 'PlayLiberty/1.0 (Android)'
     });
+    expect(image.props.resizeMethod).toBe('resize');
     expect(screen.getByText('First Song', hidden)).toBeOnTheScreen();
     expect(screen.getByText('3:02', hidden)).toBeOnTheScreen();
   });
 
-  it('gives the title a second line above 1.3', async () => {
-    const scale = jest.spyOn(PixelRatio, 'getFontScale').mockReturnValue(2);
+  it('gives the title two lines at the default scale', async () => {
     await renderRow();
 
     expect(screen.getByTestId('track-title', hidden).props.numberOfLines).toBe(
       2
     );
-
-    scale.mockRestore();
-  });
-
-  it('keeps the title on one line at 1.3', async () => {
-    const scale = jest.spyOn(PixelRatio, 'getFontScale').mockReturnValue(1.3);
-    await renderRow();
-
-    expect(screen.getByTestId('track-title', hidden).props.numberOfLines).toBe(
-      1
-    );
-
-    scale.mockRestore();
   });
 
   it('draws the state word and its tone', async () => {
@@ -155,6 +157,35 @@ describe('the track row', () => {
     expect(screen.getByTestId('track-state')).toHaveStyle({
       color: trackToneColor(TrackTone.Pending)
     });
+  });
+
+  it('tells a kept track from a lost one when the source was removed', async () => {
+    await renderRow(retained);
+
+    expect(screen.getByTestId('track-state', hidden)).toHaveTextContent(
+      'Retained'
+    );
+    expect(screen.getByTestId('track-state', hidden)).toHaveStyle({
+      color: trackToneColor(TrackTone.Retained)
+    });
+    expect(screen.getByTestId('track-source', hidden)).toHaveTextContent(
+      'Removed from YouTube'
+    );
+    expect(screen.getByTestId('track-play').props.accessibilityLabel).toBe(
+      'First Song, Retained, Removed from YouTube, 3:02'
+    );
+  });
+
+  it('names a track that was never stored', async () => {
+    await renderRow(neverStored);
+
+    expect(screen.getByTestId('track-state')).toHaveTextContent('Never stored');
+    expect(screen.getByTestId('track-state')).toHaveStyle({
+      color: trackToneColor(TrackTone.Unavailable)
+    });
+    expect(screen.getByTestId('track-source')).toHaveTextContent(
+      'Removed from YouTube'
+    );
   });
 
   it('reveals the failure sentence and the raw reason', async () => {

@@ -119,6 +119,21 @@ async function pressAdd() {
 }
 
 describe('the add-track sheet', () => {
+  it('opens the picker on a bounded window for a large account', async () => {
+    const many = Array.from({ length: 200 }, (_, index) =>
+      playlist({ id: `playlist-${index}`, name: `Playlist ${index}` })
+    );
+
+    await renderSheet({ playlists: many });
+
+    const boxes = within(screen.getByTestId('add-track-pick')).getAllByRole(
+      'checkbox'
+    );
+
+    expect(boxes.length).toBeGreaterThan(0);
+    expect(boxes.length).toBeLessThan(many.length);
+  });
+
   it('leads with the current playlist and preselects only it', async () => {
     await renderSheet();
 

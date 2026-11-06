@@ -39,6 +39,7 @@ import ActionDial, {
   actionDialSize
 } from '../../../shared/components/ActionDial/ActionDial';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
+import { verticalListChrome } from '../../../shared/components/List/listChrome';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Spinner from '../../../shared/components/Spinner/Spinner';
@@ -105,7 +106,8 @@ import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
 import PlaylistIdentity, {
   HEADER_HEIGHT,
   type PlaylistIdentityProps,
-  PlaylistIdentitySkeleton
+  PlaylistIdentitySkeleton,
+  useNarrowHeaderHeight
 } from '../PlaylistIdentity/PlaylistIdentity';
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
 import SyncBand from '../SyncBand/SyncBand';
@@ -137,6 +139,10 @@ const COLLAPSE_DISTANCE = tokenLength('space-9') * 2;
 /* The request waits one beat after the window so a gesture already queued when
  * the timer fired can still be read; only the clock decides the undo. */
 const COMMIT_GRACE_MS = 150;
+/* The add floats clear of the row's lane: the lane owns the trailing 48dp and
+ * the trigger keeps a gap to its left. */
+const DIAL_RIGHT =
+  tokenLength('space-4') + touchTarget + tokenLength('space-2');
 
 export interface PlaylistDetailProps {
   readonly playlistId: string | null;
@@ -168,6 +174,7 @@ export default function PlaylistDetail({
 }: PlaylistDetailProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const narrowHeader = useNarrowHeaderHeight();
   const window = useWindowDimensions();
   const reduceMotion = useReduceMotion();
   const barHeight = usePlayerBarHeight();
@@ -232,8 +239,8 @@ export default function PlaylistDetail({
    * is told apart from one on the list under it. */
   useEffect(() => {
     headerEdge.current =
-      insets.top + (collapsed ? HEADER_HEIGHT.narrow : HEADER_HEIGHT.wide);
-  }, [collapsed, insets.top]);
+      insets.top + (collapsed ? narrowHeader : HEADER_HEIGHT.wide);
+  }, [collapsed, insets.top, narrowHeader]);
   const collapsedRef = useRef(false);
   const headerProgress = useRef(new Animated.Value(0)).current;
   const headerTarget = useRef(0);
@@ -1391,7 +1398,7 @@ export default function PlaylistDetail({
           </>
         }
         extraData={`${currentId ?? ''}:${isPlaying}`}
-        showsVerticalScrollIndicator={false}
+        {...verticalListChrome}
         pointerEvents={pendingDelete ? 'none' : 'auto'}
         style={[
           styles.scroll,
@@ -1455,7 +1462,7 @@ export default function PlaylistDetail({
           ]}
           busy={syncInFlight}
           bottomOffset={playerOffset}
-          rightOffset={tokenLength('space-4')}
+          rightOffset={DIAL_RIGHT}
         />
       ) : null}
       <AddTrackSheet

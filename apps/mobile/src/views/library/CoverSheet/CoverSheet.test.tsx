@@ -190,6 +190,9 @@ describe('the cover sheet', () => {
     await waitFor(() => {
       expect(screen.getByTestId('cover-preview')).toBeOnTheScreen();
     });
+    expect(
+      screen.getByTestId('cover-preview').props.resizeMethod
+    ).toBeUndefined();
     expect(saveButton().props.accessibilityState).toMatchObject({
       disabled: false
     });

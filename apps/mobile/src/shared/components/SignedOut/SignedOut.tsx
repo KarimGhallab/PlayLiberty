@@ -4,11 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 
 import { useAnnouncement } from '../../a11y/useAnnouncement';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../styles/tokens';
@@ -30,6 +30,7 @@ export default function SignedOut({
   onSignIn
 }: SignedOutProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
   const liveRegion = useAnnouncement(failure);
   const label = busy
     ? t('signedOut.busy')
@@ -46,7 +47,19 @@ export default function SignedOut({
               accessibilityRole="alert"
               accessibilityLiveRegion={liveRegion}
               style={styles.failure}>
-              <Text style={styles.failureText}>{failure}</Text>
+              <Text
+                style={[
+                  styles.failureText,
+                  {
+                    lineHeight: lineHeightFor(
+                      'text-sm',
+                      'leading-normal',
+                      scale
+                    )
+                  }
+                ]}>
+                {failure}
+              </Text>
             </View>
           )}
           <Pressable
@@ -71,10 +84,21 @@ export default function SignedOut({
           </Pressable>
         </View>
       }>
-      <Text accessibilityRole="header" style={styles.title}>
+      <Text
+        accessibilityRole="header"
+        style={[
+          styles.title,
+          { lineHeight: lineHeightFor('text-lg', 'leading-tight', scale) }
+        ]}>
         {t('signedOut.title')}
       </Text>
-      <Text style={styles.hint}>{t('signedOut.browser')}</Text>
+      <Text
+        style={[
+          styles.hint,
+          { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+        ]}>
+        {t('signedOut.browser')}
+      </Text>
     </SignInDoor>
   );
 }
@@ -109,7 +133,6 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-lg'),
     fontWeight: tokenWeight('weight-medium'),
-    lineHeight: tokenLength('text-lg') * tokenNumber('leading-tight'),
     textAlign: 'center',
     width: '100%'
   },
@@ -117,7 +140,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal'),
     textAlign: 'center',
     width: '100%'
   },
@@ -132,7 +154,6 @@ const styles = StyleSheet.create({
   failureText: {
     color: tokenColor('ink'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   }
 });

@@ -3,10 +3,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
@@ -19,13 +22,20 @@ export interface PlaylistNotFoundProps {
  * answer, so the body names neither and offers no retry. */
 export default function PlaylistNotFound({ onBack }: PlaylistNotFoundProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
 
   return (
     <View testID="playlist-not-found" style={styles.body}>
       <Text accessibilityRole="header" style={styles.heading}>
         {t('notFound.heading')}
       </Text>
-      <Text style={styles.prose}>{t('notFound.prose')}</Text>
+      <Text
+        style={[
+          styles.prose,
+          { lineHeight: lineHeightFor('text-md', 'leading-normal', scale) }
+        ]}>
+        {t('notFound.prose')}
+      </Text>
       <Pressable
         testID="playlist-not-found-back"
         accessibilityRole="button"
@@ -55,7 +65,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted'),
     fontFamily,
     fontSize: tokenLength('text-md'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-normal'),
     textAlign: 'center'
   },
   back: {

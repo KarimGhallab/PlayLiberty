@@ -13,7 +13,7 @@ export {
   providerLabel,
   syncStateLabel,
   trackCountUnit,
-  trackStateLabel
+  trackStateFacts
 } from './formatters/formatters.js';
 export { default as I18nProvider, useI18n } from './I18nProvider.js';
 export type { I18nValue } from './I18nProvider.js';

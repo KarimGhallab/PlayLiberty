@@ -5,6 +5,10 @@ import { useI18n } from '@playliberty/i18n';
 
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
@@ -26,14 +30,23 @@ export default function PlaylistEmpty({
   syncing = false
 }: PlaylistEmptyProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
+  const proseStyle = [
+    styles.prose,
+    { lineHeight: lineHeightFor('text-md', 'leading-normal', scale) }
+  ];
+  const promiseStyle = [
+    styles.promise,
+    { lineHeight: lineHeightFor('text-sm', 'leading-relaxed', scale) }
+  ];
 
   return (
     <View testID="playlist-empty" style={styles.empty}>
       <Text accessibilityRole="header" style={styles.heading}>
         {t('emptyState.heading')}
       </Text>
-      <Text style={styles.prose}>{t('emptyState.prose')}</Text>
-      <Text style={styles.promise}>{t('emptyState.promise')}</Text>
+      <Text style={proseStyle}>{t('emptyState.prose')}</Text>
+      <Text style={promiseStyle}>{t('emptyState.promise')}</Text>
       {onSync === undefined ? null : (
         <Pressable
           testID="empty-sync"
@@ -80,14 +93,12 @@ const styles = StyleSheet.create({
   prose: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-md'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-md')
   },
   promise: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-relaxed')
+    fontSize: tokenLength('text-sm')
   },
   action: {
     minHeight: touchTarget,

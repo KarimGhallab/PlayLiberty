@@ -9,7 +9,7 @@ import { TrackTone } from '@playliberty/ui-foundation';
 export interface StatusChip {
   readonly value: TrackFilterState;
   readonly label: MessageKey<Messages>;
-  readonly tone: TrackTone | 'retained';
+  readonly tone: TrackTone;
   readonly empty: MessageKey<Messages>;
 }
 
@@ -41,14 +41,14 @@ export const STATUS_CHIPS: readonly StatusChip[] = [
   },
   {
     value: TrackFileStatus.Unavailable,
-    label: 'trackState.unavailable',
+    label: 'trackState.unavailableChip',
     tone: TrackTone.Unavailable,
     empty: 'detail.filterEmpty.unavailable'
   },
   {
     value: REMOTE_REMOVED,
-    label: 'trackState.removedFromChip',
-    tone: 'retained',
+    label: 'trackState.retainedChip',
+    tone: TrackTone.Retained,
     empty: 'detail.filterEmpty.remoteRemoved'
   }
 ];

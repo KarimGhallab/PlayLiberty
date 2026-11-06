@@ -51,7 +51,8 @@ import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial
 import {
   tokenDuration,
   tokenLength,
-  tokenNumber
+  tokenNumber,
+  touchTarget
 } from '../../../shared/styles/tokens';
 
 import { ApiError } from '../../../api/apiClient/ApiClient';
@@ -1140,9 +1141,7 @@ describe('the playlist detail', () => {
       'radio'
     );
 
-    expect(chips.at(-1)?.props.accessibilityLabel).toBe(
-      'Removed from YouTube 1'
-    );
+    expect(chips.at(-1)?.props.accessibilityLabel).toBe('Retained 1');
     expect(screen.getByTestId('filter-remoteRemoved')).toBeOnTheScreen();
   });
 
@@ -1167,7 +1166,7 @@ describe('the playlist detail', () => {
     ).toMatchObject({ checked: true });
     expect(
       screen.getByTestId('filter-remoteRemoved').props.accessibilityLabel
-    ).toBe('Removed from YouTube 1');
+    ).toBe('Retained 1');
     expect(screen.getByTestId('filter-all').props.accessibilityLabel).toBe(
       'All 1'
     );
@@ -1187,7 +1186,7 @@ describe('the playlist detail', () => {
       expect(screen.getByTestId('filter-empty')).toBeOnTheScreen();
     });
     expect(
-      screen.getByText('No track removed from YouTube is still stored')
+      screen.getByText('No track was retained after a YouTube removal')
     ).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId('filter-show-all'));
@@ -1213,9 +1212,7 @@ describe('the playlist detail', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          "Aucune piste retirée de YouTube n'est toujours stockée"
-        )
+        screen.getByText('Aucune piste conservée après un retrait de YouTube')
       ).toBeOnTheScreen();
     });
   });
@@ -1444,7 +1441,8 @@ describe('the playlist detail', () => {
         playerBarHeight
     );
     expect(screen.getByTestId('detail-fab-dial')).toHaveStyle({
-      bottom: tokenLength('space-4') + playerBarHeight
+      bottom: tokenLength('space-4') + playerBarHeight,
+      right: tokenLength('space-4') + touchTarget + tokenLength('space-2')
     });
   });
 

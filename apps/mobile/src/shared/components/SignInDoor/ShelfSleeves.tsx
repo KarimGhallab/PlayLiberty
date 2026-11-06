@@ -1,9 +1,10 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import shelfSonic from '../../../../assets/shelf/shelf-sonic.jpg';
 import shelfYugioh from '../../../../assets/shelf/shelf-yugioh.jpg';
 import shelfZelda from '../../../../assets/shelf/shelf-zelda.jpg';
 import { tokenColor, tokenLength } from '../../styles/tokens';
+import AppImage from '../AppImage/AppImage';
 import EqualizerBars from './EqualizerBars';
 
 /* Placeholder covers for the door. Replace them with licensed or instance-owned
@@ -25,7 +26,7 @@ export default function ShelfSleeves({ busy }: ShelfSleevesProps) {
   return (
     <View style={styles.fan}>
       <View style={[styles.sleeve, styles.backLeft]}>
-        <Image
+        <AppImage
           testID="shelf-art"
           accessible={false}
           source={ART.left}
@@ -33,7 +34,7 @@ export default function ShelfSleeves({ busy }: ShelfSleevesProps) {
         />
       </View>
       <View style={[styles.sleeve, styles.backRight]}>
-        <Image
+        <AppImage
           testID="shelf-art"
           accessible={false}
           source={ART.right}
@@ -41,7 +42,7 @@ export default function ShelfSleeves({ busy }: ShelfSleevesProps) {
         />
       </View>
       <View style={[styles.sleeve, styles.front]}>
-        <Image
+        <AppImage
           testID="shelf-art"
           accessible={false}
           source={ART.front}

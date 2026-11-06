@@ -25,7 +25,7 @@ export function galleryColumnWidth(windowWidth: number): number {
   return (contentBox(windowWidth) - GAP * (count - 1)) / count;
 }
 
-/* A pinned card takes a little under one column, so the next one peeks. */
+/* A pinned card is the grid's card; the next one peeks past the row's edge. */
 export function galleryPinnedWidth(windowWidth: number): number {
-  return galleryColumnWidth(windowWidth) * 0.9;
+  return galleryColumnWidth(windowWidth);
 }

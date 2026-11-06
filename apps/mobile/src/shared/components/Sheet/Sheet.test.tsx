@@ -7,7 +7,13 @@ import {
   waitFor
 } from '@testing-library/react-native';
 import { useState } from 'react';
-import { AccessibilityInfo, Animated, PanResponder, Text } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  PanResponder,
+  StyleSheet,
+  Text
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { tokenLength } from '../../styles/tokens';
@@ -21,6 +27,15 @@ const metrics = {
 afterEach(() => {
   jest.restoreAllMocks();
 });
+
+function sheetTranslateY(): number {
+  const transform = StyleSheet.flatten(screen.getByTestId('sheet').props.style)
+    .transform as { translateY: unknown }[];
+  const value = transform[0]?.translateY as
+    number | { __getValue: () => number };
+
+  return typeof value === 'number' ? value : value.__getValue();
+}
 
 async function renderSheet(bottomInset = 0) {
   const onRequestClose = jest.fn();
@@ -210,6 +225,40 @@ describe('the sheet frame', () => {
     });
 
     expect(motion).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the panel still on a drag when the system asks for less motion', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+
+    let move: ((event: object, gesture: object) => void) | null = null;
+    let release: ((event: object, gesture: object) => void) | null = null;
+    const create = PanResponder.create.bind(PanResponder);
+
+    jest.spyOn(PanResponder, 'create').mockImplementation(config => {
+      if (config.onStartShouldSetPanResponder !== undefined) {
+        move = config.onPanResponderMove as unknown as typeof move;
+        release = config.onPanResponderRelease as unknown as typeof release;
+      }
+
+      return create(config);
+    });
+
+    const { onRequestClose } = await renderSheet();
+    const stay = sheetTranslateY();
+
+    await act(() => {
+      move?.({}, { dy: 200, vy: 0 });
+    });
+
+    expect(sheetTranslateY()).toBe(stay);
+
+    await act(() => {
+      release?.({}, { dy: 200, vy: 0 });
+    });
+
+    expect(onRequestClose).toHaveBeenCalledTimes(1);
   });
 
   it('keeps its sheet and handle reachable by test id', async () => {

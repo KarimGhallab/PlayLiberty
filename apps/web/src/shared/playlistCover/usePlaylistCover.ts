@@ -34,10 +34,14 @@ export function usePlaylistCover(
   includeCustom = true
 ): PlaylistCover {
   const customCoverSrc = includeCustom ? customCoverUrl(playlist) : null;
+  /* The first track's id versions its fallback too: a changed first track is a
+   * new cache key, exactly like the custom cover's stamp. */
   const trackCoverSrc =
     playlist.coverTrackId === null
       ? null
-      : mediaUrl(endpoints.trackThumbnail, { trackId: playlist.coverTrackId });
+      : `${mediaUrl(endpoints.trackThumbnail, {
+          trackId: playlist.coverTrackId
+        })}?v=${encodeURIComponent(playlist.coverTrackId)}`;
   const [coverFailure, setCoverFailure] = useState(CoverFailure.None);
   const showingCustom =
     customCoverSrc !== null && coverFailure === CoverFailure.None;

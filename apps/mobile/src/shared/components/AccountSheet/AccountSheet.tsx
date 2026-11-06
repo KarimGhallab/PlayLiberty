@@ -14,6 +14,7 @@ import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useAnnouncement } from '../../a11y/useAnnouncement';
 import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
@@ -52,6 +53,7 @@ export default function AccountSheet({
   onSignOut
 }: AccountSheetProps) {
   const { t, language, setLanguage } = useI18n();
+  const scale = useTextScale();
   const liveRegion = useAnnouncement(failure);
   const loadingLiveRegion = useAnnouncement(
     loading && account === null ? t('account.loading') : null
@@ -111,7 +113,13 @@ export default function AccountSheet({
           accessibilityRole="alert"
           accessibilityLiveRegion={liveRegion}
           style={styles.failure}>
-          <Text style={styles.failureText}>{failure}</Text>
+          <Text
+            style={[
+              styles.failureText,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
+            {failure}
+          </Text>
         </View>
       )}
 
@@ -193,7 +201,10 @@ export default function AccountSheet({
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion={askLiveRegion}
-            style={styles.ask}>
+            style={[
+              styles.ask,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
             {ask}
           </Text>
           <View style={styles.confirmActions}>
@@ -349,8 +360,7 @@ const styles = StyleSheet.create({
   ask: {
     color: tokenColor('ink'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   },
   confirmActions: {
     flexDirection: 'row',
@@ -407,7 +417,6 @@ const styles = StyleSheet.create({
   failureText: {
     color: tokenColor('ink'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   }
 });

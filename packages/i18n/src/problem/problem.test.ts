@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProblemCode } from '@playliberty/contracts';
 import type { Problem } from '@playliberty/contracts';
 
-import { catalogs } from '../catalogs.js';
+import { catalogs } from '../catalogs/catalogs.js';
 import { createTranslator } from '../createTranslator/createTranslator.js';
 import { Language } from '../types.js';
 import { problemDetail } from './problem.js';

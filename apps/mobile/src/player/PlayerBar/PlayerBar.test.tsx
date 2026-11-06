@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest
+} from '@jest/globals';
 import {
   act,
   fireEvent,
@@ -29,6 +36,7 @@ import {
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 import PlayerBar from './PlayerBar';
+import { MAX_BAR_TEXT_SCALE } from './barTextScale';
 
 jest.mock('expo-router', () => ({
   router: { navigate: jest.fn() }
@@ -133,6 +141,10 @@ beforeEach(() => {
   usePlayerStore.getState().clear();
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe('the player bar', () => {
   it('is absent when nothing plays', async () => {
     await renderBar();
@@ -167,6 +179,25 @@ describe('the player bar', () => {
     expect(screen.getByTestId('player-open-playlist')).toHaveStyle({
       minHeight: touchTarget
     });
+  });
+
+  it('caps every bar word at the one scale the capsule takes', async () => {
+    startPlaylist();
+    await renderBar();
+
+    expect(MAX_BAR_TEXT_SCALE).toBe(1.3);
+
+    for (const testID of [
+      'player-title',
+      'player-playlist',
+      'player-queue',
+      'player-elapsed',
+      'player-duration'
+    ]) {
+      expect(screen.getByTestId(testID).props.maxFontSizeMultiplier).toBe(
+        MAX_BAR_TEXT_SCALE
+      );
+    }
   });
 
   it('publishes a taller bar when its content grows', async () => {
@@ -458,12 +489,30 @@ describe('the player bar', () => {
     });
   });
 
+  it('names the queue position on the playlist door and no selection on the orb', async () => {
+    startPlaylist();
+    await renderBar();
+
+    expect(
+      screen.getByTestId('player-open-playlist').props.accessibilityLabel
+    ).toBe('Open Rain On The Window, 1/1');
+
+    const state = screen.getByTestId('player-toggle').props
+      .accessibilityState as {
+      readonly selected?: boolean;
+      readonly checked?: boolean;
+    };
+
+    expect(state.selected).toBeUndefined();
+    expect(state.checked).toBeUndefined();
+  });
+
   it('names the controls in both languages', async () => {
     startPlaylist();
     await renderBar(Language.French);
 
     expect(
-      screen.getByLabelText('Ouvrir Rain On The Window')
+      screen.getByLabelText('Ouvrir Rain On The Window, 1/1')
     ).toBeOnTheScreen();
     expect(
       screen.getByLabelText('Piste précédente, First Song')
@@ -520,5 +569,49 @@ describe('the player bar', () => {
     ).transform as { translateX: number }[];
 
     expect(transform[0]?.translateX).toBe(0);
+  });
+
+  it('cuts to the next track without travel when the system asks for less motion', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+
+    let move: ((event: unknown, gesture: unknown) => void) | null = null;
+    let release: ((event: unknown, gesture: unknown) => void) | null = null;
+    const create = PanResponder.create.bind(PanResponder);
+
+    jest.spyOn(PanResponder, 'create').mockImplementation(config => {
+      if (config.onMoveShouldSetPanResponder !== undefined) {
+        move = config.onPanResponderMove as unknown as typeof move;
+        release = config.onPanResponderRelease as unknown as typeof release;
+      }
+
+      return create(config);
+    });
+
+    usePlayerStore
+      .getState()
+      .start(
+        [track, secondTrack],
+        { id: 'playlist-1', name: 'Rain On The Window' },
+        track.id
+      );
+    await renderBar();
+
+    await act(() => {
+      move?.({}, { dx: -400, vx: -0.5 });
+    });
+
+    const transform = StyleSheet.flatten(
+      screen.getByTestId('player-bar-capsule').props.style
+    ).transform as { translateX: number }[];
+
+    expect(transform[0]?.translateX).toBe(0);
+
+    await act(() => {
+      release?.({}, { dx: -400, vx: -0.5 });
+    });
+
+    expect(usePlayerStore.getState().currentId).toBe(secondTrack.id);
   });
 });

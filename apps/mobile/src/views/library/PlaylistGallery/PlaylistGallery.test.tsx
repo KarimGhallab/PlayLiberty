@@ -964,10 +964,8 @@ describe('the gallery', () => {
       top: 3,
       bottom: 3
     });
-    expect(
-      screen.getByRole('radio', { name: 'Shared with me 1' })
-    ).not.toBeChecked();
-    expect(screen.getByRole('radio', { name: 'All tracks 6' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Shared 1' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'All 6' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Pending 2' })).toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: 'Failed 4' })).toBeOnTheScreen();
     expect(
@@ -977,7 +975,7 @@ describe('the gallery', () => {
       screen.queryByRole('radio', { name: /Downloading/ })
     ).not.toBeOnTheScreen();
     expect(
-      screen.queryByRole('radio', { name: /Unavailable/ })
+      screen.queryByRole('radio', { name: /Never stored/ })
     ).not.toBeOnTheScreen();
   });
 
@@ -985,7 +983,7 @@ describe('the gallery', () => {
     await renderGallery([base]);
 
     expect(
-      screen.queryByRole('radio', { name: 'Shared with me 1' })
+      screen.queryByRole('radio', { name: 'Shared 1' })
     ).not.toBeOnTheScreen();
     expect(
       screen.queryByRole('radio', { name: 'All 1' })
@@ -996,17 +994,13 @@ describe('the gallery', () => {
   it('filters the grid to the shared scope', async () => {
     await renderGallery([shared, base], directory);
 
-    await fireEvent.press(
-      screen.getByRole('radio', { name: 'Shared with me 1' })
-    );
+    await fireEvent.press(screen.getByRole('radio', { name: 'Shared 1' }));
 
     expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
     expect(
       screen.getByTestId('playlist-card').props.accessibilityLabel
     ).toMatch(/^Shared Mix, /);
-    expect(
-      screen.getByRole('radio', { name: 'All tracks 3' })
-    ).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'All 3' })).toBeOnTheScreen();
   });
 
   it('filters the grid by a status chip', async () => {
@@ -1027,13 +1021,9 @@ describe('the gallery', () => {
       screen.getByTestId('gallery-status-chips')
     ).getAllByRole('radio');
 
-    expect(chips.at(-1)?.props.accessibilityLabel).toBe(
-      'Removed from YouTube 2'
-    );
+    expect(chips.at(-1)?.props.accessibilityLabel).toBe('Retained 2');
 
-    await fireEvent.press(
-      screen.getByRole('radio', { name: 'Removed from YouTube 2' })
-    );
+    await fireEvent.press(screen.getByRole('radio', { name: 'Retained 2' }));
 
     expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
     expect(
@@ -1058,16 +1048,10 @@ describe('the gallery', () => {
 
     await renderGallery([sharedRetained, retainedItem, base], directory);
 
-    expect(
-      screen.getByRole('radio', { name: 'Removed from YouTube 3' })
-    ).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'Retained 3' })).toBeOnTheScreen();
 
-    await fireEvent.press(
-      screen.getByRole('radio', { name: 'Shared with me 1' })
-    );
-    await fireEvent.press(
-      screen.getByRole('radio', { name: 'Removed from YouTube 1' })
-    );
+    await fireEvent.press(screen.getByRole('radio', { name: 'Shared 1' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Retained 1' }));
 
     expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
     expect(
@@ -1092,16 +1076,14 @@ describe('the gallery', () => {
   it('clears the scope and the chip when the screen is left', async () => {
     const { view } = await renderGallery([shared, base], directory);
 
-    await fireEvent.press(
-      screen.getByRole('radio', { name: 'Shared with me 1' })
-    );
+    await fireEvent.press(screen.getByRole('radio', { name: 'Shared 1' }));
     await fireEvent.press(screen.getByRole('radio', { name: 'Failed 2' }));
 
     await view.unmount();
     await renderGallery([shared, base], directory);
 
     expect(screen.getByRole('radio', { name: 'All 2' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'All tracks 6' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'All 6' })).toBeChecked();
   });
 
   it('scrolls the filter row horizontally', async () => {
@@ -1261,6 +1243,24 @@ describe('the gallery', () => {
     await waitFor(() => {
       expect(screen.getByTestId('add-sheet')).toBeOnTheScreen();
     });
+  });
+
+  it('says why the bulk sync skips the read-only playlists', async () => {
+    await renderGallery([base, shared]);
+
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
+
+    expect(
+      screen.getByText('1 read-only playlist is not included')
+    ).toBeOnTheScreen();
+  });
+
+  it('says nothing about read-only playlists when none are in scope', async () => {
+    await renderGallery([base, pinned]);
+
+    await fireEvent.press(screen.getByTestId('gallery-actions'));
+
+    expect(screen.queryByText(/read-only playlist/)).not.toBeOnTheScreen();
   });
 
   it('starts the bulk sync of the writable playlists from the dial', async () => {

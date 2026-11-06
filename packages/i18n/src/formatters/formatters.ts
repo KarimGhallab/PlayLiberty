@@ -108,25 +108,42 @@ export function syncStateLabel(
 }
 
 /**
- * Null for a stored, available track: the absence of a word is the state. A
- * removed source names the source whatever the file says.
+ * The two facts a row states, in order: what the file is, then what the source
+ * is. Null means the fact is the default and stays unsaid. A stored track
+ * whose source was removed is `retained`, a word no other state can carry.
  */
-export function trackStateLabel(
+export interface TrackStateFacts {
+  readonly file: string | null;
+  readonly source: string | null;
+}
+
+export function trackStateFacts(
   t: Translator<Messages>,
   fileStatus: TrackFileStatus,
   sourceStatus: TrackSourceStatus,
   provider: Provider
-): string | null {
-  if (sourceStatus === TrackSourceStatus.Removed) {
-    return t('trackState.removedFrom', {
-      provider: providerLabel(t, provider)
-    });
-  }
+): TrackStateFacts {
+  const source =
+    sourceStatus === TrackSourceStatus.Removed
+      ? t('trackState.removedFrom', {
+          provider: providerLabel(t, provider)
+        })
+      : null;
 
   if (fileStatus === TrackFileStatus.Stored) {
-    return null;
+    return {
+      file: source === null ? null : t('trackState.retained'),
+      source
+    };
   }
 
+  return { file: fileStateWord(t, fileStatus), source };
+}
+
+function fileStateWord(
+  t: Translator<Messages>,
+  fileStatus: TrackFileStatus
+): string {
   if (fileStatus === TrackFileStatus.Pending) {
     return t('trackState.pending');
   }

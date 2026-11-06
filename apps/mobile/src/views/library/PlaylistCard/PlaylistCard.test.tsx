@@ -102,7 +102,7 @@ describe('the playlist card', () => {
 
     expect(
       screen.getByTestId('playlist-cover-image', hidden).props.source.uri
-    ).toBe('https://instance.test/api/v1/tracks/track-1/thumbnail');
+    ).toBe('https://instance.test/api/v1/tracks/track-1/thumbnail?v=track-1');
 
     await fireEvent(
       screen.getByTestId('playlist-cover-image', hidden),
@@ -115,6 +115,20 @@ describe('the playlist card', () => {
     expect(screen.getByTestId('playlist-cover', hidden)).toHaveStyle({
       backgroundColor: sleeveColor(playlist.id)
     });
+  });
+
+  it('versions the first-track fallback so a changed track is a new image', async () => {
+    await renderCard({
+      playlist: {
+        ...playlist,
+        coverTrackId: 'track-2',
+        coverUpdatedAt: null
+      }
+    });
+
+    expect(
+      screen.getByTestId('playlist-cover-image', hidden).props.source.uri
+    ).toBe('https://instance.test/api/v1/tracks/track-2/thumbnail?v=track-2');
   });
 
   it('starts a playlist from its play control', async () => {
@@ -213,6 +227,56 @@ describe('the playlist card', () => {
     ).toBeOnTheScreen();
     expect(screen.queryByText('Pending', hidden)).not.toBeOnTheScreen();
     expect(screen.queryByText('Failed', hidden)).not.toBeOnTheScreen();
+  });
+
+  it('counts only the recoverable tracks as not stored', async () => {
+    await renderCard({
+      playlist: {
+        ...playlist,
+        counts: {
+          stored: 9,
+          pending: 0,
+          downloading: 0,
+          failed: 0,
+          unavailable: 4
+        }
+      }
+    });
+
+    expect(
+      screen.queryByTestId('playlist-incomplete', hidden)
+    ).not.toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-gone', hidden)).toHaveTextContent(
+      '4 tracks never stored'
+    );
+    expect(
+      screen.getByTestId('playlist-card').props.accessibilityLabel
+    ).toContain('4 tracks never stored');
+  });
+
+  it('keeps the download marker beside a terminal line', async () => {
+    await renderCard({
+      playlist: {
+        ...playlist,
+        counts: {
+          stored: 5,
+          pending: 1,
+          downloading: 0,
+          failed: 2,
+          unavailable: 4
+        }
+      }
+    });
+
+    expect(
+      screen.getByText('3 tracks are not stored', hidden)
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('playlist-gone', hidden)).toHaveTextContent(
+      '4 tracks never stored'
+    );
+    const label = screen.getByTestId('playlist-card').props.accessibilityLabel;
+    expect(label).toContain('3 tracks are not stored');
+    expect(label).toContain('4 tracks never stored');
   });
 
   it('draws the count, the sync state and the share mark', async () => {

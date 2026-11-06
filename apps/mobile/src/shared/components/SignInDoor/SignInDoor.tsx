@@ -4,11 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useI18n } from '@playliberty/i18n';
 
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../styles/tokens';
@@ -27,13 +27,20 @@ export default function SignInDoor({
   action
 }: SignInDoorProps) {
   const { t } = useI18n();
+  const scale = useTextScale();
 
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.top}>
           <ShelfSleeves busy={busy} />
-          <Text style={styles.wordmark}>{t('app.name')}</Text>
+          <Text
+            style={[
+              styles.wordmark,
+              { lineHeight: lineHeightFor('text-2xl', 'leading-tight', scale) }
+            ]}>
+            {t('app.name')}
+          </Text>
           {children}
         </View>
         {action ?? <View style={styles.placeholder} />}
@@ -69,7 +76,6 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: tokenLength('text-2xl'),
     fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-2xl') * tokenNumber('leading-tight'),
     textAlign: 'center'
   }
 });

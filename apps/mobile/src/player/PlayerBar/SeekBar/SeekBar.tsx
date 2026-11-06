@@ -5,12 +5,18 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatDuration, useI18n } from '@playliberty/i18n';
 
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
   tokenNumber,
   touchTarget
 } from '../../../shared/styles/tokens';
+
+import { MAX_BAR_TEXT_SCALE } from '../barTextScale';
 
 const SEEK_STEP_SECONDS = 10;
 
@@ -39,6 +45,7 @@ export default function SeekBar({
   onSeekBy
 }: SeekBarProps) {
   const { t } = useI18n();
+  const scale = useTextScale(MAX_BAR_TEXT_SCALE);
   const [dragFraction, setDragFraction] = useState<number | null>(null);
   const width = useRef(0);
   const dragging = useRef<number | null>(null);
@@ -121,7 +128,11 @@ export default function SeekBar({
         testID="player-elapsed"
         accessible={false}
         numberOfLines={1}
-        style={styles.time}>
+        maxFontSizeMultiplier={MAX_BAR_TEXT_SCALE}
+        style={[
+          styles.time,
+          { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+        ]}>
         {formatDuration(shownElapsed)}
       </Text>
       <View
@@ -177,7 +188,11 @@ export default function SeekBar({
         testID="player-duration"
         accessible={false}
         numberOfLines={1}
-        style={styles.time}>
+        maxFontSizeMultiplier={MAX_BAR_TEXT_SCALE}
+        style={[
+          styles.time,
+          { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+        ]}>
         {formatDuration(duration)}
       </Text>
     </View>
@@ -199,7 +214,6 @@ const styles = StyleSheet.create({
     color: tokenColor('muted-on-art'),
     fontFamily,
     fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal'),
     textAlign: 'center'
   },
   rail: {

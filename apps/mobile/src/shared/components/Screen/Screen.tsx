@@ -4,11 +4,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MAX_CONTENT_WIDTH } from '../../styles/contentColumn/contentColumn';
+import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../styles/tokens';
@@ -21,6 +21,8 @@ export interface ScreenProps {
   /** Draws the way back before the title; the caller owns the sentence. */
   readonly onBack?: () => void;
   readonly backLabel?: string;
+  /** Hides the whole frame from assistive technology while a route covers it. */
+  readonly covered?: boolean;
   readonly children?: ReactNode;
 }
 
@@ -31,11 +33,17 @@ export default function Screen({
   testID,
   onBack,
   backLabel,
+  covered = false,
   children
 }: ScreenProps) {
+  const scale = useTextScale();
+  const titleStyle = [
+    styles.title,
+    { lineHeight: lineHeightFor('text-xl', 'leading-tight', scale) }
+  ];
   const heading =
     title === undefined ? null : (
-      <Text accessibilityRole="header" style={styles.title}>
+      <Text accessibilityRole="header" style={titleStyle}>
         {title}
       </Text>
     );
@@ -44,6 +52,8 @@ export default function Screen({
     <SafeAreaView
       testID={testID}
       style={styles.screen}
+      accessibilityElementsHidden={covered}
+      importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
       edges={['top', 'left', 'right']}>
       <View style={styles.content}>
         {onBack === undefined ? (
@@ -64,14 +74,20 @@ export default function Screen({
             {title === undefined ? null : (
               <Text
                 accessibilityRole="header"
-                style={[styles.title, styles.headingTitle]}>
+                style={[...titleStyle, styles.headingTitle]}>
                 {title}
               </Text>
             )}
           </View>
         )}
         {subtitle === undefined ? null : (
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <Text
+            style={[
+              styles.subtitle,
+              { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+            ]}>
+            {subtitle}
+          </Text>
         )}
         {children}
       </View>
@@ -113,13 +129,11 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-xl'),
-    fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-xl') * tokenNumber('leading-tight')
+    fontWeight: tokenWeight('weight-semibold')
   },
   subtitle: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   }
 });

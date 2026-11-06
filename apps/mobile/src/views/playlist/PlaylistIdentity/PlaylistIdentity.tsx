@@ -7,7 +7,6 @@ import {
 import { useRef } from 'react';
 import {
   Animated,
-  Image,
   StyleSheet,
   Text,
   View,
@@ -24,6 +23,7 @@ import {
   useI18n
 } from '@playliberty/i18n';
 
+import AppImage from '../../../shared/components/AppImage/AppImage';
 import PlayPauseGlyph, {
   type PlayPauseGlyphHandle
 } from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
@@ -37,6 +37,11 @@ import {
 } from '../../../shared/playlistIdentity/shareMark';
 import { syncStateColor } from '../../../shared/playlistIdentity/syncStateColor';
 import { contentColumn } from '../../../shared/styles/contentColumn/contentColumn';
+import {
+  drawnLineHeight,
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
 import {
   coverGroundOpacity,
   fontFamily,
@@ -72,15 +77,40 @@ const WIDE_HEIGHT = WIDE_ACTIONS_TOP + PLAY + 12 + 2;
 const NARROW_HEIGHT = TOP + NARROW_COVER + 12 + 2;
 const NARROW_IDENTITY_RIGHT = TOP + NARROW_BLOCK + 12;
 
-/* The compact header keeps a fixed height, so its identity stops scaling before
- * the fourth line would spill into the list. */
+/* The compact identity stops scaling at this cap; the header grows to keep the
+ * fourth line instead of clipping it. */
 const MAX_IDENTITY_SCALE = 1.3;
 
-/* The two heights the header moves between, in its own top coordinates. */
+/* The wide header's height; the compact one follows the text scale. */
 export const HEADER_HEIGHT = {
-  wide: WIDE_HEIGHT,
-  narrow: NARROW_HEIGHT
+  wide: WIDE_HEIGHT
 } as const;
+
+/* The compact identity's four lines at the capped scale. */
+function compactLinesHeight(scale: number): number {
+  const name = drawnLineHeight('text-xl', 'leading-tight', scale);
+  const meta = Math.max(
+    drawnLineHeight('text-xs', 'leading-normal', scale),
+    tokenLength('space-6')
+  );
+  const count = drawnLineHeight('text-sm', 'leading-normal', scale);
+  const owner = drawnLineHeight('text-xs', 'leading-normal', scale);
+
+  return name + meta + count + owner + tokenLength('space-1') * 3;
+}
+
+/** The compact header's height: the four lines, or the cover's box. */
+export function narrowHeaderHeightFor(scale: number): number {
+  return Math.max(
+    NARROW_HEIGHT,
+    TOP + compactLinesHeight(scale) + tokenLength('space-2')
+  );
+}
+
+/** The compact header's height at the text scale its identity draws at. */
+export function useNarrowHeaderHeight(): number {
+  return narrowHeaderHeightFor(useTextScale(MAX_IDENTITY_SCALE));
+}
 
 export interface HeaderControlBox {
   readonly left: number;
@@ -329,6 +359,8 @@ function IdentityBlock({
   readonly lines: number;
   readonly compact: boolean;
 }) {
+  const scale = useTextScale(MAX_IDENTITY_SCALE);
+
   return (
     <View style={styles.body}>
       <View style={styles.nameRow}>
@@ -337,7 +369,10 @@ function IdentityBlock({
           numberOfLines={lines}
           maxFontSizeMultiplier={MAX_IDENTITY_SCALE}
           testID="playlist-name"
-          style={styles.name}>
+          style={[
+            styles.name,
+            { lineHeight: lineHeightFor('text-xl', 'leading-tight', scale) }
+          ]}>
           {props.playlist.name}
         </Text>
         <View
@@ -383,6 +418,7 @@ function IdentityBlock({
       </View>
       <Text
         testID="playlist-track-count"
+        numberOfLines={1}
         maxFontSizeMultiplier={MAX_IDENTITY_SCALE}
         style={styles.count}>
         {facts.count}
@@ -390,6 +426,7 @@ function IdentityBlock({
       {facts.sharedBy === null ? null : (
         <Text
           testID="playlist-owner"
+          numberOfLines={1}
           maxFontSizeMultiplier={MAX_IDENTITY_SCALE}
           style={styles.owner}>
           {facts.t('header.sharedBy', { name: facts.sharedBy })}
@@ -486,10 +523,11 @@ export default function PlaylistIdentity({
   const column = contentColumn(window.width, insets.left, insets.right);
   const width = column.width;
   const compactControls = narrowControlBoxes(width);
+  const narrowHeight = useNarrowHeaderHeight();
 
   const height = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [WIDE_HEIGHT, NARROW_HEIGHT]
+    outputRange: [WIDE_HEIGHT, narrowHeight]
   });
   const coverSize = progress.interpolate({
     inputRange: [0, 1],
@@ -521,7 +559,7 @@ export default function PlaylistIdentity({
   });
   const wideShift = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, NARROW_HEIGHT - WIDE_HEIGHT]
+    outputRange: [0, narrowHeight - WIDE_HEIGHT]
   });
   /* Play leads the wide row and the two secondary controls close it; the
    * smaller two centre on the play's height. */
@@ -540,7 +578,7 @@ export default function PlaylistIdentity({
             style={[styles.fill, { backgroundColor: facts.cover.sleeve }]}
           />
         ) : (
-          <Image
+          <AppImage
             accessible={false}
             resizeMode="cover"
             source={facts.cover.source}
@@ -564,7 +602,7 @@ export default function PlaylistIdentity({
             }
           ]}>
           {facts.cover.source === null ? null : (
-            <Image
+            <AppImage
               testID="playlist-cover-image"
               accessible={false}
               resizeMode="cover"
@@ -700,6 +738,14 @@ export default function PlaylistIdentity({
           <PlayingLine playing={props.playing === true} />
         </View>
       </View>
+
+      {/* The rule is the header's lower bound: a row scrolled under it is cut
+       * on a surface, not in mid-air. */}
+      <Animated.View
+        testID="detail-header-edge"
+        pointerEvents="none"
+        style={[styles.edge, { opacity: narrowOpacity }]}
+      />
     </Animated.View>
   );
 }
@@ -827,8 +873,7 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-xl'),
-    fontWeight: tokenWeight('weight-semibold'),
-    lineHeight: tokenLength('text-xl') * tokenNumber('leading-tight')
+    fontWeight: tokenWeight('weight-semibold')
   },
   meta: {
     flexDirection: 'row',
@@ -889,6 +934,14 @@ const styles = StyleSheet.create({
     right: TOP,
     bottom: 0,
     height: 2
+  },
+  edge: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 1,
+    backgroundColor: tokenColor('line')
   },
   disabled: {
     opacity: tokenNumber('opacity-disabled')

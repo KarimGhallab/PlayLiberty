@@ -382,15 +382,29 @@ describe('TrackRow', () => {
     expect(screen.queryByText(/yt-dlp/)).not.toBeInTheDocument();
   });
 
-  it('keeps a removed track playable and names the source it left', () => {
+  it('keeps a retained track playable and names the source it outlived', () => {
     const { onPlay } = renderRow({
       association: association({ sourceStatus: TrackSourceStatus.Removed })
     });
 
+    expect(screen.getByText('Retained')).toBeInTheDocument();
     expect(screen.getByText('Removed from YouTube')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Play Blue In Green' }));
     expect(onPlay).toHaveBeenCalledWith('track-1');
+  });
+
+  it('tells a track that was never stored apart from a retained one', () => {
+    renderRow({
+      association: association({
+        fileStatus: TrackFileStatus.Unavailable,
+        sourceStatus: TrackSourceStatus.Removed
+      })
+    });
+
+    expect(screen.getByText('Never stored')).toBeInTheDocument();
+    expect(screen.getByText('Removed from YouTube')).toBeInTheDocument();
+    expect(screen.queryByText('Retained')).not.toBeInTheDocument();
   });
 
   it('announces playing on the current track while the queue runs', () => {

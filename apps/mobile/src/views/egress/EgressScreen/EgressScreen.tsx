@@ -28,10 +28,13 @@ import PressableScale from '../../../shared/components/PressableScale/PressableS
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import Screen from '../../../shared/components/Screen/Screen';
 import {
+  lineHeightFor,
+  useTextScale
+} from '../../../shared/styles/textMetrics';
+import {
   fontFamily,
   tokenColor,
   tokenLength,
-  tokenNumber,
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
@@ -112,6 +115,7 @@ interface FactProps {
 /* One fact is one announcement: the label, the value and the sentence under it
  * are read once, and the painted pieces stay out of the tree. */
 function Fact({ label, value, sub = null, style, valueStyle }: FactProps) {
+  const scale = useTextScale();
   const name = [label, value, sub]
     .filter((part): part is string => part !== null)
     .join(', ');
@@ -127,9 +131,30 @@ function Fact({ label, value, sub = null, style, valueStyle }: FactProps) {
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
         style={styles.factBody}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={[styles.value, valueStyle]}>{value}</Text>
-        {sub === null ? null : <Text style={styles.sub}>{sub}</Text>}
+        <Text
+          style={[
+            styles.label,
+            { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+          ]}>
+          {label}
+        </Text>
+        <Text
+          style={[
+            styles.value,
+            valueStyle,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
+          {value}
+        </Text>
+        {sub === null ? null : (
+          <Text
+            style={[
+              styles.sub,
+              { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+            ]}>
+            {sub}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -156,6 +181,8 @@ function ConfigCard({
   onPress
 }: ConfigCardProps) {
   const { fontScale } = useWindowDimensions();
+  const scale = useTextScale();
+  const [confirming, setConfirming] = useState(false);
   const stacked = stackFacts(fontScale);
   const country = countryOf(config.name);
   const countryName =
@@ -191,7 +218,10 @@ function ConfigCard({
             accessible
             accessibilityRole="image"
             accessibilityLabel={countryWord ?? undefined}
-            style={styles.flag}>
+            style={[
+              styles.flag,
+              { lineHeight: lineHeightFor('text-md', 'leading-tight', scale) }
+            ]}>
             {flag}
           </Text>
         )}
@@ -237,20 +267,61 @@ function ConfigCard({
           />
         </View>
       </View>
-      <PressableScale
-        testID={`egress-action-${config.name}`}
-        accessibilityRole="button"
-        accessibilityLabel={`${idle} ${config.name}`}
-        accessibilityState={{ disabled, busy: pending }}
-        disabled={disabled}
-        style={[styles.action, disabled && styles.actionDisabled]}
-        onPress={onPress}>
-        <ActionIcon size={tokenLength('icon-sm')} color={iconColor} />
-        <Text
-          style={[styles.actionLabel, disabled && styles.actionLabelDisabled]}>
-          {pending ? working : idle}
-        </Text>
-      </PressableScale>
+      {!config.active && confirming && !pending ? (
+        <>
+          <Text accessibilityRole="alert" style={styles.ask}>
+            {t('egress.switchAsk', { name: config.name })}
+          </Text>
+          <View style={styles.confirmRow}>
+            <PressableScale
+              testID={`egress-cancel-${config.name}`}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel')}
+              style={styles.cancel}
+              onPress={() => setConfirming(false)}>
+              <Text style={styles.cancelLabel}>{t('common.cancel')}</Text>
+            </PressableScale>
+            <PressableScale
+              testID={`egress-confirm-${config.name}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${idle} ${config.name}`}
+              accessibilityState={{ disabled, busy: pending }}
+              disabled={disabled}
+              style={[styles.confirm, disabled && styles.actionDisabled]}
+              onPress={() => {
+                setConfirming(false);
+                onPress();
+              }}>
+              <Text style={styles.confirmLabel}>{idle}</Text>
+            </PressableScale>
+          </View>
+        </>
+      ) : (
+        <PressableScale
+          testID={`egress-action-${config.name}`}
+          accessibilityRole="button"
+          accessibilityLabel={`${idle} ${config.name}`}
+          accessibilityState={{ disabled, busy: pending }}
+          disabled={disabled}
+          style={[styles.action, disabled && styles.actionDisabled]}
+          onPress={() => {
+            if (config.active) {
+              onPress();
+              return;
+            }
+
+            setConfirming(true);
+          }}>
+          <ActionIcon size={tokenLength('icon-sm')} color={iconColor} />
+          <Text
+            style={[
+              styles.actionLabel,
+              disabled && styles.actionLabelDisabled
+            ]}>
+            {pending ? working : idle}
+          </Text>
+        </PressableScale>
+      )}
     </View>
   );
 }
@@ -266,6 +337,7 @@ export interface EgressScreenProps {
 export default function EgressScreen({ onBack }: EgressScreenProps) {
   const { t, language } = useI18n();
   const insets = useSafeAreaInsets();
+  const scale = useTextScale();
   const barHeight = usePlayerBarHeight();
   const egress = useEgress();
   const switchExit = useSwitchEgress();
@@ -348,7 +420,12 @@ export default function EgressScreen({ onBack }: EgressScreenProps) {
         title={t('egress.title')}
         onBack={onBack}
         backLabel={t('common.back')}>
-        <Text accessibilityLiveRegion={loadingRegion} style={styles.say}>
+        <Text
+          accessibilityLiveRegion={loadingRegion}
+          style={[
+            styles.say,
+            { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
+          ]}>
           {t('egress.loading')}
         </Text>
       </Screen>
@@ -401,6 +478,7 @@ export default function EgressScreen({ onBack }: EgressScreenProps) {
             style={[
               styles.agent,
               {
+                lineHeight: lineHeightFor('text-sm', 'leading-normal', scale),
                 color: egress.data.agentReachable
                   ? tokenColor('muted')
                   : tokenColor('ink')
@@ -433,7 +511,15 @@ export default function EgressScreen({ onBack }: EgressScreenProps) {
             }
           ]}>
           {egress.data.configs.length === 0 ? (
-            <Text style={styles.say}>{t('egress.empty')}</Text>
+            <Text
+              style={[
+                styles.say,
+                {
+                  lineHeight: lineHeightFor('text-sm', 'leading-normal', scale)
+                }
+              ]}>
+              {t('egress.empty')}
+            </Text>
           ) : (
             egress.data.configs.map(config => {
               const pending = config.active
@@ -490,8 +576,7 @@ const styles = StyleSheet.create({
   agent: {
     flexShrink: 1,
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   },
   scroll: {
     flex: 1
@@ -517,8 +602,7 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2')
   },
   flag: {
-    fontSize: tokenLength('text-lg'),
-    lineHeight: tokenLength('text-md') * tokenNumber('leading-tight')
+    fontSize: tokenLength('text-lg')
   },
   name: {
     flexShrink: 1,
@@ -565,21 +649,18 @@ const styles = StyleSheet.create({
   label: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   },
   value: {
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm'),
-    fontVariant: ['tabular-nums'],
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontVariant: ['tabular-nums']
   },
   sub: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-xs'),
-    lineHeight: tokenLength('text-xs') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-xs')
   },
   action: {
     minHeight: touchTarget,
@@ -606,10 +687,45 @@ const styles = StyleSheet.create({
   actionLabelDisabled: {
     color: tokenColor('control-disabled-fg')
   },
+  ask: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-sm')
+  },
+  confirmRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: tokenLength('space-2')
+  },
+  cancel: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: tokenLength('space-4'),
+    borderWidth: 1,
+    borderColor: tokenColor('control-border'),
+    borderRadius: tokenLength('radius-control')
+  },
+  cancelLabel: {
+    color: tokenColor('ink'),
+    fontFamily,
+    fontSize: tokenLength('text-sm')
+  },
+  confirm: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: tokenLength('space-4'),
+    borderRadius: tokenLength('radius-control'),
+    backgroundColor: tokenColor('accent')
+  },
+  confirmLabel: {
+    color: tokenColor('bg'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    fontWeight: tokenWeight('weight-medium')
+  },
   say: {
     color: tokenColor('muted'),
     fontFamily,
-    fontSize: tokenLength('text-sm'),
-    lineHeight: tokenLength('text-sm') * tokenNumber('leading-normal')
+    fontSize: tokenLength('text-sm')
   }
 });

@@ -136,7 +136,7 @@ function customCoverUrl(playlistId: string, version = CUSTOM_VERSION): string {
 }
 
 function trackCoverUrl(trackId: string): string {
-  return `/api/v1/tracks/${trackId}/thumbnail`;
+  return `/api/v1/tracks/${trackId}/thumbnail?v=${encodeURIComponent(trackId)}`;
 }
 
 function playlistWithCover(): Playlist {
@@ -304,7 +304,7 @@ describe('PlaylistHeader', () => {
 
     /* The cover is the track's own route, not a third-party URL. */
     const image = container.querySelector('img');
-    expect(image?.getAttribute('src')).toBe('/api/v1/tracks/track-9/thumbnail');
+    expect(image?.getAttribute('src')).toBe(trackCoverUrl('track-9'));
   });
 
   it('falls back to the sleeve when the cover image fails to load', async () => {

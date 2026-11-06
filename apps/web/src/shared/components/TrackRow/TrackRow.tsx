@@ -10,8 +10,8 @@ import { memo, useRef, useState } from 'react';
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus, endpoints } from '@playliberty/contracts';
-import { formatDuration, trackStateLabel, useI18n } from '@playliberty/i18n';
-import { trackTone } from '@playliberty/ui-foundation';
+import { formatDuration, trackStateFacts, useI18n } from '@playliberty/i18n';
+import { fileTone, trackTone } from '@playliberty/ui-foundation';
 
 import { mediaUrl } from '../../api/endpoints/endpoints';
 import { isPlayable } from '../../player/playable';
@@ -74,13 +74,14 @@ function TrackRow({
 }: TrackRowProps) {
   const { t } = useI18n();
   const { track } = association;
-  const stateLabel = trackStateLabel(
+  const facts = trackStateFacts(
     t,
     track.fileStatus,
     track.sourceStatus,
     track.provider
   );
-  const tone = trackTone(track.fileStatus, track.sourceStatus);
+  const stateTone = fileTone(track.fileStatus, track.sourceStatus);
+  const sourceTone = trackTone(track.fileStatus, track.sourceStatus);
   const playable = isPlayable(track);
   const failed = track.fileStatus === TrackFileStatus.Failed;
   const downloading = track.fileStatus === TrackFileStatus.Downloading;
@@ -252,10 +253,22 @@ function TrackRow({
               {playing ? t('trackBars.playing') : t('trackBars.paused')}
             </span>
           ) : null}
-          {stateLabel === null ? null : (
-            <span className={styles.trackRow__state} data-tone={tone}>
-              {stateLabel}
+          {facts.file === null ? null : (
+            <span className={styles.trackRow__state} data-tone={stateTone}>
+              {facts.file}
             </span>
+          )}
+          {facts.source === null ? null : (
+            <>
+              {facts.file === null ? null : (
+                <span className={styles.trackRow__separator} aria-hidden="true">
+                  ·
+                </span>
+              )}
+              <span className={styles.trackRow__source} data-tone={sourceTone}>
+                {facts.source}
+              </span>
+            </>
           )}
           {/* The recorded policy, drawn only when it is the non-default one: a
            * track fetched whole must read as deliberate. */}

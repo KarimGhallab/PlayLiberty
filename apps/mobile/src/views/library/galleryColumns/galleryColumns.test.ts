@@ -42,8 +42,19 @@ describe('the gallery columns', () => {
     expect(galleryColumnWidth(320)).toBeGreaterThan(0);
   });
 
-  it('keeps a pinned card under a column so the next one peeks', () => {
-    expect(galleryPinnedWidth(390)).toBeCloseTo(galleryColumnWidth(390) * 0.9);
-    expect(galleryPinnedWidth(390)).toBeLessThan(galleryColumnWidth(390));
+  it('makes a pinned card the grid card and lets the next one peek', () => {
+    for (const windowWidth of [320, 390, 411]) {
+      expect(galleryPinnedWidth(windowWidth)).toBe(
+        galleryColumnWidth(windowWidth)
+      );
+    }
+
+    /* The row runs one page inset past the content edge; the next card starts
+     * a gap beyond it, so that inset is the visible sliver. */
+    const card = galleryColumnWidth(411);
+    const box = contentWidth(411) - inset * 2;
+
+    expect(card * 2 + gap).toBe(box);
+    expect(inset).toBeGreaterThan(gap);
   });
 });

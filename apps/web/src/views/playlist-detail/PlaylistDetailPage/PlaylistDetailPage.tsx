@@ -838,7 +838,7 @@ export default function PlaylistDetailPage() {
             {syncErrorShown ? (
               <div className={styles.playlistDetail__state}>
                 <SyncError
-                  trackCount={playlist.data?.trackCount ?? null}
+                  storedCount={counts?.[TrackFileStatus.Stored] ?? null}
                   provider={playlist.data?.provider ?? Provider.Youtube}
                   rawError={latestRun.data?.error ?? null}
                   onRetry={

@@ -57,6 +57,8 @@ One word per idea. When a concept has two names here, pick the one in the left c
 
 The user-facing word for `fileStatus: stored` is **stored** in English and **stockée** in French, wherever the state appears: the filter chip, the incomplete badge, the empty promise and the row.
 
+A row states two facts, one word each. The file fact is **retained** (French **conservée**) for a stored track whose source was removed, and **never stored** (French **jamais stockée**) for a track that was never fetched and whose source is gone. The source fact is **removed from YouTube** (French **retirée de YouTube**). "Retained" and "never stored" are the only words that separate the two outcomes; neither describes a track whose source is still there. The retained filter chip says **retained** (French **conservée**, plural **conservées**).
+
 ## Playback and delivery
 
 | Term          | Meaning                                                                 |
