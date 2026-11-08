@@ -13,9 +13,11 @@ import {
   defineEndpoint
 } from '@playliberty/contracts';
 
+import type { AccessToken } from '../credentialed/credentialed';
+import { NeedsProvisioningError } from '../credentialed/credentialed';
 import { USER_AGENT } from '../userAgent';
-import type { AccessToken, TokenAdapterOptions } from './tokenAdapter';
-import { NeedsProvisioningError, tokenAdapter } from './tokenAdapter';
+import type { TokenAdapterOptions } from './tokenAdapter';
+import { tokenAdapter } from './tokenAdapter';
 
 const BASE = 'https://instance.test';
 const TOKEN: AccessToken = { id: 'token-id', secret: 'token-secret' };

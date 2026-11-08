@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { apiBaseUrl } from '../api/apiBaseUrl';
-import type { AccessToken } from '../api/tokenAdapter/tokenAdapter';
+import type { AccessToken } from '../api/credentialed/credentialed';
 import { mobileSession } from './session/session';
 import {
   type SessionRecord,
@@ -52,10 +52,10 @@ export function useApiConfig(): ApiConfig | null {
       })
       .catch(async () => {
         /* A transient renewal keeps the current pair until it really lapses. */
-        const record = await mobileSession.load();
+        const token = await mobileSession.usableAccessToken();
 
-        if (record !== null && record.accessDeadline > Date.now()) {
-          apply(record);
+        if (active && token !== null) {
+          setConfig({ baseUrl, token });
         }
       });
 

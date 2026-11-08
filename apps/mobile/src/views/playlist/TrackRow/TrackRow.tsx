@@ -11,15 +11,18 @@ import {
 
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
-import { formatDuration, trackStateFacts, useI18n } from '@playliberty/i18n';
-import { failureSentence } from '@playliberty/i18n';
+import {
+  failureSentence,
+  formatDuration,
+  trackStateFacts,
+  useI18n
+} from '@playliberty/i18n';
 import { isPlayable } from '@playliberty/player';
 import { fileTone, trackTone } from '@playliberty/ui-foundation';
 
 import AppImage from '../../../shared/components/AppImage/AppImage';
 import { usePressScale } from '../../../shared/components/PressableScale/usePressScale';
 import TrackBars from '../../../shared/components/TrackBars/TrackBars';
-import { mediaSource } from '../../../shared/media/mediaSource';
 import {
   lineHeightFor,
   useTextScale
@@ -33,6 +36,7 @@ import {
 } from '../../../shared/styles/tokens';
 import { trackToneColor } from '../../../shared/trackState/trackToneColor';
 
+import { mediaAddress } from '../../../api/credentialed/credentialed';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 
 /* A press plays; a drag scrolls. The travel is measured from the touch itself,
@@ -92,7 +96,7 @@ function TrackRow({
   const artwork =
     config === null || track.thumbnailPath === null || thumbnailFailed
       ? null
-      : mediaSource(config, endpoints.trackThumbnail, {
+      : mediaAddress(config, endpoints.trackThumbnail, {
           trackId: track.id
         });
   const withFailure =

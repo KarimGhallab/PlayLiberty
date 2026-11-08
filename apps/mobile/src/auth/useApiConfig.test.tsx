@@ -11,11 +11,13 @@ jest.mock('./session/session', () => ({
   mobileSession: {
     subscribe: jest.fn(() => () => {}),
     accessToken: jest.fn(),
+    usableAccessToken: jest.fn(),
     load: jest.fn()
   }
 }));
 
 const accessToken = jest.mocked(mobileSession.accessToken);
+const usableAccessToken = jest.mocked(mobileSession.usableAccessToken);
 const subscribe = jest.mocked(mobileSession.subscribe);
 
 function record(accessId: string, accessSecret: string): SessionRecord {
@@ -31,10 +33,29 @@ function record(accessId: string, accessSecret: string): SessionRecord {
 beforeEach(() => {
   jest.clearAllMocks();
   accessToken.mockResolvedValue({ id: 'access-1', secret: 'secret-1' });
+  usableAccessToken.mockResolvedValue(null);
   useSessionStore.setState({ status: SessionStatus.SignedIn });
 });
 
 describe('the API config', () => {
+  it('keeps the pair a transient renewal could not replace', async () => {
+    accessToken.mockRejectedValueOnce(new Error('offline'));
+    usableAccessToken.mockResolvedValue({
+      id: 'access-1',
+      secret: 'secret-1'
+    });
+
+    const { result } = await renderHook(() => useApiConfig());
+
+    await waitFor(() =>
+      expect(result.current?.token).toEqual({
+        id: 'access-1',
+        secret: 'secret-1'
+      })
+    );
+    expect(usableAccessToken).toHaveBeenCalled();
+  });
+
   it('follows a renewed record without a relaunch', async () => {
     const { result } = await renderHook(() => useApiConfig());
 

@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 
-import { StreamFailureKind } from '@playliberty/ui-foundation';
-
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
+import type { StreamFailure } from '../streamFailure/streamFailure';
 import { usePlayerAudio } from './usePlayerAudio';
 
 jest.mock('expo-audio', () => {
@@ -77,9 +76,9 @@ const session = jest.requireMock<SessionMock>(
   '../../auth/sessionStore/sessionStore'
 );
 const resolveSource = (trackId: string): { uri: string } => ({ uri: trackId });
-const classifyFailure = jest.fn(
-  async (): Promise<StreamFailureKind> => StreamFailureKind.Unknown
-);
+const classifyFailure = jest.fn(async (): Promise<StreamFailure> => ({
+  kind: 'unknown'
+}));
 
 function track(id: string): PlayerTrack {
   return {
@@ -329,7 +328,7 @@ describe('the player audio', () => {
 
   it('drops a gone track and advances', async () => {
     start(['a', 'b'], 'a');
-    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Gone);
+    classifyFailure.mockResolvedValueOnce({ kind: 'gone' });
     const view = await renderHook(() =>
       usePlayerAudio(resolveSource, classifyFailure)
     );
@@ -354,7 +353,7 @@ describe('the player audio', () => {
 
   it('stops when the last entry is gone', async () => {
     start(['a'], 'a');
-    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Gone);
+    classifyFailure.mockResolvedValueOnce({ kind: 'gone' });
     const view = await renderHook(() =>
       usePlayerAudio(resolveSource, classifyFailure)
     );
@@ -379,7 +378,7 @@ describe('the player audio', () => {
 
   it('pauses on an unclassified refusal and names the track', async () => {
     start(['a', 'b'], 'a');
-    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Unknown);
+    classifyFailure.mockResolvedValueOnce({ kind: 'unknown' });
     const view = await renderHook(() =>
       usePlayerAudio(resolveSource, classifyFailure)
     );
@@ -403,9 +402,43 @@ describe('the player audio', () => {
     expect(usePlayerStore.getState().queue).toEqual(['a', 'b']);
   });
 
+  it('reloads the stream with the renewed pair', async () => {
+    const token = { id: 'access-2', secret: 'secret-2' };
+    const resolver = jest.fn((trackId: string, pair?: unknown) => ({
+      uri: pair === undefined ? trackId : `${trackId}:renewed`
+    }));
+
+    start(['a'], 'a');
+    classifyFailure.mockResolvedValueOnce({ kind: 'retry', token });
+    const view = await renderHook(() =>
+      usePlayerAudio(resolver, classifyFailure)
+    );
+
+    await act(() => {
+      audio.__status.current = {
+        didJustFinish: false,
+        currentTime: 0,
+        error: 'stream failed',
+        playing: true,
+        isBuffering: false
+      };
+    });
+    await view.rerender({});
+
+    await waitFor(() => {
+      expect(resolver).toHaveBeenLastCalledWith('a', token);
+    });
+    expect(audio.__player.replace).toHaveBeenLastCalledWith({
+      uri: 'a:renewed'
+    });
+    expect(audio.__player.play).toHaveBeenCalled();
+    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    expect(usePlayerStore.getState().playbackFailureId).toBeNull();
+  });
+
   it('expires the session instead of drawing a broken track', async () => {
     start(['a'], 'a');
-    classifyFailure.mockResolvedValueOnce(StreamFailureKind.Session);
+    classifyFailure.mockResolvedValueOnce({ kind: 'session' });
     const view = await renderHook(() =>
       usePlayerAudio(resolveSource, classifyFailure)
     );
@@ -429,7 +462,7 @@ describe('the player audio', () => {
   });
 
   it('ignores a classification that arrives after the playhead moved', async () => {
-    let resolveKind: ((kind: StreamFailureKind) => void) | null = null;
+    let resolveKind: ((failure: StreamFailure) => void) | null = null;
 
     start(['a', 'b'], 'a');
     classifyFailure.mockImplementationOnce(
@@ -462,7 +495,7 @@ describe('the player audio', () => {
     });
 
     await act(async () => {
-      resolveKind?.(StreamFailureKind.Gone);
+      resolveKind?.({ kind: 'gone' });
       await Promise.resolve();
     });
 

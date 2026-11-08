@@ -214,6 +214,33 @@ describe('accessToken', () => {
   });
 });
 
+describe('usableAccessToken', () => {
+  it('reads the pair while the deadline still stands', async () => {
+    const store = new MemoryStore(record(1000));
+    const { calls, fetchMock } = fetchReturning(() =>
+      jsonResponse(tokenPair())
+    );
+    const session = sessionWith(store, fetchMock);
+
+    await expect(session.usableAccessToken()).resolves.toEqual({
+      id: 'access-1',
+      secret: 'secret-1'
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('returns null once the deadline passes', async () => {
+    const store = new MemoryStore(record(-1000));
+    const { calls, fetchMock } = fetchReturning(() =>
+      jsonResponse(tokenPair())
+    );
+    const session = sessionWith(store, fetchMock);
+
+    await expect(session.usableAccessToken()).resolves.toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe('renewAccessToken', () => {
   it('reuses a pair another caller already rotated', async () => {
     const rotated = record(3_600_000);

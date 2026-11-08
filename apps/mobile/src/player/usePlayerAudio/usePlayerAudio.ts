@@ -6,13 +6,15 @@ import {
 } from 'expo-audio';
 import { useEffect, useRef } from 'react';
 
-import { StreamFailureKind } from '@playliberty/ui-foundation';
-
-import { useSessionStore } from '../../auth/sessionStore/sessionStore';
+import type { AccessToken } from '../../api/credentialed/credentialed';
+import { endRefusedSession } from '../../auth/endRefusedSession';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { StreamFailureClassifier } from '../streamFailure/streamFailure';
 
-export type SourceResolver = (trackId: string) => AudioSource | null;
+export type SourceResolver = (
+  trackId: string,
+  token?: AccessToken
+) => AudioSource | null;
 
 /* One player for one queue. The address is derived only when a track is
  * reached, so a revoked share or a changed edge applies to the next track.
@@ -141,25 +143,41 @@ export function usePlayerAudio(
 
     classified.current = { id: failedId, error: status.error };
 
-    void classifyFailure(failedId).then(kind => {
+    void classifyFailure(failedId).then(failure => {
       if (usePlayerStore.getState().currentId !== failedId) {
         return;
       }
 
-      if (kind === StreamFailureKind.Session) {
+      if (failure.kind === 'session') {
         usePlayerStore.getState().clear();
-        void useSessionStore.getState().expire();
+        endRefusedSession();
         return;
       }
 
-      if (kind === StreamFailureKind.Gone) {
+      if (failure.kind === 'gone') {
         usePlayerStore.getState().drop(failedId);
+        return;
+      }
+
+      if (failure.kind === 'retry') {
+        const source = resolveSource(failedId, failure.token);
+
+        if (source === null) {
+          usePlayerStore.getState().failPlayback(failedId);
+          return;
+        }
+
+        loadedId.current = failedId;
+        healthyId.current = failedId;
+        player.replace(source);
+        player.play();
+        usePlayerStore.getState().setPlaying(true);
         return;
       }
 
       usePlayerStore.getState().failPlayback(failedId);
     });
-  }, [classifyFailure, currentId, status.error]);
+  }, [classifyFailure, currentId, player, resolveSource, status.error]);
 
   /* The platform owns a focus pause and its resume; the store follows the
    * player's settled status so the bar cannot claim a track is still playing. */

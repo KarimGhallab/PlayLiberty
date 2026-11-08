@@ -1,6 +1,4 @@
 import {
-  ACCESS_TOKEN_HEADER,
-  ACCESS_TOKEN_ID_HEADER,
   API_PREFIX,
   CLIENT_HEADER,
   USER_AGENT_HEADER,
@@ -14,7 +12,8 @@ import {
 } from '@playliberty/contracts';
 
 import { apiBaseUrl } from '../../api/apiBaseUrl';
-import type { AccessToken } from '../../api/tokenAdapter/tokenAdapter';
+import type { AccessToken } from '../../api/credentialed/credentialed';
+import { credentialHeaders } from '../../api/credentialed/credentialed';
 import { USER_AGENT } from '../../api/userAgent';
 import {
   type SessionRecord,
@@ -99,6 +98,17 @@ export class Session {
     return renewed === null ? null : accessTokenOf(renewed);
   }
 
+  /** The pair the app still holds, without a renewal. */
+  async usableAccessToken(): Promise<AccessToken | null> {
+    const record = await this.load();
+
+    if (record === null || record.accessDeadline <= this._deps.now()) {
+      return null;
+    }
+
+    return accessTokenOf(record);
+  }
+
   /** The answer to a pair the edge refused: a pair another caller already
    * rotated is reused, otherwise one renewal runs. */
   async renewAccessToken(refused: AccessToken): Promise<AccessToken | null> {
@@ -162,8 +172,7 @@ export class Session {
                 'content-type': 'application/json',
                 [USER_AGENT_HEADER]: USER_AGENT,
                 [CLIENT_HEADER]: 'mobile',
-                [ACCESS_TOKEN_ID_HEADER]: access.id,
-                [ACCESS_TOKEN_HEADER]: access.secret
+                ...credentialHeaders(access)
               },
               body: JSON.stringify({ refresh_token: current.refreshToken })
             }

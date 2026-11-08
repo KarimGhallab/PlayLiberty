@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { I18nProvider } from '@playliberty/i18n';
 
 import { createAppQueryClient } from '../api/queryClient/queryClient';
-import { useSessionStore } from '../auth/sessionStore/sessionStore';
+import { endRefusedSession } from '../auth/endRefusedSession';
 import { deviceLanguages } from '../i18n/deviceLanguages';
 import { secureLanguageStore } from '../i18n/languageStorage';
 import { PlayerBarSizeProvider } from '../player/playerBarSize/PlayerBarSizeContext';
@@ -16,11 +16,7 @@ export interface AppProvidersProps {
 }
 
 export default function AppProviders({ children }: AppProvidersProps) {
-  const [queryClient] = useState(() =>
-    createAppQueryClient(() => {
-      void useSessionStore.getState().expire();
-    })
-  );
+  const [queryClient] = useState(() => createAppQueryClient(endRefusedSession));
 
   return (
     <SafeAreaProvider>

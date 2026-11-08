@@ -1,7 +1,6 @@
 import { endpoints } from '@playliberty/contracts';
 
-import { mediaSource } from '../../../shared/media/mediaSource';
-
+import { mediaAddress } from '../../../api/credentialed/credentialed';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import type { PlayerTrack } from '../../playerTrack/playerTrack';
 
@@ -58,7 +57,7 @@ function artworkFor(input: BackgroundTrackInput): {
   }
 
   if (track.thumbnailPath !== null) {
-    const source = mediaSource(config, endpoints.trackThumbnail, {
+    const source = mediaAddress(config, endpoints.trackThumbnail, {
       trackId: track.id
     });
 
@@ -66,7 +65,7 @@ function artworkFor(input: BackgroundTrackInput): {
   }
 
   if (playlistId !== null && coverUpdatedAt !== null) {
-    const source = mediaSource(config, endpoints.playlistCover, {
+    const source = mediaAddress(config, endpoints.playlistCover, {
       playlistId
     });
 
@@ -77,7 +76,7 @@ function artworkFor(input: BackgroundTrackInput): {
   }
 
   if (coverTrackId !== null) {
-    const source = mediaSource(config, endpoints.trackThumbnail, {
+    const source = mediaAddress(config, endpoints.trackThumbnail, {
       trackId: coverTrackId
     });
 

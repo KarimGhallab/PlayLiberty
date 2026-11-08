@@ -9,17 +9,23 @@ import {
   selectPlaylistCover
 } from '@playliberty/ui-foundation';
 
+import {
+  type CredentialedAddress,
+  mediaAddress
+} from '../../api/credentialed/credentialed';
 import type { ApiConfig } from '../../auth/useApiConfig';
-import { type MediaSource, mediaSource } from '../media/mediaSource';
 import { sleeveColor } from '../styles/sleeve';
 
 export interface PlaylistCover {
-  readonly source: MediaSource | null;
+  readonly source: CredentialedAddress | null;
   readonly sleeve: string;
   readonly onError: () => void;
 }
 
-function withVersion(source: MediaSource, version: string | null): MediaSource {
+function withVersion(
+  source: CredentialedAddress,
+  version: string | null
+): CredentialedAddress {
   return version === null
     ? source
     : { ...source, uri: `${source.uri}?v=${encodeURIComponent(version)}` };
@@ -48,13 +54,13 @@ export function usePlaylistCover(
   const customSource =
     playlist.coverUpdatedAt === null
       ? null
-      : mediaSource(config, endpoints.playlistCover, {
+      : mediaAddress(config, endpoints.playlistCover, {
           playlistId: playlist.id
         });
   const trackSource =
     playlist.coverTrackId === null
       ? null
-      : mediaSource(config, endpoints.trackThumbnail, {
+      : mediaAddress(config, endpoints.trackThumbnail, {
           trackId: playlist.coverTrackId
         });
   const selection = selectPlaylistCover(playlist, failure);

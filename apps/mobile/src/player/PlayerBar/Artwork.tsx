@@ -4,9 +4,9 @@ import { StyleSheet, View } from 'react-native';
 import { endpoints } from '@playliberty/contracts';
 
 import AppImage from '../../shared/components/AppImage/AppImage';
-import { mediaSource } from '../../shared/media/mediaSource';
 import { tokenColor, tokenLength } from '../../shared/styles/tokens';
 
+import { mediaAddress } from '../../api/credentialed/credentialed';
 import type { ApiConfig } from '../../auth/useApiConfig';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 
@@ -29,7 +29,7 @@ function Artwork({
   const artwork =
     config === null || track.thumbnailPath === null || imageFailed
       ? null
-      : mediaSource(config, endpoints.trackThumbnail, { trackId: track.id });
+      : mediaAddress(config, endpoints.trackThumbnail, { trackId: track.id });
   const box = { width: size, height: size, borderRadius: radius };
   const image =
     artwork === null ? (
