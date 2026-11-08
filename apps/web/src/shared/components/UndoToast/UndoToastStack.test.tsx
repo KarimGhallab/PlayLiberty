@@ -3,16 +3,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '@playliberty/i18n';
 
-import type { DeferredWindow } from '../useDeferredAction/types';
+import type { DeferredWindow } from '@playliberty/library';
 import UndoToastStack from './UndoToastStack';
 
 function deferredWindow(key: number, detail: string): DeferredWindow {
   return {
     key,
     id: detail,
+    kind: null,
     message: 'Deleting playlist',
     detail,
-    expiresAt: Date.now() + 6000
+    expiresAt: Date.now() + 6000,
+    started: true
   };
 }
 

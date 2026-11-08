@@ -1,4 +1,14 @@
 export { canWritePlaylist } from './access/access.js';
+export {
+  deferredActions,
+  resetDeferredActions
+} from './actions/deferredAction/deferredAction.js';
+export type {
+  DeferOptions,
+  DeferredAction,
+  DeferredWindow,
+  PendingAction
+} from './actions/deferredAction/deferredAction.js';
 export { deleteIntentFor, playlistActionsFor, UNDO_WINDOW_MS } from './actions/playlistActions/playlistActions.js';
 export type {
   DeleteIntent,

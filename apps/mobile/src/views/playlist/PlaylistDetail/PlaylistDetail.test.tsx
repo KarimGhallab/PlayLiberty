@@ -45,6 +45,7 @@ import {
   TrackSourceStatus
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
+import { resetDeferredActions } from '@playliberty/library';
 
 import { copyText } from '../../../shared/clipboard/copyText';
 import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
@@ -728,6 +729,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   copyTextMock.mockReset();
   takeLeftPlaylistNotice();
+  resetDeferredActions();
   usePlayerStore.getState().clear();
 });
 
@@ -737,6 +739,7 @@ afterEach(async () => {
   await act(async () => {
     jest.runOnlyPendingTimers();
   });
+  resetDeferredActions();
   jest.useRealTimers();
 });
 

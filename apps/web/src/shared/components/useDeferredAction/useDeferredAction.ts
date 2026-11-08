@@ -1,14 +1,19 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-import { deferredActions } from './deferredActionStore';
-import type { DeferredAction, PendingAction } from './types';
+import {
+  UNDO_WINDOW_MS,
+  deferredActions
+} from '@playliberty/library';
+import type {
+  DeferOptions,
+  DeferredAction,
+  PendingAction
+} from '@playliberty/library';
 
 /*
  * The windows are module-level, so a route change keeps them alive; the hook
- * only subscribes a surface and hands it the two commands.
+ * only subscribes a surface and hands it the commands.
  */
-
-export const UNDO_WINDOW_MS = 6000;
 
 export function useDeferredAction(durationMs = UNDO_WINDOW_MS): DeferredAction {
   const windows = useSyncExternalStore(
@@ -18,15 +23,13 @@ export function useDeferredAction(durationMs = UNDO_WINDOW_MS): DeferredAction {
   );
 
   const defer = useCallback(
-    (action: PendingAction): void => {
-      deferredActions.defer(action, durationMs);
-    },
+    (action: PendingAction, options?: DeferOptions): number =>
+      deferredActions.defer(action, durationMs, options),
     [durationMs]
   );
+  const startAll = useCallback(() => deferredActions.startAll(), []);
+  const cancel = useCallback((key: number) => deferredActions.cancel(key), []);
+  const commit = useCallback((key: number) => deferredActions.commit(key), []);
 
-  const cancel = useCallback((key: number): void => {
-    deferredActions.cancel(key);
-  }, []);
-
-  return { windows, defer, cancel };
+  return { windows, defer, startAll, cancel, commit };
 }

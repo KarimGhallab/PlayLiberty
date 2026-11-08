@@ -24,6 +24,7 @@ import ActionDial, {
   actionDialSize
 } from '../../../shared/components/ActionDial/ActionDial';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
+import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
 import { verticalListChrome } from '../../../shared/components/List/listChrome';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
@@ -80,10 +81,7 @@ import {
   galleryColumnWidth,
   galleryPinnedWidth
 } from '../galleryColumns/galleryColumns';
-import type {
-  DeleteIntent,
-  PlaylistActionKey
-} from '@playliberty/library';
+import type { PlaylistActionKey } from '@playliberty/library';
 import {
   UNDO_WINDOW_MS,
   canWritePlaylist,
@@ -210,6 +208,7 @@ export default function PlaylistGallery({
   const syncNow = useSyncPlaylist();
   const remove = useDeletePlaylist();
   const rename = useRenamePlaylist();
+  const deferred = useDeferredAction();
   const [addOpen, setAddOpen] = useState(false);
   const [actionTargetId, setActionTargetId] = useState<string | null>(null);
   const [actionProblem, setActionProblem] = useState<string | null>(null);
@@ -221,8 +220,6 @@ export default function PlaylistGallery({
     null
   );
   const [coverTargetId, setCoverTargetId] = useState<string | null>(null);
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
-  const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [starting, setStarting] = useState<{
@@ -233,6 +230,20 @@ export default function PlaylistGallery({
   const pinnedRow = useRef<FlatList<PlaylistWithCounts>>(null);
   const pinnedViewport = useRef(0);
   const pinnedOffset = useRef(0);
+  const deletingPlaylistId =
+    remove.isPending && remove.variables !== undefined
+      ? remove.variables
+      : null;
+  const galleryWindows = deferred.windows.filter(
+    window => window.kind === 'gallery-playlist'
+  );
+  const hidden = new Set(galleryWindows.map(window => window.id));
+
+  if (deletingPlaylistId !== null) {
+    hidden.add(deletingPlaylistId);
+  }
+
+  const deleteWindow = galleryWindows[0] ?? null;
   const loadedItems = (playlists.data?.items ?? []).filter(
     item => !hidden.has(item.id)
   );
@@ -472,54 +483,27 @@ export default function PlaylistGallery({
     };
   }, []);
 
-  const commitDelete = (intent: DeleteIntent): void => {
-    remove.mutate(intent.id, {
-      onError: () => {
-        setHidden(previous => {
-          const next = new Set(previous);
-          next.delete(intent.id);
-          return next;
-        });
-        setNotice(t('library.deleteFailed'));
-      }
-    });
-  };
-
-  /* The snackbar owns the window, so a pause or an extension moves the commit
-   * with the bar. */
-  const expireDelete = (): void => {
-    if (pendingDelete === null) {
-      return;
-    }
-
-    const intent = pendingDelete;
-    setPendingDelete(null);
-    commitDelete(intent);
-  };
-
-  const undoDelete = (): void => {
-    if (pendingDelete !== null) {
-      setHidden(previous => {
-        const next = new Set(previous);
-        next.delete(pendingDelete.id);
-        return next;
-      });
-    }
-
-    setPendingDelete(null);
-  };
-
   /* One window at a time: a second delete sends the first now rather than
    * losing its request, then opens its own undo window. */
   const startDelete = (target: PlaylistWithCounts): void => {
-    if (pendingDelete !== null) {
-      commitDelete(pendingDelete);
-    }
-
     const intent = deleteIntentFor(t, target);
 
-    setHidden(previous => new Set(previous).add(target.id));
-    setPendingDelete(intent);
+    for (const window of deferred.windows) {
+      if (window.kind === 'gallery-playlist') {
+        deferred.commit(window.key);
+      }
+    }
+
+    deferred.defer({
+      id: intent.id,
+      kind: 'gallery-playlist',
+      message: intent.message,
+      detail: intent.detail,
+      commit: () =>
+        remove.mutate(intent.id, {
+          onError: () => setNotice(t('library.deleteFailed'))
+        })
+    });
   };
 
   const openActions = (playlistId: string): void => {
@@ -656,13 +640,13 @@ export default function PlaylistGallery({
     />
   );
   const undoSnackbar =
-    pendingDelete === null ? null : (
+    deleteWindow === null ? null : (
       <UndoSnackbar
-        key={pendingDelete.id}
-        message={pendingDelete.message}
-        detail={pendingDelete.detail}
-        onExpire={expireDelete}
-        onUndo={undoDelete}
+        key={deleteWindow.key}
+        message={deleteWindow.message}
+        detail={deleteWindow.detail ?? ''}
+        onExpire={() => undefined}
+        onUndo={() => deferred.cancel(deleteWindow.key)}
         durationMs={UNDO_WINDOW_MS}
         bottomOffset={actionDialSize + tokenLength('space-3') + playerOffset}
         horizontalInset={0}
@@ -678,7 +662,7 @@ export default function PlaylistGallery({
           actionDialSize +
           tokenLength('space-3') +
           playerOffset +
-          (pendingDelete === null
+          (deleteWindow === null
             ? 0
             : tokenLength('space-9') + tokenLength('space-4'))
         }

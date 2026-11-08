@@ -31,7 +31,7 @@ import { problemSentence } from '../api/problem/problem';
 import CoverDialog from '../components/CoverDialog/CoverDialog';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
-import type { PendingAction } from '../components/useDeferredAction/types';
+import type { PendingAction } from '@playliberty/library';
 
 /*
  * One module owns a surface's playlist actions: the mutations, the menu each

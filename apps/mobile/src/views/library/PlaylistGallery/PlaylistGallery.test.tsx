@@ -26,6 +26,7 @@ import {
 } from '@playliberty/contracts';
 import type { TrackFilterState } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
+import { resetDeferredActions } from '@playliberty/library';
 
 import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
 import { tokenLength, touchTarget } from '../../../shared/styles/tokens';
@@ -124,6 +125,7 @@ function controlOf(control: string, name: string) {
 
 afterEach(() => {
   usePlayerStore.getState().clear();
+  resetDeferredActions();
   jest.mocked(startPlaylistPlayback).mockClear();
 });
 
@@ -735,6 +737,33 @@ describe('the gallery', () => {
       expect(screen.getByTestId('playlist-card')).toBeOnTheScreen();
     });
     expect(remove.mutate).not.toHaveBeenCalled();
+  });
+
+  it('sends the first delete when a second delete starts', async () => {
+    const second = { ...base, id: 'playlist-second', name: 'Second Mix' };
+    const { remove } = await renderGallery([base, second]);
+
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-delete')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
+    });
+    expect(remove.mutate).not.toHaveBeenCalled();
+
+    await fireEvent.press(controlOf('actions', 'Second Mix'));
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-delete')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    expect(remove.mutate).toHaveBeenCalledWith(
+      'playlist-rest',
+      expect.anything()
+    );
   });
 
   it('renames a playlist from its card', async () => {

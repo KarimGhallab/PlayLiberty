@@ -34,6 +34,7 @@ import { problemDetail, providerLabel, useI18n } from '@playliberty/i18n';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
+import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
 import { copyText } from '../../../shared/clipboard/copyText';
 import ActionDial, {
   actionDialSize
@@ -92,6 +93,7 @@ import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistAct
 import RenameSheet from '../../library/RenameSheet/RenameSheet';
 import ShareSheet from '../../library/ShareSheet/ShareSheet';
 import {
+  type PendingAction,
   type PlaylistActionKey,
   UNDO_WINDOW_MS,
   playlistActionsFor
@@ -118,19 +120,6 @@ import {
 import TrackListSkeleton from '../TrackListSkeleton/TrackListSkeleton';
 import TrackRow from '../TrackRow/TrackRow';
 import { claimsPull, commitsPull } from './pullDismiss';
-
-type PendingAction =
-  | {
-      readonly kind: 'remove';
-      readonly trackId: string;
-      readonly message: string;
-      readonly detail: string;
-    }
-  | {
-      readonly kind: 'delete';
-      readonly message: string;
-      readonly detail: string;
-    };
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
 /* The scroll that takes the header from wide to narrow. */
@@ -212,15 +201,8 @@ export default function PlaylistDetail({
   const removeTrack = useRemoveTrack(playlistId ?? '');
   const deletePlaylist = useDeletePlaylist();
   const rename = useRenamePlaylist();
+  const deferred = useDeferredAction(undoWindowMs);
   const [actionTargetId, setActionTargetId] = useState<string | null>(null);
-  const [hiddenTracks, setHiddenTracks] = useState<ReadonlySet<string>>(
-    () => new Set()
-  );
-  const [pending, setPending] = useState<PendingAction | null>(null);
-  const [pendingWindow, setPendingWindow] = useState(0);
-  const pendingRef = useRef<PendingAction | null>(null);
-  const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [undoWindowOpen, setUndoWindowOpen] = useState(true);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerProblem, setHeaderProblem] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -266,7 +248,29 @@ export default function PlaylistDetail({
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 100
   }).current;
-  const pendingDelete = pending?.kind === 'delete';
+  const detailWindows = deferred.windows.filter(window =>
+    window.kind?.startsWith('detail-')
+  );
+  const pendingDelete = detailWindows.some(
+    window => window.kind === 'detail-playlist'
+  );
+  const undoWindow =
+    detailWindows.find(window => window.started) ?? null;
+  /* A removal keeps its row hidden until the request settles, whether the
+   * window is still open or the commit is in flight. */
+  const removingTrackId =
+    removeTrack.isPending && removeTrack.variables !== undefined
+      ? removeTrack.variables
+      : null;
+  const hiddenTrackIds = new Set(
+    detailWindows
+      .filter(window => window.kind === 'detail-track')
+      .map(window => window.id)
+  );
+
+  if (removingTrackId !== null) {
+    hiddenTrackIds.add(removingTrackId);
+  }
   const start = usePlayerStore(state => state.start);
   const play = usePlayerStore(state => state.play);
   const applyRefetch = usePlayerStore(state => state.applyRefetch);
@@ -281,7 +285,7 @@ export default function PlaylistDetail({
   const [linkSettled, setLinkSettled] = useState(linkTarget === null);
   const mirroredAddress = useRef<string | null | undefined>(undefined);
   const drawnRows = tracks.isSuccess
-    ? tracks.items.filter(entry => !hiddenTracks.has(entry.track.id))
+    ? tracks.items.filter(entry => !hiddenTrackIds.has(entry.track.id))
     : [];
   const rows = listShuffled
     ? orderTracksByQueue(drawnRows, playerQueue)
@@ -1000,132 +1004,62 @@ export default function PlaylistDetail({
     });
   };
 
-  const hideTrack = (trackId: string): void => {
-    setHiddenTracks(previous => new Set(previous).add(trackId));
-  };
-
-  const unhideTrack = (trackId: string): void => {
-    setHiddenTracks(previous => {
-      const next = new Set(previous);
-      next.delete(trackId);
-      return next;
-    });
-  };
-
-  const commitPending = (action: PendingAction): void => {
-    if (action.kind === 'remove') {
-      removeTrack.mutate(action.trackId, {
-        onError: error => {
-          unhideTrack(action.trackId);
-          setNotice({
-            message: problemMessage(error, t('detail.removeFailed')),
-            detail: action.detail
-          });
-        }
-      });
-      return;
-    }
-
-    deletePlaylist.mutate(data.id, {
-      onSuccess: leaveDetail,
-      onError: error => {
-        setNotice({
-          message: problemMessage(error, t('detail.deleteFailed')),
-          detail: action.detail
-        });
-      }
-    });
-  };
-
-  /* The snackbar owns the window, so a pause or an extension moves the commit
-   * with the bar. The action is read from the ref, not from the state the
-   * timer is about to clear. */
-  const expirePending = (): void => {
-    const action = pendingRef.current;
-
-    if (action === null || commitTimer.current !== null) {
-      return;
-    }
-
-    commitTimer.current = setTimeout(() => {
-      commitTimer.current = null;
-
-      if (pendingRef.current !== action) {
-        return;
-      }
-
-      pendingRef.current = null;
-      setPending(null);
-      commitPending(action);
-    }, COMMIT_GRACE_MS);
-  };
-
   /* One window at a time: a second action sends the first now rather than
-   * losing its request, then opens its own countdown. */
-  const startPending = (next: PendingAction, waitForSheet: boolean): void => {
-    if (pendingRef.current !== null) {
-      const previous = pendingRef.current;
-
-      if (commitTimer.current !== null) {
-        clearTimeout(commitTimer.current);
-        commitTimer.current = null;
+   * losing its request. The window waits for its sheet to leave. */
+  const deferPending = (
+    action: PendingAction,
+    kind: 'detail-track' | 'detail-playlist'
+  ): void => {
+    for (const window of deferred.windows) {
+      if (window.kind?.startsWith('detail-')) {
+        deferred.commit(window.key);
       }
-
-      pendingRef.current = null;
-      commitPending(previous);
     }
 
-    if (next.kind === 'remove') {
-      hideTrack(next.trackId);
-    }
-
-    pendingRef.current = next;
-    setPending(next);
-    setUndoWindowOpen(!waitForSheet);
-    setPendingWindow(current => current + 1);
-  };
-
-  const undoPending = (): void => {
-    const action = pendingRef.current;
-
-    if (action === null) {
-      return;
-    }
-
-    pendingRef.current = null;
-
-    if (commitTimer.current !== null) {
-      clearTimeout(commitTimer.current);
-      commitTimer.current = null;
-    }
-
-    if (action.kind === 'remove') {
-      unhideTrack(action.trackId);
-    }
-
-    setPending(null);
+    deferred.defer(
+      { ...action, kind },
+      { started: false, graceMs: COMMIT_GRACE_MS }
+    );
   };
 
   const startRemove = (target: PlaylistTrack): void => {
-    startPending(
+    deferPending(
       {
-        kind: 'remove',
-        trackId: target.track.id,
+        id: target.track.id,
         message: t('detail.removeDeferred'),
-        detail: target.track.title
+        detail: target.track.title,
+        commit: () =>
+          removeTrack.mutate(target.track.id, {
+            onError: error => {
+              setNotice({
+                message: problemMessage(error, t('detail.removeFailed')),
+                detail: target.track.title
+              });
+            }
+          })
       },
-      true
+      'detail-track'
     );
   };
 
   const startDelete = (): void => {
-    startPending(
+    deferPending(
       {
-        kind: 'delete',
+        id: data.id,
         message: t('detail.deleteDeferred'),
-        detail: data.name
+        detail: data.name,
+        commit: () =>
+          deletePlaylist.mutate(data.id, {
+            onSuccess: leaveDetail,
+            onError: error => {
+              setNotice({
+                message: problemMessage(error, t('detail.deleteFailed')),
+                detail: data.name
+              });
+            }
+          })
       },
-      true
+      'detail-playlist'
     );
   };
 
@@ -1481,7 +1415,7 @@ export default function PlaylistDetail({
         actions={actions}
         onSelect={chooseTrackAction}
         onClose={() => setActionTargetId(null)}
-        onExited={() => setUndoWindowOpen(true)}
+        onExited={() => deferred.startAll()}
       />
       <PlaylistActionsSheet
         playlistName={headerOpen ? data.name : null}
@@ -1490,7 +1424,7 @@ export default function PlaylistDetail({
         summary={band}
         extra={skipControl}
         onSelect={chooseHeaderAction}
-        onExited={() => setUndoWindowOpen(true)}
+        onExited={() => deferred.startAll()}
         onClose={() => {
           setHeaderOpen(false);
           setHeaderProblem(null);
@@ -1533,16 +1467,16 @@ export default function PlaylistDetail({
         playlistId={data.id}
         onClose={() => setShareOpen(false)}
       />
-      {pending === null || !undoWindowOpen ? null : (
+      {undoWindow === null ? null : (
         <UndoSnackbar
-          key={`${pending.kind === 'remove' ? pending.trackId : 'delete'}:${pendingWindow}`}
-          message={pending.message}
-          detail={pending.detail}
+          key={undoWindow.key}
+          message={undoWindow.message}
+          detail={undoWindow.detail ?? ''}
           durationMs={undoWindowMs}
           bottomOffset={floatingOffset}
           horizontalInset={tokenLength('space-4')}
-          onExpire={expirePending}
-          onUndo={undoPending}
+          onExpire={() => undefined}
+          onUndo={() => deferred.cancel(undoWindow.key)}
         />
       )}
       {notice === null ? null : (
@@ -1552,7 +1486,7 @@ export default function PlaylistDetail({
           onDismiss={() => setNotice(null)}
           bottomOffset={
             floatingOffset +
-            (pending === null || !undoWindowOpen
+            (undoWindow === null
               ? 0
               : tokenLength('space-9') + tokenLength('space-4'))
           }
