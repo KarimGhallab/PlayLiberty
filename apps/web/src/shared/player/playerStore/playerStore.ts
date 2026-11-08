@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 
 import {
+  seekPatch as boundedSeek,
   mergeById,
   previousMove,
   randomItem,
   seekFractionPatch,
-  seekPatch as boundedSeek,
   shuffleWithLeader
 } from '@playliberty/player';
 
@@ -376,11 +376,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       return seekPatch(state, state.positionSeconds + step);
     }),
   seekToFraction: (fraction: number) =>
-    set(state =>
-      seekFractionPatch(
-        currentTrack(state)?.durationSeconds ?? null,
-        fraction
-      ) ?? state
+    set(
+      state =>
+        seekFractionPatch(
+          currentTrack(state)?.durationSeconds ?? null,
+          fraction
+        ) ?? state
     ),
   seekToStart: () => set(state => seekPatch(state, 0)),
   seekToEnd: () =>
@@ -413,11 +414,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
       return {
         shuffle,
-        queue: shuffleWithLeader(
-          state.queue,
-          leader.id,
-          track => track.id
-        ),
+        queue: shuffleWithLeader(state.queue, leader.id, track => track.id),
         currentId: leader.id,
         positionSeconds: 0,
         seekTo: null,

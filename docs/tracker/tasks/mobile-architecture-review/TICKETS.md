@@ -7,7 +7,7 @@ The review read the hottest path in the last 100 commits. The candidates that th
 | Ticket                                                                                       | Status          | Blocked by | Blocks |
 | -------------------------------------------------------------------------------------------- | --------------- | ---------- | ------ |
 | [`01-move-the-deferred-action-behind-one-module`](01-move-the-deferred-action-behind-one-module.md) | resolved        | none       | none   |
-| [`02-put-the-cover-upload-behind-one-interface`](02-put-the-cover-upload-behind-one-interface.md)   | ready-for-agent | none       | none   |
+| [`02-put-the-cover-upload-behind-one-interface`](02-put-the-cover-upload-behind-one-interface.md)   | resolved        | none       | none   |
 | [`03-start-playback-through-one-module`](03-start-playback-through-one-module.md)                   | ready-for-agent | none       | none   |
 
 ## Conventions

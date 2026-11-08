@@ -10,6 +10,32 @@ export type {
   CoverSelection,
   CoverSelectionOptions
 } from './coverChain/coverChain.js';
+export {
+  COVER_ACCEPTED_TYPES,
+  COVER_MAX_BYTES,
+  COVER_PAN_STEP,
+  COVER_ZOOM_STEP,
+  coverUploadAdjusted,
+  coverUploadBox,
+  coverUploadCrop,
+  coverUploadInitial,
+  coverUploadStageReady,
+  coverUploadSubmission,
+  coverUploadVerdict,
+  coverUploadZoomMax,
+  coverUploadZoomRatio,
+  reduceCoverUpload
+} from './coverUpload/coverUpload.js';
+export type {
+  CoverFile,
+  CoverFileFacts,
+  CoverSize,
+  CoverUploadAction,
+  CoverUploadBox,
+  CoverUploadState,
+  CoverUploadSubmission,
+  CoverUploadVerdict
+} from './coverUpload/coverUpload.js';
 export { standardEasingBezier } from './easing/easing.js';
 export { equalizerRests } from './equalizer/equalizer.js';
 export {

@@ -1,34 +1,32 @@
 import { IconPhoto } from '@tabler/icons-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 import {
-  clampPan,
-  cropOf,
+  COVER_ACCEPTED_TYPES,
+  COVER_PAN_STEP,
+  COVER_ZOOM_STEP,
+  coverUploadAdjusted,
+  coverUploadBox,
+  coverUploadInitial,
+  coverUploadStageReady,
+  coverUploadSubmission,
+  coverUploadVerdict,
+  coverUploadZoomMax,
+  coverUploadZoomRatio,
   formatZoom,
-  maxZoom,
-  shortEdge,
+  reduceCoverUpload,
   sleeveIndex
 } from '@playliberty/ui-foundation';
-import type { CoverCrop, CropFraming } from '@playliberty/ui-foundation';
+import type { CoverCrop } from '@playliberty/ui-foundation';
 
 import { usePlaylistCover } from '../../playlistCover/usePlaylistCover';
 import Dialog from '../Dialog/Dialog';
 import dialogStyles from '../Dialog/Dialog.module.scss';
 import Spinner from '../Spinner/Spinner';
 import styles from './CoverDialog.module.scss';
-
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const MAX_BYTES = 5 * 1024 * 1024;
-const PAN_STEP = 0.05;
-const ZOOM_STEP = 0.1;
-
-interface Size {
-  readonly width: number;
-  readonly height: number;
-}
 
 interface CoverDialogProps {
   readonly open: boolean;
@@ -70,37 +68,30 @@ export default function CoverDialog({
   const zoomRail = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const zooming = useRef(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [state, dispatch] = useReducer(
+    reduceCoverUpload<File>,
+    coverUploadInitial<File>()
+  );
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
-  const [natural, setNatural] = useState<Size | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [invalid, setInvalid] = useState<string | null>(null);
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [wasOpen, setWasOpen] = useState(open);
+  const { chosen, verdict, confirmingDiscard, confirmingRemove } = state;
   const { cover: currentCover, onCoverError } = usePlaylistCover(playlist);
   const { cover: replacementCover, onCoverError: onReplacementError } =
     usePlaylistCover(playlist, false);
 
-  if (open !== wasOpen) {
-    setWasOpen(open);
-
-    if (open) {
-      setFile(null);
-      setPreviewUrl(null);
-      setPreviewFailed(false);
-      setNatural(null);
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-      setInvalid(null);
-      setConfirmingDiscard(false);
-      setConfirmingRemove(false);
-      setDragging(false);
+  useEffect(() => {
+    if (!open) {
+      return;
     }
-  }
+
+    dispatch({ type: 'reset' });
+    setPreviewUrl(null);
+    setPreviewFailed(false);
+    setDragging(false);
+  }, [open]);
 
   useEffect(() => {
     if (previewUrl === null) {
@@ -111,84 +102,65 @@ export default function CoverDialog({
   }, [previewUrl]);
 
   const busy = isWorking || isRemoving;
+
+  useEffect(() => {
+    dispatch({ type: 'busy', busy });
+  }, [busy]);
+
+  useEffect(() => {
+    if (!state.closeRequested) {
+      return;
+    }
+
+    closeRef.current();
+    dispatch({ type: 'closed' });
+  }, [state.closeRequested]);
+
   const canRemove = onRemove !== undefined && playlist.coverUpdatedAt !== null;
-  const message = invalid ?? (confirmingRemove ? removeProblem : problem);
-  const dirty = file !== null;
-  const isStage = file !== null && previewFailed === false;
-  const ready = isStage && natural !== null;
+  const message =
+    verdict === null
+      ? confirmingRemove
+        ? removeProblem
+        : problem
+      : t(
+          verdict === 'wrong-type'
+            ? 'coverDialog.wrongType'
+            : 'coverDialog.tooLarge'
+        );
+  const isStage = chosen !== null && previewFailed === false;
+  const ready = coverUploadStageReady(state) && previewFailed === false;
   const source = confirmingRemove
     ? replacementCover
-    : file === null
+    : chosen === null
       ? currentCover
       : previewFailed
         ? null
         : previewUrl;
   const onImageError = confirmingRemove
     ? onReplacementError
-    : file === null
+    : chosen === null
       ? onCoverError
       : () => setPreviewFailed(true);
 
-  const zoomMax = natural === null ? 1 : maxZoom(natural.width, natural.height);
-  const adjusted = ready && (zoom !== 1 || pan.x !== 0 || pan.y !== 0);
-  const zoomRatio = zoomMax === 1 ? 100 : ((zoom - 1) / (zoomMax - 1)) * 100;
+  const zoomMax = coverUploadZoomMax(state);
+  const adjusted = coverUploadAdjusted(state);
+  const zoomRatio = coverUploadZoomRatio(state);
+  const box = coverUploadBox(state);
   /* At 1x the short edge spans the stage, so the painted box is the source's
    * aspect with one side at 100%. */
-  const edge = natural === null ? 1 : shortEdge(natural.width, natural.height);
-  const stageWidth = natural === null ? 100 : (natural.width / edge) * 100;
-  const stageHeight = natural === null ? 100 : (natural.height / edge) * 100;
-
-  function framing(): CropFraming | null {
-    if (natural === null) {
-      return null;
-    }
-
-    return {
-      naturalWidth: natural.width,
-      naturalHeight: natural.height,
-      zoom,
-      panX: pan.x,
-      panY: pan.y
-    };
-  }
+  const stageWidth = box === null ? 100 : box.width * 100;
+  const stageHeight = box === null ? 100 : box.height * 100;
 
   function applyZoom(next: number): void {
-    if (natural === null) {
-      return;
-    }
-
-    const stepped = Math.min(zoomMax, Math.max(1, next));
-    const clamped = clampPan({
-      naturalWidth: natural.width,
-      naturalHeight: natural.height,
-      zoom: stepped,
-      panX: pan.x,
-      panY: pan.y
-    });
-
-    setZoom(stepped);
-    setPan({ x: clamped.panX, y: clamped.panY });
+    dispatch({ type: 'zoomTo', zoom: next });
   }
 
   function panBy(deltaX: number, deltaY: number): void {
-    if (natural === null) {
-      return;
-    }
-
-    const clamped = clampPan({
-      naturalWidth: natural.width,
-      naturalHeight: natural.height,
-      zoom,
-      panX: pan.x + deltaX,
-      panY: pan.y + deltaY
-    });
-
-    setPan({ x: clamped.panX, y: clamped.panY });
+    dispatch({ type: 'panBy', x: deltaX, y: deltaY });
   }
 
   function resetCrop(): void {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    dispatch({ type: 'resetCrop' });
   }
 
   function selectFile(selected: File): void {
@@ -196,23 +168,18 @@ export default function CoverDialog({
       return;
     }
 
-    if (!ACCEPTED_TYPES.has(selected.type)) {
-      setInvalid(t('coverDialog.wrongType'));
-      return;
+    const descriptor = {
+      file: selected,
+      contentType: selected.type,
+      size: selected.size
+    };
+
+    if (coverUploadVerdict(descriptor) === null) {
+      setPreviewUrl(URL.createObjectURL(selected));
+      setPreviewFailed(false);
     }
 
-    if (selected.size > MAX_BYTES) {
-      setInvalid(t('coverDialog.tooLarge'));
-      return;
-    }
-
-    setInvalid(null);
-    setPreviewFailed(false);
-    setNatural(null);
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-    setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
+    dispatch({ type: 'choose', file: descriptor });
   }
 
   function requestClose(): void {
@@ -220,32 +187,21 @@ export default function CoverDialog({
       return;
     }
 
-    if (confirmingRemove) {
-      setConfirmingRemove(false);
-      return;
-    }
-
-    if (confirmingDiscard) {
-      setConfirmingDiscard(false);
-      return;
-    }
-
-    if (!dirty) {
-      onClose();
-      return;
-    }
-
-    setConfirmingDiscard(true);
+    dispatch({ type: 'requestClose' });
   }
 
   function submit(): void {
-    if (busy || file === null) {
+    if (busy) {
       return;
     }
 
-    const current = framing();
+    const submission = coverUploadSubmission(state);
 
-    onSubmit(file, adjusted && current !== null ? cropOf(current) : null);
+    if (submission === null) {
+      return;
+    }
+
+    onSubmit(submission.file.file, submission.crop);
   }
 
   function zoomAt(clientX: number): void {
@@ -322,7 +278,7 @@ export default function CoverDialog({
               className={dialogStyles.dialog__secondary}
               type="button"
               disabled={busy}
-              onClick={() => setConfirmingRemove(false)}>
+              onClick={() => dispatch({ type: 'cancelRemove' })}>
               {t('common.cancel')}
             </button>
             <button
@@ -348,7 +304,7 @@ export default function CoverDialog({
             <button
               className={dialogStyles.dialog__secondary}
               type="button"
-              onClick={() => setConfirmingDiscard(false)}>
+              onClick={() => dispatch({ type: 'cancelDiscard' })}>
               {t('common.keepEditing')}
             </button>
             <button
@@ -372,7 +328,7 @@ export default function CoverDialog({
               type="button"
               data-loading={isWorking ? 'true' : undefined}
               aria-busy={isWorking}
-              disabled={busy || file === null}
+              disabled={busy || chosen === null}
               onClick={submit}>
               {isWorking ? (
                 <>
@@ -416,25 +372,25 @@ export default function CoverDialog({
 
             if (event.key === 'ArrowLeft') {
               event.preventDefault();
-              panBy(-PAN_STEP, 0);
+              panBy(-COVER_PAN_STEP, 0);
               return;
             }
 
             if (event.key === 'ArrowRight') {
               event.preventDefault();
-              panBy(PAN_STEP, 0);
+              panBy(COVER_PAN_STEP, 0);
               return;
             }
 
             if (event.key === 'ArrowUp') {
               event.preventDefault();
-              panBy(0, -PAN_STEP);
+              panBy(0, -COVER_PAN_STEP);
               return;
             }
 
             if (event.key === 'ArrowDown') {
               event.preventDefault();
-              panBy(0, PAN_STEP);
+              panBy(0, COVER_PAN_STEP);
             }
           }}
           onPointerDown={startPan}
@@ -474,7 +430,7 @@ export default function CoverDialog({
             <span
               className={styles.cover__stage}
               style={{
-                transform: `translate(${pan.x * 100}%, ${pan.y * 100}%) scale(${zoom})`
+                transform: `translate(${state.panX * 100}%, ${state.panY * 100}%) scale(${state.zoom})`
               }}>
               <img
                 className={styles.cover__stageImage}
@@ -490,7 +446,7 @@ export default function CoverDialog({
                   const { naturalWidth, naturalHeight } = event.currentTarget;
 
                   if (naturalWidth > 0 && naturalHeight > 0) {
-                    setNatural({ width: naturalWidth, height: naturalHeight });
+                    dispatch({ type: 'measured', size: { width: naturalWidth, height: naturalHeight } });
                   }
                 }}
                 onError={onImageError}
@@ -511,7 +467,7 @@ export default function CoverDialog({
           ref={fileInput}
           className={styles.cover__input}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={COVER_ACCEPTED_TYPES.join(',')}
           disabled={busy}
           hidden
           onChange={event => {
@@ -542,8 +498,8 @@ export default function CoverDialog({
                 aria-orientation="horizontal"
                 aria-valuemin={1}
                 aria-valuemax={zoomMax}
-                aria-valuenow={zoom}
-                aria-valuetext={formatZoom(zoom)}
+                aria-valuenow={state.zoom}
+                aria-valuetext={formatZoom(state.zoom)}
                 onPointerDown={event => {
                   zooming.current = true;
                   event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -565,13 +521,13 @@ export default function CoverDialog({
                 onKeyDown={event => {
                   if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
                     event.preventDefault();
-                    applyZoom(zoom + ZOOM_STEP);
+                    applyZoom(state.zoom + COVER_ZOOM_STEP);
                     return;
                   }
 
                   if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
                     event.preventDefault();
-                    applyZoom(zoom - ZOOM_STEP);
+                    applyZoom(state.zoom - COVER_ZOOM_STEP);
                   }
                 }}>
                 <span
@@ -584,7 +540,7 @@ export default function CoverDialog({
                 />
               </div>
               <span className={styles.cover__zoomValue}>
-                {formatZoom(zoom)}
+                {formatZoom(state.zoom)}
               </span>
             </div>
             <button
@@ -610,10 +566,7 @@ export default function CoverDialog({
             className={styles.cover__remove}
             type="button"
             disabled={busy}
-            onClick={() => {
-              setConfirmingDiscard(false);
-              setConfirmingRemove(true);
-            }}>
+            onClick={() => dispatch({ type: 'requestRemove' })}>
             {t('coverDialog.remove')}
           </button>
         ) : null}
