@@ -9,10 +9,6 @@ import {
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import type { EgressConfig, EgressRead } from '@playliberty/contracts';
-import { EgressStatus } from '@playliberty/contracts';
-import { I18nProvider, Language } from '@playliberty/i18n';
-
 import {
   ApiError,
   useCheckEgress,
@@ -20,6 +16,10 @@ import {
   useSwitchEgress
 } from '@playliberty/api-client';
 import type * as ApiClientModule from '@playliberty/api-client';
+import type { EgressConfig, EgressRead } from '@playliberty/contracts';
+import { EgressStatus } from '@playliberty/contracts';
+import { I18nProvider, Language } from '@playliberty/i18n';
+
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import EgressScreen from './EgressScreen';
 

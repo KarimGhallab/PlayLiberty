@@ -1,6 +1,6 @@
 # 03: Start playback through one module
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
@@ -30,13 +30,32 @@ The report for this review is `/tmp/architecture-review-20261108-151358.html`, c
 
 ## Acceptance criteria
 
-- [ ] One mobile module owns the queue read, the `isPlayable` filter, the `playerTracks` mapping, the queue-reuse rule and the refusal vocabulary.
-- [ ] The module exposes start at playlist with a play or shuffle intent, start at a track, and start a bare track.
-- [ ] A shuffle start draws a leader from the whole playable queue.
-- [ ] The link entry, the row press, the header play, the header shuffle, the gallery card and the bare route behave as today.
-- [ ] The playlist detail cannot restart a queue it already owns when the link equals the current track.
-- [ ] The screens no longer import `isPlayable`, `playerTracks` or the store's start action for these paths.
-- [ ] `startPlaylistPlayback` and its exported read helper are deleted.
+- [x] One mobile module owns the queue read, the `isPlayable` filter, the `playerTracks` mapping, the queue-reuse rule and the refusal vocabulary.
+- [x] The module exposes start at playlist with a play or shuffle intent, start at a track, and start a bare track.
+- [x] A shuffle start draws a leader from the whole playable queue.
+- [x] The link entry, the row press, the header play, the header shuffle, the gallery card and the bare route behave as today.
+- [x] The playlist detail cannot restart a queue it already owns when the link equals the current track.
+- [x] The screens no longer import `isPlayable`, `playerTracks` or the store's start action for these paths.
+- [x] `startPlaylistPlayback` and its exported read helper are deleted.
+
+## Outcome
+
+`apps/mobile/src/player/startPlayback/` exports `startAtPlaylist`,
+`startAtTrack`, `startBareTrack`, `applyPlaylistRefetch` and `playableTracks`.
+The module reads the queue through the query client, filters the stored tracks,
+maps the player tracks, reuses a queue the playlist already owns, and returns
+the refusal vocabulary.
+
+The playlist detail's shared link, row press, header play and header shuffle use
+it. The gallery's card play and shuffle use it. The bare-track entry uses it.
+The old `startPlaylistPlayback` module and its exported read helper are deleted.
+The detail's queue re-apply now goes through the module's playable filter and
+mapping.
+
+Verification: `pnpm run build`, `pnpm run lint:check`, `pnpm run test:unit`
+(mobile 618, web 616, server 504, and the other packages), and the targeted
+mobile suites for the detail, gallery, bare entry, player store and start
+module.
 
 ## Verification
 

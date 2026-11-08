@@ -3,8 +3,8 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import { StreamFailureKind } from '@playliberty/ui-foundation';
 
-import type { PlayerTrack } from '../playerTrack/playerTrack';
 import { usePlayerStore } from '../playerStore/playerStore';
+import type { PlayerTrack } from '../playerTrack/playerTrack';
 import { usePlayerAudio } from './usePlayerAudio';
 
 jest.mock('expo-audio', () => {

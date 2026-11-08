@@ -1,6 +1,7 @@
 import type { HttpHandler, HttpResponseResolver } from 'msw';
 import { HttpResponse, http } from 'msw';
 
+import { API_PREFIX } from '@playliberty/api-client';
 import type {
   Account,
   AccountSummary,
@@ -36,8 +37,6 @@ import {
   endpointPattern,
   endpoints
 } from '@playliberty/contracts';
-
-import { API_PREFIX } from '@playliberty/api-client';
 
 /*
  * The harness the tests run against: two valid playlists, one owned and one

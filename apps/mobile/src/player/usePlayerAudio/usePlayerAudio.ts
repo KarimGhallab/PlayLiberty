@@ -6,9 +6,9 @@ import {
 } from 'expo-audio';
 import { useEffect, useRef } from 'react';
 
-import { useSessionStore } from '../../auth/sessionStore/sessionStore';
 import { StreamFailureKind } from '@playliberty/ui-foundation';
 
+import { useSessionStore } from '../../auth/sessionStore/sessionStore';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { StreamFailureClassifier } from '../streamFailure/streamFailure';
 

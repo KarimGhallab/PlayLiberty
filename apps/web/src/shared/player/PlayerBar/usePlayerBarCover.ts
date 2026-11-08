@@ -1,7 +1,7 @@
+import { usePlaylist } from '@playliberty/api-client';
 import type { Playlist } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
 
-import { usePlaylist } from '@playliberty/api-client';
 import { mediaUrl } from '../../api/endpoints/endpoints';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { currentTrack } from '../types';

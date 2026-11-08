@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 
 import {
+  seekPatch as boundedSeek,
   mergeIds,
   previousMove,
   randomItem,
   seekFractionPatch,
-  seekPatch as boundedSeek,
   shuffleIds
 } from '@playliberty/player';
 
@@ -325,9 +325,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       return position === null ? state : { positionSeconds: position };
     }),
   seekToFraction: fraction =>
-    set(state =>
-      seekFractionPatch(currentDuration(state), fraction) ?? state
-    ),
+    set(state => seekFractionPatch(currentDuration(state), fraction) ?? state),
   seekBy: seconds =>
     set(state => {
       if (currentDuration(state) === null || !Number.isFinite(seconds)) {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { ApiError } from '@playliberty/api-client';
 import { Language, catalogs, createTranslator } from '@playliberty/i18n';
 
-import { ApiError } from '@playliberty/api-client';
 import { problemSentence } from './problem';
 
 const t = createTranslator(catalogs[Language.English], Language.English);

@@ -40,7 +40,8 @@ function json(body: unknown, status = 200): Response {
 }
 
 function adapter(
-  respond: (request: TransportRequest) => Response = () => json({ status: 'ok' })
+  respond: (request: TransportRequest) => Response = () =>
+    json({ status: 'ok' })
 ): { readonly auth: TransportAdapter; readonly requests: TransportRequest[] } {
   const requests: TransportRequest[] = [];
 

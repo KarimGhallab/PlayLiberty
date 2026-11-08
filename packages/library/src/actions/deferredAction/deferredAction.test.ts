@@ -122,9 +122,9 @@ describe('the deferred action store', () => {
     expect(first).not.toHaveBeenCalled();
     expect(second).not.toHaveBeenCalled();
     expect(
-      deferredActions.getSnapshot().every(
-        window => !window.started && window.expiresAt === null
-      )
+      deferredActions
+        .getSnapshot()
+        .every(window => !window.started && window.expiresAt === null)
     ).toBe(true);
 
     deferredActions.startAll();

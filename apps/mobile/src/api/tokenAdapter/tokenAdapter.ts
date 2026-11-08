@@ -2,9 +2,9 @@ import {
   ACCESS_TOKEN_HEADER,
   ACCESS_TOKEN_ID_HEADER,
   ApiError,
-  USER_AGENT_HEADER,
   type TransportAdapter,
-  type TransportRequest
+  type TransportRequest,
+  USER_AGENT_HEADER
 } from '@playliberty/api-client';
 
 import { USER_AGENT } from '../userAgent';

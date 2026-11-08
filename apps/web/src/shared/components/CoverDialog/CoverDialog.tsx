@@ -446,7 +446,10 @@ export default function CoverDialog({
                   const { naturalWidth, naturalHeight } = event.currentTarget;
 
                   if (naturalWidth > 0 && naturalHeight > 0) {
-                    dispatch({ type: 'measured', size: { width: naturalWidth, height: naturalHeight } });
+                    dispatch({
+                      type: 'measured',
+                      size: { width: naturalWidth, height: naturalHeight }
+                    });
                   }
                 }}
                 onError={onImageError}

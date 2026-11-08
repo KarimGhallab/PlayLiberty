@@ -119,14 +119,14 @@ describe('the directory name', () => {
 describe('the cover crop query', () => {
   it('sends the four fractions or nothing', () => {
     expect(coverCropQuery(null)).toBeUndefined();
-    expect(
-      coverCropQuery({ x: 1 / 3, y: 0, width: 1 / 3, height: 1 })
-    ).toEqual({
-      cropX: '0.333333',
-      cropY: '0.000000',
-      cropWidth: '0.333333',
-      cropHeight: '1.000000'
-    });
+    expect(coverCropQuery({ x: 1 / 3, y: 0, width: 1 / 3, height: 1 })).toEqual(
+      {
+        cropX: '0.333333',
+        cropY: '0.000000',
+        cropWidth: '0.333333',
+        cropHeight: '1.000000'
+      }
+    );
   });
 });
 

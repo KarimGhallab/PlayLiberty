@@ -8,10 +8,6 @@ import {
 } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import type { Share } from '@playliberty/contracts';
-import { ProblemCode, ShareLevel } from '@playliberty/contracts';
-import { I18nProvider, Language } from '@playliberty/i18n';
-
 import {
   ApiError,
   useAccountPage,
@@ -21,6 +17,10 @@ import {
   useRevokeShare
 } from '@playliberty/api-client';
 import type * as ApiClientModule from '@playliberty/api-client';
+import type { Share } from '@playliberty/contracts';
+import { ProblemCode, ShareLevel } from '@playliberty/contracts';
+import { I18nProvider, Language } from '@playliberty/i18n';
+
 import ShareSheet, { type ShareSheetProps } from './ShareSheet';
 
 jest.mock('@playliberty/api-client', () => ({

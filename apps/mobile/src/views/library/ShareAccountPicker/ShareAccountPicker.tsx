@@ -2,6 +2,12 @@ import { useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import {
+  ApiError,
+  useAccountPage,
+  useCurrentAccount,
+  useGrantShare
+} from '@playliberty/api-client';
 import type { AccountSummary, Share } from '@playliberty/contracts';
 import { ShareLevel } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
@@ -22,13 +28,6 @@ import {
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
-
-import {
-  ApiError,
-  useAccountPage,
-  useCurrentAccount,
-  useGrantShare
-} from '@playliberty/api-client';
 
 export interface ShareAccountPickerProps {
   readonly visible: boolean;

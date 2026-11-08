@@ -1,9 +1,10 @@
-import { streamSource } from '../../api/streamSource';
-import type { ApiConfig } from '../../auth/useApiConfig';
 import {
   StreamFailureKind,
   streamFailureKind
 } from '@playliberty/ui-foundation';
+
+import { streamSource } from '../../api/streamSource';
+import type { ApiConfig } from '../../auth/useApiConfig';
 
 /* What the player should do about a stream that failed to load. The player
  * cannot say why, so the route's status becomes one of three answers. */

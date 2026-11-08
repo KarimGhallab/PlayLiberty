@@ -1,10 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 
+import { useTrack } from '@playliberty/api-client';
 import { useI18n } from '@playliberty/i18n';
-
-import Notice from '../../../shared/components/Notice/Notice';
-import { isPlayable } from '@playliberty/player';
 import type { TrackLinkNotice } from '@playliberty/i18n';
 import {
   cannotPlayNotice,
@@ -12,13 +10,15 @@ import {
   unknownTrackNotice
 } from '@playliberty/i18n';
 
-import { useTrack } from '@playliberty/api-client';
+import Notice from '../../../shared/components/Notice/Notice';
+
 import {
   SessionStatus,
   useSessionStore
 } from '../../../auth/sessionStore/sessionStore';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import { startBareTrack } from '../../../player/startPlayback/startPlayback';
 import BareTrackLoading from '../BareTrackLoading/BareTrackLoading';
 import { takeLeftPlaylistNotice } from '../leftPlaylistNotice/leftPlaylistNotice';
 
@@ -48,7 +48,6 @@ export default function BareTrackEntry({ trackId }: BareTrackEntryProps) {
   const { t } = useI18n();
   const status = useSessionStore(state => state.status);
   const track = useTrack(trackId, status === SessionStatus.SignedIn);
-  const startBareTrack = usePlayerStore(state => state.startBareTrack);
   const playlistId = usePlayerStore(state => state.playlistId);
   const currentId = usePlayerStore(state => state.currentId);
   const barHeight = usePlayerBarHeight();
@@ -90,7 +89,7 @@ export default function BareTrackEntry({ trackId }: BareTrackEntryProps) {
 
     decided.current = true;
 
-    if (!isPlayable(data)) {
+    if (startBareTrack(data) !== null) {
       baseline.current = queueIdentity(
         usePlayerStore.getState().playlistId,
         usePlayerStore.getState().currentId
@@ -103,27 +102,11 @@ export default function BareTrackEntry({ trackId }: BareTrackEntryProps) {
       setNotice(leftPlaylistNotice(data.title, t));
     }
 
-    const player = usePlayerStore.getState();
-    const alreadyBare =
-      player.playlistId === null &&
-      player.currentId === data.id &&
-      player.queue.length === 1 &&
-      player.queue[0] === data.id;
-
-    if (!alreadyBare) {
-      startBareTrack({
-        id: data.id,
-        title: data.title,
-        durationSeconds: data.durationSeconds,
-        thumbnailPath: data.thumbnailPath
-      });
-    }
-
     baseline.current = queueIdentity(
       usePlayerStore.getState().playlistId,
       usePlayerStore.getState().currentId
     );
-  }, [startBareTrack, status, t, track.data, track.isError]);
+  }, [status, t, track.data, track.isError]);
 
   /* A queue started from the gallery replaces the bare address. The queue found
    * on arrival is the baseline, so a failed entry leaves the address alone. */

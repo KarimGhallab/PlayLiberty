@@ -4,7 +4,11 @@ import { useCallback, useMemo } from 'react';
 
 import type { Account, AccountSummary } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
-import { accountPageKey, accountsKey, currentAccountKey } from '@playliberty/query';
+import {
+  accountPageKey,
+  accountsKey,
+  currentAccountKey
+} from '@playliberty/query';
 
 import { apiClient } from './configure.js';
 

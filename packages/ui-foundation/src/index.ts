@@ -56,10 +56,7 @@ export {
   totalStatusCount,
   visibleStatusChips
 } from './statusChips/statusChips.js';
-export type {
-  StatusChip,
-  TrackStatusChip
-} from './statusChips/statusChips.js';
+export type { StatusChip, TrackStatusChip } from './statusChips/statusChips.js';
 export { fileTone, trackTone } from './tones/tones.js';
 export { TrackTone } from './types.js';
 export type {

@@ -15,6 +15,11 @@ import {
   View
 } from 'react-native';
 
+import {
+  ApiError,
+  useRemovePlaylistCover,
+  useSetPlaylistCover
+} from '@playliberty/api-client';
 import type { Playlist } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 import {
@@ -48,11 +53,6 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import {
-  ApiError,
-  useRemovePlaylistCover,
-  useSetPlaylistCover
-} from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 
 interface Point {

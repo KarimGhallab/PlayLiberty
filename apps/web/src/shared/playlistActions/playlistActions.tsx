@@ -10,15 +10,6 @@ import {
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 
-import type { Playlist } from '@playliberty/contracts';
-import type { MessageKey, Messages } from '@playliberty/i18n';
-import { useI18n } from '@playliberty/i18n';
-import {
-  type PlaylistActionKey,
-  deleteIntentFor,
-  playlistActionsFor
-} from '@playliberty/library';
-
 import {
   useDeletePlaylist,
   useRemovePlaylistCover,
@@ -27,11 +18,20 @@ import {
   useSyncPlaylist,
   useUpdatePin
 } from '@playliberty/api-client';
+import type { Playlist } from '@playliberty/contracts';
+import type { MessageKey, Messages } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
+import {
+  type PlaylistActionKey,
+  deleteIntentFor,
+  playlistActionsFor
+} from '@playliberty/library';
+import type { PendingAction } from '@playliberty/library';
+
 import { problemSentence } from '../api/problem/problem';
 import CoverDialog from '../components/CoverDialog/CoverDialog';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
-import type { PendingAction } from '@playliberty/library';
 
 /*
  * One module owns a surface's playlist actions: the mutations, the menu each

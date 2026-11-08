@@ -12,13 +12,14 @@ import {
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
 import { formatDuration, trackStateFacts, useI18n } from '@playliberty/i18n';
+import { failureSentence } from '@playliberty/i18n';
+import { isPlayable } from '@playliberty/player';
 import { fileTone, trackTone } from '@playliberty/ui-foundation';
 
 import AppImage from '../../../shared/components/AppImage/AppImage';
 import { usePressScale } from '../../../shared/components/PressableScale/usePressScale';
 import TrackBars from '../../../shared/components/TrackBars/TrackBars';
 import { mediaSource } from '../../../shared/media/mediaSource';
-import { isPlayable } from '@playliberty/player';
 import {
   lineHeightFor,
   useTextScale
@@ -30,7 +31,6 @@ import {
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
-import { failureSentence } from '@playliberty/i18n';
 import { trackToneColor } from '../../../shared/trackState/trackToneColor';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';

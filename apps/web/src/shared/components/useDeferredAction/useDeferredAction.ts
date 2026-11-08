@@ -1,9 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-import {
-  UNDO_WINDOW_MS,
-  deferredActions
-} from '@playliberty/library';
+import { UNDO_WINDOW_MS, deferredActions } from '@playliberty/library';
 import type {
   DeferOptions,
   DeferredAction,

@@ -7,6 +7,7 @@ import {
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
+import type { TrackAction, TrackActionKey } from '@playliberty/library';
 
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import {
@@ -15,8 +16,6 @@ import {
   tokenLength,
   touchTarget
 } from '../../../shared/styles/tokens';
-
-import type { TrackAction, TrackActionKey } from '@playliberty/library';
 
 const ICONS = {
   copy: IconCopy,

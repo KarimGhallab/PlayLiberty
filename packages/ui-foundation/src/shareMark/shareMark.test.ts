@@ -22,9 +22,9 @@ describe('shareMarkOf', () => {
   });
 
   it('marks an owned playlist with shares as shared', () => {
-    expect(
-      shareMarkOf(playlist({ access: 'owner', hasShares: true }))
-    ).toEqual({ state: ShareMarkState.OwnShared, label: 'header.shared' });
+    expect(shareMarkOf(playlist({ access: 'owner', hasShares: true }))).toEqual(
+      { state: ShareMarkState.OwnShared, label: 'header.shared' }
+    );
   });
 
   it('marks an owned playlist without shares as private', () => {

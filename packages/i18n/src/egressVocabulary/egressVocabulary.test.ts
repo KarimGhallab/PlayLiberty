@@ -17,9 +17,7 @@ import {
 
 const t = createTranslator(catalogs[Language.English], Language.English);
 const now = new Date('2026-10-01T12:00:00.000Z');
-const thirtyMinutesAgo = new Date(
-  now.getTime() - 30 * 60 * 1000
-).toISOString();
+const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
 
 describe('the egress status word', () => {
   it('names every status', () => {
@@ -67,9 +65,7 @@ describe('the egress time sentence', () => {
 
 describe('the egress action notice', () => {
   it('names a switch that the agent answered', () => {
-    expect(
-      egressSuccessNotice(t, EgressAction.Switch, '02-ch')
-    ).toEqual({
+    expect(egressSuccessNotice(t, EgressAction.Switch, '02-ch')).toEqual({
       message: 'Switched to 02-ch.',
       detail: 'The exit answered YouTube.'
     });

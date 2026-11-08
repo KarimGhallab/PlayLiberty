@@ -3,9 +3,6 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ShareLevel } from '@playliberty/contracts';
-import { cacheEffects } from '@playliberty/query';
-
 import {
   useAddTrack,
   useCreatePlaylist,
@@ -22,6 +19,8 @@ import {
   useUpdatePin,
   useUpdateSkipNonMusic
 } from '@playliberty/api-client';
+import { ShareLevel } from '@playliberty/contracts';
+import { cacheEffects } from '@playliberty/query';
 
 /*
  * Each mutation names one cache fact (reads pinned in `cacheEffects.test.ts`);

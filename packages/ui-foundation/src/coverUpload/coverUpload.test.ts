@@ -265,9 +265,7 @@ describe('the submission', () => {
     });
 
     expect(coverUploadSubmission(busy)).toBeNull();
-    expect(
-      coverUploadSubmission(coverUploadInitial<string>())
-    ).toBeNull();
+    expect(coverUploadSubmission(coverUploadInitial<string>())).toBeNull();
   });
 
   it('clears the chosen image after a successful save', () => {

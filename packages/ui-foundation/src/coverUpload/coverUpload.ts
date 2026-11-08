@@ -246,7 +246,10 @@ export function reduceCoverUpload<TFile>(
   }
 
   if (action.type === 'resetCrop') {
-    if (state.busy || (state.zoom === 1 && state.panX === 0 && state.panY === 0)) {
+    if (
+      state.busy ||
+      (state.zoom === 1 && state.panX === 0 && state.panY === 0)
+    ) {
       return state;
     }
 
@@ -325,23 +328,17 @@ export function coverUploadBox(
   };
 }
 
-export function coverUploadZoomMax(
-  state: CoverUploadState<unknown>
-): number {
+export function coverUploadZoomMax(state: CoverUploadState<unknown>): number {
   return zoomMaxOf(state);
 }
 
-export function coverUploadZoomRatio(
-  state: CoverUploadState<unknown>
-): number {
+export function coverUploadZoomRatio(state: CoverUploadState<unknown>): number {
   const max = coverUploadZoomMax(state);
 
   return max <= 1 ? 0 : ((state.zoom - 1) / (max - 1)) * 100;
 }
 
-export function coverUploadAdjusted(
-  state: CoverUploadState<unknown>
-): boolean {
+export function coverUploadAdjusted(state: CoverUploadState<unknown>): boolean {
   return state.zoom !== 1 || state.panX !== 0 || state.panY !== 0;
 }
 

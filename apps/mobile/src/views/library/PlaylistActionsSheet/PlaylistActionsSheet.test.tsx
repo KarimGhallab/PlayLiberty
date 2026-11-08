@@ -4,8 +4,8 @@ import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
-
 import type { PlaylistAction } from '@playliberty/library';
+
 import PlaylistActionsSheet from './PlaylistActionsSheet';
 
 const store = { getItem: () => null, setItem: () => {} };

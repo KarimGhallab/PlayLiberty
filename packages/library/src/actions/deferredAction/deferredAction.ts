@@ -231,15 +231,17 @@ class DeferredActionStore {
   }
 
   private _publish(): void {
-    this._snapshot = this._entries.map(({ key, action, expiresAt, started }) => ({
-      key,
-      id: action.id,
-      kind: action.kind ?? null,
-      message: action.message,
-      detail: action.detail,
-      expiresAt,
-      started
-    }));
+    this._snapshot = this._entries.map(
+      ({ key, action, expiresAt, started }) => ({
+        key,
+        id: action.id,
+        kind: action.kind ?? null,
+        message: action.message,
+        detail: action.detail,
+        expiresAt,
+        started
+      })
+    );
 
     for (const listener of this._listeners) {
       listener();

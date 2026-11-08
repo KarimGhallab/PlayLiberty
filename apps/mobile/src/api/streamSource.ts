@@ -1,6 +1,5 @@
-import { endpointPath, endpoints } from '@playliberty/contracts';
-
 import { accessHeaders, apiUrl } from '@playliberty/api-client';
+import { endpointPath, endpoints } from '@playliberty/contracts';
 
 import type { AccessToken } from './tokenAdapter/tokenAdapter';
 import { USER_AGENT } from './userAgent';

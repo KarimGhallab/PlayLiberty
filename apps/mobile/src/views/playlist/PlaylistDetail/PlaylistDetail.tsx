@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
@@ -22,44 +23,6 @@ import {
   useSafeAreaInsets
 } from 'react-native-safe-area-context';
 
-import type { PlaylistTrack } from '@playliberty/contracts';
-import {
-  AddTrackOutcome,
-  PlaylistSort,
-  PlaylistSyncStatus,
-  SyncRunStatus
-} from '@playliberty/contracts';
-import type { TrackFilterState } from '@playliberty/contracts';
-import { problemDetail, providerLabel, useI18n } from '@playliberty/i18n';
-import { standardEasingBezier } from '@playliberty/ui-foundation';
-
-import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
-import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
-import { copyText } from '../../../shared/clipboard/copyText';
-import ActionDial, {
-  actionDialSize
-} from '../../../shared/components/ActionDial/ActionDial';
-import Checkbox from '../../../shared/components/Checkbox/Checkbox';
-import { verticalListChrome } from '../../../shared/components/List/listChrome';
-import Notice from '../../../shared/components/Notice/Notice';
-import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
-import Spinner from '../../../shared/components/Spinner/Spinner';
-import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
-import { isPlayable, orderTracksByQueue } from '@playliberty/player';
-import { canWritePlaylist } from '@playliberty/library';
-import { MAX_CONTENT_WIDTH } from '../../../shared/styles/contentColumn/contentColumn';
-import {
-  fontFamily,
-  tokenColor,
-  tokenDuration,
-  tokenLength,
-  tokenNumber,
-  tokenWeight,
-  touchTarget
-} from '../../../shared/styles/tokens';
-import { cannotPlayNotice } from '@playliberty/i18n';
-import { STATUS_CHIPS } from '@playliberty/ui-foundation';
-
 import {
   ApiError,
   ownerNameFrom,
@@ -70,8 +33,8 @@ import {
   useLatestSyncRun,
   usePlaylist,
   usePlaylistQueue,
-  usePlaylists,
   usePlaylistTracks,
+  usePlaylists,
   useRemoveTrack,
   useRenamePlaylist,
   useRetryFailedTracks,
@@ -80,24 +43,65 @@ import {
   useUpdateSkipNonMusic,
   useUpdateSort
 } from '@playliberty/api-client';
-import type { ApiConfig } from '../../../auth/useApiConfig';
-import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
-import { usePlayerStore } from '../../../player/playerStore/playerStore';
-import { playerTracks } from '../../../player/playerTrack/playerTrack';
+import type { PlaylistTrack } from '@playliberty/contracts';
 import {
-  type StartIntent,
-  startPlaylistPlayback
-} from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
-import CoverSheet from '../../library/CoverSheet/CoverSheet';
-import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
-import RenameSheet from '../../library/RenameSheet/RenameSheet';
-import ShareSheet from '../../library/ShareSheet/ShareSheet';
+  AddTrackOutcome,
+  PlaylistSort,
+  PlaylistSyncStatus,
+  SyncRunStatus
+} from '@playliberty/contracts';
+import type { TrackFilterState } from '@playliberty/contracts';
+import { problemDetail, providerLabel, useI18n } from '@playliberty/i18n';
+import { cannotPlayNotice } from '@playliberty/i18n';
+import { canWritePlaylist } from '@playliberty/library';
 import {
   type PendingAction,
   type PlaylistActionKey,
   UNDO_WINDOW_MS,
   playlistActionsFor
 } from '@playliberty/library';
+import { type TrackActionKey, trackActionsFor } from '@playliberty/library';
+import { orderTracksByQueue } from '@playliberty/player';
+import { standardEasingBezier } from '@playliberty/ui-foundation';
+import { STATUS_CHIPS } from '@playliberty/ui-foundation';
+
+import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
+import { copyText } from '../../../shared/clipboard/copyText';
+import ActionDial, {
+  actionDialSize
+} from '../../../shared/components/ActionDial/ActionDial';
+import Checkbox from '../../../shared/components/Checkbox/Checkbox';
+import { verticalListChrome } from '../../../shared/components/List/listChrome';
+import Notice from '../../../shared/components/Notice/Notice';
+import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import Spinner from '../../../shared/components/Spinner/Spinner';
+import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
+import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
+import { MAX_CONTENT_WIDTH } from '../../../shared/styles/contentColumn/contentColumn';
+import {
+  fontFamily,
+  tokenColor,
+  tokenDuration,
+  tokenLength,
+  tokenNumber,
+  tokenWeight,
+  touchTarget
+} from '../../../shared/styles/tokens';
+
+import type { ApiConfig } from '../../../auth/useApiConfig';
+import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
+import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import {
+  type StartIntent,
+  applyPlaylistRefetch,
+  playableTracks,
+  startAtPlaylist,
+  startAtTrack
+} from '../../../player/startPlayback/startPlayback';
+import CoverSheet from '../../library/CoverSheet/CoverSheet';
+import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
+import RenameSheet from '../../library/RenameSheet/RenameSheet';
+import ShareSheet from '../../library/ShareSheet/ShareSheet';
 import { holdLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
 import AddTrackSheet from '../AddTrackSheet/AddTrackSheet';
 import PlaylistControls, {
@@ -113,10 +117,6 @@ import PlaylistIdentity, {
 import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
 import SyncBand from '../SyncBand/SyncBand';
 import TrackActionsSheet from '../TrackActionsSheet/TrackActionsSheet';
-import {
-  type TrackActionKey,
-  trackActionsFor
-} from '@playliberty/library';
 import TrackListSkeleton from '../TrackListSkeleton/TrackListSkeleton';
 import TrackRow from '../TrackRow/TrackRow';
 import { claimsPull, commitsPull } from './pullDismiss';
@@ -254,8 +254,7 @@ export default function PlaylistDetail({
   const pendingDelete = detailWindows.some(
     window => window.kind === 'detail-playlist'
   );
-  const undoWindow =
-    detailWindows.find(window => window.started) ?? null;
+  const undoWindow = detailWindows.find(window => window.started) ?? null;
   /* A removal keeps its row hidden until the request settles, whether the
    * window is still open or the commit is in flight. */
   const removingTrackId =
@@ -271,9 +270,7 @@ export default function PlaylistDetail({
   if (removingTrackId !== null) {
     hiddenTrackIds.add(removingTrackId);
   }
-  const start = usePlayerStore(state => state.start);
-  const play = usePlayerStore(state => state.play);
-  const applyRefetch = usePlayerStore(state => state.applyRefetch);
+  const client = useQueryClient();
   const setShuffle = usePlayerStore(state => state.setShuffle);
   const setPlaying = usePlayerStore(state => state.setPlaying);
   const playerQueue = usePlayerStore(state => state.queue);
@@ -321,10 +318,8 @@ export default function PlaylistDetail({
       return;
     }
 
-    const items = queue.data.items.filter(entry => isPlayable(entry.track));
-
-    applyRefetch(playlistData.id, playerTracks(items));
-  }, [applyRefetch, playlistData, queue.data, queue.isSuccess]);
+    applyPlaylistRefetch(playlistData.id, queue.data.items);
+  }, [playlistData, queue.data, queue.isSuccess]);
 
   /* A 404 on an open playlist with a track link is the bare track, silently:
    * the access model never confirms that the playlist exists. A network or
@@ -358,54 +353,33 @@ export default function PlaylistDetail({
       return;
     }
 
-    const items = queue.data?.items ?? [];
-    const association = items.find(entry => entry.track.id === linkTarget);
-
     enteredLink.current = true;
     setLinkSettled(true);
 
-    if (association === undefined) {
-      redirectingLink.current = true;
-      holdLeftPlaylistNotice();
-      onBareTrackRedirect?.(linkTarget);
-      return;
-    }
-
-    if (!isPlayable(association.track)) {
-      setNotice(cannotPlayNotice(association.track, t));
-      return;
-    }
-
-    if (playerPlaylistId === playlistData.id) {
-      if (currentId !== linkTarget && playerQueue.includes(linkTarget)) {
-        play(linkTarget);
+    void startAtTrack(client, playlistData, linkTarget, {
+      resumeCurrent: false
+    }).then(refusal => {
+      if (refusal === null) {
+        return;
       }
 
-      return;
-    }
+      if (refusal.kind === 'missing') {
+        redirectingLink.current = true;
+        holdLeftPlaylistNotice();
+        onBareTrackRedirect?.(linkTarget);
+        return;
+      }
 
-    start(
-      playerTracks(items.filter(entry => isPlayable(entry.track))),
-      {
-        id: playlistData.id,
-        name: playlistData.name,
-        coverUpdatedAt: playlistData.coverUpdatedAt,
-        coverTrackId: playlistData.coverTrackId
-      },
-      linkTarget,
-      false
-    );
+      if (refusal.kind === 'unplayable') {
+        setNotice(cannotPlayNotice(refusal.track, t));
+      }
+    });
   }, [
-    currentId,
+    client,
     linkTarget,
     onBareTrackRedirect,
-    play,
-    playerPlaylistId,
-    playerQueue,
     playlistData,
-    queue.data,
     queue.isSuccess,
-    start,
     t
   ]);
 
@@ -463,39 +437,13 @@ export default function PlaylistDetail({
    * at that row rather than a queue built from the loaded page. */
   const playTrack = useCallback(
     (trackId: string): void => {
-      if (playlistId === null) {
+      if (playlistData === undefined) {
         return;
       }
 
-      const player = usePlayerStore.getState();
-
-      if (player.playlistId === playlistId && player.queue.includes(trackId)) {
-        player.play(trackId);
-        return;
-      }
-
-      const items = (queue.data?.items ?? []).filter(entry =>
-        isPlayable(entry.track)
-      );
-
-      if (!items.some(entry => entry.track.id === trackId)) {
-        return;
-      }
-
-      start(
-        playerTracks(items),
-        playlistData === undefined
-          ? null
-          : {
-              id: playlistData.id,
-              name: playlistData.name,
-              coverUpdatedAt: playlistData.coverUpdatedAt,
-              coverTrackId: playlistData.coverTrackId
-            },
-        trackId
-      );
+      void startAtTrack(client, playlistData, trackId);
     },
-    [playlistData, playlistId, queue.data, start]
+    [client, playlistData]
   );
   const openActions = useCallback((trackId: string): void => {
     setActionTargetId(trackId);
@@ -951,34 +899,13 @@ export default function PlaylistDetail({
       />
     ) : null;
 
-  const playableQueue = (queue.data?.items ?? []).filter(entry =>
-    isPlayable(entry.track)
-  );
-  const queueEmpty = queue.isSuccess && playableQueue.length === 0;
-
-  /* The queue route is the whole playable playlist, so a start never inherits
-   * the loaded page. A read that has not landed is awaited, and a failure is
-   * the start's own notice. */
-  const readPlayableQueue = async (): Promise<readonly PlaylistTrack[]> => {
-    const result = queue.isSuccess
-      ? { data: queue.data, error: null }
-      : await queue.refetch();
-
-    if (result.error !== null) {
-      throw result.error;
-    }
-
-    return (result.data?.items ?? []).filter(entry => isPlayable(entry.track));
-  };
+  const queueEmpty =
+    queue.isSuccess && playableTracks(queue.data?.items ?? []).length === 0;
 
   const startPlaylist = async (intent: StartIntent): Promise<void> => {
     setStarting(intent);
 
-    const refusal = await startPlaylistPlayback(
-      data,
-      intent,
-      readPlayableQueue
-    );
+    const refusal = await startAtPlaylist(client, data, intent);
 
     setStarting(null);
 

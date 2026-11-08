@@ -4,17 +4,14 @@ import { HttpResponse, http } from 'msw';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import type {
-  PlaylistPage,
-  PlaylistWithCounts
-} from '@playliberty/contracts';
+import { usePlaylists } from '@playliberty/api-client';
+import type { PlaylistPage, PlaylistWithCounts } from '@playliberty/contracts';
 import {
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
   endpoints
 } from '@playliberty/contracts';
-import { usePlaylists } from '@playliberty/api-client';
 
 import { mockUrl } from '../../testing/mocks/handlers';
 import { server } from '../../testing/mocks/server';

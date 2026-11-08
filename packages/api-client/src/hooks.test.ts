@@ -27,7 +27,11 @@ import {
   accountsQueryOptions,
   currentAccountQuery
 } from './account.js';
-import { checkEgressOptions, egressQueryOptions, switchEgressOptions } from './egress.js';
+import {
+  checkEgressOptions,
+  egressQueryOptions,
+  switchEgressOptions
+} from './egress.js';
 import {
   createPlaylistOptions,
   libraryQueryOptions,
@@ -49,11 +53,11 @@ import {
   renamePlaylistOptions,
   retryFailedTracksOptions,
   retryTrackOptions,
+  revokeShareOptions,
   setPlaylistCoverOptions,
   syncPlaylistOptions,
   updateSkipNonMusicOptions,
-  updateSortOptions,
-  revokeShareOptions
+  updateSortOptions
 } from './playlist.js';
 import { trackQueryOptions } from './track.js';
 

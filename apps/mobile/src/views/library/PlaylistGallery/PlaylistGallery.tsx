@@ -12,35 +12,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type {
-  PlaylistWithCounts,
-  TrackFilterState
-} from '@playliberty/contracts';
-import { PlaylistSyncStatus, Provider } from '@playliberty/contracts';
-import { problemDetail, useI18n } from '@playliberty/i18n';
-
-import ActionDial, {
-  type DialAction,
-  actionDialSize
-} from '../../../shared/components/ActionDial/ActionDial';
-import Checkbox from '../../../shared/components/Checkbox/Checkbox';
-import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
-import { verticalListChrome } from '../../../shared/components/List/listChrome';
-import Notice from '../../../shared/components/Notice/Notice';
-import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
-import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
-import {
-  fontFamily,
-  tokenColor,
-  tokenLength,
-  tokenWeight
-} from '../../../shared/styles/tokens';
-import { statusCount } from '@playliberty/ui-foundation';
-
 import {
   ApiError,
-  ownerNameFrom,
   SYNCING_HOLD_MS,
+  ownerNameFrom,
   useAccountDirectory,
   useBulkSync,
   useCreatePlaylist,
@@ -52,35 +27,19 @@ import {
   useUpdatePin,
   useUpdateSkipNonMusic
 } from '@playliberty/api-client';
-import type { ApiConfig } from '../../../auth/useApiConfig';
-import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
-import { usePlayerStore } from '../../../player/playerStore/playerStore';
-import {
-  type StartIntent,
-  readPlayableQueue,
-  startPlaylistPlayback
-} from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
-import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
-import CoverSheet from '../CoverSheet/CoverSheet';
-import EmptyGallery from '../EmptyGallery/EmptyGallery';
+import type {
+  PlaylistWithCounts,
+  TrackFilterState
+} from '@playliberty/contracts';
+import { PlaylistSyncStatus, Provider } from '@playliberty/contracts';
+import { problemDetail, useI18n } from '@playliberty/i18n';
 import type { LibraryScope } from '@playliberty/library';
-import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
-import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
-import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
-import PlaylistCard from '../PlaylistCard/PlaylistCard';
-import RenameSheet from '../RenameSheet/RenameSheet';
-import ShareSheet from '../ShareSheet/ShareSheet';
 import {
   groupPlaylists,
   scopedPlaylists,
   statusTotals,
   visiblePlaylists
 } from '@playliberty/library';
-import {
-  galleryColumnCount,
-  galleryColumnWidth,
-  galleryPinnedWidth
-} from '../galleryColumns/galleryColumns';
 import type { PlaylistActionKey } from '@playliberty/library';
 import {
   UNDO_WINDOW_MS,
@@ -88,6 +47,46 @@ import {
   deleteIntentFor,
   playlistActionsFor
 } from '@playliberty/library';
+import { statusCount } from '@playliberty/ui-foundation';
+
+import ActionDial, {
+  type DialAction,
+  actionDialSize
+} from '../../../shared/components/ActionDial/ActionDial';
+import Checkbox from '../../../shared/components/Checkbox/Checkbox';
+import { verticalListChrome } from '../../../shared/components/List/listChrome';
+import Notice from '../../../shared/components/Notice/Notice';
+import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
+import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
+import {
+  fontFamily,
+  tokenColor,
+  tokenLength,
+  tokenWeight
+} from '../../../shared/styles/tokens';
+
+import type { ApiConfig } from '../../../auth/useApiConfig';
+import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
+import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import {
+  type StartIntent,
+  startAtPlaylist
+} from '../../../player/startPlayback/startPlayback';
+import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
+import CoverSheet from '../CoverSheet/CoverSheet';
+import EmptyGallery from '../EmptyGallery/EmptyGallery';
+import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
+import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
+import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
+import PlaylistCard from '../PlaylistCard/PlaylistCard';
+import RenameSheet from '../RenameSheet/RenameSheet';
+import ShareSheet from '../ShareSheet/ShareSheet';
+import {
+  galleryColumnCount,
+  galleryColumnWidth,
+  galleryPinnedWidth
+} from '../galleryColumns/galleryColumns';
 import { clampScrollOffset } from './clampScrollOffset/clampScrollOffset';
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
@@ -369,9 +368,7 @@ export default function PlaylistGallery({
     intent: StartIntent
   ): void => {
     setStarting({ playlistId: playlist.id, intent });
-    void startPlaylistPlayback(playlist, intent, () =>
-      readPlayableQueue(client, playlist.id)
-    )
+    void startAtPlaylist(client, playlist, intent)
       .then(refusal => {
         if (refusal === null) {
           return;

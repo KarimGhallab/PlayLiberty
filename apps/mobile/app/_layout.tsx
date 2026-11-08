@@ -4,6 +4,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect } from 'react';
 
+import { StreamFailureKind } from '@playliberty/ui-foundation';
+
 import { useReduceMotion } from '../src/shared/a11y/useReduceMotion';
 import { tokenColor } from '../src/shared/styles/tokens';
 
@@ -14,8 +16,6 @@ import LiveEvents from '../src/live/LiveEvents';
 import PlayerAudio from '../src/player/PlayerAudio/PlayerAudio';
 import PlayerBar from '../src/player/PlayerBar/PlayerBar';
 import BackgroundPlayback from '../src/player/backgroundPlayback/BackgroundPlayback';
-import { StreamFailureKind } from '@playliberty/ui-foundation';
-
 import { classifyStreamFailure } from '../src/player/streamFailure/streamFailure';
 import AppProviders from '../src/providers/AppProviders';
 

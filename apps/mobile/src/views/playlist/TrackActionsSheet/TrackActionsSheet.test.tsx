@@ -9,9 +9,9 @@ import {
   TrackSourceStatus
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
+import { trackActionsFor } from '@playliberty/library';
 
 import TrackActionsSheet from './TrackActionsSheet';
-import { trackActionsFor } from '@playliberty/library';
 
 const store = { getItem: () => null, setItem: () => {} };
 

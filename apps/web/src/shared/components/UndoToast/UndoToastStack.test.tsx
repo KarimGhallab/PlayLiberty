@@ -2,8 +2,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '@playliberty/i18n';
-
 import type { DeferredWindow } from '@playliberty/library';
+
 import UndoToastStack from './UndoToastStack';
 
 function deferredWindow(key: number, detail: string): DeferredWindow {

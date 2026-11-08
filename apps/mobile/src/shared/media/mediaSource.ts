@@ -1,7 +1,6 @@
+import { accessHeaders, apiUrl } from '@playliberty/api-client';
 import type { ApiMediaEndpoint, EndpointParams } from '@playliberty/contracts';
 import { endpointPath } from '@playliberty/contracts';
-
-import { accessHeaders, apiUrl } from '@playliberty/api-client';
 
 import { USER_AGENT } from '../../api/userAgent';
 import type { ApiConfig } from '../../auth/useApiConfig';

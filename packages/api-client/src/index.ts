@@ -109,10 +109,7 @@ export {
   CLIENT_HEADER,
   USER_AGENT_HEADER
 } from './protocol.js';
-export {
-  trackQueryOptions,
-  useTrack
-} from './track.js';
+export { trackQueryOptions, useTrack } from './track.js';
 export type {
   QueryParams,
   Transport,

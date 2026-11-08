@@ -1,6 +1,10 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient
+} from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import type {
@@ -17,6 +21,7 @@ import {
   Provider,
   endpoints
 } from '@playliberty/contracts';
+import type { SyncAllOutcome } from '@playliberty/library';
 import {
   cacheEffects,
   insertPlaylistInPages,
@@ -26,7 +31,6 @@ import {
   restoreOptimistic
 } from '@playliberty/query';
 import type { OptimisticContext } from '@playliberty/query';
-import type { SyncAllOutcome } from '@playliberty/library';
 
 import { ApiError } from './apiError.js';
 import { apiClient } from './configure.js';
@@ -171,10 +175,14 @@ export function createPlaylistPlaceholder(
 export function createPlaylistOptions(queryClient: QueryClient) {
   return {
     mutationFn: (input: CreatePlaylistInput) =>
-      apiClient().send(endpoints.createPlaylist, {}, {
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input)
-      }),
+      apiClient().send(
+        endpoints.createPlaylist,
+        {},
+        {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        }
+      ),
     onSuccess: (run: SyncRun, input: CreatePlaylistInput) => {
       const previous =
         queryClient.getQueryData<InfiniteData<PlaylistPage>>(libraryKey);

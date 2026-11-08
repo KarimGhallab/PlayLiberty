@@ -1,10 +1,10 @@
 import { useMatchRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
+import { usePlaylist } from '@playliberty/api-client';
 import type { Messages, Translator } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
-import { usePlaylist } from '@playliberty/api-client';
 import { usePlayerStore } from '../player/playerStore/playerStore';
 import type { PlayerTrack } from '../player/types';
 import { currentTrack } from '../player/types';

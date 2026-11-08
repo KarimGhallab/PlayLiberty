@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PlaylistWithCounts } from '@playliberty/contracts';
-import { PlaylistSort, PlaylistSyncStatus, Provider } from '@playliberty/contracts';
+import {
+  PlaylistSort,
+  PlaylistSyncStatus,
+  Provider
+} from '@playliberty/contracts';
 
 import { bulkSyncSettled, bulkSyncStatus } from './bulkSync.js';
 

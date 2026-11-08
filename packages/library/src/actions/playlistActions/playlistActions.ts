@@ -2,12 +2,7 @@ import type { Playlist } from '@playliberty/contracts';
 import type { MessageKey, Messages, Translator } from '@playliberty/i18n';
 
 export type PlaylistActionKey =
-  | 'pin'
-  | 'share'
-  | 'rename'
-  | 'cover'
-  | 'sync'
-  | 'delete';
+  'pin' | 'share' | 'rename' | 'cover' | 'sync' | 'delete';
 
 export const UNDO_WINDOW_MS = 6000;
 

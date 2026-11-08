@@ -37,10 +37,7 @@ export function shuffleWithLeader<T>(
 ): T[] {
   const byId = new Map(items.map(item => [idOf(item), item] as const));
 
-  return shuffleIds(
-    items.map(idOf),
-    leaderId
-  )
+  return shuffleIds(items.map(idOf), leaderId)
     .map(id => byId.get(id))
     .filter((item): item is T => item !== undefined);
 }
@@ -63,12 +60,11 @@ export function mergeById<T>(
   incoming: readonly T[],
   idOf: (item: T) => string
 ): T[] {
-  const incomingById = new Map(incoming.map(item => [idOf(item), item] as const));
+  const incomingById = new Map(
+    incoming.map(item => [idOf(item), item] as const)
+  );
 
-  return mergeIds(
-    current.map(idOf),
-    incoming.map(idOf)
-  )
+  return mergeIds(current.map(idOf), incoming.map(idOf))
     .map(id => incomingById.get(id))
     .filter((item): item is T => item !== undefined);
 }
