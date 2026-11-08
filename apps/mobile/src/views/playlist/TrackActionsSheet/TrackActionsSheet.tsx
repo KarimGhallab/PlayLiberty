@@ -16,7 +16,7 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import type { TrackAction, TrackActionKey } from './trackActions/trackActions';
+import type { TrackAction, TrackActionKey } from '@playliberty/library';
 
 const ICONS = {
   copy: IconCopy,

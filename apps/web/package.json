@@ -15,8 +15,11 @@
   "license": "ISC",
   "packageManager": "pnpm@12.15.0",
   "dependencies": {
+    "@playliberty/api-client": "workspace:*",
     "@playliberty/contracts": "workspace:*",
     "@playliberty/i18n": "workspace:*",
+    "@playliberty/library": "workspace:*",
+    "@playliberty/player": "workspace:*",
     "@playliberty/query": "workspace:*",
     "@playliberty/tokens": "workspace:*",
     "@playliberty/ui-foundation": "workspace:*",

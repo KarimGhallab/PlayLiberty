@@ -14,10 +14,9 @@ import LiveEvents from '../src/live/LiveEvents';
 import PlayerAudio from '../src/player/PlayerAudio/PlayerAudio';
 import PlayerBar from '../src/player/PlayerBar/PlayerBar';
 import BackgroundPlayback from '../src/player/backgroundPlayback/BackgroundPlayback';
-import {
-  StreamFailureKind,
-  classifyStreamFailure
-} from '../src/player/streamFailure/streamFailure';
+import { StreamFailureKind } from '@playliberty/ui-foundation';
+
+import { classifyStreamFailure } from '../src/player/streamFailure/streamFailure';
 import AppProviders from '../src/providers/AppProviders';
 
 /* The first frame has to carry the family the type scale was measured in, so

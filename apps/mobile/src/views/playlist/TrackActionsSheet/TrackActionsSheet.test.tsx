@@ -11,7 +11,7 @@ import {
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import TrackActionsSheet from './TrackActionsSheet';
-import { trackActionsFor } from './trackActions/trackActions';
+import { trackActionsFor } from '@playliberty/library';
 
 const store = { getItem: () => null, setItem: () => {} };
 

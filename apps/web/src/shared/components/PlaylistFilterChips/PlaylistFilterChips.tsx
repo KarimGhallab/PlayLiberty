@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-import { REMOTE_REMOVED, TrackFileStatus } from '@playliberty/contracts';
+import { REMOTE_REMOVED } from '@playliberty/contracts';
 import type {
   Provider,
   TrackFileStatusCounts,
@@ -8,6 +8,12 @@ import type {
 } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { providerLabel, useI18n } from '@playliberty/i18n';
+import {
+  STATUS_CHIPS,
+  TrackTone,
+  statusCount,
+  totalStatusCount
+} from '@playliberty/ui-foundation';
 
 import Chip from '../Chip/Chip';
 import type { ChipTone } from '../Chip/Chip';
@@ -40,61 +46,25 @@ interface Chip {
   readonly tone: ChipTone;
 }
 
+/* The app maps the shared tone name to its own chip class. */
+const CHIP_TONES: Readonly<Record<TrackTone, ChipTone>> = {
+  [TrackTone.Pending]: 'pending',
+  [TrackTone.Downloading]: 'downloading',
+  [TrackTone.Stored]: 'stored',
+  [TrackTone.Failed]: 'failed',
+  [TrackTone.Unavailable]: 'unavailable',
+  [TrackTone.Removed]: 'unavailable',
+  [TrackTone.Retained]: 'retained'
+};
+
 const CHIPS: readonly Chip[] = [
   { value: null, labelKey: 'detail.filterAll', tone: 'accent' },
-  {
-    value: TrackFileStatus.Stored,
-    labelKey: 'trackState.stored',
-    tone: 'stored'
-  },
-  {
-    value: TrackFileStatus.Pending,
-    labelKey: 'trackState.pending',
-    tone: 'pending'
-  },
-  {
-    value: TrackFileStatus.Downloading,
-    labelKey: 'trackState.downloading',
-    tone: 'downloading'
-  },
-  {
-    value: TrackFileStatus.Failed,
-    labelKey: 'trackState.failed',
-    tone: 'failed'
-  },
-  {
-    value: TrackFileStatus.Unavailable,
-    labelKey: 'trackState.unavailableChip',
-    tone: 'unavailable'
-  },
-  {
-    value: REMOTE_REMOVED,
-    labelKey: 'trackState.retainedChip',
-    tone: 'retained'
-  }
+  ...STATUS_CHIPS.map(chip => ({
+    value: chip.value,
+    labelKey: chip.label,
+    tone: CHIP_TONES[chip.tone]
+  }))
 ];
-
-function totalOf(counts: TrackFileStatusCounts): number {
-  return (
-    counts[TrackFileStatus.Stored] +
-    counts[TrackFileStatus.Pending] +
-    counts[TrackFileStatus.Downloading] +
-    counts[TrackFileStatus.Failed] +
-    counts[TrackFileStatus.Unavailable]
-  );
-}
-
-function countOf(
-  chip: Chip,
-  counts: TrackFileStatusCounts,
-  remoteRemoved: number
-): number {
-  if (chip.value === null) {
-    return totalOf(counts);
-  }
-
-  return chip.value === REMOTE_REMOVED ? remoteRemoved : counts[chip.value];
-}
 
 export default function PlaylistFilterChips({
   counts,
@@ -128,7 +98,10 @@ export default function PlaylistFilterChips({
       <div ref={railRef} className={styles.chips__rail}>
         {chips.map(chip => {
           const pressed = active === chip.value;
-          const count = countOf(chip, counts, remoteRemoved);
+          const count =
+            chip.value === null
+              ? totalStatusCount(counts)
+              : statusCount(chip.value, counts, remoteRemoved);
           const labelKey =
             chip.value === null
               ? (allLabelKey ?? chip.labelKey)

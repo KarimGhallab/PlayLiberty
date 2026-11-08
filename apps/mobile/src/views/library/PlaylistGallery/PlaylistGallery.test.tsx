@@ -30,29 +30,32 @@ import { I18nProvider, Language } from '@playliberty/i18n';
 import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
 import { tokenLength, touchTarget } from '../../../shared/styles/tokens';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { createAppQueryClient } from '../../../api/queryClient/queryClient';
-import { useAccount } from '../../../api/useAccount';
-import { useAccountDirectory } from '../../../api/useAccountDirectory';
-import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
-import { useCreatePlaylist } from '../../../api/useCreatePlaylist/useCreatePlaylist';
-import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
-import { useGrantShare } from '../../../api/useGrantShare';
-import { usePlaylistShares } from '../../../api/usePlaylistShares';
-import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
-import { useRemovePlaylistCover } from '../../../api/useRemovePlaylistCover';
-import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
-import { useRevokeShare } from '../../../api/useRevokeShare';
-import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
-import { useSyncAllPlaylists } from '../../../api/useSyncAllPlaylists/useSyncAllPlaylists';
-import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
-import { useUpdatePin } from '../../../api/useUpdatePin';
-import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
+import {
+  ApiError,
+  useAccountDirectory,
+  useAccountPage,
+  useCreatePlaylist,
+  useCurrentAccount,
+  useDeletePlaylist,
+  useGrantShare,
+  usePlaylistShares,
+  usePlaylists,
+  useRemovePlaylistCover,
+  useRenamePlaylist,
+  useRevokeShare,
+  useSetPlaylistCover,
+  useSyncAllPlaylists,
+  useSyncPlaylist,
+  useUpdatePin,
+  useUpdateSkipNonMusic
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
+import { createAppQueryClient } from '../../../api/queryClient/queryClient';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { startPlaylistPlayback } from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
-import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
+import type { LibraryScope } from '@playliberty/library';
 import {
   galleryColumnCount,
   galleryColumnWidth,
@@ -60,64 +63,24 @@ import {
 } from '../galleryColumns/galleryColumns';
 import PlaylistGallery from './PlaylistGallery';
 
-jest.mock('../../../api/usePlaylists/usePlaylists', () => ({
-  usePlaylists: jest.fn()
-}));
-
-jest.mock('../../../api/useCreatePlaylist/useCreatePlaylist', () => ({
-  useCreatePlaylist: jest.fn()
-}));
-
-jest.mock('../../../api/useUpdatePin', () => ({
-  useUpdatePin: jest.fn()
-}));
-
-jest.mock('../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic', () => ({
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
+  useAccountDirectory: jest.fn(),
+  useAccountPage: jest.fn(),
+  useCreatePlaylist: jest.fn(),
+  useCurrentAccount: jest.fn(),
+  useDeletePlaylist: jest.fn(),
+  useGrantShare: jest.fn(),
+  usePlaylistShares: jest.fn(),
+  usePlaylists: jest.fn(),
+  useRemovePlaylistCover: jest.fn(),
+  useRenamePlaylist: jest.fn(),
+  useRevokeShare: jest.fn(),
+  useSetPlaylistCover: jest.fn(),
+  useSyncAllPlaylists: jest.fn(),
+  useSyncPlaylist: jest.fn(),
+  useUpdatePin: jest.fn(),
   useUpdateSkipNonMusic: jest.fn()
-}));
-
-jest.mock('../../../api/useSyncPlaylist', () => ({
-  useSyncPlaylist: jest.fn()
-}));
-
-jest.mock('../../../api/useSyncAllPlaylists/useSyncAllPlaylists', () => ({
-  useSyncAllPlaylists: jest.fn()
-}));
-
-jest.mock('../../../api/useDeletePlaylist', () => ({
-  useDeletePlaylist: jest.fn()
-}));
-
-jest.mock('../../../api/useRenamePlaylist', () => ({
-  useRenamePlaylist: jest.fn()
-}));
-
-jest.mock('../../../api/usePlaylistShares', () => ({
-  usePlaylistShares: jest.fn()
-}));
-
-jest.mock('../../../api/useAccount', () => ({
-  useAccount: jest.fn()
-}));
-
-jest.mock('../../../api/useAccountPage/useAccountPage', () => ({
-  useAccountPage: jest.fn()
-}));
-
-jest.mock('../../../api/useGrantShare', () => ({
-  useGrantShare: jest.fn()
-}));
-
-jest.mock('../../../api/useRevokeShare', () => ({
-  useRevokeShare: jest.fn()
-}));
-
-jest.mock('../../../api/useSetPlaylistCover', () => ({
-  useSetPlaylistCover: jest.fn()
-}));
-
-jest.mock('../../../api/useRemovePlaylistCover', () => ({
-  useRemovePlaylistCover: jest.fn()
 }));
 
 jest.mock('expo-image-picker', () => ({
@@ -143,14 +106,6 @@ jest.mock('expo-file-system', () => ({
     }
   }
 }));
-
-jest.mock('../../../api/useAccountDirectory', () => {
-  const actual = jest.requireActual<
-    typeof import('../../../api/useAccountDirectory')
-  >('../../../api/useAccountDirectory');
-
-  return { ...actual, useAccountDirectory: jest.fn() };
-});
 
 const store = { getItem: () => null, setItem: () => {} };
 const hidden = { includeHiddenElements: true };
@@ -360,7 +315,7 @@ async function renderPlaylists(
   jest.mocked(useUpdateSkipNonMusic).mockReturnValue(skipSetting as never);
   jest.mocked(usePlaylistShares).mockReturnValue(queryResult([]));
   jest.mocked(useRevokeShare).mockReturnValue(mutationResult() as never);
-  jest.mocked(useAccount).mockReturnValue(
+  jest.mocked(useCurrentAccount).mockReturnValue(
     queryResult({
       id: 'account-me',
       displayName: 'Owner',

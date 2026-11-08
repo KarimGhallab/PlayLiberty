@@ -1,6 +1,8 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-import { ApiError, NeedsProvisioningError } from '../apiClient/ApiClient';
+import { ApiError } from '@playliberty/api-client';
+
+import { NeedsProvisioningError } from '../tokenAdapter/tokenAdapter';
 import { createAppQueryClient } from './queryClient';
 
 function failing(error: Error): () => Promise<never> {

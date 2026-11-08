@@ -14,14 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type {
   PlaylistWithCounts,
-  TrackFileStatusCounts,
   TrackFilterState
 } from '@playliberty/contracts';
-import {
-  PlaylistSyncStatus,
-  Provider,
-  TrackFileStatus
-} from '@playliberty/contracts';
+import { PlaylistSyncStatus, Provider } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
 import ActionDial, {
@@ -33,30 +28,29 @@ import { verticalListChrome } from '../../../shared/components/List/listChrome';
 import Notice from '../../../shared/components/Notice/Notice';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
-import { canWritePlaylist } from '../../../shared/playlistAccess/canWritePlaylist';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
   tokenWeight
 } from '../../../shared/styles/tokens';
-import { statusCount } from '../../../shared/trackState/statusChips';
+import { statusCount } from '@playliberty/ui-foundation';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
 import {
+  ApiError,
   ownerNameFrom,
-  useAccountDirectory
-} from '../../../api/useAccountDirectory';
-import {
   SYNCING_HOLD_MS,
-  useCreatePlaylist
-} from '../../../api/useCreatePlaylist/useCreatePlaylist';
-import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
-import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
-import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
-import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
-import { useUpdatePin } from '../../../api/useUpdatePin';
-import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
+  useAccountDirectory,
+  useBulkSync,
+  useCreatePlaylist,
+  useDeletePlaylist,
+  usePlaylists,
+  useRenamePlaylist,
+  useSyncAllPlaylists,
+  useSyncPlaylist,
+  useUpdatePin,
+  useUpdateSkipNonMusic
+} from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -68,7 +62,7 @@ import {
 import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
 import CoverSheet from '../CoverSheet/CoverSheet';
 import EmptyGallery from '../EmptyGallery/EmptyGallery';
-import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
+import type { LibraryScope } from '@playliberty/library';
 import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
 import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
@@ -76,10 +70,11 @@ import PlaylistCard from '../PlaylistCard/PlaylistCard';
 import RenameSheet from '../RenameSheet/RenameSheet';
 import ShareSheet from '../ShareSheet/ShareSheet';
 import {
+  groupPlaylists,
   scopedPlaylists,
-  useBulkSync,
+  statusTotals,
   visiblePlaylists
-} from '../bulkSync/bulkSync';
+} from '@playliberty/library';
 import {
   galleryColumnCount,
   galleryColumnWidth,
@@ -88,16 +83,14 @@ import {
 import type {
   DeleteIntent,
   PlaylistActionKey
-} from '../playlistActions/playlistActions';
+} from '@playliberty/library';
 import {
   UNDO_WINDOW_MS,
+  canWritePlaylist,
   deleteIntentFor,
   playlistActionsFor
-} from '../playlistActions/playlistActions';
+} from '@playliberty/library';
 import { clampScrollOffset } from './clampScrollOffset/clampScrollOffset';
-
-const TRACK_STATUSES: readonly TrackFileStatus[] =
-  Object.values(TrackFileStatus);
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
 
@@ -135,32 +128,6 @@ function cardRows(
   }
 
   return rows;
-}
-
-/* The chips read the scope they are drawn over: one total per status over every
- * playlist in that scope, with the retained figure beside the five buckets. */
-function scopeTotals(items: readonly PlaylistWithCounts[]): {
-  readonly counts: TrackFileStatusCounts;
-  readonly remoteRemoved: number;
-} {
-  const counts: TrackFileStatusCounts = {
-    [TrackFileStatus.Stored]: 0,
-    [TrackFileStatus.Pending]: 0,
-    [TrackFileStatus.Downloading]: 0,
-    [TrackFileStatus.Failed]: 0,
-    [TrackFileStatus.Unavailable]: 0
-  };
-  let remoteRemoved = 0;
-
-  for (const item of items) {
-    for (const status of TRACK_STATUSES) {
-      counts[status] += item.counts[status];
-    }
-
-    remoteRemoved += item.remoteRemoved;
-  }
-
-  return { counts, remoteRemoved };
 }
 
 /* The card's menu carries the skip setting; the draft keeps its move on the
@@ -283,7 +250,7 @@ export default function PlaylistGallery({
   const sharedItems = items.filter(item => item.access !== 'owner');
   const hasShared = sharedItems.length > 0;
   const scopedItems = scopedPlaylists(items, scope);
-  const { counts: statusCounts, remoteRemoved } = scopeTotals(scopedItems);
+  const { counts: statusCounts, remoteRemoved } = statusTotals(scopedItems);
   const activeCount =
     statusFilter === null
       ? 0
@@ -293,7 +260,13 @@ export default function PlaylistGallery({
   const readOnlyCount = visibleItems.filter(
     item => !canWritePlaylist(item)
   ).length;
-  const bulk = useBulkSync(items, playlists.dataUpdatedAt, scope, statusFilter);
+  const bulk = useBulkSync(
+    items,
+    playlists.dataUpdatedAt,
+    scope,
+    statusFilter,
+    useSyncAllPlaylists()
+  );
   const syncLabel = bulk.busy
     ? t('library.syncingAll', { count: bulk.count })
     : t('library.syncAll', { count: bulk.count });
@@ -340,14 +313,7 @@ export default function PlaylistGallery({
     }
   }, [scope, hasShared, onScopeChange]);
 
-  const pinned = visibleItems.filter(item => item.pinned);
-  const unpinned = visibleItems.filter(item => !item.pinned);
-  const syncing = unpinned.filter(
-    item => item.syncStatus === PlaylistSyncStatus.Syncing
-  );
-  const rest = unpinned.filter(
-    item => item.syncStatus !== PlaylistSyncStatus.Syncing
-  );
+  const { pinned, syncing, rest } = groupPlaylists(visibleItems);
   const rows: GalleryRow[] = [];
 
   if (syncing.length > 0) {

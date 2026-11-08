@@ -1,3 +1,5 @@
+import type { QueryParams } from '@playliberty/api-client';
+import { apiUrl } from '@playliberty/api-client';
 import type {
   ApiCommandEndpoint,
   ApiEndpoint,
@@ -6,40 +8,20 @@ import type {
 } from '@playliberty/contracts';
 import { endpointPath } from '@playliberty/contracts';
 
-import {
-  API_PREFIX,
-  apiCommand,
-  apiDelete,
-  apiGet,
-  apiPatch,
-  apiPost,
-  apiUpload
-} from '../clients/apiClient/apiClient';
+import { transport } from '../transport';
 
 /*
  * The query module's side of an endpoint declaration: the path is substituted,
- * the response is parsed by the schema the declaration owns, and the transport
- * stays in `client`.
+ * the response is parsed by the schema the declaration owns, and the protocol
+ * stays in the transport.
  */
-
-function pathOf(
-  endpoint: { readonly path: string },
-  params: EndpointParams,
-  query?: URLSearchParams
-): string {
-  const path = endpointPath(endpoint.path, params);
-
-  return query === undefined || query.size === 0
-    ? path
-    : `${path}?${query.toString()}`;
-}
 
 export function readEndpoint<T>(
   endpoint: ApiEndpoint<T>,
   params: EndpointParams = {},
-  query?: URLSearchParams
+  query?: QueryParams
 ): Promise<T> {
-  return apiGet(pathOf(endpoint, params, query), endpoint.response);
+  return transport.send(endpoint, params, {}, query);
 }
 
 export function postEndpoint<T>(
@@ -47,7 +29,10 @@ export function postEndpoint<T>(
   body: unknown,
   params: EndpointParams = {}
 ): Promise<T> {
-  return apiPost(pathOf(endpoint, params), body, endpoint.response);
+  return transport.send(endpoint, params, {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
 }
 
 /** A `POST` whose command is read off the path, with no request body. */
@@ -55,7 +40,7 @@ export function commandEndpoint<T>(
   endpoint: ApiEndpoint<T>,
   params: EndpointParams = {}
 ): Promise<T> {
-  return apiCommand(pathOf(endpoint, params), endpoint.response);
+  return transport.send(endpoint, params);
 }
 
 export function patchEndpoint<T>(
@@ -63,21 +48,29 @@ export function patchEndpoint<T>(
   body: unknown,
   params: EndpointParams = {}
 ): Promise<T> {
-  return apiPatch(pathOf(endpoint, params), body, endpoint.response);
+  return transport.send(endpoint, params, {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
 }
 
-export function uploadEndpoint<T>(
+export async function uploadEndpoint<T>(
   endpoint: ApiEndpoint<T>,
   body: Blob,
   contentType: string,
   params: EndpointParams = {},
-  query?: URLSearchParams
+  query?: QueryParams
 ): Promise<T> {
-  return apiUpload(
-    pathOf(endpoint, params, query),
-    body,
-    contentType,
-    endpoint.response
+  const bytes = await body.arrayBuffer();
+
+  return transport.send(
+    endpoint,
+    params,
+    {
+      headers: { 'Content-Type': contentType },
+      body: bytes
+    },
+    query
   );
 }
 
@@ -85,7 +78,7 @@ export function deleteEndpoint(
   endpoint: ApiCommandEndpoint,
   params: EndpointParams = {}
 ): Promise<void> {
-  return apiDelete(pathOf(endpoint, params));
+  return transport.command(endpoint, params);
 }
 
 /* A media route is read whole by a browser element rather than parsed, so its
@@ -102,5 +95,5 @@ export function mediaUrl(
   endpoint: ApiMediaEndpoint,
   params: EndpointParams
 ): string {
-  return `${API_PREFIX}${mediaPath(endpoint, params)}`;
+  return apiUrl('', mediaPath(endpoint, params));
 }

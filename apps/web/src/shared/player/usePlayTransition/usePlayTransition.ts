@@ -7,7 +7,7 @@ import type { Messages, Translator } from '@playliberty/i18n';
 import {
   cancelPlaylistQueue,
   readPlaylistQueue
-} from '../../api/clients/playlistClient/playlistClient';
+} from '@playliberty/api-client';
 import { startPlaylistQueue } from '../playerQueue/playerQueue';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { queuePlaylistId } from '../types';

@@ -23,6 +23,7 @@
   "packageManager": "pnpm@12.15.0",
   "dependencies": {
     "@playliberty/contracts": "workspace:*",
+    "@playliberty/i18n": "workspace:*",
     "@playliberty/tokens": "workspace:*"
   },
   "devDependencies": {

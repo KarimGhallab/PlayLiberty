@@ -5,7 +5,7 @@ import type { LiveEvent } from '@playliberty/contracts';
 import { LiveEventSchema, endpoints } from '@playliberty/contracts';
 import { cacheEffects, invalidateForLiveEvent } from '@playliberty/query';
 
-import { API_PREFIX, ApiError } from '../clients/apiClient/apiClient';
+import { ApiError, API_PREFIX } from '@playliberty/api-client';
 import { readEndpoint } from '../endpoints/endpoints';
 
 /*

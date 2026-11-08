@@ -210,7 +210,7 @@ test('every filter chip is whole at a desk and on a phone, and the last is reach
   await expectChipsWhole(page);
   await expectSortAboveChips(page);
 
-  const last = page.getByRole('button', { name: 'Unavailable 0' });
+  const last = page.getByRole('button', { name: 'Never stored 0' });
   await last.focus();
   await expect(last).toBeFocused();
 

@@ -13,16 +13,18 @@ import type { EgressConfig, EgressRead } from '@playliberty/contracts';
 import { EgressStatus } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
 import {
+  ApiError,
   useCheckEgress,
   useEgress,
   useSwitchEgress
-} from '../../../api/useEgress';
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import EgressScreen from './EgressScreen';
 
-jest.mock('../../../api/useEgress', () => ({
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
   useCheckEgress: jest.fn(),
   useEgress: jest.fn(),
   useSwitchEgress: jest.fn()

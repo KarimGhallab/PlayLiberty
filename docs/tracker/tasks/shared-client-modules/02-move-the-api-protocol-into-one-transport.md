@@ -1,6 +1,6 @@
 # 02: Move the API protocol into one transport
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-scaffold-the-shared-client-packages.md).
 
@@ -12,7 +12,7 @@ The two paths also encode a query differently, so a space becomes `+` on web and
 
 ## Expected
 
-`@playliberty/client-data` owns the protocol: the method, the client header rule on a mutation, the path and query build, the problem parse, the error type, and the non-ok throw. The package exposes one transport factory. The app supplies one auth adapter.
+`@playliberty/api-client` owns the protocol: the method, the client header rule on a mutation, the path and query build, the problem parse, the error type, and the non-ok throw. The package exposes one transport factory. The app supplies one auth adapter.
 
 Web supplies a cookie adapter. It keeps same-origin credentials, the manual redirect and the one-navigation guard. Mobile supplies a token adapter. It keeps the token pair, the one renewal, the one retry and the provisioning error.
 
@@ -28,13 +28,21 @@ Land it in this order, and keep the build green at each step: add the transport 
 
 ## Acceptance criteria
 
-- [ ] `client-data` owns one error type, one problem reader, one path and query build, and one non-ok throw.
-- [ ] The package imports no DOM API, no React Native module and no Expo module.
-- [ ] The web adapter keeps same-origin credentials, the manual redirect and one navigation per tab, then fails instead of looping.
-- [ ] The mobile adapter keeps the token pair, one renewal, one retry, and a provisioning error when the session ends.
-- [ ] Both clients throw and catch the package error type.
-- [ ] The two old transport files are deleted.
-- [ ] A mutation carries the client header on both clients, and a `GET` does not.
+- [x] `api-client` owns one error type, one problem reader, one path and query build, and one non-ok throw.
+- [x] The package imports no DOM API, no React Native module and no Expo module.
+- [x] The web adapter keeps same-origin credentials, the manual redirect and one navigation per tab, then fails instead of looping.
+- [x] The mobile adapter keeps the token pair, one renewal, one retry, and a provisioning error when the session ends.
+- [x] Both clients throw and catch the package error type.
+- [x] The two old transport files are deleted.
+- [x] A mutation carries the client header on both clients, and a `GET` does not.
+
+## Outcome
+
+`@playliberty/api-client` exports `createTransport`: one path and query build (`encodeURIComponent`, so a space is `%20` on both clients), the client header on every method but `GET` and `HEAD`, the problem parse, the error type and the one non-ok throw. It exposes `send` (parses the endpoint response), `command` (ignores the body), `probe` (returns a status without throwing) and `url`.
+
+Web supplies `cookieAdapter`: same-origin credentials, a manual redirect and one navigation per tab from session storage. Mobile supplies `tokenAdapter`: the token pair, one renewal, one retry, and `NeedsProvisioningError` when the session has ended. The old `apiClient.ts` and `ApiClient.ts` and their suites are gone; the web re-auth test and the mobile renewal tests sit beside their adapters. Every read and command in both apps sends through the package transport.
+
+Verification: the package suite covers a malformed problem body, `401`, `403`, `404`, `409`, the mutation header rule and the query build; `pnpm run build`, `pnpm run lint:check`, `node scripts/validate-tsconfig-paths.cjs` and `pnpm run deps-cruise:check` pass; `pnpm run test:unit` passes across the workspace, with web 58 files and mobile 75 suites.
 
 ## Verification
 

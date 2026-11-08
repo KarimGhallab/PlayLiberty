@@ -1,6 +1,6 @@
 # Architecture
 
-PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, mobile client, shared contracts, design tokens, shared UI decisions, localization package, shared query keys, and YouTube adapter exist. The mobile app runs as a development build; spec `32` owns its signed release. The non-obvious choices are stated in [Decisions](#decisions).
+PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, mobile client, shared contracts, the shared client protocol, the shared playable rule, design tokens, shared UI decisions, localization package, shared query keys, and YouTube adapter exist. The mobile app runs as a development build; spec `32` owns its signed release. The non-obvious choices are stated in [Decisions](#decisions).
 
 ## Components
 
@@ -14,9 +14,13 @@ PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspa
 ### The packages
 
 - `packages/contracts` - the Zod schemas that define the `/api/v1` REST surface and the types inferred from them, shared by both clients and the server, so a change to the API breaks the build rather than the user.
+- `packages/api-client` - the shared client for the API: one transport, one error type, one hook per endpoint, the bulk sync batch, and the client-side address and credential header builders. It reads the keys, the invalidation and the optimistic patch from `@playliberty/query`; each client supplies only its auth adapter and its sync mutation, so a read or a command cannot drift.
+- `packages/query` - the keys, the cache effects, the optimistic patch and its restore, and the library page patchers, so neither client can name a read or undo a write its own way.
+- `packages/library` - the library policy both clients share: who may write, the playlist and track action lists, the syncable set, the gallery totals and groups, and the batch busy rule. Action keys and label keys stay here; each app owns the glyphs and controls.
+- `packages/player` - the pure player rules: the playable check, the queue order, the shuffle and its leader, the random draw, the refetch merge, the seek bound and the grace before Previous, called by both stores.
 - `packages/tokens` - the design values as the single source of truth, with the emitter that writes the flat custom-property stylesheet the web client loads and the module the mobile client reads.
-- `packages/ui-foundation` - the shared, non-rendering UI decisions language cannot touch: the curve to `Easing.bezier` argument mapping, the sleeve hue, and the track state tone.
-- `packages/i18n` - the shared localization: the `en` and `fr` catalogs, the hand-rolled runtime, the locale resolution, the formatters and the React binding, consumed by the web client and the mobile client.
+- `packages/ui-foundation` - the shared, non-rendering UI decisions language cannot touch: the track-state chip table and its total, the stream verdict, the cover chain selector, the share mark state, the curve to `Easing.bezier` argument mapping, the sleeve hue, and the track state tone.
+- `packages/i18n` - the shared localization: the `en` and `fr` catalogs, the hand-rolled runtime, the locale resolution, the formatters, the failure sentences, the track-link notices, the egress vocabulary and the React binding, consumed by the web client and the mobile client.
 - `packages/youtube` - the single seam around yt-dlp and source metadata. No other module shells out to yt-dlp or parses YouTube.
 
 ### The stores
@@ -149,6 +153,10 @@ One Node 26 process built with Fastify 5 and compiled by `tsc`, owning a local S
 ### The mobile stack
 
 `apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.3, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The credential record, the access pair and the refresh token, lives in `expo-secure-store`; the access token renews silently before its deadline. Distribution in v1 is a development build today and a signed, sideloaded Android APK at release; the code stays cross-platform but iOS is not built or tested.
+
+### A sheet body is the only scroller
+
+React Native warns when a `FlatList` sits inside a plain `ScrollView` with the same orientation. The development overlay then covers the sheet and intercepts touches, so the rows cannot be pressed and the journeys fail. The shared `Sheet` owns the body scroll, so a sheet body cannot hold a virtualized list. The add-track picker and the share account picker map their rows inside the body scroll. A sheet that must virtualize needs the `Sheet` body to stop scrolling and one list to become the body, with its own bounded height.
 
 ### Mobile provisioning
 

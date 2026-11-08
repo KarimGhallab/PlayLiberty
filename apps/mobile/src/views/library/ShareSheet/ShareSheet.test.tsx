@@ -12,39 +12,33 @@ import type { Share } from '@playliberty/contracts';
 import { ProblemCode, ShareLevel } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useAccount } from '../../../api/useAccount';
-import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
-import { useGrantShare } from '../../../api/useGrantShare';
-import { usePlaylistShares } from '../../../api/usePlaylistShares';
-import { useRevokeShare } from '../../../api/useRevokeShare';
+import {
+  ApiError,
+  useAccountPage,
+  useCurrentAccount,
+  useGrantShare,
+  usePlaylistShares,
+  useRevokeShare
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import ShareSheet, { type ShareSheetProps } from './ShareSheet';
 
-jest.mock('../../../api/usePlaylistShares', () => ({
-  usePlaylistShares: jest.fn()
-}));
-
-jest.mock('../../../api/useRevokeShare', () => ({
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
+  useAccountPage: jest.fn(),
+  useCurrentAccount: jest.fn(),
+  useGrantShare: jest.fn(),
+  usePlaylistShares: jest.fn(),
   useRevokeShare: jest.fn()
-}));
-
-jest.mock('../../../api/useAccount', () => ({
-  useAccount: jest.fn()
-}));
-
-jest.mock('../../../api/useAccountPage/useAccountPage', () => ({
-  useAccountPage: jest.fn()
-}));
-
-jest.mock('../../../api/useGrantShare', () => ({
-  useGrantShare: jest.fn()
 }));
 
 const sharesMock = usePlaylistShares as jest.MockedFunction<
   typeof usePlaylistShares
 >;
 const revokeMock = useRevokeShare as jest.MockedFunction<typeof useRevokeShare>;
-const meMock = useAccount as jest.MockedFunction<typeof useAccount>;
+const meMock = useCurrentAccount as jest.MockedFunction<
+  typeof useCurrentAccount
+>;
 const directoryMock = useAccountPage as jest.MockedFunction<
   typeof useAccountPage
 >;

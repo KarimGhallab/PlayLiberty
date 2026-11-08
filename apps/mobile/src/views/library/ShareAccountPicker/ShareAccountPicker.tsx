@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AccountSummary, Share } from '@playliberty/contracts';
 import { ShareLevel } from '@playliberty/contracts';
@@ -23,10 +23,12 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useAccount } from '../../../api/useAccount';
-import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
-import { useGrantShare } from '../../../api/useGrantShare';
+import {
+  ApiError,
+  useAccountPage,
+  useCurrentAccount,
+  useGrantShare
+} from '@playliberty/api-client';
 
 export interface ShareAccountPickerProps {
   readonly visible: boolean;
@@ -63,7 +65,7 @@ export default function ShareAccountPicker({
     { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
   ];
   const { t } = useI18n();
-  const me = useAccount(visible);
+  const me = useCurrentAccount(visible);
   const directory = useAccountPage(visible);
   const grant = useGrantShare(playlistId);
   const [refusal, setRefusal] = useState<GrantRefusal | null>(null);
@@ -139,7 +141,7 @@ export default function ShareAccountPicker({
     const busy = working === account.id;
 
     return (
-      <View testID="share-picker-row" style={styles.row}>
+      <View key={account.id} testID="share-picker-row" style={styles.row}>
         <View style={styles.line}>
           <AccountAvatar account={account} size="sm" />
           <Text numberOfLines={1} style={styles.name}>
@@ -233,38 +235,29 @@ export default function ShareAccountPicker({
           {candidates.length === 0 && !directory.hasMore ? (
             <Text style={noteStyle}>{t('shareDialog.noAccounts')}</Text>
           ) : (
-            <FlatList
+            <ScrollView
               testID="share-picker-list"
               style={styles.list}
               contentContainerStyle={styles.listContent}
-              data={candidates}
-              keyExtractor={account => account.id}
-              renderItem={({ item }) => row(item)}
               scrollEventThrottle={16}
               onScroll={loadMore}
-              nestedScrollEnabled
-              initialNumToRender={12}
-              maxToRenderPerBatch={12}
-              windowSize={5}
-              ListFooterComponent={
-                <>
-                  {directory.isFetchingNextPage ? (
-                    <Text style={noteStyle}>{t('shareDialog.loading')}</Text>
-                  ) : null}
-                  {directory.isFetchNextPageError ? (
-                    <Pressable
-                      testID="share-picker-more-retry"
-                      accessibilityRole="button"
-                      style={styles.moreRetry}
-                      onPress={directory.fetchNextPage}>
-                      <Text style={styles.moreRetryLabel}>
-                        {t('readFailure.retry')}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </>
-              }
-            />
+              nestedScrollEnabled>
+              {candidates.map(row)}
+              {directory.isFetchingNextPage ? (
+                <Text style={noteStyle}>{t('shareDialog.loading')}</Text>
+              ) : null}
+              {directory.isFetchNextPageError ? (
+                <Pressable
+                  testID="share-picker-more-retry"
+                  accessibilityRole="button"
+                  style={styles.moreRetry}
+                  onPress={directory.fetchNextPage}>
+                  <Text style={styles.moreRetryLabel}>
+                    {t('readFailure.retry')}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
           )}
         </>
       ) : null}

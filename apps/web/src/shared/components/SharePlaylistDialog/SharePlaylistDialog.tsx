@@ -7,13 +7,11 @@ import { useI18n } from '@playliberty/i18n';
 
 import {
   useAccountDirectory,
-  useCurrentAccount
-} from '../../api/clients/accountClient/accountClient';
-import {
+  useCurrentAccount,
   useGrantShare,
   usePlaylistShares,
   useRevokeShare
-} from '../../api/clients/playlistClient/playlistClient';
+} from '@playliberty/api-client';
 import { problemSentence } from '../../api/problem/problem';
 import { NOTICE_WINDOW_MS } from '../../player/usePlayTransition/usePlayTransition';
 import Dialog from '../Dialog/Dialog';

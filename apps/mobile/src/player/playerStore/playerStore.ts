@@ -1,64 +1,23 @@
 import { create } from 'zustand';
 
+import {
+  mergeIds,
+  previousMove,
+  randomItem,
+  seekFractionPatch,
+  seekPatch as boundedSeek,
+  shuffleIds
+} from '@playliberty/player';
+
 import type { PlayerPlaylist, PlayerTrack } from '../playerTrack/playerTrack';
 
 /* The queue is client state and never reaches the server. It holds track ids,
  * so a stream address is derived when a track is reached. */
 
-/* Fisher-Yates over the rest, the leader hoisted to the front: the transport
- * starts on the first entry, so shuffling changes order, not track. */
-function shuffledWithLeader(
-  queue: readonly string[],
-  leaderId: string
-): readonly string[] {
-  const leader = queue.includes(leaderId) ? leaderId : undefined;
-  const rest = queue.filter(id => id !== leader);
-
-  for (let i = rest.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const picked = rest[i];
-    const other = rest[j];
-
-    if (picked === undefined || other === undefined) {
-      continue;
-    }
-
-    rest[i] = other;
-    rest[j] = picked;
-  }
-
-  return leader === undefined ? rest : [leader, ...rest];
-}
-
-function randomId(queue: readonly string[]): string | undefined {
-  return queue.length === 0
-    ? undefined
-    : queue[Math.floor(Math.random() * queue.length)];
-}
-
-/* How far into a track a previous press still means the entry before it. */
-const PREVIOUS_GRACE_SECONDS = 5;
-
 function tracksById(
   tracks: readonly PlayerTrack[]
 ): Readonly<Record<string, PlayerTrack>> {
   return Object.fromEntries(tracks.map(track => [track.id, track]));
-}
-
-/* A shuffled refetch keeps the order already playing for known ids; new ids
- * join at the end in the server's order and a missing id is simply gone. */
-function mergeQueue(
-  current: readonly string[],
-  incoming: readonly PlayerTrack[]
-): readonly string[] {
-  const incomingIds = new Set(incoming.map(track => track.id));
-  const kept = current.filter(id => incomingIds.has(id));
-  const keptIds = new Set(kept);
-
-  return [
-    ...kept,
-    ...incoming.filter(track => !keptIds.has(track.id)).map(track => track.id)
-  ];
 }
 
 function sameOrder(
@@ -133,13 +92,7 @@ function seekPatch(
   state: PlayerState,
   seconds: number
 ): Partial<PlayerState> | PlayerState {
-  const position = boundedPosition(state, seconds);
-
-  if (position === null) {
-    return state;
-  }
-
-  return { positionSeconds: position, seekTo: position };
+  return boundedSeek(currentDuration(state), seconds) ?? state;
 }
 
 export interface PlayerState {
@@ -208,7 +161,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     const queue = tracks.map(track => track.id);
 
     set({
-      queue: shuffle ? shuffledWithLeader(queue, currentId) : queue,
+      queue: shuffle ? shuffleIds(queue, currentId) : queue,
       sourceQueue: queue,
       tracks: tracksById(tracks),
       playlistId: playlist?.id ?? null,
@@ -250,7 +203,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
        * entries join the arrangement already playing. */
       const sourceQueue = incoming.map(track => track.id);
       const queue = state.shuffle
-        ? mergeQueue(state.queue, incoming)
+        ? mergeIds(
+            state.queue,
+            incoming.map(track => track.id)
+          )
         : sourceQueue;
       const tracks = tracksById(incoming);
       const currentStillThere =
@@ -292,7 +248,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         return { shuffle, queue: [...state.sourceQueue] };
       }
 
-      const leader = randomId(state.queue);
+      const leader = randomItem(state.queue);
 
       if (leader === undefined) {
         return { shuffle };
@@ -300,7 +256,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
       return {
         shuffle,
-        queue: shuffledWithLeader(state.queue, leader),
+        queue: shuffleIds(state.queue, leader),
         currentId: leader,
         positionSeconds: 0,
         seekTo: null,
@@ -369,17 +325,9 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       return position === null ? state : { positionSeconds: position };
     }),
   seekToFraction: fraction =>
-    set(state => {
-      const duration = currentDuration(state);
-
-      if (duration === null || !Number.isFinite(fraction)) {
-        return state;
-      }
-
-      const bounded = Math.min(1, Math.max(0, fraction));
-
-      return seekPatch(state, bounded * duration);
-    }),
+    set(state =>
+      seekFractionPatch(currentDuration(state), fraction) ?? state
+    ),
   seekBy: seconds =>
     set(state => {
       if (currentDuration(state) === null || !Number.isFinite(seconds)) {
@@ -417,12 +365,13 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   skipPrevious: () => {
     const { queue, currentId, positionSeconds } = get();
     const index = currentId === null ? -1 : queue.indexOf(currentId);
+    const move = previousMove(index, positionSeconds);
 
-    if (index < 0) {
+    if (move === null) {
       return;
     }
 
-    if (index > 0 && positionSeconds < PREVIOUS_GRACE_SECONDS) {
+    if (move === 'previous') {
       const previous = queue[index - 1];
 
       if (previous !== undefined) {

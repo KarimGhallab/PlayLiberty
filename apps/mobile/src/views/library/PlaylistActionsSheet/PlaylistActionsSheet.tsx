@@ -28,7 +28,7 @@ import {
 import type {
   PlaylistAction,
   PlaylistActionKey
-} from '../playlistActions/playlistActions';
+} from '@playliberty/library';
 
 const ICONS = {
   pin: IconPin,

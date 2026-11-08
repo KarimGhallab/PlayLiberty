@@ -55,93 +55,64 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useAccount } from '../../../api/useAccount';
-import { useAccountDirectory } from '../../../api/useAccountDirectory';
-import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
-import { useAddTrack } from '../../../api/useAddTrack';
-import { useDeletePlaylist } from '../../../api/useDeletePlaylist';
-import { useFetchTrackWhole } from '../../../api/useFetchTrackWhole';
-import { useGrantShare } from '../../../api/useGrantShare';
-import { useLatestSyncRun } from '../../../api/useLatestSyncRun';
-import { usePlaylist } from '../../../api/usePlaylist';
-import { usePlaylistQueue } from '../../../api/usePlaylistQueue';
-import { usePlaylistShares } from '../../../api/usePlaylistShares';
-import { usePlaylistTracks } from '../../../api/usePlaylistTracks/usePlaylistTracks';
-import { usePlaylists } from '../../../api/usePlaylists/usePlaylists';
-import { useRemovePlaylistCover } from '../../../api/useRemovePlaylistCover';
-import { useRemoveTrack } from '../../../api/useRemoveTrack';
-import { useRenamePlaylist } from '../../../api/useRenamePlaylist';
-import { useRetryFailedTracks } from '../../../api/useRetryFailedTracks';
-import { useRetryTrack } from '../../../api/useRetryTrack';
-import { useRevokeShare } from '../../../api/useRevokeShare';
-import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
-import { useSyncPlaylist } from '../../../api/useSyncPlaylist';
-import { useUpdateSkipNonMusic } from '../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic';
-import { useUpdateSort } from '../../../api/useUpdateSort';
+import {
+  ApiError,
+  useAccountDirectory,
+  useAccountPage,
+  useAddTrack,
+  useCurrentAccount,
+  useDeletePlaylist,
+  useFetchTrackWhole,
+  useGrantShare,
+  useLatestSyncRun,
+  usePlaylist,
+  usePlaylistQueue,
+  usePlaylistShares,
+  usePlaylistTracks,
+  usePlaylists,
+  useRemovePlaylistCover,
+  useRemoveTrack,
+  useRenamePlaylist,
+  useRetryFailedTracks,
+  useRetryTrack,
+  useRevokeShare,
+  useSetPlaylistCover,
+  useSyncPlaylist,
+  useUpdateSkipNonMusic,
+  useUpdateSort
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { takeLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
 import PlaylistDetail from './PlaylistDetail';
 
-jest.mock('../../../api/usePlaylist', () => ({ usePlaylist: jest.fn() }));
-jest.mock('../../../api/usePlaylistTracks/usePlaylistTracks', () => ({
-  usePlaylistTracks: jest.fn()
-}));
-jest.mock('../../../api/usePlaylistQueue', () => ({
-  usePlaylistQueue: jest.fn()
-}));
-jest.mock('../../../api/usePlaylists/usePlaylists', () => ({
-  usePlaylists: jest.fn()
-}));
-jest.mock('../../../api/useAddTrack', () => ({
-  useAddTrack: jest.fn()
-}));
-jest.mock('../../../api/useLatestSyncRun', () => ({
-  useLatestSyncRun: jest.fn()
-}));
-jest.mock('../../../api/useSyncPlaylist', () => ({
-  useSyncPlaylist: jest.fn()
-}));
-jest.mock('../../../api/useRetryTrack', () => ({
-  useRetryTrack: jest.fn()
-}));
-jest.mock('../../../api/useFetchTrackWhole', () => ({
-  useFetchTrackWhole: jest.fn()
-}));
-jest.mock('../../../api/useRemoveTrack', () => ({
-  useRemoveTrack: jest.fn()
-}));
-jest.mock('../../../api/usePlaylistShares', () => ({
-  usePlaylistShares: jest.fn()
-}));
-
-jest.mock('../../../api/useAccount', () => ({
-  useAccount: jest.fn()
-}));
-
-jest.mock('../../../api/useAccountPage/useAccountPage', () => ({
-  useAccountPage: jest.fn()
-}));
-
-jest.mock('../../../api/useGrantShare', () => ({
-  useGrantShare: jest.fn()
-}));
-jest.mock('../../../api/useRevokeShare', () => ({
-  useRevokeShare: jest.fn()
-}));
-jest.mock('../../../api/useRenamePlaylist', () => ({
-  useRenamePlaylist: jest.fn()
-}));
-jest.mock('../../../api/useDeletePlaylist', () => ({
-  useDeletePlaylist: jest.fn()
-}));
-jest.mock('../../../api/useSetPlaylistCover', () => ({
-  useSetPlaylistCover: jest.fn()
-}));
-jest.mock('../../../api/useRemovePlaylistCover', () => ({
-  useRemovePlaylistCover: jest.fn()
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
+  useAccountDirectory: jest.fn(),
+  useAccountPage: jest.fn(),
+  useAddTrack: jest.fn(),
+  useCurrentAccount: jest.fn(),
+  useDeletePlaylist: jest.fn(),
+  useFetchTrackWhole: jest.fn(),
+  useGrantShare: jest.fn(),
+  useLatestSyncRun: jest.fn(),
+  usePlaylist: jest.fn(),
+  usePlaylistQueue: jest.fn(),
+  usePlaylistShares: jest.fn(),
+  usePlaylistTracks: jest.fn(),
+  usePlaylists: jest.fn(),
+  useRemovePlaylistCover: jest.fn(),
+  useRemoveTrack: jest.fn(),
+  useRenamePlaylist: jest.fn(),
+  useRetryFailedTracks: jest.fn(),
+  useRetryTrack: jest.fn(),
+  useRevokeShare: jest.fn(),
+  useSetPlaylistCover: jest.fn(),
+  useSyncPlaylist: jest.fn(),
+  useUpdateSkipNonMusic: jest.fn(),
+  useUpdateSort: jest.fn()
 }));
 jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
@@ -157,25 +128,9 @@ jest.mock('expo-file-system', () => ({
     }
   }
 }));
-jest.mock('../../../api/useUpdateSort', () => ({
-  useUpdateSort: jest.fn()
-}));
-jest.mock('../../../api/useUpdateSkipNonMusic/useUpdateSkipNonMusic', () => ({
-  useUpdateSkipNonMusic: jest.fn()
-}));
-jest.mock('../../../api/useRetryFailedTracks', () => ({
-  useRetryFailedTracks: jest.fn()
-}));
 jest.mock('../../../shared/clipboard/copyText', () => ({
   copyText: jest.fn()
 }));
-jest.mock('../../../api/useAccountDirectory', () => {
-  const actual = jest.requireActual<
-    typeof import('../../../api/useAccountDirectory')
-  >('../../../api/useAccountDirectory');
-
-  return { ...actual, useAccountDirectory: jest.fn() };
-});
 
 const usePlaylistMock = usePlaylist as jest.MockedFunction<typeof usePlaylist>;
 const usePlaylistTracksMock = usePlaylistTracks as jest.MockedFunction<
@@ -545,7 +500,7 @@ async function renderDetail(options: RenderOptions = {}) {
   jest.mocked(useRemovePlaylistCover).mockReturnValue(mutationResult());
   usePlaylistSharesMock.mockReturnValue(queryResult([]));
   useRevokeShareMock.mockReturnValue(mutationResult());
-  jest.mocked(useAccount).mockReturnValue(
+  jest.mocked(useCurrentAccount).mockReturnValue(
     queryResult({
       id: 'account-me',
       displayName: 'Owner',

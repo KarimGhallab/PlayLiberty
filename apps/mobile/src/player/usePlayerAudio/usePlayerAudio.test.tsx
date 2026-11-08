@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 
-import { usePlayerStore } from '../playerStore/playerStore';
+import { StreamFailureKind } from '@playliberty/ui-foundation';
+
 import type { PlayerTrack } from '../playerTrack/playerTrack';
-import { StreamFailureKind } from '../streamFailure/streamFailure';
+import { usePlayerStore } from '../playerStore/playerStore';
 import { usePlayerAudio } from './usePlayerAudio';
 
 jest.mock('expo-audio', () => {

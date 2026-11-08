@@ -6,12 +6,13 @@ import type { Account, EgressRead } from '@playliberty/contracts';
 import { EgressStatus, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { useAccount } from '../../../api/useAccount';
 import {
   useCheckEgress,
+  useCurrentAccount,
   useEgress,
   useSwitchEgress
-} from '../../../api/useEgress';
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import { SessionStatus } from '../../../auth/sessionStore/sessionStore';
 import { useSession } from '../../../auth/useSession';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -21,12 +22,10 @@ jest.mock('expo-router', () => ({
   router: { replace: jest.fn() }
 }));
 
-jest.mock('../../../api/useAccount', () => ({
-  useAccount: jest.fn()
-}));
-
-jest.mock('../../../api/useEgress', () => ({
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
   useCheckEgress: jest.fn(),
+  useCurrentAccount: jest.fn(),
   useEgress: jest.fn(),
   useSwitchEgress: jest.fn()
 }));
@@ -35,7 +34,9 @@ jest.mock('../../../auth/useSession', () => ({
   useSession: jest.fn()
 }));
 
-const useAccountMock = useAccount as jest.MockedFunction<typeof useAccount>;
+const useCurrentAccountMock = useCurrentAccount as jest.MockedFunction<
+  typeof useCurrentAccount
+>;
 const useCheckEgressMock = useCheckEgress as jest.MockedFunction<
   typeof useCheckEgress
 >;
@@ -128,7 +129,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   usePlayerStore.getState().clear();
   useSessionMock.mockReturnValue(signedIn(SessionStatus.SignedIn));
-  useAccountMock.mockReturnValue(accountResult(admin));
+  useCurrentAccountMock.mockReturnValue(accountResult(admin));
   useEgressMock.mockReturnValue(egressResult(READ));
   useSwitchEgressMock.mockReturnValue(idleMutation());
   useCheckEgressMock.mockReturnValue(idleMutation());
@@ -138,14 +139,14 @@ describe('the egress gate', () => {
   it('opens the pool for an admin', async () => {
     await renderGate();
 
-    expect(useAccountMock).toHaveBeenCalledWith(true);
+    expect(useCurrentAccountMock).toHaveBeenCalledWith(true);
     expect(useEgressMock).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('egress-screen')).toBeOnTheScreen();
     expect(screen.getByText('01-FR-634')).toBeOnTheScreen();
   });
 
   it('answers not-found to a normal account without reading the pool', async () => {
-    useAccountMock.mockReturnValue(
+    useCurrentAccountMock.mockReturnValue(
       accountResult({ ...admin, role: UserRole.User })
     );
 
@@ -160,14 +161,14 @@ describe('the egress gate', () => {
 
   it('answers not-found when no one is signed in', async () => {
     useSessionMock.mockReturnValue(signedIn(SessionStatus.SignedOut));
-    useAccountMock.mockReturnValue(accountResult(undefined, true));
+    useCurrentAccountMock.mockReturnValue(accountResult(undefined, true));
 
     await renderGate();
 
     expect(
       screen.getByRole('header', { name: 'Page not found' })
     ).toBeOnTheScreen();
-    expect(useAccountMock).toHaveBeenCalledWith(false);
+    expect(useCurrentAccountMock).toHaveBeenCalledWith(false);
     expect(useEgressMock).not.toHaveBeenCalled();
   });
 });

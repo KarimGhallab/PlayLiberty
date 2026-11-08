@@ -1,19 +1,21 @@
 import {
+  ACCESS_TOKEN_HEADER,
+  ACCESS_TOKEN_ID_HEADER,
+  API_PREFIX,
+  CLIENT_HEADER,
+  USER_AGENT_HEADER,
+  readProblem
+} from '@playliberty/api-client';
+import {
   type MobileToken,
   MobileTokenSchema,
   ProblemCode,
-  ProblemSchema,
   endpoints
 } from '@playliberty/contracts';
 
 import { apiBaseUrl } from '../../api/apiBaseUrl';
-import {
-  ACCESS_TOKEN_HEADER,
-  ACCESS_TOKEN_ID_HEADER,
-  API_PREFIX,
-  type AccessToken
-} from '../../api/apiClient/ApiClient';
-import { USER_AGENT, USER_AGENT_HEADER } from '../../api/userAgent';
+import type { AccessToken } from '../../api/tokenAdapter/tokenAdapter';
+import { USER_AGENT } from '../../api/userAgent';
 import {
   type SessionRecord,
   accessTokenOf,
@@ -159,7 +161,7 @@ export class Session {
               headers: {
                 'content-type': 'application/json',
                 [USER_AGENT_HEADER]: USER_AGENT,
-                'x-playliberty-client': 'mobile',
+                [CLIENT_HEADER]: 'mobile',
                 [ACCESS_TOKEN_ID_HEADER]: access.id,
                 [ACCESS_TOKEN_HEADER]: access.secret
               },
@@ -210,7 +212,7 @@ export class Session {
           headers: {
             'content-type': 'application/json',
             [USER_AGENT_HEADER]: USER_AGENT,
-            'x-playliberty-client': 'mobile'
+            [CLIENT_HEADER]: 'mobile'
           },
           body: JSON.stringify({ refresh_token: record.refreshToken })
         }
@@ -259,13 +261,6 @@ export class Session {
       listener(record);
     }
   }
-}
-
-async function readProblem(response: Response) {
-  const body: unknown = await response.json().catch(() => null);
-  const problem = ProblemSchema.safeParse(body);
-
-  return problem.success ? problem.data : null;
 }
 
 /** The app's one session, over the stored record and the configured origin. */

@@ -47,6 +47,7 @@ function renderRow(options: {
   readonly onRemove?: ((trackId: string) => void) | null;
   readonly onCopyLink?: (trackId: string) => void;
   readonly busy?: boolean;
+  readonly skipNonMusic?: boolean;
   readonly starting?: boolean;
   readonly pending?: boolean;
 }): {
@@ -75,6 +76,7 @@ function renderRow(options: {
           onRemove={resolvedRemove}
           onCopyLink={options.onCopyLink ?? onCopyLink}
           busy={options.busy ?? false}
+          skipNonMusic={options.skipNonMusic ?? true}
           starting={options.starting ?? false}
           pending={options.pending ?? false}
         />
@@ -272,6 +274,26 @@ describe('TrackRow', () => {
     expect(
       screen.queryByRole('menuitem', { name: 'Fetch whole' })
     ).not.toBeInTheDocument();
+  });
+
+  it('offers no fetch whole when the skip setting is off', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Failed }),
+      onRetry: vi.fn(),
+      onFetchWhole: vi.fn(),
+      skipNonMusic: false
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+
+    expect(
+      screen.queryByRole('menuitem', { name: 'Fetch whole' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Retry' })
+    ).toBeInTheDocument();
   });
 
   it('offers only the remove on a failed track the caller cannot retry', () => {

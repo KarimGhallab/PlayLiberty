@@ -10,8 +10,7 @@ import Screen from '../../../shared/components/Screen/Screen';
 import SignInDoor from '../../../shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../../../shared/components/SignedOut/SignedOut';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useAccount } from '../../../api/useAccount';
+import { ApiError, useCurrentAccount } from '@playliberty/api-client';
 import { provisioningFailure } from '../../../auth/provisioningFailure';
 import { startProvisioning } from '../../../auth/startProvisioning';
 import { useApiConfig } from '../../../auth/useApiConfig';
@@ -34,7 +33,7 @@ export default function LibraryShell() {
     data: account,
     error: accountError,
     isPending: accountPending
-  } = useAccount(status === SessionStatus.SignedIn);
+  } = useCurrentAccount(status === SessionStatus.SignedIn);
   const readFailure =
     accountError instanceof ApiError
       ? problemDetail(t, accountError.problem)

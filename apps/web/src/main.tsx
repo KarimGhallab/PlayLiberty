@@ -7,6 +7,7 @@ import { I18nProvider } from '@playliberty/i18n';
 import '@playliberty/tokens/tokens.css';
 
 import { queryClient } from './shared/api/queryClient';
+import './shared/api/transport';
 import DeferredToasts from './shared/components/UndoToast/DeferredToasts';
 import { attachPlayerPersistence } from './shared/player/playerPersistence/playerPersistence';
 import { usePlayerStore } from './shared/player/playerStore/playerStore';

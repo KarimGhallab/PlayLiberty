@@ -10,8 +10,8 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useTrack } from '../../../api/useTrack';
+import { ApiError, useTrack } from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import {
   SessionStatus,
   useSessionStore
@@ -28,7 +28,8 @@ jest.mock('expo-router', () => ({
   router: { replace: jest.fn() }
 }));
 
-jest.mock('../../../api/useTrack', () => ({
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
   useTrack: jest.fn()
 }));
 

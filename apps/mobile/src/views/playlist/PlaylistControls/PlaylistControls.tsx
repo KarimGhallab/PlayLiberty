@@ -33,7 +33,7 @@ import {
   statusChipCount,
   totalStatusCount,
   visibleStatusChips
-} from '../../../shared/trackState/statusChips';
+} from '@playliberty/ui-foundation';
 
 import PlaylistSortSheet from './PlaylistSortSheet';
 import { sortLabelKey } from './sortOptions';

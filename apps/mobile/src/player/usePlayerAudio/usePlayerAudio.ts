@@ -7,11 +7,10 @@ import {
 import { useEffect, useRef } from 'react';
 
 import { useSessionStore } from '../../auth/sessionStore/sessionStore';
+import { StreamFailureKind } from '@playliberty/ui-foundation';
+
 import { usePlayerStore } from '../playerStore/playerStore';
-import {
-  type StreamFailureClassifier,
-  StreamFailureKind
-} from '../streamFailure/streamFailure';
+import type { StreamFailureClassifier } from '../streamFailure/streamFailure';
 
 export type SourceResolver = (trackId: string) => AudioSource | null;
 

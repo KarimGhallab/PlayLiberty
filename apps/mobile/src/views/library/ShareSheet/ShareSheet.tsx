@@ -22,9 +22,11 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { usePlaylistShares } from '../../../api/usePlaylistShares';
-import { useRevokeShare } from '../../../api/useRevokeShare';
+import {
+  ApiError,
+  usePlaylistShares,
+  useRevokeShare
+} from '@playliberty/api-client';
 import ShareAccountPicker from '../ShareAccountPicker/ShareAccountPicker';
 
 export interface ShareSheetProps {

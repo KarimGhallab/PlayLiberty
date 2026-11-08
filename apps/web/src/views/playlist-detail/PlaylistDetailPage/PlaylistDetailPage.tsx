@@ -28,25 +28,23 @@ import type { TrackFilterState } from '@playliberty/contracts';
 import { providerLabel, useI18n } from '@playliberty/i18n';
 
 import {
+  ApiError,
   ownerNameFrom,
   useAccountDirectory,
-  useCurrentAccount
-} from '../../../shared/api/clients/accountClient/accountClient';
-import { ApiError } from '../../../shared/api/clients/apiClient/apiClient';
-import { usePlaylists } from '../../../shared/api/clients/libraryClient/libraryClient';
-import {
   useAddTrack,
+  useCurrentAccount,
   useFetchTrackWhole,
   useLatestSyncRun,
   usePlaylist,
   usePlaylistQueue,
+  usePlaylists,
   usePlaylistTracks,
   useRemoveTrack,
   useRetryFailedTracks,
   useRetryTrack,
   useUpdateSkipNonMusic,
   useUpdateSort
-} from '../../../shared/api/clients/playlistClient/playlistClient';
+} from '@playliberty/api-client';
 import { problemSentence } from '../../../shared/api/problem/problem';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EgressLink from '../../../shared/components/EgressLink/EgressLink';
@@ -72,12 +70,15 @@ import SuccessToast from '../../../shared/components/Toast/SuccessToast';
 import ToastStack from '../../../shared/components/Toast/ToastStack';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
-import { hasPlayableTrack, isPlayable } from '../../../shared/player/playable';
+import {
+  hasPlayableTrack,
+  isPlayable,
+  orderTracksByQueue
+} from '@playliberty/player';
 import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
-import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
-import type { TrackLinkNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
-import { cannotPlayNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+import type { TrackLinkNotice } from '@playliberty/i18n';
+import { cannotPlayNotice } from '@playliberty/i18n';
 import {
   currentTrack,
   hasNext,
@@ -90,10 +91,8 @@ import {
   refusalNotice,
   usePlayTransition
 } from '../../../shared/player/usePlayTransition/usePlayTransition';
-import {
-  canWritePlaylist,
-  usePlaylistActions
-} from '../../../shared/playlistActions/playlistActions';
+import { canWritePlaylist } from '@playliberty/library';
+import { usePlaylistActions } from '../../../shared/playlistActions/playlistActions';
 import {
   MOBILE_QUERY,
   useMediaQuery
@@ -192,7 +191,7 @@ export default function PlaylistDetailPage() {
     playlistId,
     isQueue || trackParam !== null
   );
-  useQueueRefetch(playlist.data, queueRead.data);
+  useQueueRefetch(playlist.data, queueRead.data?.items);
   /* The queue's own derivation, so a shuffled queue goes dead at its last entry
    * exactly as an unshuffled one does. */
   const canSkipNext = usePlayerStore(hasNext);
@@ -367,7 +366,7 @@ export default function PlaylistDetailPage() {
       return;
     }
 
-    const association = queueRead.data.find(
+    const association = queueRead.data.items.find(
       entry => entry.track.id === trackParam
     );
 
@@ -968,7 +967,10 @@ export default function PlaylistDetailPage() {
               {tracks.isSuccess && tracks.tracks.length > 0 && !landing ? (
                 <ul className={styles.playlistDetail__list} ref={listRef}>
                   {(listShuffled
-                    ? orderTracksByQueue(tracks.tracks, queue)
+                    ? orderTracksByQueue(
+                        tracks.tracks,
+                        queue.map(track => track.id)
+                      )
                     : tracks.tracks
                   ).map(association => {
                     /*
@@ -994,6 +996,7 @@ export default function PlaylistDetailPage() {
                         onFetchWhole={canWrite ? fetchWholeTrack : undefined}
                         onRemove={canWrite ? removeTrackDeferred : undefined}
                         onCopyLink={copyTrackLink}
+                        skipNonMusic={playlist.data?.skipNonMusic ?? false}
                         busy={busyTrackId === association.track.id}
                         starting={
                           startingThisPlaylist?.startTrackId ===

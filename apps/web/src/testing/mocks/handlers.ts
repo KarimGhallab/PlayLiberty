@@ -37,7 +37,7 @@ import {
   endpoints
 } from '@playliberty/contracts';
 
-import { API_PREFIX } from '../../shared/api/clients/apiClient/apiClient';
+import { API_PREFIX } from '@playliberty/api-client';
 
 /*
  * The harness the tests run against: two valid playlists, one owned and one

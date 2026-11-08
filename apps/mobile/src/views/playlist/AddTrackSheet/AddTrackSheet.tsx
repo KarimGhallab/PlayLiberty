@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  FlatList,
   Keyboard,
   ScrollView,
   StyleSheet,
@@ -267,27 +266,23 @@ export default function AddTrackSheet({
         ) : null}
       </View>
 
-      <FlatList
+      <ScrollView
         testID="add-track-pick"
-        data={ordered}
-        keyExtractor={playlist => playlist.id}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
         style={styles.pick}
-        contentContainerStyle={styles.pickContent}
-        initialNumToRender={12}
-        maxToRenderPerBatch={12}
-        windowSize={5}
-        renderItem={({ item }) => (
+        contentContainerStyle={styles.pickContent}>
+        {ordered.map(item => (
           <Checkbox
+            key={item.id}
             testID={`add-track-pick-${item.id}`}
             label={item.name}
             checked={chosen.includes(item.id)}
             disabled={busy}
             onChange={() => toggle(item.id)}
           />
-        )}
-      />
+        ))}
+      </ScrollView>
     </Sheet>
   );
 }

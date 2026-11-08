@@ -7,8 +7,10 @@ import {
   jest
 } from '@jest/globals';
 
+import { StreamFailureKind } from '@playliberty/ui-foundation';
+
 import type { ApiConfig } from '../../auth/useApiConfig';
-import { StreamFailureKind, classifyStreamFailure } from './streamFailure';
+import { classifyStreamFailure } from './streamFailure';
 
 const config: ApiConfig = {
   baseUrl: 'https://instance.test',
@@ -42,6 +44,22 @@ describe('the stream failure classifier', () => {
           'User-Agent': 'PlayLiberty/1.0 (Android)'
         }
       }
+    );
+  });
+
+  it('drops a fileless entry on a 409 as web does', async () => {
+    fetchMock.mockResolvedValue({ status: 409 } as Response);
+
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
+      StreamFailureKind.Gone
+    );
+  });
+
+  it('drops a definitively refused entry on a 403 as web does', async () => {
+    fetchMock.mockResolvedValue({ status: 403 } as Response);
+
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
+      StreamFailureKind.Gone
     );
   });
 

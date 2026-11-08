@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@playliberty/i18n';
 
 import Notice from '../../../shared/components/Notice/Notice';
-import { isPlayable } from '../../../shared/playable/playable';
-import type { TrackLinkNotice } from '../../../shared/trackLinkNotice/trackLinkNotice';
+import { isPlayable } from '@playliberty/player';
+import type { TrackLinkNotice } from '@playliberty/i18n';
 import {
   cannotPlayNotice,
   leftPlaylistNotice,
   unknownTrackNotice
-} from '../../../shared/trackLinkNotice/trackLinkNotice';
+} from '@playliberty/i18n';
 
-import { useTrack } from '../../../api/useTrack';
+import { useTrack } from '@playliberty/api-client';
 import {
   SessionStatus,
   useSessionStore

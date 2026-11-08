@@ -1,6 +1,6 @@
 # 01: Scaffold the shared client packages
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
@@ -10,7 +10,7 @@ The clients share the contracts, the query keys, the tokens, the localization an
 
 ## Expected
 
-Two packages exist and carry their first module. `@playliberty/client-data` owns the API error, the problem reader and the protocol constants. `@playliberty/player` owns the playable rule. Both apps import them and their local copies are gone.
+Two packages exist and carry their first module. `@playliberty/api-client` owns the API error, the problem reader and the protocol constants. `@playliberty/player` owns the playable rule. Both apps import them and their local copies are gone.
 
 The packages follow the shape of `ui-foundation`: one barrel, a build config, a test config, and the standard scripts. The workspace paths, the build filter and the app dependencies name both.
 
@@ -20,13 +20,19 @@ The review of 3 November 2026 found the error type, the problem parse and the he
 
 ## Acceptance criteria
 
-- [ ] `@playliberty/client-data` and `@playliberty/player` build with the same manifest and tsconfig shape as `ui-foundation`, including the test script.
-- [ ] `tsconfig.depcruise.json`, the root `build:packages` filter, and both app manifests name both packages.
-- [ ] `scripts/validate-tsconfig-paths.cjs` passes.
-- [ ] `client-data` exports the API error, the problem reader and the protocol constants. Both apps import them.
-- [ ] `player` exports the playable rule, both the single-track and the whole-playlist form. Web uses both. Mobile uses the single-track form.
-- [ ] No package imports an application.
-- [ ] The local copies of the moved symbols are deleted.
+- [x] `@playliberty/api-client` and `@playliberty/player` build with the same manifest and tsconfig shape as `ui-foundation`, including the test script.
+- [x] `tsconfig.depcruise.json`, the root `build:packages` filter, and both app manifests name both packages.
+- [x] `scripts/validate-tsconfig-paths.cjs` passes.
+- [x] `api-client` exports the API error, the problem reader and the protocol constants. Both apps import them.
+- [x] `player` exports the playable rule, both the single-track and the whole-playlist form. Web uses both. Mobile uses the single-track form.
+- [x] No package imports an application.
+- [x] The local copies of the moved symbols are deleted.
+
+## Outcome
+
+`packages/api-client` and `packages/player` exist with the `ui-foundation` manifest, tsconfig and script shape. `api-client` owns `ApiError`, `readProblem` and the wire constants (`API_PREFIX`, `CLIENT_HEADER`, `ACCESS_TOKEN_ID_HEADER`, `ACCESS_TOKEN_HEADER`); both transports and the mobile session import them. `player` owns `isPlayable` and `hasPlayableTrack`; the web row, queue, gallery item and detail use both, the mobile player and rows use the single-track form. The app-local error class, constants, two problem readers and both playable files are gone. `tsconfig.depcruise.json`, `build:packages`, both app manifests and the web `Containerfile` name both packages.
+
+Verification: `pnpm run build` passes, `pnpm run lint:check` is clean, `node scripts/validate-tsconfig-paths.cjs` passes, `pnpm run deps-cruise:check` reports no violations, and `pnpm run test:unit` passes (web 633, mobile 651, new packages 7).
 
 ## Verification
 

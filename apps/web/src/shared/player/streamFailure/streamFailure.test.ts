@@ -1,8 +1,10 @@
 import { HttpResponse, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { StreamFailureKind } from '@playliberty/ui-foundation';
+
 import { server } from '../../../testing/mocks/server';
-import { StreamFailureKind, classifyStreamFailure } from './streamFailure';
+import { classifyStreamFailure } from './streamFailure';
 
 const STREAM_URL = 'http://localhost:3000/api/v1/tracks/track-1/stream';
 

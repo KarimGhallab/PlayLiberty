@@ -13,7 +13,7 @@ import {
 import { I18nProvider } from '@playliberty/i18n';
 
 import type { PlaylistActionsOptions } from './playlistActions';
-import { canWritePlaylist, usePlaylistActions } from './playlistActions';
+import { usePlaylistActions } from './playlistActions';
 
 /*
  * The rule under test is which actions an account may perform, by its access;
@@ -149,21 +149,5 @@ describe('usePlaylistActions', () => {
       detail: 'Rain On The Window',
       commit: expect.any(Function)
     });
-  });
-});
-
-/*
- * The one place `owner || write` is written, consumed by the menu and the
- * detail, so it is tested on its own rather than only through the hook.
- */
-describe('canWritePlaylist', () => {
-  it('is true for the owner and a write collaborator', () => {
-    expect(canWritePlaylist(playlist())).toBe(true);
-    expect(canWritePlaylist(playlist({ access: ShareLevel.Write }))).toBe(true);
-  });
-
-  it('is false for a read collaborator and an unloaded playlist', () => {
-    expect(canWritePlaylist(playlist({ access: ShareLevel.Read }))).toBe(false);
-    expect(canWritePlaylist(undefined)).toBe(false);
   });
 });

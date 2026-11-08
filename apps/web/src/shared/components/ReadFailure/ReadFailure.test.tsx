@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ProblemCode } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
-import { ApiError } from '../../api/clients/apiClient/apiClient';
+import { ApiError } from '@playliberty/api-client';
 import ReadFailure from './ReadFailure';
 
 /*

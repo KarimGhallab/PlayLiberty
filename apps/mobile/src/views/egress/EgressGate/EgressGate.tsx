@@ -9,7 +9,7 @@ import Screen from '../../../shared/components/Screen/Screen';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import { tokenColor } from '../../../shared/styles/tokens';
 
-import { useAccount } from '../../../api/useAccount';
+import { useCurrentAccount } from '@playliberty/api-client';
 import { SessionStatus } from '../../../auth/sessionStore/sessionStore';
 import { useSession } from '../../../auth/useSession';
 import EgressScreen from '../EgressScreen/EgressScreen';
@@ -19,7 +19,7 @@ import EgressScreen from '../EgressScreen/EgressScreen';
 export default function EgressGate() {
   const { t } = useI18n();
   const { status } = useSession();
-  const account = useAccount(status === SessionStatus.SignedIn);
+  const account = useCurrentAccount(status === SessionStatus.SignedIn);
   const back = (): void => {
     if (router.canGoBack()) {
       router.back();

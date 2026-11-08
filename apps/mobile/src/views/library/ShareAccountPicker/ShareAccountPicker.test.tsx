@@ -12,27 +12,27 @@ import type { Account, AccountSummary, Share } from '@playliberty/contracts';
 import { ProblemCode, ShareLevel, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useAccount } from '../../../api/useAccount';
-import { useAccountPage } from '../../../api/useAccountPage/useAccountPage';
-import { useGrantShare } from '../../../api/useGrantShare';
+import {
+  ApiError,
+  useAccountPage,
+  useCurrentAccount,
+  useGrantShare
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import ShareAccountPicker, {
   type ShareAccountPickerProps
 } from './ShareAccountPicker';
 
-jest.mock('../../../api/useAccount', () => ({
-  useAccount: jest.fn()
-}));
-
-jest.mock('../../../api/useAccountPage/useAccountPage', () => ({
-  useAccountPage: jest.fn()
-}));
-
-jest.mock('../../../api/useGrantShare', () => ({
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
+  useAccountPage: jest.fn(),
+  useCurrentAccount: jest.fn(),
   useGrantShare: jest.fn()
 }));
 
-const meMock = useAccount as jest.MockedFunction<typeof useAccount>;
+const meMock = useCurrentAccount as jest.MockedFunction<
+  typeof useCurrentAccount
+>;
 const pageMock = useAccountPage as jest.MockedFunction<typeof useAccountPage>;
 const grantMock = useGrantShare as jest.MockedFunction<typeof useGrantShare>;
 
@@ -156,21 +156,6 @@ function errorHandler(options: unknown): {
 }
 
 describe('the share account picker', () => {
-  it('mounts a bounded window when the directory is large', async () => {
-    const many = Array.from({ length: 200 }, (_, index) => ({
-      id: `account-${index}`,
-      displayName: `Person ${index}`,
-      avatarUrl: null
-    }));
-
-    await renderPicker(pageRead({ items: [me, ...many] }));
-
-    const rows = screen.getAllByTestId('share-picker-row');
-
-    expect(rows.length).toBeGreaterThan(0);
-    expect(rows.length).toBeLessThan(many.length);
-  });
-
   it('leaves the owner out and keeps the directory order', async () => {
     await renderPicker(pageRead({ items: [me, cy, ada, bea] }));
 

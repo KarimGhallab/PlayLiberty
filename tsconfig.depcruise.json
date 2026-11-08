@@ -2,10 +2,13 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "paths": {
+      "@playliberty/api-client": ["./packages/api-client/src"],
       "@playliberty/contracts": ["./packages/contracts/src"],
       "@playliberty/i18n": ["./packages/i18n/src"],
+      "@playliberty/library": ["./packages/library/src"],
       "@playliberty/egress-agent": ["./apps/egress-agent/src"],
       "@playliberty/mobile": ["./apps/mobile/src"],
+      "@playliberty/player": ["./packages/player/src"],
       "@playliberty/query": ["./packages/query/src"],
       "@playliberty/server": ["./apps/server/src"],
       "@playliberty/tokens": ["./packages/tokens/src"],

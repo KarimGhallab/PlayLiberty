@@ -5,7 +5,7 @@ import type { Account, TrackFilterState } from '@playliberty/contracts';
 import LibraryHeader from '../../../shared/components/LibraryHeader/LibraryHeader';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';
-import type { LibraryScope } from '../GalleryFilterBar/GalleryFilterBar';
+import type { LibraryScope } from '@playliberty/library';
 import PlaylistGallery from '../PlaylistGallery/PlaylistGallery';
 
 export interface LibraryScreenProps {

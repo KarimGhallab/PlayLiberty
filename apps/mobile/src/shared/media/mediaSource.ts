@@ -1,12 +1,9 @@
 import type { ApiMediaEndpoint, EndpointParams } from '@playliberty/contracts';
 import { endpointPath } from '@playliberty/contracts';
 
-import {
-  ACCESS_TOKEN_HEADER,
-  ACCESS_TOKEN_ID_HEADER,
-  API_PREFIX
-} from '../../api/apiClient/ApiClient';
-import { USER_AGENT, USER_AGENT_HEADER } from '../../api/userAgent';
+import { accessHeaders, apiUrl } from '@playliberty/api-client';
+
+import { USER_AGENT } from '../../api/userAgent';
 import type { ApiConfig } from '../../auth/useApiConfig';
 
 export interface MediaSource {
@@ -21,14 +18,7 @@ export function mediaSource(
   params: EndpointParams
 ): MediaSource {
   return {
-    uri: `${config.baseUrl.replace(/\/+$/, '')}${API_PREFIX}${endpointPath(
-      endpoint.path,
-      params
-    )}`,
-    headers: {
-      [ACCESS_TOKEN_ID_HEADER]: config.token.id,
-      [ACCESS_TOKEN_HEADER]: config.token.secret,
-      [USER_AGENT_HEADER]: USER_AGENT
-    }
+    uri: apiUrl(config.baseUrl, endpointPath(endpoint.path, params)),
+    headers: accessHeaders(config.token, USER_AGENT)
   };
 }

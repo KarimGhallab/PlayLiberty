@@ -1,6 +1,6 @@
 # 05: Share one queue core for the player
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-scaffold-the-shared-client-packages.md).
 
@@ -26,12 +26,22 @@ A seek with no duration is refused on both clients. The seek needs a duration to
 
 ## Acceptance criteria
 
-- [ ] `player` owns the playable rule, the queue order, the shuffle, the random draw, the merge, the seek patch and the grace rule.
-- [ ] The package imports no React, no Zustand and no platform module.
-- [ ] Both stores call the package and keep their own state shape.
-- [ ] A seek with no duration is refused on both clients.
-- [ ] A shuffled refetch keeps the current order for known ids, appends new ids in the server order and drops a missing id.
-- [ ] The two local queue-order and playable copies are deleted.
+- [x] `player` owns the playable rule, the queue order, the shuffle, the random draw, the merge, the seek patch and the grace rule.
+- [x] The package imports no React, no Zustand and no platform module.
+- [x] Both stores call the package and keep their own state shape.
+- [x] A seek with no duration is refused on both clients.
+- [x] A shuffled refetch keeps the current order for known ids, appends new ids in the server order and drops a missing id.
+- [x] The two local queue-order and playable copies are deleted.
+
+## Outcome
+
+`@playliberty/player` now exports the queue core: `randomItem`, `shuffleIds` and `shuffleWithLeader`, `mergeIds` and `mergeById`, `orderTracksByQueue`, `seekPatch` and `seekFractionPatch`, and `PREVIOUS_GRACE_SECONDS` with `previousMove`.
+
+The web store keeps `PlayerTrack[]` and passes an id accessor to the generic shuffle and merge; the mobile store keeps id arrays and the track map, and calls the id helpers. Both call the shared seek patch, so a target with no duration is refused instead of applied unbounded. `skipPrevious` takes the shared grace rule at the five-second boundary.
+
+The two local `queueOrder` copies and their tests are gone; the package suite owns the group ordering, the leader shuffle, the merge, both seek clamps and the grace boundary. The local shuffle, draw, merge and seek copies in both stores are gone.
+
+Verification: `pnpm run build` and `pnpm run lint:check` pass; the player package runs 19 tests; `pnpm run test:unit` passes across the workspace.
 
 ## Verification
 

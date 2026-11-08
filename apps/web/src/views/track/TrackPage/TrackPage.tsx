@@ -3,16 +3,16 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '@playliberty/i18n';
 
-import { useTrack } from '../../../shared/api/clients/trackClient/trackClient';
+import { useTrack } from '@playliberty/api-client';
 import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
-import { isPlayable } from '../../../shared/player/playable';
+import { isPlayable } from '@playliberty/player';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
-import type { TrackLinkNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+import type { TrackLinkNotice } from '@playliberty/i18n';
 import {
   cannotPlayNotice,
   leftPlaylistNotice,
   unknownTrackNotice
-} from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+} from '@playliberty/i18n';
 import { queuePlaylistId } from '../../../shared/player/types';
 import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePlayTransition';
 

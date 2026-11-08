@@ -1,3 +1,4 @@
+import { CLIENT_HEADER, USER_AGENT_HEADER } from '@playliberty/api-client';
 import {
   type MobileToken,
   MobileTokenSchema,
@@ -5,7 +6,7 @@ import {
   ProblemSchema
 } from '@playliberty/contracts';
 
-import { USER_AGENT, USER_AGENT_HEADER } from '../../api/userAgent';
+import { USER_AGENT } from '../../api/userAgent';
 
 /* The browser flow's decisions, free of the platform: a PKCE challenge and a
  * state go out, a single-use code comes back, and the code is traded for the
@@ -158,7 +159,7 @@ async function exchange(
     headers: {
       'content-type': 'application/json',
       [USER_AGENT_HEADER]: USER_AGENT,
-      'x-playliberty-client': 'mobile'
+      [CLIENT_HEADER]: 'mobile'
     },
     body: JSON.stringify({
       code: input.code,

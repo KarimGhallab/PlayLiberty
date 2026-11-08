@@ -12,5 +12,15 @@ export {
   playlistSharesKey,
   playlistTracksKey,
   trackKey
-} from './keys/keys.js';
+} from './keys.js';
 export { invalidateForLiveEvent } from './liveEvents/liveEvents.js';
+export {
+  insertPlaylistInPages,
+  pinPlaylistInPage,
+  pinPlaylistInPages
+} from './libraryPages/libraryPages.js';
+export type { OptimisticContext } from './optimistic/optimistic.js';
+export {
+  optimisticPatch,
+  restoreOptimistic
+} from './optimistic/optimistic.js';

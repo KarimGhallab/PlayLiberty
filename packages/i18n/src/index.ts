@@ -1,5 +1,15 @@
 export { catalogs } from './catalogs/catalogs.js';
 export { createTranslator } from './createTranslator/createTranslator.js';
+export {
+  EgressAction,
+  egressFailureNotice,
+  egressReasonLabel,
+  egressStatusLabel,
+  egressSuccessNotice,
+  egressTimeLabel,
+  egressUnreachableNotice
+} from './egressVocabulary/egressVocabulary.js';
+export type { EgressNotice } from './egressVocabulary/egressVocabulary.js';
 export type {
   MessageKey,
   Translator
@@ -24,6 +34,13 @@ export {
 } from './languageStorage/languageStorage.js';
 export type { LanguageStore } from './languageStorage/languageStorage.js';
 export { problemDetail } from './problem/problem.js';
+export { failureSentence } from './trackState/failureSentence/failureSentence.js';
+export {
+  cannotPlayNotice,
+  leftPlaylistNotice,
+  unknownTrackNotice
+} from './trackState/trackLinkNotice/trackLinkNotice.js';
+export type { TrackLinkNotice } from './trackState/trackLinkNotice/trackLinkNotice.js';
 export {
   resolveLanguage,
   toLanguage

@@ -42,9 +42,9 @@ import {
   statusChipCount,
   totalStatusCount,
   visibleStatusChips
-} from '../../../shared/trackState/statusChips';
+} from '@playliberty/ui-foundation';
 
-export type LibraryScope = 'all' | 'shared';
+import type { LibraryScope } from '@playliberty/library';
 
 /* The pair's 2pt padding and 1pt border on each side leave 6pt; the hit box
  * takes half above and half below. */

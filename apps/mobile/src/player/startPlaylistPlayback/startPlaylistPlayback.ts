@@ -4,7 +4,7 @@ import type { PlaylistTrack } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
 import { playlistQueueKey } from '@playliberty/query';
 
-import { isPlayable } from '../../shared/playable/playable';
+import { isPlayable } from '@playliberty/player';
 
 import { apiClient } from '../../api/client';
 import { usePlayerStore } from '../playerStore/playerStore';

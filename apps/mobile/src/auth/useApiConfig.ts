@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { apiBaseUrl } from '../api/apiBaseUrl';
-import type { AccessToken } from '../api/apiClient/ApiClient';
+import type { AccessToken } from '../api/tokenAdapter/tokenAdapter';
 import { mobileSession } from './session/session';
 import {
   type SessionRecord,

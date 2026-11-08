@@ -12,15 +12,16 @@ import type { PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus, endpoints } from '@playliberty/contracts';
 import { formatDuration, trackStateFacts, useI18n } from '@playliberty/i18n';
 import { fileTone, trackTone } from '@playliberty/ui-foundation';
+import { trackActionsFor } from '@playliberty/library';
 
 import { mediaUrl } from '../../api/endpoints/endpoints';
-import { isPlayable } from '../../player/playable';
+import { isPlayable } from '@playliberty/player';
 import Menu from '../Menu/Menu';
 import Spinner from '../Spinner/Spinner';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
-import { failureSentence } from './failureSentence/failureSentence';
+import { failureSentence } from '@playliberty/i18n';
 
 /*
  * The whole row plays the track; the lane at its end opens the menu above it.
@@ -47,6 +48,8 @@ interface TrackRowProps {
   readonly onCopyLink: (trackId: string) => void;
   /** Whether a row action is in flight; it gates the mutating items, not Copy link. */
   readonly busy?: boolean;
+  /** Whether the playlist skips non-music parts, which decides Fetch whole. */
+  readonly skipNonMusic?: boolean;
   /** Whether this row's press is waiting on its queue read. */
   readonly starting?: boolean;
   readonly pending?: boolean;
@@ -69,6 +72,7 @@ function TrackRow({
   onRemove,
   onCopyLink,
   busy = false,
+  skipNonMusic = false,
   starting = false,
   pending = false
 }: TrackRowProps) {
@@ -83,7 +87,6 @@ function TrackRow({
   const stateTone = fileTone(track.fileStatus, track.sourceStatus);
   const sourceTone = trackTone(track.fileStatus, track.sourceStatus);
   const playable = isPlayable(track);
-  const failed = track.fileStatus === TrackFileStatus.Failed;
   const downloading = track.fileStatus === TrackFileStatus.Downloading;
   /* A recorded thumbnail can outlive its file; a failed read falls to the hatch,
    * and the failed path scopes it so a new thumbnail gets its own attempt. */
@@ -112,67 +115,66 @@ function TrackRow({
   });
 
   /* Copy link is always in the lane; a row whose download, action or read is
-   * in flight drops the mutating items rather than the menu. */
+   * in flight drops the mutating items rather than the menu. The shared list
+   * decides which items exist; this lane owns their glyphs and handlers. */
   const locked = downloading || busy || pending || starting;
-  const laneItems: LaneItem[] = [
-    {
-      label: t('trackRow.copyLink'),
-      icon: (
+  const laneItems: LaneItem[] = trackActionsFor(
+    track,
+    onRemove !== undefined,
+    skipNonMusic,
+    locked
+  )
+    .filter(
+      action =>
+        action.key === 'copy' ||
+        (action.key === 'retry' && onRetry !== undefined) ||
+        (action.key === 'fetchWhole' && onFetchWhole !== undefined) ||
+        (action.key === 'remove' && onRemove !== undefined)
+    )
+    .map(action => {
+    const className = styles.trackRow__menuIcon;
+    const icon =
+      action.key === 'copy' ? (
         <IconCopy
-          className={styles.trackRow__menuIcon}
+          className={className}
           aria-hidden="true"
           focusable="false"
         />
-      ),
-      run: () => onCopyLink(track.id)
-    },
-    ...(!locked && failed && onRetry !== undefined
-      ? [
-          {
-            label: t('trackRow.retry'),
-            icon: (
-              <IconRotate
-                className={styles.trackRow__menuIcon}
-                aria-hidden="true"
-                focusable="false"
-              />
-            ),
-            run: () => onRetry(track.id)
-          }
-        ]
-      : []),
-    ...(!locked && failed && onFetchWhole !== undefined
-      ? [
-          {
-            label: t('trackRow.fetchWhole'),
-            icon: (
-              <IconScissorsOff
-                className={styles.trackRow__menuIcon}
-                aria-hidden="true"
-                focusable="false"
-              />
-            ),
-            run: () => onFetchWhole(track.id)
-          }
-        ]
-      : []),
-    ...(locked || onRemove === undefined
-      ? []
-      : [
-          {
-            label: t('trackRow.remove'),
-            icon: (
-              <IconTrash
-                className={styles.trackRow__menuIcon}
-                aria-hidden="true"
-                focusable="false"
-              />
-            ),
-            destructive: true,
-            run: () => onRemove(track.id)
-          }
-        ])
-  ];
+      ) : action.key === 'retry' ? (
+        <IconRotate
+          className={className}
+          aria-hidden="true"
+          focusable="false"
+        />
+      ) : action.key === 'fetchWhole' ? (
+        <IconScissorsOff
+          className={className}
+          aria-hidden="true"
+          focusable="false"
+        />
+      ) : (
+        <IconTrash
+          className={className}
+          aria-hidden="true"
+          focusable="false"
+        />
+      );
+    const run =
+      action.key === 'copy'
+        ? () => onCopyLink(track.id)
+        : action.key === 'retry'
+          ? () => onRetry?.(track.id)
+          : action.key === 'fetchWhole'
+            ? () => onFetchWhole?.(track.id)
+            : () => onRemove?.(track.id);
+
+    return {
+      label: t(action.label),
+      icon,
+      destructive: action.key === 'remove',
+      run
+    };
+  });
 
   const lane = (
     <span className={styles.trackRow__menuAnchor} ref={menuAnchorRef}>

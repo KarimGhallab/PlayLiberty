@@ -1,7 +1,7 @@
 import type { Playlist, PlaylistTrack } from '@playliberty/contracts';
 
-import { isPlayable } from '../playable';
-import { randomTrack, usePlayerStore } from '../playerStore/playerStore';
+import { isPlayable, randomItem } from '@playliberty/player';
+import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 
 /*
@@ -36,7 +36,7 @@ export function startPlaylistQueue(
 ): boolean {
   const queue = buildQueue(tracks, playlist);
   const start =
-    startTrackId ?? (shuffle ? randomTrack(queue)?.id : queue[0]?.id);
+    startTrackId ?? (shuffle ? randomItem(queue)?.id : queue[0]?.id);
 
   if (start === undefined || !queue.some(track => track.id === start)) {
     return false;

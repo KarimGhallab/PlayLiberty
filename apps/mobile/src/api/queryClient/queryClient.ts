@@ -1,6 +1,8 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 
-import { ApiError, NeedsProvisioningError } from '../apiClient/ApiClient';
+import { ApiError } from '@playliberty/api-client';
+
+import { NeedsProvisioningError } from '../tokenAdapter/tokenAdapter';
 
 /* A 4xx is the server's answer, not a transient fault: only a 5xx or an
  * unreached server retries. */

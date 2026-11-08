@@ -17,7 +17,7 @@ import styles from './LibraryFilterBar.module.scss';
  * over that scope. Without a share the rail is the status chips alone.
  */
 
-export type LibraryScope = 'all' | 'shared';
+import type { LibraryScope } from '@playliberty/library';
 
 interface LibraryFilterBarProps {
   readonly hasShared: boolean;

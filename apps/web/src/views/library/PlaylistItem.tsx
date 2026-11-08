@@ -5,7 +5,7 @@ import type { PlaylistWithCounts } from '@playliberty/contracts';
 import PlaylistCardHeader from '../../shared/components/PlaylistHeader/PlaylistCardHeader';
 import PlaylistTileHeader from '../../shared/components/PlaylistHeader/PlaylistTileHeader';
 import type { PlaybackStartControl } from '../../shared/components/PlaylistHeader/usePlaylistHeader';
-import { hasPlayableTrack } from '../../shared/player/playable';
+import { hasPlayableTrack } from '@playliberty/player';
 import { usePlayerStore } from '../../shared/player/playerStore/playerStore';
 import { queuePlaylistId } from '../../shared/player/types';
 import type { PlaylistAction } from '../../shared/playlistActions/playlistActions';

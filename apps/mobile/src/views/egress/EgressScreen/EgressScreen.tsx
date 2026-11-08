@@ -18,8 +18,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EgressStatus } from '@playliberty/contracts';
 import type { EgressConfig } from '@playliberty/contracts';
-import type { Language, Messages, Translator } from '@playliberty/i18n';
-import { formatRelativeTime, useI18n } from '@playliberty/i18n';
+import type {
+  EgressNotice,
+  Language,
+  Messages,
+  Translator
+} from '@playliberty/i18n';
+import {
+  EgressAction,
+  egressFailureNotice,
+  egressReasonLabel,
+  egressStatusLabel,
+  egressSuccessNotice,
+  egressTimeLabel,
+  egressUnreachableNotice,
+  useI18n
+} from '@playliberty/i18n';
 import { countryNameOf, countryOf, flagOf } from '@playliberty/ui-foundation';
 
 import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
@@ -39,31 +53,15 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
 import {
+  ApiError,
   useCheckEgress,
   useEgress,
   useSwitchEgress
-} from '../../../api/useEgress';
+} from '@playliberty/api-client';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { stackFacts } from './egressFacts';
-
-interface ActionNotice {
-  readonly message: string;
-  readonly detail: string | null;
-}
-
-function statusLabel(t: Translator<Messages>, status: EgressStatus): string {
-  switch (status) {
-    case EgressStatus.Ok:
-      return t('egress.statusOk');
-    case EgressStatus.Failed:
-      return t('egress.statusFailed');
-    case EgressStatus.Unknown:
-      return t('egress.statusUnknown');
-  }
-}
 
 /* The state's word carries its tone; the card never relies on colour alone. */
 function statusTone(status: EgressStatus): string {
@@ -75,33 +73,6 @@ function statusTone(status: EgressStatus): string {
     case EgressStatus.Unknown:
       return tokenColor('muted');
   }
-}
-
-/* The stored code is the server's classification; an unknown one still gets a
- * sentence rather than the tool's stderr. */
-function reasonLabel(t: Translator<Messages>, reason: string): string {
-  switch (reason) {
-    case 'blocked':
-      return t('egress.reason.blocked');
-    case 'unavailable':
-    case 'private':
-      return t('egress.reason.unavailable');
-    case 'network':
-      return t('egress.reason.network');
-    default:
-      return t('egress.reason.unknown');
-  }
-}
-
-function timeOf(
-  t: Translator<Messages>,
-  value: string | null,
-  now: number,
-  never: 'egress.neverAttempted' | 'egress.neverChecked'
-): string {
-  return value === null
-    ? t(never)
-    : formatRelativeTime(t, new Date(value), now);
 }
 
 interface FactProps {
@@ -197,7 +168,7 @@ function ConfigCard({
       : t('egress.seen', { ip: config.lastExitIp });
   const reason =
     config.status === EgressStatus.Failed && config.lastError !== null
-      ? reasonLabel(t, config.lastError)
+      ? egressReasonLabel(t, config.lastError)
       : null;
   const idle = config.active ? t('egress.check') : t('egress.switch');
   const working = config.active ? t('egress.checking') : t('egress.switching');
@@ -243,14 +214,14 @@ function ConfigCard({
         <View style={[styles.factRow, stacked && styles.factRowStacked]}>
           <Fact
             label={t('egress.status')}
-            value={statusLabel(t, config.status)}
+            value={egressStatusLabel(t, config.status)}
             valueStyle={{ color: statusTone(config.status) }}
             sub={reason}
             style={[styles.factHalf, stacked && styles.factHalfStacked]}
           />
           <Fact
             label={t('egress.lastAttempt')}
-            value={timeOf(
+            value={egressTimeLabel(
               t,
               config.lastAttemptAt,
               now,
@@ -262,7 +233,12 @@ function ConfigCard({
         <View style={[styles.factRow, stacked && styles.factRowStacked]}>
           <Fact
             label={t('egress.lastCheck')}
-            value={timeOf(t, config.lastCheckAt, now, 'egress.neverChecked')}
+            value={egressTimeLabel(
+              t,
+              config.lastCheckAt,
+              now,
+              'egress.neverChecked'
+            )}
             style={[styles.factHalf, stacked && styles.factHalfStacked]}
           />
         </View>
@@ -342,7 +318,7 @@ export default function EgressScreen({ onBack }: EgressScreenProps) {
   const egress = useEgress();
   const switchExit = useSwitchEgress();
   const check = useCheckEgress();
-  const [notice, setNotice] = useState<ActionNotice | null>(null);
+  const [notice, setNotice] = useState<EgressNotice | null>(null);
   const playerOffset =
     usePlayerStore(state => state.currentId) === null ? 0 : barHeight;
   const now = Date.now();
@@ -365,23 +341,16 @@ export default function EgressScreen({ onBack }: EgressScreenProps) {
     switchExit.mutate(name, {
       onSuccess: read => {
         if (!read.agentReachable) {
-          setNotice({
-            message: t('egress.toast.switchFailed'),
-            detail: t('egress.checkUnreachable')
-          });
+          setNotice(egressUnreachableNotice(t, EgressAction.Switch));
           return;
         }
 
-        setNotice({
-          message: t('egress.toast.switched', { name }),
-          detail: t('egress.toast.answered')
-        });
+        setNotice(egressSuccessNotice(t, EgressAction.Switch, name));
       },
       onError: error => {
-        setNotice({
-          message: t('egress.toast.switchFailed'),
-          detail: detailOf(error)
-        });
+        setNotice(
+          egressFailureNotice(t, EgressAction.Switch, detailOf(error))
+        );
       }
     });
   };
@@ -390,25 +359,16 @@ export default function EgressScreen({ onBack }: EgressScreenProps) {
     check.mutate(undefined, {
       onSuccess: read => {
         if (!read.agentReachable) {
-          setNotice({
-            message: t('egress.checkFailed'),
-            detail: t('egress.checkUnreachable')
-          });
+          setNotice(egressUnreachableNotice(t, EgressAction.Check));
           return;
         }
 
         const active = read.configs.find(config => config.active)?.name ?? '';
 
-        setNotice({
-          message: t('egress.toast.checked', { name: active }),
-          detail: t('egress.toast.answered')
-        });
+        setNotice(egressSuccessNotice(t, EgressAction.Check, active));
       },
       onError: error => {
-        setNotice({
-          message: t('egress.checkFailed'),
-          detail: detailOf(error)
-        });
+        setNotice(egressFailureNotice(t, EgressAction.Check, detailOf(error)));
       }
     });
   };

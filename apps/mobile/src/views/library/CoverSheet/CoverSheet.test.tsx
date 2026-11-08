@@ -18,16 +18,17 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { useRemovePlaylistCover } from '../../../api/useRemovePlaylistCover';
-import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
+import {
+  useRemovePlaylistCover,
+  useSetPlaylistCover
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import CoverSheet, { type CoverSheetProps } from './CoverSheet';
 
-jest.mock('../../../api/useSetPlaylistCover', () => ({
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
+  useRemovePlaylistCover: jest.fn(),
   useSetPlaylistCover: jest.fn()
-}));
-
-jest.mock('../../../api/useRemovePlaylistCover', () => ({
-  useRemovePlaylistCover: jest.fn()
 }));
 
 jest.mock('expo-image-picker', () => ({

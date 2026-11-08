@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Language, catalogs, createTranslator } from '@playliberty/i18n';
 
-import { ApiError } from '../clients/apiClient/apiClient';
+import { ApiError } from '@playliberty/api-client';
 import { problemSentence } from './problem';
 
 const t = createTranslator(catalogs[Language.English], Language.English);

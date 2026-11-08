@@ -43,9 +43,11 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import { ApiError } from '../../../api/apiClient/ApiClient';
-import { useRemovePlaylistCover } from '../../../api/useRemovePlaylistCover';
-import { useSetPlaylistCover } from '../../../api/useSetPlaylistCover';
+import {
+  ApiError,
+  useRemovePlaylistCover,
+  useSetPlaylistCover
+} from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 
 const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);

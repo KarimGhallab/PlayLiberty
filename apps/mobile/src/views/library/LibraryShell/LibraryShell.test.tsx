@@ -3,6 +3,7 @@ import { act, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
+import type * as ApiClientModule from '@playliberty/api-client';
 
 import LibraryShell from './LibraryShell';
 
@@ -44,8 +45,9 @@ jest.mock('../../../auth/useApiConfig', () => ({
   useApiConfig: () => null
 }));
 
-jest.mock('../../../api/useAccount', () => ({
-  useAccount: () => ({ data: null, error: null, isPending: false })
+jest.mock('@playliberty/api-client', () => ({
+  ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
+  useCurrentAccount: () => ({ data: null, error: null, isPending: false })
 }));
 
 jest.mock('../LibraryScreen/LibraryScreen', () => {

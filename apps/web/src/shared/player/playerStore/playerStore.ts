@@ -1,5 +1,14 @@
 import { create } from 'zustand';
 
+import {
+  mergeById,
+  previousMove,
+  randomItem,
+  seekFractionPatch,
+  seekPatch as boundedSeek,
+  shuffleWithLeader
+} from '@playliberty/player';
+
 import type {
   BareTrack,
   PersistedPlayerState,
@@ -14,28 +23,12 @@ import {
   queuePlaylistId
 } from '../types';
 
-/* Merge a refetch by id: known ids keep their sequence in a shuffled queue, new
- * ids append, a dropped track is gone, and the current id survives. */
-export function mergeQueue(
-  current: readonly PlayerTrack[],
-  incoming: readonly PlayerTrack[]
-): PlayerTrack[] {
-  const incomingById = new Map(
-    incoming.map(track => [track.id, track] as const)
-  );
-  const kept: PlayerTrack[] = [];
-
-  for (const track of current) {
-    const updated = incomingById.get(track.id);
-
-    if (updated !== undefined) {
-      kept.push(updated);
-    }
+function clampVolume(volume: number): number {
+  if (Number.isNaN(volume)) {
+    return 1;
   }
 
-  const keptIds = new Set(kept.map(track => track.id));
-
-  return [...kept, ...incoming.filter(track => !keptIds.has(track.id))];
+  return Math.min(1, Math.max(0, volume));
 }
 
 /*
@@ -68,14 +61,6 @@ function restoredQueue(
   return queue;
 }
 
-function clampVolume(volume: number): number {
-  if (Number.isNaN(volume)) {
-    return 1;
-  }
-
-  return Math.min(1, Math.max(0, volume));
-}
-
 /* The store's one position bound: the current track's declared duration, or
  * null while there is no duration to measure against. */
 function boundedPosition(state: PlayerState, seconds: number): number | null {
@@ -98,13 +83,12 @@ export function shouldApplySeek(currentTime: number, target: number): boolean {
 /* The one write a step and a jump share: bound the target, then ask the
  * element to apply it. */
 function seekPatch(state: PlayerState, seconds: number): Partial<PlayerState> {
-  const position = boundedPosition(state, seconds);
+  const patch = boundedSeek(
+    currentTrack(state)?.durationSeconds ?? null,
+    seconds
+  );
 
-  if (position === null) {
-    return state;
-  }
-
-  return { positionSeconds: position, seekTo: position };
+  return patch ?? state;
 }
 
 function signedStep(direction: SeekDirection, seconds: number): number {
@@ -132,46 +116,10 @@ function restoredPosition(
   return positionSeconds;
 }
 
-/* A random entry, or undefined when empty. Shuffle draws a new leader rather
- * than taking the track the playhead already stands on. */
-export function randomTrack(
-  queue: readonly PlayerTrack[]
-): PlayerTrack | undefined {
-  if (queue.length === 0) {
-    return undefined;
-  }
-
-  return queue[Math.floor(Math.random() * queue.length)];
-}
-
-/*
- * Fisher-Yates over the rest, the leader hoisted to the front: the transport
- * starts on the first entry, so shuffling changes order, not track.
- */
-function shuffledWithLeader(
-  queue: readonly PlayerTrack[],
-  leaderId: string | null
-): PlayerTrack[] {
-  const leader =
-    leaderId === null ? undefined : queue.find(track => track.id === leaderId);
-  const rest = queue.filter(track => track.id !== leader?.id);
-
-  for (let i = rest.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [rest[i], rest[j]] = [rest[j], rest[i]];
-  }
-
-  /* No leader in the queue to hoist; the scatter is all there is. */
-  return leader === undefined ? rest : [leader, ...rest];
-}
-
 /* The keyboard's step and the Media Session's larger one: the caller names the
  * direction, the store owns the distance. */
 const KEYBOARD_SEEK_SECONDS = 5;
 const MEDIA_SESSION_SEEK_SECONDS = 10;
-
-/* How far into a track a previous press means "step back", not "restart". */
-const SKIP_PREVIOUS_GRACE_SECONDS = 5;
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
   queue: [],
@@ -224,7 +172,9 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       }
 
       return {
-        queue: shuffle ? shuffledWithLeader(queue, startTrackId) : queue,
+        queue: shuffle
+          ? shuffleWithLeader(queue, startTrackId, track => track.id)
+          : queue,
         sourceQueue: queue,
         currentId: startTrackId,
         positionSeconds: 0,
@@ -260,7 +210,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       }
 
       const queue = state.shuffle
-        ? mergeQueue(state.queue, tracks)
+        ? mergeById(state.queue, tracks, track => track.id)
         : [...tracks];
       const sourceQueue = [...tracks];
       const currentStillThere =
@@ -375,13 +325,15 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     set(state => {
       const index = currentIndex(state);
 
-      if (index < 0) {
+      const move = previousMove(index, state.positionSeconds);
+
+      if (move === null) {
         return state;
       }
 
       /* Inside the grace window, step back; past it or at the first track, the
        * track restarts in place, `seekTo` carrying the jump, and resumes. */
-      if (index > 0 && state.positionSeconds < SKIP_PREVIOUS_GRACE_SECONDS) {
+      if (move === 'previous') {
         return {
           currentId: state.queue[index - 1].id,
           positionSeconds: 0,
@@ -424,17 +376,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       return seekPatch(state, state.positionSeconds + step);
     }),
   seekToFraction: (fraction: number) =>
-    set(state => {
-      const duration = currentTrack(state)?.durationSeconds ?? null;
-
-      if (duration === null || duration <= 0 || !Number.isFinite(fraction)) {
-        return state;
-      }
-
-      const clamped = Math.min(1, Math.max(0, fraction));
-
-      return seekPatch(state, clamped * duration);
-    }),
+    set(state =>
+      seekFractionPatch(
+        currentTrack(state)?.durationSeconds ?? null,
+        fraction
+      ) ?? state
+    ),
   seekToStart: () => set(state => seekPatch(state, 0)),
   seekToEnd: () =>
     set(state => {
@@ -458,7 +405,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         return { shuffle, queue: [...state.sourceQueue] };
       }
 
-      const leader = randomTrack(state.queue);
+      const leader = randomItem(state.queue);
 
       if (leader === undefined) {
         return { shuffle };
@@ -466,7 +413,11 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
       return {
         shuffle,
-        queue: shuffledWithLeader(state.queue, leader.id),
+        queue: shuffleWithLeader(
+          state.queue,
+          leader.id,
+          track => track.id
+        ),
         currentId: leader.id,
         positionSeconds: 0,
         seekTo: null,

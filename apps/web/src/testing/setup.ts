@@ -4,6 +4,10 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 
 import { resetDeferredActions } from '../shared/components/useDeferredAction/deferredActionStore';
 
+/* The resolved transport, so a test that mounts a hook has a client to send
+ * through. */
+import '../shared/api/transport';
+
 import { server } from './mocks/server';
 
 /*

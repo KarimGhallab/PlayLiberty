@@ -2,24 +2,38 @@ import { useEffect, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 import { endpoints } from '@playliberty/contracts';
+import {
+  CoverFailure,
+  coverChainKey,
+  nextCoverFailure,
+  selectPlaylistCover
+} from '@playliberty/ui-foundation';
 
 import { mediaUrl } from '../api/endpoints/endpoints';
 
-enum CoverFailure {
-  None = 'none',
-  Custom = 'custom',
-  Track = 'track'
-}
-
 /* The custom image carries its version, so a replacement is a new cache key. */
-function customCoverUrl(playlist: Playlist): string | null {
+function customCoverPath(playlist: Playlist): string | null {
   if (playlist.coverUpdatedAt === null) {
     return null;
   }
 
-  const path = mediaUrl(endpoints.playlistCover, { playlistId: playlist.id });
+  return mediaUrl(endpoints.playlistCover, { playlistId: playlist.id });
+}
 
-  return `${path}?v=${encodeURIComponent(playlist.coverUpdatedAt)}`;
+function trackCoverPath(playlist: Playlist): string | null {
+  if (playlist.coverTrackId === null) {
+    return null;
+  }
+
+  return mediaUrl(endpoints.trackThumbnail, {
+    trackId: playlist.coverTrackId
+  });
+}
+
+function withVersion(path: string, version: string | null): string {
+  return version === null
+    ? path
+    : `${path}?v=${encodeURIComponent(version)}`;
 }
 
 export interface PlaylistCover {
@@ -28,37 +42,33 @@ export interface PlaylistCover {
 }
 
 /* The custom, first-track, sleeve chain every surface that draws a playlist
- * cover shares, so their failure states cannot drift. */
+ * cover shares, so their failure states cannot drift. The level and its version
+ * come from `ui-foundation`; this hook maps the level to a URL. */
 export function usePlaylistCover(
   playlist: Playlist,
   includeCustom = true
 ): PlaylistCover {
-  const customCoverSrc = includeCustom ? customCoverUrl(playlist) : null;
-  /* The first track's id versions its fallback too: a changed first track is a
-   * new cache key, exactly like the custom cover's stamp. */
-  const trackCoverSrc =
-    playlist.coverTrackId === null
-      ? null
-      : `${mediaUrl(endpoints.trackThumbnail, {
-          trackId: playlist.coverTrackId
-        })}?v=${encodeURIComponent(playlist.coverTrackId)}`;
   const [coverFailure, setCoverFailure] = useState(CoverFailure.None);
-  const showingCustom =
-    customCoverSrc !== null && coverFailure === CoverFailure.None;
-  const cover = showingCustom
-    ? customCoverSrc
-    : coverFailure === CoverFailure.Track
-      ? null
-      : trackCoverSrc;
+  const selection = selectPlaylistCover(playlist, coverFailure, {
+    includeCustom
+  });
+  const customPath = customCoverPath(playlist);
+  const trackPath = trackCoverPath(playlist);
+  const cover =
+    selection.level === 'custom' && customPath !== null
+      ? withVersion(customPath, selection.version)
+      : selection.level === 'track' && trackPath !== null
+        ? withVersion(trackPath, selection.version)
+        : null;
 
   /* The image has no source to name, so the failure state names which level
    * failed: the custom image first, then the track thumbnail, then the sleeve. */
   const onCoverError = () =>
-    setCoverFailure(showingCustom ? CoverFailure.Custom : CoverFailure.Track);
+    setCoverFailure(nextCoverFailure(selection.level, coverFailure));
 
   useEffect(() => {
     setCoverFailure(CoverFailure.None);
-  }, [playlist.coverUpdatedAt, playlist.coverTrackId, includeCustom]);
+  }, [coverChainKey(playlist), includeCustom]);
 
   return { cover, onCoverError };
 }

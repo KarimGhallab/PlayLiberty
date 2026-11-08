@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 
-import { libraryKey, playlistKey, playlistPrefix } from '../keys/keys.js';
+import { libraryKey, playlistKey, playlistPrefix } from '../keys.js';
 
 /*
  * One map from a domain fact to the reads it asks again, shared by a mutation

@@ -1,6 +1,6 @@
 # 08: Share the playlist cover chain
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-scaffold-the-shared-client-packages.md).
 
@@ -23,11 +23,19 @@ The custom cover URL also appends its version in both hooks. Web maps a level to
 
 ## Acceptance criteria
 
-- [ ] `ui-foundation` owns one selector for the three cover levels and one failure transition.
-- [ ] The selector returns the version to append, so the cache-key rule lives in one place.
-- [ ] A new cover version resets the failure state on both clients.
-- [ ] Each hook keeps only its own mapping and its own effect.
-- [ ] The two local failure enums and the two fallback orders are deleted.
+- [x] `ui-foundation` owns one selector for the three cover levels and one failure transition.
+- [x] The selector returns the version to append, so the cache-key rule lives in one place.
+- [x] A new cover version resets the failure state on both clients.
+- [x] Each hook keeps only its own mapping and its own effect.
+- [x] The two local failure enums and the two fallback orders are deleted.
+
+## Outcome
+
+`@playliberty/ui-foundation` exports `CoverFailure`, `selectPlaylistCover`, `nextCoverFailure` and `coverChainKey`, plus the `CoverLevel` and `CoverSelection` types. The selector returns the level (`custom`, `track`, `sleeve`) and the version to append: the custom cover's stamp, the first track's id, or none at the sleeve. `nextCoverFailure` records the level that failed and leaves the sleeve alone. `coverChainKey` moves when either the custom version or the first track changes, so the hooks reset there.
+
+The web hook maps the level to a URL and appends the version; the mobile hook maps it to a `MediaSource` with the session headers. Both keep only their mapping and the reset effect. The local `CoverFailure` enums and the two fallback orders are gone.
+
+Verification: `pnpm run build` and `pnpm run lint:check` pass; ui-foundation runs 42 tests; `pnpm run test:unit` passes across the workspace.
 
 ## Verification
 

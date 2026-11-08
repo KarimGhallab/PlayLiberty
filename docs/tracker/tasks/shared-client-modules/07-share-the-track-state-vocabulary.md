@@ -1,6 +1,6 @@
 # 07: Share the track-state vocabulary
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** [`01`](01-scaffold-the-shared-client-packages.md).
 
@@ -28,13 +28,23 @@ The colour mapping stays per app. Mobile keeps its token colour lookup, and web 
 
 ## Acceptance criteria
 
-- [ ] One five-state table carries the value, the label key, the tone and the empty key.
-- [ ] One total function sums the five states.
-- [ ] The failure sentences and the track-link notices live in `i18n`, with no copy in either app.
-- [ ] One gone set serves both stream classifiers.
-- [ ] Mobile drops a `403` and a `409` as web does.
-- [ ] The colour mapping stays in each app.
-- [ ] The web and mobile chip rails still draw the same words in the same order.
+- [x] One five-state table carries the value, the label key, the tone and the empty key.
+- [x] One total function sums the five states.
+- [x] The failure sentences and the track-link notices live in `i18n`, with no copy in either app.
+- [x] One gone set serves both stream classifiers.
+- [x] Mobile drops a `403` and a `409` as web does.
+- [x] The colour mapping stays in each app.
+- [x] The web and mobile chip rails still draw the same words in the same order.
+
+## Outcome
+
+`@playliberty/ui-foundation` owns the vocabulary: `TRACK_STATUS_CHIPS` for the five file states, `RETAINED_CHIP` and `STATUS_CHIPS` for the rails, `statusCount`, `totalStatusCount`, `visibleStatusChips`, and the stream verdict (`StreamFailureKind`, `isGoneStreamStatus`, `streamFailureKind`) whose gone set is `403`, `404` and `409`.
+
+`@playliberty/i18n` owns `failureSentence` and the track-link notices (`cannotPlayNotice`, `unknownTrackNotice`, `leftPlaylistNotice`). The app copies and their tests are deleted.
+
+Web builds its rail from the shared table and maps `TrackTone` to its own `ChipTone` classes. Mobile rails import the shared table and helpers. Mobile's stream classifier now drops a `403` and a `409` as web does; web keeps its probe and both call the shared verdict.
+
+Verification: `pnpm run build` and `pnpm run lint:check` pass; ui-foundation runs 34 tests and i18n 51; `pnpm run test:unit` passes across the workspace.
 
 ## Verification
 

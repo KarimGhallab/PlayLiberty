@@ -9,10 +9,9 @@ import {
   publishMetadata
 } from '../mediaSession/mediaSession';
 import { shouldApplySeek, usePlayerStore } from '../playerStore/playerStore';
-import {
-  StreamFailureKind,
-  classifyStreamFailure
-} from '../streamFailure/streamFailure';
+import { StreamFailureKind } from '@playliberty/ui-foundation';
+
+import { classifyStreamFailure } from '../streamFailure/streamFailure';
 import { SeekDirection, currentTrack } from '../types';
 
 /*

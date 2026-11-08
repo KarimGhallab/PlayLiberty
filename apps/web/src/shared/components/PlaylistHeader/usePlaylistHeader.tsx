@@ -13,14 +13,17 @@ import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
-import type { MessageKey, Messages } from '@playliberty/i18n';
 import {
   formatLastSynced,
   syncStateLabel,
   trackCountUnit,
   useI18n
 } from '@playliberty/i18n';
-import { sleeveIndex } from '@playliberty/ui-foundation';
+import {
+  ShareMarkState,
+  shareMarkOf,
+  sleeveIndex
+} from '@playliberty/ui-foundation';
 
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import { usePlaylistCover } from '../../playlistCover/usePlaylistCover';
@@ -112,33 +115,11 @@ export interface PlaylistHeaderParts {
   readonly door: PlaylistDoorProps;
 }
 
-interface ShareMark {
-  readonly state: 'own-private' | 'own-shared' | 'collab';
-  readonly label: MessageKey<Messages>;
-  readonly Icon: typeof IconLock;
-}
-
-/* The indicator is deliberately coarser than the permission model: one glyph
- * says you are not the owner, not what you may do. */
-function shareMark(playlist: Playlist): ShareMark {
-  if (playlist.access !== 'owner') {
-    return {
-      state: 'collab',
-      label: 'header.collab',
-      Icon: IconUserShare
-    };
-  }
-
-  if (playlist.hasShares) {
-    return {
-      state: 'own-shared',
-      label: 'header.shared',
-      Icon: IconLockShare
-    };
-  }
-
-  return { state: 'own-private', label: 'header.private', Icon: IconLock };
-}
+const SHARE_ICONS: Record<ShareMarkState, typeof IconLock> = {
+  [ShareMarkState.Collab]: IconUserShare,
+  [ShareMarkState.OwnShared]: IconLockShare,
+  [ShareMarkState.OwnPrivate]: IconLock
+};
 
 export function usePlaylistHeader({
   playlist,
@@ -169,7 +150,8 @@ export function usePlaylistHeader({
   onRetryPlayback
 }: PlaylistHeaderSeam): PlaylistHeaderParts {
   const { t } = useI18n();
-  const mark = shareMark(playlist);
+  const mark = shareMarkOf(playlist);
+  const ShareIcon = SHARE_ICONS[mark.state];
   const sharedBy =
     playlist.access !== 'owner' && ownerName !== null ? ownerName : null;
   /* The identity hue a no-artwork cover draws. Derived from the id, so it is the
@@ -441,7 +423,7 @@ export function usePlaylistHeader({
               setShareTipDismissed(true);
             }
           }}>
-          <mark.Icon
+          <ShareIcon
             className={styles.playlistHeader__shareIcon}
             aria-hidden="true"
             focusable="false"

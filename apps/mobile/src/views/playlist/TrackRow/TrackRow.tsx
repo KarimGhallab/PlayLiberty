@@ -18,7 +18,7 @@ import AppImage from '../../../shared/components/AppImage/AppImage';
 import { usePressScale } from '../../../shared/components/PressableScale/usePressScale';
 import TrackBars from '../../../shared/components/TrackBars/TrackBars';
 import { mediaSource } from '../../../shared/media/mediaSource';
-import { isPlayable } from '../../../shared/playable/playable';
+import { isPlayable } from '@playliberty/player';
 import {
   lineHeightFor,
   useTextScale
@@ -30,7 +30,7 @@ import {
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
-import { failureSentence } from '../../../shared/trackState/failureSentence';
+import { failureSentence } from '@playliberty/i18n';
 import { trackToneColor } from '../../../shared/trackState/trackToneColor';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';
