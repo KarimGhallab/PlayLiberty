@@ -13,4 +13,4 @@ The decision is made once per open. A playlist that is not the queue stays at th
 
 The list effect waits for the track read to settle and for the playlist filter to be clear; it moves the scroll position only, never focus.
 
-Verification: `pnpm run build`, `pnpm run lint:check` and the unit suites pass (web 566, server 381, tokens 2). The page tests cover the landing, the instant scroll options, a playlist that is not the queue, and a current track that arrives on a later page. The e2e suite was not run here because it needs the full instance.
+The page tests cover the landing, the instant scroll options, a playlist that is not the queue, and a current track that arrives on a later page. The e2e suite was not run here because it needs the full instance.

@@ -70,7 +70,7 @@ build script derives the HTTPS callback from the public origin and adds the sche
 All three `PANGOLIN_*` values are set together or not at all; a partial set fails the boot. With none of them, the
 exchange and the refresh answer `503 provisioning_unavailable` and the rest of the instance is unaffected.
 
-The credential lifetimes are server configuration, not secret: `MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS` (12 hours),
-`MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS` (180 days) and `MOBILE_FAMILY_LIFETIME_SECONDS` (one year). They are positive
-whole seconds, a credential may not outlive its family, and an invalid combination fails the boot. The weekly prune
-removes credential rows once they expire, so the database follows the same caps.
+The credential lifetimes are server configuration, not secret: `MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS`,
+`MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS` and `MOBILE_FAMILY_LIFETIME_SECONDS`. The defaults and the validation live in
+[`loadConfig.ts`](../../apps/server/src/platform/config/loadConfig/loadConfig.ts); the mechanism is
+[spec 33](../../docs/tracker/specs/33-refresh-mobile-access.md).

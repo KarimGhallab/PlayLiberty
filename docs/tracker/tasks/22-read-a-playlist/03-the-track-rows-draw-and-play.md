@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-detail-reads-a-playlist.md)
 
 ## Outcome
 
@@ -25,13 +24,5 @@ and the queue read. The gallery cover and the chip now share the media source an
 the colours cannot drift.
 
 The row accepts the lane callback in its interface but draws no lane; ticket `04` adds it.
-
-## Verification
-
-- Row 7 tests and detail 22 tests pass; mobile 193 tests across 29 suites pass.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, pressing the first row of the shared playlist started the queue and marked the row Playing with the
-  bars.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

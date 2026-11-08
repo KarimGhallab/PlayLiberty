@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -18,14 +17,5 @@ A clean batch closes the sheet before its outcome rows can be read. The rows the
 sheet tests, including one row per chosen playlist in the chosen order and the three outcome words; a refusal would
 keep the sheet open. The README records `VIDEO_URL`, `VIDEO_TITLE`, the flow's row, and the picker's second-row
 rule.
-
-## Verification
-
-- The flow passed twice on the emulator with `OWNED_PLAYLIST=Paradis`,
-  `VIDEO_URL=https://www.youtube.com/watch?v=LibFI0nWtRA` and `VIDEO_TITLE=Alaska`.
-- The first run added `Alaska` to `Paradis` and the next writable playlist, found the row, removed it, undid the
-  removal, and ended in the gallery.
-- The second run exercised the already-present path with the same assertions and passed.
-- No source changed; the flow and README are the ticket's artifacts.
 
 See [`25-curate-a-playlist`](../../specs/25-curate-a-playlist.md).

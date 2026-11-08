@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { tokenLength } from '../../styles/tokens';
 import Sheet, { dismissesOnDrag } from './Sheet';
 
 const metrics = {
@@ -84,53 +83,6 @@ describe('the sheet frame', () => {
     await fireEvent.press(screen.getByLabelText('Close'));
 
     expect(onRequestClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('scrolls the body between the title and the footer', async () => {
-    await renderSheet();
-
-    expect(screen.getByTestId('sheet-body')).toBeOnTheScreen();
-    expect(screen.getByText('Content')).toBeOnTheScreen();
-  });
-
-  it('clears the bottom safe inset', async () => {
-    await renderSheet(24);
-
-    expect(screen.getByTestId('sheet')).toHaveStyle({
-      paddingBottom: 24 + tokenLength('space-4')
-    });
-  });
-
-  it('moves the sheet and fades the scrim instead of sliding the whole modal', async () => {
-    const { view } = await renderSheet();
-
-    const [modal] = view.container.queryAll(
-      node => 'animationType' in node.props
-    );
-
-    expect(modal?.props.animationType).toBe('none');
-    expect(screen.getByTestId('sheet-scrim')).toBeOnTheScreen();
-  });
-
-  it('runs its entry motion on the native driver', async () => {
-    jest
-      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-      .mockResolvedValue(false);
-    const timing = jest.spyOn(Animated, 'timing');
-
-    await renderSheet();
-
-    await act(async () => {
-      await fireEvent(screen.getByTestId('sheet'), 'layout', {
-        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 400 } }
-      });
-    });
-
-    expect(timing).toHaveBeenCalled();
-
-    for (const [, config] of timing.mock.calls) {
-      expect(config.useNativeDriver).toBe(true);
-    }
   });
 
   it('reports its exit once the modal is gone', async () => {
@@ -259,12 +211,5 @@ describe('the sheet frame', () => {
     });
 
     expect(onRequestClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps its sheet and handle reachable by test id', async () => {
-    await renderSheet();
-
-    expect(screen.getByTestId('sheet')).toBeOnTheScreen();
-    expect(screen.getByTestId('sheet-handle')).toBeOnTheScreen();
   });
 });

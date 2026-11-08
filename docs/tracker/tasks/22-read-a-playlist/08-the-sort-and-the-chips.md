@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`06`](06-the-header-plays-and-shuffles.md), [`07`](07-the-list-pages-and-lands.md)
 
 ## Outcome
 
@@ -25,14 +24,5 @@ leaves. Play and Shuffle still start from the queue route, never the filtered li
 
 The status chip words, tones and filter-empty sentences moved to one shared model used by the gallery and the detail.
 The two sort notice sentences were added to both catalogs.
-
-## Verification
-
-- Detail 66 tests, `usePlaylistTracks` 4 tests; mobile 266 tests across 34 suites.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, the identity led, the sort and chips followed as one rail, choosing Newest first updated the saved
-  sort and reordered the list, the Stored chip filtered the read while All kept 70, and an empty Failed filter offered
-  Show all. Shuffle disabled both controls.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

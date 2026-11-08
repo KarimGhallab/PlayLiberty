@@ -24,42 +24,6 @@ title, the playlist name, previous, play-pause, next, a seek bar and the queue. 
 A track with no stored file cannot be played and is skipped rather than allowed to stall the queue. Background
 playback, the notification and the lock screen are spec `24`'s.
 
-## User Stories
-
-1. As an account, I want a bar when music starts, so that I can control it from any screen.
-2. As an account, I want the bar absent when nothing plays, so that the screen is not paying for an empty control.
-3. As an account, I want the bar to name the track and its playlist, so that I know what I started.
-4. As an account, I want previous and next, so that I can move within the queue.
-5. As an account, I want next disabled at the end, so that I know the queue is over.
-6. As an account, I want one play-pause control that morphs, so that its state is obvious.
-7. As an account, I want to seek within a track, so that I can skip a long intro.
-8. As an account, I want the elapsed time and the duration, so that I know where I am.
-9. As an account, I want the seek bar to work with a screen reader, so that I can seek without sight.
-10. As an account, I want the device's volume buttons to be the volume, so that the app has no rail I cannot reach.
-11. As an account, I want the queue as a sheet, so that I can see what is coming without leaving the screen.
-12. As an account, I want the current row marked in the queue, so that I know where I am.
-13. As an account, I want to jump to a queued track, so that I can move without pressing next repeatedly.
-14. As an account, I want a track that cannot play to be skipped, so that one broken track does not end the session.
-15. As an account, I want a track whose file disappeared to be dropped, so that a pruned track does not stall me.
-16. As an account, I want a refusal to be explained rather than heard as silence, so that I know what happened.
-17. As an account, I want my queue to stay in the playlist's order, so that a refetch does not reshuffle it.
-18. As an account, I want a track new to the playlist to be appended, so that a sync does not move what I am hearing.
-19. As an account, I want a track removed from the playlist to be dropped, so that the queue follows the list.
-20. As an account, I want to start a playlist from any row, so that the queue begins where I pressed.
-21. As an account, I want shuffle to start with the track I pressed, so that my press still means something.
-22. As an account, I want shuffle to be the queue's order, so that the list and the queue agree.
-23. As an account, I want a call to pause the music, so that I am not talking over it.
-24. As an account, I want the music to resume after the call, so that I do not have to press play.
-25. As an account, I want unplugging my headphones to pause, so that I do not broadcast to the room.
-26. As an account, I want a track that fails mid-stream to be skipped, so that the queue keeps going.
-27. As an account, I want an expired session to take me to sign-in, so that it is not presented as a broken track.
-28. As an account, I want no prefetching, so that my instance is not downloading audio I may skip.
-29. As an account, I want one track at a time, so that the queue is predictable.
-30. As an account, I want the bar above the list, so that it never covers the last row.
-31. As an account with a bare shared track, I want no playlist name and no link, so that the playlist's existence is not revealed.
-32. As a screen-reader user, I want the bar's controls named with their track, so that I know what I am pressing.
-33. As a French-speaking account, I want the player in French, so that the app stays in my language.
-
 ## Implementation Decisions
 
 - **One player over one queue, in the app, never on the server.** No route accepts a position, a play or a skip, and
@@ -110,21 +74,7 @@ playback, the notification and the lock screen are spec `24`'s.
   [`24-shuffle-starts-playback`](../tasks/24-shuffle-starts-playback-and-the-list-mirrors-the-queue.md)'s; the saved
   sort's order is [`12-sort-and-filter-the-track-list`](12-sort-and-filter-the-track-list.md)'s; the bare-track
   context is [`30-share-a-track`](30-share-a-track.md)'s.
-
-## Testing Decisions
-
-- A test earns its place only if it fails when behaviour a listener relies on changes. The tests assert which track
-  is current after an advance, that an unplayable track is skipped rather than stopping the queue, that a refetch
-  does not reorder the queue, that the bar is absent with an empty queue, and that a `401` is not a playback error.
-  They do not assert the bar's height, the morph's timing, or the player library's internals.
-- **The queue and the player are tested at the store's seam**, as the web's store is: build from a playlist, replace,
-  merge over a refetch, advance at the end, drop a gone track, and the shuffle's order. Prior art is the web's
-  `player` and `queueOrder` tests.
-- **The bar and the queue sheet are tested at their components' seam**: the absent state, the bare-track shape, the
-  controls' availability at the ends, and the sheet's current row. Prior art is the web's `PlayerBar` tests.
-- **The critical journey is a Maestro flow**: play a playlist, advance, open the queue, jump to a track, and see the
-  bar persist across a navigation.
-- **Cut tests:** no test of the seek's pixel mapping, the artwork's fade, or the audio element's buffer.
+- **The queue sheet is the app's one addition to the web's playback surface.** It exists because a phone shows one screen at a time; it is not a new capability.
 
 ## Out of Scope
 
@@ -136,10 +86,3 @@ playback, the notification and the lock screen are spec `24`'s.
 - Reordering the queue, and a queue that accumulates across playlists.
 - A volume rail, a mute toggle, and keyboard transport chords.
 - Two tracks playing at once, and any prefetch.
-
-## Further Notes
-
-- The queue sheet is the app's one addition to the web's playback surface. It exists because a phone shows one
-  screen at a time; it is not a new capability.
-- The bar's absence at rest is the web's rule and the reason the app's screens can assume the bottom padding is
-  optional.

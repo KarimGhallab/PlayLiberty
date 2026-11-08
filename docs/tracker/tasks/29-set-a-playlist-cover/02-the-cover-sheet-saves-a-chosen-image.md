@@ -2,8 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None on the code. The human installs `expo-image-picker` and `expo-file-system` in the mobile
-workspace and rebuilds the Android dev client before this ticket is run.
 
 ## Outcome
 
@@ -25,15 +23,5 @@ gallery follow without a manual refresh.
 `usePlaylistCover` now accepts a null playlist, so the sheet can stay mounted while closed. The placeholder component
 and the unused `playlistActions.arriving` key were deleted; `coverDialog.pickFailed` was added to both catalogues for
 a picker that cannot open.
-
-## Verification
-
-- Mobile: 434 tests across 48 suites pass, including 11 at the sheet's seam (disabled Save, the sent file and type,
-  the successful close, the 5 MB refusal, the wrong-type refusal, the failure keeping the image, the discard
-  confirmation, the blocked dismissal, and Remove's one ask and absence).
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm --filter @playliberty/i18n run test` (42 tests),
-  `pnpm run lint:check` and `pnpm run build` pass.
-- On `emulator-5554`, a photo chosen from the system picker reached the gallery card and the detail, the database
-  recorded the new cover version, and Remove cleared it and returned both surfaces to the first-track cover.
 
 See [`29-set-a-playlist-cover`](../../specs/29-set-a-playlist-cover.md).

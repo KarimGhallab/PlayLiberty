@@ -11,6 +11,4 @@ The server registers from the declaration. `apps/server/src/shared/registerEndpo
 
 The web builds both media URLs from the declaration. `mediaPath` and `mediaUrl` in `apps/web/src/shared/api/endpoints/endpoints.ts` derive from the endpoint; `PlayerAudio` (the stream source and the Media Session artwork), `PlayerBar`, `TrackRow` and `usePlaylistHeader` (thumbnails) use `mediaUrl`, and `streamFailure` probes through `mediaPath`. No web module writes a JSON or media URL by hand, and the mock harness already derives its patterns from the table through `endpointPattern`.
 
-Verification: `pnpm run build` and `pnpm run lint` pass; the unit suites pass (server 386, web 499, packages 78); `pnpm test:e2e` is 35 passed. No new tests were added: the existing route, component and e2e suites are the regression net, and the server route tests call concrete URLs, so renaming a declared path fails them.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md).

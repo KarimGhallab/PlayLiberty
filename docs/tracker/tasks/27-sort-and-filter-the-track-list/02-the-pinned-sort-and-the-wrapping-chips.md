@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -18,13 +17,5 @@ sort is disabled for a read collaborator. No copy was added.
 
 The detail test that asserted the sideways rail and its divider became the assertion that the controls sit outside
 the scroll while the identity stays inside it, and the run-band test now expects the band under the identity alone.
-
-## Verification
-
-- Mobile 423 tests across 47 suites pass.
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, the sort led above three wrapped chip rows on `Paradis` at 390 dp.
-- One swipe left the identity off screen while the sort and the chips kept their exact bounds.
-- The sort opened its sheet with Playlist order, Newest first and Oldest first.
 
 See [`27-sort-and-filter-the-track-list`](../../specs/27-sort-and-filter-the-track-list.md).

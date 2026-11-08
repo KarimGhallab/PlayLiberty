@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`02`](02-the-exchange-counts-the-caller.md)
 
 ## Outcome
 
@@ -14,17 +13,6 @@ reason on every refusal, and the forwarded Pangolin user id when the code resolv
 The audit line and the error line never contain the code, the verifier, the token id or the token secret. The account
 is the forwarded Pangolin user id, not a server account id.
 
-## Verification
-
-- Server 470 tests across 33 suites, `tsc -p tsconfig.json --noEmit`, `pnpm run build` and `pnpm run lint:check`
-  pass.
-- Seven audit tests cover the allowed exchange and each named refusal, and assert that the exchange's lines carry
-  none of the four secrets.
-
-## Notes
-
-- The recording logger moved to the shared test infrastructure so the audit and provisioning tests use one copy.
-- The secret check inspects the exchange's own lines. The recording logger keeps Fastify's raw request objects,
-  which are not the serialized request log the server writes.
+**Constraints:** The recording logger is shared test infrastructure. The secret check inspects the exchange's own lines, not the serialized request log.
 
 See [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md).

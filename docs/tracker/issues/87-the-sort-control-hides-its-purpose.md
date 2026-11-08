@@ -9,4 +9,4 @@ The trigger now carries a visible `detail.sortBy` prefix before the current orde
 
 The accessible name is unchanged: the trigger keeps `aria-label` `Sort by: <order>`, and the option list and the `aria-selected` value are untouched. No catalog entry was added; `detail.sortBy` and the three option keys already carried both phrases.
 
-`PlaylistSortControl.test.tsx` adds the visible-prefix assertion. The sort now sits on its own line above the filter chips, so the wider label does not compete with the chip rail for the row. Verification: `pnpm run build` and `pnpm run lint` pass; the web suite is 506 passed across 51 files; the arrange journey asserts the sort above the chips and passes at 1440, 1280 and 390.
+`PlaylistSortControl.test.tsx` adds the visible-prefix assertion. The sort now sits on its own line above the filter chips, so the wider label does not compete with the chip rail for the row.

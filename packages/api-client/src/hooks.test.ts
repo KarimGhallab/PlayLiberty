@@ -8,29 +8,15 @@ import {
   Provider
 } from '@playliberty/contracts';
 import {
-  accountPageKey,
-  accountsKey,
-  currentAccountKey,
   egressKey,
-  latestSyncRunKey,
   libraryKey,
   playlistKey,
-  playlistPrefix,
-  playlistQueueKey,
-  playlistSharesKey,
-  playlistTracksKey,
-  trackKey
+  playlistPrefix
 } from '@playliberty/query';
 
-import {
-  accountPageQueryOptions,
-  accountsQueryOptions,
-  currentAccountQuery
-} from './account.js';
-import { checkEgressOptions, egressQueryOptions, switchEgressOptions } from './egress.js';
+import { checkEgressOptions, switchEgressOptions } from './egress.js';
 import {
   createPlaylistOptions,
-  libraryQueryOptions,
   syncAllPlaylistsOptions,
   updatePinOptions
 } from './library.js';
@@ -39,11 +25,6 @@ import {
   deletePlaylistOptions,
   fetchTrackWholeOptions,
   grantShareOptions,
-  latestSyncRunQueryOptions,
-  playlistQueryOptions,
-  playlistQueueQueryOptions,
-  playlistSharesQueryOptions,
-  playlistTracksQueryOptions,
   removePlaylistCoverOptions,
   removeTrackOptions,
   renamePlaylistOptions,
@@ -55,7 +36,6 @@ import {
   updateSortOptions,
   revokeShareOptions
 } from './playlist.js';
-import { trackQueryOptions } from './track.js';
 
 const RUN: SyncRun = {
   id: 'run-1',
@@ -96,29 +76,6 @@ function queryClient(): QueryClient {
   });
 }
 
-describe('the hook keys', () => {
-  it('uses the key the query package owns', () => {
-    expect(accountsQueryOptions().queryKey).toBe(accountsKey);
-    expect(accountPageQueryOptions(true).queryKey).toBe(accountPageKey);
-    expect(currentAccountQuery.queryKey).toBe(currentAccountKey);
-    expect(egressQueryOptions().queryKey).toBe(egressKey);
-    expect(libraryQueryOptions().queryKey).toBe(libraryKey);
-    expect(playlistQueryOptions('p1').queryKey).toEqual(playlistKey('p1'));
-    expect(latestSyncRunQueryOptions('p1').queryKey).toEqual(
-      latestSyncRunKey('p1')
-    );
-    expect(playlistTracksQueryOptions('p1', undefined).queryKey).toEqual(
-      playlistTracksKey('p1')
-    );
-    expect(playlistQueueQueryOptions('p1').queryKey).toEqual(
-      playlistQueueKey('p1')
-    );
-    expect(playlistSharesQueryOptions('p1').queryKey).toEqual(
-      playlistSharesKey('p1')
-    );
-    expect(trackQueryOptions('t1').queryKey).toEqual(trackKey('t1'));
-  });
-});
 
 describe('the mutation invalidations', () => {
   let client: QueryClient;

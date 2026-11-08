@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-detail-reads-a-playlist.md)
 
 ## Outcome
 
@@ -19,14 +18,5 @@ retry.
 
 `useRetryFailedTracks` reads the failed page set and retries each track, then asks the playlist reads again. All band
 copy was already in both catalogs.
-
-## Verification
-
-- Sync band 9 tests, detail 70 tests; mobile 279 tests across 35 suites.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, the shared Chine detail drew the band under the identity with `Last sync 14 hours ago` and
-  `Nothing changed`. The failed-run and retry paths are covered by the band's widget tests because the dev data has no
-  failed run or failed track.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

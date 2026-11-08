@@ -33,39 +33,6 @@ Live updates run while the app is foregrounded and re-read on the way back. The 
 Native styles from the shared token module, and the shared language provider gains the one seam it needs to serve a
 device instead of a browser.
 
-## User Stories
-
-1. As an account on a phone, I want the app to open on my gallery, so that my playlists are the first thing I see.
-2. As an account, I want the app to remember my access for months, so that I do not sign in every time I open it.
-3. As a person who has never signed in, I want one clear action on a signed-out screen, so that I know what to do.
-4. As a signed-out person, I want nothing else reachable, so that I do not meet empty screens I cannot fill.
-5. As an account, I want a sheet that names me and offers Sign out, so that I can hand the phone over safely.
-6. As an admin, I want the egress console reachable from that sheet, so that I can manage exits without a laptop.
-7. As a non-admin, I want the egress console absent, so that I am not offered a screen I cannot use.
-8. As a French-speaking account, I want the app to open in French when my phone is French, so that I read my own language.
-9. As an account, I want to switch the language from the sheet, so that I can change it without changing my phone.
-10. As an account, I want the choice remembered, so that it survives a restart.
-11. As an account, I want a playlist I open to be pushed over the gallery, so that the platform back gesture returns me.
-12. As an account, I want the back gesture to be the way back, so that the app behaves like the phone it runs on.
-13. As a recipient of a shared track link, I want the link to open the track in the app, so that one press plays it.
-14. As a recipient of a link the app cannot resolve, I want a page that says so and a way home, so that I am not stranded.
-15. As a listener, I want the screens to update while I use the app, so that a sync finishing changes what I see.
-16. As a listener, I want the app to catch up when I return to it, so that a phone in my pocket does not show stale data.
-17. As a listener, I want no battery spent on a background connection, so that the app does not cost me a charge.
-18. As a person whose token expired, I want to be asked to sign in again rather than see a broken screen, so that I know what happened.
-19. As a person whose token expired mid-playback, I want no browser to appear over the music, so that nothing is yanked from under me.
-20. As a person who signs out, I want the token gone from the device, so that a lost phone is not a lost account.
-21. As an account, I want a refused request explained in my language, so that I can act on it.
-22. As a screen-reader user, I want every control named and given a role, so that I can operate the app without sight.
-23. As a screen-reader user, I want the state words read, not just the colours, so that a failed track is audible as failed.
-24. As a user with large text, I want the interface to respect my setting, so that I can read it.
-25. As a user with reduced motion, I want animation removed, so that the app does not make me ill.
-26. As a thumb user, I want every control at 44 points, so that I can hit it.
-27. As an account, I want the app to look like the web client, so that the two are one product.
-28. As an account, I want the app to start clean after Android kills it, so that it never resumes music I did not ask for.
-29. As a developer, I want one owner for server state, so that no screen keeps its own copy.
-30. As a developer, I want the shared catalogs and tokens consumed, not copied, so that the two clients cannot drift.
-
 ## Implementation Decisions
 
 - **The app is `apps/mobile`, the Expo SDK 57 app the architecture pins** (React Native 0.86.3, React 19.2, New
@@ -154,26 +121,9 @@ device instead of a browser.
   ([Mutating requests carry a client header and pass origin checks](../../ARCHITECTURE.md#mutating-requests-carry-a-client-header-and-pass-origin-checks)),
   and the deployment boundary
   ([Deployment behind the Pangolin edge](../../ARCHITECTURE.md#deployment-behind-the-pangolin-edge)).
-
-## Testing Decisions
-
-- A test earns its place only if it fails when behaviour a user relies on changes. The shell's tests assert which
-  screen is drawn for a given state, which route a link resolves to, that no read is issued while signed out, and
-  that a refused token lands on the signed-out state. They do not assert style values, the sheet's animation, or
-  the shape of the storage adapter.
-- **The shared provider's seam is tested in `packages/i18n`**, at its existing seam: the injected write is called
-  with the new language, the storage port is written, and the resolution order is unchanged. The web's provider
-  tests must pass untouched, which is the proof that the seam did not move the web's behaviour.
-- **The shell is tested at the app's own seams**: the router for the four routes and the not-found body, the account
-  sheet for its items and their gating, the signed-out state for the absence of reads, and the stream reader for
-  open, close on background, refetch and reconnect on return. Prior art is the web's router tests and its
-  `useEventStream` tests.
-- **The critical journeys are Maestro flows on a device**: the app opens on the library and the account sheet opens
-  and closes; a signed-out app shows one action; the language switch renders French after a restart. The gallery, the
-  track link and the egress door belong to the specs that build them (`21`, `30` and `31`), so a flow never asserts
-  a placeholder. This is the seam that exercises the real app, the real secure store and the real router.
-- **Cut tests:** no test of the sheet's gesture, the token's encryption, the exact copy of the signed-out sentence,
-  or the backoff's timings.
+- **A capability's package is installed by the human, not an agent.** `expo-localization` here, `expo-crypto` and `expo-web-browser` in spec `20`, `expo-clipboard` in spec `30` and `expo-image-picker` in spec `29`.
+- **The signed-out screen is written in both catalogues.** It is the first surface a person sees, so its copy is part of the product's first impression.
+- **The account sheet is the one place the mobile client is a superset of the web.** That is recorded here rather than discovered in an audit.
 
 ## Out of Scope
 
@@ -186,13 +136,3 @@ device instead of a browser.
 - A settings screen beyond the account sheet's items, and any preference field the contracts do not have.
 - Analytics, crash reporting, and any third-party telemetry.
 - A UI component library, a styling runtime, and a light theme.
-
-## Further Notes
-
-- The packages the app installs as its capabilities land: `expo-localization` here, `expo-crypto` and
-  `expo-web-browser` in spec `20`, `expo-clipboard` in spec `30` and `expo-image-picker` in spec `29`. They are
-  named in the spec that needs them and installed by the human, not by an agent.
-- The signed-out state is the only screen a person sees before provisioning, so its copy is part of the product's
-  first impression and is written in both catalogues.
-- The account sheet's existence is the one place the mobile client is a superset of the web. That is recorded here
-  rather than discovered in an audit.

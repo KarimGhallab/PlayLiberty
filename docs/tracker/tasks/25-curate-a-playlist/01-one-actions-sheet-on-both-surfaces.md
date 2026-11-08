@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -19,16 +18,5 @@ the same refusal contract.
 Share, Rename and Cover open the existing placeholder on both screens. [`02`](02-rename-a-playlist.md) replaces
 Rename; [`26`](../../specs/26-share-a-playlist.md) and [`29`](../../specs/29-set-a-playlist-cover.md) replace Share
 and Cover. The new sentence is in both catalogs under `library.syncFailed`.
-
-## Verification
-
-- Mobile 382 tests across 43 suites pass, including the new model, detail and gallery cases.
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, in French, the detail as the owner showed Share, Rename, Cover, Sync now and Delete, with no Pin;
-  as a write collaborator it showed Cover and Sync now; as a read collaborator it showed no overflow.
-- Sync now from the detail started the sync and closed the sheet; the identity read `Synchronisation`.
-- The gallery showed six items for the owner, Pin, Cover and Sync now for the writer, and Pin alone for the reader.
-- Airplane mode forced a refused Pin and a refused Sync now; each kept the sheet open with
-  `L'épingle n'a pas pu être modifiée.` and `La synchronisation n'a pas pu démarrer.`
 
 See [`25-curate-a-playlist`](../../specs/25-curate-a-playlist.md).

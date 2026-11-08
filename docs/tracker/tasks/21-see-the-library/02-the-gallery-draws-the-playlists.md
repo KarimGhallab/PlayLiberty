@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -15,11 +14,5 @@ The card draws the cover, the name, the owner line only for a shared playlist, t
 The cover seam falls back from the custom cover, to the first track's thumbnail, to the playlist's sleeve hue, and each image request carries the session's token headers. The six sleeve names moved into one `sleeveColor` helper, which the account sheet's monogram now shares.
 
 The card's tests cover the cover chain and headers, the disabled play, the owner line, the incomplete count, the count and state, the share mark, and the single announced name with its navigation. The gallery's tests cover the three groups and their order, the empty group's absent heading, the owner line, the incomplete count, and the card's navigation.
-
-## Verification
-
-- Mobile 97 tests across 18 suites, including the card's 8 and the gallery's 5.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`21-see-the-library`](../../specs/21-see-the-library.md).

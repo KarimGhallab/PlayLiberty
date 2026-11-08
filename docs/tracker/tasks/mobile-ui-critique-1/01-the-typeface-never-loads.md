@@ -3,38 +3,6 @@
 **Status:** resolved
 **Labels:** `bug`, `ready-for-human`
 **Source:** [A design critique scores the mobile app 26/40](../../issues/108-a-design-critique-scores-the-mobile-app-26-40.md)
-**Blocked by:** None. The font file and `expo-font` are in place.
-
-## Observed
-
-`packages/tokens/src/values.ts` names the family `IBM Plex Sans`, `apps/mobile/src/shared/styles/tokens.ts` passes it
-into every `Text` style, and the app has no font asset, no `expo-font` dependency, no config plugin and no loader. On
-Android an unresolved family falls back to the platform face, so every screen renders in Roboto. The type scale, the
-three weights and the two layouts capped at 1.3 were all measured against Plex metrics.
-
-## Expected
-
-The mobile client draws in IBM Plex Sans, as the web client does: one variable file covering the three shipped
-weights, self-hosted, loaded before the first frame so no screen flashes the fallback.
-
-## Evidence
-
-- `packages/tokens/src/values.ts`: `'font-ui': 'IBM Plex Sans'`.
-- `apps/mobile/src/shared/styles/tokens.ts`: `fontFamily = families['font-ui'].value`.
-- `apps/mobile/package.json`: no `expo-font`.
-- `apps/mobile/assets/`: `shelf/` and `splash-icon.png` only, plus the generated splash set.
-- `apps/mobile/app/_layout.tsx`: no font load.
-- Every screenshot of the 2026-11-03 critique run shows the platform face.
-
-## Acceptance criteria
-
-- [x] The family resolves on device: a rendered title shows Plex's tailed `l` and its angled terminals.
-- [x] The weights the design uses resolve from one variable file, not one file per weight.
-- [x] The first frame is gated on the load, or the splash is held, so a cold start never shows the fallback.
-- [x] `families['font-ui']` stays the only owner of the name.
-- [x] No screen overflows or reflows at the two capped surfaces (the card and the identity header) once the real
-      metrics land.
-- [x] `pnpm --filter @playliberty/mobile run test` and the app's screenshots pass.
 
 ## Outcome
 

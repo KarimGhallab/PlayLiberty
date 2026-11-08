@@ -11,42 +11,6 @@ A signed-in phone holds one Pangolin resource access token that lives for 180 da
 
 The app obtains a short-lived access token and a long-lived refresh token at provisioning. The access token lasts 12 hours and is renewed silently before it lapses. The refresh token lasts 180 days of use, capped at one year, and is rotated on every use, so a copied token is detected when the legitimate holder next refreshes. Sign-out revokes the refresh family and every unexpired access token at the edge. The refresh credential is the second, exact, method-scoped path outside Pangolin SSO. The web client keeps its browser session and is not changed.
 
-## User Stories
-
-1. As a user, I want to stay signed in through months of ordinary use without opening the browser again, so that listening is not interrupted by a login.
-2. As a user, I want the app to renew my access credential silently before it lapses, so that no request fails while I am using the app.
-3. As a user, I want a leaked access token to stop working within hours, so that a copy of it is not a six-month key.
-4. As a user, I want my phone's credential to end when I sign out, so that a lost or handed-over phone cannot keep using my account.
-5. As a user, I want a refresh token used by two parties to be detected and cut off, so that a copied token does not live beside my own session.
-6. As a user, I want a network outage to leave me signed in, so that a lost signal is not mistaken for a revoked account.
-7. As a user, I want a genuinely refused credential to show one sentence and a sign-in action, so that I know what to do next.
-8. As a user, I want the app to remember my session across a kill and relaunch, so that reopening it does not cost a browser trip.
-9. As a user, I want sign-out to clear my device even when it cannot reach the server, so that handing over the phone still removes my access locally.
-10. As a user on Android, I want an expired credential to produce a clean refusal rather than an SSO page, so that the app can renew instead of showing HTML.
-11. As a user, I want my playback to keep working through a normal session, so that a credential refresh does not stop the queue.
-12. As a user, I want the app to spend one refresh, not one per screen, so that a reconnect does not multiply requests.
-13. As a user, I want the app to recover when it is killed between the server's rotation and its own write, so that a crash does not cost a sign-in.
-14. As an account, I want each install to hold its own credential, so that signing out of one phone does not end another.
-15. As an account, I want the refresh family to expire after a year at the latest, so that a forgotten credential does not live forever.
-16. As an account, I want an unused credential to expire after 180 days, so that an abandoned install stops being usable.
-17. As an operator, I want the refresh path to be the only new SSO exemption, exact and method-scoped, so that the public surface stays small.
-18. As an operator, I want the refresh and revoke paths to be rate limited, so that a token cannot be brute forced.
-19. As an operator, I want no token, verifier, or secret in a log line or URL, so that debugging does not create a leak.
-20. As an operator, I want the integration key to hold the delete permission, so that sign-out can revoke at the edge immediately.
-21. As an operator, I want the three lifetimes to be configuration, so that a deployment can tune them without a code change.
-22. As an operator, I want refresh, reuse, and revocation outcomes in the audit log, so that I can investigate a session.
-23. As an operator, I want expired credential rows pruned, so that the database does not grow forever.
-24. As an operator, I want the access token's title to identify its family, so that I can find the right token in Pangolin.
-25. As a security-minded user, I want the server to store only a hash of the refresh token, so that a database copy is not a set of live credentials.
-26. As a security-minded user, I want the previous access token to stay valid briefly after a refresh, so that an open stream is not cut off, and to die at its own expiry.
-27. As a developer, I want one in-flight refresh shared by the API, the live event stream, and the player, so that rotation is not raced.
-28. As a developer, I want the exchange and refresh responses to share one contract, so that the app has one token record.
-29. As a developer, I want the app not to sign out on a rate limit or a server fault, so that a temporary failure does not look like a revoked account.
-30. As a maintainer, I want the web client untouched, so that the browser session keeps its single credential.
-31. As a maintainer, I want the refresh decisions recorded in one spec, so that the earlier lifetime clauses are not silently contradicted.
-32. As an operator, I want a family revoked on reuse to also delete its live access tokens, so that detection cuts the attacker's window immediately.
-33. As a user whose device clock is wrong, I want renewal scheduled from the server's duration, so that the app does not refresh on every request.
-
 ## Implementation Decisions
 
 ### Credential model
@@ -141,31 +105,9 @@ The app obtains a short-lived access token and a long-lived refresh token at pro
 - The refresh request and the revoke request each have a schema for the refresh token.
 - The existing problem codes cover every refusal; no new code is added.
 - The revoke endpoint answers `204`, including when the family is already gone or belongs to another account.
-
-## Testing Decisions
-
-A good test asserts external behavior that a user or an operator relies on, at the module whose branch implements it. It does not restate a schema, a constant, a presentation detail, or a pass-through value. A status, a header, an audit line, and an exact user-facing sentence stay where they are the contract.
-
-### Server
-
-- The refresh route is tested at the HTTP seam: the real app over a temporary database, a fake Pangolin client that records mints and revocations, and the injected clock. This is the same seam as the provisioning route tests. It proves rotation, the grace replay, reuse revocation of the family and its access tokens, a mint failure that does not consume the token, a vanished user, the cap clamp, the rate limit, the expiry fields, and the audit lines.
-- The identity hook's exemption is tested at its own seam, following the exchange cases: `POST` reaches the route without identity, while `GET` and `PUT` on the same path are refused.
-- The real Pangolin client gets one contract test for the revocation request, because a wrong delete path fails silently at sign-out. Its other HTTP shape stays cut, as the provisioning spec decided.
-- The revoke endpoint is tested at the HTTP seam for the account check, the family revocation, and the idempotent answer.
-
-### Mobile
-
-- The session module is tested at its injected seam, following the provisioning dependencies: `fetch`, `store`, and `now`. It proves the proactive margin, the single-flight promise, the rotation write, the `invalid_grant` versus transient split, the atomic record, sign-out, and that a device clock offset does not cause a refresh per request.
-- The API client is tested with a fake session: a `401` produces one refresh and one retry, and a refused refresh produces the signed-out error only for `invalid_grant`.
-- The live event module keeps its existing refusal test and adds the `401` refresh and reconnect branch.
-
-### Journey
-
-The existing provisioning Maestro flow is reused. It now proves the new exchange response and the persisted record. No new flow is added: the refresh is invisible and the 12-hour life cannot be reached without a test-only lifetime, so a timing-sensitive flow would test the harness more than the product.
-
-### Cut
-
-The refresh token's format and length, the 180-day and one-year constants, the SecureStore encryption, the family id's text, and the sign-out failure sentence are not asserted.
+- **This spec supersedes spec `20`'s lifetime, refresh and revocation clauses.** Every other provisioning decision stands.
+- **The grace cache is process-local.** A multi-process deployment would need a shared store, or it would treat every race as reuse.
+- **The development proxy and the Android build need the refresh path** for the provisioning journey to keep working end to end.
 
 ## Out of Scope
 
@@ -178,13 +120,3 @@ The refresh token's format and length, the 180-day and one-year constants, the S
 - Migration of existing client credentials.
 - Refresh tokens in URLs, device attestation, and DPoP-style binding.
 - Revoking an old family when an install provisions again; it expires by the idle window or the cap.
-
-## Further Notes
-
-- This spec supersedes the earlier provisioning spec's 180-day lifetime, its refresh and revocation out-of-scope clauses, and its claim that the life is a configuration change. Every other provisioning decision stands.
-- The one-year cap and the 180-day idle window are policy, not mechanism. They are configuration so a deployment can tighten them without a code change.
-- The grace cache is process-local. A future multi-process deployment would need a shared store for the grace, or it would treat every race as reuse.
-- The access life is the lever that makes the stream recovery path necessary. If the default drops below 12 hours, build that path first.
-- The web client and its single credential are untouched. The edge keeps two exact SSO exemptions, not one.
-- The development proxy and the Android build need the refresh path for the provisioning journey to keep working end to end.
-- The absolute expiry is the server's record; the relative duration is the client's schedule. Keeping both is deliberate: the first is useful for display and records, the second prevents a clock offset from turning a fresh token into an immediate refresh.

@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-exchange-issues-the-pair-and-the-app-holds-one-record.md)
 
 ## Outcome
 
@@ -33,18 +32,5 @@ membership signal; checking the resource's user list would need a permission the
 mint refusal is therefore the outage answer (`502`) and leaves the family alone. A removed user is cut off by the
 edge refusing the fresh access token, which `05` turns into a definitive refusal, rather than by the refresh
 answering `invalid_grant`.
-
-## Verification
-
-- Server: 490 tests across 35 files. The refresh suite proves the rotation, the consumed row, the new access row, the
-  family-prefixed title, the clamp against the family cap, the unknown, consumed, expired-token, revoked-family and
-  expired-family refusals, the `503`, the `502` that preserves the token, the missing-body validation, both rate
-  limits (the family one across distinct callers), the assertion-only reachability and the no-store header. The audit
-  suite proves the allowed and refused lines and that neither the token nor the access secret is logged. The
-  identity suite proves the `POST` reaches the route without identity and that `GET` and `PUT` answer `401`.
-- Through the development proxy, `POST /auth/refresh` answered `400 invalid_grant` as problem JSON rather than the
-  shell HTML or an SSO redirect.
-- `pnpm run build` and `pnpm run lint:check` pass.
-- A live rotation from the app is not exercised yet; the session module that calls it is `04`.
 
 See [`33-refresh-mobile-access`](../../specs/33-refresh-mobile-access.md).

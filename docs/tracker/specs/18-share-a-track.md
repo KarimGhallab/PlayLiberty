@@ -17,49 +17,6 @@ Every track gets an address. On a playlist, the address bar names the playing tr
 
 The link is inside the instance. The edge still authenticates, no public link exists, and copying a track gives no playlist access and creates no share.
 
-## User Stories
-
-1. As a playlist owner, I want to copy the link of the playing track, so that I can send exactly that track to another account.
-2. As a playlist owner, I want the address bar to name the playing track, so that copying the browser URL is enough to share it.
-3. As a playlist collaborator, I want a Copy link item in the track's menu, so that I can share a track without holding the owner's powers.
-4. As an account, I want the copied link to carry the playlist and the track, so that a recipient with access hears the track in its playlist context.
-5. As a recipient with read access, I want the playlist to open unshuffled at the shared track, so that I hear it in the order the owner chose.
-6. As a recipient with read access, I want the tracks before the shared track to keep their places, so that the queue and the playlist agree.
-7. As a recipient with read access, I want Previous and Next to follow the shared queue, so that I can move within the playlist around the track.
-8. As a recipient with read access, I want playback to stop at the playlist's end, so that the link does not loop or invent tracks.
-9. As a recipient with read access, I want shuffle off for this queue, so that the order is the one the link promised.
-10. As a recipient without access to the playlist, I want the track to play alone, so that the link is useful without a playlist share.
-11. As a recipient without access, I want to land on my gallery, so that I am not shown a playlist I cannot read and still keep my library.
-12. As a recipient without access, I want the player bar to show the track title only, so that the owner's playlist name and identity are not revealed.
-13. As a recipient without access, I want the address to become `/tracks/T`, so that the track has a shareable address of its own.
-14. As a recipient, I want the track to start when I open the link, so that one press is enough.
-15. As a recipient whose browser refuses autoplay, I want the track queued paused at its start, so that I can press play.
-16. As a recipient, I want a reload to keep the queue at the position I left, so that refreshing does not restart or drop it.
-17. As a recipient of a bare track, I want starting another playlist from my gallery to make the address `/`, so that the URL describes what is playing.
-18. As a recipient of a link to a track that is no longer in the playlist, I want the track to play alone and a notice to say it left the playlist, so that I understand why the playlist did not open.
-19. As a recipient of a link to a playlist whose track is not stored, I want the playlist to stay and a notice to say it cannot play yet, so that I can see the playlist and retry where my access allows.
-20. As a recipient without access to a track that is not stored, I want the gallery and a notice, so that I know the link is valid but the audio is not ready.
-21. As a recipient of a link to a track that was pruned, I want a notice, so that I do not face a blank page.
-22. As a recipient of a link to a track whose video is gone and was never stored, I want a notice to say it is unavailable, so that I stop waiting.
-23. As a track owner, I want the copy action to confirm that the link was copied, so that I know the action worked.
-24. As a track owner on a browser that refuses clipboard access, I want an error to say the link could not be copied, so that I do not send nothing.
-25. As a track owner, I want Copy link on every row, including read-only playlists, so that sharing does not need curation rights.
-26. As a track owner, I want Copy link on the playing row, so that the current track is shareable from its own row.
-27. As a track owner, I want Copy link while a row is downloading, so that a track does not have to wait for its audio before its link can be sent.
-28. As a keyboard user, I want the row menu and Copy link reachable and named, so that I can share without a pointer.
-29. As a phone user, I want the row menu and the copy action at the touch target, so that sharing works with a thumb.
-30. As a recipient on a phone, I want the gallery and the player bar at phone width, so that the fallback is the same experience.
-31. As a French-speaking user, I want the new controls and notices in French, so that the interface stays in my language.
-32. As a listener, I want the browser tab to name a bare track, so that I can find it among my tabs.
-33. As a listener, I want a one-track link to stop at its end, so that it does not repeat.
-34. As a playlist owner, I want the copied URL to be absolute, so that pasting it into a chat works.
-35. As a recipient, I want the playlist link and the bare-track link to be different addresses, so that I can tell whether a queue or one track will play.
-36. As an account, I want the link to work only inside the instance, so that the private boundary is not weakened.
-37. As a playlist owner, I want copying a track to grant nothing, so that sending a track does not share the playlist.
-38. As a recipient without access, I want the player bar to offer no way into the playlist, so that a link cannot lead me to a page I cannot read.
-39. As a recipient, I want the bare track's artwork in the player bar, so that the track remains identifiable.
-40. As a recipient, I want a reload of a bare-track link to keep the track, so that the address remains a durable reference to it.
-
 ## Implementation Decisions
 
 - **A track link is the playlist URL carrying the track.** The canonical form is `/playlists/P?track=T`: the existing playlist route gains a validated, non-empty `track` search param. The row's Copy link builds the absolute form for that row's track, whether or not the row is playing. _Decided here:_ the playlist path with one query param keeps the page mounted and carries both the queue context and the track, without a second URL shape that would lose one of them.
@@ -84,14 +41,8 @@ The link is inside the instance. The edge still authenticates, no public link ex
 
 The modules touched are the contracts' endpoint declaration and path builder; the server's track route, track service and track access; the web router; a shared-link entry module; the player store and its persistence; the player bar; the track row; the copy and its toasts; the document title; and both catalogues.
 
-## Testing Decisions
-
-- A test earns its place only if it fails when behaviour a user relies on changes. The tests assert the URL a recipient lands on, the queue that starts, the text of a notice where the sentence is the contract, and the server's read and write decisions. They do not assert CSS, the icon, the toast duration, or the internal shape of the link builder.
-- **The critical journeys are e2e**, in one new journey spec with two browser contexts on one instance: A is the proxy's dev identity, and B is a partner whose requests carry the `Remote-*` headers. The dev proxy already lets a supplied header override the dev identity, so the second account needs no product code. The journeys are: a read share opens `P` unshuffled at `T`; no share redirects to `/tracks/T` and plays the track alone with the title-only bar; a reload restores the paused queue and the address; starting a gallery playlist replaces the address to `/`; a failed track shows the gallery and the notice with no queue. This is the one new seam, and it exercises the real router, server, access rule, stream and identity.
-- **The copy's URL and result toasts are owned by the playlist detail page test**, with the Clipboard API stubbed. The system clipboard is not portable across the three e2e engines, so the e2e starts from the canonical URL rather than re-proving the copy. This is the one deliberate gap at the browser boundary; the production origin is the place to confirm the real clipboard.
-- **The server's security contract is tested at the track routes' existing inject seam.** The metadata, stream and thumbnail reads answer for an account with no association; retry and fetch-whole still refuse that account; a track with no stored media answers 409; an unknown id answers 404. Prior art is the same routes' existing identity tests.
-- **The web branches are tested at the existing seams**: the player store and persistence for the nullable bare queue and its paused restore; the router shell for `/tracks/T`, the redirects and the replace to `/`; the playlist detail page for the `?track` entry, the mirror on advance, the unplayable notice and the copy; the track row for the universal Copy link item; the document title for the bare pattern. Prior art is the store's shuffle and restore tests, the router's route-change tests, the detail page's landing and toggle tests, the row's menu tests and the title tests.
-- **Cut tests:** no test of the icon, the menu order, the toast duration, the exact URL string outside the detail page's copy assertion, or the catalogue parity, which the type system enforces.
+- **The e2e identity override is test-only.** It is the dev proxy's local, unauthenticated behaviour and must never exist in production.
+- **The clipboard needs a secure context.** A plain-LAN dev server has none, so the copy shows its failure toast; the copy is confirmed on the production HTTPS origin.
 
 ## Out of Scope
 
@@ -106,11 +57,3 @@ The modules touched are the contracts' endpoint declaration and path builder; th
 - Search, ratings, reordering a playlist, and offline playback.
 - A database migration, a media pipeline change, and any change to the stream's private cache.
 - Naming the playlist in the bar or the Media Session for a bare track, which would leak the playlist's existence.
-
-## Further Notes
-
-- The notice for a track that left the playlist is included because the recipient can see `P`, so a silent redirect would leave them wondering where the playlist went. If it is later unwanted, the redirect can be silent and nothing else depends on it.
-- The link does not create a share and does not change the share table. Spec 05's "no link" stands for grants of playlist access; this link grants nothing and is reachable only by an authenticated account. "Sharing individual tracks" leaves 05's out-of-scope list only in this limited, grant-free sense.
-- The redirected `/tracks/T` loses the playlist when it is forwarded. This is deliberate: the recipient's own address is honest, and the original link remains the one that carries the playlist.
-- The phone dev server over a plain LAN address is not a secure context, so `navigator.clipboard` is unavailable there and the copy shows its failure toast. The copy is confirmed on the production HTTPS origin.
-- The e2e's identity override is the dev proxy's existing behaviour, local and unauthenticated. It is a test-only seam and must never exist in production.

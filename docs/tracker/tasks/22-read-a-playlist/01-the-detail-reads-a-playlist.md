@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -24,12 +23,5 @@ play layer and its state words.
 
 The full suite exposed a stale duplicate `useCreatePlaylist` test at the old path and a gallery mock still naming the
 moved module. The duplicate was removed and the mock path corrected, so the suite runs again.
-
-## Verification
-
-- Detail 10 tests and card 9 tests pass; mobile 174 tests across 28 suites pass.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
-- The Maestro `gallery-card` flow still targets `playlist-screen`; ticket `12` runs the detail journeys.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

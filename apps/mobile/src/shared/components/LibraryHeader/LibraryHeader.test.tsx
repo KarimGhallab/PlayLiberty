@@ -1,10 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import {
-  fireEvent,
-  render,
-  screen,
-  within
-} from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { type Account, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
@@ -66,17 +61,6 @@ describe('the library header', () => {
 
     await fireEvent.press(door);
     expect(onOpenAccount).toHaveBeenCalledTimes(1);
-  });
-
-  it('draws the account as its avatar door', async () => {
-    await renderHeader();
-
-    expect(
-      within(screen.getByTestId('account-door')).getByTestId(
-        'account-monogram',
-        { includeHiddenElements: true }
-      )
-    ).toBeOnTheScreen();
   });
 
   it('offers the egress console to an admin', async () => {

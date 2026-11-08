@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -18,10 +17,5 @@ playlist still changes nothing. The list and the queue can no longer disagree wh
 The store tests cover the unshuffled reorder with the playhead at eight seconds, the shuffled merge with a new
 entry, the kept playhead, the removed current track, shuffle off returning to the last read order, and the ignored
 other playlist.
-
-## Verification
-
-- Mobile 423 tests across 47 suites pass, including the six queue-refetch cases.
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
 
 See [`27-sort-and-filter-the-track-list`](../../specs/27-sort-and-filter-the-track-list.md).

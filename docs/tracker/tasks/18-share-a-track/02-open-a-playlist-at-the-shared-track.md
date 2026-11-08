@@ -8,6 +8,4 @@ Opening `/playlists/P?track=T` starts the playlist unshuffled with `T` at its ow
 
 The `track` search param is validated on the playlist route and ignored when empty. Degraded links remain ticket 05: an unreachable playlist still draws the not-found body, and a present but unplayable track still uses the existing refusal.
 
-Verification: `pnpm run build`, `pnpm run lint:check`, the unit suites (web 627, server 436, egress agent 54, UI foundation 5) and the e2e typecheck pass. The new two-context e2e journey, a read share opening the playlist at the shared track, passes in Chromium. The page tests cover the start, the three idempotent cases, the address bar mirror and the page with another queue.
-
 See [`18-share-a-track`](../../specs/18-share-a-track.md).

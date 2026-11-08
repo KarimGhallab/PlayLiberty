@@ -2,7 +2,6 @@
 
 **State:** `resolved`
 **Category:** `enhancement`
-**Blocked by:** 16. The actions extraction restructures the same module first, so the split does not move the menu and the dialogs a second time.
 
 ## Outcome
 

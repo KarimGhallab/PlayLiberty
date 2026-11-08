@@ -11,4 +11,4 @@ The artwork equalizer is now decorative because the visible word carries the sta
 
 `docs/DESIGN.md` records the quiet accent ground as a detail use of the accent. The open wash was chosen from the four band finishes; the real `TrackRow` was checked at 1280 on a fixture list, and the same finish at 390.
 
-Verification: `pnpm run build`, `pnpm run lint` and `pnpm test:unit` pass (web 566, server 381, tokens 2). The e2e suite was not run here because it needs the full instance; its two current-row helpers (`arrange`, `shuffle`) now find the visible word instead of the equalizer's `aria-label`.
+The e2e suite was not run here because it needs the full instance; its two current-row helpers (`arrange`, `shuffle`) now find the visible word instead of the equalizer's `aria-label`.

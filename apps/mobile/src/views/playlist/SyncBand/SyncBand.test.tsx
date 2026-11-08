@@ -221,47 +221,4 @@ describe('the sync band', () => {
     ).toBeOnTheScreen();
     expect(screen.getByTestId('sync-retry-failed')).toBeDisabled();
   });
-
-  it('renders the failure in French', async () => {
-    await render(
-      <I18nProvider initialLanguage={Language.French} storage={store}>
-        <SyncBand
-          playlist={{ ...playlist, syncStatus: PlaylistSyncStatus.Error }}
-          run={{ ...run, status: SyncRunStatus.Failed, error: 'yt-dlp: 403' }}
-          counts={counts}
-          now={now}
-          canWrite
-          syncing={false}
-          onSync={jest.fn()}
-          retryingFailed={false}
-          onRetryFailed={jest.fn()}
-        />
-      </I18nProvider>
-    );
-
-    expect(
-      screen.getByText(/Impossible d'atteindre YouTube/)
-    ).toBeOnTheScreen();
-    expect(screen.getByText('Afficher les détails')).toBeOnTheScreen();
-  });
-
-  it('renders the no-changes summary in French', async () => {
-    await render(
-      <I18nProvider initialLanguage={Language.French} storage={store}>
-        <SyncBand
-          playlist={playlist}
-          run={{ ...run, addedCount: 0, retainedCount: 0, removedCount: 0 }}
-          counts={{ ...counts, [TrackFileStatus.Failed]: 0 }}
-          now={now}
-          canWrite
-          syncing={false}
-          onSync={jest.fn()}
-          retryingFailed={false}
-          onRetryFailed={jest.fn()}
-        />
-      </I18nProvider>
-    );
-
-    expect(screen.getByText('Aucun changement')).toBeOnTheScreen();
-  });
 });

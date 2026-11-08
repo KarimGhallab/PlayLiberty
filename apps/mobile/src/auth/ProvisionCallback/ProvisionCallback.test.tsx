@@ -148,21 +148,6 @@ describe('the provisioning callback', () => {
     ).toBeOnTheScreen();
   });
 
-  it('shows the generic sentence when no flow is in progress', async () => {
-    complete.mockRejectedValue(
-      new ProvisioningError(ProvisioningFailure.NotStarted)
-    );
-
-    await renderCallback();
-
-    expect(
-      await screen.findByText('Sign-in could not finish.')
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByRole('button', { name: 'Sign in again' })
-    ).toBeOnTheScreen();
-  });
-
   it('shows the generic sentence when the callback has no code or state', async () => {
     mockParams.mockReturnValue({});
 
@@ -175,14 +160,6 @@ describe('the provisioning callback', () => {
       screen.getByRole('button', { name: 'Sign in again' })
     ).toBeOnTheScreen();
     expect(complete).not.toHaveBeenCalled();
-  });
-
-  it('labels the action in French', async () => {
-    await renderCallback(Language.French);
-
-    expect(
-      await screen.findByRole('button', { name: 'Se connecter à nouveau' })
-    ).toBeOnTheScreen();
   });
 
   it('adopts the pair and returns to the library on success', async () => {

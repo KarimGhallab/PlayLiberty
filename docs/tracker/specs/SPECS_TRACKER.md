@@ -54,9 +54,6 @@ instead of taking a spec: `09` and `11` into `19`, `10` into `25`, and `17` into
 | [`32-release-the-android-app`](32-release-the-android-app.md)                                                                                  | ready    | [`30`](30-share-a-track.md)                                           | none                                                                                                                                                                               |
 | [`33-refresh-mobile-access`](33-refresh-mobile-access.md) · [tickets](../tasks/33-refresh-mobile-access/TICKETS.md)                            | resolved | [`20`](20-provision-mobile-access.md)                                 | none                                                                                                                                                                               |
 
-`33` replaced `20`'s 180-day lifetime and its refresh and revocation out-of-scope clauses; every other provisioning
-decision stands.
-
 ## Conventions
 
 - One file per spec, named `NN-slug.md`, numbered in creation order.

@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`02`](02-the-refresh-route-rotates-the-pair.md)
 
 ## Outcome
 
@@ -23,13 +22,5 @@ and the authorization, and that a refused deletion throws.
 
 The rotation test no longer asserts that an immediate replay is refused: inside the window it now succeeds by design,
 and the grace and late-replay tests own both halves.
-
-## Verification
-
-- Server: 494 tests across 35 files. The refresh suite proves the in-window replay returns the same pair with no mint
-  and no new rows, the late replay revokes the family and both access rows, deletes both Pangolin ids, and audits
-  `refresh_token_reuse`, and that a failed deletion still leaves the family and its rows revoked. The Pangolin client
-  contract suite proves the delete request and its refusal.
-- `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`33-refresh-mobile-access`](../../specs/33-refresh-mobile-access.md).

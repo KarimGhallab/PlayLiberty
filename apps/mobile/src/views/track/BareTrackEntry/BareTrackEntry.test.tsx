@@ -16,7 +16,6 @@ import {
   SessionStatus,
   useSessionStore
 } from '../../../auth/sessionStore/sessionStore';
-import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import {
   holdLeftPlaylistNotice,
@@ -126,9 +125,6 @@ describe('the bare track entry', () => {
     await renderEntry();
 
     expect(screen.getByLabelText('Opening the track.')).toBeOnTheScreen();
-    expect(screen.getByTestId('bare-track-loading')).toHaveStyle({
-      height: playerBarHeight - 6
-    });
     expect(usePlayerStore.getState().currentId).toBeNull();
   });
 

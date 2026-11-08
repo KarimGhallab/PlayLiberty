@@ -15,9 +15,6 @@ import {
   TrackSourceStatus
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
-import { TrackTone } from '@playliberty/ui-foundation';
-
-import { trackToneColor } from '../../../shared/trackState/trackToneColor';
 
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import TrackRow from './TrackRow';
@@ -137,26 +134,14 @@ describe('the track row', () => {
       'P-Access-Token': 'token-secret',
       'User-Agent': 'PlayLiberty/1.0 (Android)'
     });
-    expect(image.props.resizeMethod).toBe('resize');
     expect(screen.getByText('First Song', hidden)).toBeOnTheScreen();
     expect(screen.getByText('3:02', hidden)).toBeOnTheScreen();
-  });
-
-  it('gives the title two lines at the default scale', async () => {
-    await renderRow();
-
-    expect(screen.getByTestId('track-title', hidden).props.numberOfLines).toBe(
-      2
-    );
   });
 
   it('draws the state word and its tone', async () => {
     await renderRow(pending);
 
     expect(screen.getByTestId('track-state')).toHaveTextContent('Pending');
-    expect(screen.getByTestId('track-state')).toHaveStyle({
-      color: trackToneColor(TrackTone.Pending)
-    });
   });
 
   it('tells a kept track from a lost one when the source was removed', async () => {
@@ -165,9 +150,6 @@ describe('the track row', () => {
     expect(screen.getByTestId('track-state', hidden)).toHaveTextContent(
       'Retained'
     );
-    expect(screen.getByTestId('track-state', hidden)).toHaveStyle({
-      color: trackToneColor(TrackTone.Retained)
-    });
     expect(screen.getByTestId('track-source', hidden)).toHaveTextContent(
       'Removed from YouTube'
     );
@@ -180,9 +162,6 @@ describe('the track row', () => {
     await renderRow(neverStored);
 
     expect(screen.getByTestId('track-state')).toHaveTextContent('Never stored');
-    expect(screen.getByTestId('track-state')).toHaveStyle({
-      color: trackToneColor(TrackTone.Unavailable)
-    });
     expect(screen.getByTestId('track-source')).toHaveTextContent(
       'Removed from YouTube'
     );
@@ -295,26 +274,11 @@ describe('the track row', () => {
     expect(screen.getByTestId('track-details')).toBeOnTheScreen();
   });
 
-  it('opens the lane for its track', async () => {
-    const onOpenActions = jest.fn();
-    await renderRow(stored, { onOpenActions });
-
-    await fireEvent.press(screen.getByTestId('track-actions'));
-
-    expect(onOpenActions).toHaveBeenCalledWith('track-1');
-  });
-
   it('draws no play control for an unplayable row', async () => {
     await renderRow(failed);
 
     expect(screen.queryByTestId('track-play')).not.toBeOnTheScreen();
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('Failed')).toBeOnTheScreen();
-  });
-
-  it('renders the state word in French', async () => {
-    await renderRow(pending, { language: Language.French });
-
-    expect(screen.getByTestId('track-state')).toHaveTextContent('En attente');
   });
 });

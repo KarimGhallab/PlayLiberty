@@ -2,7 +2,6 @@
 
 **State:** `resolved`
 **Category:** `enhancement`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 

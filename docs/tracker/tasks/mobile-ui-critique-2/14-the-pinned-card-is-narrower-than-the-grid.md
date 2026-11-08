@@ -3,34 +3,6 @@
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Source:** [A second design critique scores the mobile app 26/40](../../issues/123-a-second-design-critique-scores-the-mobile-app-26-40.md)
-**Blocked by:** None. Can start immediately.
-
-## Observed
-
-A pinned card is 0.9 of a grid column, so the pinned row's right edge sits about 17dp inside the grid's, and the page's
-vertical edges never line up between the two sections.
-
-## Expected
-
-The pinned card is the grid's card, at the grid's width. The peek that invites a sideways swipe is produced by the row's
-last card being partly outside the viewport, not by every card being smaller.
-
-## Evidence
-
-- `apps/mobile/src/views/library/galleryColumns/galleryColumns.ts:28-31`.
-- Screenshot `a-lib-01.png`: the pinned row and the grid below it do not share an edge.
-
-## Acceptance criteria
-
-- [x] A pinned card is the same width as a grid card.
-- [x] The row still peeks the next card on a 411dp screen.
-- [x] Both columns' right edges align with the page's content edge.
-- [x] The card's control positions and the one-target layout are unchanged.
-
-## Verification
-
-Compare the pinned and grid columns on the emulator; measure both cards' bounds from a dump. Then
-`pnpm --filter @playliberty/mobile test`.
 
 ## Outcome
 
@@ -50,4 +22,4 @@ edge. The card controls and their one-target layout are untouched.
 `galleryColumns.test.ts` asserts the width equality and that two cards plus the gap fill the content box while the page
 inset exceeds the gap, which is the peek.
 
-Checks: mobile typecheck and suite pass. The root build, lint and unit run follows in the batch for this session.
+The root build, lint and unit run follows in the batch for this session.

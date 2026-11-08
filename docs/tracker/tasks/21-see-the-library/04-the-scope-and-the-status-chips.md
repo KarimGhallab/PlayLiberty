@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`02`](02-the-gallery-draws-the-playlists.md)
 
 ## Outcome
 
@@ -13,11 +12,5 @@ A chip filters the grid to the playlists carrying at least one track in that sta
 The new `Chip` is the app's one interactive chip: a border, a label, an optional count and a tone dot that appears when selected. The `GalleryFilterBar` owns the rail; the gallery owns the state.
 
 The first gallery read now asks the route's maximum page, 200, so the counts are whole up to that size. The API client gained a query argument so a read can carry it without a caller writing a `?` into a path.
-
-## Verification
-
-- Mobile 107 tests across 18 suites, including the gallery's 14 and the API client's 5.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`21-see-the-library`](../../specs/21-see-the-library.md).

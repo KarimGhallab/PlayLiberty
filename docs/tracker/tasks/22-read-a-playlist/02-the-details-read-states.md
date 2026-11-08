@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-detail-reads-a-playlist.md)
 
 ## Outcome
 
@@ -25,11 +24,5 @@ no tracks.
 
 The write check moved into one shared access helper, which the later detail sheets reuse. The route now supplies the
 not-found back action, which replaces the detail with the gallery.
-
-## Verification
-
-- Detail 20 tests pass; mobile 184 tests across 28 suites pass.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

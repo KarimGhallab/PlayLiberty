@@ -10,6 +10,4 @@ The server read is instance-wide: the track metadata, the stream and the thumbna
 
 A track that cannot play starts no queue and leaves the gallery drawn. The notice names the track and its reason: not stored, failed download, or a video gone with no file; an unknown id gets its own sentence. The notice withdraws on the same window as the other refusals.
 
-Verification: `pnpm run build`, `pnpm run lint:check`, the unit suites (web 639, server 438, egress agent 54, UI foundation 5) and the e2e typecheck pass. The new bare-route e2e journey passes in Chromium: the track URL plays over the gallery, a reload holds it paused, and the gallery's playlist takes the address back. The server route tests cover the no-association read, stream and thumbnail, the write refusals, the 409 and the 404; the track page tests cover the start, the idempotence, the three unplayable notices, the unknown id, the exit and the failed-entry baseline.
-
 See [`18-share-a-track`](../../specs/18-share-a-track.md).

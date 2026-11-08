@@ -18,7 +18,4 @@ Tests cover the Remove visibility, the failed custom image, the inline confirmat
 preview, the sleeve and failed-track fallbacks, the Cancel return, the busy state, the delete and both fallbacks
 on the detail and gallery, the failure sentence, and the playlist/gallery invalidation.
 
-Verification: `pnpm run build` passes; the full unit suite passes (server 381, web 535); lint has no errors and
-only the existing unused `CONTROL` warning in the phone journey.
-
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

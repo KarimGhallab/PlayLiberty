@@ -25,38 +25,6 @@ The service stops when the queue is emptied, when the account signs out, when th
 the system stops the foreground service. Android 14 keeps a media-style foreground notification pinned, so swiping the
 notification itself is not an end control.
 
-## User Stories
-
-1. As a listener, I want the music to keep playing with the screen off, so that I can put the phone in my pocket.
-2. As a listener, I want the next track to start while the screen is off, so that a playlist plays through.
-3. As a listener, I want a notification while music plays, so that I can control it from anywhere.
-4. As a listener, I want the notification to name the track and the playlist, so that I know what is playing.
-5. As a listener, I want the artwork in the notification, so that I recognise the track at a glance.
-6. As a listener, I want previous, play-pause and next in the notification, so that I do not have to unlock the phone.
-7. As a listener, I want the lock screen to show the same controls, so that I can use it without opening the app.
-8. As a listener, I want the seek position in the notification, so that I can scrub from the shade.
-9. As a listener, I want a track change to update the notification, so that it never names the previous track.
-10. As a listener, I want a track change to keep the audio, so that the queue does not go silent in the background.
-11. As a listener, I want the notification to be silent on a track change, so that it does not buzz in my pocket.
-12. As a listener, I want tapping the notification to open the app where I left it, so that I am not reset to the gallery.
-13. As a listener, I want pausing to keep the notification, so that I can resume from the shade.
-14. As a listener, I want the session to end when the queue ends, when I sign out, or when the system stops the
-    service, so that nothing runs after I am done.
-15. As a listener, I want the service to stop when the queue ends, so that nothing runs after the music.
-16. As a listener, I want no music to start on its own after a restart, so that the app never surprises me.
-17. As a listener, I want the music to stop when I sign out, so that a handed-over phone is silent.
-18. As a listener, I want my headset's buttons to work, so that I do not have to touch the phone.
-19. As a listener, I want a call to pause and resume as the platform expects, so that the app behaves like other players.
-20. As a user on Android 13 and later, I want the notification permission asked when it matters, so that I am not asked at first launch for a feature I have not used.
-21. As a user, I want no notification at all when nothing has played, so that the app is not a permanent presence in my shade.
-22. As a user, I want one notification and never two, so that a track change does not stack them.
-23. As a user, I want the service to survive Doze, so that the music does not stop when the phone idles.
-24. As a user, I want the app not to drain my battery, so that the service costs only the playback it performs.
-25. As a user, I want a bare shared track to show no playlist name, so that the playlist's existence is not revealed.
-26. As a screen-reader user, I want the notification's controls named, so that they are usable from the shade.
-27. As a French-speaking listener, I want the notification's labels in French, so that the shade stays in my language.
-28. As a developer, I want the background boundary tested, so that issue `102` stays fixed rather than regressing.
-
 ## Implementation Decisions
 
 - **The service is a foreground service of type `mediaPlayback`.** It is declared with its permissions and started
@@ -95,23 +63,7 @@ notification itself is not an end control.
   no-prefetch rule and the one-track rule are [`07-play-stored-audio`](07-play-stored-audio.md)'s; the bar and the
   queue sheet are [`23-play-stored-audio`](23-play-stored-audio.md)'s; the bare-track context is
   [`30-share-a-track`](30-share-a-track.md)'s.
-
-## Testing Decisions
-
-- A test earns its place only if it fails when a listener would notice. The tests assert that the notification names
-  the current track after a change, that a change keeps playback, that the service stops when the queue empties, and
-  that a sign-out clears the queue. A dismissal command is tested where the OS allows one. They do not assert the
-  notification's layout, the channel's identifier, or the service's start mechanism.
-- **The notification's state is tested at the mapping's seam**: a track change produces one notification with the new
-  title, the playlist as the subtitle, and the empty subtitle for a bare track. Prior art is the web's Media Session
-  mapping tests.
-- **The service's lifetime is tested at the player's seam**: start on the first track, survive a pause, stop on an
-  emptied queue and on sign-out.
-- **The critical journey is a Maestro flow on a physical device**: start a playlist, turn the screen off, let a
-  track end, and confirm the next one plays and the notification names it. It is the only test that proves issue
-  `102`'s fix, and it must be run on the device that will use the app.
-- **Cut tests:** no test of the channel's importance, the artwork's downscale, or the notification's tap intent
-  beyond the screen it opens.
+- **The service is the only part of the app that runs with the screen off.** Its cost is the playback it performs, and nothing else is scheduled behind it.
 
 ## Out of Scope
 
@@ -122,10 +74,3 @@ notification itself is not an end control.
 - Multiple simultaneous sessions and a second playback device.
 - A user-visible setting for the notification channel.
 - Push notifications of any other kind.
-
-## Further Notes
-
-- The web client's failure in issue `102` is the acceptance test this spec exists to pass. When the web is fixed by
-  a browser, nothing here changes.
-- The service is the only part of the app that runs with the screen off. Its cost is the playback it performs, and
-  nothing else is scheduled behind it.

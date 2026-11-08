@@ -10,6 +10,6 @@ Amended the four product records to describe the custom playlist cover and its f
 
 The two artwork issues that carried the old rule are amended. Issue 10 is marked superseded on the ownership rule and keeps its first-track pipeline as the fallback; issue 05 records that this spec restores a separate stored cover; their board summaries no longer state that the playlist owns no image. A search for the old claims across the product records and issues finds no contradiction.
 
-Docs only; no test exercises prose. `pnpm run build` passes, and `pnpm run lint` is clean apart from the existing unused-constant warning in `e2e/tests/phone.spec.ts`.
+Docs only; no test exercises prose.
 
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

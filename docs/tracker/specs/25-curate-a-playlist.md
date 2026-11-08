@@ -22,37 +22,6 @@ account can write to, which reports one outcome per playlist in the order chosen
 offers an undo. Rename and delete ask once; delete returns to the gallery. The skip setting is a switch in the
 detail's settings row, and Retry and Fetch whole sit in the row's sheet.
 
-## User Stories
-
-1. As an owner, I want one sheet with my playlist's actions, so that I do not hunt for them.
-2. As an owner, I want to rename a playlist, so that its name means something to me.
-3. As an owner, I want an empty name refused, so that a playlist cannot become nameless.
-4. As an owner, I want to delete a playlist and undo it, so that one tap does not cost the playlist.
-5. As an owner, I want deleting to return me to the gallery, so that I am not left on a dead screen.
-6. As a collaborator, I want to add a video to several playlists at once, so that I do not paste it repeatedly.
-7. As a collaborator, I want the playlists I can write to offered in a checklist, so that I cannot pick one I cannot change.
-8. As a collaborator, I want the current playlist preselected, so that the common case is one press.
-9. As a collaborator, I want one outcome per chosen playlist, so that I know which ones took the video.
-10. As a collaborator, I want an already-present track reported as success, so that I am not alarmed by a no-op.
-11. As a collaborator, I want a refusal named against its playlist, so that I know which one did not take it.
-12. As a collaborator, I want the refusal to say only that it was refused, so that the sheet cannot be used to discover playlists.
-13. As a collaborator, I want the sheet to stay open on a mixed result, so that I can read it and retry.
-14. As a collaborator, I want a busy state on Add, so that two presses do not add twice.
-15. As a collaborator, I want to remove a track and undo it, so that a stray press is recoverable.
-16. As a collaborator, I want to retry a failed track, so that I do not wait for the next sync.
-17. As a collaborator, I want to fetch a failed track whole, so that a track the skip setting mangled can be recovered.
-18. As a collaborator, I want to flip the skip-non-music setting, so that future tracks drop their spoken breaks.
-19. As a read collaborator, I want no control I cannot use, so that the screen does not offer refusals.
-20. As a read collaborator, I want the skip switch visible but disabled, so that I understand the setting exists.
-21. As an owner, I want a refused rename explained, so that I know it did not stick.
-22. As an owner, I want a refused delete explained, so that I know the playlist is still there.
-23. As a collaborator, I want a refused add explained, so that I know the batch did not land.
-24. As a collaborator, I want a failed retry explained, so that I know the track is still failed.
-25. As a user, I want a typed link preserved until I choose to discard it, so that a stray tap does not lose it.
-26. As a user, I want the keyboard not to cover the Add control, so that I can submit from the sheet.
-27. As a screen-reader user, I want the checklist rows to announce their state, so that I can choose without sight.
-28. As a French-speaking collaborator, I want these sheets in French, so that the app stays in my language.
-
 ## Implementation Decisions
 
 - **One actions sheet owns a playlist's mutations, reached from the detail's header and the gallery card.** It holds
@@ -89,21 +58,7 @@ detail's settings row, and Retry and Fetch whole sit in the row's sheet.
   stays open.
 - **Inherited decisions are referenced, not restated:** the permission rule for all six actions, the batch route's
   shape and its three outcomes, the deferral and the suppression, and the skip setting's meaning.
-
-## Testing Decisions
-
-- A test earns its place only if it fails when behaviour a person relies on changes. The tests assert which sheet
-  items an access level produces, that a mixed batch draws one row per playlist in order, that an empty rename is
-  refused before it is sent, that a remove offers an undo, and that the skip switch is disabled for a reader. They do
-  not assert the sheet's presentation or the keyboard's behaviour.
-- **The actions sheet is tested at the shared actions model's seam**: the items per access, the pin's label, the
-  delete's deferral. Prior art is the web's `playlistActions` tests.
-- **The add-track sheet is tested at its own seam**: the preselection, the checklist's contents, the busy state, the
-  discard confirmation, and the three outcomes. Prior art is the web's `AddTrackDialog` tests.
-- **The rename and delete flows are tested at their sheets' seams**, including the refusal keeping the sheet open.
-- **The critical journey is a Maestro flow**: add a video to two playlists, see two outcomes, remove the track and
-  undo it.
-- **Cut tests:** no test of the checklist's row height, the snackbar's timing, or the exact refusal copy.
+- **Undo after a remove re-adds the track as a manual association.** It does not restore the remote origin, and a later sync treats the re-added track as any other manual one.
 
 ## Out of Scope
 
@@ -114,9 +69,3 @@ detail's settings row, and Retry and Fetch whole sit in the row's sheet.
 - Sharing, which spec `26` owns.
 - An admin override on somebody else's playlist.
 - Offline edits and a queued mutation that retries later.
-
-## Further Notes
-
-- The batch add's refusal is the one place the copy is deliberately vague. It is a privacy rule, not an oversight.
-- Undo after a remove re-adds the track as a manual association, which is what the person asked for. It does not
-  restore the remote origin, and a later sync treats the re-added track as any other manual one.

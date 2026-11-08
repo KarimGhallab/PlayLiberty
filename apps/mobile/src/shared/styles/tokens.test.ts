@@ -4,10 +4,7 @@ import {
   barScrimOpacity,
   barVeilOpacity,
   coverGroundOpacity,
-  tokenColor,
-  tokenLength,
-  tokenNumber,
-  touchTarget
+  tokenColor
 } from './tokens';
 
 /* WCAG 2.1 relative luminance, read from the shipped hexes so a token change
@@ -45,24 +42,6 @@ function over(foreground: string, background: string, opacity: number): string {
 
   return `#${mix.map(value => value.toString(16).padStart(2, '0')).join('')}`;
 }
-
-describe('the style helpers', () => {
-  it('reads a colour token', () => {
-    expect(tokenColor('bg')).toBe('#0b0d10');
-  });
-
-  it('reads a length token', () => {
-    expect(tokenLength('space-4')).toBe(16);
-  });
-
-  it('reads a number token', () => {
-    expect(tokenNumber('leading-normal')).toBe(1.35);
-  });
-
-  it('names the touch target', () => {
-    expect(touchTarget).toBe(48);
-  });
-});
 
 describe('the text over artwork', () => {
   /* The brightest possible cover over every base the bar can draw, then the

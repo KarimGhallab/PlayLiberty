@@ -2,8 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`03`](03-reuse-cuts-the-family-off.md) and
-[`04`](04-the-app-refreshes-before-the-access-token-lapses.md)
 
 ## Outcome
 
@@ -26,20 +24,5 @@ network or server failure is swallowed; the local clear is what a handed-over ph
 
 `useSessionStore.expire` now calls `signOut` instead of clearing directly, then clears the player and sets the status.
 The query cache clears through the existing status-driven `SessionCache`.
-
-## Verification
-
-- Server: 500 tests across 36 files. The revoke suite proves the owner's family and access row revoked with the
-  Pangolin deletion, another account's family left untouched with a `204`, an unknown token and a repeated revoke both
-  `204`, the missing-body validation, the unauthenticated `401`, and the allowed audit with `nothing_to_revoke` for a
-  no-op and no token in the lines.
-- Mobile: 502 tests across 54 suites. The session suite proves the revoke request's URL, method, access headers, User-
-  Agent, client header and refresh-token body, the refresh-first call that presents the rotated token, the clear after
-  an unreachable server, the clear without a record, and the absence of a revoke when the renewal ends the session. The
-  store suite proves `expire` posts the revoke and clears the record and player.
-- On `emulator-5554`, the account sheet's sign-out returned the signed-in door, and a kill and relaunch stayed signed
-  out. The server answered `204` with a `session_revoke` allowed line, and the database showed the family and its
-  access token revoked. Provisioning afterwards signed back in.
-- `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`33-refresh-mobile-access`](../../specs/33-refresh-mobile-access.md).

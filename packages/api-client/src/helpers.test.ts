@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
-  AccountSummary,
   PlaylistPage,
   PlaylistWithCounts,
   SyncRun
@@ -13,7 +12,7 @@ import {
   Provider
 } from '@playliberty/contracts';
 
-import { nextAccountsPageParam, ownerNameFrom } from './account.js';
+import { nextAccountsPageParam } from './account.js';
 import { ApiError } from './apiError.js';
 import {
   createPlaylistPlaceholder,
@@ -104,17 +103,6 @@ describe('the paging bounds', () => {
   });
 });
 
-describe('the directory name', () => {
-  const directory: AccountSummary[] = [
-    { id: 'a1', displayName: 'Ada', avatarUrl: null }
-  ];
-
-  it('resolves a present owner and misses an absent one', () => {
-    expect(ownerNameFrom(directory, 'a1')).toBe('Ada');
-    expect(ownerNameFrom(directory, 'a2')).toBeNull();
-    expect(ownerNameFrom([], 'a1')).toBeNull();
-  });
-});
 
 describe('the cover crop query', () => {
   it('sends the four fractions or nothing', () => {

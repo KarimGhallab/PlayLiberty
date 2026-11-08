@@ -2,7 +2,6 @@
 
 **State:** `resolved`
 **Category:** `enhancement`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -15,7 +14,5 @@ Done. The design documentation layer is gone; the shipped values stay.
 - The live docs (`AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCT.md`), the code comments that pointed at a specimen, and the tracker tickets that linked a retired record are updated.
 
 The observable behaviour is unchanged: the web client loads the same emitted stylesheet and both clients draw the same morph.
-
-Verification: `pnpm run build` and `pnpm run lint` clean; the unit suites pass; no live doc, code comment or tracker ticket links `docs/design/`, `docs/design-system/` or `docs/DESIGN.md`.
 
 Reversed for one file by [`58-the-web-clients-unkept-contracts`](58-the-web-clients-unkept-contracts.md): `docs/DESIGN.md` exists again, written so that it cannot drift the way this record did, naming roles and rules and no literal value.

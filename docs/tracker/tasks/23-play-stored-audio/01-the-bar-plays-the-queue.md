@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -23,16 +22,5 @@ artwork opens that playlist; a bare queue draws the title only, with no playlist
 The bar's height is paid under the last row of the gallery and the detail while it is present. The two add actions,
 the detail's snackbar and the notices clear it. The new copy exists in both catalogs, and the device was left in
 French.
-
-## Verification
-
-- Mobile 319 tests across 40 suites pass, including the store's metadata and bare queue, the audio layer's one-source
-  load, play and pause, the finish advance and the source clear, the bar's absent, playlist and bare shapes, and the
-  two screens' bar-clearing padding.
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator: the first row started audio, the bar showed its artwork, title and `Chine`, and its control read
-  `Mettre en pause ...`; pressing it switched the control to `Lire ...`. Back in the gallery the bar persisted and the
-  add action moved above it. At the detail's bottom the last row ended above the add action, which ended above the
-  bar. The media session reported playback and an advancing position.
 
 See [`23-play-stored-audio`](../../specs/23-play-stored-audio.md).

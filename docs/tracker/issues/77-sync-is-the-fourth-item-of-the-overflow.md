@@ -11,4 +11,4 @@ The first start and the failed retry keep single owners: the empty state's own b
 
 `docs/DESIGN.md` records the detail's named sync and the split owners.
 
-Verification: `pnpm run build` and `pnpm run lint` pass. The web header and detail suites pass (111 tests across the two files); the rest of the unit suites pass (server 386, i18n 39, ui-foundation 6, web 522 across the 51 files outside the concurrent SyncSummary change). The full `pnpm test:unit` is red only in `SyncSummary.test.tsx`, whose staged expectations say "still failed" while the staged catalog says "failed"; that concurrent copy change was left untouched.
+The full `pnpm test:unit` is red only in `SyncSummary.test.tsx`, whose staged expectations say "still failed" while the staged catalog says "failed"; that concurrent copy change was left untouched.

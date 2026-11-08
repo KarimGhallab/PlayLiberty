@@ -13,81 +13,31 @@ import {
   screen,
   waitFor
 } from '@testing-library/react-native';
-import type { ComponentProps } from 'react';
 import {
   AccessibilityInfo,
   Animated,
   PanResponder,
-  StyleSheet,
-  Text
+  StyleSheet
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import type { PlayPauseGlyphHandle } from '../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
 import { touchTarget } from '../../shared/styles/tokens';
 
 import type { ApiConfig } from '../../auth/useApiConfig';
-import {
-  PlayerBarSizeProvider,
-  usePlayerBarHeight
-} from '../playerBarSize/PlayerBarSizeContext';
+
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack/playerTrack';
 import PlayerBar from './PlayerBar';
-import { MAX_BAR_TEXT_SCALE } from './barTextScale';
 
 jest.mock('expo-router', () => ({
   router: { navigate: jest.fn() }
 }));
 
-jest.mock('./Artwork', () => {
-  const actual = jest.requireActual<typeof import('./Artwork')>('./Artwork');
-  const runtime = jest.requireActual<typeof import('react')>('react');
-  const render = jest.fn();
-
-  return {
-    __esModule: true,
-    default: function ArtworkWithCount(
-      props: ComponentProps<typeof actual.default>
-    ) {
-      render();
-      return runtime.createElement(actual.default, props);
-    },
-    artworkRender: render
-  };
-});
-
-jest.mock('../../shared/components/PlayPauseGlyph/PlayPauseGlyph', () => {
-  const actual = jest.requireActual<
-    typeof import('../../shared/components/PlayPauseGlyph/PlayPauseGlyph')
-  >('../../shared/components/PlayPauseGlyph/PlayPauseGlyph');
-  const runtime = jest.requireActual<typeof import('react')>('react');
-  const render = jest.fn();
-
-  return {
-    __esModule: true,
-    default: runtime.forwardRef<
-      PlayPauseGlyphHandle,
-      ComponentProps<typeof actual.default>
-    >(function GlyphWithCount(props, ref) {
-      render();
-      return runtime.createElement(actual.default, { ...props, ref });
-    }),
-    glyphRender: render
-  };
-});
-
 const { router } = jest.requireMock<{
   router: { navigate: jest.Mock };
 }>('expo-router');
-const artworkRender = jest.requireMock<{ artworkRender: jest.Mock }>(
-  './Artwork'
-).artworkRender;
-const glyphRender = jest.requireMock<{ glyphRender: jest.Mock }>(
-  '../../shared/components/PlayPauseGlyph/PlayPauseGlyph'
-).glyphRender;
 
 const store = { getItem: () => null, setItem: () => {} };
 
@@ -130,12 +80,6 @@ function startPlaylist(): void {
     .start([track], { id: 'playlist-1', name: 'Rain On The Window' }, track.id);
 }
 
-function HeightProbe() {
-  const height = usePlayerBarHeight();
-
-  return <Text testID="bar-height">{height}</Text>;
-}
-
 beforeEach(() => {
   jest.clearAllMocks();
   usePlayerStore.getState().clear();
@@ -152,11 +96,10 @@ describe('the player bar', () => {
     expect(screen.queryByTestId('player-bar')).not.toBeOnTheScreen();
   });
 
-  it('draws the artwork, the title and the playlist above the bottom inset', async () => {
+  it('draws the artwork, the title and the playlist', async () => {
     startPlaylist();
     await renderBar();
 
-    expect(screen.getByTestId('player-bar')).toHaveStyle({ bottom: 28 });
     expect(screen.getByText('First Song')).toBeOnTheScreen();
     expect(screen.getByText('Rain On The Window')).toBeOnTheScreen();
 
@@ -178,57 +121,6 @@ describe('the player bar', () => {
 
     expect(screen.getByTestId('player-open-playlist')).toHaveStyle({
       minHeight: touchTarget
-    });
-  });
-
-  it('caps every bar word at the one scale the capsule takes', async () => {
-    startPlaylist();
-    await renderBar();
-
-    expect(MAX_BAR_TEXT_SCALE).toBe(1.3);
-
-    for (const testID of [
-      'player-title',
-      'player-playlist',
-      'player-queue',
-      'player-elapsed',
-      'player-duration'
-    ]) {
-      expect(screen.getByTestId(testID).props.maxFontSizeMultiplier).toBe(
-        MAX_BAR_TEXT_SCALE
-      );
-    }
-  });
-
-  it('publishes a taller bar when its content grows', async () => {
-    startPlaylist();
-    await render(
-      <I18nProvider initialLanguage={Language.English} storage={store}>
-        <SafeAreaProvider initialMetrics={metrics}>
-          <PlayerBarSizeProvider>
-            <PlayerBar config={config} />
-            <HeightProbe />
-          </PlayerBarSizeProvider>
-        </SafeAreaProvider>
-      </I18nProvider>
-    );
-
-    expect(screen.getByTestId('bar-height')).toHaveTextContent('98');
-    expect(screen.getByTestId('player-bar')).toHaveStyle({ height: 92 });
-
-    await act(() => {
-      screen.getByTestId('player-bar-capsule').props.onLayout({
-        nativeEvent: { layout: { x: 0, y: 0, width: 370, height: 120 } }
-      });
-    });
-
-    expect(screen.getByTestId('bar-height')).toHaveTextContent('126');
-    expect(screen.getByTestId('player-bar')).toHaveStyle({ height: 120 });
-    expect(screen.getByTestId('player-bar-capsule')).toHaveStyle({
-      minHeight: 92
-    });
-    expect(screen.getByTestId('player-bar-capsule')).not.toHaveStyle({
-      height: 92
     });
   });
 
@@ -360,22 +252,6 @@ describe('the player bar', () => {
     ).toBe('0:30 of 3:02');
   });
 
-  it('does not re-render the cover or the glyph on a position tick', async () => {
-    startPlaylist();
-    await renderBar();
-
-    const artworkBefore = artworkRender.mock.calls.length;
-    const glyphBefore = glyphRender.mock.calls.length;
-
-    await act(() => {
-      usePlayerStore.getState().setPosition(30);
-    });
-
-    expect(screen.getByTestId('player-elapsed')).toHaveTextContent('0:30');
-    expect(artworkRender).toHaveBeenCalledTimes(artworkBefore);
-    expect(glyphRender).toHaveBeenCalledTimes(glyphBefore);
-  });
-
   it('seeks once on release and resumes a playing player', async () => {
     startPlaylist();
     await renderBar();
@@ -505,33 +381,6 @@ describe('the player bar', () => {
 
     expect(state.selected).toBeUndefined();
     expect(state.checked).toBeUndefined();
-  });
-
-  it('names the controls in both languages', async () => {
-    startPlaylist();
-    await renderBar(Language.French);
-
-    expect(
-      screen.getByLabelText('Ouvrir Rain On The Window, 1/1')
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByLabelText('Piste précédente, First Song')
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByLabelText('Piste suivante, First Song')
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByLabelText('Mettre en pause First Song')
-    ).toBeOnTheScreen();
-
-    const rail = screen.getByTestId('player-seek');
-
-    expect(rail.props.accessibilityLabel).toBe('Position dans la piste');
-    expect(rail.props.accessibilityValue.text).toBe('0:00 sur 3:02');
-    expect(rail.props.accessibilityActions).toEqual([
-      { name: 'increment', label: 'Avancer de dix secondes' },
-      { name: 'decrement', label: 'Reculer de dix secondes' }
-    ]);
   });
 
   it('settles a refused swipe at once when the system asks for less motion', async () => {

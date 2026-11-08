@@ -3,36 +3,6 @@
 **Status:** resolved
 **Labels:** `bug`, `ready-for-agent`
 **Source:** [A design critique scores the mobile app 26/40](../../issues/108-a-design-critique-scores-the-mobile-app-26-40.md)
-**Blocked by:** [`03`](03-the-retention-promise-has-no-word-and-no-surface.md), because a single-stop card must carry
-the whole name before the parts stop being reachable on their own.
-
-## Observed
-
-The accessibility tree exposes each card as four independent stops: the card itself, `playlist-play`,
-`playlist-shuffle` and `playlist-actions-*`. A card is one visual target, one press away from its playlist, and the
-three controls are drawn over its cover.
-
-## Expected
-
-`docs/DESIGN.md`: "A gallery card is one target, so its name carries the count, the sync state and the owner that its
-parts show." The play, shuffle and actions must stay reachable without being three extra stops on the way to the
-content.
-
-## Evidence
-
-- `apps/mobile/src/views/library/PlaylistCard/PlaylistCard.tsx`: one `PressableScale` with `accessibilityRole="button"`
-  and `accessibilityLabel={cardLabel}`, containing three further labelled pressables.
-- `uiautomator` dump of the library on 2026-11-03: four focusable nodes per card in that order.
-- `docs/DESIGN.md`, "The mobile client": the sentence quoted above.
-
-## Acceptance criteria
-
-- [x] TalkBack stops once per card, and its name carries the count, the sync state and the owner.
-- [x] Play, shuffle and actions stay reachable, through custom accessibility actions or one trailing control, with
-      their own names.
-- [x] No control is announced twice, and the order is card then controls.
-- [x] The card's painted layout is unchanged.
-- [x] A test asserts one accessible node per card with the full label.
 
 ## Outcome
 

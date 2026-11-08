@@ -16,31 +16,6 @@ in a square, offers Choose image from the photo library, and turns that square i
 pinch or use the zoom control, Reset to return to centered. Save uploads the chosen image with the crop's four
 fractions, and Remove asks once and deletes the custom cover. The stored square is what every reader sees.
 
-## User Stories
-
-1. As an owner, I want to choose an image from my photo library, so that the playlist looks like mine.
-2. As an owner, I want the square to be the crop stage, so that I see exactly what will be stored.
-3. As an owner, I want to pan the image, so that the subject is not cut off.
-4. As an owner, I want to zoom in, so that I can frame a detail.
-5. As an owner, I want zoom to stop before the image goes soft, so that the cover stays sharp.
-6. As an owner, I want a zoom control a screen reader can use, so that cropping does not need sight.
-7. As an owner, I want Reset, so that I can start from the centred square again.
-8. As an owner, I want Save enabled as soon as an image is chosen, so that cropping is optional.
-9. As an owner, I want the centred square stored if I do nothing, so that a quick change is one press.
-10. As an owner, I want a busy state while saving, so that I do not upload twice.
-11. As an owner, I want a failed save to keep my crop, so that I do not start again.
-12. As an owner, I want Remove to ask once, so that a stray tap does not delete my cover.
-13. As an owner, I want a file that is too large refused before it is sent, so that I am not waiting on an upload that cannot land.
-14. As an owner, I want a format the server cannot store refused before it is sent, so that the answer is immediate.
-15. As an owner, I want to be asked before a chosen image is discarded, so that I do not lose it to a stray tap.
-16. As a collaborator, I want to set the cover, so that I can help curate a playlist I can write to.
-17. As a read collaborator, I want no cover control, so that I am not offered a refusal.
-18. As a reader, I want the new cover everywhere, so that the gallery and the detail agree.
-19. As a reader, I want the cover to fall back to the first track and then to the sleeve, so that a missing file never draws an empty square.
-20. As a reader, I want the cover to survive a sync, so that the source cannot overwrite it.
-21. As a screen-reader user, I want the sheet's controls named, so that I can set a cover without sight.
-22. As a French-speaking owner, I want the sheet in French, so that the app stays in my language.
-
 ## Implementation Decisions
 
 - **The cover is a sheet opened from the actions sheet, and it exists for the owner and a write collaborator.** A read
@@ -68,21 +43,8 @@ here:` the web's verb is a file picker, and a camera would add a permission and 
   normalisation, the immutable versioned file, the read's cache behaviour and the prune are
   [`14-upload-a-playlist-cover`](14-upload-a-playlist-cover.md)'s; the square, the fractions, the orientation order
   and the zoom cap are [`17-crop-a-playlist-cover`](17-crop-a-playlist-cover.md)'s.
-
-## Testing Decisions
-
-- A test earns its place only if it fails when an owner would notice. The tests assert that Save is disabled without
-  an image, that the centred square is what is sent when nothing is moved, that the four fractions travel together,
-  that a 6 MB file is refused before a request, and that Remove asks once. They do not assert the stage's size or
-  the gesture's inertia.
-- **The crop's arithmetic is tested at the module's seam**: a panned and zoomed stage produces fractions inside the
-  bounds, and Reset returns centred at 1x. Prior art is the web's crop tests.
-- **The sheet is tested at its own seam**: the picker's result, the busy state, the failure keeping the crop, the
-  discard confirmation and the remove confirmation.
-- **The critical journey is a Maestro flow**: choose an image, pan, zoom, save, leave the playlist and return, and see
-  the same square.
-- **Cut tests:** no test of the pinch gesture's physics, the preview's transform, or the server's pipeline, which the
-  web's tests already own.
+- **The notification and the lock screen draw the cover as their artwork,** so a cover change reaches them through the same versioned URL.
+- **The photo-library permission is requested when the sheet opens, not at launch.**
 
 ## Out of Scope
 
@@ -92,9 +54,3 @@ here:` the web's verb is a file picker, and a camera would add a permission and 
 - Client-side normalisation, client-side storage and upload progress.
 - Covers for tracks, the player bar, the notification or the lock screen.
 - A cover history, an undo, and per-account covers.
-
-## Further Notes
-
-- The notification and the lock screen draw the cover as their artwork, so a cover change reaches them through the
-  same versioned URL.
-- The photo-library permission is requested when the sheet opens, not at launch.

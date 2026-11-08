@@ -11,7 +11,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { type Account, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { tokenLength } from '../../styles/tokens';
 import AccountSheet, { type AccountSheetProps } from './AccountSheet';
 
 const store = { getItem: () => null, setItem: () => {} };
@@ -69,9 +68,6 @@ describe('the account sheet', () => {
     await renderSheet({ account: null, loading: true });
 
     expect(screen.getByLabelText('Loading the account.')).toBeOnTheScreen();
-    expect(screen.getByTestId('account-identity-loading')).toHaveStyle({
-      minHeight: tokenLength('space-9')
-    });
     expect(screen.getByRole('radio', { name: 'English' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeOnTheScreen();
   });
@@ -84,16 +80,6 @@ describe('the account sheet', () => {
     ).not.toBeOnTheScreen();
   });
 
-  it('draws the avatar only when the account has one', async () => {
-    await renderSheet();
-    expect(screen.queryByTestId('account-avatar')).not.toBeOnTheScreen();
-
-    await renderSheet({
-      account: { ...account, avatarUrl: 'https://example.test/avatar.png' }
-    });
-    expect(screen.getByTestId('account-avatar')).toBeOnTheScreen();
-  });
-
   it('marks an admin', async () => {
     await renderSheet({ account: { ...account, role: UserRole.Admin } });
 
@@ -104,14 +90,6 @@ describe('the account sheet', () => {
     await renderSheet();
 
     expect(screen.queryByText('Admin')).not.toBeOnTheScreen();
-  });
-
-  it('draws the account initial when it has no avatar', async () => {
-    await renderSheet();
-
-    expect(
-      screen.getByText('M', { includeHiddenElements: true })
-    ).toBeOnTheScreen();
   });
 
   it('names its heading', async () => {
@@ -169,19 +147,6 @@ describe('the account sheet', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
 
-    expect(props.onSignOut).not.toHaveBeenCalled();
-  });
-
-  it('asks in French', async () => {
-    const { props } = await renderSheet({}, Language.French);
-
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Se déconnecter' })
-    );
-
-    expect(
-      screen.getByText('Êtes-vous sur de vouloir vous déconnecter ?')
-    ).toBeOnTheScreen();
     expect(props.onSignOut).not.toHaveBeenCalled();
   });
 

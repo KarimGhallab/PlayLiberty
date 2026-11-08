@@ -3,50 +3,6 @@
 **Status:** resolved
 **Labels:** `bug`, `ready-for-human`
 **Source:** [A design critique scores the mobile app 26/40](../../issues/108-a-design-critique-scores-the-mobile-app-26-40.md)
-**Blocked by:** None. Needs the product wording decided, then it is agent work.
-
-## Observed
-
-Three gaps, one decision.
-
-1. The card draws the not-stored count in a state tone with no word beside it (`PlaylistCard.tsx` count row), and
-   `cardLabel` leaves it out even though its own comment claims the name carries what the visible parts say. TalkBack
-   reads "Chine, You are a collaborator, 71 tracks, Up to date, Shared by Dev User" for a card showing a red 4.
-2. "Up to date" is derived from `syncStatus` alone, so a playlist holding four tracks that were never stored reads as
-   healthy while a red count sits beside the word.
-3. Nothing counts or names remote-removed tracks, which `docs/GLOSSARY.md` calls "the promise of the product"
-   (`fileStatus: stored` plus `sourceStatus: removed`, playable and retained). `sourceStatus` reaches the UI only
-   through `TrackRow`'s tone. The only aggregate about removals is the Unavailable chip, which counts the tracks that
-   were never saved.
-
-So the app raises alarm about the removals it could not save and stays silent about the ones it did save.
-
-## Expected
-
-The red count has a word and is announced. The retention promise has one surface where sync health is shown, so a
-user can confirm "these tracks lost their video and all of them still play" without opening the Stored filter and
-scanning. One word per state, owned by `statusChips.ts`, in both languages.
-
-## Evidence
-
-- `apps/mobile/src/views/library/PlaylistCard/PlaylistCard.tsx`: `cardLabel` (the array built from name, mark, count,
-  sync state, owner) and the count row that renders the incomplete figure.
-- `apps/mobile/src/shared/trackState/statusChips.ts`: the five shipped chips, none of them remote-removed.
-- `docs/GLOSSARY.md`: "Remote-removed: `fileStatus: stored` plus `sourceStatus: removed`. Playable and retained: the
-  promise of the product", and "The user-facing word for `fileStatus: stored` is stored in English and stockée in
-  French, wherever the state appears: the filter chip, the incomplete badge, the empty promise and the row."
-- The 2026-11-03 screenshots: a library card reading "Up to date" beside a red 4, and an Unavailable filter holding
-  four identical `[Deleted video]` rows with no art, `--:--` and no action.
-
-## Acceptance criteria
-
-- [x] The card's not-stored count carries a word, and that word is in `cardLabel` and announced.
-- [x] A remote-removed figure or word appears where the playlist's health is read on the detail, sourced from the
-      server counts rather than recomputed on the client.
-- [x] The word lives in `statusChips.ts` or its owner beside it, not in a second vocabulary.
-- [x] Chip and row use one term for the same fact.
-- [x] Both languages carry the new key; the catalogs stay at parity.
-- [x] A test covers the card name and the new figure.
 
 ## Outcome
 

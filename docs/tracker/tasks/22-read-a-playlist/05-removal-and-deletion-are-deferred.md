@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`04`](04-the-rows-lane-and-sheet.md)
 
 ## Outcome
 
@@ -20,15 +19,5 @@ to six seconds and is injectable for the tests.
 
 The two failure sentences were added to both catalogs. The identity gained the owner's overflow control, and the row
 sheet gained the destructive Remove item.
-
-## Verification
-
-- Track sheet model 6 tests, sheet 4 tests, row 8 tests and detail 39 tests pass.
-- Mobile 221 tests across 31 suites pass.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, Delete dimmed the detail, disabled the scroll and showed "Deleting playlist" with Undo. The window
-  expired before the undo, so the private Chine duplicate was deleted and then restored from the shared Chine source
-  with its 70 associations. Its sync-run history is not restored.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

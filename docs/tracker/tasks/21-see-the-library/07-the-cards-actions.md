@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-one-sheet-frame-for-the-app.md), [`02`](02-the-gallery-draws-the-playlists.md)
 
 ## Outcome
 
@@ -15,11 +14,5 @@ Delete leaves the gallery immediately. The delete intent carries the playlist na
 Share, Rename and Cover open `PlaylistPlaceholderSheet`, which names the action and says the surface arrives later; specs `26`, `25` and `29` replace those bodies.
 
 The actions model's tests cover the item sets, the pin label, the optimistic pin patch and the delete intent. The card's tests cover the overflow control; the gallery's tests cover opening the sheet, the reader's item set, the pin and its refusal notice, the delete and Undo, and the three placeholders.
-
-## Verification
-
-- Mobile 152 tests across 25 suites, including the actions model's 6 and the gallery's new action tests.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`21-see-the-library`](../../specs/21-see-the-library.md).

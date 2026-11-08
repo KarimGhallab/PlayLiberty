@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -18,11 +17,5 @@ gallery's unit seam; the verification account holds two other pins, so the run p
 The actions control's id and name combine in one Maestro selector, so no test seam was needed and no source changed.
 The README's row now names the round trip, and a new paragraph records why the flow names its card and sweeps the
 row.
-
-## Verification
-
-- The flow passed twice in a row on `emulator-5554` with `PIN_PLAYLIST=Paradis`. The account's two other pins
-  (`Chine`, `Egypte`) were untouched and `Paradis` ended unpinned.
-- `pnpm run lint:check` passes.
 
 See [`28-pin-a-playlist`](../../specs/28-pin-a-playlist.md).

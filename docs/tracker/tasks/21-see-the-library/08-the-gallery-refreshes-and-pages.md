@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`02`](02-the-gallery-draws-the-playlists.md), [`04`](04-the-scope-and-the-status-chips.md)
 
 ## Outcome
 
@@ -13,11 +12,5 @@ The grid pulls to refresh through a `RefreshControl`, which refetches every load
 The optimistic pin patches every loaded page, not the first alone, so a pinned playlist on page two regroups with the rest. The deferred delete hides by playlist id over the flattened list, so it works across pages too.
 
 The paging tests cover the next offset after a full page, the stop at the total and on an empty page, and the page flattening with the first total. The gallery tests cover the pull-to-refresh refetch, appending near the last row, and waiting while the last row is far.
-
-## Verification
-
-- Mobile 159 tests across 26 suites, including the paging's 4 and the gallery's 3 new tests.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`21-see-the-library`](../../specs/21-see-the-library.md).

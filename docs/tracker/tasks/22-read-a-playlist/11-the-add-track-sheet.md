@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-detail-reads-a-playlist.md)
 
 ## Outcome
 
@@ -19,15 +18,5 @@ batch stays open and a clean one closes. Add, the field and the checklist lock w
 The picker scrolls under a sheet capped at 90% of the visible frame, so the actions stay on screen when the
 keyboard rises. The footer is now the shared `SheetActions`, also used by the playlist add sheet. All copy is in
 both catalogs: `playlistsLabel`, `firstPage`, the three outcome words and `failed`.
-
-## Verification
-
-- Add-track sheet 10 tests, detail 79 tests; mobile 303 tests across 38 suites.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, the shared Chine detail drew the French plus (`Ajouter une piste`). The sheet opened with the
-  current Chine first and checked, the other writable playlists, and `Annuler`/`Ajouter` above the safe area. The
-  emulator's soft keyboard did not surface because the hardware keyboard is enabled, so the keyboard case rests on
-  the sheet cap and the scrolling picker rather than a device screenshot.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

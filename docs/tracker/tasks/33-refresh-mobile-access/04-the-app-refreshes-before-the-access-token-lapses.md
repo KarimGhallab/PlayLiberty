@@ -2,8 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-exchange-issues-the-pair-and-the-app-holds-one-record.md) and
-[`02`](02-the-refresh-route-rotates-the-pair.md)
 
 ## Outcome
 
@@ -30,16 +28,5 @@ new pair without a relaunch; on a transient renewal it keeps the current pair wh
 provisioning callback adopts the pair through the session instead of writing the store itself.
 
 The `401` trigger for a clock jump or a token refused at the edge is the same `refreshNow`; ticket `05` wires it.
-
-## Verification
-
-- Mobile: 489 tests across 54 suites. The session suite runs at the injected seam and proves the margin on both
-  sides, the single-flight between concurrent callers, the one-write rotation and its notification, the duration-based
-  deadline under a skewed absolute expiry, the invalid-grant clear, the four transient cases that keep the record, and
-  the sign-out-mid-flight guard. The API config suite proves a rotated record reaches the config without a relaunch.
-  The status and callback suites follow the session.
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
-- On `emulator-5554`, a kill and relaunch opened the signed-in library and loaded its playlists through the session's
-  token path.
 
 See [`33-refresh-mobile-access`](../../specs/33-refresh-mobile-access.md).

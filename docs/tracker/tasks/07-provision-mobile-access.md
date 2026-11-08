@@ -30,24 +30,4 @@ server, the edge record, the proxies and the app.
   shared `ProvisionCallback`; without it the deep link landed on the not-found page. The session re-reads the token
   whenever the library regains focus, so the callback's write is seen on the way back.
 
-## Verification
-
-- The live Integration API minted a token for the real Pangolin user and the token was deleted afterwards. The
-  server client reached Pangolin with the corrected base; the earlier refusal was the dev proxy sending an email
-  as `Remote-User`, not a code fault.
-- The Android development build provisioned against the running Pangolin, stored the token, and returned to the
-  library signed in. No credential prompt appears in dev because the Vite proxy is the authenticated edge.
-- `POST /auth/exchange` refuses a wrong verifier, a reused code, an expired code, a mismatched redirect, a missing
-  code, and the eleventh attempt in a minute. It needs the edge assertion and does not need `Remote-*`.
-- Server 454, mobile 23, web 647, i18n 37, tokens 2, ui-foundation 5, youtube 61, e2e 47. `pnpm run build`,
-  `pnpm run lint:check`, `depcruise`, `syncpack` and the tsconfig path check pass.
-
-## Notes
-
-- The ticket's "streams a track with the token attached" cannot be checked yet: the library and detail screens are
-  placeholders, and the player arrives with specs `21` to `23`. Provisioning itself is proven on the device.
-- The production secret wiring is still a deployment change: the Integration API key must be a Podman secret and
-  the three variables must reach the server from the manifest. That belongs with the deployment task, not here.
-- The dev proxy is unauthenticated and injects a fixed identity. It binds to loopback and must never be exposed on
-  a LAN.
-- Two stale accounts remain in the dev database from the earlier identities; they are harmless.
+**Constraints:** The dev proxy injects a fixed identity and binds to loopback; it must never be exposed on a LAN.

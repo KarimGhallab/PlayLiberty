@@ -8,6 +8,4 @@
 
 Route tests cover the owner and write success with the first track returned by the next read, the read/stranger/missing refusals leaving the cover and publishing nothing, the idempotent double delete, the event after the row is cleared, and a read-only covers directory still answering 204 while leaving the file.
 
-Verification: `pnpm run build` passes, `pnpm run lint` is clean apart from the existing `phone.spec.ts` warning, the 381 server tests and all 37 e2e journeys pass.
-
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

@@ -9,6 +9,4 @@
 
 The resume target stays the audio element's: it is applied on `loadedmetadata`, not on a seek request, and moving it into the seek mailbox would make a user seek wait for metadata too.
 
-Verification: `pnpm --filter @playliberty/web test` is 504 passed (50 files); `pnpm run build` and `pnpm run lint` pass; `pnpm test:e2e` is 35 passed.
-
 See [the web stack](../../ARCHITECTURE.md#the-web-stack).

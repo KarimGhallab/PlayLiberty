@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -16,19 +15,6 @@ outlast the old wait and skip the conditional sign-in.
 
 The flow passed alone from a signed-out start and in the full set from a signed-in start.
 
-## Verification
-
-- `PATH="$HOME/.maestro/bin:$PATH" pnpm --filter @playliberty/mobile run e2e` on `emulator-5554`:
-  `4/4 Flows Passed in 2m 15s`.
-- The provisioning flow passed alone and in the full set in 37 seconds.
-
-## Notes
-
-- The first run failed with a `502` because the running dev server had loaded an older `.env`; restarting the dev
-  server fixed the exchange. The flow was green once the server minted.
-- One run hit a native Fabric `SIGSEGV` on launch; the flow and the full set passed on rerun. The crash is in React
-  Native's UI manager, not the flow.
-- The full set leaves the device signed out because `signed-out` runs last; `provisioning` itself leaves it signed
-  in.
+**Constraints:** The full journey set leaves the device signed out because `signed-out` runs last.
 
 See [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md).

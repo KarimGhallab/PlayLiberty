@@ -2,7 +2,6 @@
 
 **State:** `resolved`
 **Category:** `bug`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 

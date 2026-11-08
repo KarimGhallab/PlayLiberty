@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-bar-plays-the-queue.md)
 
 ## Outcome
 
@@ -18,14 +17,5 @@ The bar's second row shows the elapsed time, the rail and the total duration. A 
 to hold the player paused, and seeks once on release; a player that was playing resumes and a paused one stays paused.
 The rail is adjustable to a screen reader, reports the elapsed and total time, and its two actions move ten seconds.
 Without a duration it is inert. The copy exists in both catalogs.
-
-## Verification
-
-- Mobile 338 tests across 40 suites pass. Store tests cover the fraction, the bounds, the ten-second steps, the
-  single consumption and the unknown duration. Audio tests prove one application. Bar tests cover the times, the
-  value text, the playing and paused drags, the ten-second actions and the inert rail.
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, the bar reported `0:34` and `3:53` for the playing track. Paused at `0:17`, a drag moved it to
-  `0:56` and left it paused. After resuming, a seek near the end finished the track and advanced to the next one.
 
 See [`23-play-stored-audio`](../../specs/23-play-stored-audio.md).

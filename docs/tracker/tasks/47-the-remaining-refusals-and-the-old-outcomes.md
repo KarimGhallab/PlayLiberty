@@ -11,11 +11,4 @@ The per-module outcome types are gone. `PlaylistCoverOutcome`, `GrantShareOutcom
 
 The batch add's per-item `refused` and the Track transition outcomes stay, as they name internal decisions rather than problem documents. The Egress routes stay out; their unreachable answer is a 200 body.
 
-## Verification
-
-- The cover's missing playlist, missing cover and invalid image; a share list, grant and revoke by an account that cannot manage the playlist; a grant naming an unknown account; a self-share; and a latest run that does not exist all answer the same documents as before.
-- A denied share grant and a sync on a playlist the account cannot write are covered by the existing suites, which pass unchanged.
-- No route file imports a not-found helper or chooses a not-found reason.
-- `pnpm --filter @playliberty/server test` is 437 passed; `pnpm run test:unit` is 1201 passed; `pnpm run build` and `pnpm run lint:check` pass.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#layer-boundaries-normative).

@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -28,20 +27,5 @@ the refresh token and expiry. The deadline is the receipt time plus `expires_in`
 so an offset phone does not read a fresh token as expired. The provisioning callback writes the record; the session
 gate, the API client and the API config read it; an absent or malformed record is signed out. `tokenStore` and its
 two keys are gone. The web client is untouched.
-
-## Verification
-
-- Server: 474 tests across 34 files. The provisioning suite proves the pair's fields, the configured and default
-  lifetimes, the family and access rows, the stored hash against the returned plaintext, the family-prefixed title,
-  and that a `502` writes nothing. The credential service proves the family clamp, and the config suite proves the
-  defaults and the boot refusal. The migration suite lists the three new tables.
-- Mobile: 477 tests across 52 suites. The record suite proves the deadline from the duration, the round trip, the
-  access pair, and the signed-out reads for a missing, non-JSON or incomplete record. The provisioning, callback and
-  session suites follow the pair.
-- `pnpm --filter @playliberty/contracts run build`, `pnpm run build` and `pnpm run lint:check` pass.
-- On `emulator-5554`, the provisioning flow signed in from the signed-out door and the account door survived a kill
-  and relaunch. The database then held one family for the signed-in account: a 64-character hash, a 180-day refresh
-  expiry, a 12-hour access expiry and a one-year family cap.
-- The title as Pangolin displays it was not read back; the route test asserts the value handed to the client.
 
 See [`33-refresh-mobile-access`](../../specs/33-refresh-mobile-access.md).

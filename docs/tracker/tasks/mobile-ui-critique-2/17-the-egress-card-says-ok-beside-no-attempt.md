@@ -3,38 +3,6 @@
 **Status:** resolved
 **Labels:** `bug`, `ready-for-agent`
 **Source:** [A second design critique scores the mobile app 26/40](../../issues/123-a-second-design-critique-scores-the-mobile-app-26-40.md)
-**Blocked by:** None. Can start immediately.
-
-## Observed
-
-An exit card reads "Status OK" and "Last attempt: No attempt yet" side by side, with no explanation of what an attempt
-is or how a status can be known before one. Separately, the standby's "Switch" changes the instance-wide egress exit on
-a single tap, with no confirmation and no undo, from a control a thumb can reach by accident.
-
-## Expected
-
-The card's facts agree with each other, and the taxonomies are named: a check, an attempt, and the provider's view are
-different things and the card says which is which. Switching the exit either asks once, in place, as sign-out now does,
-or offers an undo.
-
-## Evidence
-
-- Screenshot `a-egress.png`: "Status OK" and "Last attempt: No attempt yet" in the same card.
-- `apps/mobile/src/views/egress/EgressScreen/EgressScreen.tsx:240-253`: the switch action.
-- `apps/mobile/src/shared/components/AccountSheet/AccountSheet.tsx:191-230`: the in-place confirm this can reuse.
-
-## Acceptance criteria
-
-- [x] No card states a status that contradicts its attempt line.
-- [x] Each fact's label says what it is: the last check, the last attempt, the provider's address.
-- [x] Switching the exit asks once before it acts, or is undoable.
-- [x] The admin can still reach the action with a thumb.
-- [x] Both catalogs carry the copy.
-
-## Verification
-
-Open VPN settings on the emulator and read a standby card; press Switch and confirm nothing changes until the second
-press. Then `pnpm --filter @playliberty/mobile test`.
 
 ## Outcome
 
@@ -55,4 +23,4 @@ Verified on the emulator at 1.0: the card reads the new labels, the first press 
 confirm itself was not pressed on the live agent; `EgressScreen.test.tsx` asserts the confirm calls the switch and the
 ask alone does not. The tests' fact labels and switch presses moved accordingly, and a Cancel test was added.
 
-Checks: mobile typecheck and suite pass. The root build, lint and unit run follows in the batch for this session.
+The root build, lint and unit run follows in the batch for this session.

@@ -22,47 +22,6 @@ horizontal rail, so the cover leads and the controls stay together. The track li
 appends as it scrolls. A row plays on a press anywhere and its lane opens a sheet. A playlist the account cannot see
 is a not-found body with a way back; a failed read is a retry, never an empty list.
 
-## User Stories
-
-1. As an account, I want the playlist's cover and name at the top, so that I know where I am.
-2. As an account, I want the platform back gesture to return me to the gallery, so that I never need a back button.
-3. As an account, I want Play on the header, so that I can start the playlist from its top.
-4. As an account, I want Shuffle on the header, so that I can start it in a random order.
-5. As an account, I want the header to say when the playlist was last synced, so that I know how fresh it is.
-6. As an account, I want the header to name the owner of a shared playlist, so that I know whose it is.
-7. As an account, I want the count on the header, so that I know the playlist's size.
-8. As an account, I want a failed playlist read explained and retryable, so that a network fault is not an empty playlist.
-9. As an account, I want a playlist I cannot see to read as not found, so that the app never confirms one I may not have.
-10. As an account, I want a playlist with no tracks to offer Sync now, so that I know what to do next.
-11. As an account, I want a synced but empty playlist to say so, so that I do not mistake it for broken.
-12. As an account, I want the sort and the chips under the header on one rail, so that the cover leads and I can
-    narrow the list.
-13. As an account, I want to sort by playlist order, newest or oldest, so that I can read the list the way I want.
-14. As an account, I want the sort saved, so that it is still there when I return.
-15. As an account, I want a refused sort explained, so that I know the press did not stick.
-16. As an account, I want status chips with counts, so that I can jump to the failed tracks.
-17. As an account, I want a filtered-empty state with Show all, so that an empty filter is not a dead end.
-18. As an account, I want the chips disabled while shuffled, so that I understand the list is not in its own order.
-19. As an account, I want a track row to play on a press anywhere, so that the target is the row, not a glyph.
-20. As an account, I want the playing row marked with a word and bars, so that I can find it while scrolling.
-21. As an account, I want each row to carry its state word, so that a failed or pending track is legible without colour.
-22. As an account, I want a failed row to explain itself and show the server's reason, so that I can decide whether to retry.
-23. As an account, I want a row's lane to open a sheet, so that I can copy, retry, fetch whole or remove it.
-24. As an account, I want to remove a track and undo it, so that one tap does not cost a track.
-25. As an account, I want to retry every failed track at once, so that I do not fix them one by one.
-26. As an account, I want a failed sync to show its band and its raw error, so that I can see what the source said.
-27. As an account, I want to retry a failed sync from the band, so that the recovery is beside the problem.
-28. As an account, I want to add a track from a floating action, so that the control is under my thumb.
-29. As an account, I want to add one video to several playlists at once, so that I do not repeat the paste.
-30. As an account, I want the per-playlist outcomes after adding, so that I know which ones took it.
-31. As an account, I want the list to append as I scroll, so that a long playlist needs no button.
-32. As an account, I want the list to land on the playing row, so that I find where the music is.
-33. As an account, I want shuffle to reorder the list to the queue's order, so that the list and the queue agree.
-34. As an account, I want a playlist I deleted to take me back to the gallery, so that I am not left on a dead screen.
-35. As a read collaborator, I want no control I cannot use, so that the screen does not offer refusals.
-36. As a screen-reader user, I want each row announced with its title, state and duration, so that the list is usable.
-37. As a French-speaking account, I want the detail in French, so that the app stays in my language.
-
 ## Implementation Decisions
 
 - **One column, and the identity block leads.** The cover, name, share mark, owner line, count, sync line and the
@@ -112,24 +71,7 @@ is a not-found body with a way back; a failed read is a retry, never an empty li
   its three outcomes are [`04-curate-a-playlist`](04-curate-a-playlist.md)'s.
 - **Inherited decisions are referenced, not restated:** the three reads and their keys, the access rule, the row's
   state words and tones, the cover chain, the sort's saved value and the filter's counts.
-
-## Testing Decisions
-
-- A test earns its place only if it fails when behaviour a user relies on changes. The tests assert which body is
-  drawn for each read outcome, which controls an access level produces, which sheet items a row's state produces,
-  that a press on a row starts the queue at that track, and that the filter's empty state offers Show all. They do
-  not assert the header's height, the skeleton's shape, or the scroll position's exact offset.
-- **The detail is tested at the screen's seam** with the three reads mocked: the not-found body, the read-failure
-  body with retry, both empty states, the sort sheet and its refusal, the chips and the filter-empty state, the skip
-  switch's disabled state, the sync band, and the row sheet's items per state. Prior art is the web detail's page
-  tests.
-- **The list's paging and landing are tested at the list's seam**: appending the next page at the end, and the
-  playing row scrolled into view once. Prior art is the web's `LoadMoreControl` tests.
-- **The critical journeys are Maestro flows**: open a playlist from the gallery, play a row and see the bar, filter
-  to failed and back to all, and remove a track then undo. The sort's persistence and the chips' counts are widget
-  tests, because their value is arithmetic.
-- **Cut tests:** no test of the rail's scroll offset, the disclosure's animation, the snackbar's timing, or the exact
-  copy of the not-found sentence.
+- **The player bar is an overlay, so the list's last row pays its height as bottom padding.** See [DESIGN.md](../../DESIGN.md#the-settled-arrangements).
 
 ## Out of Scope
 
@@ -139,9 +81,3 @@ is a not-found body with a way back; a failed read is a retry, never an empty li
 - Offline caching of a playlist, and a stored filter.
 - A landscape or tablet arrangement.
 - Editing a track's title, artwork or tags, which belong to the source.
-
-## Further Notes
-
-- The detail is the one screen where the app draws a header and a player bar at once. The bar is an overlay, so the
-  list's last row pays its height as bottom padding, as the web's two pages do.
-- The sort and chips rail scrolls with the identity and the rows; everything scrolls with the content.

@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`03`](03-the-track-rows-draw-and-play.md)
 
 ## Outcome
 
@@ -20,15 +19,5 @@ last row; the player bar's reserve arrives with spec `23`.
 Verification also found that the row's play layer sat under its content, so a tap on the title or artwork never
 reached it on the device. The non-interactive content now passes through to the play layer, while the failure
 disclosure and selectable reason stay interactive.
-
-## Verification
-
-- `usePlaylistTracks` 4 tests, track row 8 tests and detail 57 tests pass.
-- Mobile 257 tests across 34 suites pass.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run lint:check` and `pnpm run build` pass.
-- On the emulator, a 200-track playlist appended its second page near the bottom, drew no Load more control and
-  ended at its 200th track. Starting at track 101, reopening the playlist loaded the second page, landed on that row
-  once, and a tap on a row's title started the queue at that row.
 
 See [`22-read-a-playlist`](../../specs/22-read-a-playlist.md).

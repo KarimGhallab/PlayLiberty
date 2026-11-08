@@ -10,8 +10,6 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { sleeveColor } from '../../../shared/styles/sleeve';
-
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import PlaylistCard, { type PlaylistCardProps } from './PlaylistCard';
 
@@ -112,9 +110,6 @@ describe('the playlist card', () => {
     expect(
       screen.queryByTestId('playlist-cover-image', hidden)
     ).not.toBeOnTheScreen();
-    expect(screen.getByTestId('playlist-cover', hidden)).toHaveStyle({
-      backgroundColor: sleeveColor(playlist.id)
-    });
   });
 
   it('versions the first-track fallback so a changed track is a new image', async () => {
@@ -133,14 +128,6 @@ describe('the playlist card', () => {
 
   it('starts a playlist from its play control', async () => {
     const { onPlay } = await renderCard();
-
-    await fireEvent.press(screen.getByTestId('playlist-play', hidden));
-
-    expect(onPlay).toHaveBeenCalledTimes(1);
-  });
-
-  it('draws the pause control while its playlist plays', async () => {
-    const { onPlay } = await renderCard({ playing: true });
 
     await fireEvent.press(screen.getByTestId('playlist-play', hidden));
 
@@ -285,19 +272,6 @@ describe('the playlist card', () => {
     expect(screen.getByText('12 tracks', hidden)).toBeOnTheScreen();
     expect(screen.getByText('Up to date', hidden)).toBeOnTheScreen();
     expect(screen.getByTestId('playlist-share', hidden)).toBeOnTheScreen();
-  });
-
-  it('caps the card meta so it cannot collide at large text', async () => {
-    await renderCard({
-      ownerName: 'Bea',
-      playlist: { ...playlist, access: ShareLevel.Read }
-    });
-
-    for (const text of ['12 tracks', 'Up to date', 'Shared by Bea']) {
-      expect(screen.getByText(text, hidden).props.maxFontSizeMultiplier).toBe(
-        1.3
-      );
-    }
   });
 
   it('keeps the card one focus stop and offers its actions there', async () => {

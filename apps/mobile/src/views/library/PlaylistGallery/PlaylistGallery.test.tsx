@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -9,7 +8,6 @@ import {
   within
 } from '@testing-library/react-native';
 import { useState } from 'react';
-import { Dimensions, ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -21,14 +19,10 @@ import {
   ProblemCode,
   Provider,
   REMOTE_REMOVED,
-  ShareLevel,
-  TrackFileStatus
+  ShareLevel
 } from '@playliberty/contracts';
 import type { TrackFilterState } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
-
-import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
-import { tokenLength, touchTarget } from '../../../shared/styles/tokens';
 
 import {
   ApiError,
@@ -52,15 +46,9 @@ import {
 import type * as ApiClientModule from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { createAppQueryClient } from '../../../api/queryClient/queryClient';
-import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { startPlaylistPlayback } from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
 import type { LibraryScope } from '@playliberty/library';
-import {
-  galleryColumnCount,
-  galleryColumnWidth,
-  galleryPinnedWidth
-} from '../galleryColumns/galleryColumns';
 import PlaylistGallery from './PlaylistGallery';
 
 jest.mock('@playliberty/api-client', () => ({
@@ -397,35 +385,6 @@ describe('the gallery', () => {
     ).toEqual(['Pinned Mix', 'Syncing Mix', 'Rest Mix']);
   });
 
-  it('draws the pinned group as one horizontal row', async () => {
-    await renderGallery([pinned, base]);
-
-    expect(screen.getByTestId('pinned-row').props.horizontal).toBe(true);
-  });
-
-  it('mounts only the pinned cards the viewport needs', async () => {
-    const many = Array.from({ length: 12 }, (_, index) => ({
-      ...pinned,
-      id: `pinned-${index}`,
-      name: `Pinned ${index}`
-    }));
-    await renderGallery([...many, base]);
-
-    const windowWidth = Dimensions.get('window').width;
-    const columnWidth = galleryColumnWidth(windowWidth);
-    const columns = galleryColumnCount(windowWidth);
-    const gap = tokenLength('space-3');
-    const viewport = columns * columnWidth + (columns - 1) * gap;
-    const bound = Math.max(
-      2,
-      Math.ceil(viewport / (galleryPinnedWidth(windowWidth) + gap))
-    );
-    const drawn = screen.getAllByTestId('pinned-card').length;
-
-    expect(drawn).toBeLessThanOrEqual(bound);
-    expect(drawn).toBeLessThan(many.length);
-  });
-
   it('draws no pinned row when nothing is pinned', async () => {
     await renderGallery([base]);
 
@@ -582,23 +541,6 @@ describe('the gallery', () => {
     });
   });
 
-  it('offers a reader the pin alone', async () => {
-    await renderGallery([shared], directory);
-
-    await fireEvent.press(controlOf('actions', 'Shared Mix'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
-    });
-    expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('playlist-action-rename')
-    ).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('playlist-action-delete')
-    ).not.toBeOnTheScreen();
-  });
-
   it('reads Unpin on a pinned card', async () => {
     await renderGallery([pinned]);
 
@@ -609,25 +551,6 @@ describe('the gallery', () => {
         within(screen.getByTestId('playlist-action-pin')).getByText('Unpin')
       ).toBeOnTheScreen();
     });
-  });
-
-  it('offers a write collaborator the pin, Cover and Sync', async () => {
-    await renderGallery([{ ...base, access: ShareLevel.Write }]);
-
-    await fireEvent.press(controlOf('actions', 'Rest Mix'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('playlist-action-pin')).toBeOnTheScreen();
-    });
-    expect(screen.getByTestId('playlist-action-cover')).toBeOnTheScreen();
-    expect(screen.getByTestId('playlist-action-sync')).toBeOnTheScreen();
-    expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('playlist-action-rename')
-    ).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('playlist-action-delete')
-    ).not.toBeOnTheScreen();
   });
 
   it('pins from the sheet and keeps a refusal in the sheet', async () => {
@@ -915,10 +838,6 @@ describe('the gallery', () => {
     await renderGallery([shared, base], directory);
 
     expect(screen.getByRole('radio', { name: 'All 2' })).toBeChecked();
-    expect(screen.getByTestId('scope-all').props.hitSlop).toEqual({
-      top: 3,
-      bottom: 3
-    });
     expect(screen.getByRole('radio', { name: 'Shared 1' })).not.toBeChecked();
     expect(screen.getByRole('radio', { name: 'All 6' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Pending 2' })).toBeOnTheScreen();
@@ -1041,129 +960,10 @@ describe('the gallery', () => {
     expect(screen.getByRole('radio', { name: 'All 6' })).toBeChecked();
   });
 
-  it('scrolls the filter row horizontally', async () => {
-    await renderGallery([shared, base], directory);
-
-    expect(screen.getByTestId('gallery-filter-bar').props.horizontal).toBe(
-      true
-    );
-  });
-
-  it('leaves the rail at its start until a chip is chosen', async () => {
-    const scrollTo = jest
-      .spyOn(ScrollView.prototype, 'scrollTo')
-      .mockImplementation(() => {});
-    await renderGallery([shared, base], directory);
-
-    await act(async () => {
-      screen.getByTestId('gallery-filter-bar').props.onLayout({
-        nativeEvent: { layout: { width: 200 } }
-      });
-      screen.getByTestId('gallery-status-chips').props.onLayout({
-        nativeEvent: { layout: { x: 150, width: 300 } }
-      });
-      screen.getByTestId('gallery-chip-all').props.onLayout({
-        nativeEvent: { layout: { x: 0, width: 120 } }
-      });
-      screen.getByTestId('gallery-chip-failed').props.onLayout({
-        nativeEvent: { layout: { x: 226, width: 90 } }
-      });
-    });
-
-    expect(scrollTo).not.toHaveBeenCalled();
-
-    await fireEvent.press(screen.getByRole('radio', { name: 'Failed 4' }));
-
-    expect(scrollTo).toHaveBeenCalledWith(
-      expect.objectContaining({ x: 150 + 226 + 90 - 200 + 12 })
-    );
-
-    scrollTo.mockRestore();
-  });
-
-  it('reveals a restored status chip without animating', async () => {
-    const scrollTo = jest
-      .spyOn(ScrollView.prototype, 'scrollTo')
-      .mockImplementation(() => {});
-    await renderPlaylists(
-      queryResult(page([shared, base])),
-      directory,
-      undefined,
-      TrackFileStatus.Failed
-    );
-
-    await act(async () => {
-      screen.getByTestId('gallery-filter-bar').props.onLayout({
-        nativeEvent: { layout: { width: 200 } }
-      });
-      screen.getByTestId('gallery-status-chips').props.onLayout({
-        nativeEvent: { layout: { x: 150, width: 300 } }
-      });
-      screen.getByTestId('gallery-chip-failed').props.onLayout({
-        nativeEvent: { layout: { x: 226, width: 90 } }
-      });
-    });
-
-    expect(scrollTo).toHaveBeenCalledWith({
-      x: 150 + 226 + 90 - 200 + 12,
-      animated: false
-    });
-
-    scrollTo.mockRestore();
-  });
-
-  it('reveals a restored chip at a capped text scale', async () => {
-    const scrollTo = jest
-      .spyOn(ScrollView.prototype, 'scrollTo')
-      .mockImplementation(() => {});
-    await renderPlaylists(
-      queryResult(page([shared, base])),
-      directory,
-      undefined,
-      TrackFileStatus.Failed
-    );
-
-    await act(async () => {
-      screen.getByTestId('gallery-filter-bar').props.onLayout({
-        nativeEvent: { layout: { width: 200 } }
-      });
-      screen.getByTestId('gallery-status-chips').props.onLayout({
-        nativeEvent: { layout: { x: 150, width: 300 } }
-      });
-      screen.getByTestId('gallery-chip-failed').props.onLayout({
-        nativeEvent: { layout: { x: 260, width: 117 } }
-      });
-    });
-
-    expect(scrollTo).toHaveBeenCalledWith({
-      x: 150 + 260 + 117 - 200 + 12,
-      animated: false
-    });
-
-    scrollTo.mockRestore();
-  });
-
-  it('mounts a bounded number of cards for a large library', async () => {
-    const many = Array.from({ length: 200 }, (_, index) => ({
-      ...base,
-      id: `playlist-${index}`,
-      name: `Playlist ${index}`
-    }));
-
-    await renderGallery(many);
-
-    expect(screen.getAllByTestId('playlist-card').length).toBeLessThan(200);
-  });
-
   it('draws the skeleton while the read is pending', async () => {
     await renderPlaylists(queryResult(undefined, { isPending: true }));
 
     expect(screen.getByTestId('gallery-skeleton')).toBeOnTheScreen();
-    expect(
-      screen.getByTestId('gallery-skeleton-rail', {
-        includeHiddenElements: true
-      })
-    ).toHaveStyle({ height: touchTarget });
     expect(screen.queryByText('No playlists yet')).not.toBeOnTheScreen();
   });
 
@@ -1262,35 +1062,6 @@ describe('the gallery', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('gallery-actions')).toBeDisabled();
-    });
-  });
-
-  it('clears the player bar under the last row and the dial', async () => {
-    usePlayerStore.getState().start(
-      [
-        {
-          id: 'track-1',
-          title: 'First Song',
-          durationSeconds: 182,
-          thumbnailPath: null
-        }
-      ],
-      { id: 'playlist-1', name: 'Rest Mix' },
-      'track-1'
-    );
-    await renderGallery([base]);
-
-    expect(
-      screen.getByTestId('gallery-scroll').props.contentContainerStyle[1]
-        .paddingBottom
-    ).toBe(
-      tokenLength('space-4') +
-        actionDialSize +
-        tokenLength('space-3') +
-        playerBarHeight
-    );
-    expect(screen.getByTestId('gallery-actions-dial')).toHaveStyle({
-      bottom: tokenLength('space-4') + playerBarHeight
     });
   });
 

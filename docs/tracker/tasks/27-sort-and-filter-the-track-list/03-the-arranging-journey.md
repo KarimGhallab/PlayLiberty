@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`02`](02-the-pinned-sort-and-the-wrapping-chips.md)
 
 ## Outcome
 
@@ -18,12 +17,5 @@ All, and ends in the library.
 The flow reads no copy: the sheet's options and the chips are found by their ids. The sideways chip swipes are gone
 because the chips wrap and every chip is one tap. The README names the journey and replaces the chip-rail paragraph
 with the pinned band's rule.
-
-## Verification
-
-- The flow passed twice in a row on `emulator-5554` with `OWNED_PLAYLIST=Paradis`; the second run started from
-  `newest_first`, so the first press of Playlist order wrote before the newest press wrote again.
-- The database held `newest_first` for `Paradis` after the first run.
-- No source changed; the flow and the README are the ticket's artifacts.
 
 See [`27-sort-and-filter-the-track-list`](../../specs/27-sort-and-filter-the-track-list.md).

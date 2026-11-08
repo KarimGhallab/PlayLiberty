@@ -13,6 +13,4 @@
 
 The partner identities and their shares are created through the API so the access levels are the server's facts; the browser stays the dev account. The fixture images are in-memory PNG buffers passed to the real file input.
 
-Verification: `pnpm --filter @playliberty/e2e run typecheck` and `pnpm run build` pass, lint is clean apart from the existing `phone.spec.ts` warning, and the full suite passes at 41 e2e journeys.
-
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

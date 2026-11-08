@@ -24,8 +24,4 @@ stripping, the 1600px cap, replacement and old-file removal, the type, non-image
 leaving the previous cover, the owner/write/read/stranger/missing matrix, the media headers, a missing cover
 and missing file, the event, a failed write, and survival across sync, rename, skip and sort.
 
-Verification: `pnpm run build` and the server container build pass, and `sharp` loads in the runtime image.
-The full unit suite passes (server 375, web 498). Lint reports no errors; its warnings are in the concurrently
-edited playlist-delete work and the existing phone journey.
-
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

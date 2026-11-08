@@ -13,11 +13,4 @@ The Playlist and Track routes call `sendRefusal(reply, result.refusal)` and no l
 
 A denial and a vanished Playlist answer the same bytes: the new route test compares the two documents directly.
 
-## Verification
-
-- Every migrated refusal is built from the same table as before, so its status, code, title, detail and params are unchanged.
-- No migrated route names a not-found reason or authors a problem document.
-- The existing Playlist and Track route suites pass unchanged; the only new test compares a denied and a missing playlist.
-- `pnpm --filter @playliberty/server test` is 437 passed; `pnpm run test:unit` is 1201 passed; `pnpm run build` and `pnpm run lint:check` pass.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#layer-boundaries-normative).

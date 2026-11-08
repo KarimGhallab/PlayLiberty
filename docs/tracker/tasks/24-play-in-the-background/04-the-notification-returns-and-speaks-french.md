@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-the-service-starts-with-the-player.md)
 
 ## Outcome
 
@@ -17,17 +16,5 @@ copy: for example `Piste précédente, Makafushigi Adventure Instrumental Full V
 previous and next labels all come from the app's translator, so they follow the selected language. A language change
 changes the label state, which changes the notification key and rebuilds the notification and channel. A bare queue
 passes an empty playlist name, so no subtitle or artist line is drawn.
-
-## Verification
-
-- Mobile 373 tests across 43 suites pass. Mapping tests cover the route, English and French labels, the named actions
-  and the empty bare subtitle. A hook test proves the French labels and route reach the service.
-- `pnpm --filter @playliberty/mobile run typecheck`, `pnpm run lint:check` and `pnpm run build` pass.
-- The Android module compiled with `:app:assembleDebug` and the rebuilt client installed.
-- On the French device, the notification actions read `Piste précédente, ...`, `Mettre en pause ...` and
-  `Piste suivante, ...`, with the track title in each. The media metadata carried the title, playlist artist and
-  album.
-- Leaving the app on `Chine`, opening the home screen, and tapping the media card returned to `Chine` with the bar
-  still visible.
 
 See [`24-play-in-the-background`](../../specs/24-play-in-the-background.md).

@@ -3,8 +3,6 @@
 **State:** `resolved`
 **Category:** `bug`
 
-**Blocked by:** None.
-
 ## Outcome
 
 `apps/mobile/scripts/run-maestro.mjs` now tees Maestro's output instead of inheriting it, and reads each `[Failed] <flow name>` line as Maestro prints it, so a flow that died is explained while the batch is still running. A single flow gets no batch result line, so its check runs when Maestro exits.
@@ -13,4 +11,4 @@ The check reads the flow's own `logs/crash-report.txt` when Maestro wrote one, a
 
 Reading the output costs Maestro its TTY, so the run now uses its plain renderer; the steps, results and summaries are unchanged.
 
-Verification: replaying run 2's real crash report through the runner printed `Fatal signal 11 (SIGSEGV) ... pid 17983 (playliberty.app)` and `#00 ... MountingCoordinator::pullTransaction(bool) const+706`. A stub Maestro with a crash, a clean failure and a flow whose process was absent printed the first and third after their own result lines and nothing for the clean one, including the single-flow path where no result line exists. The real harness printed no crash block for a single clean failure, or for a two-flow run where one flow passed and one failed cleanly, and 110's artifact line still printed. `node --check`, `pnpm run lint:check`, `pnpm run build` and `pnpm test:unit` (502 server, 625 web, 608 mobile) pass. The 15-flow suite was not rerun; the targeted harness runs used the changed runner.
+Verification: replaying run 2's real crash report through the runner printed `Fatal signal 11 (SIGSEGV) ... pid 17983 (playliberty.app)` and `#00 ... MountingCoordinator::pullTransaction(bool) const+706`. A stub Maestro with a crash, a clean failure and a flow whose process was absent printed the first and third after their own result lines and nothing for the clean one, including the single-flow path where no result line exists. The real harness printed no crash block for a single clean failure, or for a two-flow run where one flow passed and one failed cleanly, and 110's artifact line still printed. The 15-flow suite was not rerun; the targeted harness runs used the changed runner.

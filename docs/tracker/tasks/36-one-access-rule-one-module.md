@@ -11,6 +11,4 @@ The shapes derive from it. `playlistReaches(accountId, need)` is the one access 
 
 `entry.test.ts` replaces the four piecemeal playlist-seam tests with one table: owner, write, read and stranger against read, write and owner, asserting both the outcome and that the handler does not run on a denial. A new share level is one edit to `GRANTED` (plus the contract enum), not four SQL statements.
 
-Verification: the table test passes; `pnpm run build` and `pnpm run lint` pass; the server suite is 386 passed across 28 files. No feature imports `satisfies`, `shareLevelsFor`, `ownerGrants`, `playlistReaches` or a raw track predicate.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md).

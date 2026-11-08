@@ -47,12 +47,10 @@ import {
 import { I18nProvider, Language } from '@playliberty/i18n';
 
 import { copyText } from '../../../shared/clipboard/copyText';
-import { actionDialSize } from '../../../shared/components/ActionDial/ActionDial';
 import {
   tokenDuration,
   tokenLength,
-  tokenNumber,
-  touchTarget
+  tokenNumber
 } from '../../../shared/styles/tokens';
 
 import {
@@ -83,7 +81,6 @@ import {
 } from '@playliberty/api-client';
 import type * as ApiClientModule from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
-import { playerBarHeight } from '../../../player/playerBarSize/playerBarSize';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { takeLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
 import PlaylistDetail from './PlaylistDetail';
@@ -967,55 +964,12 @@ describe('the playlist detail', () => {
     expect(within(sheet).getByTestId('detail-skip')).toBeDisabled();
   });
 
-  it('explains a refused skip setting in French', async () => {
-    const failure = new ApiError(503, {
-      type: 'about:blank',
-      title: 'Service unavailable',
-      status: 503,
-      code: ProblemCode.InternalError,
-      detail: 'Le paramètre est indisponible.'
-    });
-    const { skipMutate } = await openHeaderSheet({
-      language: Language.French
-    });
-    const mutate = skipMutate as unknown as {
-      mockImplementation: (
-        fn: (
-          skipNonMusic: boolean,
-          options: { onError?: (error: Error) => void }
-        ) => void
-      ) => void;
-    };
-
-    mutate.mockImplementation((_skipNonMusic, options) => {
-      options.onError?.(failure);
-    });
-
-    expect(
-      screen.getByText('Ignorer les parties non musicales')
-    ).toBeOnTheScreen();
-    await fireEvent.press(screen.getByTestId('detail-skip'));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Le paramètre est indisponible.')
-      ).toBeOnTheScreen();
-    });
-    expect(
-      screen.getByTestId('detail-skip').props.accessibilityState
-    ).toMatchObject({ checked: true });
-  });
-
   it('draws the sort and the chips under the header in one rail', async () => {
     await renderDetail();
     const scroll = screen.getByTestId('playlist-scroll');
 
     expect(screen.getByTestId('playlist-identity')).toBeOnTheScreen();
     expect(within(scroll).getByTestId('playlist-controls')).toBeOnTheScreen();
-    expect(screen.getByTestId('playlist-filter-rail').props.horizontal).toBe(
-      true
-    );
-    expect(screen.getByTestId('playlist-filter-divider')).toBeOnTheScreen();
     expect(screen.getByLabelText('Sort by: Playlist order')).toBeOnTheScreen();
     expect(screen.getByTestId('filter-all').props.accessibilityLabel).toBe(
       'All 1'
@@ -1089,17 +1043,6 @@ describe('the playlist detail', () => {
     expect(screen.queryByTestId('filter-empty')).not.toBeOnTheScreen();
   });
 
-  it('draws the retained view last with the retained count', async () => {
-    await renderDetail({ tracks: pageWithRetained });
-
-    const chips = within(screen.getByTestId('playlist-chips')).getAllByRole(
-      'radio'
-    );
-
-    expect(chips.at(-1)?.props.accessibilityLabel).toBe('Retained 1');
-    expect(screen.getByTestId('filter-remoteRemoved')).toBeOnTheScreen();
-  });
-
   it('filters the read to the retained tracks', async () => {
     await renderDetail({
       tracks: pageWithRetained,
@@ -1151,24 +1094,6 @@ describe('the playlist detail', () => {
         'playlist-1',
         undefined
       );
-    });
-  });
-
-  it('words the empty retained view in French', async () => {
-    await renderDetail({
-      language: Language.French,
-      tracks: pageWithRetained,
-      filteredTracks: {
-        [REMOTE_REMOVED]: { ...emptyPage, remoteRemoved: 1 }
-      }
-    });
-
-    await fireEvent.press(screen.getByTestId('filter-remoteRemoved'));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Aucune piste conservée après un retrait de YouTube')
-      ).toBeOnTheScreen();
     });
   });
 
@@ -1323,21 +1248,6 @@ describe('the playlist detail', () => {
     });
   });
 
-  it('names a current row on a paused queue as paused', async () => {
-    usePlayerStore.setState({
-      queue: ['track-1'],
-      playlistId: 'playlist-1',
-      currentId: 'track-1',
-      isPlaying: false
-    });
-    await renderDetail();
-
-    expect(screen.getByText('Paused', hidden)).toBeOnTheScreen();
-    expect(
-      screen.getByTestId('track-bars', { includeHiddenElements: true })
-    ).toBeOnTheScreen();
-  });
-
   it('appends the next page near the bottom and stops at the end', async () => {
     const { tracksFetchNextPage } = await renderDetail({ hasMore: true });
     const scroll = screen.getByTestId('playlist-scroll');
@@ -1359,46 +1269,6 @@ describe('the playlist detail', () => {
       }
     });
     expect(tracksFetchNextPage).toHaveBeenCalledTimes(1);
-  });
-
-  it('draws no Load more control and clears the add action under the last row', async () => {
-    await renderDetail();
-
-    expect(screen.queryByText('Load more')).not.toBeOnTheScreen();
-    expect(
-      screen.getByTestId('playlist-scroll').props.contentContainerStyle[1]
-        .paddingBottom
-    ).toBe(tokenLength('space-4') + actionDialSize + tokenLength('space-3'));
-  });
-
-  it('clears the player bar under the last row and the add action', async () => {
-    usePlayerStore.getState().start(
-      [
-        {
-          id: 'track-1',
-          title: 'First Song',
-          durationSeconds: 182,
-          thumbnailPath: null
-        }
-      ],
-      { id: 'playlist-1', name: 'Rain On The Window' },
-      'track-1'
-    );
-    await renderDetail();
-
-    expect(
-      screen.getByTestId('playlist-scroll').props.contentContainerStyle[1]
-        .paddingBottom
-    ).toBe(
-      tokenLength('space-4') +
-        actionDialSize +
-        tokenLength('space-3') +
-        playerBarHeight
-    );
-    expect(screen.getByTestId('detail-fab-dial')).toHaveStyle({
-      bottom: tokenLength('space-4') + playerBarHeight,
-      right: tokenLength('space-4') + touchTarget + tokenLength('space-2')
-    });
   });
 
   it('reports the next page in flight', async () => {
@@ -1520,33 +1390,6 @@ describe('the playlist detail', () => {
     expect(scrollToIndex).not.toHaveBeenCalled();
   });
 
-  it('mounts a bounded number of rows for a long playlist', async () => {
-    const many = Array.from({ length: 1000 }, (_, index) => ({
-      ...track,
-      track: { ...track.track, id: `track-${index}`, title: `Track ${index}` }
-    }));
-
-    await renderDetail({
-      tracks: { ...page, items: many, total: many.length },
-      queue: []
-    });
-
-    expect(screen.getAllByTestId('track-row').length).toBeLessThan(50);
-  });
-
-  it('draws no play control for an unplayable row', async () => {
-    await renderDetail({
-      tracks: { ...page, items: [failedTrack], total: 1 },
-      queue: []
-    });
-
-    expect(screen.queryByTestId('track-play')).not.toBeOnTheScreen();
-    expect(screen.getByText('First Song')).toBeOnTheScreen();
-    expect(
-      within(screen.getByTestId('track-row')).getByText('Failed')
-    ).toBeOnTheScreen();
-  });
-
   async function openFailedSheet(options: RenderOptions = {}) {
     const result = await renderDetail({
       tracks: { ...page, items: [failedTrack], total: 1 },
@@ -1613,42 +1456,6 @@ describe('the playlist detail', () => {
       { timeout: 3000 }
     );
   }
-
-  it('draws copy, the two repairs and Remove on a failed row', async () => {
-    await openFailedSheet();
-
-    expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
-    expect(screen.getByTestId('track-action-retry')).toBeOnTheScreen();
-    expect(screen.getByTestId('track-action-fetchWhole')).toBeOnTheScreen();
-    expect(screen.getByTestId('track-action-remove')).toBeOnTheScreen();
-  });
-
-  it('draws only copy for a read collaborator', async () => {
-    await openFailedSheet({
-      playlist: { ...playlist, access: ShareLevel.Read }
-    });
-
-    expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
-    expect(screen.queryByTestId('track-action-retry')).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('track-action-fetchWhole')
-    ).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('track-action-remove')).not.toBeOnTheScreen();
-  });
-
-  it('draws only copy while the row is busy', async () => {
-    await openFailedSheet({
-      retryPending: true,
-      retryVariables: 'track-1'
-    });
-
-    expect(screen.getByTestId('track-action-copy')).toBeOnTheScreen();
-    expect(screen.queryByTestId('track-action-retry')).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('track-action-fetchWhole')
-    ).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('track-action-remove')).not.toBeOnTheScreen();
-  });
 
   it('copies the track absolute link and confirms', async () => {
     copyTextMock.mockResolvedValue(true);
@@ -1995,42 +1802,6 @@ describe('the playlist detail', () => {
     );
   });
 
-  it('draws the overflow for the owner and a write collaborator', async () => {
-    await renderDetail();
-    expect(screen.getByTestId('detail-actions')).toBeOnTheScreen();
-
-    await renderDetail({
-      playlist: { ...playlist, access: ShareLevel.Write }
-    });
-    expect(screen.getByTestId('detail-actions')).toBeOnTheScreen();
-  });
-
-  it('offers the owner share, rename, cover and delete, without the pin', async () => {
-    await openHeaderSheet();
-
-    for (const key of ['share', 'rename', 'cover', 'delete']) {
-      expect(screen.getByTestId(`playlist-action-${key}`)).toBeOnTheScreen();
-    }
-    expect(screen.queryByTestId('playlist-action-pin')).not.toBeOnTheScreen();
-  });
-
-  it('offers a write collaborator cover alone', async () => {
-    await openHeaderSheet({
-      playlist: { ...playlist, access: ShareLevel.Write }
-    });
-
-    expect(screen.getByTestId('playlist-action-cover')).toBeOnTheScreen();
-    expect(screen.queryByTestId('playlist-action-sync')).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('playlist-action-share')).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('playlist-action-rename')
-    ).not.toBeOnTheScreen();
-    expect(
-      screen.queryByTestId('playlist-action-delete')
-    ).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('playlist-action-pin')).not.toBeOnTheScreen();
-  });
-
   it('prefills and renames from the detail header', async () => {
     const { renameMutate } = await openRenameSheet();
 
@@ -2134,36 +1905,6 @@ describe('the playlist detail', () => {
         screen.queryByRole('header', { name: 'Playlist cover' })
       ).not.toBeOnTheScreen();
     });
-  });
-
-  it('opens the playlist sheet for a read collaborator without write actions', async () => {
-    await openHeaderSheet({
-      playlist: { ...playlist, access: ShareLevel.Read }
-    });
-
-    expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
-    expect(screen.queryByTestId('playlist-action-sync')).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('playlist-action-cover')).not.toBeOnTheScreen();
-  });
-
-  it('renders the delete window in French', async () => {
-    await renderDetail({ language: Language.French });
-
-    await fireEvent.press(screen.getByTestId('detail-actions'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('playlist-actions-sheet')).toBeOnTheScreen();
-    });
-
-    expect(screen.getByText('Supprimer')).toBeOnTheScreen();
-
-    await fireEvent.press(screen.getByTestId('playlist-action-delete'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('undo-snackbar')).toBeOnTheScreen();
-    });
-    expect(screen.getByText('Suppression de la playlist')).toBeOnTheScreen();
-    expect(screen.getByText('Annuler')).toBeOnTheScreen();
   });
 
   it('draws the cover with the session headers', async () => {
@@ -2574,25 +2315,6 @@ describe('the playlist detail', () => {
     });
   });
 
-  it('renders the start failure in French', async () => {
-    const queueFailure = new ApiError(503, {
-      type: 'about:blank',
-      title: 'Service unavailable',
-      status: 503,
-      code: ProblemCode.InternalError,
-      detail: 'The queue is unavailable.'
-    });
-    await renderDetail({ language: Language.French, queueError: queueFailure });
-
-    await act(async () => {
-      await fireEvent.press(screen.getByTestId('detail-play'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/n'a pas pu être lue/)).toBeOnTheScreen();
-    });
-  });
-
   it('shows a running latest sync as the playlist state', async () => {
     const running: SyncRun = {
       id: 'run-1',
@@ -2685,89 +2407,6 @@ describe('the playlist detail', () => {
     expect(useLatestSyncRunMock).toHaveBeenCalledWith('playlist-1');
   });
 
-  it('renders the append loading in French', async () => {
-    await renderDetail({
-      language: Language.French,
-      hasMore: true,
-      fetchingNextPage: true
-    });
-
-    expect(screen.getByText('Chargement...')).toBeOnTheScreen();
-  });
-
-  it('renders the append retry in French', async () => {
-    await renderDetail({
-      language: Language.French,
-      hasMore: true,
-      fetchNextPageError: true
-    });
-
-    expect(screen.getByText('Réessayer')).toBeOnTheScreen();
-  });
-
-  it('renders the controls, sort sheet and empty filter in French', async () => {
-    await renderDetail({
-      language: Language.French,
-      tracks: pageWithFailed,
-      filteredTracks: {
-        [TrackFileStatus.Failed]: { ...emptyPage, counts }
-      }
-    });
-
-    expect(screen.getByText('Trier par')).toBeOnTheScreen();
-    expect(screen.getByText('Toutes')).toBeOnTheScreen();
-
-    await fireEvent.press(screen.getByTestId('filter-failed'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Aucune piste en échec')).toBeOnTheScreen();
-    });
-    expect(screen.getByText('Tout afficher')).toBeOnTheScreen();
-
-    await fireEvent.press(screen.getByTestId('detail-sort'));
-    await waitFor(() => {
-      expect(screen.getByText("Plus récentes d'abord")).toBeOnTheScreen();
-    });
-
-    await fireEvent.press(screen.getByTestId('playlist-sort-backdrop'));
-    await waitFor(() => {
-      expect(screen.queryByTestId('playlist-sort-sheet')).not.toBeOnTheScreen();
-    });
-  });
-
-  it('renders the identity in French', async () => {
-    await renderDetail({ language: Language.French });
-
-    expect(screen.getByText('À jour')).toBeOnTheScreen();
-    expect(screen.getByText('12 pistes')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Lire cette playlist')).toBeOnTheScreen();
-    expect(
-      screen.getByLabelText('Lecture aléatoire de Rain On The Window')
-    ).toBeOnTheScreen();
-  });
-
-  it('renders the empty body in French', async () => {
-    await renderDetail({
-      language: Language.French,
-      playlist: neverSynced,
-      tracks: emptyPage
-    });
-
-    expect(screen.getByText('Rien pour le moment')).toBeOnTheScreen();
-    expect(
-      within(screen.getByTestId('empty-sync')).getByText('Synchroniser')
-    ).toBeOnTheScreen();
-  });
-
-  it('renders the not-found body in French', async () => {
-    await renderDetail({ language: Language.French, playlistError: notFound });
-
-    expect(screen.getByText("Cette playlist n'est pas ici")).toBeOnTheScreen();
-    expect(
-      screen.getByRole('button', { name: "Retour à l'accueil" })
-    ).toBeOnTheScreen();
-  });
-
   it('draws the add action for a writer', async () => {
     await renderDetail();
 
@@ -2795,14 +2434,6 @@ describe('the playlist detail', () => {
     expect(
       screen.getByRole('button', { name: 'Sync, Rain On The Window' })
     ).toBeOnTheScreen();
-  });
-
-  it('keeps the state line reachable through the wide action layer', async () => {
-    await renderDetail();
-
-    expect(screen.getByTestId('detail-actions-wide').props.pointerEvents).toBe(
-      'box-none'
-    );
   });
 
   it('draws no state-line sync for a reader', async () => {

@@ -6,7 +6,7 @@ PlayLiberty is a self-hosted, multi-user audio player for web and mobile that mi
 
 Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see [the server stack](ARCHITECTURE.md#the-server-stack)). The web client is a React 19.3 and Vite SPA served by nginx as the single public origin (see [the web stack](ARCHITECTURE.md#the-web-stack)); playback is one browser audio element with the Media Session API. The mobile client is an Expo React Native app whose v1 runtime is Android, streaming through the same origin with background playback, lock-screen and notification controls, and its own queue (see [the mobile stack](ARCHITECTURE.md#the-mobile-stack)). It carries a per-user Pangolin access token obtained through a self-service browser flow instead of a browser session (see [mobile provisioning](ARCHITECTURE.md#mobile-provisioning)).
 
-The server, both clients and every shared package exist: `apps/server`, `apps/web`, `apps/mobile`, `packages/contracts`, `packages/api-client`, `packages/library`, `packages/player`, `packages/tokens`, `packages/ui-foundation`, `packages/i18n`, `packages/query`, `packages/youtube`. The mobile client runs as a development build; its signed, sideloaded Android APK is the release step that remains. iOS stays in the shared code and is not built or tested in v1.
+The components and their boundaries are in [ARCHITECTURE.md](ARCHITECTURE.md#components). The mobile client runs as a development build; its signed, sideloaded Android APK is the release step that remains. iOS stays in the shared code and is not built or tested in v1.
 
 ## Users
 
@@ -43,7 +43,7 @@ Capabilities in v1:
 Hard constraints:
 
 - Audio only. No video storage or playback.
-- No audio transcoding, ever. The stored audio format must play natively everywhere, which fixes it to AAC/M4A. See [audio is stored as-is, never transcoded](ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded).
+- The stored stream must play natively, because transcoding is a non-goal. See [audio is stored as-is, never transcoded](ARCHITECTURE.md#audio-is-stored-as-is-never-transcoded).
 - The stored media, not YouTube, is the source of truth for playback.
 - A sync must never delete a track because a source video disappeared.
 - No global library view: playlists are the only entry point to content.
@@ -67,4 +67,4 @@ Calm, content-first, and quiet. The interface is a playlist library, not a video
 
 ## Accessibility & Inclusion
 
-Target the usual bar: keyboard reach and visible focus on the web client, sufficient contrast in the dark theme the clients ship, and respect for reduced-motion preferences. On the mobile client every control is a 48dp target with a name and a role, Dynamic Type is honoured with a capped multiplier only where a fixed layout would break, and reduced motion is read from the system. The design decisions, and the rules that hold them, are in [DESIGN.md](DESIGN.md).
+Target the usual bar: keyboard reach and visible focus, sufficient contrast in the dark theme, and respect for reduced-motion preferences; every mobile control carries a name and a role. The rules that hold the bar are in [DESIGN.md](DESIGN.md).

@@ -15,10 +15,4 @@ A Track now stores `failure_kind` beside `failure_reason` (migration `0007_nervo
 
 The kind is declared in both the YouTube package and the contract because the adapter has no dependency on `@playliberty/contracts`; `storedFailureKind` in `trackLifecycle.ts` is the compile-checked projection between them.
 
-## Verification
-
-- The vocabulary's table, the worker's terminal, retry and interrupted paths, the policy's exit-level rule, the Sync's blocked sentence and the row's stored-kind sentence each have a test.
-- `pnpm run test:unit` is 1173 passed across all packages and apps; `pnpm run build` and `pnpm run lint:check` pass.
-- A blocked read, an Unavailable video, a SponsorBlock outage, an interrupted download and an open circuit reach the same end state as before.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#the-youtube-egress-runs-in-a-host-network-namespace).

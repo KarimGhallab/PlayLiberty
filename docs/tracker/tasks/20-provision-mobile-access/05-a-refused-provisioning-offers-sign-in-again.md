@@ -3,8 +3,7 @@
 **Status:** resolved
 **Labels:** `bug`, `ready-for-agent`
 **Source:** [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md), "A failure closes the browser
-and returns to the app with one sentence", and user stories 24 and 26.
-**Blocked by:** None. Can start immediately.
+and returns to the app with one sentence".
 
 ## Outcome
 
@@ -20,15 +19,6 @@ The browser start and the failure mapping moved to shared helpers used by the li
 two entry points cannot drift. The signed-out action accepts an optional label, and the callback module moved into
 its own folder with its test.
 
-## Verification
-
-- Mobile 69 tests across 15 suites, `tsc --noEmit`, i18n 42 tests, `pnpm run build` and `pnpm run lint:check` pass.
-- Six callback tests cover the refusal sentence and action, the pending disabled state, the state mismatch, the
-  missing flow, the missing code or state, the French label, and the success path.
-
-## Notes
-
-- The failure state reuses the signed-out screen rather than drawing a second action surface, so the 44pt target and
-  the disabled state have one owner.
+**Constraints:** The failure state reuses the signed-out screen, so the 44pt target and the disabled state have one owner.
 
 See [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md).

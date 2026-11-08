@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`02`](02-grant-and-change-a-level.md)
 
 ## Outcome
 
@@ -19,13 +18,5 @@ either language. It reads no email address and no role.
 
 The README records `SHARE_ACCOUNT`, the flow's row, the picker's three rules, and that the account must not be the
 signed-in owner of `OWNED_PLAYLIST`.
-
-## Verification
-
-- The flow passed twice in a row on the emulator with `OWNED_PLAYLIST=Paradis` and `SHARE_ACCOUNT=Dev User`, the
-  second starting from the private state the first left.
-- A third run started with a share seeded for that account and playlist. The reset branch revoked it, then the
-  read grant, the write change and the confirmed revoke passed, and the database held no share afterwards.
-- No source changed; the flow and the README are the ticket's artifacts.
 
 See [`26-share-a-playlist`](../../specs/26-share-a-playlist.md).

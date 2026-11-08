@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-one-sheet-frame-for-the-app.md), [`03`](03-the-gallery-states.md)
 
 ## Outcome
 
@@ -13,11 +12,5 @@ The sheet owns the playlist link field, the skip-non-music checkbox defaulting o
 `useCreatePlaylist` posts the link and the setting, inserts the created playlist into the library as syncing, and the gallery holds that flag for six seconds while the server's quick first reconcile settles; the next read replaces it with the server's row. The gallery closes the sheet and resets the mutation when the create succeeds.
 
 The gallery's tests cover the floating action's presence and absence, the empty gallery's action opening the sheet, and the sheet closing on success. The add sheet's own tests cover the schema refusal, the busy state, the discard confirmation and the skip default. The skip control is the shared `Checkbox`, whose own tests cover the announced state, the toggle, the hint and the disabled refusal.
-
-## Verification
-
-- Mobile 119 tests across 20 suites, including the add sheet's 7, the gallery's 16 and the checkbox's 3.
-- `pnpm --filter @playliberty/mobile run typecheck` passes.
-- `pnpm run build` and `pnpm run lint:check` pass.
 
 See [`21-see-the-library`](../../specs/21-see-the-library.md).

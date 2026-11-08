@@ -15,11 +15,4 @@ The cover and delete mutations stay in the Playlist client because they act on a
 
 `shared/api/queries/queries.ts` is deleted with its directory. Its tests moved with their clients: mutation invalidation, retry-failed, Sync all, the owner-name helper and the cover crop. The endpoint table and the mock harness are untouched.
 
-## Verification
-
-- No module imports the old queries module.
-- No page names a query key; each client owns the keys it reads and writes, and the shared cache-effect map still owns the invalidation vocabulary.
-- The library, share and Egress suites pass unchanged.
-- `pnpm --filter @playliberty/web test` is 606 passed; `pnpm run test:unit` is 1204 passed; `pnpm run build` and `pnpm run lint:check` pass.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#the-web-stack).

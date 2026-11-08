@@ -3,8 +3,7 @@
 **Status:** resolved
 **Labels:** `bug`, `ready-for-agent`
 **Source:** [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md), "applies a rate limit", and
-user story 14.
-**Blocked by:** None. Can start immediately.
+the exchange decision.
 
 ## Outcome
 
@@ -13,17 +12,8 @@ limit therefore has one bucket per caller; one caller's ten attempts no longer s
 forwarded header from a peer that is not the loopback proxy is ignored, so a direct caller cannot choose its bucket.
 
 The new tests drive the exchange through the inject seam: two callers behind the proxy have independent buckets, and
-a non-loopback peer keeps one bucket whatever its forwarded header says. The existing eleventh-attempt test stays
-green.
+a non-loopback peer keeps one bucket whatever its forwarded header says.
 
-## Verification
-
-- Server 460 tests across 33 suites, `tsc -p tsconfig.json --noEmit`, `pnpm run build` and `pnpm run lint:check`
-  pass.
-- The two new tests use `remoteAddress` and `X-Forwarded-For`; the first fails without the trust setting.
-
-## Notes
-
-- The trust is `loopback`, not `true`: only the pod-local nginx is trusted to set the forwarded address.
+**Constraints:** The trusted proxy is `loopback`, not `true`: only the pod-local nginx may set the forwarded address.
 
 See [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md).

@@ -2,8 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`02`](02-the-notifications-transport-drives-the-queue.md),
-[`03`](03-the-service-follows-the-queues-lifetime.md)
 
 ## Outcome
 
@@ -23,14 +21,5 @@ A forced deep-idle then left the media session `PLAYING` at `1:34`, so the servi
 advanced the queue; no native handoff was needed.
 
 The README records the device-only command, the fourth-row requirement, and the `dumpsys` checks.
-
-## Verification
-
-- Physical run on `SM-S931B` / `RZCY11E39KV`, Android 17: the Maestro driver passed and locked the phone.
-- Screen off for 60 seconds: the notification and lock screen moved from Pokemon Black and White to Victory Lies
-  Before You, and the media session reported `PLAYING`.
-- Forced deep idle: the media session remained `PLAYING` at `1:34`; Doze did not stop the audio.
-- The device was force-stopped afterwards and the temporary `localhost` dev configuration was restored.
-- No source changed; the mobile suite and build were not rerun for this ticket.
 
 See [`24-play-in-the-background`](../../specs/24-play-in-the-background.md).

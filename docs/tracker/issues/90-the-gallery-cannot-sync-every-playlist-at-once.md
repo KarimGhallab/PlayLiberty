@@ -3,8 +3,6 @@
 **State:** `resolved`
 **Category:** `enhancement`
 
-**Blocked by:** None. Can start immediately.
-
 ## Outcome
 
 The gallery head actions row carries one bulk control beside the language menu and the Add button. It reads `Sync all 4 playlists` over the playlists the active filter shows that the account can write, through the existing `canWritePlaylist` rule, less any playlist already `syncing`. Under the Failed filter that means the failed and writable playlists alone, and a read-only share is never counted or posted to. At a set of one it reads `Sync 1 playlist`; at zero it is not drawn.
@@ -15,7 +13,7 @@ A press freezes the ids and posts them one at a time through the existing per-pl
 
 The head row wraps instead of overflowing, so the expanded pill at the phone width, where the Add button becomes a floating action, has a line of its own rather than a cut label. The expand motion is dropped under `prefers-reduced-motion`. No batch endpoint, no aggregate run and no progress count were added, and the per-playlist overflow Sync and the detail header's Sync are untouched.
 
-Verification: `pnpm run build` and `pnpm run lint` pass; the unit suites pass (tokens 2, i18n 37, youtube 31, ui-foundation 5, server 381, web 546). The new tests cover the control's count, singular and busy state, the fan-out's order and its one invalidation, a `409` carried on and any other refusal stopping it, the filter-scoped count, the read-only exclusion, the absent control at zero, the press-time count under a held request, the tally notice, and the control still being there once the list read reports the batch running.
+The new tests cover the control's count, singular and busy state, the fan-out's order and its one invalidation, a `409` carried on and any other refusal stopping it, the filter-scoped count, the read-only exclusion, the absent control at zero, the press-time count under a held request, the tally notice, and the control still being there once the list read reports the batch running.
 
 The press path was driven in Chrome against the built app on a stub API, before and after. Before: the busy label at t=687ms, the idle label back at t=1121ms, and `present: false` at t=1155ms, where it stayed for the rest of the run. After: one state change, from the idle label to `Syncing 3 playlists...` at t=3360ms, present and fully opaque through the run while the gallery moved the three tiles into its Syncing group, never unmounted and never dimmed. Reverting the batch rule alone makes the new test fail at the assertion after the Syncing heading appears, which is the regression it holds.
 

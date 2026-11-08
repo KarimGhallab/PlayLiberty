@@ -3,33 +3,6 @@
 **Status:** resolved
 **Labels:** `bug`, `ready-for-agent`
 **Source:** [A design critique scores the mobile app 26/40](../../issues/108-a-design-critique-scores-the-mobile-app-26-40.md)
-**Blocked by:** None. Can start immediately.
-
-## Observed
-
-Each exit card draws its facts as a pair of plain `Text` nodes: the label in one, the value in the next. TalkBack
-announces them as separate utterances in tree order, so "Status" and "OK" arrive unconnected, and a card with six
-facts produces twelve fragments. Separately, "Seen at 159.26.105.28" and "Last attempt: Never" sit side by side and
-read as two timestamps.
-
-## Expected
-
-One announced unit per fact, with its label. The copy distinguishes the address the provider saw from a moment in
-time, and a fact that has never happened says so without borrowing the other's wording.
-
-## Evidence
-
-- `apps/mobile/src/views/egress/EgressScreen/EgressScreen.tsx`: the fact rows, `egressFacts`, and the empty-endpoint
-  placeholder.
-- `apps/mobile/src/views/egress/EgressScreen/egressFacts.ts`: the fact shape.
-- The 2026-11-03 screenshot of the egress console with one active and one standby exit.
-
-## Acceptance criteria
-
-- [x] Each fact is one accessible node named "label, value" and the decorative label is not announced twice.
-- [x] The address fact says what it is without reading as a time; the last-attempt fact does the same.
-- [x] Both languages updated, catalogs at parity.
-- [x] A test covers the composed names.
 
 ## Outcome
 

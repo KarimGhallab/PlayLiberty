@@ -2,7 +2,6 @@
 
 **Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** None. Can start immediately.
 
 ## Outcome
 
@@ -19,20 +18,6 @@ with `--replace-pangolin`. The callback allowlist defaults to the public origin'
 
 The edge README and `.env.example` name the secret, the four values and the callback allowlist.
 
-## Verification
-
-- `pnpm deploy:build-for-production --dry-run --public-origin https://playliberty.example.com --pangolin-api-url
-https://api.example.com/v1 --pangolin-resource-id 5` printed the Pangolin block and completed; `podman secret ls`
-  stayed empty.
-- The config and provisioning tests pass, 40 tests across two files: the all-or-none rule, the `503` with no
-  integration API, and the `503` with no callback.
-- `node --check`, `pnpm run build` and `pnpm run lint:check` pass.
-
-## Notes
-
-- The integration key is never printed by the plan and never accepted on the command line; the prompt is the
-  interactive path, the environment variable the non-interactive one.
-- The secret references are optional to preserve the documented "none means 503" behaviour; a prepared production
-  host still gets the secret from the build script.
+**Constraints:** The integration key is never printed or accepted on the command line. The secret references stay optional so an absent secret answers `503`.
 
 See [`20-provision-mobile-access`](../../specs/20-provision-mobile-access.md).

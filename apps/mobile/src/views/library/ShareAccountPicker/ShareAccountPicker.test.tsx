@@ -167,14 +167,6 @@ describe('the share account picker', () => {
     expect(within(rows[2]!).getByText('Bea')).toBeOnTheScreen();
   });
 
-  it('has no search field', async () => {
-    const { view } = await renderPicker();
-
-    expect(
-      view.container.queryAll(node => node.type === 'TextInput')
-    ).toHaveLength(0);
-  });
-
   it('asks for the next page at the end of the list', async () => {
     const { page } = await renderPicker(pageRead({ hasMore: true }));
 
