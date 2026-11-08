@@ -1,8 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resetDeferredActions } from './deferredActionStore';
-import type { PendingAction } from './types';
+import { resetDeferredActions } from '@playliberty/library';
+import type { PendingAction } from '@playliberty/library';
+
 import { useDeferredAction } from './useDeferredAction';
 
 function action(id: string, commit: () => void, detail = id): PendingAction {

@@ -16,6 +16,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  ApiError,
+  useCheckEgress,
+  useEgress,
+  useSwitchEgress
+} from '@playliberty/api-client';
 import { EgressStatus } from '@playliberty/contracts';
 import type { EgressConfig } from '@playliberty/contracts';
 import type {
@@ -53,12 +59,6 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import {
-  ApiError,
-  useCheckEgress,
-  useEgress,
-  useSwitchEgress
-} from '@playliberty/api-client';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { stackFacts } from './egressFacts';
@@ -348,9 +348,7 @@ export default function EgressScreen({ onBack }: EgressScreenProps) {
         setNotice(egressSuccessNotice(t, EgressAction.Switch, name));
       },
       onError: error => {
-        setNotice(
-          egressFailureNotice(t, EgressAction.Switch, detailOf(error))
-        );
+        setNotice(egressFailureNotice(t, EgressAction.Switch, detailOf(error)));
       }
     });
   };

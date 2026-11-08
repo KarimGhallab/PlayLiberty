@@ -7,20 +7,33 @@ import {
   jest
 } from '@jest/globals';
 
-import { StreamFailureKind } from '@playliberty/ui-foundation';
-
+import { mobileSession } from '../../auth/session/session';
 import type { ApiConfig } from '../../auth/useApiConfig';
 import { classifyStreamFailure } from './streamFailure';
+
+jest.mock('../../auth/session/session', () => ({
+  mobileSession: { renewAccessToken: jest.fn() }
+}));
 
 const config: ApiConfig = {
   baseUrl: 'https://instance.test',
   token: { id: 'token-id', secret: 'token-secret' }
 };
-
+const renewed = { id: 'renewed-id', secret: 'renewed-secret' };
+const renew = jest.mocked(mobileSession.renewAccessToken);
 let fetchMock: jest.SpiedFunction<typeof fetch>;
+
+function response(status: number): Response {
+  return new Response(null, { status });
+}
+
+function headersOf(call: number): Headers {
+  return new Headers(fetchMock.mock.calls[call]?.[1]?.headers);
+}
 
 beforeEach(() => {
   fetchMock = jest.spyOn(globalThis, 'fetch');
+  renew.mockReset();
 });
 
 afterEach(() => {
@@ -29,61 +42,72 @@ afterEach(() => {
 
 describe('the stream failure classifier', () => {
   it('reports a missing stored file as gone', async () => {
-    fetchMock.mockResolvedValue({ status: 404 } as Response);
+    fetchMock.mockResolvedValue(response(404));
 
-    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
-      StreamFailureKind.Gone
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toEqual({
+      kind: 'gone'
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      'https://instance.test/api/v1/tracks/track-1/stream'
     );
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://instance.test/api/v1/tracks/track-1/stream',
-      {
-        method: 'HEAD',
-        headers: {
-          'P-Access-Token-Id': 'token-id',
-          'P-Access-Token': 'token-secret',
-          'User-Agent': 'PlayLiberty/1.0 (Android)'
-        }
-      }
-    );
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('HEAD');
+    expect(headersOf(0).get('P-Access-Token-Id')).toBe('token-id');
+    expect(headersOf(0).get('P-Access-Token')).toBe('token-secret');
   });
 
-  it('drops a fileless entry on a 409 as web does', async () => {
-    fetchMock.mockResolvedValue({ status: 409 } as Response);
+  it('drops a fileless entry on a 409', async () => {
+    fetchMock.mockResolvedValue(response(409));
 
-    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
-      StreamFailureKind.Gone
-    );
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toEqual({
+      kind: 'gone'
+    });
   });
 
-  it('drops a definitively refused entry on a 403 as web does', async () => {
-    fetchMock.mockResolvedValue({ status: 403 } as Response);
+  it('drops a definitively refused entry on a 403', async () => {
+    fetchMock.mockResolvedValue(response(403));
 
-    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
-      StreamFailureKind.Gone
-    );
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toEqual({
+      kind: 'gone'
+    });
   });
 
-  it('reports an expired session as the session', async () => {
-    fetchMock.mockResolvedValue({ status: 401 } as Response);
+  it('renews a refused stream and reports the new pair', async () => {
+    renew.mockResolvedValue(renewed);
+    fetchMock
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(200));
 
-    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
-      StreamFailureKind.Session
-    );
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toEqual({
+      kind: 'retry',
+      token: renewed
+    });
+    expect(renew).toHaveBeenCalledWith(config.token);
+    expect(headersOf(1).get('P-Access-Token-Id')).toBe('renewed-id');
+  });
+
+  it('reports the session when the renewal fails', async () => {
+    renew.mockResolvedValue(null);
+    fetchMock.mockResolvedValue(response(401));
+
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toEqual({
+      kind: 'session'
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('leaves a server refusal unclassified', async () => {
-    fetchMock.mockResolvedValue({ status: 503 } as Response);
+    fetchMock.mockResolvedValue(response(503));
 
-    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
-      StreamFailureKind.Unknown
-    );
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toEqual({
+      kind: 'unknown'
+    });
   });
 
   it('leaves a network failure unclassified', async () => {
     fetchMock.mockRejectedValue(new Error('offline'));
 
-    await expect(classifyStreamFailure(config, 'track-1')).resolves.toBe(
-      StreamFailureKind.Unknown
-    );
+    await expect(classifyStreamFailure(config, 'track-1')).resolves.toEqual({
+      kind: 'unknown'
+    });
   });
 });

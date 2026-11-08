@@ -5,8 +5,8 @@ import type {
 } from '@playliberty/contracts';
 import { HttpMethod, endpointPath } from '@playliberty/contracts';
 
-import { ApiError } from '../apiError.js';
 import { apiUrl } from '../apiAddress/apiAddress.js';
+import { ApiError } from '../apiError.js';
 import { readProblem } from '../problem/problem.js';
 import { CLIENT_HEADER } from '../protocol.js';
 

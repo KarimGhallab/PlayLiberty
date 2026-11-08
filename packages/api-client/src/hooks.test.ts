@@ -30,11 +30,11 @@ import {
   renamePlaylistOptions,
   retryFailedTracksOptions,
   retryTrackOptions,
+  revokeShareOptions,
   setPlaylistCoverOptions,
   syncPlaylistOptions,
   updateSkipNonMusicOptions,
-  updateSortOptions,
-  revokeShareOptions
+  updateSortOptions
 } from './playlist.js';
 
 const RUN: SyncRun = {
@@ -75,7 +75,6 @@ function queryClient(): QueryClient {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
   });
 }
-
 
 describe('the mutation invalidations', () => {
   let client: QueryClient;

@@ -8,10 +8,7 @@ import {
   Provider
 } from '@playliberty/contracts';
 
-import {
-  insertPlaylistInPages,
-  pinPlaylistInPages
-} from './libraryPages.js';
+import { insertPlaylistInPages, pinPlaylistInPages } from './libraryPages.js';
 
 const ITEM: PlaylistWithCounts = {
   id: 'p1',

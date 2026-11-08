@@ -6,6 +6,12 @@ import {
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
+import {
+  ApiError,
+  useCheckEgress,
+  useEgress,
+  useSwitchEgress
+} from '@playliberty/api-client';
 import { EgressStatus } from '@playliberty/contracts';
 import type { EgressConfig } from '@playliberty/contracts';
 import type {
@@ -26,12 +32,6 @@ import {
 } from '@playliberty/i18n';
 import { countryNameOf, countryOf, flagOf } from '@playliberty/ui-foundation';
 
-import {
-  ApiError,
-  useCheckEgress,
-  useEgress,
-  useSwitchEgress
-} from '@playliberty/api-client';
 import NotFoundPage from '../../../shared/components/NotFoundPage/NotFoundPage';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import ErrorToast from '../../../shared/components/Toast/ErrorToast';
@@ -239,12 +239,7 @@ function ConfigCard({
         <div className={styles.egress__fact}>
           <dt>{t('egress.lastCheck')}</dt>
           <dd>
-            {egressTimeLabel(
-              t,
-              config.lastCheckAt,
-              now,
-              'egress.neverChecked'
-            )}
+            {egressTimeLabel(t, config.lastCheckAt, now, 'egress.neverChecked')}
           </dd>
         </div>
       </dl>
@@ -312,7 +307,9 @@ export default function EgressPage() {
           return;
         }
 
-        setToast(successToast(egressSuccessNotice(t, EgressAction.Switch, name)));
+        setToast(
+          successToast(egressSuccessNotice(t, EgressAction.Switch, name))
+        );
       },
       onError: error => {
         setToast(

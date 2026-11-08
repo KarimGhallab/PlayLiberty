@@ -28,9 +28,9 @@ describe('the cookie adapter', () => {
     const assign = stubLocationAssign();
     server.use(http.get(ME, () => new HttpResponse(null, { status: 401 })));
 
-    await expect(transport.send(endpoints.currentAccount)).rejects.toBeInstanceOf(
-      ApiError
-    );
+    await expect(
+      transport.send(endpoints.currentAccount)
+    ).rejects.toBeInstanceOf(ApiError);
 
     expect(assign).toHaveBeenCalledTimes(1);
     expect(window.sessionStorage.getItem(RE_AUTH_ATTEMPT_KEY)).toBe('1');

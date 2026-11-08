@@ -1,5 +1,6 @@
+import type { DeferredWindow } from '@playliberty/library';
+
 import ToastStack from '../Toast/ToastStack';
-import type { DeferredWindow } from '../useDeferredAction/types';
 import UndoToast from './UndoToast';
 
 /*
@@ -30,7 +31,7 @@ export default function UndoToastStack({
           message={entry.message}
           detail={entry.detail}
           windowKey={entry.key}
-          durationMs={Math.max(0, entry.expiresAt - Date.now())}
+          durationMs={Math.max(0, (entry.expiresAt ?? Date.now()) - Date.now())}
           actionLabel={actionLabel}
           onAction={() => onCancel(entry.key)}
           onDismiss={() => onCancel(entry.key)}

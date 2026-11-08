@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 
+import { ApiError, useCurrentAccount } from '@playliberty/api-client';
 import { UserRole } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
@@ -10,7 +11,6 @@ import Screen from '../../../shared/components/Screen/Screen';
 import SignInDoor from '../../../shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../../../shared/components/SignedOut/SignedOut';
 
-import { ApiError, useCurrentAccount } from '@playliberty/api-client';
 import { provisioningFailure } from '../../../auth/provisioningFailure';
 import { startProvisioning } from '../../../auth/startProvisioning';
 import { useApiConfig } from '../../../auth/useApiConfig';

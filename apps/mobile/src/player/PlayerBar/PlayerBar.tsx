@@ -27,7 +27,6 @@ import PlayPauseGlyph, {
   type PlayPauseGlyphHandle
 } from '../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
 import PressableScale from '../../shared/components/PressableScale/PressableScale';
-import { type MediaSource, mediaSource } from '../../shared/media/mediaSource';
 import { sleeveColor } from '../../shared/styles/sleeve';
 import { lineHeightFor, useTextScale } from '../../shared/styles/textMetrics';
 import {
@@ -41,6 +40,10 @@ import {
   touchTarget
 } from '../../shared/styles/tokens';
 
+import {
+  type CredentialedAddress,
+  mediaAddress
+} from '../../api/credentialed/credentialed';
 import type { ApiConfig } from '../../auth/useApiConfig';
 import {
   usePlayerBarHeight,
@@ -190,13 +193,13 @@ function neighbourView(
 function coverSource(
   config: ApiConfig | null,
   view: BarView
-): MediaSource | null {
+): CredentialedAddress | null {
   if (config === null) {
     return null;
   }
 
   if (view.playlistId !== null && view.playlistCoverUpdatedAt !== null) {
-    const source = mediaSource(config, endpoints.playlistCover, {
+    const source = mediaAddress(config, endpoints.playlistCover, {
       playlistId: view.playlistId
     });
 
@@ -207,13 +210,13 @@ function coverSource(
   }
 
   if (view.playlistId !== null && view.playlistCoverTrackId !== null) {
-    return mediaSource(config, endpoints.trackThumbnail, {
+    return mediaAddress(config, endpoints.trackThumbnail, {
       trackId: view.playlistCoverTrackId
     });
   }
 
   if (view.track.thumbnailPath !== null) {
-    return mediaSource(config, endpoints.trackThumbnail, {
+    return mediaAddress(config, endpoints.trackThumbnail, {
       trackId: view.track.id
     });
   }

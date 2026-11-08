@@ -291,9 +291,7 @@ describe('TrackRow', () => {
     expect(
       screen.queryByRole('menuitem', { name: 'Fetch whole' })
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('menuitem', { name: 'Retry' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Retry' })).toBeInTheDocument();
   });
 
   it('offers only the remove on a failed track the caller cannot retry', () => {

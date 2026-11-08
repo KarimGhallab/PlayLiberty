@@ -1,10 +1,9 @@
+import { ApiError } from '@playliberty/api-client';
 import { endpoints } from '@playliberty/contracts';
 import {
   StreamFailureKind,
   streamFailureKind
 } from '@playliberty/ui-foundation';
-
-import { ApiError } from '@playliberty/api-client';
 
 import { mediaPath } from '../../api/endpoints/endpoints';
 import { transport } from '../../api/transport';

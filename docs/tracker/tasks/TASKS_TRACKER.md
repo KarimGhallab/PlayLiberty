@@ -112,6 +112,8 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
   from issue [`123`](../issues/123-a-second-design-critique-scores-the-mobile-app-26-40.md).
 - [`shared-client-modules/TICKETS.md`](shared-client-modules/TICKETS.md): the cross-client duplication review's 8
   tickets, from the architecture review of 3 November 2026.
+- [`mobile-architecture-review/TICKETS.md`](mobile-architecture-review/TICKETS.md): the mobile architecture review's
+  3 tickets, from the review of 8 November 2026.
 
 ## Conventions
 

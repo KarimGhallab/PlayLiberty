@@ -10,20 +10,7 @@ import {
 import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import {
-  type AccountSummary,
-  type PlaylistPage,
-  PlaylistSort,
-  PlaylistSyncStatus,
-  type PlaylistWithCounts,
-  ProblemCode,
-  Provider,
-  REMOTE_REMOVED,
-  ShareLevel
-} from '@playliberty/contracts';
-import type { TrackFilterState } from '@playliberty/contracts';
-import { I18nProvider, Language } from '@playliberty/i18n';
-
+import type * as ApiClientModule from '@playliberty/api-client';
 import {
   ApiError,
   useAccountDirectory,
@@ -43,12 +30,26 @@ import {
   useUpdatePin,
   useUpdateSkipNonMusic
 } from '@playliberty/api-client';
-import type * as ApiClientModule from '@playliberty/api-client';
-import type { ApiConfig } from '../../../auth/useApiConfig';
-import { createAppQueryClient } from '../../../api/queryClient/queryClient';
-import { usePlayerStore } from '../../../player/playerStore/playerStore';
-import { startPlaylistPlayback } from '../../../player/startPlaylistPlayback/startPlaylistPlayback';
+import type { TrackFilterState } from '@playliberty/contracts';
+import {
+  type AccountSummary,
+  type PlaylistPage,
+  PlaylistSort,
+  PlaylistSyncStatus,
+  type PlaylistWithCounts,
+  ProblemCode,
+  Provider,
+  REMOTE_REMOVED,
+  ShareLevel
+} from '@playliberty/contracts';
+import { I18nProvider, Language } from '@playliberty/i18n';
 import type { LibraryScope } from '@playliberty/library';
+import { resetDeferredActions } from '@playliberty/library';
+
+import { createAppQueryClient } from '../../../api/queryClient/queryClient';
+import type { ApiConfig } from '../../../auth/useApiConfig';
+import { usePlayerStore } from '../../../player/playerStore/playerStore';
+import { startAtPlaylist } from '../../../player/startPlayback/startPlayback';
 import PlaylistGallery from './PlaylistGallery';
 
 jest.mock('@playliberty/api-client', () => ({
@@ -76,13 +77,9 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn()
 }));
 
-jest.mock(
-  '../../../player/startPlaylistPlayback/startPlaylistPlayback',
-  () => ({
-    readPlayableQueue: jest.fn(),
-    startPlaylistPlayback: jest.fn(async () => null)
-  })
-);
+jest.mock('../../../player/startPlayback/startPlayback', () => ({
+  startAtPlaylist: jest.fn(async () => null)
+}));
 
 jest.mock('expo-file-system', () => ({
   File: class {
@@ -112,7 +109,8 @@ function controlOf(control: string, name: string) {
 
 afterEach(() => {
   usePlayerStore.getState().clear();
-  jest.mocked(startPlaylistPlayback).mockClear();
+  resetDeferredActions();
+  jest.mocked(startAtPlaylist).mockClear();
 });
 
 const metrics = {
@@ -485,10 +483,10 @@ describe('the gallery', () => {
     await fireEvent.press(controlOf('shuffle', 'Stored Mix'));
 
     await waitFor(() => {
-      expect(startPlaylistPlayback).toHaveBeenCalledWith(
+      expect(startAtPlaylist).toHaveBeenCalledWith(
+        expect.anything(),
         storedItem,
-        'shuffle',
-        expect.any(Function)
+        'shuffle'
       );
     });
   });
@@ -499,10 +497,10 @@ describe('the gallery', () => {
     await fireEvent.press(controlOf('play', 'Stored Mix'));
 
     await waitFor(() => {
-      expect(startPlaylistPlayback).toHaveBeenCalledWith(
+      expect(startAtPlaylist).toHaveBeenCalledWith(
+        expect.anything(),
         storedItem,
-        'play',
-        expect.any(Function)
+        'play'
       );
     });
   });
@@ -525,11 +523,11 @@ describe('the gallery', () => {
     await fireEvent.press(controlOf('play', 'Stored Mix'));
 
     expect(usePlayerStore.getState().isPlaying).toBe(false);
-    expect(startPlaylistPlayback).not.toHaveBeenCalled();
+    expect(startAtPlaylist).not.toHaveBeenCalled();
   });
 
   it('explains a refused shuffle on the card', async () => {
-    jest.mocked(startPlaylistPlayback).mockResolvedValueOnce({ kind: 'empty' });
+    jest.mocked(startAtPlaylist).mockResolvedValueOnce({ kind: 'empty' });
     await renderGallery([storedItem]);
 
     await fireEvent.press(controlOf('shuffle', 'Stored Mix'));
@@ -658,6 +656,33 @@ describe('the gallery', () => {
       expect(screen.getByTestId('playlist-card')).toBeOnTheScreen();
     });
     expect(remove.mutate).not.toHaveBeenCalled();
+  });
+
+  it('sends the first delete when a second delete starts', async () => {
+    const second = { ...base, id: 'playlist-second', name: 'Second Mix' };
+    const { remove } = await renderGallery([base, second]);
+
+    await fireEvent.press(controlOf('actions', 'Rest Mix'));
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-delete')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('playlist-card')).toHaveLength(1);
+    });
+    expect(remove.mutate).not.toHaveBeenCalled();
+
+    await fireEvent.press(controlOf('actions', 'Second Mix'));
+    await waitFor(() => {
+      expect(screen.getByTestId('playlist-action-delete')).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByTestId('playlist-action-delete'));
+
+    expect(remove.mutate).toHaveBeenCalledWith(
+      'playlist-rest',
+      expect.anything()
+    );
   });
 
   it('renames a playlist from its card', async () => {

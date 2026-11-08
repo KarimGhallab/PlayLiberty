@@ -1,29 +1,17 @@
-import {
-  ACCESS_TOKEN_HEADER,
-  ACCESS_TOKEN_ID_HEADER,
-  ApiError,
-  USER_AGENT_HEADER,
-  type TransportAdapter,
-  type TransportRequest
+import type {
+  TransportAdapter,
+  TransportRequest
 } from '@playliberty/api-client';
 
-import { USER_AGENT } from '../userAgent';
-
-export interface AccessToken {
-  readonly id: string;
-  readonly secret: string;
-}
+import type { AccessToken } from '../credentialed/credentialed';
+import {
+  NeedsProvisioningError,
+  credentialHeaders
+} from '../credentialed/credentialed';
 
 export interface TokenAdapterOptions {
   readonly readToken: () => Promise<AccessToken | null>;
   readonly renewToken: (refused: AccessToken) => Promise<AccessToken | null>;
-}
-
-export class NeedsProvisioningError extends ApiError {
-  constructor() {
-    super(401, null);
-    this.name = 'NeedsProvisioningError';
-  }
 }
 
 function attempt(
@@ -31,9 +19,10 @@ function attempt(
   request: TransportRequest
 ): Promise<Response> {
   const headers = new Headers(request.init.headers);
-  headers.set(ACCESS_TOKEN_ID_HEADER, token.id);
-  headers.set(ACCESS_TOKEN_HEADER, token.secret);
-  headers.set(USER_AGENT_HEADER, USER_AGENT);
+
+  for (const [name, value] of Object.entries(credentialHeaders(token))) {
+    headers.set(name, value);
+  }
 
   return fetch(request.url, { ...request.init, headers });
 }

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { useCurrentAccount } from '@playliberty/api-client';
 import { UserRole } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
@@ -9,7 +10,6 @@ import Screen from '../../../shared/components/Screen/Screen';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import { tokenColor } from '../../../shared/styles/tokens';
 
-import { useCurrentAccount } from '@playliberty/api-client';
 import { SessionStatus } from '../../../auth/sessionStore/sessionStore';
 import { useSession } from '../../../auth/useSession';
 import EgressScreen from '../EgressScreen/EgressScreen';

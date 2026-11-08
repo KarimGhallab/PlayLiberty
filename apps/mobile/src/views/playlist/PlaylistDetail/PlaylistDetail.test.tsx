@@ -6,6 +6,7 @@ import {
   it,
   jest
 } from '@jest/globals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
   fireEvent,
@@ -24,37 +25,10 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import {
-  type AccountSummary,
-  AddTrackOutcome,
-  type AddTrackResult,
-  AssociationOrigin,
-  FailureKind,
-  type Playlist,
-  PlaylistSort,
-  PlaylistSyncStatus,
-  type PlaylistTrack,
-  ProblemCode,
-  Provider,
-  REMOTE_REMOVED,
-  ShareLevel,
-  type SyncRun,
-  SyncRunStatus,
-  TrackFileStatus,
-  type TrackFilterState,
-  TrackSourceStatus
-} from '@playliberty/contracts';
-import { I18nProvider, Language } from '@playliberty/i18n';
-
-import { copyText } from '../../../shared/clipboard/copyText';
-import {
-  tokenDuration,
-  tokenLength,
-  tokenNumber
-} from '../../../shared/styles/tokens';
-
+import type * as ApiClientModule from '@playliberty/api-client';
 import {
   ApiError,
+  readPlaylistQueue,
   useAccountDirectory,
   useAccountPage,
   useAddTrack,
@@ -79,7 +53,36 @@ import {
   useUpdateSkipNonMusic,
   useUpdateSort
 } from '@playliberty/api-client';
-import type * as ApiClientModule from '@playliberty/api-client';
+import {
+  type AccountSummary,
+  AddTrackOutcome,
+  type AddTrackResult,
+  AssociationOrigin,
+  FailureKind,
+  type Playlist,
+  PlaylistSort,
+  PlaylistSyncStatus,
+  type PlaylistTrack,
+  ProblemCode,
+  Provider,
+  REMOTE_REMOVED,
+  ShareLevel,
+  type SyncRun,
+  SyncRunStatus,
+  TrackFileStatus,
+  type TrackFilterState,
+  TrackSourceStatus
+} from '@playliberty/contracts';
+import { I18nProvider, Language } from '@playliberty/i18n';
+import { resetDeferredActions } from '@playliberty/library';
+
+import { copyText } from '../../../shared/clipboard/copyText';
+import {
+  tokenDuration,
+  tokenLength,
+  tokenNumber
+} from '../../../shared/styles/tokens';
+
 import type { ApiConfig } from '../../../auth/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { takeLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
@@ -87,6 +90,7 @@ import PlaylistDetail from './PlaylistDetail';
 
 jest.mock('@playliberty/api-client', () => ({
   ...jest.requireActual<typeof ApiClientModule>('@playliberty/api-client'),
+  readPlaylistQueue: jest.fn(),
   useAccountDirectory: jest.fn(),
   useAccountPage: jest.fn(),
   useAddTrack: jest.fn(),
@@ -163,6 +167,9 @@ const usePlaylistSharesMock = usePlaylistShares as jest.MockedFunction<
 >;
 const useRevokeShareMock = useRevokeShare as jest.MockedFunction<
   typeof useRevokeShare
+>;
+const readPlaylistQueueMock = readPlaylistQueue as jest.MockedFunction<
+  typeof readPlaylistQueue
 >;
 const useDeletePlaylistMock = useDeletePlaylist as jest.MockedFunction<
   typeof useDeletePlaylist
@@ -417,7 +424,6 @@ interface RenderOptions {
   readonly trackId?: string | null;
   readonly queueError?: Error;
   readonly queuePending?: boolean;
-  readonly queueRefetch?: 'resolve' | 'reject' | 'hold';
   readonly latestRun?: SyncRun | null;
   readonly directory?: readonly AccountSummary[];
   readonly language?: Language;
@@ -442,11 +448,6 @@ interface RenderOptions {
   readonly undoWindowMs?: number;
   readonly onBack?: () => void;
 }
-
-type QueueReadResult = {
-  readonly data: { readonly items: readonly PlaylistTrack[] } | undefined;
-  readonly error: Error | null;
-};
 
 async function reportViewable(keys: readonly string[]) {
   await act(() => {
@@ -524,24 +525,7 @@ async function renderDetail(options: RenderOptions = {}) {
   const skipMutate = jest.fn();
   const addMutate = jest.fn();
   const retryFailedMutate = jest.fn();
-  const queueRefetch = jest.fn<() => Promise<QueueReadResult>>();
   const queueItems = options.queue ?? [track];
-  const queueBehaviour =
-    options.queueRefetch ??
-    (options.queueError === undefined ? 'resolve' : 'reject');
-
-  if (queueBehaviour === 'resolve') {
-    queueRefetch.mockResolvedValue({
-      data: { items: queueItems },
-      error: null
-    });
-  } else if (queueBehaviour === 'reject') {
-    queueRefetch.mockRejectedValue(
-      options.queueError ?? new Error('The queue read failed.')
-    );
-  } else {
-    queueRefetch.mockReturnValue(new Promise<QueueReadResult>(() => {}));
-  }
 
   usePlaylistMock.mockReturnValue(
     options.playlistError === undefined
@@ -606,7 +590,7 @@ async function renderDetail(options: RenderOptions = {}) {
           isSuccess: false,
           isError: true,
           error: options.queueError,
-          refetch: queueRefetch
+          refetch: jest.fn()
         })
       : options.queuePending === true
         ? queryResult(undefined, {
@@ -614,10 +598,21 @@ async function renderDetail(options: RenderOptions = {}) {
             isSuccess: false,
             isError: false,
             data: undefined,
-            refetch: queueRefetch
+            refetch: jest.fn()
           })
         : queryResult({ items: queueItems })
   );
+  readPlaylistQueueMock.mockImplementation(() => {
+    if (options.queueError !== undefined) {
+      return Promise.reject(options.queueError);
+    }
+
+    if (options.queuePending === true) {
+      return new Promise(() => {});
+    }
+
+    return Promise.resolve([...queueItems]);
+  });
   usePlaylistsMock.mockReturnValue(queryResult(options.gallery ?? galleryPage));
   useLatestSyncRunMock.mockReturnValue(queryResult(options.latestRun ?? null));
   useAccountDirectoryMock.mockReturnValue(queryResult(options.directory ?? []));
@@ -677,23 +672,26 @@ async function renderDetail(options: RenderOptions = {}) {
     })
   );
 
+  const queryClient = new QueryClient();
   const view = await render(
-    <I18nProvider
-      initialLanguage={options.language ?? Language.English}
-      storage={store}>
-      <SafeAreaProvider initialMetrics={metrics}>
-        <PlaylistDetail
-          config={config}
-          playlistId="playlist-1"
-          trackId={options.trackId ?? null}
-          onAddressChange={onAddressChange}
-          onBareTrackRedirect={onBareTrackRedirect}
-          onBack={onBack}
-          now={now}
-          undoWindowMs={options.undoWindowMs}
-        />
-      </SafeAreaProvider>
-    </I18nProvider>
+    <QueryClientProvider client={queryClient}>
+      <I18nProvider
+        initialLanguage={options.language ?? Language.English}
+        storage={store}>
+        <SafeAreaProvider initialMetrics={metrics}>
+          <PlaylistDetail
+            config={config}
+            playlistId="playlist-1"
+            trackId={options.trackId ?? null}
+            onAddressChange={onAddressChange}
+            onBareTrackRedirect={onBareTrackRedirect}
+            onBack={onBack}
+            now={now}
+            undoWindowMs={options.undoWindowMs}
+          />
+        </SafeAreaProvider>
+      </I18nProvider>
+    </QueryClientProvider>
   );
 
   return {
@@ -725,6 +723,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   copyTextMock.mockReset();
   takeLeftPlaylistNotice();
+  resetDeferredActions();
   usePlayerStore.getState().clear();
 });
 
@@ -734,6 +733,7 @@ afterEach(async () => {
   await act(async () => {
     jest.runOnlyPendingTimers();
   });
+  resetDeferredActions();
   jest.useRealTimers();
 });
 
@@ -2263,7 +2263,7 @@ describe('the playlist detail', () => {
   });
 
   it('reports the start waiting on its queue read', async () => {
-    await renderDetail({ queuePending: true, queueRefetch: 'hold' });
+    await renderDetail({ queuePending: true });
 
     await act(async () => {
       await fireEvent.press(screen.getByTestId('detail-play'));
@@ -2281,7 +2281,7 @@ describe('the playlist detail', () => {
   });
 
   it('reports the shuffle waiting on its queue read', async () => {
-    await renderDetail({ queuePending: true, queueRefetch: 'hold' });
+    await renderDetail({ queuePending: true });
 
     await act(async () => {
       await fireEvent.press(screen.getByTestId('detail-shuffle'));

@@ -31,11 +31,11 @@ import {
 import {
   cacheEffects,
   latestSyncRunKey,
+  optimisticPatch,
   playlistKey,
   playlistQueueKey,
   playlistSharesKey,
   playlistTracksKey,
-  optimisticPatch,
   restoreOptimistic
 } from '@playliberty/query';
 import type { OptimisticContext } from '@playliberty/query';
@@ -177,9 +177,7 @@ export function usePlaylistTracks(
   playlistId: string | null,
   state?: TrackFilterState
 ): PlaylistTracksRead {
-  const query = useInfiniteQuery(
-    playlistTracksQueryOptions(playlistId, state)
-  );
+  const query = useInfiniteQuery(playlistTracksQueryOptions(playlistId, state));
   const pages = query.data?.pages;
   /* Stable while the data is, so a caller that keys an effect or a memo on the
    * list does not see a new array on every render. */
@@ -308,10 +306,14 @@ export function useSyncPlaylist(): UseMutationResult<void, Error, string> {
 export function addTrackOptions(queryClient: QueryClient) {
   return {
     mutationFn: (input: AddTrackInput) =>
-      apiClient().send(endpoints.addTrack, {}, {
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input)
-      }),
+      apiClient().send(
+        endpoints.addTrack,
+        {},
+        {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        }
+      ),
     onSuccess: () => {
       cacheEffects.everyPlaylistChanged(queryClient);
     }
@@ -370,7 +372,10 @@ export function setPlaylistCoverOptions(queryClient: QueryClient) {
         },
         coverCropQuery(crop)
       ),
-    onSuccess: (playlist: Playlist, { playlistId }: SetPlaylistCoverVariables) => {
+    onSuccess: (
+      playlist: Playlist,
+      { playlistId }: SetPlaylistCoverVariables
+    ) => {
       queryClient.setQueryData(playlistKey(playlistId), playlist);
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
@@ -424,7 +429,10 @@ export function renamePlaylistOptions(queryClient: QueryClient) {
           body: JSON.stringify({ name })
         }
       ),
-    onSuccess: (_playlist: Playlist, { playlistId }: RenamePlaylistVariables) => {
+    onSuccess: (
+      _playlist: Playlist,
+      { playlistId }: RenamePlaylistVariables
+    ) => {
       cacheEffects.playlistChanged(queryClient, playlistId);
     }
   };
@@ -442,7 +450,10 @@ export function useRenamePlaylist(): UseMutationResult<
 /* The switch moves on the press: the playlist cache carries the new value
  * until the write answers, and a refusal puts the saved one back. The setting
  * is not retroactive, so no track read is asked again. */
-export function updateSkipNonMusicOptions(playlistId: string, queryClient: QueryClient) {
+export function updateSkipNonMusicOptions(
+  playlistId: string,
+  queryClient: QueryClient
+) {
   return {
     mutationFn: (skipNonMusic: boolean) =>
       apiClient().send(
@@ -474,18 +485,18 @@ export function updateSkipNonMusicOptions(playlistId: string, queryClient: Query
 }
 
 export function useUpdateSkipNonMusic(playlistId: string) {
-  return useMutation<
-    Playlist,
-    Error,
-    boolean,
-    OptimisticContext<Playlist>
-  >(updateSkipNonMusicOptions(playlistId, useQueryClient()));
+  return useMutation<Playlist, Error, boolean, OptimisticContext<Playlist>>(
+    updateSkipNonMusicOptions(playlistId, useQueryClient())
+  );
 }
 
 /* Saving the read order moves the list and the queue, so the playlist reads are
  * asked again. The press moves the saved value first, and a refusal puts it
  * back. */
-export function updateSortOptions(playlistId: string, queryClient: QueryClient) {
+export function updateSortOptions(
+  playlistId: string,
+  queryClient: QueryClient
+) {
   return {
     mutationFn: (sort: PlaylistSort) =>
       apiClient().send(
@@ -545,7 +556,10 @@ export function useDeletePlaylist(): UseMutationResult<void, Error, string> {
  * Retry a failed download: the track answers `downloading` and the tracks are
  * read again so the row catches up; the failed count moved too.
  */
-export function retryTrackOptions(playlistId: string, queryClient: QueryClient) {
+export function retryTrackOptions(
+  playlistId: string,
+  queryClient: QueryClient
+) {
   return {
     mutationFn: (trackId: string) =>
       apiClient().send(endpoints.retryTrack, { trackId }),
@@ -634,7 +648,10 @@ export function useFetchTrackWhole(
  * Remove one track: `204`. The server suppresses it so the next sync does not
  * re-add it; the count moved, so both reads are invalidated.
  */
-export function removeTrackOptions(playlistId: string, queryClient: QueryClient) {
+export function removeTrackOptions(
+  playlistId: string,
+  queryClient: QueryClient
+) {
   return {
     mutationFn: (trackId: string) =>
       apiClient().command(endpoints.removeTrack, { playlistId, trackId }),
@@ -729,7 +746,10 @@ export function revokeShareOptions(
         throw new Error('A revoke needs a playlist.');
       }
 
-      await apiClient().command(endpoints.revokeShare, { playlistId, accountId });
+      await apiClient().command(endpoints.revokeShare, {
+        playlistId,
+        accountId
+      });
     },
     onSuccess: () => {
       if (playlistId === null) {

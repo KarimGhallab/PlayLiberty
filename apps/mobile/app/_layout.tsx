@@ -8,14 +8,13 @@ import { useReduceMotion } from '../src/shared/a11y/useReduceMotion';
 import { tokenColor } from '../src/shared/styles/tokens';
 
 import plexSans from '../assets/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf';
-import { streamSource } from '../src/api/streamSource';
+import type { AccessToken } from '../src/api/credentialed/credentialed';
+import { streamAddress } from '../src/api/credentialed/credentialed';
 import { useApiConfig } from '../src/auth/useApiConfig';
 import LiveEvents from '../src/live/LiveEvents';
 import PlayerAudio from '../src/player/PlayerAudio/PlayerAudio';
 import PlayerBar from '../src/player/PlayerBar/PlayerBar';
 import BackgroundPlayback from '../src/player/backgroundPlayback/BackgroundPlayback';
-import { StreamFailureKind } from '@playliberty/ui-foundation';
-
 import { classifyStreamFailure } from '../src/player/streamFailure/streamFailure';
 import AppProviders from '../src/providers/AppProviders';
 
@@ -37,16 +36,16 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   const resolveSource = useCallback(
-    (trackId: string) =>
-      config === null
+    (trackId: string, token: AccessToken | undefined = config?.token) =>
+      config === null || token === undefined
         ? null
-        : streamSource(config.baseUrl, trackId, config.token),
+        : streamAddress({ baseUrl: config.baseUrl, token }, trackId),
     [config]
   );
   const classifyFailure = useCallback(
     (trackId: string) =>
       config === null
-        ? Promise.resolve(StreamFailureKind.Unknown)
+        ? Promise.resolve({ kind: 'unknown' as const })
         : classifyStreamFailure(config, trackId),
     [config]
   );

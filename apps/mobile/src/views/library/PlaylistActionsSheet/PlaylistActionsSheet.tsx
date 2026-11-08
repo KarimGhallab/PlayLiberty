@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
+import type { PlaylistAction, PlaylistActionKey } from '@playliberty/library';
 
 import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
@@ -24,11 +25,6 @@ import {
   tokenLength,
   touchTarget
 } from '../../../shared/styles/tokens';
-
-import type {
-  PlaylistAction,
-  PlaylistActionKey
-} from '@playliberty/library';
 
 const ICONS = {
   pin: IconPin,

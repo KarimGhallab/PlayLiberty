@@ -22,7 +22,13 @@ import type {
   TrackFilterState
 } from '@playliberty/contracts';
 import { providerLabel, useI18n } from '@playliberty/i18n';
+import type { LibraryScope } from '@playliberty/library';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
+import {
+  statusChipCount,
+  totalStatusCount,
+  visibleStatusChips
+} from '@playliberty/ui-foundation';
 
 import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
 import Chip from '../../../shared/components/Chip/Chip';
@@ -38,13 +44,6 @@ import {
   tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens';
-import {
-  statusChipCount,
-  totalStatusCount,
-  visibleStatusChips
-} from '@playliberty/ui-foundation';
-
-import type { LibraryScope } from '@playliberty/library';
 
 /* The pair's 2pt padding and 1pt border on each side leave 6pt; the hit box
  * takes half above and half below. */

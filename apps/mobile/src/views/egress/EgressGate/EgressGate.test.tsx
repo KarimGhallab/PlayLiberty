@@ -2,10 +2,6 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import type { Account, EgressRead } from '@playliberty/contracts';
-import { EgressStatus, UserRole } from '@playliberty/contracts';
-import { I18nProvider, Language } from '@playliberty/i18n';
-
 import {
   useCheckEgress,
   useCurrentAccount,
@@ -13,6 +9,10 @@ import {
   useSwitchEgress
 } from '@playliberty/api-client';
 import type * as ApiClientModule from '@playliberty/api-client';
+import type { Account, EgressRead } from '@playliberty/contracts';
+import { EgressStatus, UserRole } from '@playliberty/contracts';
+import { I18nProvider, Language } from '@playliberty/i18n';
+
 import { SessionStatus } from '../../../auth/sessionStore/sessionStore';
 import { useSession } from '../../../auth/useSession';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';

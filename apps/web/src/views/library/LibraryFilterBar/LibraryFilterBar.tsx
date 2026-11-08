@@ -7,17 +7,16 @@ import type {
   TrackFilterState
 } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
-
-import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
-
-import styles from './LibraryFilterBar.module.scss';
-
 /*
  * The gallery's filter rail: the ownership scope first, then the status chips
  * over that scope. Without a share the rail is the status chips alone.
  */
 
 import type { LibraryScope } from '@playliberty/library';
+
+import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
+
+import styles from './LibraryFilterBar.module.scss';
 
 interface LibraryFilterBarProps {
   readonly hasShared: boolean;

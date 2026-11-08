@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import { ApiError } from '@playliberty/api-client';
 
-import { NeedsProvisioningError } from '../tokenAdapter/tokenAdapter';
+import { NeedsProvisioningError } from '../credentialed/credentialed';
 import { createAppQueryClient } from './queryClient';
 
 function failing(error: Error): () => Promise<never> {

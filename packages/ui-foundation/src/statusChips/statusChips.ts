@@ -84,10 +84,7 @@ export function statusChipCount(
 
 /* The five file states only: the retained figure sits beside the buckets. */
 export function totalStatusCount(counts: TrackFileStatusCounts): number {
-  return TRACK_STATUS_CHIPS.reduce(
-    (sum, chip) => sum + counts[chip.value],
-    0
-  );
+  return TRACK_STATUS_CHIPS.reduce((sum, chip) => sum + counts[chip.value], 0);
 }
 
 /* One rule for both rails: a state with nothing in it is not a filter worth

@@ -8,10 +8,6 @@ import {
 } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import type { Account, AccountSummary, Share } from '@playliberty/contracts';
-import { ProblemCode, ShareLevel, UserRole } from '@playliberty/contracts';
-import { I18nProvider, Language } from '@playliberty/i18n';
-
 import {
   ApiError,
   useAccountPage,
@@ -19,6 +15,10 @@ import {
   useGrantShare
 } from '@playliberty/api-client';
 import type * as ApiClientModule from '@playliberty/api-client';
+import type { Account, AccountSummary, Share } from '@playliberty/contracts';
+import { ProblemCode, ShareLevel, UserRole } from '@playliberty/contracts';
+import { I18nProvider, Language } from '@playliberty/i18n';
+
 import ShareAccountPicker, {
   type ShareAccountPickerProps
 } from './ShareAccountPicker';

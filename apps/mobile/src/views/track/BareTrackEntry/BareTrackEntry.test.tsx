@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ApiError, useTrack } from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import {
   Provider,
   type Track,
@@ -10,8 +12,6 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { ApiError, useTrack } from '@playliberty/api-client';
-import type * as ApiClientModule from '@playliberty/api-client';
 import {
   SessionStatus,
   useSessionStore

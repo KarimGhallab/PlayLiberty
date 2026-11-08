@@ -1,7 +1,7 @@
 import { IconPhoto } from '@tabler/icons-react-native';
 import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import type {
   AccessibilityActionEvent,
   GestureResponderEvent
@@ -15,14 +15,24 @@ import {
   View
 } from 'react-native';
 
+import {
+  ApiError,
+  useRemovePlaylistCover,
+  useSetPlaylistCover
+} from '@playliberty/api-client';
 import type { Playlist } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 import {
-  clampPan,
-  cropOf,
+  COVER_ZOOM_STEP,
+  coverUploadAdjusted,
+  coverUploadBox,
+  coverUploadInitial,
+  coverUploadStageReady,
+  coverUploadSubmission,
+  coverUploadZoomMax,
+  coverUploadZoomRatio,
   formatZoom,
-  maxZoom,
-  shortEdge
+  reduceCoverUpload
 } from '@playliberty/ui-foundation';
 
 import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
@@ -43,26 +53,7 @@ import {
   touchTarget
 } from '../../../shared/styles/tokens';
 
-import {
-  ApiError,
-  useRemovePlaylistCover,
-  useSetPlaylistCover
-} from '@playliberty/api-client';
 import type { ApiConfig } from '../../../auth/useApiConfig';
-
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const MAX_BYTES = 5 * 1024 * 1024;
-const ZOOM_STEP = 0.1;
-
-interface ChosenImage {
-  readonly uri: string;
-  readonly contentType: string;
-}
-
-interface Size {
-  readonly width: number;
-  readonly height: number;
-}
 
 interface Point {
   readonly x: number;
@@ -90,16 +81,26 @@ export default function CoverSheet({
   const cover = usePlaylistCover(playlist, config);
   const setCover = useSetPlaylistCover();
   const removeCover = useRemovePlaylistCover();
-  const [chosen, setChosen] = useState<ChosenImage | null>(null);
-  const [natural, setNatural] = useState<Size | null>(null);
+  const [state, dispatch] = useReducer(
+    reduceCoverUpload<{ uri: string }>,
+    coverUploadInitial<{ uri: string }>()
+  );
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const [stageSize, setStageSize] = useState(0);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [problem, setProblem] = useState<string | null>(null);
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const [confirmingRemove, setConfirmingRemove] = useState(false);
-  const [wasOpen, setWasOpen] = useState(playlist !== null);
-  const liveProblem = useAnnouncement(problem);
+  const { chosen, natural, verdict, confirmingDiscard, confirmingRemove } =
+    state;
+  const chosenUri = chosen?.file.uri ?? null;
+  const message =
+    verdict === null
+      ? problem
+      : t(
+          verdict === 'wrong-type'
+            ? 'coverDialog.wrongType'
+            : 'coverDialog.tooLarge'
+        );
+  const liveProblem = useAnnouncement(message);
   const liveDiscard = useAnnouncement(
     confirmingDiscard ? t('coverDialog.discardPrompt') : null
   );
@@ -111,36 +112,49 @@ export default function CoverSheet({
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const busy = setCover.isPending || removeCover.isPending;
   const canRemove = playlist?.coverUpdatedAt != null;
-  const ready = chosen !== null && natural !== null && stageSize > 0 && !busy;
-  const zoomMax = natural === null ? 1 : maxZoom(natural.width, natural.height);
+  const ready = coverUploadStageReady(state) && stageSize > 0 && !busy;
+  const zoomMax = coverUploadZoomMax(state);
   const zoomDisabled = zoomMax <= 1 || busy || stageSize === 0;
-  const adjusted = zoom !== 1 || pan.x !== 0 || pan.y !== 0;
+  const adjusted = coverUploadAdjusted(state);
+  const zoomRatio = coverUploadZoomRatio(state);
+  const box = coverUploadBox(state);
+  const shownWidth =
+    box === null || stageSize === 0 ? 0 : box.width * stageSize;
+  const shownHeight =
+    box === null || stageSize === 0 ? 0 : box.height * stageSize;
   const live = useRef({
-    busy,
     ready,
-    natural,
     stageSize,
-    zoom,
-    zoomMax
+    zoom: state.zoom
   });
-  live.current = { busy, ready, natural, stageSize, zoom, zoomMax };
+  live.current = { ready, stageSize, zoom: state.zoom };
 
-  /* A fresh open must not inherit the last image, refusal or framing. */
-  if ((playlist !== null) !== wasOpen) {
-    setWasOpen(playlist !== null);
-
-    if (playlist !== null) {
-      setChosen(null);
-      setNatural(null);
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-      setProblem(null);
-      setConfirmingDiscard(false);
-      setConfirmingRemove(false);
-    }
-  }
+  useEffect(() => {
+    dispatch({ type: 'busy', busy });
+  }, [busy]);
 
   const playlistId = playlist?.id ?? null;
+
+  /* A fresh open must not inherit the last image, refusal or framing. */
+  useEffect(() => {
+    if (playlistId === null) {
+      return;
+    }
+
+    dispatch({ type: 'reset' });
+    setProblem(null);
+    drag.current = null;
+    pinch.current = null;
+  }, [playlistId]);
+
+  useEffect(() => {
+    if (!state.closeRequested) {
+      return;
+    }
+
+    closeRef.current();
+    dispatch({ type: 'closed' });
+  }, [state.closeRequested]);
 
   useEffect(() => {
     if (playlistId === null) {
@@ -150,14 +164,9 @@ export default function CoverSheet({
     void ImagePicker.requestMediaLibraryPermissionsAsync();
   }, [playlistId]);
 
-  const chosenUri = chosen?.uri ?? null;
-
   /* A new image starts centred at 1x once its source size is known; the size
    * drives the cap and the stage's painted box. */
   useEffect(() => {
-    setNatural(null);
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
     drag.current = null;
     pinch.current = null;
 
@@ -171,12 +180,12 @@ export default function CoverSheet({
       chosenUri,
       (width, height) => {
         if (active) {
-          setNatural({ width, height });
+          dispatch({ type: 'measured', size: { width, height } });
         }
       },
       () => {
         if (active) {
-          setNatural(null);
+          dispatch({ type: 'measureFailed' });
         }
       }
     );
@@ -191,44 +200,11 @@ export default function CoverSheet({
     fallback;
 
   function applyZoom(next: number): void {
-    const current = live.current;
-
-    if (current.natural === null || current.stageSize === 0) {
-      return;
-    }
-
-    const stepped = Math.min(current.zoomMax, Math.max(1, next));
-    const clamped = clampPan({
-      naturalWidth: current.natural.width,
-      naturalHeight: current.natural.height,
-      zoom: stepped,
-      panX: pan.x,
-      panY: pan.y
-    });
-
-    setZoom(stepped);
-    setPan({ x: clamped.panX, y: clamped.panY });
+    dispatch({ type: 'zoomTo', zoom: next });
   }
 
   function panBy(stepX: number, stepY: number): void {
-    const current = live.current;
-    const source = current.natural;
-
-    if (source === null) {
-      return;
-    }
-
-    setPan(previous => {
-      const clamped = clampPan({
-        naturalWidth: source.width,
-        naturalHeight: source.height,
-        zoom: current.zoom,
-        panX: previous.x + stepX,
-        panY: previous.y + stepY
-      });
-
-      return { x: clamped.panX, y: clamped.panY };
-    });
+    dispatch({ type: 'panBy', x: stepX, y: stepY });
   }
 
   const responder = useRef(
@@ -257,7 +233,7 @@ export default function CoverSheet({
         const current = live.current;
         const touches = event.nativeEvent.touches;
 
-        if (!current.ready || current.natural === null) {
+        if (!current.ready) {
           return;
         }
 
@@ -273,22 +249,9 @@ export default function CoverSheet({
             return;
           }
 
-          const nextZoom = Math.min(
-            current.zoomMax,
-            Math.max(1, (start.zoom * distanceOf(touches)) / start.distance)
-          );
-
-          setZoom(nextZoom);
-          setPan(previous => {
-            const clamped = clampPan({
-              naturalWidth: current.natural?.width ?? 1,
-              naturalHeight: current.natural?.height ?? 1,
-              zoom: nextZoom,
-              panX: previous.x,
-              panY: previous.y
-            });
-
-            return { x: clamped.panX, y: clamped.panY };
+          dispatch({
+            type: 'zoomTo',
+            zoom: (start.zoom * distanceOf(touches)) / start.distance
           });
           return;
         }
@@ -353,39 +316,23 @@ export default function CoverSheet({
 
     /* The picker's rendition is a JPEG, so an absent type is that JPEG. */
     const contentType = asset.mimeType ?? 'image/jpeg';
-
-    if (!ACCEPTED_TYPES.has(contentType)) {
-      setProblem(t('coverDialog.wrongType'));
-      return;
-    }
-
     const size = asset.fileSize ?? new File(asset.uri).size;
 
-    if (size > MAX_BYTES) {
-      setProblem(t('coverDialog.tooLarge'));
-      return;
-    }
-
     setProblem(null);
-    setChosen({ uri: asset.uri, contentType });
-  }
-
-  function cropFor(): ReturnType<typeof cropOf> | null {
-    if (natural === null || !adjusted) {
-      return null;
-    }
-
-    return cropOf({
-      naturalWidth: natural.width,
-      naturalHeight: natural.height,
-      zoom,
-      panX: pan.x,
-      panY: pan.y
+    dispatch({
+      type: 'choose',
+      file: { file: { uri: asset.uri }, contentType, size }
     });
   }
 
   function submit(): void {
-    if (busy || playlist === null || chosen === null) {
+    if (busy) {
+      return;
+    }
+
+    const submission = coverUploadSubmission(state);
+
+    if (playlist === null || submission === null) {
       return;
     }
 
@@ -393,13 +340,13 @@ export default function CoverSheet({
     setCover.mutate(
       {
         playlistId: playlist.id,
-        file: new File(chosen.uri),
-        contentType: chosen.contentType,
-        crop: cropFor()
+        file: new File(submission.file.file.uri),
+        contentType: submission.file.contentType,
+        crop: submission.crop
       },
       {
         onSuccess: () => {
-          setChosen(null);
+          dispatch({ type: 'submitted' });
           onClose();
         },
         onError: error => {
@@ -417,7 +364,7 @@ export default function CoverSheet({
     setProblem(null);
     removeCover.mutate(playlist.id, {
       onSuccess: () => {
-        setConfirmingRemove(false);
+        dispatch({ type: 'removed' });
       },
       onError: error => {
         setProblem(problemMessage(error, t('coverDialog.removeFailed')));
@@ -430,22 +377,7 @@ export default function CoverSheet({
       return;
     }
 
-    if (confirmingRemove) {
-      setConfirmingRemove(false);
-      return;
-    }
-
-    if (confirmingDiscard) {
-      setConfirmingDiscard(false);
-      return;
-    }
-
-    if (chosen !== null) {
-      setConfirmingDiscard(true);
-      return;
-    }
-
-    onClose();
+    dispatch({ type: 'requestClose' });
   }
 
   function onZoomPress(event: GestureResponderEvent): void {
@@ -458,30 +390,19 @@ export default function CoverSheet({
       Math.max(0, event.nativeEvent.locationX / zoomRail.current)
     );
 
-    applyZoom(1 + (zoomMax - 1) * ratio);
+    dispatch({ type: 'zoomToRatio', ratio });
   }
 
   function onZoomAction(event: AccessibilityActionEvent): void {
     if (event.nativeEvent.actionName === 'increment') {
-      applyZoom(zoom + ZOOM_STEP);
+      applyZoom(state.zoom + COVER_ZOOM_STEP);
       return;
     }
 
     if (event.nativeEvent.actionName === 'decrement') {
-      applyZoom(zoom - ZOOM_STEP);
+      applyZoom(state.zoom - COVER_ZOOM_STEP);
     }
   }
-
-  const edge = natural === null ? 1 : shortEdge(natural.width, natural.height);
-  const shownWidth =
-    natural === null || stageSize === 0
-      ? 0
-      : (natural.width / edge) * stageSize;
-  const shownHeight =
-    natural === null || stageSize === 0
-      ? 0
-      : (natural.height / edge) * stageSize;
-  const zoomRatio = zoomMax <= 1 ? 0 : ((zoom - 1) / (zoomMax - 1)) * 100;
 
   return (
     <Sheet
@@ -518,7 +439,7 @@ export default function CoverSheet({
         ) : natural === null || stageSize === 0 ? (
           <AppImage
             testID="cover-preview"
-            source={{ uri: chosen.uri }}
+            source={{ uri: chosen.file.uri }}
             resizeMode="cover"
             natural
             style={styles.image}
@@ -529,15 +450,15 @@ export default function CoverSheet({
               styles.stageFill,
               {
                 transform: [
-                  { translateX: pan.x * stageSize },
-                  { translateY: pan.y * stageSize },
-                  { scale: zoom }
+                  { translateX: state.panX * stageSize },
+                  { translateY: state.panY * stageSize },
+                  { scale: state.zoom }
                 ]
               }
             ]}>
             <AppImage
               testID="cover-preview"
-              source={{ uri: chosen.uri }}
+              source={{ uri: chosen.file.uri }}
               natural
               style={{
                 position: 'absolute',
@@ -551,7 +472,7 @@ export default function CoverSheet({
         )}
       </View>
 
-      {problem === null ? null : (
+      {message === null ? null : (
         <Text
           testID="cover-problem"
           accessibilityRole="alert"
@@ -560,7 +481,7 @@ export default function CoverSheet({
             styles.problem,
             { lineHeight: lineHeightFor('text-sm', 'leading-normal', scale) }
           ]}>
-          {problem}
+          {message}
         </Text>
       )}
 
@@ -583,7 +504,7 @@ export default function CoverSheet({
                 styles.secondary,
                 pressed && styles.secondaryPressed
               ]}
-              onPress={() => setConfirmingDiscard(false)}>
+              onPress={() => dispatch({ type: 'cancelDiscard' })}>
               <Text style={styles.secondaryLabel}>
                 {t('common.keepEditing')}
               </Text>
@@ -621,7 +542,7 @@ export default function CoverSheet({
                 pressed && styles.secondaryPressed,
                 busy && styles.disabled
               ]}
-              onPress={() => setConfirmingRemove(false)}>
+              onPress={() => dispatch({ type: 'cancelRemove' })}>
               <Text style={styles.secondaryLabel}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
@@ -659,8 +580,8 @@ export default function CoverSheet({
                   accessibilityValue={{
                     min: 1,
                     max: zoomMax,
-                    now: zoom,
-                    text: formatZoom(zoom)
+                    now: state.zoom,
+                    text: formatZoom(state.zoom)
                   }}
                   accessibilityState={{ disabled: zoomDisabled }}
                   accessibilityActions={[
@@ -678,7 +599,7 @@ export default function CoverSheet({
                   <View style={[styles.zoomKnob, { left: `${zoomRatio}%` }]} />
                 </Pressable>
                 <Text testID="cover-zoom-value" style={styles.zoomValue}>
-                  {formatZoom(zoom)}
+                  {formatZoom(state.zoom)}
                 </Text>
               </View>
               <Pressable
@@ -691,10 +612,7 @@ export default function CoverSheet({
                   pressed && styles.secondaryPressed,
                   (!adjusted || busy) && styles.disabled
                 ]}
-                onPress={() => {
-                  setZoom(1);
-                  setPan({ x: 0, y: 0 });
-                }}>
+                onPress={() => dispatch({ type: 'resetCrop' })}>
                 <Text style={styles.resetLabel}>{t('coverDialog.reset')}</Text>
               </Pressable>
             </View>
@@ -727,10 +645,7 @@ export default function CoverSheet({
                 pressed && styles.secondaryPressed,
                 busy && styles.disabled
               ]}
-              onPress={() => {
-                setConfirmingDiscard(false);
-                setConfirmingRemove(true);
-              }}>
+              onPress={() => dispatch({ type: 'requestRemove' })}>
               <Text style={styles.removeLabel}>{t('coverDialog.remove')}</Text>
             </Pressable>
           ) : null}

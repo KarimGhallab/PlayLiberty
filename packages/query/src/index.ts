@@ -20,7 +20,4 @@ export {
   pinPlaylistInPages
 } from './libraryPages/libraryPages.js';
 export type { OptimisticContext } from './optimistic/optimistic.js';
-export {
-  optimisticPatch,
-  restoreOptimistic
-} from './optimistic/optimistic.js';
+export { optimisticPatch, restoreOptimistic } from './optimistic/optimistic.js';

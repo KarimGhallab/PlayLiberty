@@ -11,17 +11,17 @@ import { memo, useRef, useState } from 'react';
 import type { PlaylistTrack } from '@playliberty/contracts';
 import { TrackFileStatus, endpoints } from '@playliberty/contracts';
 import { formatDuration, trackStateFacts, useI18n } from '@playliberty/i18n';
-import { fileTone, trackTone } from '@playliberty/ui-foundation';
+import { failureSentence } from '@playliberty/i18n';
 import { trackActionsFor } from '@playliberty/library';
+import { isPlayable } from '@playliberty/player';
+import { fileTone, trackTone } from '@playliberty/ui-foundation';
 
 import { mediaUrl } from '../../api/endpoints/endpoints';
-import { isPlayable } from '@playliberty/player';
 import Menu from '../Menu/Menu';
 import Spinner from '../Spinner/Spinner';
 import TrackBars from '../TrackBars';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
-import { failureSentence } from '@playliberty/i18n';
 
 /*
  * The whole row plays the track; the lane at its end opens the menu above it.
@@ -132,49 +132,49 @@ function TrackRow({
         (action.key === 'remove' && onRemove !== undefined)
     )
     .map(action => {
-    const className = styles.trackRow__menuIcon;
-    const icon =
-      action.key === 'copy' ? (
-        <IconCopy
-          className={className}
-          aria-hidden="true"
-          focusable="false"
-        />
-      ) : action.key === 'retry' ? (
-        <IconRotate
-          className={className}
-          aria-hidden="true"
-          focusable="false"
-        />
-      ) : action.key === 'fetchWhole' ? (
-        <IconScissorsOff
-          className={className}
-          aria-hidden="true"
-          focusable="false"
-        />
-      ) : (
-        <IconTrash
-          className={className}
-          aria-hidden="true"
-          focusable="false"
-        />
-      );
-    const run =
-      action.key === 'copy'
-        ? () => onCopyLink(track.id)
-        : action.key === 'retry'
-          ? () => onRetry?.(track.id)
-          : action.key === 'fetchWhole'
-            ? () => onFetchWhole?.(track.id)
-            : () => onRemove?.(track.id);
+      const className = styles.trackRow__menuIcon;
+      const icon =
+        action.key === 'copy' ? (
+          <IconCopy
+            className={className}
+            aria-hidden="true"
+            focusable="false"
+          />
+        ) : action.key === 'retry' ? (
+          <IconRotate
+            className={className}
+            aria-hidden="true"
+            focusable="false"
+          />
+        ) : action.key === 'fetchWhole' ? (
+          <IconScissorsOff
+            className={className}
+            aria-hidden="true"
+            focusable="false"
+          />
+        ) : (
+          <IconTrash
+            className={className}
+            aria-hidden="true"
+            focusable="false"
+          />
+        );
+      const run =
+        action.key === 'copy'
+          ? () => onCopyLink(track.id)
+          : action.key === 'retry'
+            ? () => onRetry?.(track.id)
+            : action.key === 'fetchWhole'
+              ? () => onFetchWhole?.(track.id)
+              : () => onRemove?.(track.id);
 
-    return {
-      label: t(action.label),
-      icon,
-      destructive: action.key === 'remove',
-      run
-    };
-  });
+      return {
+        label: t(action.label),
+        icon,
+        destructive: action.key === 'remove',
+        run
+      };
+    });
 
   const lane = (
     <span className={styles.trackRow__menuAnchor} ref={menuAnchorRef}>

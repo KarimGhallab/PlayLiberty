@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  REMOTE_REMOVED,
-  TrackFileStatus
-} from '@playliberty/contracts';
+import { REMOTE_REMOVED, TrackFileStatus } from '@playliberty/contracts';
 import type { TrackFileStatusCounts } from '@playliberty/contracts';
 
 import {

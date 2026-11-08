@@ -44,25 +44,53 @@ describe('the track actions model', () => {
 
   it('offers Retry, Fetch whole and Remove for a failed track a writer may repair', () => {
     expect(
-      keys(trackActionsFor({ ...track, fileStatus: TrackFileStatus.Failed }, true, true, false))
+      keys(
+        trackActionsFor(
+          { ...track, fileStatus: TrackFileStatus.Failed },
+          true,
+          true,
+          false
+        )
+      )
     ).toEqual(['copy', 'retry', 'fetchWhole', 'remove']);
   });
 
   it('drops Fetch whole when the skip setting is off', () => {
     expect(
-      keys(trackActionsFor({ ...track, fileStatus: TrackFileStatus.Failed }, true, false, false))
+      keys(
+        trackActionsFor(
+          { ...track, fileStatus: TrackFileStatus.Failed },
+          true,
+          false,
+          false
+        )
+      )
     ).toEqual(['copy', 'retry', 'remove']);
   });
 
   it('offers no repair or Remove to a read collaborator', () => {
     expect(
-      keys(trackActionsFor({ ...track, fileStatus: TrackFileStatus.Failed }, false, true, false))
+      keys(
+        trackActionsFor(
+          { ...track, fileStatus: TrackFileStatus.Failed },
+          false,
+          true,
+          false
+        )
+      )
     ).toEqual(['copy']);
   });
 
   it('keeps only Copy link while the row is busy', () => {
     expect(
-      keys(trackActionsFor({ ...track, fileStatus: TrackFileStatus.Failed }, true, true, true))
+      keys(
+        trackActionsFor(
+          { ...track, fileStatus: TrackFileStatus.Failed },
+          true,
+          true,
+          true
+        )
+      )
     ).toEqual(['copy']);
   });
 });

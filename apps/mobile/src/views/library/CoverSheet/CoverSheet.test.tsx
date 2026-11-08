@@ -10,6 +10,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import {
+  useRemovePlaylistCover,
+  useSetPlaylistCover
+} from '@playliberty/api-client';
+import type * as ApiClientModule from '@playliberty/api-client';
 import type { Playlist } from '@playliberty/contracts';
 import {
   PlaylistSort,
@@ -18,11 +23,6 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import {
-  useRemovePlaylistCover,
-  useSetPlaylistCover
-} from '@playliberty/api-client';
-import type * as ApiClientModule from '@playliberty/api-client';
 import CoverSheet, { type CoverSheetProps } from './CoverSheet';
 
 jest.mock('@playliberty/api-client', () => ({

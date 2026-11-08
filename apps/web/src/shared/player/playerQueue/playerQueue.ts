@@ -1,6 +1,6 @@
 import type { Playlist, PlaylistTrack } from '@playliberty/contracts';
-
 import { isPlayable, randomItem } from '@playliberty/player';
+
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 

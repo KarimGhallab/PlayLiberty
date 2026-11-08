@@ -6,9 +6,9 @@ import type { LiveEvent } from '@playliberty/contracts';
 import { LiveEventSchema } from '@playliberty/contracts';
 import { invalidateForLiveEvent } from '@playliberty/query';
 
+import { eventsAddress } from '../../api/credentialed/credentialed';
 import { useSessionStore } from '../../auth/sessionStore/sessionStore';
 import type { ApiConfig } from '../../auth/useApiConfig';
-import { eventsSource } from '../eventsSource';
 import {
   type LiveEventConnection,
   type LiveEventFactory,
@@ -34,7 +34,7 @@ export function useLiveEvents(
       return;
     }
 
-    const source = eventsSource(config);
+    const source = eventsAddress(config);
     let stopped = false;
     let connection: LiveEventConnection | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;

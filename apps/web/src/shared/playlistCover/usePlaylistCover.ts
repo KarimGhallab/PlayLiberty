@@ -31,9 +31,7 @@ function trackCoverPath(playlist: Playlist): string | null {
 }
 
 function withVersion(path: string, version: string | null): string {
-  return version === null
-    ? path
-    : `${path}?v=${encodeURIComponent(version)}`;
+  return version === null ? path : `${path}?v=${encodeURIComponent(version)}`;
 }
 
 export interface PlaylistCover {

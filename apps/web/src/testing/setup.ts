@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 
-import { resetDeferredActions } from '../shared/components/useDeferredAction/deferredActionStore';
+import { resetDeferredActions } from '@playliberty/library';
 
 /* The resolved transport, so a test that mounts a hook has a client to send
  * through. */

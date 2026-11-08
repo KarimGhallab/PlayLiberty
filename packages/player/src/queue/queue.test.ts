@@ -87,9 +87,7 @@ describe('orderTracksByQueue', () => {
 
   it('orders rows by their queue group', () => {
     expect(
-      orderTracksByQueue(tracks, ['a', 'c', 'b', 'd']).map(
-        row => row.track.id
-      )
+      orderTracksByQueue(tracks, ['a', 'c', 'b', 'd']).map(row => row.track.id)
     ).toEqual(['a', 'c', 'b', 'd']);
   });
 

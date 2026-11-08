@@ -2,8 +2,8 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { act, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { I18nProvider, Language } from '@playliberty/i18n';
 import type * as ApiClientModule from '@playliberty/api-client';
+import { I18nProvider, Language } from '@playliberty/i18n';
 
 import LibraryShell from './LibraryShell';
 
