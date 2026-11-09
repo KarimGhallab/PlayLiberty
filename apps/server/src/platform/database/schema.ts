@@ -272,7 +272,8 @@ export const accessTokens = sqliteTable(
       .notNull()
       .references(() => refreshFamilies.id, { onDelete: 'cascade' }),
     expiresAt: text('expires_at').notNull(),
-    revokedAt: text('revoked_at')
+    revokedAt: text('revoked_at'),
+    edgeDeletedAt: text('edge_deleted_at')
   },
   table => [index('access_token_family_idx').on(table.familyId)]
 );

@@ -16,6 +16,7 @@ import {
   accessTokens,
   refreshFamilies
 } from '../../../../platform/database/schema.js';
+import { revokePending } from '../../services/revokePending.js';
 
 const VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 const CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
@@ -25,6 +26,7 @@ const STATE = 'state-0123456789abcdef';
 class FakePangolin implements IPangolinClient {
   readonly calls: MintResourceAccessTokenInput[] = [];
   readonly deleted: string[] = [];
+  failDelete = false;
 
   async mintResourceAccessToken(
     input: MintResourceAccessTokenInput
@@ -36,6 +38,10 @@ class FakePangolin implements IPangolinClient {
 
   async deleteResourceAccessToken(tokenId: string): Promise<void> {
     this.deleted.push(tokenId);
+
+    if (this.failDelete) {
+      throw new Error('Pangolin is down');
+    }
   }
 }
 
@@ -126,6 +132,63 @@ describe('POST /api/v1/session/revoke', () => {
     expect(familyRow(testContext)?.revokedAt).not.toBeNull();
     expect(accessRows(testContext)[0]?.revokedAt).not.toBeNull();
     expect(pangolin.deleted).toEqual([pair.access.id]);
+  });
+
+  it('answers a failure and records it when the edge delete fails', async () => {
+    const { logger, lines } = recordingLogger();
+    const pangolin = new FakePangolin();
+    const testContext = await start(pangolin, logger);
+    const pair = await issuePair(testContext);
+    const family = familyRow(testContext);
+
+    pangolin.failDelete = true;
+    const response = await revoke(testContext, {
+      refresh_token: pair.refresh.token
+    });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json().code).toBe(ProblemCode.ProvisioningFailed);
+    expect(familyRow(testContext)?.revokedAt).not.toBeNull();
+    expect(accessRows(testContext)[0]?.revokedAt).not.toBeNull();
+    expect(lines).toContainEqual(
+      expect.objectContaining({
+        action: 'revocation_failed',
+        outcome: 'refused',
+        family: family?.id,
+        token: pair.access.id
+      })
+    );
+    expect(
+      lines.filter(
+        line => line.action === 'session_revoke' && line.outcome === 'allowed'
+      )
+    ).toEqual([]);
+  });
+
+  it('retries a failed edge delete without a new sign-in', async () => {
+    const pangolin = new FakePangolin();
+    const testContext = await start(pangolin);
+    const pair = await issuePair(testContext);
+
+    pangolin.failDelete = true;
+    const failed = await revoke(testContext, {
+      refresh_token: pair.refresh.token
+    });
+
+    expect(failed.statusCode).toBe(502);
+    expect(accessRows(testContext)[0]?.edgeDeletedAt).toBeNull();
+
+    pangolin.failDelete = false;
+    const retried = await revokePending({
+      database: testContext.database,
+      pangolin,
+      logger: recordingLogger().logger,
+      now: () => Date.now()
+    });
+
+    expect(retried).toEqual({ retried: 1, failed: 0 });
+    expect(accessRows(testContext)[0]?.edgeDeletedAt).not.toBeNull();
+    expect(pangolin.deleted).toEqual([pair.access.id, pair.access.id]);
   });
 
   it('answers a no-op for another account and leaves the family alone', async () => {

@@ -26,6 +26,10 @@ import { PangolinClient } from '../features/auth/pangolin/PangolinClient.js';
 import { registerAuthRoutes } from '../features/auth/routes/authRoutes/authRoutes.js';
 import { registerSessionRoutes } from '../features/auth/routes/sessionRoutes/sessionRoutes.js';
 import { ProvisioningService } from '../features/auth/services/ProvisioningService.js';
+import {
+  REVOCATION_RETRY_INTERVAL_MS,
+  revokePending
+} from '../features/auth/services/revokePending.js';
 import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
@@ -49,6 +53,7 @@ import { recoverInterruptedSyncs } from '../features/sync/services/recoveryServi
 import { registerTrackRoutes } from '../features/tracks/routes/trackRoutes.js';
 import type { JobHandle } from '../platform/jobs/cronJob.js';
 import { startCronJob } from '../platform/jobs/cronJob.js';
+import { startIntervalJob } from '../platform/jobs/intervalJob.js';
 import { registerHealthRoutes } from './health/healthRoutes/healthRoutes.js';
 import { registerCsrfHook } from './hooks/csrf/csrf.js';
 import { registerIdentityHook } from './hooks/identity/identity.js';
@@ -253,6 +258,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   let worker: DownloadWorkerHandle | null = null;
   let scheduler: JobHandle | null = null;
+  let revocationRetry: JobHandle | null = null;
 
   app.addHook('onReady', async () => {
     const reachable = await reconcileEgress(
@@ -270,6 +276,21 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
     const recovery = recoverInterruptedSyncs(context.database);
     app.log.info({ ...recovery }, 'interrupted sync recovery finished');
+
+    void revokePending({
+      database: context.database,
+      pangolin: context.pangolin,
+      logger: app.log,
+      now: context.now
+    })
+      .then(result => {
+        if (result.retried > 0 || result.failed > 0) {
+          app.log.info({ ...result }, 'revocation retry finished');
+        }
+      })
+      .catch((error: unknown) => {
+        app.log.error({ err: error }, 'revocation retry failed');
+      });
 
     if (options.startBackgroundJobs === false) {
       return;
@@ -301,9 +322,32 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         });
       }
     });
+    revocationRetry = startIntervalJob({
+      intervalMs: REVOCATION_RETRY_INTERVAL_MS,
+      tick: () => {
+        void revokePending({
+          database: context.database,
+          pangolin: context.pangolin,
+          logger: app.log,
+          now: context.now
+        })
+          .then(result => {
+            if (result.failed > 0) {
+              app.log.warn(
+                { ...result },
+                'revocation retry left tokens pending'
+              );
+            }
+          })
+          .catch((error: unknown) => {
+            app.log.error({ err: error }, 'revocation retry failed');
+          });
+      }
+    });
   });
 
   app.addHook('onClose', async () => {
+    revocationRetry?.stop();
     scheduler?.stop();
     await worker?.stop();
   });

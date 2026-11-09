@@ -64,6 +64,13 @@
       "when": 1793542121199,
       "tag": "0008_noisy_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1794232348300,
+      "tag": "0009_cool_tinkerer",
+      "breakpoints": true
     }
   ]
 }

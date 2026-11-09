@@ -25,6 +25,7 @@ import {
 } from '../../../../platform/database/schema.js';
 import { PangolinError } from '../../pangolin/PangolinClient.js';
 import { challengeFor } from '../../services/ProvisioningService.js';
+import { revokePending } from '../../services/revokePending.js';
 
 /* The RFC 7636 example: the verifier and its S256 challenge. */
 const VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
@@ -48,6 +49,13 @@ class FakePangolin implements IPangolinClient {
   readonly deleted: string[] = [];
   fail = false;
   failDelete = false;
+  holdMint = false;
+  private readonly _mintHeld = Promise.withResolvers<void>();
+  private readonly _mintWaiters: (() => void)[] = [];
+
+  waitForMintHeld(): Promise<void> {
+    return this._mintHeld.promise;
+  }
 
   async mintResourceAccessToken(
     input: MintResourceAccessTokenInput
@@ -58,9 +66,22 @@ class FakePangolin implements IPangolinClient {
       throw new PangolinError('Pangolin is down');
     }
 
+    if (this.holdMint) {
+      this._mintHeld.resolve();
+      const held = Promise.withResolvers<void>();
+      this._mintWaiters.push(held.resolve);
+      await held.promise;
+    }
+
     const count = this.calls.length;
 
     return { id: `token-${count}`, secret: `secret-${count}` };
+  }
+
+  releaseMint(): void {
+    for (const resolve of this._mintWaiters.splice(0)) {
+      resolve();
+    }
   }
 
   async deleteResourceAccessToken(tokenId: string): Promise<void> {
@@ -647,6 +668,38 @@ describe('POST /auth/refresh', () => {
     expect(accessRows(testContext)).toHaveLength(2);
   });
 
+  it('rotates one token once when two refreshes race', async () => {
+    const pangolin = new FakePangolin();
+    const testContext = await start({ pangolin });
+    const issued = await issuePair(testContext);
+
+    pangolin.holdMint = true;
+    const first = refresh(testContext, { refresh_token: issued.refresh.token });
+    const second = refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    await pangolin.waitForMintHeld();
+    /* The gate exposes no arrival signal, so this integration race waits one
+     * short turn for the second request. Fake timers cannot drive Fastify. */
+    const settled = Promise.withResolvers<void>();
+    setTimeout(settled.resolve, 20);
+    await settled.promise;
+
+    const mintCalls = pangolin.calls.length;
+    pangolin.releaseMint();
+
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+
+    expect(mintCalls).toBe(2);
+    expect(firstResponse.statusCode).toBe(200);
+    expect(secondResponse.statusCode).toBe(200);
+    expect(secondResponse.json()).toEqual(firstResponse.json());
+    expect(refreshRows(testContext)).toHaveLength(2);
+    expect(accessRows(testContext)).toHaveLength(2);
+    expect(familyRows(testContext)[0]?.revokedAt).toBeNull();
+  });
+
   it('repeats the pair inside the grace window without minting', async () => {
     const pangolin = new FakePangolin();
     const testContext = await start({ pangolin });
@@ -664,6 +717,32 @@ describe('POST /auth/refresh', () => {
     expect(pangolin.calls).toHaveLength(2);
     expect(refreshRows(testContext)).toHaveLength(2);
     expect(accessRows(testContext)).toHaveLength(2);
+  });
+
+  it('revokes the family when an older consumed token is replayed inside the grace window', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await start({ logger });
+    const issued = await issuePair(testContext);
+
+    const rotated = (
+      await refresh(testContext, { refresh_token: issued.refresh.token })
+    ).json() as MobileToken;
+    await refresh(testContext, { refresh_token: rotated.refresh.token });
+
+    const replay = await refresh(testContext, {
+      refresh_token: issued.refresh.token
+    });
+
+    expect(replay.statusCode).toBe(400);
+    expect(replay.json().code).toBe(ProblemCode.InvalidGrant);
+    expect(familyRows(testContext)[0]?.revokedAt).not.toBeNull();
+    expect(lines).toContainEqual(
+      expect.objectContaining({
+        action: 'session_refresh',
+        outcome: 'refused',
+        reason: 'refresh_token_reuse'
+      })
+    );
   });
 
   it('revokes the family and its access tokens when a replay comes too late', async () => {
@@ -705,8 +784,9 @@ describe('POST /auth/refresh', () => {
   });
 
   it('keeps the family revoked when a deletion fails', async () => {
+    const { logger, lines } = recordingLogger();
     const pangolin = new FakePangolin();
-    const testContext = await start({ pangolin });
+    const testContext = await start({ logger, pangolin });
     const issued = await issuePair(testContext);
 
     await refresh(testContext, { refresh_token: issued.refresh.token });
@@ -722,6 +802,25 @@ describe('POST /auth/refresh', () => {
     expect(accessRows(testContext).every(row => row.revokedAt !== null)).toBe(
       true
     );
+    expect(
+      lines
+        .filter(line => line.action === 'revocation_failed')
+        .map(line => line.token)
+        .sort()
+    ).toEqual(['token-1', 'token-2']);
+
+    pangolin.failDelete = false;
+    const retried = await revokePending({
+      database: testContext.database,
+      pangolin,
+      logger: recordingLogger().logger,
+      now: () => now
+    });
+
+    expect(retried).toEqual({ retried: 2, failed: 0 });
+    expect(
+      accessRows(testContext).every(row => row.edgeDeletedAt !== null)
+    ).toBe(true);
   });
 
   it('clamps both credentials to the family remaining life', async () => {
@@ -1065,6 +1164,27 @@ describe('the audit', () => {
     });
     expect(logged).not.toContain(issued.refresh.token);
     expect(logged).not.toContain('secret-1');
+  });
+
+  it('names a grace replay in the audit', async () => {
+    const { logger, lines } = recordingLogger();
+    const testContext = await start({ logger });
+    const issued = await issuePair(testContext);
+
+    await refresh(testContext, { refresh_token: issued.refresh.token });
+    await refresh(testContext, { refresh_token: issued.refresh.token });
+
+    const refreshLines = lines.filter(
+      line => line.action === 'session_refresh'
+    );
+
+    expect(refreshLines).toHaveLength(2);
+    expect(refreshLines[0]).toMatchObject({ outcome: 'allowed' });
+    expect(refreshLines[0]).not.toHaveProperty('reason');
+    expect(refreshLines[1]).toMatchObject({
+      outcome: 'allowed',
+      reason: 'grace_replay'
+    });
   });
 });
 

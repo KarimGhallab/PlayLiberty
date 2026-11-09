@@ -118,6 +118,8 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
   tickets, from the architecture review of 3 November 2026.
 - [`mobile-architecture-review/TICKETS.md`](mobile-architecture-review/TICKETS.md): the mobile architecture review's
   3 tickets, from the review of 8 November 2026.
+- [`security-review-2026-11-09/TICKETS.md`](security-review-2026-11-09/TICKETS.md): the security review's
+  refresh-rotation and revocation tickets, findings 4, 5 and 6.
 
 ## Conventions
 

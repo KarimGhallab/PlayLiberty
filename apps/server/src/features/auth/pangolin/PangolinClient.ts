@@ -88,6 +88,12 @@ export class PangolinClient implements IPangolinClient {
       headers: { authorization: `Bearer ${this._config.apiKey}` },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     });
+
+    /* A token already gone is the state the delete wants. */
+    if (response.status === 404) {
+      return;
+    }
+
     const body: unknown = await response.json().catch(() => null);
     const parsed = DELETE_RESPONSE_SCHEMA.safeParse(body);
 

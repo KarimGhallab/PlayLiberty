@@ -12,6 +12,8 @@ export interface AuditEntry {
   account?: string;
   level?: string;
   role?: string;
+  family?: string;
+  token?: string;
 }
 
 export function audit(logger: FastifyBaseLogger, entry: AuditEntry): void {

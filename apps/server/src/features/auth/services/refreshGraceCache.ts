@@ -1,12 +1,13 @@
 import type { MobileToken } from '@playliberty/contracts';
 
-/* A lost response and a race both replay a token the server has just consumed,
- * so the latest pair is held briefly. Process-local by design: one deployment
- * is one process, and a restart turning a race into reuse is the safe side. */
+/* A lost response and a race replay the token just consumed, so its pair is
+ * held briefly. The entry names that token, so an older token cannot claim it.
+ * Process-local: a restart turning a race into reuse is the safe side. */
 
 export const REFRESH_GRACE_MS = 30_000;
 
 interface GraceEntry {
+  readonly tokenHash: string;
   readonly pair: MobileToken;
   readonly at: number;
 }
@@ -14,15 +15,20 @@ interface GraceEntry {
 export class RefreshGraceCache {
   private readonly _entries = new Map<string, GraceEntry>();
 
-  record(familyId: string, pair: MobileToken, at: number): void {
+  record(
+    familyId: string,
+    tokenHash: string,
+    pair: MobileToken,
+    at: number
+  ): void {
     this._prune(at);
-    this._entries.set(familyId, { pair, at });
+    this._entries.set(familyId, { tokenHash, pair, at });
   }
 
-  pairFor(familyId: string, at: number): MobileToken | null {
+  pairFor(familyId: string, tokenHash: string, at: number): MobileToken | null {
     const entry = this._entries.get(familyId);
 
-    if (entry === undefined) {
+    if (entry === undefined || entry.tokenHash !== tokenHash) {
       return null;
     }
 

@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull } from 'drizzle-orm';
 
 import type { IPangolinClient } from '../../../shared/pangolin.js';
 
@@ -21,7 +21,14 @@ export interface RevokeFamilyInput {
   readonly now: () => number;
 }
 
-export async function revokeFamily(input: RevokeFamilyInput): Promise<void> {
+export interface RevokeFamilyResult {
+  readonly familyId: string;
+  readonly failedTokenIds: readonly string[];
+}
+
+export async function revokeFamily(
+  input: RevokeFamilyInput
+): Promise<RevokeFamilyResult> {
   const revokedAt = new Date(input.now()).toISOString();
   const live = input.database.db
     .select()
@@ -34,13 +41,16 @@ export async function revokeFamily(input: RevokeFamilyInput): Promise<void> {
       )
     )
     .all();
+  const failedTokenIds: string[] = [];
+  const deletedTokenIds: string[] = [];
 
   if (input.pangolin !== null) {
     for (const token of live) {
       try {
         await input.pangolin.deleteResourceAccessToken(token.pangolinTokenId);
+        deletedTokenIds.push(token.pangolinTokenId);
       } catch {
-        /* A failed delete must not keep the family alive locally. */
+        failedTokenIds.push(token.pangolinTokenId);
       }
     }
   }
@@ -67,5 +77,20 @@ export async function revokeFamily(input: RevokeFamilyInput): Promise<void> {
         )
       )
       .run();
+
+    if (deletedTokenIds.length > 0) {
+      input.database.db
+        .update(accessTokens)
+        .set({ edgeDeletedAt: revokedAt })
+        .where(
+          and(
+            eq(accessTokens.familyId, input.familyId),
+            inArray(accessTokens.pangolinTokenId, deletedTokenIds)
+          )
+        )
+        .run();
+    }
   });
+
+  return { familyId: input.familyId, failedTokenIds };
 }

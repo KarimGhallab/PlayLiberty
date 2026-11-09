@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 
 import type { MobileToken } from '@playliberty/contracts';
 
@@ -17,7 +17,8 @@ import {
   refreshTokenHash
 } from './credentialService/credentialService.js';
 import type { RefreshGraceCache } from './refreshGraceCache.js';
-import { revokeFamily } from './revokeFamily.js';
+import { type RevokeFamilyResult, revokeFamily } from './revokeFamily.js';
+import type { SingleFlight } from './singleFlight.js';
 
 /* The rotation mints before consuming, so a Pangolin failure leaves the token
  * usable, maybe the app's only credential. Membership is not read: a refusal
@@ -35,11 +36,13 @@ export type RefreshOutcome =
       readonly outcome: 'ok';
       readonly pair: MobileToken;
       readonly pangolinUserId: string;
+      readonly replayed: boolean;
     }
   | {
       readonly outcome: 'invalid_grant';
       readonly reason: RefreshRefusalReason;
       readonly pangolinUserId: string | null;
+      readonly revocation?: RevokeFamilyResult;
     }
   | {
       readonly outcome: 'rate_limited';
@@ -56,6 +59,7 @@ export interface RefreshMobileSessionInput {
   readonly lifetimes: MobileLifetimes;
   readonly refreshToken: string;
   readonly grace: RefreshGraceCache;
+  readonly rotations: SingleFlight<RefreshOutcome>;
   readonly allowAttempt: (key: string) => boolean;
   readonly now: () => number;
 }
@@ -66,11 +70,12 @@ export async function refreshMobileSession(
   input: RefreshMobileSessionInput
 ): Promise<RefreshOutcome> {
   const nowMs = input.now();
+  const presentedHash = refreshTokenHash(input.refreshToken);
   const found = input.database.db
     .select({ token: refreshTokens, family: refreshFamilies })
     .from(refreshTokens)
     .innerJoin(refreshFamilies, eq(refreshTokens.familyId, refreshFamilies.id))
-    .where(eq(refreshTokens.tokenHash, refreshTokenHash(input.refreshToken)))
+    .where(eq(refreshTokens.tokenHash, presentedHash))
     .get();
 
   if (found === undefined) {
@@ -108,16 +113,27 @@ export async function refreshMobileSession(
     };
   }
 
+  const inFlight = input.rotations.pending(presentedHash);
+
+  if (inFlight !== undefined) {
+    return await inFlight;
+  }
+
   if (token.consumedAt !== null) {
-    const replayed = input.grace.pairFor(family.id, nowMs);
+    const replayed = input.grace.pairFor(family.id, presentedHash, nowMs);
 
     if (replayed !== null) {
-      return { outcome: 'ok', pangolinUserId, pair: replayed };
+      return {
+        outcome: 'ok',
+        pangolinUserId,
+        pair: replayed,
+        replayed: true
+      };
     }
 
     /* Outside the grace window a consumed token is reuse: cut the family and
      * every access token it still holds. */
-    await revokeFamily({
+    const revocation = await revokeFamily({
       database: input.database,
       pangolin: input.pangolin,
       familyId: family.id,
@@ -128,7 +144,8 @@ export async function refreshMobileSession(
     return {
       outcome: 'invalid_grant',
       reason: 'refresh_token_reuse',
-      pangolinUserId
+      pangolinUserId,
+      ...(revocation.failedTokenIds.length > 0 ? { revocation } : {})
     };
   }
 
@@ -140,79 +157,105 @@ export async function refreshMobileSession(
     };
   }
 
-  const familyRemainingSeconds = secondsBetween(nowMs, familyExpiresMs);
-  const accessSeconds = Math.min(
-    input.lifetimes.accessSeconds,
-    familyRemainingSeconds
-  );
-  const refreshSeconds = Math.min(
-    input.lifetimes.refreshSeconds,
-    familyRemainingSeconds
-  );
+  return input.rotations.run(presentedHash, async () => {
+    const familyRemainingSeconds = secondsBetween(nowMs, familyExpiresMs);
+    const accessSeconds = Math.min(
+      input.lifetimes.accessSeconds,
+      familyRemainingSeconds
+    );
+    const refreshSeconds = Math.min(
+      input.lifetimes.refreshSeconds,
+      familyRemainingSeconds
+    );
 
-  let access;
+    let access;
 
-  try {
-    access = await input.pangolin.mintResourceAccessToken({
-      pangolinUserId,
-      validForSeconds: accessSeconds,
-      title: `${ACCESS_TOKEN_TITLE} ${family.id.slice(0, 8)}`
-    });
-  } catch {
-    return { outcome: 'agent_unreachable', pangolinUserId };
-  }
-
-  const replacement = randomBytes(32).toString('base64url');
-  const accessExpiresMs = nowMs + accessSeconds * 1000;
-  const refreshExpiresMs = nowMs + refreshSeconds * 1000;
-  const usedAt = new Date(nowMs).toISOString();
-
-  input.database.unitOfWork(() => {
-    input.database.db
-      .insert(accessTokens)
-      .values({
-        pangolinTokenId: access.id,
-        familyId: family.id,
-        expiresAt: new Date(accessExpiresMs).toISOString()
-      })
-      .run();
-    input.database.db
-      .insert(refreshTokens)
-      .values({
-        familyId: family.id,
-        tokenHash: refreshTokenHash(replacement),
-        expiresAt: new Date(refreshExpiresMs).toISOString()
-      })
-      .run();
-    input.database.db
-      .update(refreshTokens)
-      .set({ consumedAt: usedAt })
-      .where(eq(refreshTokens.id, token.id))
-      .run();
-    input.database.db
-      .update(refreshFamilies)
-      .set({ lastUsedAt: usedAt })
-      .where(eq(refreshFamilies.id, family.id))
-      .run();
-  });
-
-  const pair: MobileToken = {
-    access: {
-      id: access.id,
-      secret: access.secret,
-      expires_at: new Date(accessExpiresMs).toISOString(),
-      expires_in: accessSeconds
-    },
-    refresh: {
-      token: replacement,
-      expires_at: new Date(refreshExpiresMs).toISOString(),
-      expires_in: refreshSeconds
+    try {
+      access = await input.pangolin.mintResourceAccessToken({
+        pangolinUserId,
+        validForSeconds: accessSeconds,
+        title: `${ACCESS_TOKEN_TITLE} ${family.id.slice(0, 8)}`
+      });
+    } catch {
+      return { outcome: 'agent_unreachable', pangolinUserId };
     }
-  };
 
-  input.grace.record(family.id, pair, nowMs);
+    const replacement = randomBytes(32).toString('base64url');
+    const accessExpiresMs = nowMs + accessSeconds * 1000;
+    const refreshExpiresMs = nowMs + refreshSeconds * 1000;
+    const usedAt = new Date(nowMs).toISOString();
 
-  return { outcome: 'ok', pangolinUserId, pair };
+    const committed = input.database.unitOfWork(() => {
+      const claimed = input.database.db
+        .update(refreshTokens)
+        .set({ consumedAt: usedAt })
+        .where(
+          and(eq(refreshTokens.id, token.id), isNull(refreshTokens.consumedAt))
+        )
+        .run();
+
+      if (claimed.changes === 0) {
+        return false;
+      }
+
+      input.database.db
+        .insert(accessTokens)
+        .values({
+          pangolinTokenId: access.id,
+          familyId: family.id,
+          expiresAt: new Date(accessExpiresMs).toISOString()
+        })
+        .run();
+      input.database.db
+        .insert(refreshTokens)
+        .values({
+          familyId: family.id,
+          tokenHash: refreshTokenHash(replacement),
+          expiresAt: new Date(refreshExpiresMs).toISOString()
+        })
+        .run();
+      input.database.db
+        .update(refreshFamilies)
+        .set({ lastUsedAt: usedAt })
+        .where(eq(refreshFamilies.id, family.id))
+        .run();
+
+      return true;
+    });
+
+    if (!committed) {
+      const replayed = input.grace.pairFor(family.id, presentedHash, nowMs);
+
+      if (replayed !== null) {
+        return {
+          outcome: 'ok',
+          pangolinUserId,
+          pair: replayed,
+          replayed: true
+        };
+      }
+
+      return { outcome: 'agent_unreachable', pangolinUserId };
+    }
+
+    const pair: MobileToken = {
+      access: {
+        id: access.id,
+        secret: access.secret,
+        expires_at: new Date(accessExpiresMs).toISOString(),
+        expires_in: accessSeconds
+      },
+      refresh: {
+        token: replacement,
+        expires_at: new Date(refreshExpiresMs).toISOString(),
+        expires_in: refreshSeconds
+      }
+    };
+
+    input.grace.record(family.id, presentedHash, pair, nowMs);
+
+    return { outcome: 'ok', pangolinUserId, pair, replayed: false };
+  });
 }
 
 function secondsBetween(fromMs: number, toMs: number): number {

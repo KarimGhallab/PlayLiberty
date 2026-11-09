@@ -59,4 +59,13 @@ describe('deleteResourceAccessToken', () => {
       /no such token/
     );
   });
+
+  it('treats an already-deleted token as done', async () => {
+    const { fetchMock } = recordingFetch(new Response(null, { status: 404 }));
+    const client = new PangolinClient(CONFIG, fetchMock);
+
+    await expect(
+      client.deleteResourceAccessToken('token-id')
+    ).resolves.toBeUndefined();
+  });
 });

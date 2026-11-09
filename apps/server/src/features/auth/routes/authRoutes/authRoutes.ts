@@ -19,7 +19,11 @@ import { registerEndpoint } from '../../../../shared/registerEndpoint.js';
 
 import { issueMobileSession } from '../../services/credentialService/credentialService.js';
 import { RefreshGraceCache } from '../../services/refreshGraceCache.js';
-import { refreshMobileSession } from '../../services/refreshService.js';
+import {
+  type RefreshOutcome,
+  refreshMobileSession
+} from '../../services/refreshService.js';
+import { SingleFlight } from '../../services/singleFlight.js';
 import { sendInvalidGrant } from '../refusal.js';
 
 /* The browser entry and the two paths outside Pangolin SSO: a provisioning code,
@@ -29,7 +33,7 @@ import { sendInvalidGrant } from '../refusal.js';
 type AttemptAction = 'provisioning_exchange' | 'session_refresh';
 
 type AttemptOutcome =
-  | { readonly outcome: 'allowed' }
+  | { readonly outcome: 'allowed'; readonly reason?: string }
   | { readonly outcome: 'refused'; readonly reason: string };
 
 /* One audit line per attempt: the outcome, the reason and the Pangolin user the
@@ -52,7 +56,12 @@ export function registerAuthRoutes(
   context: AppContext
 ): void {
   registerProvisionRoutes(app, context);
-  registerRefreshRoute(app, context, new RefreshGraceCache());
+  registerRefreshRoute(
+    app,
+    context,
+    new RefreshGraceCache(),
+    new SingleFlight<RefreshOutcome>()
+  );
 }
 
 function registerProvisionRoutes(
@@ -243,7 +252,8 @@ function registerProvisionRoutes(
 function registerRefreshRoute(
   app: FastifyInstance,
   context: AppContext,
-  grace: RefreshGraceCache
+  grace: RefreshGraceCache,
+  rotations: SingleFlight<RefreshOutcome>
 ): void {
   /* The second credential-less mutation: a refresh token for the rotated pair. The
    * token in the body is the only credential, and the server checks it itself. */
@@ -301,6 +311,7 @@ function registerRefreshRoute(
       },
       refreshToken: parsed.data.refresh_token,
       grace,
+      rotations,
       allowAttempt: key => context.provisioning.allowAttempt(key),
       now: context.now
     });
@@ -309,7 +320,9 @@ function registerRefreshRoute(
       auditAttempt(
         request,
         'session_refresh',
-        { outcome: 'allowed' },
+        result.replayed
+          ? { outcome: 'allowed', reason: 'grace_replay' }
+          : { outcome: 'allowed' },
         result.pangolinUserId
       );
 
@@ -323,6 +336,18 @@ function registerRefreshRoute(
         { outcome: 'refused', reason: result.reason },
         result.pangolinUserId
       );
+
+      if (result.revocation !== undefined) {
+        for (const tokenId of result.revocation.failedTokenIds) {
+          audit(request.log, {
+            action: 'revocation_failed',
+            outcome: 'refused',
+            reason: 'edge_delete_failed',
+            family: result.revocation.familyId,
+            token: tokenId
+          });
+        }
+      }
 
       return sendInvalidGrant(reply);
     }

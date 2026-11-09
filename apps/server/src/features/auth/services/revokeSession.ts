@@ -8,7 +8,7 @@ import {
   refreshTokens
 } from '../../../platform/database/schema.js';
 import { refreshTokenHash } from './credentialService/credentialService.js';
-import { revokeFamily } from './revokeFamily.js';
+import { type RevokeFamilyResult, revokeFamily } from './revokeFamily.js';
 
 /* Sign-out, like reuse, goes through the one family revocation. It says nothing
  * about ownership: an unknown token and another account's family are the same
@@ -22,11 +22,16 @@ export interface RevokeSessionInput {
   readonly now: () => number;
 }
 
-/** True when a family was revoked; false when nothing matched or the account
- * does not own it. */
+/** The family ended, and the edge deletes that failed, if any. A false
+ * `revoked` means nothing matched or the account does not own it. */
+export interface RevokeSessionResult {
+  readonly revoked: boolean;
+  readonly revocation: RevokeFamilyResult | null;
+}
+
 export async function revokeSession(
   input: RevokeSessionInput
-): Promise<boolean> {
+): Promise<RevokeSessionResult> {
   const found = input.database.db
     .select({ family: refreshFamilies })
     .from(refreshTokens)
@@ -38,15 +43,15 @@ export async function revokeSession(
     found === undefined ||
     found.family.pangolinUserId !== input.pangolinUserId
   ) {
-    return false;
+    return { revoked: false, revocation: null };
   }
 
-  await revokeFamily({
+  const revocation = await revokeFamily({
     database: input.database,
     pangolin: input.pangolin,
     familyId: found.family.id,
     now: input.now
   });
 
-  return true;
+  return { revoked: true, revocation };
 }
