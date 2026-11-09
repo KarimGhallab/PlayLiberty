@@ -25,15 +25,7 @@ COPY packages/youtube/package.json packages/youtube/package.json
 RUN pnpm install --frozen-lockfile --filter "@playliberty/web..."
 
 COPY . .
-RUN pnpm --filter @playliberty/contracts run build \
- && pnpm --filter @playliberty/tokens run build \
- && pnpm --filter @playliberty/i18n run build \
- && pnpm --filter @playliberty/ui-foundation run build \
- && pnpm --filter @playliberty/query run build \
- && pnpm --filter @playliberty/api-client run build \
- && pnpm --filter @playliberty/library run build \
- && pnpm --filter @playliberty/player run build \
- && pnpm --filter @playliberty/web run build
+RUN pnpm --filter "@playliberty/web..." run build
 
 FROM docker.io/nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 # The entrypoint substitutes EDGE_ASSERTION into the config template at start.
