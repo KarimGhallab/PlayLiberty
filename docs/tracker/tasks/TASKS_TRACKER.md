@@ -97,6 +97,8 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
 - [`29-set-a-playlist-cover/TICKETS.md`](29-set-a-playlist-cover/TICKETS.md).
 - [`30-share-a-track/TICKETS.md`](30-share-a-track/TICKETS.md).
 - [`31-manage-the-egress/TICKETS.md`](31-manage-the-egress/TICKETS.md).
+- [`32-release-the-android-app/TICKETS.md`](32-release-the-android-app/TICKETS.md): the signed release, the install and
+  update paths, and the on-device checklist, from spec [`32`](../specs/32-release-the-android-app.md).
 - [`33-refresh-mobile-access/TICKETS.md`](33-refresh-mobile-access/TICKETS.md).
 - [`34-cancel-a-sync/TICKETS.md`](34-cancel-a-sync/TICKETS.md): the boot recovery and the cancel control, from spec
   [`34`](../specs/34-cancel-a-sync.md).
