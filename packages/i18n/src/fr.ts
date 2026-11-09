@@ -24,7 +24,8 @@ export const fr: Messages = {
     loading: 'Chargement du compte.',
     egress: 'Paramètres VPN',
     signOut: 'Se déconnecter',
-    signOutAsk: 'Êtes-vous sur de vouloir vous déconnecter ?'
+    signOutAsk: 'Êtes-vous sur de vouloir vous déconnecter ?',
+    version: 'Version {version}'
   },
   signedOut: {
     title: "Connectez-vous pour entrer dans l'application",

@@ -15,6 +15,7 @@ import { provisioningFailure } from '../../../auth/provisioningFailure';
 import { startProvisioning } from '../../../auth/startProvisioning';
 import { useApiConfig } from '../../../auth/useApiConfig';
 import { SessionStatus, useSession } from '../../../auth/useSession';
+import { runningVersion } from '../../../versions/versions';
 import LibraryScreen from '../LibraryScreen/LibraryScreen';
 
 /*
@@ -26,6 +27,7 @@ export default function LibraryShell() {
   const covered = useCoveredScreen();
   const { status, signOut } = useSession();
   const config = useApiConfig();
+  const version = runningVersion();
   const [accountOpen, setAccountOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -91,6 +93,7 @@ export default function LibraryShell() {
         account={account ?? null}
         loading={accountPending}
         failure={readFailure}
+        version={version}
         onClose={() => setAccountOpen(false)}
         onSignOut={() => {
           setAccountOpen(false);
