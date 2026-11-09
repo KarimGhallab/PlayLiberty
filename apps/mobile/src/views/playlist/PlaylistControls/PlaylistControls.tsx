@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   LayoutChangeEvent,
   NativeScrollEvent,
-  NativeSyntheticEvent
+  NativeSyntheticEvent,
+  ScrollViewInstance
 } from 'react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -87,7 +88,7 @@ export default function PlaylistControls({
   const { t } = useI18n();
   const reduceMotion = useReduceMotion();
   const [open, setOpen] = useState(false);
-  const rail = useRef<ScrollView>(null);
+  const rail = useRef<ScrollViewInstance>(null);
   const railOffset = useRef(0);
   const railViewport = useRef(0);
   const chipsLeft = useRef(0);

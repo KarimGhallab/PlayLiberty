@@ -413,7 +413,7 @@ interface BarPageProps {
   readonly config: ApiConfig | null;
   readonly bar: BarState;
   readonly view: BarView;
-  readonly translateX: Animated.Value | Animated.AnimatedAddition<number>;
+  readonly translateX: Animated.Value | Animated.AnimatedAddition;
   readonly interactive: boolean;
   readonly onHeight?: (height: number) => void;
   readonly panHandlers?: GestureResponderHandlers;

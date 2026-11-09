@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   LayoutChangeEvent,
   NativeScrollEvent,
-  NativeSyntheticEvent
+  NativeSyntheticEvent,
+  ScrollViewInstance
 } from 'react-native';
 import {
   Animated,
@@ -102,7 +103,7 @@ export default function GalleryFilterBar({
   const [allRect, setAllRect] = useState<SegmentRect | null>(null);
   const [sharedRect, setSharedRect] = useState<SegmentRect | null>(null);
   const { edges, ...rail } = useRailEdges();
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<ScrollViewInstance>(null);
   const railOffset = useRef(0);
   const railViewport = useRef(0);
   const chipsLeft = useRef(0);

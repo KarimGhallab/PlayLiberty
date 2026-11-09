@@ -5,6 +5,8 @@ const expoPreset = require('jest-expo/jest-preset');
 module.exports = {
   preset: 'jest-expo',
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
+  // RN 0.88 cold module graphs exceed the 5s default when workers run in parallel.
+  testTimeout: 15000,
   // The icon package re-exports about 5000 one-file icons, so map its entry to a
   // stub; the preset's own mappings stay.
   moduleNameMapper: {

@@ -17,8 +17,16 @@ minimumReleaseAgeExclude:
   - '@fastify/static@10.1.7'
   - sass@1.106.1
   - zustand@5.0.16
+  - seroval-plugins@1.8.0
+  - seroval@1.8.0
 overrides:
   esbuild@<=0.24.2: ^0.25.0
-  react: 19.3.1
-  react-dom: 19.3.1
-  react-native: 0.86.3
+  react: 19.3.0
+  react-dom: 19.3.0
+  react-native: 0.88.1
+  # fastify > ajv and fast-json-stringify; drop when both depend on these floors.
+  fast-uri@>=3 <4: ^3.1.9
+  fast-uri@>=4 <5: ^4.2.3
+  # @tanstack/router-core accepts ^1.6.7; drop when it requires >=1.6.11.
+  seroval: 1.8.0
+  seroval-plugins: 1.8.0

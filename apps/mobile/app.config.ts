@@ -71,7 +71,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: config.name,
     slug: config.slug,
     version,
-    plugins: [...(config.plugins ?? []), './plugins/withReleaseSigning.cjs'],
+    plugins: [
+      ...(config.plugins ?? []),
+      'expo-asset',
+      './plugins/withReleaseSigning.cjs'
+    ],
     android: {
       ...config.android,
       versionCode: androidVersionCode(version),

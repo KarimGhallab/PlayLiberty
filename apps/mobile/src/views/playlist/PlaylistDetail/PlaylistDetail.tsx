@@ -2,9 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
+  ListViewToken,
   NativeScrollEvent,
-  NativeSyntheticEvent,
-  ViewToken
+  NativeSyntheticEvent
 } from 'react-native';
 import {
   Animated,
@@ -239,7 +239,11 @@ export default function PlaylistDetail({
   );
   const [viewabilityReady, setViewabilityReady] = useState(false);
   const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { readonly viewableItems: readonly ViewToken[] }) => {
+    ({
+      viewableItems
+    }: {
+      readonly viewableItems: readonly ListViewToken[];
+    }) => {
       setViewable(
         new Set(
           viewableItems.flatMap(item => (item.key === null ? [] : [item.key]))

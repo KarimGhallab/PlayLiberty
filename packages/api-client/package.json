@@ -28,7 +28,7 @@
     "@playliberty/query": "workspace:*",
     "@playliberty/ui-foundation": "workspace:*",
     "@tanstack/react-query": "^5.104.5",
-    "react": "19.3.1"
+    "react": "19.3.0"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

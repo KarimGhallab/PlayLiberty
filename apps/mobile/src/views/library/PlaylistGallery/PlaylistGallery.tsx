@@ -821,7 +821,7 @@ export default function PlaylistGallery({
         data={rows}
         keyExtractor={row => row.key}
         renderItem={renderRow}
-        ListHeaderComponent={pinnedHeader}
+        ListHeaderComponent={pinnedHeader ?? undefined}
         style={styles.gallery}
         {...verticalListChrome}
         refreshControl={

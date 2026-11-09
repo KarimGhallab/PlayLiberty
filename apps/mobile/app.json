@@ -5,7 +5,6 @@
     "scheme": "dev.playliberty.app",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "backgroundColor": "#0b0d10",
     "android": {
       "package": "dev.playliberty.app",
