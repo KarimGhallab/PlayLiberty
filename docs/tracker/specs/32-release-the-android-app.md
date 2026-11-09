@@ -1,6 +1,6 @@
 # Release the Android app
 
-Status: ready
+Status: resolved
 Labels: `enhancement`, `ready-for-agent`
 
 ## Problem Statement

@@ -6,8 +6,13 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b0d10",
+    "icon": "./assets/icon.png",
     "android": {
       "package": "dev.playliberty.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2f9e7e"
+      },
       "predictiveBackGestureEnabled": true,
       "permissions": ["android.permission.POST_NOTIFICATIONS"]
     },

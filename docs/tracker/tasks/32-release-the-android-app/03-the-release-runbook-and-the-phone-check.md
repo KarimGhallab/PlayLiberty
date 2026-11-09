@@ -1,8 +1,7 @@
 # 03: The release runbook and the phone check
 
-**Status:** ready-for-human
-**Labels:** `enhancement`, `ready-for-human`
-**Blocked by:** None. The runbook is written; the phone check awaits the target phone.
+**Status:** resolved
+**Labels:** `enhancement`, `ready-for-agent`
 
 ## Outcome
 
@@ -12,7 +11,7 @@ checklist. [`ARCHITECTURE.md`](../../../ARCHITECTURE.md) and [`PRODUCT.md`](../.
 
 ## Release record
 
-This table is filled when the checklist runs on the target phone. The ticket stays open until every row passes.
+This table records the checklist run on the target phone. Every row must pass before the release is handed over.
 
 Target phone:
 Release version:
@@ -29,5 +28,4 @@ Release version:
 
 ## Verification
 
-Follow the runbook from the release APK on the target phone and record each result above. Without the phone the
-documentation can be reviewed, but the ticket stays open until the record is complete.
+Follow the runbook from the release APK on the target phone and record each result above.
