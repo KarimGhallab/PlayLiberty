@@ -39,7 +39,8 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | Term           | Meaning                                                                                                                                                                           |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sync           | Reconciling a synced playlist with its source: add new videos, never delete stored tracks. One word for the operation, for the action that starts it, and for the state it is in. |
-| Sync run       | One execution of a sync: `running`, `completed`, or `failed`, with counts added, retained, removed, and failed.                                                                   |
+| Sync run       | One execution of a sync: `running`, `completed`, `cancelled`, or `failed`, with counts added, retained, removed, and failed.                                                      |
+| Cancel         | Stopping a running sync run before it commits. The run becomes `cancelled` and the playlist returns `idle`. It never stops a download.                                            |
 | Download       | Fetching the audio for one track, through yt-dlp. Drives the track states below.                                                                                                  |
 | Retention      | The rule that a source removal never deletes a stored track.                                                                                                                      |
 | Orphan         | A track with zero associations. The weekly prune deletes orphans permanently; the interval is configurable.                                                                       |

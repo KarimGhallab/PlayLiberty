@@ -5,7 +5,8 @@ Feature specs, written by `/to-spec`. One file per spec, named `NN-slug.md` and 
 This tracker holds two corpora. Specs `01` to `18` are the web and server MVP, where every client clause is the web
 client. Specs `19` to `33` are the mobile client, one per client-bearing verb of the first corpus, and their runtime
 is Android. [Mobile provisioning](../../ARCHITECTURE.md#mobile-provisioning) is the second corpus's first subject;
-[`33`](33-refresh-mobile-access.md) extends its credential lifecycle with a refresh token.
+[`33`](33-refresh-mobile-access.md) extends its credential lifecycle with a refresh token. Specs from `34` are
+post-MVP features that cross the server and both clients; one spec names both client clauses where they differ.
 
 ## Specs
 
@@ -53,6 +54,12 @@ instead of taking a spec: `09` and `11` into `19`, `10` into `25`, and `17` into
 | [`31-manage-the-egress`](31-manage-the-egress.md) · [tickets](../tasks/31-manage-the-egress/TICKETS.md)                                        | resolved | [`19`](19-the-mobile-shell.md), [`21`](21-see-the-library.md)         | none                                                                                                                                                                               |
 | [`32-release-the-android-app`](32-release-the-android-app.md)                                                                                  | ready    | [`30`](30-share-a-track.md)                                           | none                                                                                                                                                                               |
 | [`33-refresh-mobile-access`](33-refresh-mobile-access.md) · [tickets](../tasks/33-refresh-mobile-access/TICKETS.md)                            | resolved | [`20`](20-provision-mobile-access.md)                                 | none                                                                                                                                                                               |
+
+## Post-MVP
+
+| Spec                                                                                        | Status | Blocked by                                                            | Blocks |
+| ------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------- | ------ |
+| [`34-cancel-a-sync`](34-cancel-a-sync.md) · [tickets](../tasks/34-cancel-a-sync/TICKETS.md) | ready  | [`01`](01-sync-a-playlist.md), [`09`](09-keep-the-screens-current.md) | none   |
 
 ## Conventions
 

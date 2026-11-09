@@ -98,6 +98,8 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
 - [`30-share-a-track/TICKETS.md`](30-share-a-track/TICKETS.md).
 - [`31-manage-the-egress/TICKETS.md`](31-manage-the-egress/TICKETS.md).
 - [`33-refresh-mobile-access/TICKETS.md`](33-refresh-mobile-access/TICKETS.md).
+- [`34-cancel-a-sync/TICKETS.md`](34-cancel-a-sync/TICKETS.md): the boot recovery and the cancel control, from spec
+  [`34`](../specs/34-cancel-a-sync.md).
 - [`mobile-ui-audit-1/TICKETS.md`](mobile-ui-audit-1/TICKETS.md): the mobile UI audit's 19 tickets, from issue
   [`105`](../issues/105-the-mobile-apps-ui-misses-its-contract.md).
 - [`mobile-ui-audit-2/TICKETS.md`](mobile-ui-audit-2/TICKETS.md): the second mobile UI audit's 12 tickets, from issue
