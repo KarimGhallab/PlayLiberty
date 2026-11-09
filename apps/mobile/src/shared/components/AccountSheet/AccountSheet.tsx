@@ -32,6 +32,7 @@ export interface AccountSheetProps {
   readonly account: Account | null;
   readonly loading: boolean;
   readonly failure: string | null;
+  readonly version: string | null;
   readonly onClose: () => void;
   readonly onSignOut: () => void;
 }
@@ -49,6 +50,7 @@ export default function AccountSheet({
   account,
   loading,
   failure,
+  version,
   onClose,
   onSignOut
 }: AccountSheetProps) {
@@ -106,7 +108,19 @@ export default function AccountSheet({
       onRequestClose={onClose}
       closeLabel={t('common.close')}
       testID="account-sheet"
-      backdropTestID="account-backdrop">
+      backdropTestID="account-backdrop"
+      footer={
+        version === null ? undefined : (
+          <Text
+            testID="account-version"
+            style={[
+              styles.version,
+              { lineHeight: lineHeightFor('text-xs', 'leading-normal', scale) }
+            ]}>
+            {t('account.version', { version })}
+          </Text>
+        )
+      }>
       {failure === null ? null : (
         <View
           accessible
@@ -418,5 +432,13 @@ const styles = StyleSheet.create({
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-sm')
+  },
+  version: {
+    paddingTop: tokenLength('space-2'),
+    paddingBottom: tokenLength('space-1'),
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-xs'),
+    textAlign: 'center'
   }
 });

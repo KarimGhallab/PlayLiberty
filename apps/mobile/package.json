@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "expo start --dev-client",
     "android": "expo run:android",
+    "release:android": "node scripts/release-android.mjs",
     "emulator": "emulator @medium_phone",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",

@@ -22,7 +22,8 @@ export const en = {
     loading: 'Loading the account.',
     egress: 'VPN settings',
     signOut: 'Sign out',
-    signOutAsk: 'Are you sure you want to sign out?'
+    signOutAsk: 'Are you sure you want to sign out?',
+    version: 'Version {version}'
   },
   signedOut: {
     title: 'Sign in to enter the app',

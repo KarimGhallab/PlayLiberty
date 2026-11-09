@@ -1,46 +1,32 @@
 # 02: A signed release APK from a local Gradle build
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
-**Blocked by:** [`01`](01-one-version-number-and-the-account-sheet-shows-it.md). The release artifact must carry the
-derived version, and both tickets change the per-build Android properties.
 
-## What to build
+## Outcome
 
-One local command generates the Android project and assembles a signed, universal release APK at a documented output
-path in the mobile workspace's ignored build output, named with the running version. The command runs
-`expo prebuild` and the Gradle release task. No EAS cloud build, no app bundle, no ABI split and no store submission.
+The release is one local command: `pnpm mobile:release` reads a properties file outside the repository
+(`~/.config/playliberty/android-release.properties` by default), requires an HTTPS `EXPO_PUBLIC_API_BASE_URL`, runs
+`expo prebuild` and `assembleRelease`, and copies the signed APK to `apps/mobile/dist/playliberty-<version>.apk`. The
+properties file and the keystore must live outside the worktree; a path inside fails with a named error.
 
-A project-local Expo config plugin inserts the release signing configuration into the generated Android project, so a
-clean prebuild reproduces it. The configuration reads four Gradle properties from a properties file outside the
-repository: the keystore path, the store password, the key alias and the key password. Nothing about the key is
-committed. The development build keeps the debug key and needs none of these values.
+A project-local Expo config plugin regenerates the release signing configuration on a clean prebuild. It adds
+`signingConfigs.release` reading the four `PLAYLIBERTY_RELEASE_*` Gradle properties, switches the release build type
+from the debug key, and adds a `preReleaseBuild` guard that names every missing property. The development build keeps
+the debug key and needs none of the values.
 
-A release build with any of the four values missing fails with a message naming the missing value instead of Gradle's
-generic signing error. The release command also requires the public API origin and fails without it; the origin it was
-given is inlined into the artifact.
+The Babel config now resolves Expo's own `babel-preset-expo` through the `expo` package. pnpm does not hoist the preset
+into the mobile package, and the release bundle could not start without it.
 
-The artifact is one APK. No crash reporting, analytics or telemetry dependency or SDK is added. The real keystore is
-generated once and backed up by the owner; a throwaway key outside the tree proves the mechanics here.
+Verified with a throwaway keystore outside the tree and `https://pl.example.test`:
 
-## Acceptance criteria
+- `apksigner verify --print-certs` names `CN=PlayLiberty Release Test`.
+- `aapt dump badging` reports `versionCode=1000`, `versionName=0.1.0`, and the four ABIs in one universal APK.
+- The origin appears once in `assets/index.android.bundle`.
+- A missing signing value fails at the command with its name; Gradle's `preReleaseBuild` guard names all four.
+- A debug build without any signing value succeeds and is signed by `CN=Android Debug`.
+- The release installs over the existing debug build only after an uninstall; the differing signatures are refused.
+- A release installs over the previous release with `firstInstallTime` unchanged and `lastUpdateTime` advanced.
+- The full unit suite, lint and build pass. No dependency or telemetry SDK was added.
 
-- [ ] One local command produces a signed release APK at the documented path with the version in its name; it uses no
-      cloud build.
-- [ ] A clean prebuild regenerates the release signing configuration; all four signing values come from outside the
-      repository and no key material or password is committed.
-- [ ] A release build missing any signing value fails with a message naming each missing value; a debug build needs
-      none and stays debug-signed.
-- [ ] A release command without the public API origin fails; the built artifact embeds the origin it was given.
-- [ ] `apksigner verify` passes and names the release certificate; the artifact is one universal APK with no bundle
-      and no ABI split.
-- [ ] A second release built with the same key installs over the first and keeps the app's stored data.
-- [ ] No crash reporting, analytics or telemetry dependency or SDK is added.
-
-## Verification
-
-Generate a throwaway keystore outside the tree, define the four Gradle properties in a properties file outside the
-tree, set the public origin, run the release command, then run `apksigner verify --print-certs` and inspect the APK's
-version fields. Install it, build again with the same key, install over it and confirm the app keeps its data. Remove
-one property and confirm the release build names it, then confirm a debug build still succeeds. Finish with
-`pnpm run build` and `pnpm run lint:check`.
+See [`32-release-the-android-app`](../../specs/32-release-the-android-app.md).

@@ -6,7 +6,7 @@ PlayLiberty is a self-hosted, multi-user audio player for web and mobile that mi
 
 Three surfaces: a server that owns accounts, playlists, the media store, sync, and streaming; a web client; and a mobile client. All run on the owner's infrastructure, behind the Pangolin authenticating edge. The server is Node 26 with Fastify 5 and a local SQLite database, in this pnpm monorepo (see [the server stack](ARCHITECTURE.md#the-server-stack)). The web client is a React 19.3 and Vite SPA served by nginx as the single public origin (see [the web stack](ARCHITECTURE.md#the-web-stack)); playback is one browser audio element with the Media Session API. The mobile client is an Expo React Native app whose v1 runtime is Android, streaming through the same origin with background playback, lock-screen and notification controls, and its own queue (see [the mobile stack](ARCHITECTURE.md#the-mobile-stack)). It carries a per-user Pangolin access token obtained through a self-service browser flow instead of a browser session (see [mobile provisioning](ARCHITECTURE.md#mobile-provisioning)).
 
-The components and their boundaries are in [ARCHITECTURE.md](ARCHITECTURE.md#components). The mobile client runs as a development build; its signed, sideloaded Android APK is the release step that remains. iOS stays in the shared code and is not built or tested in v1.
+The components and their boundaries are in [ARCHITECTURE.md](ARCHITECTURE.md#components). The mobile client is distributed as a signed, sideloaded Android APK; [the Android release runbook](runbooks/android-release.md) builds and installs it. iOS stays in the shared code and is not built or tested in v1.
 
 ## Users
 

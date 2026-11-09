@@ -4,11 +4,11 @@ Tickets for [`32-release-the-android-app`](../../specs/32-release-the-android-ap
 version the single version, produces a signed release APK from a local Gradle build, and records the install, update
 and on-device checklist.
 
-| Ticket                                                                                                            | Status | Blocked by                                                      | Blocks                                                       |
-| ----------------------------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------------- | ------------------------------------------------------------ |
-| [`01-one-version-number-and-the-account-sheet-shows-it`](01-one-version-number-and-the-account-sheet-shows-it.md) | ready  | none                                                            | [`02`](02-a-signed-release-apk-from-a-local-gradle-build.md) |
-| [`02-a-signed-release-apk-from-a-local-gradle-build`](02-a-signed-release-apk-from-a-local-gradle-build.md)       | ready  | [`01`](01-one-version-number-and-the-account-sheet-shows-it.md) | [`03`](03-the-release-runbook-and-the-phone-check.md)        |
-| [`03-the-release-runbook-and-the-phone-check`](03-the-release-runbook-and-the-phone-check.md)                     | ready  | [`02`](02-a-signed-release-apk-from-a-local-gradle-build.md)    | none                                                         |
+| Ticket                                                                                                            | Status          | Blocked by                                                      | Blocks                                                       |
+| ----------------------------------------------------------------------------------------------------------------- | --------------- | --------------------------------------------------------------- | ------------------------------------------------------------ |
+| [`01-one-version-number-and-the-account-sheet-shows-it`](01-one-version-number-and-the-account-sheet-shows-it.md) | resolved        | none                                                            | [`02`](02-a-signed-release-apk-from-a-local-gradle-build.md) |
+| [`02-a-signed-release-apk-from-a-local-gradle-build`](02-a-signed-release-apk-from-a-local-gradle-build.md)       | resolved        | [`01`](01-one-version-number-and-the-account-sheet-shows-it.md) | [`03`](03-the-release-runbook-and-the-phone-check.md)        |
+| [`03-the-release-runbook-and-the-phone-check`](03-the-release-runbook-and-the-phone-check.md)                     | ready-for-human | none                                                            | none                                                         |
 
 ## Conventions
 

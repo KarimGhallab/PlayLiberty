@@ -41,6 +41,7 @@ async function renderSheet(
     account,
     loading: false,
     failure: null,
+    version: '0.1.0',
     onClose: jest.fn(),
     onSignOut: jest.fn(),
     ...overrides
@@ -155,6 +156,39 @@ describe('the account sheet', () => {
 
     await fireEvent.press(screen.getByTestId('account-backdrop'));
     expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the running version at its foot', async () => {
+    await renderSheet();
+
+    expect(screen.getByText('Version 0.1.0')).toBeOnTheScreen();
+  });
+
+  it('shows the running version in French', async () => {
+    await renderSheet({}, Language.French);
+
+    expect(screen.getByText('Version 0.1.0')).toBeOnTheScreen();
+  });
+
+  it('keeps the version while the identity is loading', async () => {
+    await renderSheet({ account: null, loading: true });
+
+    expect(screen.getByText('Version 0.1.0')).toBeOnTheScreen();
+  });
+
+  it('keeps the version after the account read fails', async () => {
+    await renderSheet({
+      account: null,
+      failure: 'The account could not be read.'
+    });
+
+    expect(screen.getByText('Version 0.1.0')).toBeOnTheScreen();
+  });
+
+  it('omits the version when the build carries none', async () => {
+    await renderSheet({ version: null });
+
+    expect(screen.queryByTestId('account-version')).not.toBeOnTheScreen();
   });
 
   it('shows the refusal in place of nothing', async () => {
