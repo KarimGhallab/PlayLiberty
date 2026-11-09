@@ -59,8 +59,7 @@ import { swipeMotion } from './swipeMotion';
 
 /*
  * The player bar: absent at rest, persistent across routes once playback
- * exists. A horizontal swipe moves the queue; the neighbouring track's bar
- * slides in with the finger, so the next player takes this one's place.
+ * exists. A swipe moves the queue, the neighbouring bar following the finger.
  */
 
 export interface PlayerBarProps {

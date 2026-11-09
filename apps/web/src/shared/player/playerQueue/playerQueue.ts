@@ -5,9 +5,8 @@ import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 
 /*
- * The one place a playlist's tracks become a queue and are started, so three
- * controls agree on which tracks enter and which playlist they carry. Only
- * stored files enter; the name is carried because the queue persists.
+ * The one place tracks become a queue and are started, so three controls agree.
+ * Only stored files enter; the name is carried because the queue persists.
  */
 
 export function buildQueue(

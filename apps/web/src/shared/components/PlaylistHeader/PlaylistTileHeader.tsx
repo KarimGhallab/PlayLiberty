@@ -10,9 +10,8 @@ import type { PlaybackStartControl } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 
 /*
- * The tile arrangement: the cover above the identity, the mark and the two
- * controls in a row under it. The cover is a div with a link inside rather than
- * a link itself, because a button inside an anchor is invalid HTML.
+ * Tile arrangement: cover above identity, mark and two controls under it. The
+ * cover is a div holding a link, since a button inside an anchor is invalid.
  */
 
 export interface PlaylistTileHeaderProps {

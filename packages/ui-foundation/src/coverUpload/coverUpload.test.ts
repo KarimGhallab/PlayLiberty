@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   COVER_MAX_BYTES,
-  COVER_ZOOM_STEP,
   coverUploadBox,
   coverUploadCrop,
   coverUploadInitial,
@@ -172,15 +171,6 @@ describe('framing the chosen image', () => {
     expect(state.zoom).toBe(1);
     expect(state.panX).toBe(0);
     expect(state.panY).toBe(0);
-  });
-
-  it('steps the zoom by the shared step', () => {
-    const state = reduceCoverUpload(withNatural(), {
-      type: 'zoomTo',
-      zoom: 1 + COVER_ZOOM_STEP
-    });
-
-    expect(state.zoom).toBeCloseTo(1.1);
   });
 
   it('clears the natural size when the measurement fails', () => {

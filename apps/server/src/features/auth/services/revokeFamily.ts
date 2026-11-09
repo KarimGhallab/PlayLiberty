@@ -9,8 +9,7 @@ import {
 } from '../../../platform/database/schema.js';
 
 /* One owner for ending a family: sign-out and reuse both revoke here. The edge
- * is told first, then the local rows, so a crash in between repeats the delete
- * rather than leaving a live token behind a revoked family. */
+ * is told first, so a crash repeats the delete, never hides a live token. */
 
 export interface RevokeFamilyInput {
   readonly database: DatabaseHandle;

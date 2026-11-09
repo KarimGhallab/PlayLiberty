@@ -16,9 +16,8 @@ export type SourceResolver = (
   token?: AccessToken
 ) => AudioSource | null;
 
-/* One player for one queue. The address is derived only when a track is
- * reached, so a revoked share or a changed edge applies to the next track.
- * The hook sets the audio mode the OS's controls and notification need. */
+/* One player for one queue. The address is derived when a track is reached, so
+ * a revoked share applies next; the hook sets the OS audio mode. */
 
 export function usePlayerAudio(
   resolveSource: SourceResolver,

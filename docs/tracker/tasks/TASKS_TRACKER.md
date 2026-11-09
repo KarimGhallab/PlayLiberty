@@ -97,11 +97,9 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
 - [`29-set-a-playlist-cover/TICKETS.md`](29-set-a-playlist-cover/TICKETS.md).
 - [`30-share-a-track/TICKETS.md`](30-share-a-track/TICKETS.md).
 - [`31-manage-the-egress/TICKETS.md`](31-manage-the-egress/TICKETS.md).
-- [`32-release-the-android-app/TICKETS.md`](32-release-the-android-app/TICKETS.md): the signed release, the install and
-  update paths, and the on-device checklist, from spec [`32`](../specs/32-release-the-android-app.md).
+- [`32-release-the-android-app/TICKETS.md`](32-release-the-android-app/TICKETS.md).
 - [`33-refresh-mobile-access/TICKETS.md`](33-refresh-mobile-access/TICKETS.md).
-- [`34-cancel-a-sync/TICKETS.md`](34-cancel-a-sync/TICKETS.md): the boot recovery and the cancel control, from spec
-  [`34`](../specs/34-cancel-a-sync.md).
+- [`34-cancel-a-sync/TICKETS.md`](34-cancel-a-sync/TICKETS.md).
 - [`mobile-ui-audit-1/TICKETS.md`](mobile-ui-audit-1/TICKETS.md): the mobile UI audit's 19 tickets, from issue
   [`105`](../issues/105-the-mobile-apps-ui-misses-its-contract.md).
 - [`mobile-ui-audit-2/TICKETS.md`](mobile-ui-audit-2/TICKETS.md): the second mobile UI audit's 12 tickets, from issue
@@ -117,9 +115,9 @@ Feature-scoped ticket sets live in a folder named for their spec or their audit:
 - [`shared-client-modules/TICKETS.md`](shared-client-modules/TICKETS.md): the cross-client duplication review's 8
   tickets, from the architecture review of 3 November 2026.
 - [`mobile-architecture-review/TICKETS.md`](mobile-architecture-review/TICKETS.md): the mobile architecture review's
-  3 tickets, from the review of 8 November 2026.
-- [`security-review-2026-11-09/TICKETS.md`](security-review-2026-11-09/TICKETS.md): the security review's
-  refresh-rotation and revocation tickets, findings 4, 5 and 6.
+  4 tickets, from the review of 8 November 2026.
+- [`security-review-2026-11-09/TICKETS.md`](security-review-2026-11-09/TICKETS.md): the security review's 3 tickets,
+  from 9 November 2026.
 
 ## Conventions
 

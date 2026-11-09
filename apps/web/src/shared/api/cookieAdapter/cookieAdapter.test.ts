@@ -10,9 +10,8 @@ import { server } from '../../../testing/mocks/server';
 import { transport } from '../transport';
 
 /*
- * The re-auth guard. A `401` needs a top-level navigation so the edge can
- * re-run its flow; a second refusal in the tab must not navigate again, or it
- * loops. The tab's record is in session storage, so it survives navigation.
+ * The re-auth guard: a `401` needs a top-level navigation, while a second
+ * refusal in the tab must not navigate again. The record survives navigation.
  */
 
 const RE_AUTH_ATTEMPT_KEY = 'playliberty.re-auth-attempt';

@@ -21,9 +21,8 @@ import ReadFailure from '../ReadFailure/ReadFailure';
 import shareStyles from './SharePlaylistDialog.module.scss';
 
 /*
- * Share one playlist: the body lists the directory's accounts, each with a
- * level switch and an action. The list reads the shares, so the dialog
- * arrives knowing who already has it.
+ * Share one playlist: the accounts each get a level switch and an action. The
+ * list reads the shares, so the dialog arrives knowing who already has it.
  */
 
 interface SharePlaylistDialogProps {

@@ -22,9 +22,8 @@ import {
   sessionRecordStore
 } from '../sessionRecord/sessionRecord';
 
-/* Renewal belongs here: a send inside the margin refreshes first, the rotated
- * record is written before the flight resolves. Only an exact invalid grant
- * ends the session; everything else keeps the record and surfaces a retry. */
+/* Renewal belongs here: a send inside the margin refreshes first, writing the
+ * rotated record. Only an exact invalid grant ends the session; else retry. */
 
 export const ACCESS_MARGIN_MS = 60_000;
 

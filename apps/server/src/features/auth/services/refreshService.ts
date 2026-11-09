@@ -21,8 +21,7 @@ import { type RevokeFamilyResult, revokeFamily } from './revokeFamily.js';
 import type { SingleFlight } from './singleFlight.js';
 
 /* The rotation mints before consuming, so a Pangolin failure leaves the token
- * usable, maybe the app's only credential. Membership is not read: a refusal
- * cannot tell a removed user from an outage, so it is treated as an outage. */
+ * usable. A membership refusal is treated as an outage, not a removal. */
 
 export type RefreshRefusalReason =
   | 'refresh_token_unknown'

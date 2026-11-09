@@ -496,8 +496,7 @@ describe('PlaylistDetailPage', () => {
 
   /*
    * The first landing is not the last: a playhead that steps past the loaded
-   * pages still needs them, or the skeleton stands in front of a list that
-   * never arrives.
+   * pages still needs them, or the skeleton stands forever.
    */
   it('loads the pages in when the playhead advances past the loaded rows', async () => {
     const all = [
@@ -2286,9 +2285,8 @@ describe('PlaylistDetailPage sort control', () => {
 });
 
 /*
- * A chip narrows the list and the rail; the identity card keeps stating the
- * playlist's own size, so no filter can make the playlist read as smaller. The
- * chips step aside under the shuffled queue.
+ * A chip narrows list and rail; the identity card still states the playlist's
+ * own size. The chips step aside under the shuffled queue.
  */
 describe('PlaylistDetailPage filter chips', () => {
   function headerCard(container: HTMLElement): HTMLElement {

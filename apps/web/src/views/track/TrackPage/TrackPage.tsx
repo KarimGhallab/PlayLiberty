@@ -118,8 +118,7 @@ export default function TrackPage() {
   }, [notice]);
 
   /* A queue started from the gallery makes the address the gallery's. The
-   * queue this page found on arrival is the baseline, so a failed entry or an
-   * advance in someone else's queue leaves the address alone. */
+   * arrival queue is the baseline, so a failure or advance leaves it alone. */
   useEffect(() => {
     if (baseline.current === null || queueIdentity() === baseline.current) {
       return;

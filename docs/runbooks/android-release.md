@@ -1,7 +1,6 @@
 # Android release runbook
 
-This runbook builds, installs and updates the signed Android APK. The release is a local Gradle build: there is no
-cloud build and no store submission. The decisions are owned by
+This runbook builds, installs and updates the signed Android APK. The decisions are owned by
 [`32-release-the-android-app`](../tracker/specs/32-release-the-android-app.md).
 
 ## Prerequisites
@@ -89,7 +88,7 @@ adb install -r apps/mobile/dist/playliberty-<version>.apk
 ```
 
 Or open the new file on the phone and install it over the existing app. The app's data, token and playlists survive
-when the key matches, and no sign-in is asked for. An update never asks for a reinstall.
+when the key matches, and no sign-in is asked for.
 
 ### Moving from a development build
 
@@ -119,4 +118,4 @@ Run every check on the phone that will use the app. Record the version and each 
 | Update         | Bump the version, build, install with `-r`, open the app and the account sheet.                | The session and playlists survive and the foot shows the new version. |
 | No third party | Note any crash reporting, analytics prompt or unexpected account request during the run.       | None appears.                                                         |
 
-The release is not handed over until every row passes. A build is not a release.
+The release is not handed over until every row passes.

@@ -6,9 +6,8 @@ import type {
   ProvisioningCode
 } from '../../../shared/provisioning.js';
 
-/* The short-lived code a browser SSO hands the app, and the PKCE check the
- * exchange makes. State is one process and one minute, so the store is a map:
- * a table would be durability for a value that must not outlive a restart. */
+/* The short-lived code a browser SSO hands the app, and the PKCE check. State is
+ * one process and one minute, so a map; a table would outlive a restart. */
 
 export const CODE_TTL_MS = 60_000;
 export const RATE_LIMIT_ATTEMPTS = 10;

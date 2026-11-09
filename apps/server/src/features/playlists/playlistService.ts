@@ -137,15 +137,12 @@ function toReadPlaylistResult(
   return { outcome: PlaylistOutcome.Ok, playlist: entry.value };
 }
 
-/*
- * Fixed locale, so the order does not follow how the process started. 'base'
- * folds case and accents into one.
- */
+/* Fixed locale: the order must not follow how the process started. 'base'
+ * folds case and accents together. */
 const byName = new Intl.Collator('en', { sensitivity: 'base' });
 
-/* Pins lead, then a playlist whose first sync is still running, then the rest;
- * each group keeps name order. A starting playlist is named by its source id,
- * so without the middle group it would land wherever that id sorts. */
+/* Pins lead, then first-sync playlists, then the rest, name order within each.
+ * A starting playlist is named by its source id and would sort there. */
 function groupRank(
   pinnedAt: string | null,
   syncStatus: PlaylistSyncStatus
@@ -167,8 +164,7 @@ export function listPlaylistsForAccount(
   const visibleRows = database.db
     .select({ playlist: playlists, pinnedAt: playlistPins.pinnedAt })
     .from(playlists)
-    /* Left join, so an unpinned playlist carries a null instant and sorts after
-     * every pin. */
+    /* Left join: an unpinned playlist carries null and sorts after every pin. */
     .leftJoin(
       playlistPins,
       and(
@@ -276,10 +272,8 @@ function announcePlaylistChanged(
   return result;
 }
 
-/*
- * Owner alone: a write collaborator answers the same not-found a stranger does.
- * Only name and timestamp are updated; the rest are the source's facts.
- */
+/* Owner alone, so a write collaborator answers the same not-found a stranger
+ * does. Only name and timestamp change; the rest are the source's facts. */
 export function renamePlaylistForAccount(
   context: LiveEventContext,
   playlistId: string,
@@ -407,22 +401,18 @@ export function updatePinForAccount(
   );
 }
 
-/* The row is already gone, so a file that survives is unreferenced and the
- * weekly sweep reclaims it; a failed unlink must never fail the delete. */
+/* The row is already gone, so a file that survives is unreferenced; a failed
+ * unlink must never fail the delete. */
 function removeCoverFile(root: string, coverPath: string): void {
   try {
     rmSync(join(root, coverPath), { force: true });
   } catch {
-    // Left to the weekly cover sweep.
+    // The weekly cover sweep reclaims it.
   }
 }
 
-/*
- * The cascade bypasses the association service's write rule, safe because the
- * only count is this row's and it is going. The cover file goes with the row on
- * a best-effort basis; track media is left to the weekly prune. The audience is
- * read before the row goes, because it cannot be read after.
- */
+/* The cascade bypasses the write rule: this row's count is the only one. Cover
+ * goes with it, track media to the weekly prune, audience read before delete. */
 export function deletePlaylistForAccount(
   context: Pick<AppContext, 'database' | 'events' | 'mediaPaths'>,
   playlistId: string,
@@ -464,10 +454,8 @@ export function deletePlaylistForAccount(
     : entry.value;
 }
 
-/*
- * The same not-found answers every denial and every absence, revealing neither
- * the playlist nor the membership. Suppression shares the delete's transaction.
- */
+/* The same not-found answers every denial and every absence, revealing neither
+ * the playlist nor its membership. Suppression joins the delete transaction. */
 export function removeTrackForAccount(
   context: LiveEventContext,
   playlistId: string,
@@ -612,8 +600,8 @@ function fileStatusCounts(
   );
 }
 
-/* The one fact the five buckets cannot name: a stored track whose source
- * removed it. It is an overlay on `stored`, so it is counted beside them. */
+/* The one fact the five buckets cannot name: a stored track its source removed.
+ * An overlay on `stored`, so it is counted beside them. */
 function remoteRemovedCountsByPlaylist(
   database: DatabaseHandle,
   playlistIds: readonly string[]
@@ -708,9 +696,8 @@ export function listPlaylistTracksForAccount(
 
       return {
         items: rows.map(toPlaylistTrackView),
-        /* Unfiltered: the maintained count; filtered: the state's bucket, or
-         * the retained figure. Either way the total is filtered, not the whole
-         * playlist. */
+        /* Unfiltered: the maintained count. Filtered: the state's bucket or the
+         * retained figure, never the whole playlist. */
         total:
           query.state === undefined
             ? playlist.trackCount

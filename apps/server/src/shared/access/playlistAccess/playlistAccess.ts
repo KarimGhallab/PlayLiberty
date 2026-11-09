@@ -11,9 +11,8 @@ import {
 } from '../../../platform/database/schema.js';
 import { AccessNeed, ownerGrants, shareLevelsFor } from '../rule.js';
 
-/* An account reaches a playlist it owns or holds a share on; no global library,
- * no admin override. Unreachable, including a revoked share, is null or absent,
- * never forbidden, so the caller answers 404. */
+/* An account reaches a playlist it owns or holds a share on; no admin override.
+ * Unreachable is null or absent, never forbidden, so the caller answers 404. */
 
 // Raw SQL: the builder cannot express the correlated share lookup cleanly.
 // The account id binds first in both, matching the join predicate's order.

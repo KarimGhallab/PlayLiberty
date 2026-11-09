@@ -35,9 +35,8 @@ import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
 
 /*
- * One module owns a surface's playlist actions: the mutations, the menu each
- * playlist is given, and the dialogs. A gallery reads it once rather than once
- * per item, so N items never multiply the observers or dialogs.
+ * One module owns a surface's mutations, each playlist's menu and the dialogs; a
+ * gallery reads it once, so N items never multiply the observers or dialogs.
  */
 
 export interface PlaylistAction {

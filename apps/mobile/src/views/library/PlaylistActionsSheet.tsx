@@ -13,18 +13,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 import type { PlaylistAction, PlaylistActionKey } from '@playliberty/library';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
-import Sheet from '../../../shared/components/Sheet/Sheet';
-import {
-  lineHeightFor,
-  useTextScale
-} from '../../../shared/styles/textMetrics';
+import { useAnnouncement } from '../../shared/a11y/useAnnouncement/useAnnouncement';
+import Sheet from '../../shared/components/Sheet/Sheet';
+import { lineHeightFor, useTextScale } from '../../shared/styles/textMetrics';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
   touchTarget
-} from '../../../shared/styles/tokens/tokens';
+} from '../../shared/styles/tokens/tokens';
 
 const ICONS = {
   pin: IconPin,

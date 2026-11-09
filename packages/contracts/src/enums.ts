@@ -60,9 +60,8 @@ export enum AssociationOrigin {
   Manual = 'manual'
 }
 
-/* `already_present` is a success, not a failure: the desired end state is
- * met. `refused` carries no reason, so cannot-see and cannot-write are one
- * answer. */
+/* `already_present` is a success, not a failure: the end state is met.
+ * `refused` carries no reason, so cannot-see and cannot-write are one answer. */
 export enum AddTrackOutcome {
   Added = 'added',
   AlreadyPresent = 'already_present',

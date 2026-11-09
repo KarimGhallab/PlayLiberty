@@ -10,9 +10,8 @@ import {
 import { refreshTokenHash } from './credentialService/credentialService.js';
 import { type RevokeFamilyResult, revokeFamily } from './revokeFamily.js';
 
-/* Sign-out, like reuse, goes through the one family revocation. It says nothing
- * about ownership: an unknown token and another account's family are the same
- * no-op success. */
+/* Sign-out goes through the one family revocation, like reuse. It says nothing
+ * about ownership: an unknown token and another account's are the same no-op. */
 
 export interface RevokeSessionInput {
   readonly database: DatabaseHandle;

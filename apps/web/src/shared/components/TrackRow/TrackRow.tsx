@@ -24,9 +24,8 @@ import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import styles from './TrackRow.module.scss';
 
 /*
- * The whole row plays the track; the lane at its end opens the menu above it.
- * Only the current row draws a playback word, Copy link is always in the lane,
- * and no state rests on colour alone.
+ * The whole row plays, the end lane opens the menu. Copy link is always in the
+ * lane, only the current row draws a word, and no state rests on colour.
  */
 
 interface TrackRowProps {
@@ -114,9 +113,8 @@ function TrackRow({
     onClose: () => setMenuOpen(false)
   });
 
-  /* Copy link is always in the lane; a row whose download, action or read is
-   * in flight drops the mutating items rather than the menu. The shared list
-   * decides which items exist; this lane owns their glyphs and handlers. */
+  /* A locked row drops the mutating items, never the menu: the shared list owns
+   * the set, this lane owns the glyphs and handlers. */
   const locked = downloading || busy || pending || starting;
   const laneItems: LaneItem[] = trackActionsFor(
     track,

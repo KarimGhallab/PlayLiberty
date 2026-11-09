@@ -43,8 +43,7 @@ import { findTrackByVideoId } from '../../../tracks/service/trackService.js';
 import { markTrackSourceRemoved } from '../../../tracks/trackLifecycle/trackLifecycle.js';
 
 /* One run per playlist: a concurrent start is refused, not queued, because two
- * runs would assign positions twice and overwrite the playlist's counts. A
- * reconcile cannot finish inside a request, so it runs in the background. */
+ * runs would assign positions twice. The reconcile runs in the background. */
 
 export type StartSyncResult =
   { outcome: 'ok'; playlistId: string; run: SyncRun } | Refused;

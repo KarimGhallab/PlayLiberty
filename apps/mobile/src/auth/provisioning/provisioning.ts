@@ -9,8 +9,7 @@ import {
 import { USER_AGENT } from '../../api/userAgent';
 
 /* The browser flow's decisions, free of the platform: a PKCE challenge and a
- * state go out, a single-use code comes back, and the code is traded for the
- * token pair the app stores. The long-lived token never travels in a URL. */
+ * state go out, a single-use code returns and is traded for the token pair. */
 
 export enum ProvisioningFailure {
   Cancelled = 'cancelled',

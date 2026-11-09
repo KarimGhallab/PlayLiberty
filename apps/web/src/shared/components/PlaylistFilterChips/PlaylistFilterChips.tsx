@@ -21,10 +21,8 @@ import styles from './PlaylistFilterChips.module.scss';
 import { useRailOverflow } from './useRailOverflow/useRailOverflow';
 
 /*
- * Counts are the whole-playlist aggregate, so they never follow the filter.
- * The detail draws a zero as evidence; the library hides a status no track
- * carries. The retained view is always hidden at zero. The chips are disabled
- * while the detail's shuffled queue is on.
+ * Counts never follow the filter; the library hides a zero status, while the
+ * detail draws it. The chips pause under a shuffled queue.
  */
 
 interface PlaylistFilterChipsProps {

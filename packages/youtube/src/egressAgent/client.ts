@@ -40,9 +40,8 @@ import {
   switchBody
 } from './protocol/protocol.js';
 
-/* The read may not hang on a wedged agent: "unreachable" is an answer the page
- * can draw faster than a person gives up. A switch or a check is a yt-dlp run,
- * so it gets the room one takes. */
+/* The read may not hang on a wedged agent: "unreachable" is an answer faster
+ * than a person gives up. A switch or check is a yt-dlp run and gets room. */
 const STATUS_TIMEOUT_MS = 2000;
 const LIST_TIMEOUT_MS = 120_000;
 

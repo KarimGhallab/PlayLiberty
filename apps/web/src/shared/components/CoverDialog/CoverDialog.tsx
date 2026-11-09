@@ -42,9 +42,8 @@ interface CoverDialogProps {
 }
 
 /*
- * One square is the whole cover surface: the current, chosen, or post-removal
- * image, with the labelled button below as its keyboard path. A chosen file
- * turns it into a crop stage; the server owns the bytes and the final square.
+ * One square is the whole cover surface, with the labelled button as its
+ * keyboard path; a chosen file turns it into a crop stage the server normalises.
  */
 export default function CoverDialog({
   open,

@@ -9,9 +9,8 @@ import { cacheEffects, invalidateForLiveEvent } from '@playliberty/query';
 import { readEndpoint } from '../endpoints/endpoints';
 
 /*
- * The tab's one live connection, mounted in the shell and reopened on a
- * backoff, which re-reads everything the tab holds so a gap closes without a
- * timer. A refusal uses the re-auth guard; `EventStreamContext` is a test seam.
+ * The tab's one live connection, reopened on a backoff that re-reads everything
+ * the tab holds. A refusal uses the re-auth guard; the context is a test seam.
  */
 
 export interface EventStreamHandlers {

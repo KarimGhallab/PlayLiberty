@@ -75,7 +75,7 @@ import CoverSheet from '../CoverSheet/CoverSheet';
 import EmptyGallery from '../EmptyGallery';
 import GalleryFilterBar from '../GalleryFilterBar';
 import GallerySkeleton from '../GallerySkeleton';
-import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
+import PlaylistActionsSheet from '../PlaylistActionsSheet';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
 import RenameSheet from '../RenameSheet/RenameSheet';
 import ShareSheet from '../ShareSheet/ShareSheet';

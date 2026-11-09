@@ -10,9 +10,8 @@ import type { PlayerTrack } from '../player/types';
 import { currentTrack } from '../player/types';
 
 /*
- * The tab's title, the one place it is written: the app's name at home, the
- * open playlist's name, or the playing track's name under its playlist. A track
- * outranks the open playlist; the shape lives in the catalog.
+ * The tab's title: app name at home, else the open playlist, else the playing
+ * track under it. A track outranks a playlist; the catalog owns the shape.
  */
 export function documentTitle(
   t: Translator<Messages>,

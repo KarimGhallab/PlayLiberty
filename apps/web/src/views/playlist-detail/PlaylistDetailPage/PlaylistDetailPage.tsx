@@ -216,9 +216,8 @@ export default function PlaylistDetailPage() {
     tracks.tracks.some(association => association.track.id === currentId);
 
   /*
-   * The list has no place to stand while the pages that hold the current row
-   * arrive; the skeleton holds its geometry rather than a list about to jump.
-   * The sort, the chips and Load more belong to that list, so they wait too.
+   * The list has no place to stand while the pages holding the current row
+   * arrive; the skeleton holds its geometry, so the controls wait too.
    */
   const landing =
     isQueue &&
@@ -229,12 +228,8 @@ export default function PlaylistDetailPage() {
     tracks.hasMore &&
     !tracks.moreFailed;
 
-  /*
-   * Opening the queue's playlist lands on its current row, not the top, and a
-   * shuffle toggle lands again: the row it draws changed places with the order.
-   * The jump waits one task because the router resets a cached navigation to the
-   * top, and pages load until the row exists.
-   */
+  /* Opening the queue lands on its current row and a shuffle lands again; the
+   * jump waits one task because the router resets a cached navigation. */
   useLayoutEffect(() => {
     if (!isQueue || currentId === null) {
       scrollHandledFor.current = playlistId;
@@ -316,9 +311,8 @@ export default function PlaylistDetailPage() {
       ? ownerNameFrom(directory.data, playlist.data.ownerAccountId)
       : null;
 
-  /* The transition's subject, held stable so a row's memo survives a render. No
-   * control is drawn before the read answers, so the empty name is never
-   * spoken. */
+  /* The transition's subject, held stable so a row's memo survives a render.
+   * No control is drawn before the read answers, so the name is never empty. */
   const playlistView = useMemo(
     () => ({ id: playlistId, name: playlist.data?.name ?? '' }),
     [playlistId, playlist.data?.name]
@@ -413,9 +407,8 @@ export default function PlaylistDetailPage() {
     trackParam
   ]);
 
-  /* While this playlist is the queue, the address bar names its current track;
-   * another queue leaves no track on this page. The mirror never moves the
-   * reader, and a link whose entry has not decided yet is not its to remove. */
+  /* While this is the queue, the bar names its current track; another queue
+   * leaves none, and the mirror never moves the reader or an undecided link. */
   useEffect(() => {
     if (playlist.data === undefined) {
       return;
@@ -456,9 +449,8 @@ export default function PlaylistDetailPage() {
     trackParam
   ]);
 
-  /* The exchange freezes the frame it lands on, so the skeleton is painted first
-   * and stands through it; the list stays mounted under it, keeping scroll and
-   * height. */
+  /* The exchange freezes the frame it lands on: the skeleton is painted first
+   * and stands through it, while the list stays mounted and keeps scroll. */
   const toggleShuffle = useCallback(() => {
     landAfterToggle.current = true;
 
@@ -600,7 +592,6 @@ export default function PlaylistDetailPage() {
     }
   }, [addTrack.isSuccess, batchRefused]);
 
-  /* The link's refusal withdraws on the notice window. */
   useEffect(() => {
     if (linkNotice === null) {
       return;
@@ -611,7 +602,6 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [linkNotice]);
 
-  /* The copy result withdraws on the same window; the toast owns no timer. */
   useEffect(() => {
     if (copyResult === null) {
       return;
@@ -622,7 +612,6 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [copyResult]);
 
-  /* The refusal withdraws on the window the shuffle notice uses. */
   useEffect(() => {
     if (settingRefused === null) {
       return;
@@ -633,7 +622,7 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [settingRefused]);
 
-  /* A failed cancel keeps the run syncing; its notice withdraws like the rest. */
+  /* A failed cancel keeps the run syncing. */
   useEffect(() => {
     if (cancelRefused === null) {
       return;

@@ -10,8 +10,8 @@ import { transport } from '../../api/transport';
 
 /*
  * What to do about a stream that failed to load. The element cannot say why, so
- * the route's status becomes one of three answers: gone is dropped, an expired
- * session is not a track fault, anything else is left alone.
+ * the route's status gives three answers: gone is dropped, an expired session
+ * is not a track fault, anything else is left alone.
  */
 
 /** The path the stream is read from, relative to the API prefix `send` adds. */

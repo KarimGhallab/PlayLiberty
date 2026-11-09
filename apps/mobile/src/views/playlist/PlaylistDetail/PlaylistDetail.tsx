@@ -103,7 +103,7 @@ import {
   startAtTrack
 } from '../../../player/startPlayback/startPlayback';
 import CoverSheet from '../../library/CoverSheet/CoverSheet';
-import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
+import PlaylistActionsSheet from '../../library/PlaylistActionsSheet';
 import RenameSheet from '../../library/RenameSheet/RenameSheet';
 import ShareSheet from '../../library/ShareSheet/ShareSheet';
 import { holdLeftPlaylistNotice } from '../../track/leftPlaylistNotice';

@@ -93,9 +93,8 @@ describe('SyncSummary', () => {
     expect(screen.getByRole('group', { name: '1 failed' })).toBeInTheDocument();
   });
 
-  /* Downloads fail after the run settles, so the band reports the playlist's
-   * live failures rather than the figure the run recorded; zero cells are not
-   * drawn at all. */
+  /* Downloads fail after the run settles, so the band reports live failures, not
+   * the recorded figure; zero cells are not drawn at all. */
   it("draws the live failures and hides the run's zeroes", () => {
     renderSummary(
       run({ retainedCount: 0, addedCount: 4, removedCount: 0, failedCount: 0 }),

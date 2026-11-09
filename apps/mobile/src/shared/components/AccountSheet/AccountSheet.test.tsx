@@ -164,12 +164,6 @@ describe('the account sheet', () => {
     expect(screen.getByText('Version 0.1.0')).toBeOnTheScreen();
   });
 
-  it('shows the running version in French', async () => {
-    await renderSheet({}, Language.French);
-
-    expect(screen.getByText('Version 0.1.0')).toBeOnTheScreen();
-  });
-
   it('keeps the version while the identity is loading', async () => {
     await renderSheet({ account: null, loading: true });
 

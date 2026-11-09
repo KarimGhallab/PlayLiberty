@@ -13,9 +13,8 @@ import {
 } from '../backgroundPlaybackState/backgroundPlaybackState';
 
 /*
- * The bridge between the player store and the Android media service. The app
- * starts the service from a user press and then mirrors one state object into
- * it; commands come back into the same store actions the bar uses.
+ * The bridge between the player store and the Android media service: a press
+ * starts it, state mirrors into it, commands return to the same store actions.
  */
 export function useBackgroundPlayback(
   config: ApiConfig | null,

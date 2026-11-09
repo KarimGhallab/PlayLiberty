@@ -19,8 +19,7 @@ import { toAccountSummary } from '../accounts/accountService.js';
 
 /*
  * Sharing is owner-only: a share grants access, so a collaborator allowed to
- * share would be a second owner. The level is the enum's two members; what each
- * means is enforced by the access rules the rest of the app already asks.
+ * share would be a second owner. The access rules define each level.
  */
 
 function toShareView(share: ShareRow, account: AccountRow): Share {

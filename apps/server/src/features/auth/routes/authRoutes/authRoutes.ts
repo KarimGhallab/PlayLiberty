@@ -26,9 +26,8 @@ import {
 import { SingleFlight } from '../../services/singleFlight.js';
 import { sendInvalidGrant } from '../refusal.js';
 
-/* The browser entry and the two paths outside Pangolin SSO: a provisioning code,
- * its exchange and the refresh rotation. One credential lifecycle owns them, and
- * one audit shape covers every attempt. */
+/* The browser entry and the two paths outside Pangolin SSO: provisioning code,
+ * its exchange and refresh rotation, all under one audit shape. */
 
 type AttemptAction = 'provisioning_exchange' | 'session_refresh';
 

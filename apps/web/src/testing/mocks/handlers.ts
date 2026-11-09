@@ -39,9 +39,8 @@ import {
 } from '@playliberty/contracts';
 
 /*
- * The harness the tests run against: two valid playlists, one owned and one
- * shared, in the route's order, so a component test also exercises schema
- * parsing, ordering and both access levels.
+ * The harness: two valid playlists, one owned and one shared, in route order, so
+ * a component test also exercises schema parsing, ordering and both access levels.
  */
 
 /* Every state is a key including a zero, so the chips have one to draw. */

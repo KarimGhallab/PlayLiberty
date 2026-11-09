@@ -37,9 +37,9 @@ import type { PlaylistDoorProps } from './playlistDoor/playlistDoor';
 import { playlistDoorProps } from './playlistDoor/playlistDoor';
 
 /*
- * The header's shared seam: the cover state, the identity block and the menu
- * model, built once so the arrangements cannot drift. Each control is drawn
- * only when the caller offers its callback.
+ * The header's shared seam: cover state, identity block and menu model, built
+ * once so the arrangements cannot drift. Each control is drawn only when the
+ * caller offers its callback.
  */
 
 /* Which start control a press belongs to, so only it shows the in-flight

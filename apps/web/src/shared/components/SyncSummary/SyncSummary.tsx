@@ -9,9 +9,8 @@ import Spinner from '../Spinner/Spinner';
 import styles from './SyncSummary.module.scss';
 
 /*
- * The summary is never drawn beside the sync error, which replaces it. The
- * stamp frames the run's counts; the failed figure is live and says so. Zero
- * cells are hidden, and a run that changed nothing says so.
+ * Never drawn beside the sync error, which replaces it. The stamp frames the
+ * run's counts; the failed figure is live, zero cells hidden, empty says so.
  */
 
 interface SyncSummaryProps {

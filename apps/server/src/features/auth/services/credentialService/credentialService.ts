@@ -12,8 +12,7 @@ import {
 } from '../../../../platform/database/schema.js';
 
 /* A family is one provisioning. Its access tokens are minted before anything is
- * written, so a Pangolin refusal leaves no half-session behind, and the
- * refresh token's plaintext never reaches the database. */
+ * written; the refresh token's plaintext never reaches the database. */
 
 export interface MobileLifetimes {
   readonly accessSeconds: number;

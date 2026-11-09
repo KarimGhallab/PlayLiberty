@@ -1,8 +1,6 @@
 # 32: Release the Android app
 
-Tickets for [`32-release-the-android-app`](../../specs/32-release-the-android-app.md). The set makes the mobile package
-version the single version, produces a signed release APK from a local Gradle build, and records the install, update
-and on-device checklist.
+Tickets for [`32-release-the-android-app`](../../specs/32-release-the-android-app.md).
 
 | Ticket                                                                                                            | Status          | Blocked by                                                      | Blocks                                                       |
 | ----------------------------------------------------------------------------------------------------------------- | --------------- | --------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -13,8 +11,5 @@ and on-device checklist.
 ## Conventions
 
 - One file per ticket, numbered in dependency order, blockers first.
-- `01` and `02` both make the generated Android project carry a release property, so `02` follows `01`.
-- `03` documents the artifact and the signing procedure `02` produces, then runs the checklist on the phone.
 - The release is a local, human-run procedure. No CI job signs and no cloud build is used.
-- A ticket with no blockers can start immediately; the frontier is every ticket whose blockers are done.
 - Resolve a ticket by recording the outcome in the ticket and updating its row here. Do not delete it.

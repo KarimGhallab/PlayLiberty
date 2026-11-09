@@ -22,8 +22,7 @@ export interface RevokePendingResult {
 }
 
 /* A failed edge delete leaves a revoked row without `edgeDeletedAt`. The job
- * retries those rows until the edge confirms, and never past the token's own
- * expiry, where the edge rejects it anyway. */
+ * retries until the edge confirms, and never past the token's own expiry. */
 export async function revokePending(
   input: RevokePendingInput
 ): Promise<RevokePendingResult> {

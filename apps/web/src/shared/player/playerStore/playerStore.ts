@@ -32,9 +32,8 @@ function clampVolume(volume: number): number {
 }
 
 /*
- * The order last heard, or null unless the ids are exactly the source's: a stale
- * or foreign payload falls back to the playlist order rather than dropping a
- * track or repeating one.
+ * The order last heard, or null unless the ids are exactly the source's: a
+ * stale payload falls back to playlist order rather than dropping or repeating.
  */
 function restoredQueue(
   sourceQueue: readonly PlayerTrack[],
