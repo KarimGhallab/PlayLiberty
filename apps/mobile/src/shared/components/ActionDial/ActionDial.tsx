@@ -17,8 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
-import { useReduceMotion } from '../../a11y/useReduceMotion';
-import { contentColumn } from '../../styles/contentColumn/contentColumn';
+import { useReduceMotion } from '../../a11y/useReduceMotion/useReduceMotion';
+import { contentColumn } from '../../styles/contentColumn';
 import {
   fontFamily,
   tokenColor,
@@ -26,8 +26,8 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
-import Spinner from '../Spinner/Spinner';
+} from '../../styles/tokens/tokens';
+import Spinner from '../Spinner';
 
 export type DialIcon = 'add' | 'sync';
 
@@ -58,9 +58,8 @@ export interface ActionDialProps {
 export const actionDialSize = tokenLength('space-9') + tokenLength('space-2');
 
 /*
- * A floating action that opens into the screen's own verbs. Rows are passed in
- * display order, top first; the trigger keeps the plus because adding is what
- * the surfaces are for, and it turns into a cross while the rows are out.
+ * A floating action that opens into the screen's own verbs. Rows are in display
+ * order, top first. The trigger keeps the plus because adding is the point.
  */
 export default function ActionDial({
   label,

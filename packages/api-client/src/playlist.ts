@@ -99,7 +99,6 @@ export function useLatestSyncRun(
   return useQuery(latestSyncRunQueryOptions(playlistId));
 }
 
-/* The next page starts where the loaded pages end, and stops at the total. */
 export function nextTracksPageParam(lastPage: {
   readonly offset: number;
   readonly total: number;
@@ -224,9 +223,8 @@ export function usePlaylistTracks(
   };
 }
 
-/* The queue's own read: one response, not a page walk, because a queue holds
- * every playable track. The cached value is the route's shape, so the hook and
- * the player read the same list. */
+/* The queue's own read: one response, not a page walk, cached in the route's
+ * shape so the hook and the player read the same list. */
 export async function fetchPlaylistQueue(
   playlistId: string
 ): Promise<PlaylistTrackList> {
@@ -281,10 +279,8 @@ export function cancelPlaylistQueue(
   });
 }
 
-/*
- * Start a sync: the `202` run is `running` and completes later, so the playlist
- * is read again to draw the settled state on the next refetch.
- */
+/* Start a sync: the `202` run is `running` and completes later, so the playlist
+ * is read again on the next refetch. */
 export function syncPlaylistOptions(queryClient: QueryClient) {
   return {
     mutationFn: (playlistId: string) =>
@@ -319,10 +315,8 @@ export function useCancelSyncPlaylist(): UseMutationResult<
   return useMutation(cancelSyncPlaylistOptions(useQueryClient()));
 }
 
-/*
- * One request, one outcome per playlist: a batch can be part added, part
- * present or refused, so both reads are invalidated after.
- */
+/* One request, one outcome per playlist: a batch can be part added, part
+ * present or refused, so both reads are invalidated after. */
 export function addTrackOptions(queryClient: QueryClient) {
   return {
     mutationFn: (input: AddTrackInput) =>
@@ -467,9 +461,8 @@ export function useRenamePlaylist(): UseMutationResult<
   return useMutation(renamePlaylistOptions(useQueryClient()));
 }
 
-/* The switch moves on the press: the playlist cache carries the new value
- * until the write answers, and a refusal puts the saved one back. The setting
- * is not retroactive, so no track read is asked again. */
+/* The switch moves on the press and a refusal puts the saved one back; the
+ * setting is not retroactive, so no track read is asked again. */
 export function updateSkipNonMusicOptions(
   playlistId: string,
   queryClient: QueryClient
@@ -510,9 +503,8 @@ export function useUpdateSkipNonMusic(playlistId: string) {
   );
 }
 
-/* Saving the read order moves the list and the queue, so the playlist reads are
- * asked again. The press moves the saved value first, and a refusal puts it
- * back. */
+/* Saving the read order moves the list and the queue, so both are asked again;
+ * the press moves the saved value first, and a refusal puts it back. */
 export function updateSortOptions(
   playlistId: string,
   queryClient: QueryClient
@@ -572,10 +564,8 @@ export function useDeletePlaylist(): UseMutationResult<void, Error, string> {
   return useMutation(deletePlaylistOptions(useQueryClient()));
 }
 
-/*
- * Retry a failed download: the track answers `downloading` and the tracks are
- * read again so the row catches up; the failed count moved too.
- */
+/* Retry a failed download: the track answers `downloading`, so the tracks and
+ * the failed count are read again. */
 export function retryTrackOptions(
   playlistId: string,
   queryClient: QueryClient
@@ -595,10 +585,8 @@ export function useRetryTrack(
   return useMutation(retryTrackOptions(playlistId, useQueryClient()));
 }
 
-/*
- * Retry every failed track. The set can span pages, so the ids are gathered
- * before the loop; one invalidation follows, even after a refused press.
- */
+/* Retry every failed track: the set can span pages, so ids are gathered
+ * before the loop; one invalidation follows even after a refused press. */
 export function retryFailedTracksOptions(
   playlistId: string,
   queryClient: QueryClient
@@ -641,10 +629,8 @@ export function useRetryFailedTracks(
   return useMutation(retryFailedTracksOptions(playlistId, useQueryClient()));
 }
 
-/*
- * Re-fetch a fileless track whole: the route flips its recorded policy to full
- * length, returning it to `pending`, so the tracks and failed count are reread.
- */
+/* Re-fetch a fileless track whole: the route returns it to `pending`, so the
+ * tracks and failed count are reread. */
 export function fetchTrackWholeOptions(
   playlistId: string,
   queryClient: QueryClient
@@ -664,10 +650,8 @@ export function useFetchTrackWhole(
   return useMutation(fetchTrackWholeOptions(playlistId, useQueryClient()));
 }
 
-/*
- * Remove one track: `204`. The server suppresses it so the next sync does not
- * re-add it; the count moved, so both reads are invalidated.
- */
+/* Remove one track: `204`. The server suppresses it so the next sync does not
+ * re-add it. */
 export function removeTrackOptions(
   playlistId: string,
   queryClient: QueryClient

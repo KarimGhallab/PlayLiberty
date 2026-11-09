@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MAX_CONTENT_WIDTH } from '../../styles/contentColumn/contentColumn';
+import { MAX_CONTENT_WIDTH } from '../../styles/contentColumn';
 import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
@@ -11,7 +11,7 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 import PressableScale from '../PressableScale/PressableScale';
 
 export interface ScreenProps {

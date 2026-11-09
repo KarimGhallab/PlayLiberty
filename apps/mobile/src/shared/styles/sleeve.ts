@@ -1,6 +1,6 @@
 import { sleeveIndex } from '@playliberty/ui-foundation';
 
-import { tokenColor } from './tokens';
+import { tokenColor } from './tokens/tokens';
 
 const SLEEVES = [
   'sleeve-1',

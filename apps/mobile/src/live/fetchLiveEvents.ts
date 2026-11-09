@@ -8,8 +8,7 @@ import {
 } from './liveEventStream/liveEventStream';
 
 /* React Native has no `EventSource`, and a browser one cannot set headers, so
- * the stream is the body of a fetch. Expo's fetch streams; the global one
- * buffers the whole response. */
+ * the body of Expo's fetch is the stream; the global fetch buffers it whole. */
 export const fetchLiveEvents: LiveEventFactory = (source, handlers) => {
   const controller = new AbortController();
   let closed = false;

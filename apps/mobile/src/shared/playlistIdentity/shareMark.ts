@@ -8,7 +8,7 @@ import type { Playlist } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { ShareMarkState, shareMarkOf } from '@playliberty/ui-foundation';
 
-import { tokenColor } from '../styles/tokens';
+import { tokenColor } from '../styles/tokens/tokens';
 
 const ICONS: Record<ShareMarkState, typeof IconLock> = {
   [ShareMarkState.Collab]: IconUserShare,

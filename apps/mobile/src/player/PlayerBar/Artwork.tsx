@@ -3,12 +3,12 @@ import { StyleSheet, View } from 'react-native';
 
 import { endpoints } from '@playliberty/contracts';
 
-import AppImage from '../../shared/components/AppImage/AppImage';
-import { tokenColor, tokenLength } from '../../shared/styles/tokens';
+import AppImage from '../../shared/components/AppImage';
+import { tokenColor, tokenLength } from '../../shared/styles/tokens/tokens';
 
 import { mediaAddress } from '../../api/credentialed/credentialed';
-import type { ApiConfig } from '../../auth/useApiConfig';
-import type { PlayerTrack } from '../playerTrack/playerTrack';
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
+import type { PlayerTrack } from '../playerTrack';
 
 export interface ArtworkProps {
   readonly config: ApiConfig | null;

@@ -44,41 +44,43 @@ import {
   useUpdateSkipNonMusic,
   useUpdateSort
 } from '@playliberty/api-client';
-import type { PlaylistTrack } from '@playliberty/contracts';
+import type { PlaylistTrack, TrackFilterState } from '@playliberty/contracts';
 import {
   AddTrackOutcome,
   PlaylistSort,
   PlaylistSyncStatus,
   SyncRunStatus
 } from '@playliberty/contracts';
-import type { TrackFilterState } from '@playliberty/contracts';
-import { problemDetail, providerLabel, useI18n } from '@playliberty/i18n';
-import { cannotPlayNotice } from '@playliberty/i18n';
-import { canWritePlaylist } from '@playliberty/library';
+import {
+  cannotPlayNotice,
+  problemDetail,
+  providerLabel,
+  useI18n
+} from '@playliberty/i18n';
 import {
   type PendingAction,
   type PlaylistActionKey,
+  type TrackActionKey,
   UNDO_WINDOW_MS,
-  playlistActionsFor
+  canWritePlaylist,
+  playlistActionsFor,
+  trackActionsFor
 } from '@playliberty/library';
-import { type TrackActionKey, trackActionsFor } from '@playliberty/library';
 import { orderTracksByQueue } from '@playliberty/player';
-import { standardEasingBezier } from '@playliberty/ui-foundation';
-import { STATUS_CHIPS } from '@playliberty/ui-foundation';
+import { STATUS_CHIPS, standardEasingBezier } from '@playliberty/ui-foundation';
 
-import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
-import { copyText } from '../../../shared/clipboard/copyText';
+import { useReduceMotion } from '../../../shared/a11y/useReduceMotion/useReduceMotion';
 import ActionDial, {
   actionDialSize
 } from '../../../shared/components/ActionDial/ActionDial';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
-import { verticalListChrome } from '../../../shared/components/List/listChrome';
 import Notice from '../../../shared/components/Notice/Notice';
-import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
-import Spinner from '../../../shared/components/Spinner/Spinner';
+import ReadFailure from '../../../shared/components/ReadFailure';
+import Spinner from '../../../shared/components/Spinner';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
-import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
-import { MAX_CONTENT_WIDTH } from '../../../shared/styles/contentColumn/contentColumn';
+import { verticalListChrome } from '../../../shared/components/listChrome';
+import { copyText } from '../../../shared/copyText';
+import { MAX_CONTENT_WIDTH } from '../../../shared/styles/contentColumn';
 import {
   fontFamily,
   tokenColor,
@@ -87,9 +89,10 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
+import { useDeferredAction } from '../../../shared/useDeferredAction';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import {
@@ -103,27 +106,26 @@ import CoverSheet from '../../library/CoverSheet/CoverSheet';
 import PlaylistActionsSheet from '../../library/PlaylistActionsSheet/PlaylistActionsSheet';
 import RenameSheet from '../../library/RenameSheet/RenameSheet';
 import ShareSheet from '../../library/ShareSheet/ShareSheet';
-import { holdLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
+import { holdLeftPlaylistNotice } from '../../track/leftPlaylistNotice';
 import AddTrackSheet from '../AddTrackSheet/AddTrackSheet';
 import PlaylistControls, {
   PlaylistControlsSkeleton
 } from '../PlaylistControls/PlaylistControls';
-import PlaylistEmpty from '../PlaylistEmpty/PlaylistEmpty';
+import PlaylistEmpty from '../PlaylistEmpty';
 import PlaylistIdentity, {
   HEADER_HEIGHT,
   type PlaylistIdentityProps,
   PlaylistIdentitySkeleton,
   useNarrowHeaderHeight
 } from '../PlaylistIdentity/PlaylistIdentity';
-import PlaylistNotFound from '../PlaylistNotFound/PlaylistNotFound';
+import PlaylistNotFound from '../PlaylistNotFound';
 import SyncBand from '../SyncBand/SyncBand';
 import TrackActionsSheet from '../TrackActionsSheet/TrackActionsSheet';
-import TrackListSkeleton from '../TrackListSkeleton/TrackListSkeleton';
+import TrackListSkeleton from '../TrackListSkeleton';
 import TrackRow from '../TrackRow/TrackRow';
-import { claimsPull, commitsPull } from './pullDismiss';
+import { claimsPull, commitsPull } from './pullDismiss/pullDismiss';
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
-/* The scroll that takes the header from wide to narrow. */
 const COLLAPSE_DISTANCE = tokenLength('space-9') * 2;
 /* The request waits one beat after the window so a gesture already queued when
  * the timer fired can still be read; only the clock decides the undo. */
@@ -148,8 +150,7 @@ export interface PlaylistDetailProps {
   readonly undoWindowMs?: number;
 }
 
-/* The detail's read surface. The identity block and the rows are one scroll, so
- * the cover leaves the screen as the list is walked. Each read outcome owns one
+/* The identity block and the rows are one scroll. Each read outcome owns one
  * body; a failed read is never an empty list. */
 export default function PlaylistDetail({
   playlistId,
@@ -323,9 +324,8 @@ export default function PlaylistDetail({
     applyPlaylistRefetch(playlistData.id, queue.data.items);
   }, [playlistData, queue.data, queue.isSuccess]);
 
-  /* A 404 on an open playlist with a track link is the bare track, silently:
-   * the access model never confirms that the playlist exists. A network or
-   * server failure keeps the detail's normal read failure. */
+  /* A 404 on a track link goes silently to the bare track: the access model
+   * never confirms the playlist exists. Other failures keep the read failure. */
   useEffect(() => {
     if (
       linkTarget === null ||
@@ -341,11 +341,8 @@ export default function PlaylistDetail({
     onBareTrackRedirect?.(linkTarget);
   }, [linkTarget, onBareTrackRedirect, playlist.error, playlist.isError]);
 
-  /* A shared link enters the playlist once its reads land: another queue
-   * starts this playlist at the track, this queue jumps to it, and the same
-   * track is a no-op so a repeated link neither restarts nor seeks. A track
-   * that left the playlist leaves for the bare route with its notice; one that
-   * cannot play stays here and says why. */
+  /* A link enters once reads land: a foreign queue starts at the track, this
+   * queue jumps; a departed one leaves with its notice, an unplayable stays. */
   useEffect(() => {
     if (enteredLink.current || linkTarget === null) {
       return;
@@ -385,9 +382,8 @@ export default function PlaylistDetail({
     t
   ]);
 
-  /* The address names the playing track while this detail is the queue, and
-   * names none while it is not. A link's target holds its place until entry
-   * settles, so the read does not erase the parameter first. */
+  /* The address names the playing track while this detail is the queue, and none
+   * otherwise. A link's target holds its place until entry settles. */
   useEffect(() => {
     if (onAddressChange === undefined) {
       return;
@@ -435,8 +431,7 @@ export default function PlaylistDetail({
     ) ?? t('detail.readFailed');
 
   /* A press on a loaded row moves the playhead in the queue it is already in,
-   * so a shuffled order survives; otherwise the whole playable playlist starts
-   * at that row rather than a queue built from the loaded page. */
+   * so a shuffled order survives; otherwise the whole playlist starts there. */
   const playTrack = useCallback(
     (trackId: string): void => {
       if (playlistData === undefined) {
@@ -468,9 +463,8 @@ export default function PlaylistDetail({
     }
   };
 
-  /* The header chases the list's offset on its own frames: the scroll events set
-   * the target, and the loop keeps the motion even when those events are thin.
-   * Reduced motion drops the tween and tracks the target on the event itself. */
+  /* The header chases the offset on its own frames: events set the target, the
+   * loop keeps motion when they thin. Reduced motion tracks the event instead. */
   const followHeader = (): void => {
     if (reduceMotion) {
       headerShown.current = headerTarget.current;
@@ -801,9 +795,8 @@ export default function PlaylistDetail({
     });
   };
 
-  /* The picker holds the gallery's first page, never a later one, so a long
-   * library costs one read. The detail's own playlist may fall past that page;
-   * the sheet still leads with it. */
+  /* The picker holds only the gallery's first page, so a long library costs one
+   * read; the detail's own playlist may fall past it and is still led. */
   const writablePlaylists =
     playlists.data === undefined
       ? []
@@ -816,9 +809,8 @@ export default function PlaylistDetail({
     ? problemMessage(addTrack.error, t('addTrackDialog.failed'))
     : null;
   const addResult = addTrack.data ?? null;
-  /* The floating action owns the bottom-right corner, so a notice or snackbar
-   * clears its height rather than sitting under it. The bar owns the bottom
-   * first, so both clear it too. */
+  /* The floating action owns the bottom-right, so a notice clears its height; the
+   * bar owns the bottom first, so both clear that too. */
   const playerOffset = currentId === null ? 0 : barHeight;
   const floatingOffset =
     (canWritePlaylist(data) ? actionDialSize + tokenLength('space-3') : 0) +

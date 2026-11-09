@@ -1,10 +1,8 @@
 import type { TrackFilterState } from '@playliberty/contracts';
 
 /* The one place a query key is written. `['playlist', id]` is a prefix on
- * purpose: the playlist, its tracks, its queue, its sync run and its shares all
- * hang off it, so one invalidation reaches every read of that playlist. A key
- * with no parameter is a constant, so it cannot be called by mistake: the hash
- * of a function is `undefined`, and every query would share one entry. */
+ * purpose, so one invalidation reaches every read of that playlist. A key with
+ * no parameter is a constant, so it cannot be called by mistake. */
 
 export const accountsKey = ['accounts'] as const;
 

@@ -4,10 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { playlistUrl, videoUrl } from '@playliberty/e2e-shared';
 
-/*
- * The fixtures the mobile journeys name, created against a running harness.
- * It writes what each flow expects and the shell file the runner reads.
- */
+/* The fixtures the mobile journeys name, created against a running harness: the
+ * scenario each flow expects and the shell file the runner reads. */
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const api = process.env.E2E_API ?? 'http://127.0.0.1:8095';

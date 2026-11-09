@@ -54,10 +54,8 @@ export function useCurrentAccount(
   return useQuery({ ...currentAccountQuery, enabled });
 }
 
-/*
- * The name an owner id resolves to, or null when absent. Null is a real answer
- * and must not be confused with the empty string, which renders a blank line.
- */
+/* The name an owner id resolves to, or null when absent; never the empty
+ * string, which would render a blank line. */
 export function ownerNameFrom(
   directory: readonly AccountSummary[],
   ownerAccountId: string

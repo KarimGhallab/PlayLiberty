@@ -15,7 +15,7 @@ import {
 import { formatRelativeTime, providerLabel, useI18n } from '@playliberty/i18n';
 
 import PressableScale from '../../../shared/components/PressableScale/PressableScale';
-import Spinner from '../../../shared/components/Spinner/Spinner';
+import Spinner from '../../../shared/components/Spinner';
 import {
   lineHeightFor,
   useTextScale
@@ -27,7 +27,7 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 export interface SyncBandProps {
   readonly playlist: Playlist;

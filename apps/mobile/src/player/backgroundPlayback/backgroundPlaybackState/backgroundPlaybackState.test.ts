@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
-import type { PlayerTrack } from '../../playerTrack/playerTrack';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
+import type { PlayerTrack } from '../../playerTrack';
 import {
   type BackgroundPlaybackLabels,
   backgroundPlaybackState

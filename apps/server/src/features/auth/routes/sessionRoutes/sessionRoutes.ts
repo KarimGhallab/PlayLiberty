@@ -7,7 +7,7 @@ import type { AppContext } from '../../../../shared/context.js';
 import { parseBody, sendValidationFailed } from '../../../../shared/problem.js';
 import { registerEndpoint } from '../../../../shared/registerEndpoint.js';
 
-import { revokeSession } from '../../service/revokeSession/revokeSession.js';
+import { revokeSession } from '../../services/revokeSession.js';
 
 /* Behind the edge: the access token in the headers authenticates the account,
  * and the body names the family to end. The answer never varies. */

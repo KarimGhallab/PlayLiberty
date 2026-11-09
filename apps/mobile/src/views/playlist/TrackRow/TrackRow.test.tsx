@@ -16,7 +16,7 @@ import {
 } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import TrackRow from './TrackRow';
 
 const store = { getItem: () => null, setItem: () => {} };

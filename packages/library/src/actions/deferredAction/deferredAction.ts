@@ -1,7 +1,5 @@
-/*
- * The deferred-action seam: a surface opens a window with a commit, and reads
- * back every open window so each toast can own its own cancel and countdown.
- */
+/* The deferred-action seam: a surface opens a window with a commit and reads
+ * back every open window, so each toast owns its cancel and countdown. */
 
 export interface PendingAction {
   /** The subject's id, which a surface matches instead of the shared name. */
@@ -64,10 +62,8 @@ function sameIntent(a: PendingAction, b: PendingAction): boolean {
   );
 }
 
-/*
- * The open windows live above every route, so leaving a surface neither cancels
- * its timer nor loses its toast. One window owns one timer and one commit.
- */
+/* Windows live above every route, so leaving a surface neither cancels its
+ * timer nor loses its toast. One window owns one timer and one commit. */
 class DeferredActionStore {
   private _entries: readonly WindowEntry[] = [];
   private _snapshot: readonly DeferredWindow[] = [];

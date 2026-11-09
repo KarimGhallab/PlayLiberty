@@ -10,14 +10,13 @@ import type { PlaylistWithCounts } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 import { syncStateLabel, trackCountUnit, useI18n } from '@playliberty/i18n';
 
-import AppImage from '../../../shared/components/AppImage/AppImage';
+import AppImage from '../../../shared/components/AppImage';
 import PlayPauseGlyph, {
   type PlayPauseGlyphHandle
-} from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
-import PlayingLine from '../../../shared/components/PlayingLine/PlayingLine';
+} from '../../../shared/components/PlayPauseGlyph';
+import PlayingLine from '../../../shared/components/PlayingLine';
 import PressableScale from '../../../shared/components/PressableScale/PressableScale';
-import Spinner from '../../../shared/components/Spinner/Spinner';
-import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
+import Spinner from '../../../shared/components/Spinner';
 import {
   shareMark,
   shareMarkColor
@@ -30,9 +29,10 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
+import { usePlaylistCover } from '../../../shared/usePlaylistCover';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 
 export interface PlaylistCardProps {
   readonly playlist: PlaylistWithCounts;
@@ -127,9 +127,8 @@ export default function PlaylistCard({
   const mark = shareMark(playlist);
   const incomplete = incompleteOf(playlist.counts);
   const sharedBy = playlist.access === 'owner' ? null : ownerName;
-  /* The card is one target, so its name carries everything the visible parts
-   * say: the mark, the count, the tracks not stored, the sync state and the
-   * owner. */
+  /* The card is one target, so its name carries what the parts say: mark,
+   * count, unstored tracks, sync state and owner. */
   const cardLabel = [
     playlist.name,
     t(mark.label),
@@ -152,8 +151,6 @@ export default function PlaylistCard({
   const nothingStored = playlist.counts.stored === 0;
   const playDisabled = nothingStored || busy;
   const shuffleDisabled = nothingStored || busy;
-  /* The parts are drawn over the cover and hidden from the tree, so their
-   * actions ride on the card: one stop per playlist. */
   const actions = [
     playDisabled
       ? null
@@ -283,8 +280,8 @@ export default function PlaylistCard({
         )}
       </View>
 
-      {/* The three controls are drawn over the cover; the card owns their
-        actions, so they carry no accessibility element of their own. */}
+      {/* The controls are drawn over the cover and hidden from the tree, so
+        the card carries one stop per playlist. */}
       <PressableScale
         testID="playlist-play"
         accessible={false}

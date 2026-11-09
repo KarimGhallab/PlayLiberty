@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ApiError, useTrack } from '@playliberty/api-client';
 import type * as ApiClientModule from '@playliberty/api-client';
+import { ApiError, useTrack } from '@playliberty/api-client';
 import {
   Provider,
   type Track,
@@ -20,7 +20,7 @@ import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import {
   holdLeftPlaylistNotice,
   takeLeftPlaylistNotice
-} from '../leftPlaylistNotice/leftPlaylistNotice';
+} from '../leftPlaylistNotice';
 import BareTrackEntry from './BareTrackEntry';
 
 jest.mock('expo-router', () => ({

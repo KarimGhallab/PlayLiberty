@@ -21,9 +21,8 @@ export interface CoverSelectionOptions {
 
 type CoverFields = Pick<Playlist, 'coverUpdatedAt' | 'coverTrackId'>;
 
-/* The custom image, then the first track's thumbnail, then the sleeve. A
- * failure at one image level falls to the next; a failure at the sleeve ends
- * the chain. */
+/* The custom image, then the first track's thumbnail, then the sleeve; a
+ * failure at one image level falls to the next. */
 export function selectPlaylistCover(
   playlist: CoverFields,
   failure: CoverFailure,

@@ -47,7 +47,7 @@ import type { LibraryScope } from '@playliberty/library';
 import { resetDeferredActions } from '@playliberty/library';
 
 import { createAppQueryClient } from '../../../api/queryClient/queryClient';
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { startAtPlaylist } from '../../../player/startPlayback/startPlayback';
 import PlaylistGallery from './PlaylistGallery';

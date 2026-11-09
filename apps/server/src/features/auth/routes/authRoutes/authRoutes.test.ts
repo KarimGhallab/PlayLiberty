@@ -24,7 +24,7 @@ import {
   refreshTokens
 } from '../../../../platform/database/schema.js';
 import { PangolinError } from '../../pangolin/PangolinClient.js';
-import { challengeFor } from '../../service/ProvisioningService.js';
+import { challengeFor } from '../../services/ProvisioningService.js';
 
 /* The RFC 7636 example: the verifier and its S256 challenge. */
 const VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
@@ -198,7 +198,6 @@ function mintedCode(response: Injected): { code: string; state: string } {
   };
 }
 
-/** The whole first provisioning: the code and its verifier for the pair. */
 async function issuePair(testContext: TestContext): Promise<MobileToken> {
   const { code } = mintedCode(await provision(testContext));
   const response = await exchange(testContext, {

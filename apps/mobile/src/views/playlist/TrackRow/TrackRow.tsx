@@ -20,9 +20,9 @@ import {
 import { isPlayable } from '@playliberty/player';
 import { fileTone, trackTone } from '@playliberty/ui-foundation';
 
-import AppImage from '../../../shared/components/AppImage/AppImage';
+import AppImage from '../../../shared/components/AppImage';
 import { usePressScale } from '../../../shared/components/PressableScale/usePressScale';
-import TrackBars from '../../../shared/components/TrackBars/TrackBars';
+import TrackBars from '../../../shared/components/TrackBars';
 import {
   lineHeightFor,
   useTextScale
@@ -33,15 +33,14 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
-import { trackToneColor } from '../../../shared/trackState/trackToneColor';
+} from '../../../shared/styles/tokens/tokens';
+import { trackToneColor } from '../../../shared/trackToneColor';
 
 import { mediaAddress } from '../../../api/credentialed/credentialed';
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 
-/* A press plays; a drag scrolls. The travel is measured from the touch itself,
- * because a Pressable still reports a release inside its own bounds as a press.
- * The threshold stays under the 12pt a swipe needs to claim a pan. */
+/* A press plays, a drag scrolls; travel comes from the touch, since a Pressable
+ * counts an inside release as a press. Stays under the 12pt a swipe needs. */
 const DRAG_THRESHOLD = tokenLength('space-2');
 
 export interface TrackRowProps {
@@ -55,9 +54,8 @@ export interface TrackRowProps {
   readonly onOpenActions?: (trackId: string) => void;
 }
 
-/* One track: the artwork, the title, the state word, the duration and, for a
- * failed track, the shared sentence with the server's reason behind a reveal.
- * The whole row is the play target when the file is stored. */
+/* Artwork, title, state word, duration, and for a failed track the shared
+ * sentence behind a reveal; the whole row plays when the file is stored. */
 function TrackRow({
   association,
   config,

@@ -2,10 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { IPangolinClient } from '../../../shared/pangolin.js';
 
-/*
- * The edge's integration API, faked: the browser provisions without a Pangolin
- * instance, and the minted token is a uuid that never leaves the process.
- */
+/* The edge's integration API, faked: the browser provisions without Pangolin,
+ * and the minted token is a process-local uuid. */
 export function createE2ePangolin(): IPangolinClient {
   return {
     async mintResourceAccessToken() {

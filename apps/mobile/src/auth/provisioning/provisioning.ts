@@ -66,9 +66,8 @@ interface PendingProvisioning {
   readonly redirectUri: string;
 }
 
-/* One flow at a time. The verifier never leaves the app, and the callback route
- * reads it here; a restart during the browser step loses it, which is why the
- * code also expires in a minute. */
+/* One flow at a time. The verifier never leaves the app; a restart during the
+ * browser step drops it, so the code expires in a minute. */
 let pending: PendingProvisioning | null = null;
 
 export function cancelProvisioning(): void {
@@ -114,7 +113,7 @@ export async function beginProvisioning(
   throw new ProvisioningError(ProvisioningFailure.Dismissed);
 }
 
-/** The callback route's half: check the state and trade the code. */
+/** The callback route's half of the flow. */
 export async function completeProvisioning(
   input: { readonly code: string; readonly state: string },
   deps: ProvisioningDeps

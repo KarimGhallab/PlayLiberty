@@ -8,8 +8,8 @@ import {
   tokenColor,
   tokenLength,
   tokenWeight
-} from '../../styles/tokens';
-import AppImage from '../AppImage/AppImage';
+} from '../../styles/tokens/tokens';
+import AppImage from '../AppImage';
 
 export type AccountAvatarSize = 'sm' | 'md';
 

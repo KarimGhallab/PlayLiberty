@@ -10,11 +10,9 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/*
- * Maestro reads its values from `-e` flags, not from the environment, and its
- * binary lives outside the package manager. This forwards the variables the
- * selected flows actually name, and finds the binary.
- */
+/* Maestro reads its values from `-e` flags, not the environment, and its binary
+ * lives outside the package manager. This forwards the variables the selected
+ * flows name, and finds the binary. */
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
@@ -200,9 +198,8 @@ const excludedFlags =
   excluded.length === 0 ? [] : ['--exclude-tags', excluded.join(',')];
 const maestro = resolveMaestro();
 
-/* The harness owns a live run directory, so the flow artifacts land beside the
- * logs and are rotated with them. The live runner has none and keeps Maestro's
- * default location. */
+/* The harness owns a live run directory, so artifacts land beside the rotated
+ * logs; a live runner has none and keeps Maestro's default location. */
 const runDirectory =
   process.env.E2E_RUN_DIR === undefined
     ? null
@@ -260,9 +257,8 @@ function crashEvidence(logs, appId) {
 
   const lines = text.split('\n');
   const signalAt = lines.findIndex(line => /Fatal signal \d+ \(/.test(line));
-  /* The crash report is this app's own. The device log is shared with every
-   * process, so a signal there must be followed by the app's tombstone header;
-   * logcat names the process, not the package, so the name alone proves nothing. */
+  /* The crash report is this app's own; the shared device log must follow a signal
+   * with the app's tombstone header, since logcat names the process, not the package. */
   const scoped =
     signalAt !== -1 &&
     (crash !== null ||
@@ -368,9 +364,8 @@ function reportCrash(entry) {
   }
 }
 
-/* Maestro prints one result line per flow when the batch holds more than one,
- * and the flow's log is complete by then. Tee the stream so the console keeps
- * its own output while each failure is read. */
+/* Maestro prints one result line per flow in a batch, and the flow's log is
+ * complete by then; tee the stream so each failure is read. */
 function watch(stream, output) {
   let pending = '';
 

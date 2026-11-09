@@ -11,7 +11,7 @@ import { Animated } from 'react-native';
 
 import UndoSnackbar, { type UndoSnackbarProps } from './UndoSnackbar';
 
-jest.mock('../../a11y/useReduceMotion', () => ({
+jest.mock('../../a11y/useReduceMotion/useReduceMotion', () => ({
   useReduceMotion: () => false
 }));
 

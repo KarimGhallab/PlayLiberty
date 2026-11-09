@@ -6,11 +6,8 @@ import { mediaUrl } from '../../api/endpoints/endpoints';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { currentTrack } from '../types';
 
-/*
- * The cover behind the bar: the playlist's custom image, then its cover track,
- * then the playing track's own artwork. A surface with no image leaves the
- * sleeve fallback to the bar.
- */
+/* Cover priority: the playlist's custom image, then its cover track, then the
+ * playing track; a surface with no image leaves the sleeve fallback to the bar. */
 function coverOf(playlist: Playlist | undefined): string | null {
   if (playlist === undefined) {
     return null;

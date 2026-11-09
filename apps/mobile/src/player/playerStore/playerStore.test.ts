@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import type { PlayerTrack } from '../playerTrack/playerTrack';
+import type { PlayerTrack } from '../playerTrack';
 import { usePlayerStore } from './playerStore';
 
 function track(id: string): PlayerTrack {

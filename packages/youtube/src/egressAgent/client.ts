@@ -5,6 +5,7 @@ import { request } from 'node:http';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
+import type { FailureMeaning } from '../errors/errors.js';
 import {
   EgressSourceUnavailableError,
   FailureDisposition,
@@ -12,7 +13,6 @@ import {
   YoutubeSponsorBlockError,
   YoutubeVideoUnavailableError
 } from '../errors/errors.js';
-import type { FailureMeaning } from '../errors/errors.js';
 import type {
   AgentFetchRequest,
   EgressAgentStatus,
@@ -22,6 +22,7 @@ import type {
   YoutubeSource
 } from '../types.js';
 import { SourceFailureKind } from '../types.js';
+import type { AgentWireReply, DecodedReply } from './protocol/protocol.js';
 import {
   AgentErrorCode,
   AgentHeader,
@@ -37,8 +38,7 @@ import {
   parseSourceExtension,
   parseYoutubeSource,
   switchBody
-} from './protocol.js';
-import type { AgentWireReply, DecodedReply } from './protocol.js';
+} from './protocol/protocol.js';
 
 /* The read may not hang on a wedged agent: "unreachable" is an answer the page
  * can draw faster than a person gives up. A switch or a check is a yt-dlp run,

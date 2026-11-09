@@ -1,4 +1,4 @@
-import type { ApiConfig } from '../auth/useApiConfig';
+import type { ApiConfig } from '../auth/useApiConfig/useApiConfig';
 import { fetchLiveEvents } from './fetchLiveEvents';
 import { useLiveEvents } from './useLiveEvents/useLiveEvents';
 

@@ -12,8 +12,8 @@ import { type Account, UserRole } from '@playliberty/contracts';
 import { Language, useI18n } from '@playliberty/i18n';
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
-import { useAnnouncement } from '../../a11y/useAnnouncement';
-import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { useAnnouncement } from '../../a11y/useAnnouncement/useAnnouncement';
+import { useReduceMotion } from '../../a11y/useReduceMotion/useReduceMotion';
 import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
@@ -23,7 +23,7 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 import AccountAvatar from '../AccountAvatar/AccountAvatar';
 import Sheet from '../Sheet/Sheet';
 

@@ -27,7 +27,7 @@ import {
   cancelSyncForPlaylist,
   startSyncForPlaylist,
   startSyncForSource
-} from '../../sync/services/syncService.js';
+} from '../../sync/services/syncService/syncService.js';
 import {
   PlaylistOutcome,
   deletePlaylistForAccount,

@@ -26,15 +26,15 @@ import {
 } from '@playliberty/ui-foundation';
 
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
-import { usePlaylistCover } from '../../playlistCover/usePlaylistCover';
+import { usePlaylistCover } from '../../usePlaylistCover';
 import Menu from '../Menu/Menu';
 import PlayGlyph from '../PlayGlyph';
 import Spinner from '../Spinner/Spinner';
 import { useDismissibleMenu } from '../useDismissibleMenu/useDismissibleMenu';
 import { usePlayPauseMorph } from '../usePlayPauseMorph/usePlayPauseMorph';
 import styles from './PlaylistHeader.module.scss';
-import type { PlaylistDoorProps } from './playlistDoor';
-import { playlistDoorProps } from './playlistDoor';
+import type { PlaylistDoorProps } from './playlistDoor/playlistDoor';
+import { playlistDoorProps } from './playlistDoor/playlistDoor';
 
 /*
  * The header's shared seam: the cover state, the identity block and the menu

@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 
 import styles from './PlaylistHeader.module.scss';
-import { playlistDoor } from './playlistDoor';
+import { playlistDoor } from './playlistDoor/playlistDoor';
 import type { PlaylistHeaderSeam } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 

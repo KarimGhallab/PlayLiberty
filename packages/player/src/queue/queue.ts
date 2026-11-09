@@ -69,11 +69,8 @@ export function mergeById<T>(
     .filter((item): item is T => item !== undefined);
 }
 
-/*
- * The playlist's rows in queue order. A row the queue carries opens a group at
- * its own place; a row it does not carry joins the group opened before it, so
- * it stays in its playlist neighbourhood rather than at the end.
- */
+/* Rows in queue order: a carried row opens a group at its place; an uncarried
+ * row joins the group before it, staying in its playlist neighbourhood. */
 export function orderTracksByQueue(
   tracks: readonly PlaylistTrack[],
   queueIds: readonly string[]

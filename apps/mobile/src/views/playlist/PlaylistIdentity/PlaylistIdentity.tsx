@@ -23,20 +23,19 @@ import {
   useI18n
 } from '@playliberty/i18n';
 
-import AppImage from '../../../shared/components/AppImage/AppImage';
+import AppImage from '../../../shared/components/AppImage';
 import PlayPauseGlyph, {
   type PlayPauseGlyphHandle
-} from '../../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
-import PlayingLine from '../../../shared/components/PlayingLine/PlayingLine';
+} from '../../../shared/components/PlayPauseGlyph';
+import PlayingLine from '../../../shared/components/PlayingLine';
 import PressableScale from '../../../shared/components/PressableScale/PressableScale';
-import Spinner from '../../../shared/components/Spinner/Spinner';
-import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
+import Spinner from '../../../shared/components/Spinner';
 import {
   shareMark,
   shareMarkColor
 } from '../../../shared/playlistIdentity/shareMark';
 import { syncStateColor } from '../../../shared/playlistIdentity/syncStateColor';
-import { contentColumn } from '../../../shared/styles/contentColumn/contentColumn';
+import { contentColumn } from '../../../shared/styles/contentColumn';
 import {
   drawnLineHeight,
   lineHeightFor,
@@ -50,9 +49,10 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
+import { usePlaylistCover } from '../../../shared/usePlaylistCover';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 
 /* The detail's one header: wide at the top, narrow once the list moves, with
  * the cover as its own backdrop while wide. */
@@ -86,7 +86,6 @@ export const HEADER_HEIGHT = {
   wide: WIDE_HEIGHT
 } as const;
 
-/* The compact identity's four lines at the capped scale. */
 function compactLinesHeight(scale: number): number {
   const name = drawnLineHeight('text-xl', 'leading-tight', scale);
   const meta = Math.max(

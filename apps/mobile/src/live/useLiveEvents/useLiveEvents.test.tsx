@@ -18,7 +18,7 @@ import {
   SessionStatus,
   useSessionStore
 } from '../../auth/sessionStore/sessionStore';
-import type { ApiConfig } from '../../auth/useApiConfig';
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
 import {
   type LiveEventConnection,
   type LiveEventFactory,

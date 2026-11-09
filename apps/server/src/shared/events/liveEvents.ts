@@ -4,7 +4,7 @@ import {
   playlistAudience,
   playlistAudiences,
   trackAudience
-} from '../access/playlistAccess.js';
+} from '../access/playlistAccess/playlistAccess.js';
 import type { AppContext } from '../context.js';
 import { exhaust } from '../exhaust.js';
 

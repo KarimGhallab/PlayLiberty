@@ -4,16 +4,16 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect } from 'react';
 
-import { useReduceMotion } from '../src/shared/a11y/useReduceMotion';
-import { tokenColor } from '../src/shared/styles/tokens';
+import { useReduceMotion } from '../src/shared/a11y/useReduceMotion/useReduceMotion';
+import { tokenColor } from '../src/shared/styles/tokens/tokens';
 
 import plexSans from '../assets/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf';
 import { configureMobileApiClient } from '../src/api/client';
 import type { AccessToken } from '../src/api/credentialed/credentialed';
 import { streamAddress } from '../src/api/credentialed/credentialed';
-import { useApiConfig } from '../src/auth/useApiConfig';
+import { useApiConfig } from '../src/auth/useApiConfig/useApiConfig';
 import LiveEvents from '../src/live/LiveEvents';
-import PlayerAudio from '../src/player/PlayerAudio/PlayerAudio';
+import PlayerAudio from '../src/player/PlayerAudio';
 import PlayerBar from '../src/player/PlayerBar/PlayerBar';
 import BackgroundPlayback from '../src/player/backgroundPlayback/BackgroundPlayback';
 import { classifyStreamFailure } from '../src/player/streamFailure/streamFailure';
@@ -78,7 +78,7 @@ export default function RootLayout() {
           name="playlists/[playlistId]"
           options={{
             /* The route owns the sheet's one entry and exit, so the gallery
-             * stays behind it; reduced motion cuts both. */
+             * stays behind it. */
             presentation: 'transparentModal',
             animation: reduceMotion ? 'none' : 'slide_from_bottom',
             gestureEnabled: true,

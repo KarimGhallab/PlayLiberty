@@ -25,12 +25,12 @@ import { registerAccountRoutes } from '../features/accounts/routes/accountRoutes
 import { PangolinClient } from '../features/auth/pangolin/PangolinClient.js';
 import { registerAuthRoutes } from '../features/auth/routes/authRoutes/authRoutes.js';
 import { registerSessionRoutes } from '../features/auth/routes/sessionRoutes/sessionRoutes.js';
-import { ProvisioningService } from '../features/auth/service/ProvisioningService.js';
+import { ProvisioningService } from '../features/auth/services/ProvisioningService.js';
 import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
 import { registerEgressRoutes } from '../features/egress/routes/egressRoutes.js';
-import { EgressPolicyClient } from '../features/egress/service/egressPolicy.js';
+import { EgressPolicyClient } from '../features/egress/service/egressPolicy/egressPolicy.js';
 import { reconcileEgress } from '../features/egress/service/egressService.js';
 import {
   DEFAULT_EVENT_HEARTBEAT_MS,
@@ -45,7 +45,7 @@ import {
 } from '../features/prune/service/pruneService.js';
 import { registerShareRoutes } from '../features/shares/routes/shareRoutes.js';
 import { registerSyncRunRoutes } from '../features/sync/routes/syncRunRoutes.js';
-import { recoverInterruptedSyncs } from '../features/sync/services/recoveryService.js';
+import { recoverInterruptedSyncs } from '../features/sync/services/recoveryService/recoveryService.js';
 import { registerTrackRoutes } from '../features/tracks/routes/trackRoutes.js';
 import type { JobHandle } from '../platform/jobs/cronJob.js';
 import { startCronJob } from '../platform/jobs/cronJob.js';
@@ -243,7 +243,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
        * explicit harness flag, and the production build omits the module. */
       if (context.config.runtime === 'test' && context.config.e2eHarness) {
         // Not a literal, so the production build does not compile the module.
-        const modulePath: string = './testing/e2eRoutes.js';
+        const modulePath: string = './testing/routes/e2eRoutes.js';
         const harness = (await import(modulePath)) as E2eRoutesModule;
         harness.registerE2eRoutes(api, context);
       }

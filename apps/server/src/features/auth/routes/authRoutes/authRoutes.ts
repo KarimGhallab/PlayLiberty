@@ -17,16 +17,14 @@ import {
 } from '../../../../shared/problem.js';
 import { registerEndpoint } from '../../../../shared/registerEndpoint.js';
 
-import { issueMobileSession } from '../../service/credentialService/credentialService.js';
-import { RefreshGraceCache } from '../../service/refreshGraceCache/refreshGraceCache.js';
-import { refreshMobileSession } from '../../service/refreshService.js';
+import { issueMobileSession } from '../../services/credentialService/credentialService.js';
+import { RefreshGraceCache } from '../../services/refreshGraceCache.js';
+import { refreshMobileSession } from '../../services/refreshService.js';
 import { sendInvalidGrant } from '../refusal.js';
 
-/*
- * The browser entry and the two paths outside Pangolin SSO: a provisioning
- * code, its exchange, and the refresh rotation. One module because one
- * credential lifecycle owns them, and one audit shape covers every attempt.
- */
+/* The browser entry and the two paths outside Pangolin SSO: a provisioning code,
+ * its exchange and the refresh rotation. One credential lifecycle owns them, and
+ * one audit shape covers every attempt. */
 
 type AttemptAction = 'provisioning_exchange' | 'session_refresh';
 
@@ -247,9 +245,8 @@ function registerRefreshRoute(
   context: AppContext,
   grace: RefreshGraceCache
 ): void {
-  /* The second credential-less mutation: a refresh token for the rotated pair.
-   * The identity hook lets the POST through without identity; the token in the
-   * body is the only credential, and the server checks it itself. */
+  /* The second credential-less mutation: a refresh token for the rotated pair. The
+   * token in the body is the only credential, and the server checks it itself. */
   registerEndpoint(app, endpoints.refresh, async (request, reply) => {
     if (context.pangolin === null) {
       auditAttempt(

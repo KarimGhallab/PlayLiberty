@@ -8,11 +8,8 @@ const LINK_PATHS = ['/playlists', '/tracks', '/auth'] as const;
 const PLAIN_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const SUFFIXED_VERSION = /^\d+\.\d+\.\d+[-+]/;
 
-/*
- * Android caps a version code at 2,100,000,000. The fixed decimal layout keeps
- * every semver bump monotonic; a component that overflows would collide with
- * another version's code.
- */
+/* Android caps the version code at 2,100,000,000; the fixed decimal layout keeps
+ * every bump monotonic, so a component above its bound would collide. */
 export function androidVersionCode(version: string): number {
   if (SUFFIXED_VERSION.test(version)) {
     throw new Error(

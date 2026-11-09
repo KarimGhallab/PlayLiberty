@@ -35,11 +35,10 @@ import {
   reduceCoverUpload
 } from '@playliberty/ui-foundation';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
-import AppImage from '../../../shared/components/AppImage/AppImage';
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
+import AppImage from '../../../shared/components/AppImage';
 import Sheet from '../../../shared/components/Sheet/Sheet';
-import Spinner from '../../../shared/components/Spinner/Spinner';
-import { usePlaylistCover } from '../../../shared/playlistCover/usePlaylistCover';
+import Spinner from '../../../shared/components/Spinner';
 import {
   lineHeightFor,
   useTextScale
@@ -51,9 +50,10 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
+import { usePlaylistCover } from '../../../shared/usePlaylistCover';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 
 interface Point {
   readonly x: number;
@@ -66,11 +66,8 @@ export interface CoverSheetProps {
   readonly onClose: () => void;
 }
 
-/*
- * One square is the whole cover surface: the current image, or the chosen one
- * shaped into its crop. The server owns the bytes and the final square, so the
- * sheet sends the file and, when the stage moved, the four fractions.
- */
+/* The server owns the bytes and the final square: the sheet sends the file and,
+ * when the stage moved, the four crop fractions. */
 export default function CoverSheet({
   playlist,
   config,

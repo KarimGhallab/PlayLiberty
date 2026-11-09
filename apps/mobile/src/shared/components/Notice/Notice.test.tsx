@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import Notice, { dismissesOnSwipe } from './Notice';
 
-jest.mock('../../a11y/useReduceMotion', () => ({
+jest.mock('../../a11y/useReduceMotion/useReduceMotion', () => ({
   useReduceMotion: () => true
 }));
 

@@ -7,8 +7,8 @@ import { useI18n } from '@playliberty/i18n';
 
 import NotFound from '../../../shared/components/NotFound/NotFound';
 import Screen from '../../../shared/components/Screen/Screen';
-import Spinner from '../../../shared/components/Spinner/Spinner';
-import { tokenColor } from '../../../shared/styles/tokens';
+import Spinner from '../../../shared/components/Spinner';
+import { tokenColor } from '../../../shared/styles/tokens/tokens';
 
 import { SessionStatus } from '../../../auth/sessionStore/sessionStore';
 import { useSession } from '../../../auth/useSession';

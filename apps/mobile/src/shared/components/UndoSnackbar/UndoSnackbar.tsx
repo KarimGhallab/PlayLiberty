@@ -11,8 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useI18n } from '@playliberty/i18n';
 
-import { useAnnouncement } from '../../a11y/useAnnouncement';
-import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { useAnnouncement } from '../../a11y/useAnnouncement/useAnnouncement';
+import { useReduceMotion } from '../../a11y/useReduceMotion/useReduceMotion';
 import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
@@ -20,14 +20,13 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 
 /* One accessibility action buys this much more time. */
 const EXTEND_MS = 5000;
 
-/* A touch event's timestamp is milliseconds since boot, the same clock
- * `performance.now()` reads; the window is decided on it, not on which callback
- * the thread happened to run first. */
+/* Touch timestamps and `performance.now()` share the since-boot clock; the
+ * window is decided on it, not on which callback the thread ran first. */
 function now(): number {
   return performance.now();
 }
@@ -45,9 +44,8 @@ export interface UndoSnackbarProps {
   readonly horizontalInset?: number;
 }
 
-/* A deferred action's surface: the sentence, the subject, the countdown, and
- * the one control that stops the request. Holding the surface, or asking for
- * more time from the screen reader, moves the commit later. */
+/* A deferred action's surface. Holding it, or asking for more time from the
+ * screen reader, moves the commit later. */
 export default function UndoSnackbar({
   message,
   detail,

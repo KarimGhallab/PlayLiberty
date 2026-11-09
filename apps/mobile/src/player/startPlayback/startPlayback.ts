@@ -5,8 +5,8 @@ import type { PlaylistTrack, Track } from '@playliberty/contracts';
 import { isPlayable } from '@playliberty/player';
 
 import { usePlayerStore } from '../playerStore/playerStore';
-import type { PlayerPlaylist } from '../playerTrack/playerTrack';
-import { playerTracks } from '../playerTrack/playerTrack';
+import type { PlayerPlaylist } from '../playerTrack';
+import { playerTracks } from '../playerTrack';
 
 export type StartIntent = 'play' | 'shuffle';
 
@@ -47,8 +47,7 @@ async function readPlayableQueue(
   return playableTracks(items);
 }
 
-/* The one read-then-start sequence: play takes the first track, shuffle takes
- * a random one, and a refusal is returned rather than drawn. */
+/* The one read-then-start sequence; a refusal is returned, not drawn. */
 export async function startAtPlaylist(
   client: QueryClient,
   playlist: PlayerPlaylist,

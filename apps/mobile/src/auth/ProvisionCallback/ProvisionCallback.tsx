@@ -4,7 +4,7 @@ import { StyleSheet, Text } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
-import { useAnnouncement } from '../../shared/a11y/useAnnouncement';
+import { useAnnouncement } from '../../shared/a11y/useAnnouncement/useAnnouncement';
 import SignInDoor from '../../shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../../shared/components/SignedOut/SignedOut';
 import { lineHeightFor, useTextScale } from '../../shared/styles/textMetrics';
@@ -12,7 +12,7 @@ import {
   fontFamily,
   tokenColor,
   tokenLength
-} from '../../shared/styles/tokens';
+} from '../../shared/styles/tokens/tokens';
 
 import { expoProvisioningDeps } from '../expoProvisioning';
 import { completeProvisioning } from '../provisioning/provisioning';

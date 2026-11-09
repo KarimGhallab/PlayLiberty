@@ -11,7 +11,7 @@ import {
 
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
-import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { useReduceMotion } from '../../a11y/useReduceMotion/useReduceMotion';
 import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
@@ -20,7 +20,7 @@ import {
   tokenLength,
   tokenNumber,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 
 export interface CheckboxProps {
   readonly label: string;

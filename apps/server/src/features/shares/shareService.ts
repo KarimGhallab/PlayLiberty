@@ -6,11 +6,11 @@ import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
-} from '../../shared/access/entry.js';
+} from '../../shared/access/entry/entry.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
-import { Refusal } from '../../shared/refusal.js';
 import type { Refused, Succeeded } from '../../shared/refusal.js';
+import { Refusal } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type { AccountRow, ShareRow } from '../../platform/database/schema.js';

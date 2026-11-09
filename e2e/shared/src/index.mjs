@@ -1,5 +1,4 @@
-/*
- * The scenario both suites write and the fake server reads. The server keeps its
+/* The scenario both suites write and the fake server reads. The server keeps its
  * own interface because it must not depend on the test packages.
  */
 

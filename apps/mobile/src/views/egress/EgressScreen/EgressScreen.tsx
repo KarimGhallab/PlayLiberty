@@ -22,8 +22,8 @@ import {
   useEgress,
   useSwitchEgress
 } from '@playliberty/api-client';
-import { EgressStatus } from '@playliberty/contracts';
 import type { EgressConfig } from '@playliberty/contracts';
+import { EgressStatus } from '@playliberty/contracts';
 import type {
   EgressNotice,
   Language,
@@ -42,10 +42,10 @@ import {
 } from '@playliberty/i18n';
 import { countryNameOf, countryOf, flagOf } from '@playliberty/ui-foundation';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
 import Notice from '../../../shared/components/Notice/Notice';
 import PressableScale from '../../../shared/components/PressableScale/PressableScale';
-import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import ReadFailure from '../../../shared/components/ReadFailure';
 import Screen from '../../../shared/components/Screen/Screen';
 import {
   lineHeightFor,
@@ -57,7 +57,7 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
@@ -141,7 +141,6 @@ interface ConfigCardProps {
   readonly onPress: () => void;
 }
 
-/* One exit stacked: its name, its facts, then the one action the row allows. */
 function ConfigCard({
   config,
   t,
@@ -302,10 +301,7 @@ function ConfigCard({
   );
 }
 
-/*
- * The operator's pool: the agent's reachability, one card per exit, and the
- * one action each card allows. One action runs at a time.
- */
+/* The operator's pool: one card per exit, and one action runs at a time. */
 export interface EgressScreenProps {
   readonly onBack: () => void;
 }

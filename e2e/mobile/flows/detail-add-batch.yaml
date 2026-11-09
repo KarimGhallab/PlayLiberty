@@ -53,9 +53,8 @@ name: A video is added to two playlists, then removed and restored
 - tapOn:
     id: add-track-url
 - inputText: ${VIDEO_URL}
-# The field keeps the keyboard, whose toolbar can swallow a tap meant for the
-# picks. A back press drops it and asks to discard the link; keeping the link
-# answers that and leaves the text in place.
+# The keyboard's toolbar can swallow a tap meant for the picks; a back press
+# drops it and asks to discard the link, and keeping the link leaves the text.
 - hideKeyboard
 - runFlow:
     when:

@@ -2,12 +2,12 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 
 import { useTrack } from '@playliberty/api-client';
-import { useI18n } from '@playliberty/i18n';
 import type { TrackLinkNotice } from '@playliberty/i18n';
 import {
   cannotPlayNotice,
   leftPlaylistNotice,
-  unknownTrackNotice
+  unknownTrackNotice,
+  useI18n
 } from '@playliberty/i18n';
 
 import Notice from '../../../shared/components/Notice/Notice';
@@ -19,8 +19,8 @@ import {
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import { startBareTrack } from '../../../player/startPlayback/startPlayback';
-import BareTrackLoading from '../BareTrackLoading/BareTrackLoading';
-import { takeLeftPlaylistNotice } from '../leftPlaylistNotice/leftPlaylistNotice';
+import BareTrackLoading from '../BareTrackLoading';
+import { takeLeftPlaylistNotice } from '../leftPlaylistNotice';
 
 export interface BareTrackEntryProps {
   readonly trackId: string | null;
@@ -39,11 +39,8 @@ function queueIdentity(
   return currentId === null ? null : 'bare';
 }
 
-/*
- * The bare-track route's only body is the queue entry: the gallery is the page,
- * so this puts the track in a one-track queue, explains a track that cannot
- * play, and walks the address back when another queue starts.
- */
+/* The gallery is the page: this puts the track in a one-track queue, explains
+ * one that cannot play, and walks the address back when another queue starts. */
 export default function BareTrackEntry({ trackId }: BareTrackEntryProps) {
   const { t } = useI18n();
   const status = useSessionStore(state => state.status);

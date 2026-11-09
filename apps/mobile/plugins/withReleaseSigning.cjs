@@ -33,10 +33,8 @@ afterEvaluate {
 }
 `;
 
-/*
- * Prebuild regenerates the Android project, so the release signing config must
- * be inserted by a mod rather than edited into the generated file.
- */
+/* Prebuild regenerates the Android project, so the release signing config must
+ * be inserted by a mod rather than edited into the generated file. */
 module.exports = function withReleaseSigning(config) {
   return withAppBuildGradle(config, config => {
     if (config.modResults.language !== 'groovy') {

@@ -87,9 +87,8 @@ export function totalStatusCount(counts: TrackFileStatusCounts): number {
   return TRACK_STATUS_CHIPS.reduce((sum, chip) => sum + counts[chip.value], 0);
 }
 
-/* One rule for both rails: a state with nothing in it is not a filter worth
- * offering, except the one in force, so an empty view keeps its way back. The
- * retained view is hidden at zero even when it is the one in force. */
+/* Both rails: an empty state is not a filter worth offering, except the active
+ * one. The retained view hides at zero even when it is active. */
 export function visibleStatusChips(
   counts: TrackFileStatusCounts,
   remoteRemoved: number,

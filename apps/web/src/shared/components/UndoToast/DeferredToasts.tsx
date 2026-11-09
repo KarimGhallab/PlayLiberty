@@ -1,7 +1,7 @@
 import { useI18n } from '@playliberty/i18n';
 
 import { useDeferredAction } from '../useDeferredAction/useDeferredAction';
-import UndoToastStack from './UndoToastStack';
+import UndoToastStack from './UndoToastStack/UndoToastStack';
 
 /*
  * The one toast surface, above the routes. The store owns the windows, so a

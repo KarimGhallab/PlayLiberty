@@ -9,7 +9,7 @@ import {
   shuffleIds
 } from '@playliberty/player';
 
-import type { PlayerPlaylist, PlayerTrack } from '../playerTrack/playerTrack';
+import type { PlayerPlaylist, PlayerTrack } from '../playerTrack';
 
 /* The queue is client state and never reaches the server. It holds track ids,
  * so a stream address is derived when a track is reached. */
@@ -61,8 +61,6 @@ function withoutTrack(
   return next;
 }
 
-/* The current track's declared duration, or null while there is nothing to
- * measure a position against. */
 function currentDuration(state: PlayerState): number | null {
   if (state.currentId === null) {
     return null;

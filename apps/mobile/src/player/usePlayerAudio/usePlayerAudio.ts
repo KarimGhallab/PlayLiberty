@@ -18,8 +18,7 @@ export type SourceResolver = (
 
 /* One player for one queue. The address is derived only when a track is
  * reached, so a revoked share or a changed edge applies to the next track.
- * The OS's controls and notification are spec 24's; this hook sets the mode
- * that makes them possible and keeps the native source in step with the store. */
+ * The hook sets the audio mode the OS's controls and notification need. */
 
 export function usePlayerAudio(
   resolveSource: SourceResolver,

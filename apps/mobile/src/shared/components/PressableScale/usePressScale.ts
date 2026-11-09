@@ -3,11 +3,11 @@ import { Animated, Easing } from 'react-native';
 
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
-import { useReduceMotion } from '../../a11y/useReduceMotion';
-import { tokenDuration } from '../../styles/tokens';
+import { useReduceMotion } from '../../a11y/useReduceMotion/useReduceMotion';
+import { tokenDuration } from '../../styles/tokens/tokens';
 
-/* The app's press: the control shrinks a tenth and dims on the one fast curve.
- * A control that is disabled shrinks without the dim. */
+/* The app's press: shrink and dim on the fast curve. A disabled control
+ * shrinks without the dim. */
 export function usePressScale(disabled: boolean) {
   const reduceMotion = useReduceMotion();
   const press = useRef(new Animated.Value(0)).current;

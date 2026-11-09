@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { type Account, UserRole } from '@playliberty/contracts';
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { touchTarget } from '../../styles/tokens';
+import { touchTarget } from '../../styles/tokens/tokens';
 import LibraryHeader, { type LibraryHeaderProps } from './LibraryHeader';
 
 const store = { getItem: () => null, setItem: () => {} };

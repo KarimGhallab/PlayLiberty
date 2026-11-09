@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
   FlatList,
@@ -33,19 +33,16 @@ import type {
 } from '@playliberty/contracts';
 import { PlaylistSyncStatus, Provider } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
-import type { LibraryScope } from '@playliberty/library';
-import {
-  groupPlaylists,
-  scopedPlaylists,
-  statusTotals,
-  visiblePlaylists
-} from '@playliberty/library';
-import type { PlaylistActionKey } from '@playliberty/library';
+import type { LibraryScope, PlaylistActionKey } from '@playliberty/library';
 import {
   UNDO_WINDOW_MS,
   canWritePlaylist,
   deleteIntentFor,
-  playlistActionsFor
+  groupPlaylists,
+  playlistActionsFor,
+  scopedPlaylists,
+  statusTotals,
+  visiblePlaylists
 } from '@playliberty/library';
 import { statusCount } from '@playliberty/ui-foundation';
 
@@ -54,19 +51,19 @@ import ActionDial, {
   actionDialSize
 } from '../../../shared/components/ActionDial/ActionDial';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
-import { verticalListChrome } from '../../../shared/components/List/listChrome';
 import Notice from '../../../shared/components/Notice/Notice';
-import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import ReadFailure from '../../../shared/components/ReadFailure';
 import UndoSnackbar from '../../../shared/components/UndoSnackbar/UndoSnackbar';
-import { useDeferredAction } from '../../../shared/deferredAction/useDeferredAction';
+import { verticalListChrome } from '../../../shared/components/listChrome';
 import {
   fontFamily,
   tokenColor,
   tokenLength,
   tokenWeight
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
+import { useDeferredAction } from '../../../shared/useDeferredAction';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import { usePlayerBarHeight } from '../../../player/playerBarSize/PlayerBarSizeContext';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
 import {
@@ -75,9 +72,9 @@ import {
 } from '../../../player/startPlayback/startPlayback';
 import AddPlaylistSheet from '../AddPlaylistSheet/AddPlaylistSheet';
 import CoverSheet from '../CoverSheet/CoverSheet';
-import EmptyGallery from '../EmptyGallery/EmptyGallery';
-import GalleryFilterBar from '../GalleryFilterBar/GalleryFilterBar';
-import GallerySkeleton from '../GallerySkeleton/GallerySkeleton';
+import EmptyGallery from '../EmptyGallery';
+import GalleryFilterBar from '../GalleryFilterBar';
+import GallerySkeleton from '../GallerySkeleton';
 import PlaylistActionsSheet from '../PlaylistActionsSheet/PlaylistActionsSheet';
 import PlaylistCard from '../PlaylistCard/PlaylistCard';
 import RenameSheet from '../RenameSheet/RenameSheet';
@@ -86,8 +83,8 @@ import {
   galleryColumnCount,
   galleryColumnWidth,
   galleryPinnedWidth
-} from '../galleryColumns/galleryColumns';
-import { clampScrollOffset } from './clampScrollOffset/clampScrollOffset';
+} from '../galleryColumns';
+import { clampScrollOffset } from './clampScrollOffset';
 
 const LOAD_MORE_DISTANCE = tokenLength('space-9') * 8;
 
@@ -396,8 +393,6 @@ export default function PlaylistGallery({
     startFrom(playlist, 'play');
   };
 
-  /* Shuffle starts the whole playlist, or turns off the shuffled order it is
-   * already playing. */
   const shufflePlaylist = (playlist: PlaylistWithCounts): void => {
     if (playerPlaylistId === playlist.id && playerShuffled) {
       setShuffle(false);

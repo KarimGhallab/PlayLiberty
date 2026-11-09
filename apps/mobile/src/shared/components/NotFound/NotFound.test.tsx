@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { touchTarget } from '../../styles/tokens';
+import { touchTarget } from '../../styles/tokens/tokens';
 import NotFound from './NotFound';
 
 const store = { getItem: () => null, setItem: () => {} };

@@ -4,11 +4,10 @@ import { isGoneStreamStatus } from '@playliberty/ui-foundation';
 import type { AccessToken } from '../../api/credentialed/credentialed';
 import { NeedsProvisioningError } from '../../api/credentialed/credentialed';
 import { sendCredentialed } from '../../api/credentialed/send/send';
-import type { ApiConfig } from '../../auth/useApiConfig';
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
 
-/* What the player should do about a stream that failed to load. A renewed
- * refusal reloads the stream with the new pair; a failed renewal belongs to
- * the shell; a gone track is dropped; anything else leaves the track. */
+/* What the player does about a failed stream: retry reloads with the new pair,
+ * session belongs to the shell, gone drops the track, unknown leaves it. */
 export type StreamFailure =
   | { readonly kind: 'retry'; readonly token: AccessToken }
   | { readonly kind: 'gone' }
@@ -19,11 +18,8 @@ export type StreamFailureClassifier = (
   trackId: string
 ) => Promise<StreamFailure>;
 
-/*
- * A load failure is classified by re-asking the stream route. The probe sends
- * the access pair through the one credentialed request, so a `401` renews once
- * before this function reads the answer.
- */
+/* A load failure is classified by re-asking the stream route through the one
+ * credentialed request, which renews once on a 401 before the answer is read. */
 export async function classifyStreamFailure(
   config: ApiConfig,
   trackId: string

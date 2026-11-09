@@ -5,9 +5,8 @@ const expoPreset = require('jest-expo/jest-preset');
 module.exports = {
   preset: 'jest-expo',
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
-  // The icon package's root re-exports about 5000 icons, one CJS file each, and
-  // every suite that renders a control loaded all of them. The preset's own
-  // mappings stay; ours only replaces the icon entry point.
+  // The icon package re-exports about 5000 one-file icons, so map its entry to a
+  // stub; the preset's own mappings stay.
   moduleNameMapper: {
     ...expoPreset.moduleNameMapper,
     '^@tabler/icons-react-native$': '<rootDir>/jest/tablerIconsMock.cjs'

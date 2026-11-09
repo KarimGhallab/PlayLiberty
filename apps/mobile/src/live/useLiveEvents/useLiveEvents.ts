@@ -8,16 +8,15 @@ import { invalidateForLiveEvent } from '@playliberty/query';
 
 import { eventsAddress } from '../../api/credentialed/credentialed';
 import { useSessionStore } from '../../auth/sessionStore/sessionStore';
-import type { ApiConfig } from '../../auth/useApiConfig';
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
 import {
   type LiveEventConnection,
   type LiveEventFactory,
   LiveEventFailure
 } from '../liveEventStream/liveEventStream';
 
-/* A drop backs off; a refusal renews the pair and reconnects. Nothing polls:
- * the connection is the only timer, and the app's own foregrounding is the
- * catch-up. Only a renewal the session ends stops the loop. */
+/* A drop backs off and a refusal renews the pair before reconnecting; nothing
+ * polls, and only a renewal the session ends stops the loop. */
 const BACKOFF_BASE_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
 

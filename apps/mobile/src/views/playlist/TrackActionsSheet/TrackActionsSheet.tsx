@@ -15,7 +15,7 @@ import {
   tokenColor,
   tokenLength,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 const ICONS = {
   copy: IconCopy,
@@ -32,8 +32,7 @@ export interface TrackActionsSheetProps {
   readonly onExited?: () => void;
 }
 
-/* One sheet for one track's actions. The lane opens it; the caller owns the
- * access and state model that chooses its items. */
+/* One sheet per track's actions; the caller owns the access and item model. */
 export default function TrackActionsSheet({
   trackTitle,
   actions,

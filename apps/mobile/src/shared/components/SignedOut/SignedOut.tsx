@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
-import { useAnnouncement } from '../../a11y/useAnnouncement';
+import { useAnnouncement } from '../../a11y/useAnnouncement/useAnnouncement';
 import { lineHeightFor, useTextScale } from '../../styles/textMetrics';
 import {
   fontFamily,
@@ -11,9 +11,9 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 import SignInDoor from '../SignInDoor/SignInDoor';
-import Spinner from '../Spinner/Spinner';
+import Spinner from '../Spinner';
 
 export interface SignedOutProps {
   readonly busy: boolean;

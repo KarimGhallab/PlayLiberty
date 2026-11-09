@@ -8,7 +8,7 @@ import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
-} from '../../shared/access/entry.js';
+} from '../../shared/access/entry/entry.js';
 import type { AppContext } from '../../shared/context.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 

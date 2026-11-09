@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { standardEasingBezier } from '@playliberty/ui-foundation';
 
-import { useReduceMotion } from '../../a11y/useReduceMotion';
+import { useReduceMotion } from '../../a11y/useReduceMotion/useReduceMotion';
 import {
   fontFamily,
   tokenColor,
@@ -27,7 +27,7 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 import PressableScale from '../PressableScale/PressableScale';
 
 export interface SheetProps {
@@ -53,9 +53,8 @@ export function dismissesOnDrag(dy: number, vy: number): boolean {
 }
 
 /*
- * The app's one modal frame. The scrim fades over the frame while the sheet
- * rises from the bottom, so the darkening is air rather than a moving panel.
- * The frame owns the exit too, and unmounts only when it finishes.
+ * The app's one modal frame: the scrim fades while the sheet rises, so the
+ * darkening is air, not a panel. The frame owns the exit and unmounts when done.
  */
 export default function Sheet({
   visible,

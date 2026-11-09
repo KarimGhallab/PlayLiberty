@@ -27,8 +27,6 @@ function attempt(
   return fetch(request.url, { ...request.init, headers });
 }
 
-/* The token half of the transport: one renewal and one retry on a `401`, and
- * a provisioning error when the session has ended. */
 export function tokenAdapter(options: TokenAdapterOptions): TransportAdapter {
   return {
     async send(request) {

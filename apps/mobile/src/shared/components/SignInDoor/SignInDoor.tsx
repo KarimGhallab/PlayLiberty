@@ -11,8 +11,8 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
-import ShelfSleeves from './ShelfSleeves';
+} from '../../styles/tokens/tokens';
+import ShelfSleeves from './ShelfSleeves/ShelfSleeves';
 
 export interface SignInDoorProps {
   readonly busy?: boolean;

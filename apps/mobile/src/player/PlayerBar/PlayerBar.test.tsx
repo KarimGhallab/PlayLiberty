@@ -23,12 +23,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { touchTarget } from '../../shared/styles/tokens';
+import { touchTarget } from '../../shared/styles/tokens/tokens';
 
-import type { ApiConfig } from '../../auth/useApiConfig';
-
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
 import { usePlayerStore } from '../playerStore/playerStore';
-import type { PlayerTrack } from '../playerTrack/playerTrack';
+import type { PlayerTrack } from '../playerTrack';
 import PlayerBar from './PlayerBar';
 
 jest.mock('expo-router', () => ({

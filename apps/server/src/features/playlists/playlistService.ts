@@ -21,23 +21,23 @@ import {
   TrackSourceStatus
 } from '@playliberty/contracts';
 
-import type { Entry } from '../../shared/access/entry.js';
+import type { Entry } from '../../shared/access/entry/entry.js';
 import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
-} from '../../shared/access/entry.js';
+} from '../../shared/access/entry/entry.js';
 import {
   playlistAudience,
   playlistVisibleTo,
   resolvePlaylistAccessMany,
   sharedPlaylistIds
-} from '../../shared/access/playlistAccess.js';
+} from '../../shared/access/playlistAccess/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
-import { Refusal } from '../../shared/refusal.js';
 import type { PlaylistRefusal } from '../../shared/refusal.js';
+import { Refusal } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type {

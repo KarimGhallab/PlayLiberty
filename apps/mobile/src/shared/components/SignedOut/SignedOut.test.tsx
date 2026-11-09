@@ -3,11 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import { touchTarget } from '../../styles/tokens';
+import { touchTarget } from '../../styles/tokens/tokens';
 import SignedOut from './SignedOut';
 
 /* The mark's loop is visual; a still door keeps the test off the clock. */
-jest.mock('../../a11y/useReduceMotion', () => ({
+jest.mock('../../a11y/useReduceMotion/useReduceMotion', () => ({
   useReduceMotion: () => true
 }));
 

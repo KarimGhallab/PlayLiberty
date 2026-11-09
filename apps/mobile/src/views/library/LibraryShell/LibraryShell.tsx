@@ -10,18 +10,16 @@ import AccountSheet from '../../../shared/components/AccountSheet/AccountSheet';
 import Screen from '../../../shared/components/Screen/Screen';
 import SignInDoor from '../../../shared/components/SignInDoor/SignInDoor';
 import SignedOut from '../../../shared/components/SignedOut/SignedOut';
+import { runningVersion } from '../../../shared/runningVersion';
 
 import { provisioningFailure } from '../../../auth/provisioningFailure';
 import { startProvisioning } from '../../../auth/startProvisioning';
-import { useApiConfig } from '../../../auth/useApiConfig';
+import { useApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import { SessionStatus, useSession } from '../../../auth/useSession';
-import { runningVersion } from '../../../versions/versions';
-import LibraryScreen from '../LibraryScreen/LibraryScreen';
+import LibraryScreen from '../LibraryScreen';
 
-/*
- * The gallery's shell, shared by the root and the bare-track route: the session
- * gate, the account sheet and the library body are one surface.
- */
+/* The shell shared by the root and bare-track routes: the session gate, the
+ * account sheet and the library body are one surface. */
 export default function LibraryShell() {
   const { t } = useI18n();
   const covered = useCoveredScreen();

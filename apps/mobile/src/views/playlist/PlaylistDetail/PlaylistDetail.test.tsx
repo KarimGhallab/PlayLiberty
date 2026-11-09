@@ -77,16 +77,16 @@ import {
 import { I18nProvider, Language } from '@playliberty/i18n';
 import { resetDeferredActions } from '@playliberty/library';
 
-import { copyText } from '../../../shared/clipboard/copyText';
+import { copyText } from '../../../shared/copyText';
 import {
   tokenDuration,
   tokenLength,
   tokenNumber
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import { usePlayerStore } from '../../../player/playerStore/playerStore';
-import { takeLeftPlaylistNotice } from '../../track/leftPlaylistNotice/leftPlaylistNotice';
+import { takeLeftPlaylistNotice } from '../../track/leftPlaylistNotice';
 import PlaylistDetail from './PlaylistDetail';
 
 jest.mock('@playliberty/api-client', () => ({
@@ -131,7 +131,7 @@ jest.mock('expo-file-system', () => ({
     }
   }
 }));
-jest.mock('../../../shared/clipboard/copyText', () => ({
+jest.mock('../../../shared/copyText', () => ({
   copyText: jest.fn()
 }));
 
@@ -490,8 +490,7 @@ async function reportViewable(keys: readonly string[]) {
 }
 
 /* The pull's responder is rebuilt whenever its motion answer changes, so the
- * latest config is the one a release should use. Its capture hook is what tells
- * it apart from the sheets' own responders. */
+ * latest config is the one a release uses; its capture hook tells it apart. */
 function capturePull() {
   let release: ((event: object, gesture: object) => void) | null = null;
   const create = PanResponder.create.bind(PanResponder);

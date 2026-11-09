@@ -1,6 +1,6 @@
 import { Platform, useWindowDimensions } from 'react-native';
 
-import { tokenLength, tokenNumber } from './tokens';
+import { tokenLength, tokenNumber } from './tokens/tokens';
 
 type TextSize =
   'text-xs' | 'text-sm' | 'text-md' | 'text-lg' | 'text-xl' | 'text-2xl';

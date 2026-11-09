@@ -12,9 +12,9 @@ import type { AccountSummary, Share } from '@playliberty/contracts';
 import { ShareLevel } from '@playliberty/contracts';
 import { problemDetail, useI18n } from '@playliberty/i18n';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
 import AccountAvatar from '../../../shared/components/AccountAvatar/AccountAvatar';
-import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
+import ReadFailure from '../../../shared/components/ReadFailure';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import {
   lineHeightFor,
@@ -27,7 +27,7 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 export interface ShareAccountPickerProps {
   readonly visible: boolean;
@@ -45,9 +45,8 @@ interface GrantRefusal {
   readonly message: string;
 }
 
-/* The directory, narrowed to the accounts a share can name. The owner is left
- * out here because the route refuses a self-share; everyone else is present,
- * and an existing level is the selected one. */
+/* The owner is left out because the route refuses a self-share; every other
+ * account is present, and an existing level is the selected one. */
 export default function ShareAccountPicker({
   visible,
   playlistId,

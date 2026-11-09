@@ -9,7 +9,7 @@ import {
   tokenColor,
   tokenLength,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 import { SORT_OPTIONS } from './sortOptions';
 
@@ -20,7 +20,6 @@ export interface PlaylistSortSheetProps {
   readonly onClose: () => void;
 }
 
-/* The saved order as three radios; choosing one closes the sheet. */
 export default function PlaylistSortSheet({
   visible,
   sort,

@@ -6,8 +6,8 @@ import {
   standardEasingBezier
 } from '@playliberty/ui-foundation';
 
-import { useReduceMotion } from '../../a11y/useReduceMotion';
-import { tokenColor, tokenLength } from '../../styles/tokens';
+import { useReduceMotion } from '../../a11y/useReduceMotion/useReduceMotion';
+import { tokenColor, tokenLength } from '../../styles/tokens/tokens';
 
 /** The mark's phases, in bar order, in milliseconds. */
 const PULSES: readonly number[] = [520, 700, 460, 620, 800, 560];

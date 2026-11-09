@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import { associations, playlists } from '../../platform/database/schema.js';
-import { playlistReaches } from './playlistAccess.js';
+import { playlistReaches } from './playlistAccess/playlistAccess.js';
 import { AccessNeed } from './rule.js';
 
 /*

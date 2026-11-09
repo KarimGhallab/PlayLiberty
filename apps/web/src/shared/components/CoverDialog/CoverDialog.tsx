@@ -1,9 +1,10 @@
 import { IconPhoto } from '@tabler/icons-react';
-import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useId, useReducer, useRef, useState } from 'react';
 
 import type { Playlist } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
+import type { CoverCrop } from '@playliberty/ui-foundation';
 import {
   COVER_ACCEPTED_TYPES,
   COVER_PAN_STEP,
@@ -20,9 +21,8 @@ import {
   reduceCoverUpload,
   sleeveIndex
 } from '@playliberty/ui-foundation';
-import type { CoverCrop } from '@playliberty/ui-foundation';
 
-import { usePlaylistCover } from '../../playlistCover/usePlaylistCover';
+import { usePlaylistCover } from '../../usePlaylistCover';
 import Dialog from '../Dialog/Dialog';
 import dialogStyles from '../Dialog/Dialog.module.scss';
 import Spinner from '../Spinner/Spinner';

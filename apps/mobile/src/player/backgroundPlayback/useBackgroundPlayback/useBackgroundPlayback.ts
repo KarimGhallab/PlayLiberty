@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 import { useI18n } from '@playliberty/i18n';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import { usePlayerStore } from '../../playerStore/playerStore';
 import { backgroundPlayback } from '../backgroundPlayback';
 import {

@@ -20,12 +20,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { endpoints } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
-import { useReduceMotion } from '../../shared/a11y/useReduceMotion';
-import AppImage from '../../shared/components/AppImage/AppImage';
+import { useReduceMotion } from '../../shared/a11y/useReduceMotion/useReduceMotion';
+import AppImage from '../../shared/components/AppImage';
 import Notice from '../../shared/components/Notice/Notice';
 import PlayPauseGlyph, {
   type PlayPauseGlyphHandle
-} from '../../shared/components/PlayPauseGlyph/PlayPauseGlyph';
+} from '../../shared/components/PlayPauseGlyph';
 import PressableScale from '../../shared/components/PressableScale/PressableScale';
 import { sleeveColor } from '../../shared/styles/sleeve';
 import { lineHeightFor, useTextScale } from '../../shared/styles/textMetrics';
@@ -38,30 +38,29 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../shared/styles/tokens';
+} from '../../shared/styles/tokens/tokens';
 
 import {
   type CredentialedAddress,
   mediaAddress
 } from '../../api/credentialed/credentialed';
-import type { ApiConfig } from '../../auth/useApiConfig';
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
 import {
   usePlayerBarHeight,
   useSetPlayerBarHeight
 } from '../playerBarSize/PlayerBarSizeContext';
 import { playerBarHeight } from '../playerBarSize/playerBarSize';
 import { usePlayerStore } from '../playerStore/playerStore';
-import type { PlayerTrack } from '../playerTrack/playerTrack';
+import type { PlayerTrack } from '../playerTrack';
 import Artwork from './Artwork';
-import SeekBar, { type SeekBarProps } from './SeekBar/SeekBar';
+import SeekBar, { type SeekBarProps } from './SeekBar';
 import { MAX_BAR_TEXT_SCALE } from './barTextScale';
-import { swipeMotion } from './swipeMotion/swipeMotion';
+import { swipeMotion } from './swipeMotion';
 
 /*
- * The player bar: absent at rest and once playback exists it persists across
- * routes, like the music. A horizontal swipe moves the queue; the neighbouring
- * track's bar slides in with the finger, so the next player takes this one's
- * place instead of replacing it after the fact.
+ * The player bar: absent at rest, persistent across routes once playback
+ * exists. A horizontal swipe moves the queue; the neighbouring track's bar
+ * slides in with the finger, so the next player takes this one's place.
  */
 
 export interface PlayerBarProps {
@@ -593,8 +592,7 @@ export default function PlayerBar({ config }: PlayerBarProps) {
     }
 
     /* The incoming page stays mounted while the deck retracts, so it leaves
-     * with the current one instead of vanishing. A new drag supersedes the
-     * spring, which reports unfinished and keeps the newer direction. */
+     * with the current one; a superseded spring reports unfinished. */
     Animated.spring(swipe, {
       toValue: 0,
       speed: 18,

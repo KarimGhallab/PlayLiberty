@@ -23,9 +23,8 @@ export type LiveEventFactory = (
   handlers: LiveEventHandlers
 ) => LiveEventConnection;
 
-/* The server's framing, read one chunk at a time: a frame ends on a blank line,
- * and a frame with no `data:` line is a comment or an event name, so it carries
- * nothing to hand over. */
+/* A frame ends on a blank line; one with no `data:` line is a comment or event
+ * name, so it carries nothing to hand over. */
 export function createFrameReader(
   onData: (data: string) => void
 ): (chunk: string) => void {

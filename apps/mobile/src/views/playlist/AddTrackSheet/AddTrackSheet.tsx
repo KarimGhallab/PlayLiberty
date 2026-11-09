@@ -12,10 +12,10 @@ import type { AddTrackResult, Playlist } from '@playliberty/contracts';
 import { AddTrackInputSchema, AddTrackOutcome } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Sheet from '../../../shared/components/Sheet/Sheet';
-import SheetActions from '../../../shared/components/SheetActions/SheetActions';
+import SheetActions from '../../../shared/components/SheetActions';
 import {
   lineHeightFor,
   useTextScale
@@ -27,7 +27,7 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 export interface AddTrackSheetProps {
   readonly visible: boolean;
@@ -55,9 +55,8 @@ const OUTCOME_LABEL = {
   [AddTrackOutcome.Refused]: 'addTrackDialog.outcomeRefused'
 } as const;
 
-/* The link travels once for the whole batch. The picker scrolls inside the
- * sheet so the actions stay put, and the first page is named when it cuts a
- * longer library. */
+/* One link for the whole batch; the picker scrolls inside so the actions stay
+ * put, and the cap is named when the first page cuts a longer library. */
 export default function AddTrackSheet({
   visible,
   currentPlaylist,

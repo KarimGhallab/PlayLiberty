@@ -11,9 +11,8 @@ export interface TrackAction {
 
 const COPY: TrackAction = { key: 'copy', label: 'trackRow.copyLink' };
 
-/* Copy link is universal. Retry and Fetch whole are the write collaborator's
- * failed-track repairs, and Remove is the write collaborator's curation; a busy
- * row keeps only Copy link. */
+/* Copy link is universal; Retry and Fetch whole are the write collaborator's
+ * failed-track repairs, Remove its curation. A busy row keeps Copy link only. */
 export function trackActionsFor(
   track: Track,
   canWrite: boolean,

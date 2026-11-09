@@ -57,8 +57,7 @@ name: The player crosses a queue and a navigation
     id: player-next
     waitToSettleTimeoutMs: 0
 # A named row is the jump: a failed row has no play control, so an index would
-# name a different row on each side. The row can be the list's last, which no
-# scroll can centre, so it only has to clear the floating action.
+# name a different row; the row may be last, so it only clears the floating action.
 - scrollUntilVisible:
     element:
       id: track-play

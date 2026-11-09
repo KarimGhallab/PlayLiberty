@@ -1,8 +1,8 @@
 import { endpoints } from '@playliberty/contracts';
 
 import { mediaAddress } from '../../../api/credentialed/credentialed';
-import type { ApiConfig } from '../../../auth/useApiConfig';
-import type { PlayerTrack } from '../../playerTrack/playerTrack';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
+import type { PlayerTrack } from '../../playerTrack';
 
 /** The one state the Android media service and its notification draw. */
 export interface BackgroundPlaybackState {

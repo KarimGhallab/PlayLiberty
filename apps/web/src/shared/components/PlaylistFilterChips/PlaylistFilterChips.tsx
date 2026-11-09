@@ -1,11 +1,11 @@
 import { useRef } from 'react';
 
-import { REMOTE_REMOVED } from '@playliberty/contracts';
 import type {
   Provider,
   TrackFileStatusCounts,
   TrackFilterState
 } from '@playliberty/contracts';
+import { REMOTE_REMOVED } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { providerLabel, useI18n } from '@playliberty/i18n';
 import {
@@ -15,10 +15,10 @@ import {
   totalStatusCount
 } from '@playliberty/ui-foundation';
 
-import Chip from '../Chip/Chip';
 import type { ChipTone } from '../Chip/Chip';
+import Chip from '../Chip/Chip';
 import styles from './PlaylistFilterChips.module.scss';
-import { useRailOverflow } from './useRailOverflow';
+import { useRailOverflow } from './useRailOverflow/useRailOverflow';
 
 /*
  * Counts are the whole-playlist aggregate, so they never follow the filter.

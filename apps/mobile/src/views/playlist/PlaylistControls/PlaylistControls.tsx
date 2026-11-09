@@ -20,12 +20,9 @@ import {
   visibleStatusChips
 } from '@playliberty/ui-foundation';
 
-import { useReduceMotion } from '../../../shared/a11y/useReduceMotion';
-import Chip from '../../../shared/components/Chip/Chip';
-import {
-  RailFade,
-  useRailEdges
-} from '../../../shared/components/RailFade/RailFade';
+import { useReduceMotion } from '../../../shared/a11y/useReduceMotion/useReduceMotion';
+import Chip from '../../../shared/components/Chip';
+import { RailFade, useRailEdges } from '../../../shared/components/RailFade';
 import {
   fontFamily,
   tokenColor,
@@ -33,7 +30,7 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 import PlaylistSortSheet from './PlaylistSortSheet';
 import { sortLabelKey } from './sortOptions';
@@ -73,9 +70,8 @@ export function PlaylistControlsSkeleton() {
   );
 }
 
-/* The detail's one row below the header: the saved order, a rule, then the
- * whole-playlist chips. Both step aside while the queue's shuffled order is on
- * screen. */
+/* The sort control, a rule, then the whole-playlist chips; both step aside while
+ * the queue's shuffled order is on screen. */
 export default function PlaylistControls({
   sort,
   canEdit,

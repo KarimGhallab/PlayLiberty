@@ -1,6 +1,6 @@
 import { usePathname } from 'expo-router';
 
-import type { ApiConfig } from '../../auth/useApiConfig';
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
 import { useBackgroundPlayback } from './useBackgroundPlayback/useBackgroundPlayback';
 
 export interface BackgroundPlaybackProps {

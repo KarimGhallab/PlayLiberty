@@ -4,10 +4,10 @@ import { Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CreatePlaylistInputSchema } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
 import Checkbox from '../../../shared/components/Checkbox/Checkbox';
 import Sheet from '../../../shared/components/Sheet/Sheet';
-import SheetActions from '../../../shared/components/SheetActions/SheetActions';
+import SheetActions from '../../../shared/components/SheetActions';
 import {
   lineHeightFor,
   useTextScale
@@ -19,7 +19,7 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 export interface AddPlaylistSheetProps {
   readonly visible: boolean;
@@ -31,9 +31,8 @@ export interface AddPlaylistSheetProps {
 
 const PLACEHOLDER = 'https://youtube.com/playlist?list=...';
 
-/* The schema is the client's half of the check and the server's is the other: a
- * link the server refuses comes back as a problem in the same slot, so the one
- * field shows one thing wrong with it. */
+/* The schema is the client's half of the check; a server refusal lands in the
+ * same slot, so the field shows one thing wrong with it. */
 export default function AddPlaylistSheet({
   visible,
   busy,

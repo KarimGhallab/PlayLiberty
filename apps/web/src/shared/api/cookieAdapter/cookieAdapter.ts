@@ -6,10 +6,8 @@ import {
 
 const RE_AUTH_ATTEMPT_KEY = 'playliberty.re-auth-attempt';
 
-/*
- * The cookie half of the transport. A `401` or SSO redirect triggers one
- * navigation per tab, then fails rather than looping.
- */
+/* The cookie half of the transport: a 401 or SSO redirect triggers one navigation
+ * per tab, then fails rather than looping. */
 
 function readReAuthAttempt(): boolean {
   try {

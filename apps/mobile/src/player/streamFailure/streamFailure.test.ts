@@ -8,7 +8,7 @@ import {
 } from '@jest/globals';
 
 import { mobileSession } from '../../auth/session/session';
-import type { ApiConfig } from '../../auth/useApiConfig';
+import type { ApiConfig } from '../../auth/useApiConfig/useApiConfig';
 import { classifyStreamFailure } from './streamFailure';
 
 jest.mock('../../auth/session/session', () => ({

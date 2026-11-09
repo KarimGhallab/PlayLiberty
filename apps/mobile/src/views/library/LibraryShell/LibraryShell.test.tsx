@@ -41,7 +41,7 @@ jest.mock('../../../auth/useSession', () => ({
   useSession: () => ({ status: 'signed-in', signOut: jest.fn() })
 }));
 
-jest.mock('../../../auth/useApiConfig', () => ({
+jest.mock('../../../auth/useApiConfig/useApiConfig', () => ({
   useApiConfig: () => null
 }));
 
@@ -50,7 +50,7 @@ jest.mock('@playliberty/api-client', () => ({
   useCurrentAccount: () => ({ data: null, error: null, isPending: false })
 }));
 
-jest.mock('../LibraryScreen/LibraryScreen', () => {
+jest.mock('../LibraryScreen', () => {
   const { View } =
     jest.requireActual<typeof import('react-native')>('react-native');
 

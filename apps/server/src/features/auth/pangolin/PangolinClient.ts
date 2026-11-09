@@ -8,9 +8,8 @@ import type {
 
 import type { PangolinConfig } from '../../../platform/config/types.js';
 
-/* The calls the server makes to Pangolin: mint a per-user access token for the
- * resource the app talks to, and delete it when a family ends. The key never
- * leaves the process. */
+/* Server calls to Pangolin: mint a per-user access token for the app's resource
+ * and delete it when a family ends; the API key stays server-side. */
 
 export class PangolinError extends Error {
   constructor(message: string) {

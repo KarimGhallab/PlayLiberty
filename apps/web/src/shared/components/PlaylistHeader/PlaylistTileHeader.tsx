@@ -5,7 +5,7 @@ import type { Playlist } from '@playliberty/contracts';
 
 import type { PlaylistAction } from '../../playlistActions/playlistActions';
 import styles from './PlaylistHeader.module.scss';
-import { playlistDoor } from './playlistDoor';
+import { playlistDoor } from './playlistDoor/playlistDoor';
 import type { PlaybackStartControl } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 

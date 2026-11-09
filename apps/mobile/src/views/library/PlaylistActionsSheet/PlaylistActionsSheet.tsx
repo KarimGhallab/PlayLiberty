@@ -13,7 +13,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@playliberty/i18n';
 import type { PlaylistAction, PlaylistActionKey } from '@playliberty/library';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
 import {
   lineHeightFor,
@@ -24,7 +24,7 @@ import {
   tokenColor,
   tokenLength,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 const ICONS = {
   pin: IconPin,

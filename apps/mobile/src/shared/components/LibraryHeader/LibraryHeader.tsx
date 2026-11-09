@@ -11,7 +11,7 @@ import {
   tokenLength,
   tokenWeight,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 import AccountAvatar from '../AccountAvatar/AccountAvatar';
 import PressableScale from '../PressableScale/PressableScale';
 

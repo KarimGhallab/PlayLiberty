@@ -7,7 +7,7 @@ import {
   tokenColor,
   tokenLength,
   touchTarget
-} from '../../styles/tokens';
+} from '../../styles/tokens/tokens';
 import Screen from '../Screen/Screen';
 
 export interface NotFoundProps {

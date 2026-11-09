@@ -199,10 +199,8 @@ export function createPlaylistOptions(queryClient: QueryClient) {
   };
 }
 
-/*
- * A `202` with the started `SyncRun`; the playlist arrives on the next read,
- * `syncing`. No optimistic row; a refusal is the caller's to show.
- */
+/* A `202` with the started `SyncRun` and no optimistic row; a refusal is the
+ * caller's to show. The playlist arrives on the next read, `syncing`. */
 export function useCreatePlaylist(): UseMutationResult<
   SyncRun,
   Error,
@@ -213,12 +211,8 @@ export function useCreatePlaylist(): UseMutationResult<
 
 export type StartSync = (playlistId: string) => Promise<void>;
 
-/*
- * Start every playlist in the frozen set, one at a time. `409` is a fact about
- * the set rather than a failure, so it is counted and the loop goes on; any
- * other refusal stops it, since repeating a fault for every remaining playlist
- * helps nobody.
- */
+/* Start the frozen set one at a time; a `409` is counted and the loop goes on,
+ * any other refusal stops it. */
 export async function runSyncAll(
   playlistIds: readonly string[],
   start: StartSync

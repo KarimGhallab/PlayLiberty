@@ -11,9 +11,9 @@ import {
 import { RenamePlaylistInputSchema } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
 
-import { useAnnouncement } from '../../../shared/a11y/useAnnouncement';
+import { useAnnouncement } from '../../../shared/a11y/useAnnouncement/useAnnouncement';
 import Sheet from '../../../shared/components/Sheet/Sheet';
-import Spinner from '../../../shared/components/Spinner/Spinner';
+import Spinner from '../../../shared/components/Spinner';
 import {
   lineHeightFor,
   useTextScale
@@ -25,7 +25,7 @@ import {
   tokenNumber,
   tokenWeight,
   touchTarget
-} from '../../../shared/styles/tokens';
+} from '../../../shared/styles/tokens/tokens';
 
 export interface RenameSheetProps {
   readonly visible: boolean;
@@ -37,9 +37,8 @@ export interface RenameSheetProps {
   readonly onClose: () => void;
 }
 
-/* One field and one decision. The schema is the client's half of the check; a
- * refusal from the server lands in the same slot, so the sheet says one thing
- * at a time about the same name. */
+/* The schema is the client's half of the check; a server refusal lands in the
+ * same slot, so the sheet says one thing at a time about the same name. */
 export default function RenameSheet({
   visible,
   currentName,

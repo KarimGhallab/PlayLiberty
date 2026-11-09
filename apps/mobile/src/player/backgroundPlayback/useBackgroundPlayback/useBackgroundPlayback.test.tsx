@@ -5,9 +5,9 @@ import { Platform } from 'react-native';
 
 import { I18nProvider, Language } from '@playliberty/i18n';
 
-import type { ApiConfig } from '../../../auth/useApiConfig';
+import type { ApiConfig } from '../../../auth/useApiConfig/useApiConfig';
 import { usePlayerStore } from '../../playerStore/playerStore';
-import type { PlayerTrack } from '../../playerTrack/playerTrack';
+import type { PlayerTrack } from '../../playerTrack';
 import { useBackgroundPlayback } from './useBackgroundPlayback';
 
 jest.mock('expo-audio', () => ({

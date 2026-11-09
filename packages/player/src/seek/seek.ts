@@ -5,8 +5,7 @@ export interface SeekPatch {
 }
 
 /* The one position bound: the current track's declared duration, or null while
- * there is no duration to measure against. A guess could move the element to an
- * unknown place, so it is refused. */
+ * there is none. A guess could move the element to an unknown place. */
 export function seekPatch(
   durationSeconds: number | null,
   seconds: number
