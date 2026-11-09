@@ -299,6 +299,26 @@ export function useSyncPlaylist(): UseMutationResult<void, Error, string> {
   return useMutation(syncPlaylistOptions(useQueryClient()));
 }
 
+/* Cancel is the other verb on the sync resource. A no-op `204` takes the same
+ * silent refresh path, so a stale screen cannot show an error. */
+export function cancelSyncPlaylistOptions(queryClient: QueryClient) {
+  return {
+    mutationFn: (playlistId: string) =>
+      apiClient().command(endpoints.cancelSyncPlaylist, { playlistId }),
+    onSuccess: (_result: void, playlistId: string) => {
+      cacheEffects.playlistChanged(queryClient, playlistId);
+    }
+  };
+}
+
+export function useCancelSyncPlaylist(): UseMutationResult<
+  void,
+  Error,
+  string
+> {
+  return useMutation(cancelSyncPlaylistOptions(useQueryClient()));
+}
+
 /*
  * One request, one outcome per playlist: a batch can be part added, part
  * present or refused, so both reads are invalidated after.

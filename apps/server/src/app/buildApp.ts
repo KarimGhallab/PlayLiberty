@@ -45,6 +45,7 @@ import {
 } from '../features/prune/service/pruneService.js';
 import { registerShareRoutes } from '../features/shares/routes/shareRoutes.js';
 import { registerSyncRunRoutes } from '../features/sync/routes/syncRunRoutes.js';
+import { recoverInterruptedSyncs } from '../features/sync/services/recoveryService.js';
 import { registerTrackRoutes } from '../features/tracks/routes/trackRoutes.js';
 import type { JobHandle } from '../platform/jobs/cronJob.js';
 import { startCronJob } from '../platform/jobs/cronJob.js';
@@ -266,6 +267,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
     const sweep = await runStartupSweep(context.mediaPaths, context.database);
     app.log.info({ ...sweep }, 'startup sweep finished');
+
+    const recovery = recoverInterruptedSyncs(context.database);
+    app.log.info({ ...recovery }, 'interrupted sync recovery finished');
 
     if (options.startBackgroundJobs === false) {
       return;

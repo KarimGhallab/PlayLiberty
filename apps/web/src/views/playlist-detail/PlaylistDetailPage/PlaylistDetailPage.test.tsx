@@ -1855,6 +1855,212 @@ describe('PlaylistDetailPage', () => {
     });
   });
 
+  it('offers Cancel only on the running run and disables the other sync affordances', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), syncStatus: 'syncing' })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-running',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Running,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T12:00:00.000Z',
+            finishedAt: null,
+            error: null
+          })
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Syncing the playlist...' })
+    ).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    expect(
+      await screen.findByRole('menuitem', { name: 'Sync now' })
+    ).toBeDisabled();
+  });
+
+  it('reads Cancelling then shows the cancelled stamp and an idle playlist', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    let cancelled = false;
+    const runningRun = {
+      id: 'run-running',
+      playlistId: PLAYLIST_ID,
+      status: SyncRunStatus.Running,
+      addedCount: 0,
+      retainedCount: 0,
+      removedCount: 0,
+      failedCount: 0,
+      startedAt: '2026-09-29T12:00:00.000Z',
+      finishedAt: null,
+      error: null
+    };
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({
+          ...playlistJson(true),
+          syncStatus: cancelled ? 'idle' : 'syncing'
+        })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json(
+            cancelled
+              ? {
+                  ...runningRun,
+                  status: SyncRunStatus.Cancelled,
+                  finishedAt: '2026-09-29T12:00:30.000Z'
+                }
+              : runningRun
+          )
+      ),
+      http.delete(
+        mockUrl(endpoints.cancelSyncPlaylist, { playlistId: PLAYLIST_ID }),
+        async () => {
+          await gate;
+          cancelled = true;
+
+          return new HttpResponse(null, { status: 204 });
+        }
+      )
+    );
+    renderDetail();
+
+    const cancel = await screen.findByRole('button', {
+      name: 'Cancel sync, Rain On The Window'
+    });
+    fireEvent.click(cancel);
+
+    await waitFor(() => {
+      expect(cancel).toHaveAccessibleName('Cancelling..., Rain On The Window');
+    });
+    expect(cancel).toBeDisabled();
+    expect(screen.getByText('Syncing', { selector: 'p' })).toBeInTheDocument();
+
+    release();
+
+    expect(await screen.findByText('Sync cancelled')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Cancel sync/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Could not cancel the sync')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Sync the playlist' })
+    ).toBeEnabled();
+  });
+
+  it('keeps the run syncing and shows the notice when the cancel fails', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), syncStatus: 'syncing' })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-running',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Running,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T12:00:00.000Z',
+            finishedAt: null,
+            error: null
+          })
+      ),
+      http.delete(
+        mockUrl(endpoints.cancelSyncPlaylist, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.InternalError,
+            status: 500,
+            title: 'Internal Server Error',
+            detail: 'The cancel did not reach the server.'
+          })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    );
+
+    expect(
+      await screen.findByText('Could not cancel the sync')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('The cancel did not reach the server.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    ).toBeEnabled();
+    expect(screen.getByText('Syncing', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('offers no Cancel to a read collaborator while the run is running', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({
+          ...playlistJson(true),
+          syncStatus: 'syncing',
+          access: 'read'
+        })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-running',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Running,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T12:00:00.000Z',
+            finishedAt: null,
+            error: null
+          })
+      )
+    );
+    renderDetail();
+
+    await screen.findByRole('heading', { name: 'Rain On The Window' });
+    expect(
+      screen.queryByRole('button', { name: /Cancel sync/ })
+    ).not.toBeInTheDocument();
+  });
+
   it('draws the add control for the owner and opens the dialog', async () => {
     renderDetail();
 

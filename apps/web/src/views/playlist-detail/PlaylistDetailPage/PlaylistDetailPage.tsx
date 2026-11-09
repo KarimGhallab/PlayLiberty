@@ -21,6 +21,7 @@ import {
   ownerNameFrom,
   useAccountDirectory,
   useAddTrack,
+  useCancelSyncPlaylist,
   useCurrentAccount,
   useFetchTrackWhole,
   useLatestSyncRun,
@@ -39,6 +40,7 @@ import {
   PlaylistSyncStatus,
   Provider,
   REMOTE_REMOVED,
+  SyncRunStatus,
   TrackFileStatus,
   UserRole
 } from '@playliberty/contracts';
@@ -138,8 +140,12 @@ export default function PlaylistDetailPage() {
   const updateSkip = useUpdateSkipNonMusic(playlistId);
   const updateSort = useUpdateSort(playlistId);
   const addTrack = useAddTrack();
+  const cancelSync = useCancelSyncPlaylist();
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
+  const [cancelRefused, setCancelRefused] = useState<{
+    readonly detail: string | null;
+  } | null>(null);
   const [copyResult, setCopyResult] = useState<CopyLinkResult | null>(null);
   const [linkNotice, setLinkNotice] = useState<TrackLinkNotice | null>(null);
   const deferred = useDeferredAction();
@@ -546,12 +552,24 @@ export default function PlaylistDetailPage() {
     (trackId: string): void => fetchWhole.mutate(trackId),
     [fetchWhole.mutate]
   );
+  const cancelRunningSync = useCallback(
+    (): void =>
+      cancelSync.mutate(playlistId, {
+        onError: error =>
+          setCancelRefused({ detail: problemSentence(t, error) })
+      }),
+    [cancelSync.mutate, playlistId, t]
+  );
 
   const neverSynced = playlist.data?.lastSyncedAt === null;
   const canWrite = canWritePlaylist(playlist.data);
+  const runRunning = latestRun.data?.status === SyncRunStatus.Running;
   const syncInFlight =
     playlist.data?.syncStatus === PlaylistSyncStatus.Syncing ||
-    actions.syncing(playlistId);
+    actions.syncing(playlistId) ||
+    runRunning;
+  const cancelling =
+    cancelSync.isPending && cancelSync.variables === playlistId;
   /* The one track whose row action is in flight, so its menu is not opened onto
    * a second press while the first is still running. */
   const busyTrackId = retry.isPending
@@ -615,6 +633,17 @@ export default function PlaylistDetailPage() {
 
     return () => clearTimeout(timer);
   }, [settingRefused]);
+
+  /* A failed cancel keeps the run syncing; its notice withdraws like the rest. */
+  useEffect(() => {
+    if (cancelRefused === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setCancelRefused(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [cancelRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
   /* The failed band owns the retry, so the header does not draw a second one. */
   const syncErrorShown = failed && latestRun.isSuccess;
@@ -856,6 +885,7 @@ export default function PlaylistDetailPage() {
                 <SyncSummary
                   run={latestRun.data}
                   now={new Date()}
+                  playlistName={playlist.data?.name ?? ''}
                   failedCount={failedCount}
                   remoteRemoved={tracks.remoteRemoved ?? 0}
                   provider={playlist.data?.provider ?? Provider.Youtube}
@@ -866,7 +896,10 @@ export default function PlaylistDetailPage() {
                       : undefined
                   }
                   retryingFailed={retryAllFailed.isPending}
-                  showRunningStamp={!syncInFlight}
+                  onCancel={
+                    canWrite && runRunning ? cancelRunningSync : undefined
+                  }
+                  cancelling={cancelling}
                 />
               </div>
             ) : null}
@@ -1053,6 +1086,13 @@ export default function PlaylistDetailPage() {
         <NoticeToast
           message={linkNotice.message}
           detail={linkNotice.detail}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {cancelRefused === null ? null : (
+        <NoticeToast
+          message={t('syncSummary.cancelFailed')}
+          detail={cancelRefused.detail}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

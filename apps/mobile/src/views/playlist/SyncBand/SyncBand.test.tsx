@@ -71,6 +71,7 @@ async function renderBand(
 ) {
   const onSync = jest.fn();
   const onRetryFailed = jest.fn();
+  const onCancel = jest.fn();
 
   await render(
     <I18nProvider initialLanguage={Language.English} storage={store}>
@@ -84,12 +85,13 @@ async function renderBand(
         onSync={onSync}
         retryingFailed={false}
         onRetryFailed={onRetryFailed}
+        onCancel={onCancel}
         {...overrides}
       />
     </I18nProvider>
   );
 
-  return { onSync, onRetryFailed };
+  return { onSync, onRetryFailed, onCancel };
 }
 
 describe('the sync band', () => {
@@ -159,6 +161,76 @@ describe('the sync band', () => {
     expect(screen.getByText('Syncing')).toBeOnTheScreen();
     expect(screen.getByText('2 downloading')).toBeOnTheScreen();
     expect(screen.queryByText('Nothing changed')).not.toBeOnTheScreen();
+  });
+
+  it('offers Cancel for a running run and names the playlist', async () => {
+    const { onCancel } = await renderBand({
+      run: {
+        ...run,
+        status: SyncRunStatus.Running,
+        retainedCount: 0,
+        addedCount: 0,
+        removedCount: 0,
+        finishedAt: null
+      }
+    });
+
+    expect(screen.getByText('Syncing')).toBeOnTheScreen();
+    await fireEvent.press(
+      screen.getByLabelText('Cancel sync, Rain On The Window')
+    );
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads Cancelling and stays disabled while the cancel is pending', async () => {
+    await renderBand({
+      run: {
+        ...run,
+        status: SyncRunStatus.Running,
+        retainedCount: 0,
+        addedCount: 0,
+        removedCount: 0,
+        finishedAt: null
+      },
+      cancelling: true
+    });
+
+    const control = screen.getByTestId('sync-cancel');
+
+    expect(
+      screen.getByLabelText('Cancelling..., Rain On The Window')
+    ).toBeDisabled();
+    expect(control.props.accessibilityState).toMatchObject({
+      disabled: true,
+      busy: true
+    });
+    expect(screen.getByText('Cancelling...')).toBeOnTheScreen();
+    expect(screen.getByText('Syncing')).toBeOnTheScreen();
+  });
+
+  it('offers no Cancel for a settled run', async () => {
+    await renderBand();
+
+    expect(screen.queryByTestId('sync-cancel')).not.toBeOnTheScreen();
+  });
+
+  it('renders a cancelled run as a neutral stamp without counts or retry', async () => {
+    await renderBand({
+      run: {
+        ...run,
+        status: SyncRunStatus.Cancelled,
+        addedCount: 0,
+        retainedCount: 0,
+        removedCount: 0,
+        failedCount: 0
+      }
+    });
+
+    expect(screen.getByText('Sync cancelled')).toBeOnTheScreen();
+    expect(screen.queryByTestId('sync-cell-kept')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('sync-no-changes')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('sync-retry-failed')).not.toBeOnTheScreen();
   });
 
   it('replaces the summary with the failure, the count and the raw error', async () => {

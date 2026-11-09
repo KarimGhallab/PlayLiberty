@@ -27,6 +27,7 @@ export interface TestContext {
   mediaPaths: MediaPaths;
   events: EventBus<LiveEvent>;
   directory: string;
+  restart(): Promise<void>;
   cleanup(): Promise<void>;
 }
 
@@ -73,28 +74,39 @@ export async function createTestContext(
 
   const events = new EventBus<LiveEvent>();
 
-  const app = await buildApp({
-    config,
-    database,
-    mediaPaths,
-    youtube: options.youtube,
-    egressAgent: options.egressAgent,
-    kickDownloads: options.kickDownloads,
-    startBackgroundJobs: options.startBackgroundJobs ?? false,
-    sseHeartbeatMs: options.sseHeartbeatMs,
-    loggerInstance: options.loggerInstance,
-    pangolin: options.pangolin,
-    now: options.now,
-    events
-  });
-  await app.ready();
+  const build = async (): Promise<FastifyInstance> => {
+    const app = await buildApp({
+      config,
+      database,
+      mediaPaths,
+      youtube: options.youtube,
+      egressAgent: options.egressAgent,
+      kickDownloads: options.kickDownloads,
+      startBackgroundJobs: options.startBackgroundJobs ?? false,
+      sseHeartbeatMs: options.sseHeartbeatMs,
+      loggerInstance: options.loggerInstance,
+      pangolin: options.pangolin,
+      now: options.now,
+      events
+    });
+    await app.ready();
+    return app;
+  };
+
+  let app = await build();
 
   return {
-    app,
+    get app() {
+      return app;
+    },
     database,
     mediaPaths,
     events,
     directory,
+    restart: async (): Promise<void> => {
+      await app.close();
+      app = await build();
+    },
     cleanup: async (): Promise<void> => {
       await app.close();
       database.sqlite.close();

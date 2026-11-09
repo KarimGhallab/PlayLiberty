@@ -7,6 +7,7 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -359,14 +360,17 @@ function renderLibraryPage() {
     defaultOptions: { queries: { retry: false } }
   });
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nProvider preferred={['en']}>
-        <RouterProvider router={router} />
-        <DeferredToasts />
-      </I18nProvider>
-    </QueryClientProvider>
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider preferred={['en']}>
+          <RouterProvider router={router} />
+          <DeferredToasts />
+        </I18nProvider>
+      </QueryClientProvider>
+    ),
+    queryClient
+  };
 }
 
 describe('LibraryPage', () => {
@@ -937,6 +941,47 @@ describe('LibraryPage', () => {
     expect(
       screen.queryByRole('region', { name: 'Others' })
     ).not.toBeInTheDocument();
+  });
+
+  it('moves a syncing row out of the Syncing group and into Sync after a refetch', async () => {
+    let syncStatus = 'syncing';
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              syncStatus
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    const { queryClient } = renderLibraryPage();
+
+    expect(
+      await screen.findByRole('region', { name: 'Syncing' })
+    ).toBeInTheDocument();
+
+    syncStatus = 'idle';
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: 'Syncing' })
+      ).not.toBeInTheDocument()
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Sync 1 playlist' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
   });
 
   it('keeps the items below the section in the order the read returned', async () => {

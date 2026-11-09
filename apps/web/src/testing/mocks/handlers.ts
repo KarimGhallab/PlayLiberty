@@ -473,5 +473,6 @@ export const handlers = [
     () => respond(endpoints.syncPlaylist, STARTED_RUN, 202),
     PLAYLIST_ONE_PARAMS
   ),
+  mockEndpoint(endpoints.cancelSyncPlaylist, NO_CONTENT, PLAYLIST_ONE_PARAMS),
   mockEndpoint(endpoints.deletePlaylist, NO_CONTENT, PLAYLIST_ONE_PARAMS)
 ];

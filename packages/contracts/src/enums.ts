@@ -77,7 +77,8 @@ export enum ShareLevel {
 export enum SyncRunStatus {
   Running = 'running',
   Completed = 'completed',
-  Failed = 'failed'
+  Failed = 'failed',
+  Cancelled = 'cancelled'
 }
 
 /* An event is an invalidation hint, never data: it names what changed and the

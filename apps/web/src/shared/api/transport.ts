@@ -8,4 +8,8 @@ export const transport = createTransport({
   adapter: cookieAdapter()
 });
 
-configureApiClient(transport);
+/** Binds the shared API client to the web transport. The app calls this once at
+ * boot; tests call it in their setup. */
+export function configureWebApiClient(): void {
+  configureApiClient(transport);
+}

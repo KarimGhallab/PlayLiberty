@@ -520,7 +520,11 @@ export const fr: Messages = {
       one: '1 piste retirée de {provider} est toujours stockée',
       other: '{count} pistes retirées de {provider} sont toujours stockées'
     },
-    syncing: 'Synchronisation'
+    syncing: 'Synchronisation',
+    cancel: 'Annuler la synchronisation',
+    cancelling: 'Annulation...',
+    cancelled: 'Synchronisation annulée',
+    cancelFailed: "Impossible d'annuler la synchronisation"
   },
   syncError: {
     reach:

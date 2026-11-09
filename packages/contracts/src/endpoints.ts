@@ -287,6 +287,11 @@ export const endpoints = {
       ...WRITE_ERRORS
     ]
   }),
+  cancelSyncPlaylist: defineCommandEndpoint({
+    method: HttpMethod.Delete,
+    path: '/playlists/:playlistId/sync',
+    errors: [ProblemCode.PlaylistNotFound, ...WRITE_ERRORS]
+  }),
   renamePlaylist: defineEndpoint({
     method: HttpMethod.Patch,
     path: '/playlists/:playlistId',

@@ -509,7 +509,11 @@ export const en = {
       one: '1 track removed from {provider} is still stored',
       other: '{count} tracks removed from {provider} are still stored'
     },
-    syncing: 'Syncing'
+    syncing: 'Syncing',
+    cancel: 'Cancel sync',
+    cancelling: 'Cancelling...',
+    cancelled: 'Sync cancelled',
+    cancelFailed: 'Could not cancel the sync'
   },
   syncError: {
     reach: 'Could not reach {provider}, the playlist may not be up to date.',

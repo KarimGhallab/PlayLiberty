@@ -39,6 +39,9 @@ type SummaryExtras = Partial<
     | 'showRunningStamp'
     | 'remoteRemoved'
     | 'provider'
+    | 'onCancel'
+    | 'cancelling'
+    | 'playlistName'
   >
 >;
 
@@ -52,6 +55,7 @@ function renderSummary(
       <SyncSummary
         run={summary}
         now={NOW}
+        playlistName="Rain On The Window"
         failedCount={failedCount}
         remoteRemoved={0}
         provider={Provider.Youtube}
@@ -124,6 +128,7 @@ describe('SyncSummary', () => {
         <SyncSummary
           run={run()}
           now={NOW}
+          playlistName="Rain On The Window"
           failedCount={1}
           remoteRemoved={0}
           provider={Provider.Youtube}
@@ -183,5 +188,64 @@ describe('SyncSummary', () => {
     renderSummary(run(), 1, { downloadingCount: 4 });
 
     expect(screen.queryByText('4 downloading')).not.toBeInTheDocument();
+  });
+
+  it('renders a cancelled run as a neutral stamp without counts or retry', () => {
+    renderSummary(
+      run({
+        status: SyncRunStatus.Cancelled,
+        addedCount: 0,
+        retainedCount: 0,
+        removedCount: 0,
+        failedCount: 0
+      }),
+      3,
+      { onRetryFailed: vi.fn() }
+    );
+
+    expect(screen.getByText('Sync cancelled')).toBeInTheDocument();
+    expect(screen.queryAllByRole('group')).toHaveLength(0);
+    expect(screen.queryByText('Nothing changed')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Retry all/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers Cancel for a running run and names the playlist', () => {
+    const onCancel = vi.fn();
+    renderSummary(run({ status: SyncRunStatus.Running, finishedAt: null }), 0, {
+      onCancel
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    );
+
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it('reads Cancelling and stays disabled while the cancel is pending', () => {
+    renderSummary(run({ status: SyncRunStatus.Running, finishedAt: null }), 0, {
+      onCancel: vi.fn(),
+      cancelling: true
+    });
+
+    const control = screen.getByRole('button', {
+      name: 'Cancelling..., Rain On The Window'
+    });
+
+    expect(control).toBeDisabled();
+    expect(control).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByText('Syncing')).toBeInTheDocument();
+  });
+
+  it('offers no Cancel for a settled run', () => {
+    renderSummary(run(), 0, { onCancel: vi.fn() });
+
+    expect(
+      screen.queryByRole('button', { name: /Cancel sync/ })
+    ).not.toBeInTheDocument();
   });
 });

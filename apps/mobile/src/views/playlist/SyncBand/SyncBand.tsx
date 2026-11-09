@@ -1,4 +1,4 @@
-import { IconRefresh } from '@tabler/icons-react-native';
+import { IconCancel, IconRefresh } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -14,6 +14,7 @@ import {
 } from '@playliberty/contracts';
 import { formatRelativeTime, providerLabel, useI18n } from '@playliberty/i18n';
 
+import PressableScale from '../../../shared/components/PressableScale/PressableScale';
 import Spinner from '../../../shared/components/Spinner/Spinner';
 import {
   lineHeightFor,
@@ -40,6 +41,10 @@ export interface SyncBandProps {
   readonly onSync: () => void;
   readonly retryingFailed: boolean;
   readonly onRetryFailed: () => void;
+  /* The running run's only cancel surface. Absent for a reader or a settled
+   * run. */
+  readonly onCancel?: () => void;
+  readonly cancelling?: boolean;
   /* A control above may already name the run, so its stamp can step aside. */
   readonly showRunningStamp?: boolean;
   /* Stored tracks whose source removed them: the promise, not the last run. */
@@ -65,6 +70,8 @@ export default function SyncBand({
   onSync,
   retryingFailed,
   onRetryFailed,
+  onCancel,
+  cancelling = false,
   showRunningStamp = true,
   remoteRemoved = 0
 }: SyncBandProps) {
@@ -170,6 +177,7 @@ export default function SyncBand({
   }
 
   const running = run.status === SyncRunStatus.Running;
+  const cancelled = run.status === SyncRunStatus.Cancelled;
   const finishedAt = run.finishedAt === null ? null : new Date(run.finishedAt);
   const allCells: SummaryCell[] = [
     {
@@ -203,14 +211,40 @@ export default function SyncBand({
     <View testID="sync-band" style={styles.summary}>
       {running && !showRunningStamp ? null : (
         <Text testID="sync-stamp" style={styles.stamp}>
-          {running
-            ? t('syncSummary.syncing')
-            : t('syncSummary.lastSync', {
-                time: formatRelativeTime(t, finishedAt ?? now, now)
-              })}
+          {cancelled
+            ? t('syncSummary.cancelled')
+            : running
+              ? t('syncSummary.syncing')
+              : t('syncSummary.lastSync', {
+                  time: formatRelativeTime(t, finishedAt ?? now, now)
+                })}
         </Text>
       )}
-      {cells.length === 0 ? (
+      {running && onCancel !== undefined ? (
+        <PressableScale
+          testID="sync-cancel"
+          accessibilityRole="button"
+          accessibilityLabel={`${
+            cancelling ? t('syncSummary.cancelling') : t('syncSummary.cancel')
+          }, ${playlist.name}`}
+          accessibilityState={{ disabled: cancelling, busy: cancelling }}
+          disabled={cancelling}
+          style={[styles.cancel, cancelling && styles.disabled]}
+          onPress={onCancel}>
+          {cancelling ? (
+            <Spinner color={tokenColor('tone-failed')} />
+          ) : (
+            <IconCancel
+              size={tokenLength('icon-sm')}
+              color={tokenColor('tone-failed')}
+            />
+          )}
+          <Text style={styles.cancelLabel}>
+            {cancelling ? t('syncSummary.cancelling') : t('syncSummary.cancel')}
+          </Text>
+        </PressableScale>
+      ) : null}
+      {cancelled ? null : cells.length === 0 ? (
         running ? null : (
           <Text testID="sync-no-changes" style={styles.noChanges}>
             {t('syncSummary.noChanges')}
@@ -234,7 +268,7 @@ export default function SyncBand({
           ))}
         </View>
       )}
-      {canWrite && failedCount > 0 ? (
+      {!cancelled && canWrite && failedCount > 0 ? (
         <Pressable
           testID="sync-retry-failed"
           accessibilityRole="button"
@@ -359,6 +393,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-control')
+  },
+  cancel: {
+    minHeight: touchTarget,
+    maxWidth: '100%',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-2'),
+    paddingHorizontal: tokenLength('space-4'),
+    borderWidth: 1,
+    borderColor: tokenColor('tone-failed'),
+    borderRadius: tokenLength('radius-control')
+  },
+  cancelLabel: {
+    flexShrink: 1,
+    color: tokenColor('tone-failed'),
+    fontFamily,
+    fontSize: tokenLength('text-sm'),
+    fontWeight: tokenWeight('weight-medium')
   },
   retryFailedPressed: {
     backgroundColor: tokenColor('surface')

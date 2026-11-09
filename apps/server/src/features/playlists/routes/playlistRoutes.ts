@@ -24,6 +24,7 @@ import { registerEndpoint } from '../../../shared/registerEndpoint.js';
 import { resolveSourceUrl } from '../../../shared/resolveSourceUrl.js';
 
 import {
+  cancelSyncForPlaylist,
   startSyncForPlaylist,
   startSyncForSource
 } from '../../sync/services/syncService.js';
@@ -331,6 +332,24 @@ export function registerPlaylistRoutes(
       }
 
       return reply.code(202).send(result.run);
+    }
+  );
+
+  registerEndpoint<{ Params: { playlistId: string } }>(
+    app,
+    endpoints.cancelSyncPlaylist,
+    async (request, reply) => {
+      const result = cancelSyncForPlaylist(
+        context,
+        request.params.playlistId,
+        request.account.id
+      );
+
+      if (result.outcome === 'refused') {
+        return sendRefusal(reply, result.refusal);
+      }
+
+      return reply.code(204).send();
     }
   );
 

@@ -8,6 +8,7 @@ import { useReduceMotion } from '../src/shared/a11y/useReduceMotion';
 import { tokenColor } from '../src/shared/styles/tokens';
 
 import plexSans from '../assets/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf';
+import { configureMobileApiClient } from '../src/api/client';
 import type { AccessToken } from '../src/api/credentialed/credentialed';
 import { streamAddress } from '../src/api/credentialed/credentialed';
 import { useApiConfig } from '../src/auth/useApiConfig';
@@ -21,6 +22,8 @@ import AppProviders from '../src/providers/AppProviders';
 /* The first frame has to carry the family the type scale was measured in, so
  * the splash waits for it. */
 void SplashScreen.preventAutoHideAsync();
+
+configureMobileApiClient();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ 'IBM Plex Sans': plexSans });

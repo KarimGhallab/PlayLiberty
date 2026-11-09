@@ -32,6 +32,7 @@ import {
   useAccountDirectory,
   useAccountPage,
   useAddTrack,
+  useCancelSyncPlaylist,
   useCurrentAccount,
   useDeletePlaylist,
   useFetchTrackWhole,
@@ -94,6 +95,7 @@ jest.mock('@playliberty/api-client', () => ({
   useAccountDirectory: jest.fn(),
   useAccountPage: jest.fn(),
   useAddTrack: jest.fn(),
+  useCancelSyncPlaylist: jest.fn(),
   useCurrentAccount: jest.fn(),
   useDeletePlaylist: jest.fn(),
   useFetchTrackWhole: jest.fn(),
@@ -144,6 +146,9 @@ const usePlaylistsMock = usePlaylists as jest.MockedFunction<
   typeof usePlaylists
 >;
 const useAddTrackMock = useAddTrack as jest.MockedFunction<typeof useAddTrack>;
+const useCancelSyncPlaylistMock = useCancelSyncPlaylist as jest.MockedFunction<
+  typeof useCancelSyncPlaylist
+>;
 const useLatestSyncRunMock = useLatestSyncRun as jest.MockedFunction<
   typeof useLatestSyncRun
 >;
@@ -354,6 +359,24 @@ const completedRun: SyncRun = {
   error: null
 };
 
+const runningRun: SyncRun = {
+  ...completedRun,
+  status: SyncRunStatus.Running,
+  addedCount: 0,
+  retainedCount: 0,
+  removedCount: 0,
+  finishedAt: null
+};
+
+const cancelledRun: SyncRun = {
+  ...completedRun,
+  status: SyncRunStatus.Cancelled,
+  addedCount: 0,
+  retainedCount: 0,
+  removedCount: 0,
+  finishedAt: '2026-09-29T12:00:30.000Z'
+};
+
 const bea: AccountSummary = {
   id: 'account-2',
   displayName: 'Bea',
@@ -435,6 +458,9 @@ interface RenderOptions {
   readonly fetchingNextPage?: boolean;
   readonly fetchNextPageError?: boolean;
   readonly syncPending?: boolean;
+  readonly cancelPending?: boolean;
+  readonly cancelVariables?: string;
+  readonly cancelError?: Error;
   readonly addPending?: boolean;
   readonly addResult?: AddTrackResult;
   readonly sortPending?: boolean;
@@ -489,6 +515,16 @@ async function renderDetail(options: RenderOptions = {}) {
   const tracksRefetch = jest.fn();
   const tracksFetchNextPage = jest.fn();
   const syncMutate = jest.fn();
+  const cancelMutate = jest.fn(
+    (
+      _playlistId: string,
+      mutationOptions?: { onError?: (error: Error) => void }
+    ) => {
+      if (options.cancelError !== undefined) {
+        mutationOptions?.onError?.(options.cancelError);
+      }
+    }
+  );
   const retryMutate = jest.fn();
   const fetchWholeMutate = jest.fn();
   const removeMutate = jest.fn();
@@ -622,6 +658,16 @@ async function renderDetail(options: RenderOptions = {}) {
       isPending: options.syncPending === true
     })
   );
+  useCancelSyncPlaylistMock.mockReturnValue(
+    mutationResult({
+      mutate: cancelMutate,
+      isPending: options.cancelPending === true,
+      variables:
+        options.cancelPending === true
+          ? (options.cancelVariables ?? 'playlist-1')
+          : options.cancelVariables
+    })
+  );
   useAddTrackMock.mockReturnValue(
     mutationResult({
       mutate: addMutate,
@@ -702,6 +748,7 @@ async function renderDetail(options: RenderOptions = {}) {
     tracksRefetch,
     tracksFetchNextPage,
     syncMutate,
+    cancelMutate,
     retryMutate,
     fetchWholeMutate,
     removeMutate,
@@ -2382,6 +2429,88 @@ describe('the playlist detail', () => {
 
     await fireEvent.press(screen.getByTestId('sync-retry-failed'));
     expect(retryFailedMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels the running sync from the run band', async () => {
+    const { cancelMutate } = await openHeaderSheet({ latestRun: runningRun });
+    const sheet = screen.getByTestId('playlist-actions-sheet');
+
+    expect(within(sheet).getByText('Syncing')).toBeOnTheScreen();
+
+    await fireEvent.press(
+      within(sheet).getByLabelText('Cancel sync, Rain On The Window')
+    );
+
+    expect(cancelMutate).toHaveBeenCalledWith('playlist-1', expect.any(Object));
+  });
+
+  it('holds the header control and the dial while a run is running', async () => {
+    await renderDetail({ latestRun: runningRun });
+
+    expect(screen.getByTestId('detail-sync-control')).toBeDisabled();
+    expect(screen.getByTestId('detail-fab')).toBeDisabled();
+  });
+
+  it('reads Cancelling and keeps the Syncing stamp while the cancel is pending', async () => {
+    await openHeaderSheet({ latestRun: runningRun, cancelPending: true });
+    const sheet = screen.getByTestId('playlist-actions-sheet');
+    const control = within(sheet).getByTestId('sync-cancel');
+
+    expect(within(sheet).getByText('Cancelling...')).toBeOnTheScreen();
+    expect(control).toBeDisabled();
+    expect(control.props.accessibilityState).toMatchObject({
+      disabled: true,
+      busy: true
+    });
+    expect(within(sheet).getByText('Syncing')).toBeOnTheScreen();
+  });
+
+  it('notices a failed cancel and re-enables the action', async () => {
+    const failure = new ApiError(500, {
+      type: 'about:blank',
+      title: 'Internal Server Error',
+      status: 500,
+      code: ProblemCode.InternalError,
+      detail: 'The cancel did not reach the server.'
+    });
+    await openHeaderSheet({ latestRun: runningRun, cancelError: failure });
+    const sheet = screen.getByTestId('playlist-actions-sheet');
+
+    await fireEvent.press(within(sheet).getByTestId('sync-cancel'));
+
+    expect(
+      await screen.findByText('Could not cancel the sync')
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText('The cancel did not reach the server.')
+    ).toBeOnTheScreen();
+    expect(within(sheet).getByTestId('sync-cancel')).not.toBeDisabled();
+    expect(within(sheet).getByText('Syncing')).toBeOnTheScreen();
+  });
+
+  it('draws a cancelled run neutrally in the band', async () => {
+    await openHeaderSheet({ latestRun: cancelledRun });
+    const sheet = screen.getByTestId('playlist-actions-sheet');
+
+    expect(within(sheet).getByText('Sync cancelled')).toBeOnTheScreen();
+    expect(within(sheet).queryByTestId('sync-cell-kept')).not.toBeOnTheScreen();
+    expect(
+      within(sheet).queryByTestId('sync-retry-failed')
+    ).not.toBeOnTheScreen();
+    expect(within(sheet).queryByTestId('sync-cancel')).not.toBeOnTheScreen();
+  });
+
+  it('offers no Cancel to a reader', async () => {
+    await openHeaderSheet({
+      playlist: { ...playlist, access: ShareLevel.Read },
+      latestRun: runningRun
+    });
+    expect(screen.queryByTestId('sync-cancel')).not.toBeOnTheScreen();
+  });
+
+  it('offers no Cancel when the latest run is settled', async () => {
+    await openHeaderSheet({ latestRun: completedRun });
+    expect(screen.queryByTestId('sync-cancel')).not.toBeOnTheScreen();
   });
 
   it('draws no sync retry for a read collaborator', async () => {

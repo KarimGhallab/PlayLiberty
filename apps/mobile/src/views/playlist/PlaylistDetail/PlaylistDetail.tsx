@@ -28,6 +28,7 @@ import {
   ownerNameFrom,
   useAccountDirectory,
   useAddTrack,
+  useCancelSyncPlaylist,
   useDeletePlaylist,
   useFetchTrackWhole,
   useLatestSyncRun,
@@ -192,6 +193,7 @@ export default function PlaylistDetail({
   const skipSetting = useUpdateSkipNonMusic(playlistId ?? '');
   const queue = usePlaylistQueue(playlistId, playlist.isSuccess);
   const addTrack = useAddTrack();
+  const cancelSync = useCancelSyncPlaylist();
   const latestRun = useLatestSyncRun(playlistId);
   const directory = useAccountDirectory();
   const sync = useSyncPlaylist();
@@ -213,7 +215,7 @@ export default function PlaylistDetail({
   const [starting, setStarting] = useState<'play' | 'shuffle' | null>(null);
   const [notice, setNotice] = useState<{
     readonly message: string;
-    readonly detail: string;
+    readonly detail: string | null;
   } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   /* The header's lower edge follows its own state, so a pull that starts on it
@@ -842,6 +844,21 @@ export default function PlaylistDetail({
     });
   };
 
+  /* A failed cancel keeps the run syncing; the notice carries the problem. */
+  const cancelRunningSync = (): void => {
+    cancelSync.mutate(data.id, {
+      onError: error => {
+        setNotice({
+          message: t('syncSummary.cancelFailed'),
+          detail: problemDetail(
+            t,
+            error instanceof ApiError ? error.problem : null
+          )
+        });
+      }
+    });
+  };
+
   const openHeaderActions = (): void => {
     setHeaderProblem(null);
     setHeaderOpen(true);
@@ -895,7 +912,13 @@ export default function PlaylistDetail({
         onRetryFailed={() => {
           retryFailed.mutate();
         }}
-        showRunningStamp={!syncInFlight}
+        onCancel={
+          canWritePlaylist(data) &&
+          latestRun.data?.status === SyncRunStatus.Running
+            ? cancelRunningSync
+            : undefined
+        }
+        cancelling={cancelSync.isPending && cancelSync.variables === data.id}
       />
     ) : null;
 

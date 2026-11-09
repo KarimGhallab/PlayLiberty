@@ -22,6 +22,7 @@ import {
 } from './library.js';
 import {
   addTrackOptions,
+  cancelSyncPlaylistOptions,
   deletePlaylistOptions,
   fetchTrackWholeOptions,
   grantShareOptions,
@@ -120,6 +121,13 @@ describe('the mutation invalidations', () => {
 
   it('starting one sync refreshes the playlist and the library', () => {
     syncPlaylistOptions(client).onSuccess(undefined, 'p1');
+
+    expect(invalidated(playlistKey('p1'))).toBe(true);
+    expect(invalidated(libraryKey)).toBe(true);
+  });
+
+  it('cancelling the sync refreshes the playlist and the library', () => {
+    cancelSyncPlaylistOptions(client).onSuccess(undefined, 'p1');
 
     expect(invalidated(playlistKey('p1'))).toBe(true);
     expect(invalidated(libraryKey)).toBe(true);

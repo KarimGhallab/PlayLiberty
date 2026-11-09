@@ -6,9 +6,11 @@ import { resetDeferredActions } from '@playliberty/library';
 
 /* The resolved transport, so a test that mounts a hook has a client to send
  * through. */
-import '../shared/api/transport';
+import { configureWebApiClient } from '../shared/api/transport';
 
 import { server } from './mocks/server';
+
+configureWebApiClient();
 
 /*
  * jsdom has no `matchMedia`, and the default answer is no preference, so the

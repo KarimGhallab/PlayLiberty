@@ -1,6 +1,6 @@
 # 01: Recover interrupted syncs at boot
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Labels:** `enhancement`, `ready-for-agent`
 **Blocked by:** None. Can start immediately.
 
@@ -23,3 +23,7 @@ The repair leaves lastSyncedAt, associations, tracks, track files, media and dow
 ## Verification
 
 Run the server suite, then the repository build and lint checks: `pnpm --filter @playliberty/server test`, `pnpm run build`, `pnpm run lint:check`.
+
+## Outcome
+
+App readiness runs `recoverInterruptedSyncs` from `features/sync/services/recoveryService.ts` after the startup sweep and before the background-job gate, so it runs with jobs disabled too. One transaction fails every `running` run with `finishedAt` and "The sync was interrupted by a server restart." and errors every `syncing` playlist with `updatedAt`; the updates are independent, so an orphan on either side is repaired. `lastSyncedAt`, associations, tracks, files, media and downloads are untouched, and no event is published. Four app-over-SQLite tests rebuild the app over the same database and cover the assembly, the two orphan sides, the clean boot, the idempotent second boot, the untouched content and the absent event.

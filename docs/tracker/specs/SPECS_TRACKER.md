@@ -57,9 +57,9 @@ instead of taking a spec: `09` and `11` into `19`, `10` into `25`, and `17` into
 
 ## Post-MVP
 
-| Spec                                                                                        | Status | Blocked by                                                            | Blocks |
-| ------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------- | ------ |
-| [`34-cancel-a-sync`](34-cancel-a-sync.md) · [tickets](../tasks/34-cancel-a-sync/TICKETS.md) | ready  | [`01`](01-sync-a-playlist.md), [`09`](09-keep-the-screens-current.md) | none   |
+| Spec                                                                                        | Status   | Blocked by                                                            | Blocks |
+| ------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------- | ------ |
+| [`34-cancel-a-sync`](34-cancel-a-sync.md) · [tickets](../tasks/34-cancel-a-sync/TICKETS.md) | resolved | [`01`](01-sync-a-playlist.md), [`09`](09-keep-the-screens-current.md) | none   |
 
 ## Conventions
 

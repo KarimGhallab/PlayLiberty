@@ -19,6 +19,7 @@ import {
   useUpdatePin
 } from '@playliberty/api-client';
 import type { Playlist } from '@playliberty/contracts';
+import { PlaylistSyncStatus } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 import {
@@ -158,7 +159,9 @@ export function usePlaylistActions(
             label: action.label,
             Icon: IconRotate,
             onSelect: () => sync.mutate(playlist.id),
-            disabled: sync.isPending && sync.variables === playlist.id
+            disabled:
+              (sync.isPending && sync.variables === playlist.id) ||
+              playlist.syncStatus === PlaylistSyncStatus.Syncing
           };
         case 'delete':
           return {

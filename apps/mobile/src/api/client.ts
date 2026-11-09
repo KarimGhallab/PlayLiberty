@@ -4,14 +4,17 @@ import { mobileSession } from '../auth/session/session';
 import { apiBaseUrl } from './apiBaseUrl';
 import { tokenAdapter } from './tokenAdapter/tokenAdapter';
 
-/** The one client every read and command goes through. */
-export const apiClient = createTransport({
-  baseUrl: apiBaseUrl(),
-  client: 'mobile',
-  adapter: tokenAdapter({
-    readToken: () => mobileSession.accessToken(),
-    renewToken: refused => mobileSession.renewAccessToken(refused)
-  })
-});
-
-configureApiClient(apiClient);
+/** Binds the shared API client to the mobile transport. The root layout calls
+ * this once; the transport reads the session for each request. */
+export function configureMobileApiClient(): void {
+  configureApiClient(
+    createTransport({
+      baseUrl: apiBaseUrl(),
+      client: 'mobile',
+      adapter: tokenAdapter({
+        readToken: () => mobileSession.accessToken(),
+        renewToken: refused => mobileSession.renewAccessToken(refused)
+      })
+    })
+  );
+}

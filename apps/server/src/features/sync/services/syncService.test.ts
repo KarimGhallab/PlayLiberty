@@ -41,7 +41,14 @@ import {
   createFakeYoutube as fakeYoutube,
   testSource as source
 } from '../../../app/testing/fakeYoutube.js';
-import { seedAccount, seedShare } from '../../../app/testing/fixtures.js';
+import {
+  associate,
+  seedAccount,
+  seedPlaylist,
+  seedShare,
+  seedSyncRun,
+  seedTrack
+} from '../../../app/testing/fixtures.js';
 
 import {
   associations,
@@ -1321,6 +1328,308 @@ describe('authorizing a sync', () => {
       (await get('/api/v1/playlists', 'somebody-else')).json()
     );
     expect(theirs.total).toBe(0);
+  });
+});
+
+function cancelSync(playlistId: string, pangolinUserId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.app.inject({
+    method: 'DELETE',
+    url: `/api/v1/playlists/${playlistId}/sync`,
+    headers: {
+      'remote-user': pangolinUserId,
+      'x-playliberty-client': 'test'
+    }
+  });
+}
+
+function syncRunRow(playlistId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.database.db
+    .select()
+    .from(syncRuns)
+    .where(eq(syncRuns.playlistId, playlistId))
+    .get();
+}
+
+function playlistRow(playlistId: string) {
+  if (context === undefined) {
+    throw new Error('the test context is not created');
+  }
+
+  return context.database.db
+    .select()
+    .from(playlists)
+    .where(eq(playlists.id, playlistId))
+    .get();
+}
+
+async function nextTurn(): Promise<void> {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  setImmediate(resolve);
+  await promise;
+}
+
+describe('cancelling a sync', () => {
+  it('commits a cancelled run, leaves the playlist retryable and discards the late read', async () => {
+    const gate = Promise.withResolvers<void>();
+    const listed = Promise.withResolvers<void>();
+    const gated: IYoutubeClient = {
+      listSource: async (): Promise<YoutubeSource> => {
+        listed.resolve();
+        await gate.promise;
+
+        return source([entry('a')]);
+      },
+      downloadTrack: async () => {
+        throw new Error('a sync must not download');
+      },
+      fetchThumbnail: async () => {
+        throw new Error('a sync must not fetch a thumbnail');
+      }
+    };
+    const kick = vi.fn();
+    context = await createTestContext(
+      {},
+      { youtube: gated, kickDownloads: kick }
+    );
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const playlist = seedPlaylist(context.database, account.accountId, {
+      sourceUrl: PLAYLIST_URL,
+      sourcePlaylistId: TEST_SOURCE_ID,
+      lastSyncedAt: '2026-11-01T00:00:00.000Z'
+    });
+
+    const started = await postSync(playlist.playlistId, 'owner-1');
+    expect(started.statusCode).toBe(202);
+    await listed.promise;
+
+    const cancelled = await cancelSync(playlist.playlistId, 'owner-1');
+    expect(cancelled.statusCode).toBe(204);
+
+    const run = await runFinished(playlist.playlistId, 'owner-1');
+    expect(run.status).toBe(SyncRunStatus.Cancelled);
+    expect(run.finishedAt).not.toBeNull();
+    expect(run.error).toBeNull();
+    expect(run.addedCount).toBe(0);
+    expect(run.retainedCount).toBe(0);
+    expect(run.removedCount).toBe(0);
+    expect(run.failedCount).toBe(0);
+
+    const recovered = await readPlaylist(playlist.playlistId, 'owner-1');
+    expect(recovered.syncStatus).toBe(PlaylistSyncStatus.Idle);
+    expect(recovered.lastSyncedAt).toBe('2026-11-01T00:00:00.000Z');
+
+    gate.resolve();
+    await nextTurn();
+
+    expect(kick).not.toHaveBeenCalled();
+    expect(
+      context.database.db
+        .select()
+        .from(associations)
+        .where(eq(associations.playlistId, playlist.playlistId))
+        .all()
+    ).toEqual([]);
+    expect(context.database.db.select().from(tracks).all()).toEqual([]);
+
+    const accepted = await postSync(playlist.playlistId, 'owner-1');
+    expect(accepted.statusCode).toBe(202);
+
+    const finished = await runFinished(playlist.playlistId, 'owner-1');
+    expect(finished.status).toBe(SyncRunStatus.Completed);
+  });
+
+  it('discards a late source failure after a cancel', async () => {
+    const gate = Promise.withResolvers<void>();
+    const listed = Promise.withResolvers<void>();
+    const gated: IYoutubeClient = {
+      listSource: async (): Promise<YoutubeSource> => {
+        listed.resolve();
+        await gate.promise;
+        throw new Error('the source failed after the cancel');
+      },
+      downloadTrack: async () => {
+        throw new Error('a sync must not download');
+      },
+      fetchThumbnail: async () => {
+        throw new Error('a sync must not fetch a thumbnail');
+      }
+    };
+    context = await createTestContext({}, { youtube: gated });
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const playlist = seedPlaylist(context.database, account.accountId, {
+      sourceUrl: PLAYLIST_URL,
+      sourcePlaylistId: TEST_SOURCE_ID
+    });
+
+    await postSync(playlist.playlistId, 'owner-1');
+    await listed.promise;
+    await cancelSync(playlist.playlistId, 'owner-1');
+
+    gate.resolve();
+    await nextTurn();
+
+    const run = await runFinished(playlist.playlistId, 'owner-1');
+    expect(run.status).toBe(SyncRunStatus.Cancelled);
+    expect(run.error).toBeNull();
+
+    const recovered = await readPlaylist(playlist.playlistId, 'owner-1');
+    expect(recovered.syncStatus).toBe(PlaylistSyncStatus.Idle);
+  });
+
+  it('answers 204 and changes nothing when the run already completed', async () => {
+    context = await createTestContext(
+      {},
+      { youtube: fakeYoutube(source([entry('a')])) }
+    );
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const playlist = seedPlaylist(context.database, account.accountId, {
+      sourceUrl: PLAYLIST_URL,
+      sourcePlaylistId: TEST_SOURCE_ID
+    });
+
+    await postSync(playlist.playlistId, 'owner-1');
+    await runFinished(playlist.playlistId, 'owner-1');
+
+    const runBefore = syncRunRow(playlist.playlistId);
+    const playlistBefore = playlistRow(playlist.playlistId);
+
+    expect((await cancelSync(playlist.playlistId, 'owner-1')).statusCode).toBe(
+      204
+    );
+    expect(syncRunRow(playlist.playlistId)).toEqual(runBefore);
+    expect(playlistRow(playlist.playlistId)).toEqual(playlistBefore);
+  });
+
+  it('publishes one event on a transition and none on a no-op', async () => {
+    context = await createTestContext();
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const playlist = seedPlaylist(context.database, account.accountId, {
+      syncStatus: PlaylistSyncStatus.Syncing
+    });
+    seedSyncRun(context.database, playlist.playlistId, {
+      status: SyncRunStatus.Running
+    });
+
+    const events: LiveEvent[] = [];
+    const unsubscribe = context.events.subscribe(account.accountId, event => {
+      events.push(event);
+    });
+
+    expect((await cancelSync(playlist.playlistId, 'owner-1')).statusCode).toBe(
+      204
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: 'playlist.changed',
+      playlistId: playlist.playlistId
+    });
+
+    const runBefore = syncRunRow(playlist.playlistId);
+    const playlistBefore = playlistRow(playlist.playlistId);
+
+    expect((await cancelSync(playlist.playlistId, 'owner-1')).statusCode).toBe(
+      204
+    );
+    expect(events).toHaveLength(1);
+    expect(syncRunRow(playlist.playlistId)).toEqual(runBefore);
+    expect(playlistRow(playlist.playlistId)).toEqual(playlistBefore);
+
+    unsubscribe();
+  });
+
+  it('refuses a reader, a stranger and an unknown playlist, and lets a writer cancel', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const writer = seedAccount(context.database, {
+      pangolinUserId: 'writer-1'
+    });
+    const reader = seedAccount(context.database, {
+      pangolinUserId: 'reader-1'
+    });
+    const playlist = seedPlaylist(context.database, owner.accountId, {
+      syncStatus: PlaylistSyncStatus.Syncing
+    });
+    seedSyncRun(context.database, playlist.playlistId, {
+      status: SyncRunStatus.Running
+    });
+    seedShare(context.database, playlist.playlistId, writer.accountId, {
+      level: ShareLevel.Write
+    });
+    seedShare(context.database, playlist.playlistId, reader.accountId, {
+      level: ShareLevel.Read
+    });
+
+    const read = await cancelSync(playlist.playlistId, 'reader-1');
+    expect(read.statusCode).toBe(404);
+    expect(read.json()).toMatchObject({ code: 'playlist_not_found' });
+
+    const stranger = await cancelSync(playlist.playlistId, 'stranger-1');
+    expect(stranger.statusCode).toBe(404);
+    expect(stranger.json()).toMatchObject({ code: 'playlist_not_found' });
+
+    const unknown = await cancelSync('missing-playlist', 'owner-1');
+    expect(unknown.statusCode).toBe(404);
+    expect(unknown.json()).toMatchObject({ code: 'playlist_not_found' });
+
+    expect((await cancelSync(playlist.playlistId, 'writer-1')).statusCode).toBe(
+      204
+    );
+    expect(syncRunRow(playlist.playlistId)?.status).toBe(
+      SyncRunStatus.Cancelled
+    );
+  });
+
+  it('leaves associated pending and downloading tracks unchanged', async () => {
+    context = await createTestContext();
+    const account = seedAccount(context.database, {
+      pangolinUserId: 'owner-1'
+    });
+    const playlist = seedPlaylist(context.database, account.accountId, {
+      syncStatus: PlaylistSyncStatus.Syncing
+    });
+    const pending = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Pending
+    });
+    const downloading = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Downloading
+    });
+    associate(context.database, playlist.playlistId, pending.trackId);
+    associate(context.database, playlist.playlistId, downloading.trackId);
+    seedSyncRun(context.database, playlist.playlistId, {
+      status: SyncRunStatus.Running
+    });
+
+    await cancelSync(playlist.playlistId, 'owner-1');
+
+    const statuses = context.database.db
+      .select({ id: tracks.id, fileStatus: tracks.fileStatus })
+      .from(tracks)
+      .all()
+      .sort((left, right) => left.id.localeCompare(right.id));
+    expect(statuses).toEqual(
+      [
+        { id: pending.trackId, fileStatus: TrackFileStatus.Pending },
+        { id: downloading.trackId, fileStatus: TrackFileStatus.Downloading }
+      ].sort((left, right) => left.id.localeCompare(right.id))
+    );
   });
 });
 

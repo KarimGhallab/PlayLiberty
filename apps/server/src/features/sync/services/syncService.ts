@@ -22,7 +22,7 @@ import {
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 import { Refusal } from '../../../shared/refusal.js';
-import type { Refused } from '../../../shared/refusal.js';
+import type { Refused, Succeeded } from '../../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { PlaylistRow } from '../../../platform/database/schema.js';
@@ -172,6 +172,80 @@ export function startSyncForPlaylist(
   return started;
 }
 
+/* The cancel owns the terminal state: the route commits it before answering,
+ * and the reconcile below stops at its next checkpoint instead of overwriting. */
+export function cancelSyncForPlaylist(
+  context: AppContext,
+  playlistId: string,
+  accountId: string
+): Succeeded | Refused {
+  const entry = playlistEntry(
+    context.database,
+    playlistId,
+    accountId,
+    AccessNeed.Write,
+    () => null
+  );
+
+  if (entry.outcome === EntryOutcome.Denied) {
+    return { outcome: 'refused', refusal: Refusal.PlaylistNotFoundWrite };
+  }
+
+  const transitioned = context.database.unitOfWork(() => {
+    const running = context.database.db
+      .select({ id: syncRuns.id })
+      .from(syncRuns)
+      .where(
+        and(
+          eq(syncRuns.playlistId, playlistId),
+          eq(syncRuns.status, SyncRunStatus.Running)
+        )
+      )
+      .get();
+
+    if (running === undefined) {
+      return false;
+    }
+
+    const finishedAt = new Date().toISOString();
+
+    context.database.db
+      .update(syncRuns)
+      .set({
+        status: SyncRunStatus.Cancelled,
+        finishedAt,
+        error: null
+      })
+      .where(
+        and(
+          eq(syncRuns.playlistId, playlistId),
+          eq(syncRuns.status, SyncRunStatus.Running)
+        )
+      )
+      .run();
+
+    context.database.db
+      .update(playlists)
+      .set({
+        syncStatus: PlaylistSyncStatus.Idle,
+        updatedAt: finishedAt
+      })
+      .where(eq(playlists.id, playlistId))
+      .run();
+
+    return true;
+  });
+
+  if (transitioned) {
+    announce(context, {
+      kind: ChangeKind.PlaylistChanged,
+      playlistId
+    });
+  }
+
+  return { outcome: 'ok' };
+}
+
 /* The run and the syncing state are one write: a failed insert leaves the
  * playlist as it was. The caller owns the unit and the announcement. */
 function beginRun(
@@ -220,6 +294,20 @@ function beginRun(
   return { outcome: 'ok', playlistId: playlist.id, run };
 }
 
+/* The run row is the arbiter: a cancel or recovery that made it terminal must
+ * stop this pass before it writes or announces. */
+function runIsRunning(database: DatabaseHandle, runId: string): boolean {
+  return (
+    database.db
+      .select({ id: syncRuns.id })
+      .from(syncRuns)
+      .where(
+        and(eq(syncRuns.id, runId), eq(syncRuns.status, SyncRunStatus.Running))
+      )
+      .get() !== undefined
+  );
+}
+
 /* One pass adding, never subtracting: an already-associated video is untouched,
  * so a second sync changes nothing. */
 async function reconcile(
@@ -235,12 +323,21 @@ async function reconcile(
     }
 
     const source = await context.youtube.listSource(playlist.sourceUrl);
+
+    if (!runIsRunning(database, runId)) {
+      return;
+    }
+
     const presentVideoIds = source.entries.map(item => item.videoId);
 
     /* One queueing operation for the whole source, so the worker is woken once
      * after the unit commits. A throw rolls the pass back and skips the wake. */
-    withDownloadQueue(context, queue =>
+    const committed = withDownloadQueue(context, queue =>
       database.unitOfWork(() => {
+        if (!runIsRunning(database, runId)) {
+          return false;
+        }
+
         // A suppression lasts only while the source still lists the video, so
         // one that later returns is treated as new rather than staying removed.
         liftAbsentSuppressions(database, playlist.id, presentVideoIds);
@@ -310,8 +407,14 @@ async function reconcile(
           })
           .where(eq(playlists.id, playlist.id))
           .run();
+
+        return true;
       })
     );
+
+    if (!committed) {
+      return;
+    }
 
     announce(context, {
       kind: ChangeKind.PlaylistChanged,
@@ -329,7 +432,11 @@ async function reconcile(
         ? error.message
         : 'The sync failed.';
 
-    database.unitOfWork(() => {
+    const failed = database.unitOfWork(() => {
+      if (!runIsRunning(database, runId)) {
+        return false;
+      }
+
       database.db
         .update(syncRuns)
         .set({ status: SyncRunStatus.Failed, error: message, finishedAt })
@@ -347,7 +454,13 @@ async function reconcile(
         })
         .where(eq(playlists.id, playlist.id))
         .run();
+
+      return true;
     });
+
+    if (!failed) {
+      return;
+    }
 
     announce(context, {
       kind: ChangeKind.PlaylistChanged,

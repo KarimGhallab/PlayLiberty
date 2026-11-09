@@ -2,11 +2,11 @@
 
 Tickets for [`34-cancel-a-sync`](../../specs/34-cancel-a-sync.md). The set adds a boot recovery for interrupted syncs and a cancel control for a running sync, first on web and then on mobile.
 
-| Ticket                                                                                                  | Status | Blocked by                                              | Blocks                                                     |
-| ------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------- | ---------------------------------------------------------- |
-| [`01-recover-interrupted-syncs-at-boot`](01-recover-interrupted-syncs-at-boot.md)                       | ready  | none                                                    | none                                                       |
-| [`02-cancel-a-running-sync-from-the-web-detail`](02-cancel-a-running-sync-from-the-web-detail.md)       | ready  | none                                                    | [`03`](03-cancel-a-running-sync-from-the-mobile-detail.md) |
-| [`03-cancel-a-running-sync-from-the-mobile-detail`](03-cancel-a-running-sync-from-the-mobile-detail.md) | ready  | [`02`](02-cancel-a-running-sync-from-the-web-detail.md) | none                                                       |
+| Ticket                                                                                                  | Status   | Blocked by                                              | Blocks                                                     |
+| ------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------- | ---------------------------------------------------------- |
+| [`01-recover-interrupted-syncs-at-boot`](01-recover-interrupted-syncs-at-boot.md)                       | resolved | none                                                    | none                                                       |
+| [`02-cancel-a-running-sync-from-the-web-detail`](02-cancel-a-running-sync-from-the-web-detail.md)       | resolved | none                                                    | [`03`](03-cancel-a-running-sync-from-the-mobile-detail.md) |
+| [`03-cancel-a-running-sync-from-the-mobile-detail`](03-cancel-a-running-sync-from-the-mobile-detail.md) | resolved | [`02`](02-cancel-a-running-sync-from-the-web-detail.md) | none                                                       |
 
 ## Conventions
 
