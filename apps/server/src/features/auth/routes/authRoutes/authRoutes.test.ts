@@ -126,6 +126,7 @@ function provision(
   testContext: TestContext,
   options: {
     pangolinUserId?: string;
+    pangolinUserRecordId?: string;
     redirectUri?: string;
     challenge?: string;
     assertion?: string;
@@ -143,6 +144,9 @@ function provision(
     url: `/provision?${query.toString()}`,
     headers: {
       'remote-user': options.pangolinUserId ?? 'p-alice',
+      ...(options.pangolinUserRecordId === undefined
+        ? {}
+        : { 'remote-user-id': options.pangolinUserRecordId }),
       'remote-name': 'Alice',
       ...(options.assertion === undefined
         ? {}

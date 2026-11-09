@@ -137,7 +137,10 @@ export function registerIdentityHook(
       return reply;
     }
 
-    request.forwardedPangolinUserId = pangolinUserId;
+    /* Remote-User keys the account and the admin list; Remote-User-Id is the
+     * record id the Integration API needs. They are not interchangeable. */
+    request.forwardedPangolinUserId =
+      readStringHeader(request, 'remote-user-id') ?? pangolinUserId;
 
     if (PROVISIONING_PATHS.has(path)) {
       return;
