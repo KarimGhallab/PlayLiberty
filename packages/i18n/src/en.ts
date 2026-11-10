@@ -113,7 +113,6 @@ export const en = {
     lastAttempt: 'Last switch attempt',
     lastCheck: 'Last check',
     switch: 'Switch',
-    switchAsk: 'Switch this exit to {name}?',
     switching: 'Switching...',
     check: 'Check',
     checking: 'Checking...',

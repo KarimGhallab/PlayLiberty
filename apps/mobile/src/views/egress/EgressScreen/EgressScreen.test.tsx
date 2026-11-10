@@ -292,29 +292,10 @@ describe('the egress console', () => {
     ).toBeOnTheScreen();
   });
 
-  it('asks once before switching a standby exit', async () => {
-    await renderScreen(success(READ));
-
-    await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
-
-    expect(switchExit.mutate).not.toHaveBeenCalled();
-    expect(
-      screen.getByText('Switch this exit to 02-CH-182?')
-    ).toBeOnTheScreen();
-
-    await fireEvent.press(screen.getByTestId('egress-cancel-02-CH-182'));
-
-    expect(
-      screen.queryByText('Switch this exit to 02-CH-182?')
-    ).not.toBeOnTheScreen();
-    expect(switchExit.mutate).not.toHaveBeenCalled();
-  });
-
   it('runs the standby switch and reports the new exit', async () => {
     await renderScreen(success(READ));
 
     await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
-    await fireEvent.press(screen.getByTestId('egress-confirm-02-CH-182'));
 
     await act(async () => {
       mutateCall(switchExit.mutate).options.onSuccess(SWITCHED);
@@ -395,7 +376,6 @@ describe('the egress console', () => {
     await renderScreen(success(READ));
 
     await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
-    await fireEvent.press(screen.getByTestId('egress-confirm-02-CH-182'));
 
     await act(async () => {
       mutateCall(switchExit.mutate).options.onError(
@@ -423,7 +403,6 @@ describe('the egress console', () => {
     await renderScreen(success(READ));
 
     await fireEvent.press(screen.getByTestId('egress-action-02-CH-182'));
-    await fireEvent.press(screen.getByTestId('egress-confirm-02-CH-182'));
 
     await act(async () => {
       mutateCall(switchExit.mutate).options.onSuccess({

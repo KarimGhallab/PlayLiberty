@@ -4,15 +4,16 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { pipeline } from 'node:stream/promises';
 
 import type {
+  AgentReply,
   EgressAgentStatus,
   EgressCheckFacts,
   FetchBody,
   YoutubeSource
 } from '@playliberty/youtube';
-import type { AgentReply } from '@playliberty/youtube';
 import {
   AgentErrorCode,
   AgentHeader,
@@ -30,6 +31,7 @@ import {
   wireReply
 } from '@playliberty/youtube';
 
+import { logger } from '../../logging/logger.js';
 import {
   DEFAULT_DRAIN_TIMEOUT_MS,
   SwitchInterruptedError,
@@ -41,6 +43,12 @@ import {
  * enforces this at connect time. */
 const SOCKET_MODE = 0o600;
 const MAX_BODY_BYTES = 4096;
+
+/* The access-log sink: a test passes a silent one, the process the module logger. */
+export interface AgentLog {
+  info(context: object, message: string): void;
+  warn(context: object, message: string): void;
+}
 
 export interface AgentOptions {
   socketPath: string;
@@ -58,6 +66,8 @@ export interface AgentOptions {
   fetch: (
     request: FetchBody & { tempDir: string }
   ) => Promise<{ filePath: string }>;
+  /* A test's log sink; the process uses the module logger. */
+  log?: AgentLog;
 }
 
 export interface AgentHandle {
@@ -279,8 +289,56 @@ async function streamFetch(
   }
 }
 
+/* Every call is one line in and one line out. The body never enters the log:
+ * a fetch response is a whole track, not a payload to quote. */
+function traceRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  log: AgentLog
+): void {
+  const method = request.method ?? '';
+  const path = request.url?.split('?')[0] ?? '';
+  const startedAt = performance.now();
+
+  log.info({ event: 'agent_request', method, path }, 'agent request');
+
+  response.once('finish', () => {
+    log.info(
+      {
+        event: 'agent_response',
+        method,
+        path,
+        status: response.statusCode,
+        durationMs: Math.round(performance.now() - startedAt)
+      },
+      'agent response'
+    );
+  });
+
+  /* A peer that hangs up mid-download never reaches `finish`. */
+  response.once('close', () => {
+    if (response.writableFinished) {
+      return;
+    }
+
+    log.warn(
+      {
+        event: 'agent_response_aborted',
+        method,
+        path,
+        status: response.statusCode,
+        durationMs: Math.round(performance.now() - startedAt)
+      },
+      'agent response aborted'
+    );
+  });
+}
+
 export async function startAgent(options: AgentOptions): Promise<AgentHandle> {
+  const log = options.log ?? logger;
   const server = createServer((request, response) => {
+    traceRequest(request, response, log);
+
     const path = request.url?.split('?')[0] ?? '';
 
     if (request.method === AgentMethod.Post && path === AgentRoute.Fetch) {

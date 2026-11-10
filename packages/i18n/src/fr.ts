@@ -116,7 +116,6 @@ export const fr: Messages = {
     lastAttempt: 'Dernière tentative de bascule',
     lastCheck: 'Dernier contrôle',
     switch: 'Changer',
-    switchAsk: 'Basculer la configuration vers {name} ?',
     switching: 'Changement...',
     check: 'Vérifier',
     checking: 'Vérification...',

@@ -152,7 +152,6 @@ function ConfigCard({
 }: ConfigCardProps) {
   const { fontScale } = useWindowDimensions();
   const scale = useTextScale();
-  const [confirming, setConfirming] = useState(false);
   const stacked = stackFacts(fontScale);
   const country = countryOf(config.name);
   const countryName =
@@ -242,61 +241,20 @@ function ConfigCard({
           />
         </View>
       </View>
-      {!config.active && confirming && !pending ? (
-        <>
-          <Text accessibilityRole="alert" style={styles.ask}>
-            {t('egress.switchAsk', { name: config.name })}
-          </Text>
-          <View style={styles.confirmRow}>
-            <PressableScale
-              testID={`egress-cancel-${config.name}`}
-              accessibilityRole="button"
-              accessibilityLabel={t('common.cancel')}
-              style={styles.cancel}
-              onPress={() => setConfirming(false)}>
-              <Text style={styles.cancelLabel}>{t('common.cancel')}</Text>
-            </PressableScale>
-            <PressableScale
-              testID={`egress-confirm-${config.name}`}
-              accessibilityRole="button"
-              accessibilityLabel={`${idle} ${config.name}`}
-              accessibilityState={{ disabled, busy: pending }}
-              disabled={disabled}
-              style={[styles.confirm, disabled && styles.actionDisabled]}
-              onPress={() => {
-                setConfirming(false);
-                onPress();
-              }}>
-              <Text style={styles.confirmLabel}>{idle}</Text>
-            </PressableScale>
-          </View>
-        </>
-      ) : (
-        <PressableScale
-          testID={`egress-action-${config.name}`}
-          accessibilityRole="button"
-          accessibilityLabel={`${idle} ${config.name}`}
-          accessibilityState={{ disabled, busy: pending }}
-          disabled={disabled}
-          style={[styles.action, disabled && styles.actionDisabled]}
-          onPress={() => {
-            if (config.active) {
-              onPress();
-              return;
-            }
-
-            setConfirming(true);
-          }}>
-          <ActionIcon size={tokenLength('icon-sm')} color={iconColor} />
-          <Text
-            style={[
-              styles.actionLabel,
-              disabled && styles.actionLabelDisabled
-            ]}>
-            {pending ? working : idle}
-          </Text>
-        </PressableScale>
-      )}
+      <PressableScale
+        testID={`egress-action-${config.name}`}
+        accessibilityRole="button"
+        accessibilityLabel={`${idle} ${config.name}`}
+        accessibilityState={{ disabled, busy: pending }}
+        disabled={disabled}
+        style={[styles.action, disabled && styles.actionDisabled]}
+        onPress={onPress}>
+        <ActionIcon size={tokenLength('icon-sm')} color={iconColor} />
+        <Text
+          style={[styles.actionLabel, disabled && styles.actionLabelDisabled]}>
+          {pending ? working : idle}
+        </Text>
+      </PressableScale>
     </View>
   );
 }
@@ -640,42 +598,6 @@ const styles = StyleSheet.create({
   },
   actionLabelDisabled: {
     color: tokenColor('control-disabled-fg')
-  },
-  ask: {
-    color: tokenColor('ink'),
-    fontFamily,
-    fontSize: tokenLength('text-sm')
-  },
-  confirmRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: tokenLength('space-2')
-  },
-  cancel: {
-    minHeight: touchTarget,
-    justifyContent: 'center',
-    paddingHorizontal: tokenLength('space-4'),
-    borderWidth: 1,
-    borderColor: tokenColor('control-border'),
-    borderRadius: tokenLength('radius-control')
-  },
-  cancelLabel: {
-    color: tokenColor('ink'),
-    fontFamily,
-    fontSize: tokenLength('text-sm')
-  },
-  confirm: {
-    minHeight: touchTarget,
-    justifyContent: 'center',
-    paddingHorizontal: tokenLength('space-4'),
-    borderRadius: tokenLength('radius-control'),
-    backgroundColor: tokenColor('accent')
-  },
-  confirmLabel: {
-    color: tokenColor('bg'),
-    fontFamily,
-    fontSize: tokenLength('text-sm'),
-    fontWeight: tokenWeight('weight-medium')
   },
   say: {
     color: tokenColor('muted'),
