@@ -316,21 +316,23 @@ export default function PlaylistCard({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
         disabled={shuffleDisabled}
-        style={[
-          styles.shuffle,
-          { top: playTop },
-          shuffled && !shuffleDisabled && styles.shuffleOn,
-          shuffleDisabled && styles.playDisabled
-        ]}
+        style={[styles.shuffleSlot, { top: playTop }]}
         onPress={onShuffle}>
-        {starting === 'shuffle' ? (
-          <Spinner color={tokenColor('muted')} />
-        ) : (
-          <IconArrowsShuffle
-            size={tokenLength('icon-md')}
-            color={shuffled ? tokenColor('accent') : tokenColor('ink')}
-          />
-        )}
+        <View
+          style={[
+            styles.disc,
+            shuffled && !shuffleDisabled && styles.discOn,
+            shuffleDisabled && styles.playDisabled
+          ]}>
+          {starting === 'shuffle' ? (
+            <Spinner color={tokenColor('muted-on-art')} />
+          ) : (
+            <IconArrowsShuffle
+              size={tokenLength('icon-md')}
+              color={tokenColor(shuffled ? 'accent-on-art' : 'muted-on-art')}
+            />
+          )}
+        </View>
       </PressableScale>
 
       <PressableScale
@@ -338,9 +340,14 @@ export default function PlaylistCard({
         accessible={false}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={styles.actions}
+        style={[styles.actionsSlot, { top: tokenLength('space-2') }]}
         onPress={onOpenActions}>
-        <IconDots size={tokenLength('icon-md')} color={tokenColor('ink')} />
+        <View style={styles.disc}>
+          <IconDots
+            size={tokenLength('icon-md')}
+            color={tokenColor('muted-on-art')}
+          />
+        </View>
       </PressableScale>
 
       <PlayingLine playing={playing} />
@@ -440,30 +447,33 @@ const styles = StyleSheet.create({
   playOn: {
     backgroundColor: tokenColor('accent')
   },
-  shuffle: {
+  shuffleSlot: {
     position: 'absolute',
     left: tokenLength('space-2'),
     width: touchTarget,
     height: touchTarget,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: tokenColor('control-border'),
-    borderRadius: tokenLength('radius-control'),
-    backgroundColor: tokenColor('surface')
+    justifyContent: 'center'
   },
-  shuffleOn: {
-    borderColor: tokenColor('accent')
-  },
-  actions: {
+  actionsSlot: {
     position: 'absolute',
-    top: tokenLength('space-2'),
     right: tokenLength('space-2'),
     width: touchTarget,
     height: touchTarget,
     alignItems: 'center',
+    justifyContent: 'center'
+  },
+  disc: {
+    width: tokenLength('space-8'),
+    height: tokenLength('space-8'),
+    alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokenLength('radius-control'),
-    backgroundColor: tokenColor('surface')
+    borderWidth: 1,
+    borderColor: tokenColor('line'),
+    borderRadius: tokenLength('radius-chip'),
+    backgroundColor: tokenColor('scrim')
+  },
+  discOn: {
+    borderColor: tokenColor('accent-on-art')
   }
 });

@@ -408,8 +408,6 @@ const styles = StyleSheet.create({
     height: touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-control')
   },
   lanePressed: {

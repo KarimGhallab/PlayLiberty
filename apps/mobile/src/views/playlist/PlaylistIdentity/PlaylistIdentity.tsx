@@ -261,12 +261,7 @@ function ShuffleControl({
       accessibilityState={{ disabled, selected: shuffled, busy: starting }}
       disabled={disabled}
       hitSlop={small ? SMALL_HIT : 0}
-      style={[
-        styles.secondary,
-        styles.fill,
-        shuffled && !disabled && styles.secondaryOn,
-        disabled && styles.disabled
-      ]}
+      style={[styles.glyphControl, styles.fill, disabled && styles.disabled]}
       onPress={props.onShuffle}>
       {starting ? (
         <Spinner color={tokenColor('muted')} />
@@ -340,7 +335,7 @@ function ActionsControl({
       accessibilityRole="button"
       accessibilityLabel={t('header.actions', { name: props.playlist.name })}
       hitSlop={small ? SMALL_HIT : 0}
-      style={[styles.secondary, styles.fill]}
+      style={[styles.glyphControl, styles.fill]}
       onPress={props.onOpenActions}>
       <IconDots size={tokenLength('icon-md')} color={tokenColor('muted')} />
     </PressableScale>
@@ -917,15 +912,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokenColor('accent')
   },
-  secondary: {
+  glyphControl: {
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: tokenColor('control-border'),
-    borderRadius: tokenLength('radius-control')
-  },
-  secondaryOn: {
-    borderColor: tokenColor('accent')
+    justifyContent: 'center'
   },
   playingSlot: {
     position: 'absolute',

@@ -77,8 +77,9 @@ set, the type family, the space scale, the radii, the durations and the one curv
 - **The way back is a bare chevron.** A 48dp target whose glyph aligns with the content edge; over artwork the cover
   carries a scrim wash, so the glyph never needs a plate of its own.
 - **The gallery is a two-column card grid.** The card is the detail's hero arrangement: cover above the identity,
-  with the actions door at its top end, the play at its lower right and the shuffle at its lower left, and the same
-  squarish control shape on the shuffle and the overflow. The pinned section is a heading above one horizontal row that
+  with the actions door at its top end and the shuffle at its lower left, both a 40dp scrim disc with a hairline
+  boundary inside a 48dp target, and the play a filled circle at its lower right. A shuffled disc takes the accent
+  on its boundary and glyph. The pinned section is a heading above one horizontal row that
   peeks the next card and scrolls sideways; the rest is the grid, and the ownership scope and the status chips are
   one row that scrolls, its hidden side fading into the ground and a chip the user picks brought fully into view. The
   add and the bulk sync are the two rows of the dial behind the floating accent control: the add is the unaccented row
@@ -89,7 +90,8 @@ set, the type family, the space scale, the radii, the durations and the one curv
   chip fully into view. The header is wide at the top and draws into the compact row as
   the list moves, following the gesture frame by frame and running backwards when the list does; the wide state
   carries a faint copy of the cover as its ground, with Play leading the action row and Shuffle and the actions door
-  closing it, all three on one midline. The sync evidence and the skip setting live in the actions sheet,
+  closing it, all three on one midline. Play is the row's only plate; Shuffle and the actions door are bare glyphs,
+  and the compact pair paints 36dp inside a 48dp target. The sync evidence and the skip setting live in the actions sheet,
   the run band above the actions and the checkbox below them, so the page itself keeps only the header's sync line.
   The gallery's card menu carries the same checkbox, without the run band.
   The actions door stays for every access level, because the sheet carries the status and the setting as well as the
@@ -113,8 +115,9 @@ set, the type family, the space scale, the radii, the durations and the one curv
   so two accounts are told apart at a glance. The admin's VPN settings door is not here: it is an instance-level
   control and sits in the library header beside the account door. The sheet dismisses on the backdrop, the system back
   gesture, its close control, or a downward drag on its handle.
-- **A target is 48dp, and every control has a name and a role.** Dynamic Type is respected, with a capped
-  multiplier only where a fixed layout would break, and reduced motion is read from the system. The focus ring and
+- **A target is 48dp, and every control has a name and a role.** The detail's Shuffle, its actions door and every
+  row's lane are bare glyphs on that target; only the header's Play paints a plate. Dynamic Type is respected, with a
+  capped multiplier only where a fixed layout would break, and reduced motion is read from the system. The focus ring and
   the keyboard contract are the web's and have no analogue. A gallery card is one target, so its name carries the
   count, the sync state and the owner that its parts show.
 - **A web-only affordance is either drawn or dropped, never ported.** A hover tip becomes a word in the row, the

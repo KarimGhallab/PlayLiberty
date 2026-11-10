@@ -130,10 +130,6 @@ const COLLAPSE_DISTANCE = tokenLength('space-9') * 2;
 /* The request waits one beat after the window so a gesture already queued when
  * the timer fired can still be read; only the clock decides the undo. */
 const COMMIT_GRACE_MS = 150;
-/* The add floats clear of the row's lane: the lane owns the trailing 48dp and
- * the trigger keeps a gap to its left. */
-const DIAL_RIGHT =
-  tokenLength('space-4') + touchTarget + tokenLength('space-2');
 
 export interface PlaylistDetailProps {
   readonly playlistId: string | null;
@@ -814,11 +810,14 @@ export default function PlaylistDetail({
     : null;
   const addResult = addTrack.data ?? null;
   /* The floating action owns the bottom-right, so a notice clears its height; the
-   * bar owns the bottom first, so both clear that too. */
+   * bar owns the bottom first, so both clear that too. The detail has no page
+   * frame, unlike the gallery, so the dial pays that inset itself. */
   const playerOffset = currentId === null ? 0 : barHeight;
+  const pageInset = tokenLength('space-4');
+  const dialOffset = playerOffset + pageInset;
   const floatingOffset =
     (canWritePlaylist(data) ? actionDialSize + tokenLength('space-3') : 0) +
-    playerOffset;
+    dialOffset;
 
   const openAdd = (): void => {
     addTrack.reset();
@@ -1294,7 +1293,7 @@ export default function PlaylistDetail({
               tokenLength('space-4') +
               actionDialSize +
               tokenLength('space-3') +
-              playerOffset
+              dialOffset
           }
         ]}
         initialNumToRender={12}
@@ -1340,8 +1339,8 @@ export default function PlaylistDetail({
             }
           ]}
           busy={syncInFlight}
-          bottomOffset={playerOffset}
-          rightOffset={DIAL_RIGHT}
+          bottomOffset={dialOffset}
+          rightOffset={pageInset}
         />
       ) : null}
       <AddTrackSheet

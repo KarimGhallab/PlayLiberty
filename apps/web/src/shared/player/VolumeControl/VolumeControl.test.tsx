@@ -260,7 +260,6 @@ describe('VolumeControl', () => {
 
     /* Three quarters along the rail is three quarters loud. */
     fireEvent.pointerDown(rail, { clientX: 75, clientY: 2, pointerId: 1 });
-
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.75);
   });
 

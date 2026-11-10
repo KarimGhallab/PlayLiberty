@@ -13,10 +13,8 @@ import { volumeIcon } from '../volumeIcon';
 import styles from './VolumeControl.module.scss';
 
 /*
- * The volume control: the bar's one disclosure, its rail growing in the trail
- * while pointer, focus or a tap holds it. Growing the rail pushes the duration
- * left; the button stays at the bar's end. The button mutes and keeps the
- * level, so unmuting returns to it; Up, Down and M are bound on the window.
+ * The volume control: the rail opens on pointer, focus or a tap; the button
+ * mutes and keeps the level; Up, Down and M are bound on the window.
  */
 
 /** How much one press of Up/Down moves the volume. */
@@ -32,7 +30,6 @@ function clampLevel(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
-/* One key map for the rail and the window, so Home and End agree. */
 function levelForKey(key: string, value: number): number | null {
   switch (key) {
     case 'ArrowUp':

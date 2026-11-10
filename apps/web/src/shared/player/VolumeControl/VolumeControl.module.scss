@@ -1,8 +1,3 @@
-/*
- * The volume control: the rail grows in the bar's trail, pushing the duration
- * left; the button stays at the bar's end. Muted keeps the level and changes
- * only the colour; the button edge takes the failure tone.
- */
 .volume {
   display: flex;
   align-items: center;
