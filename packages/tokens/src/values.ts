@@ -28,8 +28,13 @@ export const colors = {
   'tone-failed': { kind: TokenKind.Color, value: '#e0625e' },
   'tone-unavailable': { kind: TokenKind.Color, value: '#b87570' },
   'tone-removed': { kind: TokenKind.Color, value: '#8b9299' },
+  'tone-retained': { kind: TokenKind.Color, value: '#d886b6' },
   'control-border': { kind: TokenKind.Color, value: '#6e7379' },
   'accent-hover': { kind: TokenKind.Color, value: '#4cac90' },
+
+  'muted-on-art': { kind: TokenKind.Color, value: '#c2c7cb' },
+  'accent-on-art': { kind: TokenKind.Color, value: '#7fd9b6' },
+
   'current-surface': { kind: TokenKind.Color, value: '#13211f' },
   emphasis: { kind: TokenKind.Color, value: '#e39a3c' },
 
@@ -84,6 +89,7 @@ export const lengths = {
   'radius-chip': { kind: TokenKind.Length, value: 999 },
   'control-height': { kind: TokenKind.Length, value: 36 },
   'control-touch': { kind: TokenKind.Length, value: 44 },
+  'control-touch-android': { kind: TokenKind.Length, value: 48 },
   'control-size-check': { kind: TokenKind.Length, value: 18 },
   'control-size-inline': { kind: TokenKind.Length, value: 28 },
   'player-bar-height': { kind: TokenKind.Length, value: 98 },

@@ -1,21 +1,21 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 
-import type { Playlist } from '@playliberty/contracts';
-import type { Messages, Translator } from '@playliberty/i18n';
-
 import {
   cancelPlaylistQueue,
   readPlaylistQueue
-} from '../../api/clients/playlistClient/playlistClient';
+} from '@playliberty/api-client';
+import type { Playlist } from '@playliberty/contracts';
+import type { Messages, Translator } from '@playliberty/i18n';
+
 import { startPlaylistQueue } from '../playerQueue/playerQueue';
 import { usePlayerStore } from '../playerStore/playerStore';
 import { queuePlaylistId } from '../types';
 
 /*
- * The one play transition: a press either acts on the queue already loaded or
- * reads the whole list and starts a new one. A refusal is returned, never
- * drawn, so each screen keeps its own notice.
+ * The one play transition: a press acts on the loaded queue or reads the whole
+ * list and starts a new one. A refusal is returned, never drawn, so each screen
+ * keeps its own notice.
  */
 
 /** How long a refusal stands before it withdraws itself. */
@@ -238,9 +238,8 @@ export function usePlayTransition({
 }
 
 /*
- * The refusal in words: one sentence and a line, naming the playlist and why
- * the press did nothing. The action's copy, shared by every screen that draws
- * it.
+ * The refusal in words: one sentence and a line naming the playlist and why the
+ * press did nothing. The copy is shared by every screen that draws it.
  */
 export function refusalNotice(
   refusal: PlayTransitionRefusal,

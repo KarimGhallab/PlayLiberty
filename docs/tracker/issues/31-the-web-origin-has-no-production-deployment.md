@@ -2,7 +2,6 @@
 
 **State:** `resolved`
 **Category:** `bug`
-**Blocked by:** 23. The front container injects the edge assertion the server now requires, so the server side of the split has to be settled first.
 
 ## Outcome
 

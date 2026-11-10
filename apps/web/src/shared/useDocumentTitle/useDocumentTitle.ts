@@ -1,18 +1,17 @@
 import { useMatchRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
+import { usePlaylist } from '@playliberty/api-client';
 import type { Messages, Translator } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
-import { usePlaylist } from '../api/clients/playlistClient/playlistClient';
 import { usePlayerStore } from '../player/playerStore/playerStore';
 import type { PlayerTrack } from '../player/types';
 import { currentTrack } from '../player/types';
 
 /*
- * The tab's title, the one place it is written: the app's name at home, the
- * open playlist's name, or the playing track's name under its playlist. A track
- * outranks the open playlist; the shape lives in the catalog.
+ * The tab's title: app name at home, else the open playlist, else the playing
+ * track under it. A track outranks a playlist; the catalog owns the shape.
  */
 export function documentTitle(
   t: Translator<Messages>,

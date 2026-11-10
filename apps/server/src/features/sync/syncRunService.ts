@@ -4,7 +4,7 @@ import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
-} from '../../shared/access/entry.js';
+} from '../../shared/access/entry/entry.js';
 import { Refusal } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';

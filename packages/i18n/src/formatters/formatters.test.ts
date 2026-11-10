@@ -7,7 +7,7 @@ import {
   TrackSourceStatus
 } from '@playliberty/contracts';
 
-import { catalogs } from '../catalogs.js';
+import { catalogs } from '../catalogs/catalogs.js';
 import { createTranslator } from '../createTranslator/createTranslator.js';
 import { Language } from '../types.js';
 import {
@@ -18,7 +18,7 @@ import {
   providerLabel,
   syncStateLabel,
   trackCountUnit,
-  trackStateLabel
+  trackStateFacts
 } from './formatters.js';
 
 const t = createTranslator(catalogs[Language.English], Language.English);
@@ -135,82 +135,106 @@ describe('trackCountUnit', () => {
   });
 });
 
-describe('trackStateLabel', () => {
+describe('trackStateFacts', () => {
   it('says nothing for a stored track that is still available', () => {
     expect(
-      trackStateLabel(
+      trackStateFacts(
         t,
         TrackFileStatus.Stored,
         TrackSourceStatus.Available,
         Provider.Youtube
       )
-    ).toBeNull();
+    ).toEqual({ file: null, source: null });
   });
 
   it('names each file state that is not stored', () => {
     expect(
-      trackStateLabel(
+      trackStateFacts(
         t,
         TrackFileStatus.Pending,
         TrackSourceStatus.Available,
         Provider.Youtube
       )
-    ).toBe('Pending');
+    ).toEqual({ file: 'Pending', source: null });
     expect(
-      trackStateLabel(
+      trackStateFacts(
         t,
         TrackFileStatus.Downloading,
         TrackSourceStatus.Available,
         Provider.Youtube
       )
-    ).toBe('Downloading');
+    ).toEqual({ file: 'Downloading', source: null });
     expect(
-      trackStateLabel(
+      trackStateFacts(
         t,
         TrackFileStatus.Failed,
         TrackSourceStatus.Available,
         Provider.Youtube
       )
-    ).toBe('Failed');
+    ).toEqual({ file: 'Failed', source: null });
     expect(
-      trackStateLabel(
+      trackStateFacts(
         t,
         TrackFileStatus.Unavailable,
         TrackSourceStatus.Available,
         Provider.Youtube
       )
-    ).toBe('Unavailable');
+    ).toEqual({ file: 'Never stored', source: null });
   });
 
-  it('names the source for a removed track, whatever the file', () => {
+  it('calls a kept track retained and still names the source', () => {
     expect(
-      trackStateLabel(
+      trackStateFacts(
         t,
         TrackFileStatus.Stored,
         TrackSourceStatus.Removed,
         Provider.Youtube
       )
-    ).toBe('Removed from YouTube');
+    ).toEqual({ file: 'Retained', source: 'Removed from YouTube' });
+  });
+
+  it('tells a lost track apart from a kept one', () => {
     expect(
-      trackStateLabel(
-        t,
-        TrackFileStatus.Failed,
-        TrackSourceStatus.Removed,
-        Provider.Youtube
-      )
-    ).toBe('Removed from YouTube');
-    expect(
-      trackStateLabel(
+      trackStateFacts(
         t,
         TrackFileStatus.Unavailable,
         TrackSourceStatus.Removed,
         Provider.Youtube
       )
-    ).toBe('Removed from YouTube');
+    ).toEqual({ file: 'Never stored', source: 'Removed from YouTube' });
+    expect(
+      trackStateFacts(
+        t,
+        TrackFileStatus.Failed,
+        TrackSourceStatus.Removed,
+        Provider.Youtube
+      )
+    ).toEqual({ file: 'Failed', source: 'Removed from YouTube' });
   });
 
   it('names the provider as a person writes it', () => {
     expect(providerLabel(t, Provider.Youtube)).toBe('YouTube');
+  });
+
+  it('speaks French', () => {
+    const fr = createTranslator(catalogs[Language.French], Language.French);
+
+    expect(
+      trackStateFacts(
+        fr,
+        TrackFileStatus.Stored,
+        TrackSourceStatus.Removed,
+        Provider.Youtube
+      )
+    ).toEqual({ file: 'Conservée', source: 'Retirée de YouTube' });
+    expect(
+      trackStateFacts(
+        fr,
+        TrackFileStatus.Unavailable,
+        TrackSourceStatus.Removed,
+        Provider.Youtube
+      )
+    ).toEqual({ file: 'Jamais stockée', source: 'Retirée de YouTube' });
   });
 });
 

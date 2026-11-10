@@ -18,30 +18,63 @@ export const fr: Messages = {
     english: 'English',
     french: 'Français'
   },
+  account: {
+    title: 'Compte',
+    admin: 'Admin',
+    loading: 'Chargement du compte.',
+    egress: 'Paramètres VPN',
+    signOut: 'Se déconnecter',
+    signOutAsk: 'Êtes-vous sur de vouloir vous déconnecter ?',
+    version: 'Version {version}'
+  },
+  signedOut: {
+    title: "Connectez-vous pour entrer dans l'application",
+    browser:
+      "Votre navigateur s'ouvre pour la connexion, puis vous ramène ici.",
+    action: 'Se connecter',
+    retry: 'Se connecter à nouveau',
+    busy: 'Connexion…',
+    failed: "La connexion n'a pas abouti."
+  },
   common: {
+    back: 'Retour',
+    close: 'Fermer',
     cancel: 'Annuler',
+    undo: 'Annuler',
+    moreTime: 'Plus de temps',
     discardPrompt: 'Abandonner ce lien ? Le lien collé sera perdu.',
     keepEditing: 'Continuer la saisie',
     discard: 'Abandonner'
   },
   library: {
     add: 'Ajouter une playlist',
+    actions: 'Actions de la bibliothèque',
     loading: 'Chargement des playlists.',
     readFailed: 'Impossible de charger les playlists.',
     pinned: 'Épinglées',
     syncing: 'Synchronisation en cours',
     scopeAll: 'Toutes',
-    scopeShared: 'Partagées avec moi',
+    scopeShared: 'Partagées',
     scopeLabel: 'Filtrer par propriétaire',
     allTracks: 'Toutes les pistes',
     pinFailed: "L'épingle n'a pas pu être modifiée.",
+    syncFailed: "La synchronisation n'a pas pu démarrer.",
+    deleteFailed: "La playlist n'a pas pu être supprimée.",
     notDownloaded: {
       one: "{count} piste n'est pas stockée",
       other: '{count} pistes ne sont pas stockées'
     },
+    neverStored: {
+      one: '1 piste jamais stockée',
+      other: '{count} pistes jamais stockées'
+    },
     syncAll: {
       one: 'Synchroniser 1 playlist',
       other: 'Synchroniser les {count} playlists'
+    },
+    syncAllReadOnly: {
+      one: '1 playlist en lecture seule exclue',
+      other: '{count} playlists en lecture seule exclues'
     },
     syncAllShort: 'Tout synchroniser',
     syncingAll: {
@@ -65,7 +98,7 @@ export const fr: Messages = {
     empty: {
       heading: 'Aucune playlist',
       promise:
-        "Collez le lien d'une playlist YouTube, puis synchronisez-la. Chaque piste stockée vous appartient ensuite, même si la vidéo est retirée plus tard."
+        "Collez le lien d'une playlist YouTube, puis synchronisez-la pour écouter ses pistes."
     }
   },
   egress: {
@@ -78,10 +111,10 @@ export const fr: Messages = {
     agentDown:
       'Agent egress injoignable. Les configurations ci-dessous sont les derniers états connus.',
     name: 'Nom',
-    endpoint: 'Point de terminaison',
-    status: 'État',
-    lastAttempt: 'Dernière tentative',
-    lastCheck: 'Dernière vérification',
+    endpoint: 'Adresse de sortie',
+    status: 'Status',
+    lastAttempt: 'Dernière tentative de bascule',
+    lastCheck: 'Dernier contrôle',
     switch: 'Changer',
     switching: 'Changement...',
     check: 'Vérifier',
@@ -95,7 +128,8 @@ export const fr: Messages = {
       switchFailed: "La sortie n'a pas pu être changée."
     },
     actions: 'Actions',
-    seen: 'Vu à {ip}',
+    seen: 'Le fournisseur a vu {ip}',
+    noEndpoint: 'Non défini',
     reason: {
       blocked: 'YouTube a refusé la sortie.',
       unavailable: 'La vidéo de vérification est indisponible.',
@@ -103,7 +137,8 @@ export const fr: Messages = {
       unknown: 'La vérification a échoué.'
     },
     active: 'Active',
-    never: 'Jamais',
+    neverAttempted: 'Aucune tentative',
+    neverChecked: 'Pas encore vérifié',
     statusOk: 'OK',
     statusFailed: 'Échec',
     statusUnknown: 'Inconnu'
@@ -114,6 +149,7 @@ export const fr: Messages = {
      * words it cannot carry. */
     backShort: 'Retour',
     addTrack: 'Ajouter une piste',
+    fabActions: 'Actions de la playlist',
     syncPlaylist: 'Synchroniser la playlist',
     syncPlaylistShort: 'Synchroniser',
     syncingPlaylist: 'Synchronisation de la playlist...',
@@ -127,9 +163,13 @@ export const fr: Messages = {
       "La lecture n'a pas pu démarrer : la file d'attente n'a pas été chargée.",
     deleteDeferred: 'Suppression de la playlist',
     removeDeferred: 'Retrait de la piste',
+    deleteFailed: "La playlist n'a pas pu être supprimée.",
+    removeFailed: "La piste n'a pas pu être retirée.",
     trackFallback: 'Piste',
     settingFailed: "Le paramètre n'a pas pu être modifié.",
     settingNotice: "Le paramètre n'a pas été modifié.",
+    sortFailed: "Le tri n'a pas pu être modifié.",
+    sortNotice: "Le tri n'a pas été modifié.",
     sortBy: 'Trier par',
     sortPlaylist: 'Ordre de la playlist',
     sortNewest: "Plus récentes d'abord",
@@ -150,7 +190,8 @@ export const fr: Messages = {
       pending: 'Aucune piste en attente',
       downloading: 'Aucune piste en téléchargement',
       failed: 'Aucune piste en échec',
-      unavailable: 'Aucune piste indisponible'
+      unavailable: 'Aucune piste laissée sans copie',
+      remoteRemoved: 'Aucune piste conservée après un retrait de {provider}'
     }
   },
   trackRow: {
@@ -178,6 +219,7 @@ export const fr: Messages = {
   },
   trackLink: {
     cannotPlay: 'Impossible de lire {title}.',
+    loading: 'Ouverture de la piste.',
     notStored: "La piste n'est pas encore stockée.",
     downloadFailed: 'Son téléchargement a échoué.',
     unavailableDetail: "Sa vidéo a disparu et aucun fichier n'a été stocké.",
@@ -195,6 +237,7 @@ export const fr: Messages = {
     description: 'Il ne change pas la playlist sur YouTube.',
     nameLabel: 'Nom de la playlist',
     invalid: "Un nom est requis, jusqu'à 200 caractères.",
+    failed: "La playlist n'a pas pu être renommée.",
     save: 'Enregistrer',
     saving: 'Enregistrement'
   },
@@ -202,6 +245,7 @@ export const fr: Messages = {
     title: 'Image de la playlist',
     description: 'JPEG, PNG ou WebP, jusqu’à 5 Mo.',
     choose: 'Choisir une image',
+    pickFailed: "La photothèque n'a pas pu être ouverte.",
     wrongType: 'Choisissez une image JPEG, PNG ou WebP.',
     tooLarge: 'Choisissez une image de moins de 5 Mo.',
     uploadFailed: "L'image n'a pas pu être enregistrée.",
@@ -220,12 +264,19 @@ export const fr: Messages = {
   },
   shareDialog: {
     title: 'Partager la playlist',
+    pickerTitle: 'Choisir un compte',
+    add: 'Ajouter',
+    noAccounts: "Il n'y a pas d'autre compte avec qui partager.",
     description:
       'Toutes les personnes avec qui vous partagez peuvent trouver la playlist et écouter ses pistes. Le droit de modification les autorise aussi à changer son contenu.',
     done: 'Terminé',
     loading: 'Chargement des comptes.',
     readFailed: 'Impossible de charger les comptes.',
     empty: "Il n'y a encore personne avec qui partager.",
+    private: "Personne d'autre ne peut voir cette playlist. Elle est privée.",
+    revoke: 'Retirer',
+    revokeAsk: "Retirer l'accès à cette playlist ?",
+    remove: "Retirer l'accès",
     listen: 'Peut écouter',
     edit: 'Peut modifier',
     grantFailed: 'Le partage de la playlist avec {name} a échoué.',
@@ -240,6 +291,13 @@ export const fr: Messages = {
       "Collez le lien d'une vidéo YouTube, par exemple https://youtube.com/watch?v=...",
     add: 'Ajouter',
     adding: 'Ajout en cours',
+    playlistsLabel: 'Playlists',
+    firstPage:
+      'Seules les {count} premières playlists de la bibliothèque sont listées.',
+    outcomeAdded: 'Ajoutée',
+    outcomePresent: 'Déjà présente',
+    outcomeRefused: 'Refusée',
+    failed: "La piste n'a pas pu être ajoutée.",
     refusedSome: 'Ajoutée aux autres. Non ajoutée à :',
     refusedAll: "Rien n'a été ajouté. Non ajoutée à :"
   },
@@ -262,6 +320,17 @@ export const fr: Messages = {
     next: 'Piste suivante',
     play: 'Lire',
     pause: 'Mettre en pause',
+    playNamed: 'Lire {title}',
+    pauseNamed: 'Mettre en pause {title}',
+    previousNamed: 'Piste précédente, {title}',
+    nextNamed: 'Piste suivante, {title}',
+    openPlaylist: 'Ouvrir {name}, {position}',
+    seekForward: 'Avancer de dix secondes',
+    seekBackward: 'Reculer de dix secondes',
+    failed: 'La lecture a échoué : {title}',
+    failedDetail: 'Relancez la lecture ou choisissez une autre piste.',
+    notificationRefused:
+      'Autorisez les notifications pour pouvoir contrôler la lecture depuis le volet.',
     position: 'Position dans la piste',
     positionValue: '{elapsed} sur {duration}',
     shortcutShift: 'Shift',
@@ -313,6 +382,7 @@ export const fr: Messages = {
     pin: 'Épingler',
     unpin: 'Désépingler',
     syncNow: 'Synchroniser',
+    sync: 'Synchroniser',
     delete: 'Supprimer',
     play: 'Lire cette playlist',
     playNamed: 'Lire {name}',
@@ -351,7 +421,12 @@ export const fr: Messages = {
     invalidRequest:
       "Collez le lien d'une playlist YouTube, par exemple https://youtube.com/playlist?list=...",
     unprocessableRequest: "L'URL n'est pas une URL de vidéo YouTube.",
-    validationFailed: 'La requête contient une valeur invalide.'
+    validationFailed: 'La requête contient une valeur invalide.',
+    invalidGrant: "Le lien de connexion n'est plus valide. Recommencez.",
+    provisioningUnavailable:
+      "La connexion n'est pas configurée sur cette instance.",
+    provisioningFailed: "L'instance n'a pas pu délivrer de jeton. Réessayez.",
+    rateLimited: 'Trop de tentatives. Attendez une minute et réessayez.'
   },
   relative: {
     justNow: "à l'instant",
@@ -392,12 +467,21 @@ export const fr: Messages = {
     blocked: 'Source inaccessible'
   },
   trackState: {
+    retained: 'Conservée',
+    retainedChip: {
+      one: 'Conservée',
+      other: 'Conservées'
+    },
     removedFrom: 'Retirée de {provider}',
     stored: 'Stockée',
     pending: 'En attente',
     downloading: 'Téléchargement',
     failed: 'Échec',
-    unavailable: 'Indisponible'
+    unavailable: 'Jamais stockée',
+    unavailableChip: {
+      one: 'Jamais stockée',
+      other: 'Jamais stockées'
+    }
   },
   provider: {
     youtube: 'YouTube'
@@ -432,7 +516,15 @@ export const fr: Messages = {
     lastSync: 'Dernière synchronisation : {time}',
     noChanges: 'Aucun changement',
     downloading: '{count} en téléchargement.',
-    syncing: 'Synchronisation'
+    retained: {
+      one: '1 piste retirée de {provider} est toujours stockée',
+      other: '{count} pistes retirées de {provider} sont toujours stockées'
+    },
+    syncing: 'Synchronisation',
+    cancel: 'Annuler la synchronisation',
+    cancelling: 'Annulation...',
+    cancelled: 'Synchronisation annulée',
+    cancelFailed: "Impossible d'annuler la synchronisation"
   },
   syncError: {
     reach:

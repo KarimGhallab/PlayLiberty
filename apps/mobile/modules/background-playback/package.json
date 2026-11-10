@@ -1,0 +1,10 @@
+{
+  "name": "background-playback",
+  "version": "1.0.0",
+  "description": "The app-owned Android media playback service.",
+  "private": true,
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "expo": "*"
+  }
+}

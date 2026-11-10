@@ -37,6 +37,10 @@
     --chip-tone: var(--accent);
   }
 
+  &[data-tone='retained'] {
+    --chip-tone: var(--tone-retained);
+  }
+
   &[data-tone='stored'] {
     --chip-tone: var(--tone-stored);
   }

@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ProblemCode,
+  REMOTE_REMOVED,
   SortPlaylistInputSchema,
   SyncRunStatus,
   TrackFileStatus,
@@ -264,6 +265,57 @@ describe('PlaylistDetailPage', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('names the tracks whose source removed them and that are still stored', async () => {
+    const kept = [
+      trackJson('track-1', 'Sao Paulo', 0),
+      trackJson('track-2', 'Blue In Green', 1)
+    ];
+
+    server.use(
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-1',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Completed,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-10-08T11:00:00.000Z',
+            finishedAt: '2026-10-08T11:05:00.000Z',
+            error: null
+          })
+      ),
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: kept.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            items: kept,
+            total: kept.length,
+            limit: 100,
+            offset: 0,
+            counts: countsOf(kept),
+            remoteRemoved: 2
+          })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistQueue, { playlistId: PLAYLIST_ID }),
+        () => HttpResponse.json({ items: kept })
+      )
+    );
+
+    renderDetail();
+
+    expect(
+      await screen.findByText('2 tracks removed from YouTube are still stored')
+    ).toBeInTheDocument();
+  });
+
   it('holds the list with the skeleton while unshuffling a long queue', async () => {
     const many = Array.from({ length: 60 }, (_, index) =>
       trackJson(`track-${index}`, `Track ${index}`, index)
@@ -289,7 +341,8 @@ describe('PlaylistDetailPage', () => {
             total: many.length,
             limit: 100,
             offset: 0,
-            counts: countsOf(many)
+            counts: countsOf(many),
+            remoteRemoved: 0
           })
       ),
       http.get(
@@ -411,7 +464,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 1,
             offset,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           });
         }
       )
@@ -442,8 +496,7 @@ describe('PlaylistDetailPage', () => {
 
   /*
    * The first landing is not the last: a playhead that steps past the loaded
-   * pages still needs them, or the skeleton stands in front of a list that
-   * never arrives.
+   * pages still needs them, or the skeleton stands forever.
    */
   it('loads the pages in when the playhead advances past the loaded rows', async () => {
     const all = [
@@ -464,7 +517,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 1,
             offset,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           });
         }
       )
@@ -618,7 +672,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 2,
             offset,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           });
         }
       )
@@ -662,7 +717,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 1,
             offset: 0,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           })
       ),
       http.get(
@@ -702,7 +758,8 @@ describe('PlaylistDetailPage', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            counts: { ...EMPTY_COUNTS, pending: 1 }
+            counts: { ...EMPTY_COUNTS, pending: 1 },
+            remoteRemoved: 0
           })
       ),
       http.get(
@@ -862,7 +919,8 @@ describe('PlaylistDetailPage', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            counts: { ...EMPTY_COUNTS, failed: 1 }
+            counts: { ...EMPTY_COUNTS, failed: 1 },
+            remoteRemoved: 0
           })
       ),
       http.post(
@@ -1201,7 +1259,7 @@ describe('PlaylistDetailPage', () => {
         container
           .querySelector('[data-arrangement="card"] img')
           ?.getAttribute('src')
-      ).toBe('/api/v1/tracks/track-9/thumbnail')
+      ).toBe('/api/v1/tracks/track-9/thumbnail?v=track-9')
     );
   });
 
@@ -1549,7 +1607,8 @@ describe('PlaylistDetailPage', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            counts: { ...EMPTY_COUNTS, stored: 1 }
+            counts: { ...EMPTY_COUNTS, stored: 1 },
+            remoteRemoved: 0
           });
         }
       )
@@ -1632,7 +1691,8 @@ describe('PlaylistDetailPage', () => {
             total: all.length,
             limit: 50,
             offset: 0,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           })
       )
     );
@@ -1680,7 +1740,7 @@ describe('PlaylistDetailPage', () => {
       )
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/All 3 tracks are still here and will never be deleted/)
+      screen.getByText(/All 2 tracks are still here and will never be deleted/)
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sync' })).toBeInTheDocument();
     expect(screen.queryByText('kept')).not.toBeInTheDocument();
@@ -1794,6 +1854,212 @@ describe('PlaylistDetailPage', () => {
     });
   });
 
+  it('offers Cancel only on the running run and disables the other sync affordances', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), syncStatus: 'syncing' })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-running',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Running,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T12:00:00.000Z',
+            finishedAt: null,
+            error: null
+          })
+      )
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Syncing the playlist...' })
+    ).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'More actions for Rain On The Window'
+      })
+    );
+    expect(
+      await screen.findByRole('menuitem', { name: 'Sync now' })
+    ).toBeDisabled();
+  });
+
+  it('reads Cancelling then shows the cancelled stamp and an idle playlist', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    let cancelled = false;
+    const runningRun = {
+      id: 'run-running',
+      playlistId: PLAYLIST_ID,
+      status: SyncRunStatus.Running,
+      addedCount: 0,
+      retainedCount: 0,
+      removedCount: 0,
+      failedCount: 0,
+      startedAt: '2026-09-29T12:00:00.000Z',
+      finishedAt: null,
+      error: null
+    };
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({
+          ...playlistJson(true),
+          syncStatus: cancelled ? 'idle' : 'syncing'
+        })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json(
+            cancelled
+              ? {
+                  ...runningRun,
+                  status: SyncRunStatus.Cancelled,
+                  finishedAt: '2026-09-29T12:00:30.000Z'
+                }
+              : runningRun
+          )
+      ),
+      http.delete(
+        mockUrl(endpoints.cancelSyncPlaylist, { playlistId: PLAYLIST_ID }),
+        async () => {
+          await gate;
+          cancelled = true;
+
+          return new HttpResponse(null, { status: 204 });
+        }
+      )
+    );
+    renderDetail();
+
+    const cancel = await screen.findByRole('button', {
+      name: 'Cancel sync, Rain On The Window'
+    });
+    fireEvent.click(cancel);
+
+    await waitFor(() => {
+      expect(cancel).toHaveAccessibleName('Cancelling..., Rain On The Window');
+    });
+    expect(cancel).toBeDisabled();
+    expect(screen.getByText('Syncing', { selector: 'p' })).toBeInTheDocument();
+
+    release();
+
+    expect(await screen.findByText('Sync cancelled')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Cancel sync/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Could not cancel the sync')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Sync the playlist' })
+    ).toBeEnabled();
+  });
+
+  it('keeps the run syncing and shows the notice when the cancel fails', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), syncStatus: 'syncing' })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-running',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Running,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T12:00:00.000Z',
+            finishedAt: null,
+            error: null
+          })
+      ),
+      http.delete(
+        mockUrl(endpoints.cancelSyncPlaylist, { playlistId: PLAYLIST_ID }),
+        () =>
+          problemResponse({
+            code: ProblemCode.InternalError,
+            status: 500,
+            title: 'Internal Server Error',
+            detail: 'The cancel did not reach the server.'
+          })
+      )
+    );
+    renderDetail();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    );
+
+    expect(
+      await screen.findByText('Could not cancel the sync')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('The cancel did not reach the server.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    ).toBeEnabled();
+    expect(screen.getByText('Syncing', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('offers no Cancel to a read collaborator while the run is running', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({
+          ...playlistJson(true),
+          syncStatus: 'syncing',
+          access: 'read'
+        })
+      ),
+      http.get(
+        mockUrl(endpoints.latestSyncRun, { playlistId: PLAYLIST_ID }),
+        () =>
+          HttpResponse.json({
+            id: 'run-running',
+            playlistId: PLAYLIST_ID,
+            status: SyncRunStatus.Running,
+            addedCount: 0,
+            retainedCount: 0,
+            removedCount: 0,
+            failedCount: 0,
+            startedAt: '2026-09-29T12:00:00.000Z',
+            finishedAt: null,
+            error: null
+          })
+      )
+    );
+    renderDetail();
+
+    await screen.findByRole('heading', { name: 'Rain On The Window' });
+    expect(
+      screen.queryByRole('button', { name: /Cancel sync/ })
+    ).not.toBeInTheDocument();
+  });
+
   it('draws the add control for the owner and opens the dialog', async () => {
     renderDetail();
 
@@ -1859,6 +2125,7 @@ describe('PlaylistDetailPage', () => {
               hasShares: false,
               pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 3 },
+              remoteRemoved: 0,
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             },
@@ -1879,6 +2146,7 @@ describe('PlaylistDetailPage', () => {
               hasShares: false,
               pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 3 },
+              remoteRemoved: 0,
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             }
@@ -1990,7 +2258,8 @@ describe('PlaylistDetailPage sort control', () => {
             total: items.length,
             limit: 50,
             offset: 0,
-            counts: countsOf(items)
+            counts: countsOf(items),
+            remoteRemoved: 0
           });
         }
       )
@@ -2016,9 +2285,8 @@ describe('PlaylistDetailPage sort control', () => {
 });
 
 /*
- * A chip narrows the list and the rail; the identity card keeps stating the
- * playlist's own size, so no filter can make the playlist read as smaller. The
- * chips step aside under the shuffled queue.
+ * A chip narrows list and rail; the identity card still states the playlist's
+ * own size. The chips step aside under the shuffled queue.
  */
 describe('PlaylistDetailPage filter chips', () => {
   function headerCard(container: HTMLElement): HTMLElement {
@@ -2109,6 +2377,102 @@ describe('PlaylistDetailPage filter chips', () => {
     expect(screen.queryByText('No failed tracks')).not.toBeInTheDocument();
   });
 
+  it('draws the retained view last, filters to it, and All restores', async () => {
+    const retained = trackJson('retained-1', 'Kept One', 0);
+    retained.track.sourceStatus = 'removed';
+    const fresh = trackJson('fresh-1', 'Fresh One', 1);
+    const all = [retained, fresh];
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        ({ request }) => {
+          const state = new URL(request.url).searchParams.get('state');
+          const items = state === REMOTE_REMOVED ? [retained] : all;
+
+          return HttpResponse.json({
+            items,
+            total: items.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all),
+            remoteRemoved: 1
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Kept One' });
+
+    const rail = screen.getByRole('group', { name: 'Filter by' });
+    const chips = within(rail).getAllByRole('button');
+
+    expect(chips.at(-1)).toHaveAttribute('aria-label', 'Retained 1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retained 1' }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Fresh One')).not.toBeInTheDocument()
+    );
+    expect(screen.getByText('Kept One')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All 2' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'All 2' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Fresh One')).toBeInTheDocument()
+    );
+  });
+
+  it('names the empty retained view with the provider, and Show all restores', async () => {
+    const retained = trackJson('retained-1', 'Kept One', 0);
+    retained.track.sourceStatus = 'removed';
+    const all = [retained];
+
+    server.use(
+      http.get(mockUrl(endpoints.playlist, { playlistId: PLAYLIST_ID }), () =>
+        HttpResponse.json({ ...playlistJson(true), trackCount: all.length })
+      ),
+      http.get(
+        mockUrl(endpoints.playlistTracks, { playlistId: PLAYLIST_ID }),
+        ({ request }) => {
+          const state = new URL(request.url).searchParams.get('state');
+          const items = state === REMOTE_REMOVED ? [] : all;
+
+          return HttpResponse.json({
+            items,
+            total: items.length,
+            limit: 50,
+            offset: 0,
+            counts: countsOf(all),
+            remoteRemoved: 1
+          });
+        }
+      )
+    );
+    renderDetail();
+
+    await screen.findByRole('button', { name: 'Play Kept One' });
+    fireEvent.click(screen.getByRole('button', { name: 'Retained 1' }));
+
+    expect(
+      await screen.findByText('No track was retained after a YouTube removal')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Kept One')).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByText('No track was retained after a YouTube removal')
+    ).not.toBeInTheDocument();
+  });
+
   it('retries every failed track from one counted control on the failed view', async () => {
     const all = [
       trackJson('failed-1', 'Failed One', 0, TrackFileStatus.Failed),
@@ -2133,7 +2497,8 @@ describe('PlaylistDetailPage filter chips', () => {
             total: all.length,
             limit: 50,
             offset: 0,
-            counts: countsOf(all)
+            counts: countsOf(all),
+            remoteRemoved: 0
           })
       ),
       http.post(mockUrl(endpoints.retryTrack), async ({ request }) => {

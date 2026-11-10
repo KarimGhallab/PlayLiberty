@@ -27,7 +27,7 @@ import { chooseActive, resolveActive } from '../status.js';
 import { UnknownConfigError } from '../switch/switch.js';
 import { SwitchInterruptedError } from '../switch/switch.js';
 import { NoInterfaceError } from '../wireguard/wireguard.js';
-import { startAgent } from './server.js';
+import { type AgentLog, startAgent } from './server.js';
 
 const status: EgressAgentStatus = {
   pool: [
@@ -74,6 +74,11 @@ const DOWNLOAD: DownloadOptions = {
   socketTimeout: 30
 };
 
+const silentLog: AgentLog = {
+  info: () => undefined,
+  warn: () => undefined
+};
+
 type FetchFn = (
   request: AgentFetchRequest & { tempDir: string }
 ) => Promise<{ filePath: string }>;
@@ -110,6 +115,7 @@ async function agent(
     apply?: (name: string, drainTimeoutMs: number) => Promise<void>;
     list?: (url: string) => Promise<YoutubeSource>;
     fetch?: FetchFn;
+    log?: AgentLog;
   } = {}
 ): Promise<string> {
   directory = await mkdtemp(join(tmpdir(), 'playliberty-egress-agent-'));
@@ -127,7 +133,8 @@ async function agent(
         current = { ...current, active: name };
       }),
     list: overrides.list ?? (async () => source),
-    fetch: overrides.fetch ?? writeFakeTrack
+    fetch: overrides.fetch ?? writeFakeTrack,
+    log: overrides.log ?? silentLog
   });
   close = handle.close;
   return socketPath;
@@ -138,6 +145,36 @@ describe('the egress agent', () => {
     const socketPath = await agent();
 
     expect(await new EgressAgentClient(socketPath).status()).toEqual(status);
+  });
+
+  it('logs every request and its response', async () => {
+    const log = { info: vi.fn(), warn: vi.fn() };
+    const socketPath = await agent(process.getuid?.() ?? 1000, { log });
+
+    await new EgressAgentClient(socketPath).status();
+
+    expect(log.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'agent_request',
+        method: 'GET',
+        path: '/status'
+      }),
+      'agent request'
+    );
+
+    await vi.waitFor(() => {
+      expect(log.info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'agent_response',
+          method: 'GET',
+          path: '/status',
+          status: 200
+        }),
+        'agent response'
+      );
+    });
+
+    expect(log.warn).not.toHaveBeenCalled();
   });
 
   it('answers a switch over the socket', async () => {
@@ -393,7 +430,8 @@ describe('the egress agent', () => {
       check: async () => check,
       apply: async () => undefined,
       list: async () => source,
-      fetch: writeFakeTrack
+      fetch: writeFakeTrack,
+      log: silentLog
     });
     close = handle.close;
 

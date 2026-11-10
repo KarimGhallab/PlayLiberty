@@ -1,14 +1,13 @@
 import { Link } from '@tanstack/react-router';
 
 import styles from './PlaylistHeader.module.scss';
-import { playlistDoor } from './playlistDoor';
+import { playlistDoor } from './playlistDoor/playlistDoor';
 import type { PlaylistHeaderSeam } from './usePlaylistHeader';
 import { usePlaylistHeader } from './usePlaylistHeader';
 
 /*
- * The row arrangement: the cover beside the identity block, the actions in a
- * column at the end. `onOpen` is offered only where the row opens something
- * other than itself. The cover link is hidden from AT so the name announces.
+ * Row arrangement: cover beside the identity, actions in a column at the end.
+ * `onOpen` only where the row opens elsewhere; the cover link is hidden from AT.
  */
 
 export interface PlaylistRowHeaderProps extends PlaylistHeaderSeam {

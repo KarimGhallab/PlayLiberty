@@ -120,4 +120,81 @@ describe('loadConfig', () => {
 
     expect(config.host).toBe('0.0.0.0');
   });
+
+  it('reads the Pangolin client and the mobile callbacks', () => {
+    const config = loadConfig({
+      NODE_ENV: 'test',
+      ...required,
+      PANGOLIN_API_URL: 'https://api.example.com/v1',
+      PANGOLIN_RESOURCE_ID: '12',
+      PANGOLIN_INTEGRATION_API_KEY: 'the-key',
+      MOBILE_REDIRECT_URIS:
+        'dev.playliberty.app://provision, https://example.com/auth/callback'
+    });
+
+    expect(config.pangolin).toEqual({
+      apiUrl: 'https://api.example.com/v1',
+      resourceId: 12,
+      apiKey: 'the-key'
+    });
+    expect(config.mobileRedirectUris).toEqual([
+      'dev.playliberty.app://provision',
+      'https://example.com/auth/callback'
+    ]);
+  });
+
+  it('reads the credential lifetimes and their defaults', () => {
+    const defaults = loadConfig({ NODE_ENV: 'test', ...required });
+    const overridden = loadConfig({
+      NODE_ENV: 'test',
+      ...required,
+      MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: '3600',
+      MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS: '86400',
+      MOBILE_FAMILY_LIFETIME_SECONDS: '172800'
+    });
+
+    expect(defaults.mobileAccessTokenLifetimeSeconds).toBe(12 * 60 * 60);
+    expect(defaults.mobileRefreshTokenLifetimeSeconds).toBe(180 * 24 * 60 * 60);
+    expect(defaults.mobileFamilyLifetimeSeconds).toBe(365 * 24 * 60 * 60);
+    expect(overridden.mobileAccessTokenLifetimeSeconds).toBe(3600);
+    expect(overridden.mobileRefreshTokenLifetimeSeconds).toBe(86400);
+    expect(overridden.mobileFamilyLifetimeSeconds).toBe(172800);
+  });
+
+  it('refuses a credential that outlives its family', () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'test',
+        ...required,
+        MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: '7200',
+        MOBILE_FAMILY_LIFETIME_SECONDS: '3600'
+      })
+    ).toThrow(/MOBILE_FAMILY_LIFETIME_SECONDS/);
+
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'test',
+        ...required,
+        MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS: '7200',
+        MOBILE_FAMILY_LIFETIME_SECONDS: '3600'
+      })
+    ).toThrow(/MOBILE_FAMILY_LIFETIME_SECONDS/);
+  });
+
+  it('leaves provisioning unavailable when the Pangolin values are absent', () => {
+    const config = loadConfig({ NODE_ENV: 'test', ...required });
+
+    expect(config.pangolin).toBeNull();
+    expect(config.mobileRedirectUris).toEqual([]);
+  });
+
+  it('refuses a partial Pangolin configuration', () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'test',
+        ...required,
+        PANGOLIN_API_URL: 'https://api.example.com/v1'
+      })
+    ).toThrow(/PANGOLIN_API_URL/);
+  });
 });

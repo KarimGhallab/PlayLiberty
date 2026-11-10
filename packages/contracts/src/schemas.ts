@@ -9,6 +9,7 @@ import {
   PlaylistSort,
   PlaylistSyncStatus,
   Provider,
+  REMOTE_REMOVED,
   ShareLevel,
   SyncRunStatus,
   TrackFileStatus,
@@ -98,9 +99,11 @@ export const TrackFileStatusCountsSchema = z.object({
 });
 
 /* The playlist read plus file-status counts over the whole playlist, never the
- * page's rows; their sum is `trackCount`. */
+ * page's rows; their sum is `trackCount`. `remoteRemoved` is the retained
+ * overlay on `stored`, so it is counted beside the buckets. */
 export const PlaylistWithCountsSchema = PlaylistSchema.extend({
-  counts: TrackFileStatusCountsSchema
+  counts: TrackFileStatusCountsSchema,
+  remoteRemoved: nonNegative
 });
 
 export const PlaylistPageSchema = createPageSchema(PlaylistWithCountsSchema);
@@ -112,7 +115,8 @@ export const PlaylistTracksPageSchema = z.object({
   total: z.number().int().nonnegative(),
   limit: z.number().int().positive(),
   offset: z.number().int().nonnegative(),
-  counts: TrackFileStatusCountsSchema
+  counts: TrackFileStatusCountsSchema,
+  remoteRemoved: nonNegative
 });
 
 export const ShareSchema = z.object({
@@ -234,8 +238,60 @@ export const PageQuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().default(0)
 });
 
+/* The app's provisioning entry: a PKCE challenge and the callback it will
+ * accept a code on. `state` is opaque and echoed back. */
+export const ProvisionQuerySchema = z.object({
+  code_challenge: z.string().min(43).max(128),
+  code_challenge_method: z.literal('S256'),
+  redirect_uri: z.url(),
+  state: z.string().min(16).max(128)
+});
+
+/* The credential-less exchange: the code, its verifier, and the same callback
+ * the code was minted for. */
+export const ExchangeInputSchema = z.object({
+  code: z.string().min(1),
+  code_verifier: z.string().min(43).max(128),
+  redirect_uri: z.url()
+});
+
+/* The lifetime of one credential: the absolute expiry is the record, and the
+ * relative value is the only safe scheduling input on a wrong device clock. */
+export const CredentialLifetimeSchema = z.object({
+  expires_at: isoDateTime,
+  expires_in: z.number().int().positive()
+});
+
+/* The refresh request: the token alone, never in a URL. */
+export const RefreshInputSchema = z.object({
+  refresh_token: z.string().min(1)
+});
+
+/* Sign-out names the family by its current refresh token; the edge has already
+ * authenticated the access token in the headers. */
+export const SessionRevokeInputSchema = z.object({
+  refresh_token: z.string().min(1)
+});
+
+/* The access token is the id and secret Pangolin expects in its two headers;
+ * the refresh token is the opaque value only the app and the server hold. */
+export const MobileTokenSchema = z.object({
+  access: CredentialLifetimeSchema.extend({
+    id: identifier,
+    secret: z.string().min(1)
+  }),
+  refresh: CredentialLifetimeSchema.extend({
+    token: z.string().min(1)
+  })
+});
+
+export const TrackFilterStateSchema = z.union([
+  z.enum(TrackFileStatus),
+  z.literal(REMOTE_REMOVED)
+]);
+
 export const PlaylistTracksQuerySchema = PageQuerySchema.extend({
-  state: z.enum(TrackFileStatus).optional()
+  state: TrackFilterStateSchema.optional()
 });
 
 export function createPageSchema<TItem extends z.ZodType>(

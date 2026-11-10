@@ -13,7 +13,7 @@ The queue plays through a track boundary with the screen off, as it does in the 
 
 ## Evidence
 
-Measured 2026-10-28 on Android with Brave (`targetSdkVersion: 37`, `sdk=37`), using the player trace from [`docs/runbooks/player-trace.md`](../../runbooks/player-trace.md) and `adb logcat`.
+Measured 2026-10-28 on Android with Brave (`targetSdkVersion: 37`, `sdk=37`), using `adb logcat`.
 
 `adb logcat` at the boundary:
 

@@ -9,4 +9,4 @@ The add-track primary is disabled until both a non-empty video link and at least
 
 A scrim click or Escape on a dialog with a typed link now asks before closing. The same dialog swaps its actions for `Keep editing` and `Discard`, with an alert sentence naming the loss; `Keep editing` returns to the form with the paste intact, and `Discard` calls the existing close seam. The Cancel button remains an explicit close.
 
-Verification: `pnpm run build` and `pnpm run lint` pass; the unit suites pass (tokens 2, i18n 39, youtube 31, ui-foundation 6, server 386, web 541). The new tests cover the add-track primary needing both a link and a playlist, the disabled empty playlist field, and the dirty scrim confirmation in both dialogs; the library integration holds the empty primary disabled too.
+The new tests cover the add-track primary needing both a link and a playlist, the disabled empty playlist field, and the dirty scrim confirmation in both dialogs; the library integration holds the empty primary disabled too.

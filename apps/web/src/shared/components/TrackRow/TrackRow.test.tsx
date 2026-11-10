@@ -47,6 +47,7 @@ function renderRow(options: {
   readonly onRemove?: ((trackId: string) => void) | null;
   readonly onCopyLink?: (trackId: string) => void;
   readonly busy?: boolean;
+  readonly skipNonMusic?: boolean;
   readonly starting?: boolean;
   readonly pending?: boolean;
 }): {
@@ -75,6 +76,7 @@ function renderRow(options: {
           onRemove={resolvedRemove}
           onCopyLink={options.onCopyLink ?? onCopyLink}
           busy={options.busy ?? false}
+          skipNonMusic={options.skipNonMusic ?? true}
           starting={options.starting ?? false}
           pending={options.pending ?? false}
         />
@@ -274,6 +276,24 @@ describe('TrackRow', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers no fetch whole when the skip setting is off', () => {
+    renderRow({
+      association: association({ fileStatus: TrackFileStatus.Failed }),
+      onRetry: vi.fn(),
+      onFetchWhole: vi.fn(),
+      skipNonMusic: false
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Blue In Green' })
+    );
+
+    expect(
+      screen.queryByRole('menuitem', { name: 'Fetch whole' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Retry' })).toBeInTheDocument();
+  });
+
   it('offers only the remove on a failed track the caller cannot retry', () => {
     renderRow({
       association: association({ fileStatus: TrackFileStatus.Failed })
@@ -382,15 +402,29 @@ describe('TrackRow', () => {
     expect(screen.queryByText(/yt-dlp/)).not.toBeInTheDocument();
   });
 
-  it('keeps a removed track playable and names the source it left', () => {
+  it('keeps a retained track playable and names the source it outlived', () => {
     const { onPlay } = renderRow({
       association: association({ sourceStatus: TrackSourceStatus.Removed })
     });
 
+    expect(screen.getByText('Retained')).toBeInTheDocument();
     expect(screen.getByText('Removed from YouTube')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Play Blue In Green' }));
     expect(onPlay).toHaveBeenCalledWith('track-1');
+  });
+
+  it('tells a track that was never stored apart from a retained one', () => {
+    renderRow({
+      association: association({
+        fileStatus: TrackFileStatus.Unavailable,
+        sourceStatus: TrackSourceStatus.Removed
+      })
+    });
+
+    expect(screen.getByText('Never stored')).toBeInTheDocument();
+    expect(screen.getByText('Removed from YouTube')).toBeInTheDocument();
+    expect(screen.queryByText('Retained')).not.toBeInTheDocument();
   });
 
   it('announces playing on the current track while the queue runs', () => {

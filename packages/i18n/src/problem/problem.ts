@@ -42,6 +42,18 @@ export function problemDetail(
   if (problem.code === ProblemCode.ValidationFailed) {
     return t('problem.validationFailed');
   }
+  if (problem.code === ProblemCode.InvalidGrant) {
+    return t('problem.invalidGrant');
+  }
+  if (problem.code === ProblemCode.ProvisioningUnavailable) {
+    return t('problem.provisioningUnavailable');
+  }
+  if (problem.code === ProblemCode.ProvisioningFailed) {
+    return t('problem.provisioningFailed');
+  }
+  if (problem.code === ProblemCode.RateLimited) {
+    return t('problem.rateLimited');
+  }
 
   return problem.detail ?? null;
 }

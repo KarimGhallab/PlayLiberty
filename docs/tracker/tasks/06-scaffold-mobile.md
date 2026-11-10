@@ -1,46 +1,29 @@
 # Scaffold the mobile client skeleton
 
-Status: open
-Labels: `enhancement`, `ready-for-agent`
+**Status:** resolved
+**Labels:** `enhancement`, `ready-for-agent`
 
-## Objective
+## Outcome
 
-Create the minimal compiling skeleton for `apps/mobile` as decided in [`The mobile stack`](../../ARCHITECTURE.md#the-mobile-stack). The goal is an app that builds, lints, tests, and installs on Android, not the product features. The provisioning flow is task `07`.
+`apps/mobile` exists and runs on an Android emulator: the Expo SDK 57 app of
+[`19-the-mobile-shell`](../specs/19-the-mobile-shell.md), with React Native 0.86.3, React 19.3.1 and the New
+Architecture.
 
-## Context
+- **Routes.** The library at the root, the playlist detail pushed, a bare track, the egress console, and a
+  not-found body. The signed-out state replaces the library's content and issues no read. The account sheet is a
+  modal owned by the shell, holding the language control and Sign out, and the egress door is the spec `31`
+  mount point. - **State.** TanStack Query owns server state, the Zustand player store holds the queue as track ids, and
+  `expo-audio` is wired through `useAudioPlaylist` with the background audio mode. The queue has no surface yet;
+  spec `23` builds it. - **Access.** `expo-secure-store` holds the token pair and the language choice. The API client sends
+  `P-Access-Token-Id` and `P-Access-Token` on every request, `X-PlayLiberty-Client` on mutations only, and maps
+  `401` to provisioning. A read without a token is refused before it leaves the app. - **Presentation.** `StyleSheet` over the shared token module through one helper layer, dark only, one column at
+  every width. `Screen` is the frame; every touch target meets 44 points; reduced motion is read from the system
+  and applied to the account sheet. - **Shared package.** `packages/i18n` gained the `LanguageStore` port and the `applyLanguage` seam, and the
+  mobile copy keys. - **Development build.** `expo-dev-client` is installed, so the app opens on the launcher and
+  `expo start --dev-client` does what the script says. The `start` script is gone: plain `expo start` targets
+  Expo Go, which cannot run this app.
 
-Read `docs/ARCHITECTURE.md`, `docs/PRODUCT.md`, and `docs/GLOSSARY.md` first.
+**Constraints:** React is pinned to the web's `19.3.1` through the workspace override. `msw` is not a dependency: its native interceptor cannot patch the test runtime's XHR polyfill. A transparent `assets/splash-icon.png` keeps `expo-splash-screen`'s `splashscreen_logo` reference valid. The emulator needs the mise-managed SDK (`android-sdk` via `vfox`), Java 21 from `mise.toml`, and a system image. `apps/mobile/.env.local` carries `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:5173` so the app reaches the Vite proxy, which injects the edge headers the server requires. Lock-screen metadata is spec `24`'s.
 
-## Scope
-
-- Expo SDK 57 app: React Native 0.86.3, React 19.2, New Architecture, TypeScript.
-- Expo Router with two placeholder routes: the library at the root and the playlist detail pushed
-  over it. Those are the two mobile screens and there is no third. The account screen and the settings
-  or auth screen this line used to name were removed in
-  [`13-settle-the-screen-inventory`](13-settle-the-screen-inventory.md): no preference field exists
-  anywhere in the contracts, and sign-in is a full-screen state of the library route rather than a
-  route, because a route only reachable from a state of another route is a route that exists to be a
-  state. Signed out, no other resource in the app is reachable, so the prompt replaces the content area
-  rather than sitting over it. There is no bottom tab bar and no drawer: the library is the root, the
-  detail is pushed, and the platform gesture is the way back.
-- TanStack Query provider, a Zustand player store, and `expo-audio` with the background config plugin: one player, the queue via `useAudioPlaylist`, lock-screen controls, and background playback mode. The queue is client state that never reaches the database, the order the user sets is re-applied over every refetch, and it has no surface yet: the queue is a sheet above the bar specified in the player bar record, so this ticket builds the state without implying a view.
-- React Native `StyleSheet` over the values in `@playliberty/tokens`, the same values the web app consumes, with `StyleSheet` helpers built once over them rather than per screen.
-- `expo-secure-store` plumbing, and an API client that consumes `packages/contracts`, attaches the `P-Access-Token-Id` and `P-Access-Token` headers, sends `X-PlayLiberty-Client` on mutations, and treats a `401` as "needs provisioning".
-- Accessibility from the start: labels and roles on touchables, `AccessibilityInfo.isReduceMotionEnabled`, Dynamic Type respected with capped multipliers only where layout breaks, and 44x44 point targets.
-- Jest with `jest-expo`, React Native Testing Library 14, and MSW (`msw/native`), with a couple of sample tests.
-- App config: the `dev.playliberty.app` scheme, and placeholder App Links and Universal Links entries.
-- Repo wiring: pnpm `overrides` pinning one React and one React Native version, `nodeLinker: isolated`, the `tsconfig.depcruise.json` path, root scripts, and the Jest pnpm `transformIgnorePatterns`.
-
-## Out of scope
-
-The provisioning flow (task `07`), real feature behavior, iOS build and verification, and offline playback.
-
-## Blocking edges
-
-Blocked by `10-build-design-foundation`, which produces the token values and the shared UI decisions this app renders with. It also consumes `packages/contracts` from task 01.
-
-## Verification
-
-- `pnpm run lint`, `pnpm run format`, `tsc --noEmit`, and `pnpm run test` pass.
-- `npx depcruise .`, `npx syncpack lint`, and `node ./scripts/validate-tsconfig-paths.cjs` pass.
-- A development build installs on an Android device and starts.
+See [the mobile shell spec](../specs/19-the-mobile-shell.md). The next ticket is
+[`07`](07-provision-mobile-access.md).

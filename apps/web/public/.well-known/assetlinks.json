@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.playliberty.app",
+      "sha256_cert_fingerprints": [
+        "28:2F:FA:A9:F6:42:2B:D3:8C:3B:47:4F:9E:45:E5:65:09:30:2B:9C:C4:79:1E:F7:90:0D:C6:45:0B:F9:4F:2D",
+        "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C"
+      ]
+    }
+  }
+]

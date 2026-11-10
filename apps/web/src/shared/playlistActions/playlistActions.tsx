@@ -10,32 +10,37 @@ import {
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 
-import type { Playlist } from '@playliberty/contracts';
-import type { MessageKey, Messages } from '@playliberty/i18n';
-import { useI18n } from '@playliberty/i18n';
-
-import { useUpdatePin } from '../api/clients/libraryClient/libraryClient';
 import {
   useDeletePlaylist,
   useRemovePlaylistCover,
   useRenamePlaylist,
   useSetPlaylistCover,
-  useSyncPlaylist
-} from '../api/clients/playlistClient/playlistClient';
+  useSyncPlaylist,
+  useUpdatePin
+} from '@playliberty/api-client';
+import type { Playlist } from '@playliberty/contracts';
+import { PlaylistSyncStatus } from '@playliberty/contracts';
+import type { MessageKey, Messages } from '@playliberty/i18n';
+import { useI18n } from '@playliberty/i18n';
+import {
+  type PlaylistActionKey,
+  deleteIntentFor,
+  playlistActionsFor
+} from '@playliberty/library';
+import type { PendingAction } from '@playliberty/library';
+
 import { problemSentence } from '../api/problem/problem';
 import CoverDialog from '../components/CoverDialog/CoverDialog';
 import RenamePlaylistDialog from '../components/RenamePlaylistDialog';
 import SharePlaylistDialog from '../components/SharePlaylistDialog/SharePlaylistDialog';
-import type { PendingAction } from '../components/useDeferredAction/types';
 
 /*
- * One module owns a surface's playlist actions: the mutations, the menu each
- * playlist is given, and the dialogs. A gallery reads it once rather than once
- * per item, so N items never multiply the observers or dialogs.
+ * One module owns a surface's mutations, each playlist's menu and the dialogs; a
+ * gallery reads it once, so N items never multiply the observers or dialogs.
  */
 
 export interface PlaylistAction {
-  readonly key: 'pin' | 'share' | 'rename' | 'cover' | 'sync' | 'delete';
+  readonly key: PlaylistActionKey;
   readonly label: MessageKey<Messages>;
   readonly Icon: typeof IconShare;
   readonly onSelect: () => void;
@@ -72,16 +77,6 @@ export interface PlaylistActions {
   readonly syncing: (playlistId: string) => boolean;
 }
 
-/*
- * Whether the account may write: it owns the playlist or holds a write share;
- * an unloaded one is not writable. Exported so the menu and detail agree.
- */
-export function canWritePlaylist(playlist: Playlist | undefined): boolean {
-  const access = playlist?.access ?? null;
-
-  return access === 'owner' || access === 'write';
-}
-
 export function usePlaylistActions(
   options: PlaylistActionsOptions
 ): PlaylistActions {
@@ -104,105 +99,84 @@ export function usePlaylistActions(
       return [];
     }
 
-    const access = playlist.access;
-    const menu: PlaylistAction[] = [];
-
     /*
-     * Visibility alone grants the pin, so every menu holds it, a reader's alone.
-     * Its key stays `pin` while its label toggles, so the control never moves.
+     * The shared list decides which actions exist; this module owns the glyph
+     * and the control each key draws.
      */
-    const pinItem = (): PlaylistAction | null => {
-      if (options.pin === undefined) {
-        return null;
+    return playlistActionsFor(playlist, {
+      includePin: options.pin !== undefined
+    }).map(action => {
+      switch (action.key) {
+        case 'pin':
+          return {
+            key: 'pin',
+            label: action.label,
+            Icon: playlist.pinned ? IconPinnedOff : IconPin,
+            disabled:
+              pin.isPending && pin.variables?.playlistId === playlist.id,
+            onSelect: () => {
+              if (options.pin === undefined) {
+                return;
+              }
+
+              pin.mutate(
+                { playlistId: playlist.id, pinned: !playlist.pinned },
+                { onError: options.pin.onRefused }
+              );
+            }
+          };
+        case 'share':
+          return {
+            key: 'share',
+            label: action.label,
+            Icon: IconShare,
+            onSelect: () => setShareTarget(playlist)
+          };
+        case 'rename':
+          return {
+            key: 'rename',
+            label: action.label,
+            Icon: IconPencil,
+            onSelect: () => setRenameTarget(playlist)
+          };
+        case 'cover':
+          return {
+            key: 'cover',
+            label: action.label,
+            Icon: IconPhoto,
+            disabled: cover.isPending || removeCover.isPending,
+            onSelect: () => {
+              cover.reset();
+              removeCover.reset();
+              setCoverTarget(playlist);
+              setCoverOpen(true);
+            }
+          };
+        case 'sync':
+          return {
+            key: 'sync',
+            label: action.label,
+            Icon: IconRotate,
+            onSelect: () => sync.mutate(playlist.id),
+            disabled:
+              (sync.isPending && sync.variables === playlist.id) ||
+              playlist.syncStatus === PlaylistSyncStatus.Syncing
+          };
+        case 'delete':
+          return {
+            key: 'delete',
+            label: action.label,
+            Icon: IconTrash,
+            destructive: true,
+            onSelect: () =>
+              options.defer({
+                ...deleteIntentFor(t, playlist, options.deleteMessage),
+                commit: () =>
+                  remove.mutate(playlist.id, { onSuccess: options.onDeleted })
+              })
+          };
       }
-
-      const refused = options.pin.onRefused;
-
-      return {
-        key: 'pin',
-        label: playlist.pinned ? 'header.unpin' : 'header.pin',
-        Icon: playlist.pinned ? IconPinnedOff : IconPin,
-        disabled: pin.isPending && pin.variables?.playlistId === playlist.id,
-        onSelect: () =>
-          pin.mutate(
-            { playlistId: playlist.id, pinned: !playlist.pinned },
-            { onError: refused }
-          )
-      };
-    };
-
-    const syncItem = (): PlaylistAction => ({
-      key: 'sync',
-      label: 'header.syncNow',
-      Icon: IconRotate,
-      onSelect: () => sync.mutate(playlist.id),
-      disabled: sync.isPending && sync.variables === playlist.id
     });
-
-    const coverItem = (): PlaylistAction => ({
-      key: 'cover',
-      label: 'header.cover',
-      Icon: IconPhoto,
-      disabled: cover.isPending || removeCover.isPending,
-      onSelect: () => {
-        cover.reset();
-        removeCover.reset();
-        setCoverTarget(playlist);
-        setCoverOpen(true);
-      }
-    });
-
-    if (access === 'owner') {
-      const pinEntry = pinItem();
-      if (pinEntry !== null) {
-        menu.push(pinEntry);
-      }
-
-      menu.push(
-        {
-          key: 'share',
-          label: 'header.share',
-          Icon: IconShare,
-          onSelect: () => setShareTarget(playlist)
-        },
-        {
-          key: 'rename',
-          label: 'header.rename',
-          Icon: IconPencil,
-          onSelect: () => setRenameTarget(playlist)
-        },
-        coverItem(),
-        syncItem(),
-        {
-          key: 'delete',
-          label: 'header.delete',
-          Icon: IconTrash,
-          destructive: true,
-          onSelect: () =>
-            options.defer({
-              id: playlist.id,
-              message: t(options.deleteMessage),
-              detail: playlist.name,
-              commit: () =>
-                remove.mutate(playlist.id, { onSuccess: options.onDeleted })
-            })
-        }
-      );
-    } else if (access === 'write') {
-      const pinEntry = pinItem();
-      if (pinEntry !== null) {
-        menu.push(pinEntry);
-      }
-
-      menu.push(coverItem(), syncItem());
-    } else if (access === 'read') {
-      const pinEntry = pinItem();
-      if (pinEntry !== null) {
-        menu.push(pinEntry);
-      }
-    }
-
-    return menu;
   };
 
   /*

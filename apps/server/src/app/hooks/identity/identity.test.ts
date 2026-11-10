@@ -55,6 +55,34 @@ describe('the identity hook', () => {
     expect(total?.value).toBe(1);
   });
 
+  it('refreshes an existing account on a later request', async () => {
+    context = await createTestContext();
+    const first = {
+      'remote-user': 'pangolin-user-1',
+      'remote-name': 'Ada'
+    };
+
+    await context.app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: first
+    });
+    const second = await context.app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: {
+        ...first,
+        'remote-name': 'Ada Lovelace',
+        'remote-email': 'ada@example.com'
+      }
+    });
+
+    expect(second.json()).toMatchObject({
+      displayName: 'Ada Lovelace',
+      email: 'ada@example.com'
+    });
+  });
+
   it('grants the admin role from the configured list', async () => {
     context = await createTestContext({
       ADMIN_PANGOLIN_USER_IDS: 'pangolin-user-1'
@@ -124,6 +152,55 @@ describe('the identity hook', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ displayName: 'Ada' });
   });
+
+  it.each(['GET', 'PUT'] as const)(
+    'refuses %s on the exchange path without identity',
+    async method => {
+      context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+      const response = await context.app.inject({
+        method,
+        url: '/auth/exchange',
+        headers: { 'x-playliberty-edge': 'the-edge-secret' }
+      });
+
+      expect(response.statusCode).toBe(401);
+    }
+  );
+
+  it('lets the refresh POST through without identity', async () => {
+    context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+    const response = await context.app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      headers: {
+        'content-type': 'application/json',
+        'x-playliberty-edge': 'the-edge-secret',
+        'x-playliberty-client': 'mobile'
+      },
+      payload: JSON.stringify({ refresh_token: 'unknown' })
+    });
+
+    /* No Integration API is configured, so the route's own 503 is the proof the
+     * hook let the request reach it. */
+    expect(response.statusCode).toBe(503);
+  });
+
+  it.each(['GET', 'PUT'] as const)(
+    'refuses %s on the refresh path without identity',
+    async method => {
+      context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });
+
+      const response = await context.app.inject({
+        method,
+        url: '/auth/refresh',
+        headers: { 'x-playliberty-edge': 'the-edge-secret' }
+      });
+
+      expect(response.statusCode).toBe(401);
+    }
+  );
 
   it('still exempts the health endpoints when an assertion is configured', async () => {
     context = await createTestContext({ EDGE_ASSERTION: 'the-edge-secret' });

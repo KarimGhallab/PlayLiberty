@@ -22,11 +22,19 @@ import { EventBus } from '../shared/events/eventBus/EventBus.js';
 import { sendProblem } from '../shared/problem.js';
 
 import { registerAccountRoutes } from '../features/accounts/routes/accountRoutes.js';
+import { PangolinClient } from '../features/auth/pangolin/PangolinClient.js';
+import { registerAuthRoutes } from '../features/auth/routes/authRoutes/authRoutes.js';
+import { registerSessionRoutes } from '../features/auth/routes/sessionRoutes/sessionRoutes.js';
+import { ProvisioningService } from '../features/auth/services/ProvisioningService.js';
+import {
+  REVOCATION_RETRY_INTERVAL_MS,
+  revokePending
+} from '../features/auth/services/revokePending.js';
 import { runStartupSweep } from '../features/downloads/startupSweep/startupSweep.js';
 import type { DownloadWorkerHandle } from '../features/downloads/worker/downloadWorker.js';
 import { startDownloadWorker } from '../features/downloads/worker/downloadWorker.js';
 import { registerEgressRoutes } from '../features/egress/routes/egressRoutes.js';
-import { EgressPolicyClient } from '../features/egress/service/egressPolicy.js';
+import { EgressPolicyClient } from '../features/egress/service/egressPolicy/egressPolicy.js';
 import { reconcileEgress } from '../features/egress/service/egressService.js';
 import {
   DEFAULT_EVENT_HEARTBEAT_MS,
@@ -35,14 +43,17 @@ import {
 import { registerCoverRoutes } from '../features/playlists/cover/routes/coverRoutes.js';
 import { registerPlaylistRoutes } from '../features/playlists/routes/playlistRoutes.js';
 import {
+  pruneExpiredCredentials,
   pruneOrphanCovers,
   pruneOrphanTracks
 } from '../features/prune/service/pruneService.js';
 import { registerShareRoutes } from '../features/shares/routes/shareRoutes.js';
 import { registerSyncRunRoutes } from '../features/sync/routes/syncRunRoutes.js';
+import { recoverInterruptedSyncs } from '../features/sync/services/recoveryService/recoveryService.js';
 import { registerTrackRoutes } from '../features/tracks/routes/trackRoutes.js';
 import type { JobHandle } from '../platform/jobs/cronJob.js';
 import { startCronJob } from '../platform/jobs/cronJob.js';
+import { startIntervalJob } from '../platform/jobs/intervalJob.js';
 import { registerHealthRoutes } from './health/healthRoutes/healthRoutes.js';
 import { registerCsrfHook } from './hooks/csrf/csrf.js';
 import { registerIdentityHook } from './hooks/identity/identity.js';
@@ -67,6 +78,12 @@ export interface AppOptions {
   sseHeartbeatMs?: number;
   /* The live bus: a real process gets one built here, a test passes its own. */
   events?: AppContext['events'];
+  /* The token issuer: a test passes a fake, a real process builds it from
+   * config. */
+  pangolin?: AppContext['pangolin'];
+  /* The credential clock; a test moves it to reach expiry, the rate limit's
+   * window and the lifetimes without waiting. */
+  now?: () => number;
   /* A test's logger, so it can read the audit lines the app writes. */
   loggerInstance?: FastifyServerOptions['loggerInstance'];
 }
@@ -152,7 +169,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     youtube,
     egressAgent,
     kickDownloads: options.kickDownloads ?? (() => undefined),
-    events: options.events ?? new EventBus<LiveEvent>()
+    events: options.events ?? new EventBus<LiveEvent>(),
+    pangolin:
+      options.pangolin ??
+      (options.config.pangolin === null
+        ? null
+        : new PangolinClient(options.config.pangolin)),
+    provisioning: new ProvisioningService(options.now),
+    now: options.now ?? Date.now
   };
 
   const loggerOptions =
@@ -162,6 +186,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   const app = Fastify({
     ...loggerOptions,
+    trustProxy: 'loopback',
     genReqId: request => {
       const header = request.headers['x-request-id'];
 
@@ -203,10 +228,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   registerHealthRoutes(app, context);
+  registerAuthRoutes(app, context);
 
   await app.register(
     async api => {
       registerAccountRoutes(api, context);
+      registerSessionRoutes(api, context);
       registerEgressRoutes(api, context);
       registerPlaylistRoutes(api, context);
       registerCoverRoutes(api, context);
@@ -221,7 +248,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
        * explicit harness flag, and the production build omits the module. */
       if (context.config.runtime === 'test' && context.config.e2eHarness) {
         // Not a literal, so the production build does not compile the module.
-        const modulePath: string = './testing/e2eRoutes.js';
+        const modulePath: string = './testing/routes/e2eRoutes.js';
         const harness = (await import(modulePath)) as E2eRoutesModule;
         harness.registerE2eRoutes(api, context);
       }
@@ -231,6 +258,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   let worker: DownloadWorkerHandle | null = null;
   let scheduler: JobHandle | null = null;
+  let revocationRetry: JobHandle | null = null;
 
   app.addHook('onReady', async () => {
     const reachable = await reconcileEgress(
@@ -245,6 +273,24 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
     const sweep = await runStartupSweep(context.mediaPaths, context.database);
     app.log.info({ ...sweep }, 'startup sweep finished');
+
+    const recovery = recoverInterruptedSyncs(context.database);
+    app.log.info({ ...recovery }, 'interrupted sync recovery finished');
+
+    void revokePending({
+      database: context.database,
+      pangolin: context.pangolin,
+      logger: app.log,
+      now: context.now
+    })
+      .then(result => {
+        if (result.retried > 0 || result.failed > 0) {
+          app.log.info({ ...result }, 'revocation retry finished');
+        }
+      })
+      .catch((error: unknown) => {
+        app.log.error({ err: error }, 'revocation retry failed');
+      });
 
     if (options.startBackgroundJobs === false) {
       return;
@@ -269,11 +315,39 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
         await pruneOrphanTracks(pruneOptions);
         await pruneOrphanCovers(pruneOptions);
+        pruneExpiredCredentials({
+          database: context.database,
+          logger: app.log,
+          now: context.now
+        });
+      }
+    });
+    revocationRetry = startIntervalJob({
+      intervalMs: REVOCATION_RETRY_INTERVAL_MS,
+      tick: () => {
+        void revokePending({
+          database: context.database,
+          pangolin: context.pangolin,
+          logger: app.log,
+          now: context.now
+        })
+          .then(result => {
+            if (result.failed > 0) {
+              app.log.warn(
+                { ...result },
+                'revocation retry left tokens pending'
+              );
+            }
+          })
+          .catch((error: unknown) => {
+            app.log.error({ err: error }, 'revocation retry failed');
+          });
       }
     });
   });
 
   app.addHook('onClose', async () => {
+    revocationRetry?.stop();
     scheduler?.stop();
     await worker?.stop();
   });

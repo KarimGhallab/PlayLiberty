@@ -10,31 +10,34 @@ import type {
   PlaylistTrack,
   PlaylistTracksPage,
   PlaylistWithCounts,
-  TrackFileStatusCounts
+  TrackFileStatusCounts,
+  TrackFilterState
 } from '@playliberty/contracts';
 import {
   PlaylistSort,
   PlaylistSyncStatus,
-  TrackFileStatus
+  REMOTE_REMOVED,
+  TrackFileStatus,
+  TrackSourceStatus
 } from '@playliberty/contracts';
 
-import type { Entry } from '../../shared/access/entry.js';
+import type { Entry } from '../../shared/access/entry/entry.js';
 import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
-} from '../../shared/access/entry.js';
+} from '../../shared/access/entry/entry.js';
 import {
   playlistAudience,
   playlistVisibleTo,
   resolvePlaylistAccessMany,
   sharedPlaylistIds
-} from '../../shared/access/playlistAccess.js';
+} from '../../shared/access/playlistAccess/playlistAccess.js';
 import type { AppContext } from '../../shared/context.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
-import { Refusal } from '../../shared/refusal.js';
 import type { PlaylistRefusal } from '../../shared/refusal.js';
+import { Refusal } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type {
@@ -134,15 +137,12 @@ function toReadPlaylistResult(
   return { outcome: PlaylistOutcome.Ok, playlist: entry.value };
 }
 
-/*
- * Fixed locale, so the order does not follow how the process started. 'base'
- * folds case and accents into one.
- */
+/* Fixed locale: the order must not follow how the process started. 'base'
+ * folds case and accents together. */
 const byName = new Intl.Collator('en', { sensitivity: 'base' });
 
-/* Pins lead, then a playlist whose first sync is still running, then the rest;
- * each group keeps name order. A starting playlist is named by its source id,
- * so without the middle group it would land wherever that id sorts. */
+/* Pins lead, then first-sync playlists, then the rest, name order within each.
+ * A starting playlist is named by its source id and would sort there. */
 function groupRank(
   pinnedAt: string | null,
   syncStatus: PlaylistSyncStatus
@@ -164,8 +164,7 @@ export function listPlaylistsForAccount(
   const visibleRows = database.db
     .select({ playlist: playlists, pinnedAt: playlistPins.pinnedAt })
     .from(playlists)
-    /* Left join, so an unpinned playlist carries a null instant and sorts after
-     * every pin. */
+    /* Left join: an unpinned playlist carries null and sorts after every pin. */
     .leftJoin(
       playlistPins,
       and(
@@ -209,6 +208,10 @@ export function listPlaylistsForAccount(
     database,
     playlistRows.map(row => row.id)
   );
+  const retainedByPlaylist = remoteRemovedCountsByPlaylist(
+    database,
+    playlistRows.map(row => row.id)
+  );
 
   return {
     /* A visible row the access resolver did not answer is left out rather than
@@ -229,7 +232,8 @@ export function listPlaylistsForAccount(
             pinnedAt !== null,
             covers.get(playlist.id) ?? null
           ),
-          counts: countsByPlaylist.get(playlist.id) ?? noCounts()
+          counts: countsByPlaylist.get(playlist.id) ?? noCounts(),
+          remoteRemoved: retainedByPlaylist.get(playlist.id) ?? 0
         }
       ];
     }),
@@ -268,10 +272,8 @@ function announcePlaylistChanged(
   return result;
 }
 
-/*
- * Owner alone: a write collaborator answers the same not-found a stranger does.
- * Only name and timestamp are updated; the rest are the source's facts.
- */
+/* Owner alone, so a write collaborator answers the same not-found a stranger
+ * does. Only name and timestamp change; the rest are the source's facts. */
 export function renamePlaylistForAccount(
   context: LiveEventContext,
   playlistId: string,
@@ -399,22 +401,18 @@ export function updatePinForAccount(
   );
 }
 
-/* The row is already gone, so a file that survives is unreferenced and the
- * weekly sweep reclaims it; a failed unlink must never fail the delete. */
+/* The row is already gone, so a file that survives is unreferenced; a failed
+ * unlink must never fail the delete. */
 function removeCoverFile(root: string, coverPath: string): void {
   try {
     rmSync(join(root, coverPath), { force: true });
   } catch {
-    // Left to the weekly cover sweep.
+    // The weekly cover sweep reclaims it.
   }
 }
 
-/*
- * The cascade bypasses the association service's write rule, safe because the
- * only count is this row's and it is going. The cover file goes with the row on
- * a best-effort basis; track media is left to the weekly prune. The audience is
- * read before the row goes, because it cannot be read after.
- */
+/* The cascade bypasses the write rule: this row's count is the only one. Cover
+ * goes with it, track media to the weekly prune, audience read before delete. */
 export function deletePlaylistForAccount(
   context: Pick<AppContext, 'database' | 'events' | 'mediaPaths'>,
   playlistId: string,
@@ -456,10 +454,8 @@ export function deletePlaylistForAccount(
     : entry.value;
 }
 
-/*
- * The same not-found answers every denial and every absence, revealing neither
- * the playlist nor the membership. Suppression shares the delete's transaction.
- */
+/* The same not-found answers every denial and every absence, revealing neither
+ * the playlist nor its membership. Suppression joins the delete transaction. */
 export function removeTrackForAccount(
   context: LiveEventContext,
   playlistId: string,
@@ -505,7 +501,7 @@ export function removeTrackForAccount(
 export interface ListPlaylistTracksQuery {
   limit: number;
   offset: number;
-  state?: TrackFileStatus;
+  state?: TrackFilterState;
 }
 
 export type ReadPlaylistTracksResult =
@@ -604,6 +600,51 @@ function fileStatusCounts(
   );
 }
 
+/* The one fact the five buckets cannot name: a stored track its source removed.
+ * An overlay on `stored`, so it is counted beside them. */
+function remoteRemovedCountsByPlaylist(
+  database: DatabaseHandle,
+  playlistIds: readonly string[]
+): Map<string, number> {
+  const counts = new Map(playlistIds.map(playlistId => [playlistId, 0]));
+
+  if (playlistIds.length === 0) {
+    return counts;
+  }
+
+  const rows = database.db
+    .select({
+      playlistId: associations.playlistId,
+      count: sql<number>`count(*)`
+    })
+    .from(associations)
+    .innerJoin(tracks, eq(associations.trackId, tracks.id))
+    .where(
+      and(
+        inArray(associations.playlistId, [...playlistIds]),
+        eq(tracks.fileStatus, TrackFileStatus.Stored),
+        eq(tracks.sourceStatus, TrackSourceStatus.Removed)
+      )
+    )
+    .groupBy(associations.playlistId)
+    .all();
+
+  for (const row of rows) {
+    counts.set(row.playlistId, row.count);
+  }
+
+  return counts;
+}
+
+function remoteRemovedCount(
+  database: DatabaseHandle,
+  playlistId: string
+): number {
+  return (
+    remoteRemovedCountsByPlaylist(database, [playlistId]).get(playlistId) ?? 0
+  );
+}
+
 export function listPlaylistTracksForAccount(
   database: DatabaseHandle,
   playlistId: string,
@@ -627,6 +668,7 @@ export function listPlaylistTracksForAccount(
       }
 
       const counts = fileStatusCounts(database, playlistId);
+      const retained = remoteRemovedCount(database, playlistId);
 
       // The state narrows the page and never the counts beside it.
       const rows = database.db
@@ -636,10 +678,16 @@ export function listPlaylistTracksForAccount(
         .where(
           query.state === undefined
             ? eq(associations.playlistId, playlistId)
-            : and(
-                eq(associations.playlistId, playlistId),
-                eq(tracks.fileStatus, query.state)
-              )
+            : query.state === REMOTE_REMOVED
+              ? and(
+                  eq(associations.playlistId, playlistId),
+                  eq(tracks.fileStatus, TrackFileStatus.Stored),
+                  eq(tracks.sourceStatus, TrackSourceStatus.Removed)
+                )
+              : and(
+                  eq(associations.playlistId, playlistId),
+                  eq(tracks.fileStatus, query.state)
+                )
         )
         .orderBy(...playlistTrackOrder(playlist.sort))
         .limit(query.limit)
@@ -648,13 +696,18 @@ export function listPlaylistTracksForAccount(
 
       return {
         items: rows.map(toPlaylistTrackView),
-        /* Unfiltered: the maintained count; filtered: the state's bucket.
-         * Either way the total is filtered, not the whole playlist. */
+        /* Unfiltered: the maintained count. Filtered: the state's bucket or the
+         * retained figure, never the whole playlist. */
         total:
-          query.state === undefined ? playlist.trackCount : counts[query.state],
+          query.state === undefined
+            ? playlist.trackCount
+            : query.state === REMOTE_REMOVED
+              ? retained
+              : counts[query.state],
         limit: query.limit,
         offset: query.offset,
-        counts
+        counts,
+        remoteRemoved: retained
       };
     }
   );

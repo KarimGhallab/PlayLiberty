@@ -3,7 +3,10 @@ import { eq } from 'drizzle-orm';
 import type { Track } from '@playliberty/contracts';
 import { TrackFileStatus } from '@playliberty/contracts';
 
-import { EntryOutcome, trackEntry } from '../../../shared/access/entry.js';
+import {
+  EntryOutcome,
+  trackEntry
+} from '../../../shared/access/entry/entry.js';
 import type { AppContext } from '../../../shared/context.js';
 import { ChangeKind, announce } from '../../../shared/events/liveEvents.js';
 import { Refusal } from '../../../shared/refusal.js';

@@ -12,7 +12,6 @@ gained the field, so the read shape compiles everywhere before the feature start
 other playlist field are unchanged; no screen or API behavior changed.
 
 Route tests assert `coverUpdatedAt` is null on the detail, the page and a rename answer. The migration test
-asserts both new columns. The full build, the unit suites (server 350, web 497) and lint pass; lint reports only
-the existing unused `CONTROL` warning in the phone journey.
+asserts both new columns.
 
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

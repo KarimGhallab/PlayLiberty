@@ -41,11 +41,14 @@ describe('runMigrations', () => {
     );
 
     expect(tables).toEqual([
+      'access_token',
       'account',
       'association',
       'egress_config',
       'playlist',
       'playlist_pin',
+      'refresh_family',
+      'refresh_token',
       'share',
       'suppression',
       'sync_run',

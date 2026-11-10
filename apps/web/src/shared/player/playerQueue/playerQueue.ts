@@ -1,13 +1,12 @@
 import type { Playlist, PlaylistTrack } from '@playliberty/contracts';
+import { isPlayable, randomItem } from '@playliberty/player';
 
-import { isPlayable } from '../playable';
-import { randomTrack, usePlayerStore } from '../playerStore/playerStore';
+import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../types';
 
 /*
- * The one place a playlist's tracks become a queue and are started, so three
- * controls agree on which tracks enter and which playlist they carry. Only
- * stored files enter; the name is carried because the queue persists.
+ * The one place tracks become a queue and are started, so three controls agree.
+ * Only stored files enter; the name is carried because the queue persists.
  */
 
 export function buildQueue(
@@ -36,7 +35,7 @@ export function startPlaylistQueue(
 ): boolean {
   const queue = buildQueue(tracks, playlist);
   const start =
-    startTrackId ?? (shuffle ? randomTrack(queue)?.id : queue[0]?.id);
+    startTrackId ?? (shuffle ? randomItem(queue)?.id : queue[0]?.id);
 
   if (start === undefined || !queue.some(track => track.id === start)) {
     return false;

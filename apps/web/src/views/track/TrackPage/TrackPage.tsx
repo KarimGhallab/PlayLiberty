@@ -1,18 +1,18 @@
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 
+import { useTrack } from '@playliberty/api-client';
 import { useI18n } from '@playliberty/i18n';
-
-import { useTrack } from '../../../shared/api/clients/trackClient/trackClient';
-import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
-import { isPlayable } from '../../../shared/player/playable';
-import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
-import type { TrackLinkNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+import type { TrackLinkNotice } from '@playliberty/i18n';
 import {
   cannotPlayNotice,
   leftPlaylistNotice,
   unknownTrackNotice
-} from '../../../shared/player/trackLinkNotice/trackLinkNotice';
+} from '@playliberty/i18n';
+import { isPlayable } from '@playliberty/player';
+
+import NoticeToast from '../../../shared/components/NoticeToast/NoticeToast';
+import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
 import { queuePlaylistId } from '../../../shared/player/types';
 import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePlayTransition';
 
@@ -118,8 +118,7 @@ export default function TrackPage() {
   }, [notice]);
 
   /* A queue started from the gallery makes the address the gallery's. The
-   * queue this page found on arrival is the baseline, so a failed entry or an
-   * advance in someone else's queue leaves the address alone. */
+   * arrival queue is the baseline, so a failure or advance leaves it alone. */
   useEffect(() => {
     if (baseline.current === null || queueIdentity() === baseline.current) {
       return;

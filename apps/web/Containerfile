@@ -11,8 +11,12 @@ WORKDIR /app
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY packages/api-client/package.json packages/api-client/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/i18n/package.json packages/i18n/package.json
+COPY packages/library/package.json packages/library/package.json
+COPY packages/player/package.json packages/player/package.json
+COPY packages/query/package.json packages/query/package.json
 COPY packages/tokens/package.json packages/tokens/package.json
 COPY packages/ui-foundation/package.json packages/ui-foundation/package.json
 COPY packages/youtube/package.json packages/youtube/package.json
@@ -21,11 +25,7 @@ COPY packages/youtube/package.json packages/youtube/package.json
 RUN pnpm install --frozen-lockfile --filter "@playliberty/web..."
 
 COPY . .
-RUN pnpm --filter @playliberty/contracts run build \
- && pnpm --filter @playliberty/i18n run build \
- && pnpm --filter @playliberty/tokens run build \
- && pnpm --filter @playliberty/ui-foundation run build \
- && pnpm --filter @playliberty/web run build
+RUN pnpm --filter "@playliberty/web..." run build
 
 FROM docker.io/nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 # The entrypoint substitutes EDGE_ASSERTION into the config template at start.

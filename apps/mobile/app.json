@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "PlayLiberté",
+    "slug": "playliberty",
+    "scheme": "dev.playliberty.app",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0d10",
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "dev.playliberty.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2f9e7e"
+      },
+      "predictiveBackGestureEnabled": true,
+      "permissions": ["android.permission.POST_NOTIFICATIONS"]
+    },
+    "ios": {
+      "bundleIdentifier": "dev.playliberty.app",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0b0d10",
+          "image": "./assets/splash-icon.png"
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000"
+    }
+  }
+}

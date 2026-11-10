@@ -1,0 +1,1 @@
+ALTER TABLE `access_token` ADD `edge_deleted_at` text;

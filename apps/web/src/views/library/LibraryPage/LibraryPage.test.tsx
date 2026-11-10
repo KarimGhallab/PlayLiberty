@@ -7,6 +7,7 @@ import {
   createRouter
 } from '@tanstack/react-router';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -90,6 +91,7 @@ const newPlaylist = {
   hasShares: false,
   pinned: false,
   counts: { ...EMPTY_COUNTS, stored: 0 },
+  remoteRemoved: 0,
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z'
 };
@@ -113,6 +115,7 @@ function ownedItem(id: string, name: string) {
     hasShares: false,
     pinned: false,
     counts: { ...EMPTY_COUNTS, stored: 1 },
+    remoteRemoved: 0,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   };
@@ -140,6 +143,7 @@ function sharedItem() {
     hasShares: false,
     pinned: false,
     counts: { ...EMPTY_COUNTS, stored: 4 },
+    remoteRemoved: 0,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-28T12:00:00.000Z'
   };
@@ -167,6 +171,7 @@ const baseItems = [
     hasShares: false,
     pinned: false,
     counts: { ...EMPTY_COUNTS, stored: 1 },
+    remoteRemoved: 0,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-29T12:00:00.000Z'
   }
@@ -355,14 +360,17 @@ function renderLibraryPage() {
     defaultOptions: { queries: { retry: false } }
   });
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nProvider preferred={['en']}>
-        <RouterProvider router={router} />
-        <DeferredToasts />
-      </I18nProvider>
-    </QueryClientProvider>
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider preferred={['en']}>
+          <RouterProvider router={router} />
+          <DeferredToasts />
+        </I18nProvider>
+      </QueryClientProvider>
+    ),
+    queryClient
+  };
 }
 
 describe('LibraryPage', () => {
@@ -451,7 +459,8 @@ describe('LibraryPage', () => {
             {
               ...ownedItem('playlist-1', 'Rain On The Window'),
               trackCount: 3,
-              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 },
+              remoteRemoved: 0
             },
             sharedItem()
           ],
@@ -468,7 +477,7 @@ describe('LibraryPage', () => {
     });
     const all = within(scope).getByRole('button', { name: 'All 2' });
     const shared = within(scope).getByRole('button', {
-      name: 'Shared with me 1'
+      name: 'Shared 1'
     });
 
     expect(all).toHaveAttribute('aria-pressed', 'true');
@@ -520,17 +529,20 @@ describe('LibraryPage', () => {
             {
               ...ownedItem('playlist-1', 'Rain On The Window'),
               trackCount: 3,
-              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 },
+              remoteRemoved: 0
             },
             {
               ...ownedItem('playlist-2', 'Night Bus'),
               trackCount: 4,
-              counts: { ...EMPTY_COUNTS, stored: 4 }
+              counts: { ...EMPTY_COUNTS, stored: 4 },
+              remoteRemoved: 0
             },
             {
               ...ownedItem('playlist-3', 'High Water'),
               trackCount: 5,
-              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 }
+              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 },
+              remoteRemoved: 0
             }
           ],
           total: 3,
@@ -572,6 +584,51 @@ describe('LibraryPage', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
   });
 
+  it('draws the retained view last, filters the gallery, and clears on a scope without one', async () => {
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              trackCount: 3,
+              counts: { ...EMPTY_COUNTS, stored: 3 },
+              remoteRemoved: 2
+            },
+            sharedItem()
+          ],
+          total: 2,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    renderLibraryPage();
+
+    await screen.findByText('Rain On The Window');
+
+    const rail = screen.getByRole('group', { name: 'Filter by' });
+    const chips = within(rail).getAllByRole('button');
+
+    expect(chips.at(-1)).toHaveAttribute('aria-label', 'Retained 2');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retained 2' }));
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('Rain On The Window')).toBeInTheDocument();
+    expect(screen.queryByText('Shared Mix')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Shared 1' }));
+
+    expect(await screen.findByText('Shared Mix')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'All tracks 4' })
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.queryByRole('button', { name: /Removed from/ })
+    ).not.toBeInTheDocument();
+  });
+
   it('draws no status filter when no playlist track has a state', async () => {
     server.use(
       http.get(mockUrl(endpoints.playlists), () =>
@@ -580,7 +637,8 @@ describe('LibraryPage', () => {
             {
               ...ownedItem('playlist-1', 'Rain On The Window'),
               trackCount: 0,
-              counts: EMPTY_COUNTS
+              counts: EMPTY_COUNTS,
+              remoteRemoved: 0
             }
           ],
           total: 1,
@@ -605,16 +663,19 @@ describe('LibraryPage', () => {
           items: [
             {
               ...ownedItem('playlist-1', 'Rain On The Window'),
-              counts: { ...EMPTY_COUNTS, stored: 3, failed: 2 }
+              counts: { ...EMPTY_COUNTS, stored: 3, failed: 2 },
+              remoteRemoved: 0
             },
             {
               ...ownedItem('playlist-2', 'Night Bus'),
               trackCount: 0,
-              counts: EMPTY_COUNTS
+              counts: EMPTY_COUNTS,
+              remoteRemoved: 0
             },
             {
               ...ownedItem('playlist-3', 'High Water'),
-              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 }
+              counts: { ...EMPTY_COUNTS, stored: 1, pending: 4 },
+              remoteRemoved: 0
             }
           ],
           total: 3,
@@ -772,7 +833,7 @@ describe('LibraryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
 
     expect(dialog.querySelector('img')?.getAttribute('src')).toBe(
-      '/api/v1/tracks/track-9/thumbnail'
+      '/api/v1/tracks/track-9/thumbnail?v=track-9'
     );
     fireEvent.click(screen.getByRole('button', { name: 'Remove cover' }));
 
@@ -784,7 +845,7 @@ describe('LibraryPage', () => {
         container
           .querySelector('[data-arrangement="tile"] img')
           ?.getAttribute('src')
-      ).toBe('/api/v1/tracks/track-9/thumbnail')
+      ).toBe('/api/v1/tracks/track-9/thumbnail?v=track-9')
     );
   });
 
@@ -795,7 +856,8 @@ describe('LibraryPage', () => {
           items: [
             {
               ...ownedItem('playlist-1', 'Rain On The Window'),
-              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 }
+              counts: { ...EMPTY_COUNTS, stored: 1, failed: 2 },
+              remoteRemoved: 0
             }
           ],
           total: 1,
@@ -879,6 +941,47 @@ describe('LibraryPage', () => {
     expect(
       screen.queryByRole('region', { name: 'Others' })
     ).not.toBeInTheDocument();
+  });
+
+  it('moves a syncing row out of the Syncing group and into Sync after a refetch', async () => {
+    let syncStatus = 'syncing';
+    server.use(
+      http.get(mockUrl(endpoints.playlists), () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...ownedItem('playlist-1', 'Rain On The Window'),
+              syncStatus
+            }
+          ],
+          total: 1,
+          limit: 50,
+          offset: 0
+        })
+      )
+    );
+    const { queryClient } = renderLibraryPage();
+
+    expect(
+      await screen.findByRole('region', { name: 'Syncing' })
+    ).toBeInTheDocument();
+
+    syncStatus = 'idle';
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: 'Syncing' })
+      ).not.toBeInTheDocument()
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Sync 1 playlist' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Rain On The Window' })
+    ).toBeInTheDocument();
   });
 
   it('keeps the items below the section in the order the read returned', async () => {
@@ -1026,6 +1129,7 @@ describe('LibraryPage', () => {
                 hasShares: false,
                 pinned: false,
                 counts: { ...EMPTY_COUNTS, stored: 1 },
+                remoteRemoved: 0,
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-29T12:00:00.000Z'
               },
@@ -1046,6 +1150,7 @@ describe('LibraryPage', () => {
                 hasShares: false,
                 pinned: false,
                 counts: { ...EMPTY_COUNTS, stored: 4 },
+                remoteRemoved: 0,
                 createdAt: '2026-09-01T00:00:00.000Z',
                 updatedAt: '2026-09-28T12:00:00.000Z'
               }
@@ -1075,6 +1180,7 @@ describe('LibraryPage', () => {
               hasShares: false,
               pinned: false,
               counts: { ...EMPTY_COUNTS, stored: 1 },
+              remoteRemoved: 0,
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             }
@@ -1287,6 +1393,7 @@ describe('LibraryPage', () => {
               hasShares: false,
               pinned: false,
               counts: { ...EMPTY_COUNTS, pending: 1 },
+              remoteRemoved: 0,
               createdAt: '2026-09-01T00:00:00.000Z',
               updatedAt: '2026-09-29T12:00:00.000Z'
             }
@@ -1665,15 +1772,18 @@ describe('LibraryPage', () => {
           items: [
             {
               ...ownedItem('playlist-1', 'Rain On The Window'),
-              counts: { ...EMPTY_COUNTS, failed: 2 }
+              counts: { ...EMPTY_COUNTS, failed: 2 },
+              remoteRemoved: 0
             },
             {
               ...ownedItem('playlist-2', 'Night Bus'),
-              counts: { ...EMPTY_COUNTS, stored: 4 }
+              counts: { ...EMPTY_COUNTS, stored: 4 },
+              remoteRemoved: 0
             },
             {
               ...sharedItem(),
-              counts: { ...EMPTY_COUNTS, failed: 1 }
+              counts: { ...EMPTY_COUNTS, failed: 1 },
+              remoteRemoved: 0
             }
           ],
           total: 3,
@@ -1727,7 +1837,7 @@ describe('LibraryPage', () => {
       await screen.findByRole('button', { name: 'Sync all 2 playlists' })
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Shared with me 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Shared 1' }));
 
     expect(
       await screen.findByRole('button', { name: 'Sync 1 playlist' })
@@ -1884,7 +1994,7 @@ describe('the egress link', () => {
   it('is absent for everyone else', async () => {
     renderLibraryPage();
 
-    await screen.findByRole('heading', { name: 'PlayLiberty' });
+    await screen.findByRole('heading', { name: 'PlayLiberté' });
 
     expect(
       screen.queryByRole('link', { name: 'VPN settings' })

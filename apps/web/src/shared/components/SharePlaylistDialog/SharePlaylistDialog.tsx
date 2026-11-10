@@ -1,19 +1,17 @@
 import { useEffect, useId, useState } from 'react';
 
+import {
+  useAccountDirectory,
+  useCurrentAccount,
+  useGrantShare,
+  usePlaylistShares,
+  useRevokeShare
+} from '@playliberty/api-client';
 import type { AccountSummary } from '@playliberty/contracts';
 import { ShareLevel } from '@playliberty/contracts';
 import type { MessageKey, Messages } from '@playliberty/i18n';
 import { useI18n } from '@playliberty/i18n';
 
-import {
-  useAccountDirectory,
-  useCurrentAccount
-} from '../../api/clients/accountClient/accountClient';
-import {
-  useGrantShare,
-  usePlaylistShares,
-  useRevokeShare
-} from '../../api/clients/playlistClient/playlistClient';
 import { problemSentence } from '../../api/problem/problem';
 import { NOTICE_WINDOW_MS } from '../../player/usePlayTransition/usePlayTransition';
 import Dialog from '../Dialog/Dialog';
@@ -23,9 +21,8 @@ import ReadFailure from '../ReadFailure/ReadFailure';
 import shareStyles from './SharePlaylistDialog.module.scss';
 
 /*
- * Share one playlist: the body lists the directory's accounts, each with a
- * level switch and an action. The list reads the shares, so the dialog
- * arrives knowing who already has it.
+ * Share one playlist: the accounts each get a level switch and an action. The
+ * list reads the shares, so the dialog arrives knowing who already has it.
  */
 
 interface SharePlaylistDialogProps {

@@ -4,7 +4,7 @@
  */
 export const en = {
   app: {
-    name: 'PlayLiberty',
+    name: 'PlayLiberté',
     title: {
       playlist: '{app} - {name}',
       track: '{app} - {playlist} ({track})',
@@ -16,30 +16,62 @@ export const en = {
     english: 'English',
     french: 'Français'
   },
+  account: {
+    title: 'Account',
+    admin: 'Admin',
+    loading: 'Loading the account.',
+    egress: 'VPN settings',
+    signOut: 'Sign out',
+    signOutAsk: 'Are you sure you want to sign out?',
+    version: 'Version {version}'
+  },
+  signedOut: {
+    title: 'Sign in to enter the app',
+    browser: 'Your browser opens to sign in, then brings you back here.',
+    action: 'Sign in',
+    retry: 'Sign in again',
+    busy: 'Signing in…',
+    failed: 'Sign-in could not finish.'
+  },
   common: {
+    back: 'Back',
+    close: 'Close',
     cancel: 'Cancel',
+    undo: 'Undo',
+    moreTime: 'More time',
     discardPrompt: 'Discard this link? The link you pasted will be lost.',
     keepEditing: 'Keep editing',
     discard: 'Discard'
   },
   library: {
     add: 'Add a playlist',
+    actions: 'Library actions',
     loading: 'Loading playlists.',
     readFailed: 'Playlists could not be loaded.',
     pinned: 'Pinned',
     syncing: 'Syncing',
     scopeAll: 'All',
-    scopeShared: 'Shared with me',
+    scopeShared: 'Shared',
     scopeLabel: 'Filter by owner',
     allTracks: 'All tracks',
     pinFailed: 'The pin could not be changed.',
+    syncFailed: 'The sync could not be started.',
+    deleteFailed: 'The playlist could not be deleted.',
     notDownloaded: {
       one: '{count} track is not stored',
       other: '{count} tracks are not stored'
     },
+    neverStored: {
+      one: '1 track never stored',
+      other: '{count} tracks never stored'
+    },
     syncAll: {
       one: 'Sync 1 playlist',
       other: 'Sync all {count} playlists'
+    },
+    syncAllReadOnly: {
+      one: '1 read-only playlist is not included',
+      other: '{count} read-only playlists are not included'
     },
     syncAllShort: 'Synchronize all',
     syncingAll: {
@@ -63,7 +95,7 @@ export const en = {
     empty: {
       heading: 'No playlists yet',
       promise:
-        'Paste a YouTube playlist link, then sync it. Every stored track is yours from then on, even if the video is taken down later.'
+        'Paste a YouTube playlist link, then sync it to listen to its tracks.'
     }
   },
   egress: {
@@ -76,9 +108,9 @@ export const en = {
     agentDown:
       'Egress agent unreachable. The configurations below are the last known states.',
     name: 'Name',
-    endpoint: 'Endpoint',
-    status: 'Status',
-    lastAttempt: 'Last attempt',
+    endpoint: 'Exit endpoint',
+    status: 'Check result',
+    lastAttempt: 'Last switch attempt',
     lastCheck: 'Last check',
     switch: 'Switch',
     switching: 'Switching...',
@@ -93,7 +125,8 @@ export const en = {
       switchFailed: 'The exit could not be switched.'
     },
     actions: 'Actions',
-    seen: 'Seen at {ip}',
+    seen: 'Provider saw {ip}',
+    noEndpoint: 'Not set',
     reason: {
       blocked: 'YouTube refused the exit.',
       unavailable: 'The check video is unavailable.',
@@ -101,7 +134,8 @@ export const en = {
       unknown: 'The check failed.'
     },
     active: 'Active',
-    never: 'Never',
+    neverAttempted: 'No attempt yet',
+    neverChecked: 'Not checked yet',
     statusOk: 'OK',
     statusFailed: 'Failed',
     statusUnknown: 'Unknown'
@@ -110,6 +144,7 @@ export const en = {
     back: 'Back to home',
     backShort: 'Back',
     addTrack: 'Add a track',
+    fabActions: 'Playlist actions',
     syncPlaylist: 'Sync the playlist',
     syncPlaylistShort: 'Synchronize',
     syncingPlaylist: 'Syncing the playlist...',
@@ -122,9 +157,13 @@ export const en = {
     playbackFailed: 'Playback could not start: the queue was not loaded.',
     deleteDeferred: 'Deleting playlist',
     removeDeferred: 'Removing track',
+    deleteFailed: 'The playlist could not be deleted.',
+    removeFailed: 'The track could not be removed.',
     trackFallback: 'Track',
     settingFailed: 'The setting could not be changed.',
     settingNotice: 'The skip setting was not changed.',
+    sortFailed: 'The sort could not be changed.',
+    sortNotice: 'The sort was not changed.',
     sortBy: 'Sort by',
     sortPlaylist: 'Playlist order',
     sortNewest: 'Newest first',
@@ -145,7 +184,8 @@ export const en = {
       pending: 'No pending tracks',
       downloading: 'No downloading tracks',
       failed: 'No failed tracks',
-      unavailable: 'No unavailable tracks'
+      unavailable: 'No track was left without a copy',
+      remoteRemoved: 'No track was retained after a {provider} removal'
     }
   },
   trackRow: {
@@ -173,6 +213,7 @@ export const en = {
   },
   trackLink: {
     cannotPlay: '{title} cannot play.',
+    loading: 'Opening the track.',
     notStored: 'It is not stored yet.',
     downloadFailed: 'Its download failed.',
     unavailableDetail: 'Its video is gone and no file was stored.',
@@ -190,6 +231,7 @@ export const en = {
     description: 'It does not change the playlist on YouTube.',
     nameLabel: 'Playlist name',
     invalid: 'A name is required, up to 200 characters.',
+    failed: 'The playlist could not be renamed.',
     save: 'Save',
     saving: 'Saving'
   },
@@ -197,6 +239,7 @@ export const en = {
     title: 'Playlist cover',
     description: 'JPEG, PNG or WebP, up to 5 MB.',
     choose: 'Choose image',
+    pickFailed: 'The photo library could not be opened.',
     wrongType: 'Choose a JPEG, PNG or WebP image.',
     tooLarge: 'Choose an image smaller than 5 MB.',
     uploadFailed: 'The cover could not be saved.',
@@ -214,12 +257,19 @@ export const en = {
   },
   shareDialog: {
     title: 'Share playlist',
+    pickerTitle: 'Choose an account',
+    add: 'Add',
+    noAccounts: 'There is no other account to share with.',
     description:
       'Everyone you share with can find the playlist and hear its tracks. Editing also lets them change what is in it.',
     done: 'Done',
     loading: 'Loading accounts.',
     readFailed: 'Accounts could not be loaded.',
     empty: 'There is no one else here to share with yet.',
+    private: 'Nobody else can see this playlist. It is private.',
+    revoke: 'Revoke',
+    revokeAsk: 'Remove access to this playlist?',
+    remove: 'Remove access',
     listen: 'Can listen',
     edit: 'Can edit',
     grantFailed: 'The playlist sharing with {name} has failed.',
@@ -234,6 +284,12 @@ export const en = {
       'Paste a YouTube video link, such as https://youtube.com/watch?v=...',
     add: 'Add',
     adding: 'Adding',
+    playlistsLabel: 'Playlists',
+    firstPage: 'Only the first {count} playlists in the library are listed.',
+    outcomeAdded: 'Added',
+    outcomePresent: 'Already there',
+    outcomeRefused: 'Refused',
+    failed: 'The track could not be added.',
     refusedSome: 'Added to the rest. Not added to:',
     refusedAll: 'Nothing was added. Not added to:'
   },
@@ -255,6 +311,16 @@ export const en = {
     next: 'Next track',
     play: 'Play',
     pause: 'Pause',
+    playNamed: 'Play {title}',
+    pauseNamed: 'Pause {title}',
+    previousNamed: 'Previous track, {title}',
+    nextNamed: 'Next track, {title}',
+    openPlaylist: 'Open {name}, {position}',
+    seekForward: 'Forward ten seconds',
+    seekBackward: 'Back ten seconds',
+    failed: 'Playback failed: {title}',
+    failedDetail: 'Play it again to retry, or choose another track.',
+    notificationRefused: 'Allow notifications to control the tracks.',
     position: 'Position in track',
     positionValue: '{elapsed} of {duration}',
     shortcutShift: 'Shift',
@@ -306,6 +372,7 @@ export const en = {
     pin: 'Pin',
     unpin: 'Unpin',
     syncNow: 'Sync now',
+    sync: 'Sync',
     delete: 'Delete',
     play: 'Play this playlist',
     playNamed: 'Play {name}',
@@ -344,7 +411,11 @@ export const en = {
     invalidRequest:
       'Paste a YouTube playlist link, such as https://youtube.com/playlist?list=...',
     unprocessableRequest: 'The URL is not a YouTube video URL.',
-    validationFailed: 'The request contained an invalid value.'
+    validationFailed: 'The request contained an invalid value.',
+    invalidGrant: 'The sign-in link is no longer valid. Start again.',
+    provisioningUnavailable: 'Sign-in is not configured on this instance.',
+    provisioningFailed: 'The instance could not issue a token. Try again.',
+    rateLimited: 'Too many attempts. Wait a minute and try again.'
   },
   relative: {
     justNow: 'just now',
@@ -385,12 +456,21 @@ export const en = {
     blocked: 'Source unreachable'
   },
   trackState: {
+    retained: 'Retained',
+    retainedChip: {
+      one: 'Retained',
+      other: 'Retained'
+    },
     removedFrom: 'Removed from {provider}',
     stored: 'Stored',
     pending: 'Pending',
     downloading: 'Downloading',
     failed: 'Failed',
-    unavailable: 'Unavailable'
+    unavailable: 'Never stored',
+    unavailableChip: {
+      one: 'Never stored',
+      other: 'Never stored'
+    }
   },
   provider: {
     youtube: 'YouTube'
@@ -425,7 +505,15 @@ export const en = {
     lastSync: 'Last sync {time}',
     noChanges: 'Nothing changed',
     downloading: '{count} downloading',
-    syncing: 'Syncing'
+    retained: {
+      one: '1 track removed from {provider} is still stored',
+      other: '{count} tracks removed from {provider} are still stored'
+    },
+    syncing: 'Syncing',
+    cancel: 'Cancel sync',
+    cancelling: 'Cancelling...',
+    cancelled: 'Sync cancelled',
+    cancelFailed: 'Could not cancel the sync'
   },
   syncError: {
     reach: 'Could not reach {provider}, the playlist may not be up to date.',

@@ -4,6 +4,7 @@ import {
   AccountSummaryPageSchema,
   AddTrackResultSchema,
   EgressReadSchema,
+  MobileTokenSchema,
   PlaylistPageSchema,
   PlaylistSchema,
   PlaylistTrackListSchema,
@@ -138,6 +139,48 @@ export const endpoints = {
     response: AccountSchema,
     errors: READ_ERRORS
   }),
+  /* The app's provisioning entry, behind SSO: it answers a redirect to the app,
+   * so it has no body. */
+  provision: defineCommandEndpoint({
+    method: HttpMethod.Get,
+    path: '/provision',
+    errors: [ProblemCode.InvalidGrant, ProblemCode.ProvisioningUnavailable]
+  }),
+  /* The one credential-less mutation: the code and its verifier for a token. */
+  exchange: defineEndpoint({
+    method: HttpMethod.Post,
+    path: '/auth/exchange',
+    response: MobileTokenSchema,
+    errors: [
+      ProblemCode.InvalidGrant,
+      ProblemCode.ProvisioningUnavailable,
+      ProblemCode.ProvisioningFailed,
+      ProblemCode.RateLimited,
+      ...VALIDATED_WRITE_ERRORS
+    ]
+  }),
+  /* The second path outside Pangolin SSO: the refresh token rotates the pair.
+   * Assertion-only and method-scoped, like the exchange. */
+  refresh: defineEndpoint({
+    method: HttpMethod.Post,
+    path: '/auth/refresh',
+    response: MobileTokenSchema,
+    errors: [
+      ProblemCode.InvalidGrant,
+      ProblemCode.ProvisioningUnavailable,
+      ProblemCode.ProvisioningFailed,
+      ProblemCode.RateLimited,
+      ...VALIDATED_WRITE_ERRORS
+    ]
+  }),
+  /* Sign-out ends the family behind the edge: the access token authenticates,
+   * the body names the refresh token, and the answer is empty whether or not
+   * anything was revoked. */
+  revokeSession: defineCommandEndpoint({
+    method: HttpMethod.Post,
+    path: '/session/revoke',
+    errors: [...VALIDATED_WRITE_ERRORS]
+  }),
   /* The caller's own role is part of the account read, so the client can gate
    * an admin surface without asking a second route. */
   egress: defineEndpoint({
@@ -243,6 +286,11 @@ export const endpoints = {
       ProblemCode.SyncAlreadyRunning,
       ...WRITE_ERRORS
     ]
+  }),
+  cancelSyncPlaylist: defineCommandEndpoint({
+    method: HttpMethod.Delete,
+    path: '/playlists/:playlistId/sync',
+    errors: [ProblemCode.PlaylistNotFound, ...WRITE_ERRORS]
   }),
   renamePlaylist: defineEndpoint({
     method: HttpMethod.Patch,

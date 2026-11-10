@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { endpoints } from '@playliberty/contracts';
+import { StreamFailureKind } from '@playliberty/ui-foundation';
 
 import { mediaUrl } from '../../api/endpoints/endpoints';
 import { TOUCH_QUERY, useMediaQuery } from '../../useMediaQuery/useMediaQuery';
@@ -9,10 +10,7 @@ import {
   publishMetadata
 } from '../mediaSession/mediaSession';
 import { shouldApplySeek, usePlayerStore } from '../playerStore/playerStore';
-import {
-  StreamFailureKind,
-  classifyStreamFailure
-} from '../streamFailure/streamFailure';
+import { classifyStreamFailure } from '../streamFailure/streamFailure';
 import { SeekDirection, currentTrack } from '../types';
 
 /*

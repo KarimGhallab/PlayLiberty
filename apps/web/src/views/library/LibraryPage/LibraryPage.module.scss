@@ -87,12 +87,11 @@
   &__cell {
     min-width: 0;
 
-    /* A card whose mark wraps to a second line ends above the row its
-     * neighbour set; filling the cell keeps the row's surfaces level. */
-    @media (max-width: 767px) {
-      > * {
-        height: 100%;
-      }
+    /* A card whose mark wraps to a second line, or a tile whose playlist is
+     * shared, ends above the row its neighbour set; filling the cell keeps the
+     * row's surfaces level. */
+    > * {
+      height: 100%;
     }
   }
 

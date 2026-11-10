@@ -1,0 +1,115 @@
+appId: dev.playliberty.app
+name: A video is added to two playlists, then removed and restored
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+- extendedWaitUntil:
+    visible:
+      id: playlist-card
+    timeout: 30000
+# The name keeps the flow independent of gallery order and of a shared first card.
+- scrollUntilVisible:
+    element:
+      text: ${OWNED_PLAYLIST}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${OWNED_PLAYLIST}
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: track-row
+    timeout: 30000
+- tapOn:
+    id: detail-fab
+- tapOn:
+    id: detail-add-track
+- extendedWaitUntil:
+    visible:
+      id: add-track-sheet
+    timeout: 15000
+- tapOn:
+    id: add-track-url
+- inputText: ${VIDEO_URL}
+# The keyboard's toolbar can swallow a tap meant for the picks; a back press
+# drops it and asks to discard the link, and keeping the link leaves the text.
+- hideKeyboard
+- runFlow:
+    when:
+      visible:
+        id: add-track-keep-editing
+    commands:
+      - tapOn:
+          id: add-track-keep-editing
+# The current playlist is first and preselected; the other writable playlist is
+# named, so a playlist another flow added cannot shift an index.
+- tapOn:
+    text: ${PIN_PLAYLIST}
+- tapOn:
+    id: add-track-submit
+# A batch with two writable playlists is all-success and closes the sheet. A
+# refusal would leave the sheet open with one row per chosen playlist.
+- extendedWaitUntil:
+    notVisible:
+      id: add-track-sheet
+    timeout: 60000
+# The video is appended when it was new and already in place when it was not.
+- scrollUntilVisible:
+    element:
+      text: ${VIDEO_TITLE}
+    direction: DOWN
+    timeout: 60000
+# The lane is the right-hand control of the title's own row.
+- tapOn:
+    id: track-actions
+    rightOf:
+      text: ${VIDEO_TITLE}
+- extendedWaitUntil:
+    visible:
+      id: track-actions-sheet
+    timeout: 15000
+# The window starts once the sheet has left; the wait outlives it, so a missing
+# bar fails here instead of becoming a missed press.
+- tapOn:
+    id: track-action-remove
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: undo-snackbar-action
+    timeout: 30000
+- tapOn:
+    id: undo-snackbar-action
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    notVisible:
+      id: undo-snackbar
+    timeout: 15000
+- assertVisible: ${VIDEO_TITLE}
+# Leave the device in the library.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000

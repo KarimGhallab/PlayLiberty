@@ -1,0 +1,36 @@
+appId: dev.playliberty.app
+name: A signed-out app shows one action
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+# The dev client's floating gear sits over the door's centre.
+- tapOn:
+    id: account-door
+    point: '10%,50%'
+- tapOn:
+    id: account-sign-out
+# The first press arms the question; the second ends the session.
+- tapOn:
+    id: account-sign-out-confirm
+- assertVisible:
+    id: sign-in
+- assertNotVisible:
+    id: account-door
+- assertNotVisible:
+    id: account-sign-out

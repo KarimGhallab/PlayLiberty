@@ -19,12 +19,25 @@ import type { AuthAccount } from '../../../features/accounts/types.js';
 declare module 'fastify' {
   interface FastifyRequest {
     account: AuthAccount;
+    forwardedPangolinUserId: string | null;
   }
 }
 
-// The only paths exempt from identity: readiness must answer before a caller is
-// known. Nothing else is exempt, so even the exchange route fails closed.
+// Readiness must answer before a caller is known, so it is exempt from both
+// checks. The exchange and refresh POSTs are exempt from identity alone: the
+// app holds only the credential in its body, but the request still has to come
+// through the edge. The exemption names the method, so the same path with
+// another method still fails closed.
 const EXEMPT_PATHS = new Set(['/healthz', '/readyz']);
+const ASSERTION_ONLY_ROUTES = new Set([
+  'POST /auth/exchange',
+  'POST /auth/refresh'
+]);
+const PROVISIONING_PATHS = new Set([
+  '/provision',
+  '/auth/exchange',
+  '/auth/refresh'
+]);
 
 /* The edge assertion header, compared in constant time so timing cannot
  * leak the secret a byte at a time. */
@@ -75,7 +88,10 @@ export function registerIdentityHook(
   context: AppContext
 ): void {
   app.addHook('onRequest', async (request, reply) => {
-    if (EXEMPT_PATHS.has(requestPath(request))) {
+    const path = requestPath(request);
+    request.forwardedPangolinUserId = null;
+
+    if (EXEMPT_PATHS.has(path)) {
       return;
     }
 
@@ -106,6 +122,10 @@ export function registerIdentityHook(
     const pangolinUserId = readStringHeader(request, 'remote-user');
 
     if (pangolinUserId === null) {
+      if (ASSERTION_ONLY_ROUTES.has(`${request.method} ${path}`)) {
+        return;
+      }
+
       auditIdentityRefusal(request, 'identity_missing');
       sendProblem(reply, {
         status: 401,
@@ -115,6 +135,15 @@ export function registerIdentityHook(
           'The request is missing the identity headers injected by the edge.'
       });
       return reply;
+    }
+
+    /* Remote-User keys the account and the admin list; Remote-User-Id is the
+     * record id the Integration API needs. They are not interchangeable. */
+    request.forwardedPangolinUserId =
+      readStringHeader(request, 'remote-user-id') ?? pangolinUserId;
+
+    if (PROVISIONING_PATHS.has(path)) {
+      return;
     }
 
     const resolved = resolveAccount(

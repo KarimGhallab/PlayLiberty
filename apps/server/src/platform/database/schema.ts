@@ -229,6 +229,55 @@ export const egressConfigs = sqliteTable('egress_config', {
   updatedAt: text('updated_at').notNull().$defaultFn(createdAt)
 });
 
+/* One family per provisioning, keyed by the Pangolin user. The exchange has no
+ * account, so the user id is the owner on the token paths. */
+export const refreshFamilies = sqliteTable(
+  'refresh_family',
+  {
+    id: text('id').primaryKey(),
+    pangolinUserId: text('pangolin_user_id').notNull(),
+    createdAt: text('created_at').notNull(),
+    lastUsedAt: text('last_used_at'),
+    expiresAt: text('expires_at').notNull(),
+    revokedAt: text('revoked_at')
+  },
+  table => [index('refresh_family_user_idx').on(table.pangolinUserId)]
+);
+
+/* Only the hash is stored; the plaintext exists on the client and, briefly, in
+ * the server's process. */
+export const refreshTokens = sqliteTable(
+  'refresh_token',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => refreshFamilies.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresAt: text('expires_at').notNull(),
+    consumedAt: text('consumed_at')
+  },
+  table => [index('refresh_token_family_idx').on(table.familyId)]
+);
+
+/* The Pangolin token id, never its secret. Sign-out and reuse delete every
+ * unexpired access token, so each one needs a row. */
+export const accessTokens = sqliteTable(
+  'access_token',
+  {
+    pangolinTokenId: text('pangolin_token_id').primaryKey(),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => refreshFamilies.id, { onDelete: 'cascade' }),
+    expiresAt: text('expires_at').notNull(),
+    revokedAt: text('revoked_at'),
+    edgeDeletedAt: text('edge_deleted_at')
+  },
+  table => [index('access_token_family_idx').on(table.familyId)]
+);
+
 export type AccountRow = typeof accounts.$inferSelect;
 export type PlaylistRow = typeof playlists.$inferSelect;
 export type TrackRow = typeof tracks.$inferSelect;
@@ -237,3 +286,6 @@ export type ShareRow = typeof shares.$inferSelect;
 export type PlaylistPinRow = typeof playlistPins.$inferSelect;
 export type SyncRunRow = typeof syncRuns.$inferSelect;
 export type EgressConfigRow = typeof egressConfigs.$inferSelect;
+export type RefreshFamilyRow = typeof refreshFamilies.$inferSelect;
+export type RefreshTokenRow = typeof refreshTokens.$inferSelect;
+export type AccessTokenRow = typeof accessTokens.$inferSelect;

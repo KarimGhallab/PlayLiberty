@@ -23,9 +23,8 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @playliberty/contracts run build \
- && pnpm --filter @playliberty/youtube run build \
- && pnpm --filter @playliberty/server run build
+# The server's workspace dependency closure, in dependency order.
+RUN pnpm --filter "@playliberty/server..." run build
 
 FROM tools AS prod-deps
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./

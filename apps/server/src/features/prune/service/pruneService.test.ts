@@ -18,7 +18,10 @@ import {
 
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import {
+  accessTokens,
   associations,
+  refreshFamilies,
+  refreshTokens,
   suppressions,
   tracks
 } from '../../../platform/database/schema.js';
@@ -26,7 +29,11 @@ import {
   mediaRelativePath,
   thumbnailRelativePath
 } from '../../../platform/media/mediaPaths.js';
-import { pruneOrphanCovers, pruneOrphanTracks } from './pruneService.js';
+import {
+  pruneExpiredCredentials,
+  pruneOrphanCovers,
+  pruneOrphanTracks
+} from './pruneService.js';
 
 let context: TestContext | undefined;
 
@@ -550,5 +557,111 @@ describe('pruning orphaned covers', () => {
       removed: 2,
       message: 'cover prune finished'
     });
+  });
+});
+
+describe('pruning expired credentials', () => {
+  const NOW = Date.parse('2026-11-01T12:00:00.000Z');
+
+  function iso(at: number): string {
+    return new Date(at).toISOString();
+  }
+
+  it('removes only expired rows and reports what it removed', async () => {
+    context = await createTestContext();
+    const { logger, infos } = recordingLogger();
+    const { db } = database();
+
+    db.insert(refreshFamilies)
+      .values([
+        {
+          id: 'expired-family',
+          pangolinUserId: 'p-alice',
+          createdAt: iso(NOW),
+          expiresAt: iso(NOW - 1)
+        },
+        {
+          id: 'live-family',
+          pangolinUserId: 'p-alice',
+          createdAt: iso(NOW),
+          expiresAt: iso(NOW + 86_400_000)
+        },
+        {
+          id: 'revoked-family',
+          pangolinUserId: 'p-alice',
+          createdAt: iso(NOW),
+          expiresAt: iso(NOW + 86_400_000),
+          revokedAt: iso(NOW)
+        }
+      ])
+      .run();
+    db.insert(refreshTokens)
+      .values([
+        {
+          familyId: 'live-family',
+          tokenHash: 'expired-hash',
+          expiresAt: iso(NOW - 1)
+        },
+        {
+          familyId: 'live-family',
+          tokenHash: 'live-hash',
+          expiresAt: iso(NOW + 1000)
+        }
+      ])
+      .run();
+    db.insert(accessTokens)
+      .values([
+        {
+          pangolinTokenId: 'expired-access',
+          familyId: 'live-family',
+          expiresAt: iso(NOW - 1)
+        },
+        {
+          pangolinTokenId: 'live-access',
+          familyId: 'live-family',
+          expiresAt: iso(NOW + 1000)
+        }
+      ])
+      .run();
+
+    const summary = pruneExpiredCredentials({
+      database: database(),
+      logger,
+      now: () => NOW
+    });
+
+    expect(summary).toEqual({
+      families: 1,
+      refreshTokens: 1,
+      accessTokens: 1
+    });
+    expect(infos).toContainEqual({
+      families: 1,
+      refreshTokens: 1,
+      accessTokens: 1,
+      message: 'credential prune finished'
+    });
+    expect(
+      db
+        .select()
+        .from(refreshFamilies)
+        .all()
+        .map(row => row.id)
+        .sort()
+    ).toEqual(['live-family', 'revoked-family']);
+    expect(
+      db
+        .select()
+        .from(refreshTokens)
+        .all()
+        .map(row => row.tokenHash)
+    ).toEqual(['live-hash']);
+    expect(
+      db
+        .select()
+        .from(accessTokens)
+        .all()
+        .map(row => row.pangolinTokenId)
+    ).toEqual(['live-access']);
   });
 });

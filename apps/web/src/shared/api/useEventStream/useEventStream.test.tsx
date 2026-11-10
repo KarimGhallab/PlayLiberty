@@ -4,12 +4,12 @@ import { HttpResponse, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LiveEventType, endpoints } from '@playliberty/contracts';
+import { cacheEffects } from '@playliberty/query';
 
 import { createFakeEventStream } from '../../../testing/fakeEventStream';
 import { restoreLocation, stubLocationAssign } from '../../../testing/location';
 import { mockUrl } from '../../../testing/mocks/handlers';
 import { server } from '../../../testing/mocks/server';
-import { cacheEffects } from '../cacheEffects/cacheEffects';
 import {
   EventStreamContext,
   RECONNECT_BASE_MS,

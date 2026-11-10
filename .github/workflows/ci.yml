@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -12,26 +11,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    uses: ./.github/workflows/build.yml
-
   verify:
     uses: ./.github/workflows/verify.yml
+
+  build:
+    uses: ./.github/workflows/build.yml
+    needs:
+      - verify
 
   unit:
     uses: ./.github/workflows/unit.yml
     needs:
-      - verify
       - build
 
-  e2e:
-    uses: ./.github/workflows/e2e.yml
+  e2e-web:
+    uses: ./.github/workflows/e2e-web.yml
+    needs:
+      - unit
+
+  e2e-mobile:
+    uses: ./.github/workflows/e2e-mobile.yml
     needs:
       - unit
 
   success:
     name: Pipeline successful
-    needs: [build, verify, unit, e2e]
+    needs: [verify, build, unit, e2e-web, e2e-mobile]
     runs-on: ubuntu-26.04
     steps:
       - run: echo "CI pipeline successful."

@@ -11,6 +11,4 @@ The glossary's custom cover row says a new upload is stored as the chosen square
 
 Spec 14's out-of-scope crop line now points at spec 17 instead of reading as a universal exclusion, so the corpus has no contradiction.
 
-Verification: `npx prettier --check docs` passes, and a read of the four records and the spec cross-link shows the same behavior.
-
 See [`17-crop-a-playlist-cover`](../../specs/17-crop-a-playlist-cover.md).

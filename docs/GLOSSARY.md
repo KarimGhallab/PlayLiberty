@@ -39,7 +39,8 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | Term           | Meaning                                                                                                                                                                           |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sync           | Reconciling a synced playlist with its source: add new videos, never delete stored tracks. One word for the operation, for the action that starts it, and for the state it is in. |
-| Sync run       | One execution of a sync: `running`, `completed`, or `failed`, with counts added, retained, removed, and failed.                                                                   |
+| Sync run       | One execution of a sync: `running`, `completed`, `cancelled`, or `failed`, with counts added, retained, removed, and failed.                                                      |
+| Cancel         | Stopping a running sync run before it commits. The run becomes `cancelled` and the playlist returns `idle`. It never stops a download.                                            |
 | Download       | Fetching the audio for one track, through yt-dlp. Drives the track states below.                                                                                                  |
 | Retention      | The rule that a source removal never deletes a stored track.                                                                                                                      |
 | Orphan         | A track with zero associations. The weekly prune deletes orphans permanently; the interval is configurable.                                                                       |
@@ -56,6 +57,8 @@ One word per idea. When a concept has two names here, pick the one in the left c
 | `Playlist.syncStatus` | `idle`, `syncing`, `error`                                  |
 
 The user-facing word for `fileStatus: stored` is **stored** in English and **stockée** in French, wherever the state appears: the filter chip, the incomplete badge, the empty promise and the row.
+
+A row states two facts, one word each. The file fact is **retained** (French **conservée**) for a stored track whose source was removed, and **never stored** (French **jamais stockée**) for a track that was never fetched and whose source is gone. The source fact is **removed from YouTube** (French **retirée de YouTube**). "Retained" and "never stored" are the only words that separate the two outcomes; neither describes a track whose source is still there. The retained filter chip says **retained** (French **conservée**, plural **conservées**).
 
 ## Playback and delivery
 
@@ -78,10 +81,10 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 
 ## Language
 
-| Term     | Meaning                                                                                                                                                                                                                                                                                                |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Language | `en` or `fr`. The language the interface is rendered in. Resolved once per browser, from an explicit choice, then the browser's preference, then `en`. Per browser, never on the account, and never known to the server. The control that changes it sits on both the library and the playlist detail. |
-| Locale   | A browser preference tag such as `fr-CA`, matched to a supported Language by its base. The app stores the resolved Language, never the tag.                                                                                                                                                            |
+| Term     | Meaning                                                                                                                                                                                                                                                                                                                                                                                            |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language | `en` or `fr`. The language the interface is rendered in. Resolved once per client, from an explicit choice, then the client's preference (the browser's languages or the device's), then `en`. Per client, never on the account, and never known to the server. The control that changes it sits in the web client's library and playlist detail headers and in the mobile client's account sheet. |
+| Locale   | A client preference tag such as `fr-CA`, matched to a supported Language by its base. The client stores the resolved Language, never the tag.                                                                                                                                                                                                                                                      |
 
 ## Terms that are easy to mix up
 
@@ -90,7 +93,7 @@ The user-facing word for `fileStatus: stored` is **stored** in English and **sto
 - **Playlist** vs **Source**: the playlist is ours and lives on the server; the source is YouTube's and is only read during sync.
 - **Removal** vs **Remote-removed** vs **Deletion**: removal suppresses one association; remote-removed means the source video is gone but the track is retained; deletion is the orphan prune removing media.
 - **Stream** vs **Download**: streaming is the only delivery. A download endpoint would be file export, a non-goal.
-- **Language** vs **Locale**: a language is one of the two the interface is written in, `en` or `fr`; a locale is the browser's preference tag, `fr-CA`, that resolves to one. The app stores the language and never the tag.
+- **Language** vs **Locale**: a language is one of the two the interface is written in, `en` or `fr`; a locale is the client's preference tag, `fr-CA`, that resolves to one. The app stores the language and never the tag.
 - **Pin** vs **Favorite**: a pin is one account's placement of a playlist above the rest of its own gallery; a favorite would be a judgement about a thing. The feature is a pin, so the two words are never one.
 - **Playlist cover** vs **track thumbnail**: a playlist cover belongs to the playlist and every reader sees the same image; a track thumbnail belongs to the track. The first track's thumbnail is only the fallback for a playlist with no custom cover.
 - **Interface language** vs **user content**: the interface language is the app's and switches with the language button; a playlist name, a track title and an account name are the source's or the user's and are never translated.

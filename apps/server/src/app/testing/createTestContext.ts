@@ -8,6 +8,7 @@ import type { LiveEvent } from '@playliberty/contracts';
 import type { IEgressAgentClient, IYoutubeClient } from '@playliberty/youtube';
 
 import { EventBus } from '../../shared/events/eventBus/EventBus.js';
+import type { IPangolinClient } from '../../shared/pangolin.js';
 
 import { loadConfig } from '../../platform/config/loadConfig/loadConfig.js';
 import type { DatabaseHandle } from '../../platform/database/client.js';
@@ -26,6 +27,7 @@ export interface TestContext {
   mediaPaths: MediaPaths;
   events: EventBus<LiveEvent>;
   directory: string;
+  restart(): Promise<void>;
   cleanup(): Promise<void>;
 }
 
@@ -44,6 +46,11 @@ export interface TestContextOptions {
   /* A logger to read the audit lines; absent, the app builds one, silenced by
    * config. */
   loggerInstance?: FastifyServerOptions['loggerInstance'];
+  /* The token issuer: a test passes a fake so no Pangolin instance is needed. */
+  pangolin?: IPangolinClient;
+  /* The credential clock: a test moves it to reach expiry, the rate limit's
+   * window and the lifetimes without waiting. */
+  now?: () => number;
 }
 
 export async function createTestContext(
@@ -67,26 +74,39 @@ export async function createTestContext(
 
   const events = new EventBus<LiveEvent>();
 
-  const app = await buildApp({
-    config,
-    database,
-    mediaPaths,
-    youtube: options.youtube,
-    egressAgent: options.egressAgent,
-    kickDownloads: options.kickDownloads,
-    startBackgroundJobs: options.startBackgroundJobs ?? false,
-    sseHeartbeatMs: options.sseHeartbeatMs,
-    loggerInstance: options.loggerInstance,
-    events
-  });
-  await app.ready();
+  const build = async (): Promise<FastifyInstance> => {
+    const app = await buildApp({
+      config,
+      database,
+      mediaPaths,
+      youtube: options.youtube,
+      egressAgent: options.egressAgent,
+      kickDownloads: options.kickDownloads,
+      startBackgroundJobs: options.startBackgroundJobs ?? false,
+      sseHeartbeatMs: options.sseHeartbeatMs,
+      loggerInstance: options.loggerInstance,
+      pangolin: options.pangolin,
+      now: options.now,
+      events
+    });
+    await app.ready();
+    return app;
+  };
+
+  let app = await build();
 
   return {
-    app,
+    get app() {
+      return app;
+    },
     database,
     mediaPaths,
     events,
     directory,
+    restart: async (): Promise<void> => {
+      await app.close();
+      app = await build();
+    },
     cleanup: async (): Promise<void> => {
       await app.close();
       database.sqlite.close();

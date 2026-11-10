@@ -41,6 +41,10 @@ export enum TrackSourceStatus {
   Removed = 'removed'
 }
 
+export const REMOTE_REMOVED = 'remoteRemoved';
+
+export type TrackFilterState = TrackFileStatus | typeof REMOTE_REMOVED;
+
 /* What a failed read meant. The row renders this kind's sentence, never the
  * vendor's own output. */
 export enum FailureKind {
@@ -56,9 +60,8 @@ export enum AssociationOrigin {
   Manual = 'manual'
 }
 
-/* `already_present` is a success, not a failure: the desired end state is
- * met. `refused` carries no reason, so cannot-see and cannot-write are one
- * answer. */
+/* `already_present` is a success, not a failure: the end state is met.
+ * `refused` carries no reason, so cannot-see and cannot-write are one answer. */
 export enum AddTrackOutcome {
   Added = 'added',
   AlreadyPresent = 'already_present',
@@ -73,7 +76,8 @@ export enum ShareLevel {
 export enum SyncRunStatus {
   Running = 'running',
   Completed = 'completed',
-  Failed = 'failed'
+  Failed = 'failed',
+  Cancelled = 'cancelled'
 }
 
 /* An event is an invalidation hint, never data: it names what changed and the
@@ -109,6 +113,10 @@ export enum ProblemCode {
   RequestError = 'request_error',
   InternalError = 'internal_error',
   Unauthenticated = 'unauthenticated',
+  InvalidGrant = 'invalid_grant',
+  ProvisioningUnavailable = 'provisioning_unavailable',
+  ProvisioningFailed = 'provisioning_failed',
+  RateLimited = 'rate_limited',
   CsrfHeaderMissing = 'csrf_header_missing',
   CsrfCrossSite = 'csrf_cross_site',
   CsrfOriginMismatch = 'csrf_origin_mismatch'

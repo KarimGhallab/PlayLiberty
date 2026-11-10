@@ -15,12 +15,4 @@ The Check is facts only. `EgressCheckFacts.reason` became `failure`, which is wh
 
 The decoders are pure and unit-tested against every code and every malformed body. The socket assembly suite still proves the wire end to end.
 
-## Verification
-
-- The protocol's table test round-trips every error outcome, keeps the two 503 meanings and the two 502 meanings apart, and refuses a status that disagrees with its body.
-- The request and response parsers cover a valid body, a missing download option, an empty limit rate, a bad video id and a bad source entry.
-- A killed listing, a killed download and a refused switch still become their own client errors over a real socket.
-- A Check with a working listing and no exit address records the network failure; the agent's answer carries facts only.
-- `pnpm run test:unit` is 1200 passed across all packages and apps; `pnpm run build` and `pnpm run lint:check` pass.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md#the-youtube-egress-runs-in-a-host-network-namespace).

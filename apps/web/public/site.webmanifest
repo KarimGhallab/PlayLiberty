@@ -1,6 +1,6 @@
 {
-  "name": "PlayLiberty",
-  "short_name": "PlayLiberty",
+  "name": "PlayLiberté",
+  "short_name": "PlayLiberté",
   "description": "Audio player that syncs YouTube playlists and keeps them saved, so a removed video never removes a track.",
   "start_url": "/",
   "scope": "/",

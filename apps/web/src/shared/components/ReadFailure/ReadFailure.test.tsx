@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '@playliberty/api-client';
 import { ProblemCode } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
-import { ApiError } from '../../api/clients/apiClient/apiClient';
 import ReadFailure from './ReadFailure';
 
 /*

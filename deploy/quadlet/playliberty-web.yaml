@@ -102,6 +102,32 @@ spec:
             secretKeyRef:
               name: playliberty_edge_assertion
               key: EDGE_ASSERTION
+        # Mobile provisioning: the Integration API, its key and the callbacks.
+        # One secret; the key is never in the image.
+        - name: PANGOLIN_API_URL
+          valueFrom:
+            secretKeyRef:
+              name: playliberty_pangolin
+              key: PANGOLIN_API_URL
+              optional: true
+        - name: PANGOLIN_RESOURCE_ID
+          valueFrom:
+            secretKeyRef:
+              name: playliberty_pangolin
+              key: PANGOLIN_RESOURCE_ID
+              optional: true
+        - name: PANGOLIN_INTEGRATION_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: playliberty_pangolin
+              key: PANGOLIN_INTEGRATION_API_KEY
+              optional: true
+        - name: MOBILE_REDIRECT_URIS
+          valueFrom:
+            secretKeyRef:
+              name: playliberty_pangolin
+              key: MOBILE_REDIRECT_URIS
+              optional: true
         - name: YOUTUBE_TRANSPORT
           value: egress-agent
         - name: EGRESS_AGENT_SOCKET

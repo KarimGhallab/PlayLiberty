@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SyncRun } from '@playliberty/contracts';
-import { SyncRunStatus } from '@playliberty/contracts';
+import { Provider, SyncRunStatus } from '@playliberty/contracts';
 import { I18nProvider } from '@playliberty/i18n';
 
 import SyncSummary from './SyncSummary';
@@ -33,7 +33,15 @@ function run(overrides: Partial<SyncRun> = {}): SyncRun {
 type SummaryExtras = Partial<
   Pick<
     Parameters<typeof SyncSummary>[0],
-    'downloadingCount' | 'onRetryFailed' | 'retryingFailed' | 'showRunningStamp'
+    | 'downloadingCount'
+    | 'onRetryFailed'
+    | 'retryingFailed'
+    | 'showRunningStamp'
+    | 'remoteRemoved'
+    | 'provider'
+    | 'onCancel'
+    | 'cancelling'
+    | 'playlistName'
   >
 >;
 
@@ -47,7 +55,10 @@ function renderSummary(
       <SyncSummary
         run={summary}
         now={NOW}
+        playlistName="Rain On The Window"
         failedCount={failedCount}
+        remoteRemoved={0}
+        provider={Provider.Youtube}
         {...extras}
       />
     </I18nProvider>
@@ -55,6 +66,22 @@ function renderSummary(
 }
 
 describe('SyncSummary', () => {
+  it('names the stored tracks whose source removed them', () => {
+    renderSummary(run(), 1, { provider: Provider.Youtube, remoteRemoved: 2 });
+
+    expect(
+      screen.getByText('2 tracks removed from YouTube are still stored')
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing about retention while it holds none', () => {
+    renderSummary(run(), 1, { provider: Provider.Youtube });
+
+    expect(
+      screen.queryByText(/removed from YouTube are still stored/)
+    ).not.toBeInTheDocument();
+  });
+
   it('draws the four figures the last sync produced', () => {
     renderSummary(run(), 1);
 
@@ -66,9 +93,8 @@ describe('SyncSummary', () => {
     expect(screen.getByRole('group', { name: '1 failed' })).toBeInTheDocument();
   });
 
-  /* Downloads fail after the run settles, so the band reports the playlist's
-   * live failures rather than the figure the run recorded; zero cells are not
-   * drawn at all. */
+  /* Downloads fail after the run settles, so the band reports live failures, not
+   * the recorded figure; zero cells are not drawn at all. */
   it("draws the live failures and hides the run's zeroes", () => {
     renderSummary(
       run({ retainedCount: 0, addedCount: 4, removedCount: 0, failedCount: 0 }),
@@ -98,7 +124,14 @@ describe('SyncSummary', () => {
   it('writes the French stamp as one sentence', () => {
     render(
       <I18nProvider preferred={['fr']}>
-        <SyncSummary run={run()} now={NOW} failedCount={1} />
+        <SyncSummary
+          run={run()}
+          now={NOW}
+          playlistName="Rain On The Window"
+          failedCount={1}
+          remoteRemoved={0}
+          provider={Provider.Youtube}
+        />
       </I18nProvider>
     );
 
@@ -154,5 +187,64 @@ describe('SyncSummary', () => {
     renderSummary(run(), 1, { downloadingCount: 4 });
 
     expect(screen.queryByText('4 downloading')).not.toBeInTheDocument();
+  });
+
+  it('renders a cancelled run as a neutral stamp without counts or retry', () => {
+    renderSummary(
+      run({
+        status: SyncRunStatus.Cancelled,
+        addedCount: 0,
+        retainedCount: 0,
+        removedCount: 0,
+        failedCount: 0
+      }),
+      3,
+      { onRetryFailed: vi.fn() }
+    );
+
+    expect(screen.getByText('Sync cancelled')).toBeInTheDocument();
+    expect(screen.queryAllByRole('group')).toHaveLength(0);
+    expect(screen.queryByText('Nothing changed')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Retry all/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers Cancel for a running run and names the playlist', () => {
+    const onCancel = vi.fn();
+    renderSummary(run({ status: SyncRunStatus.Running, finishedAt: null }), 0, {
+      onCancel
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Cancel sync, Rain On The Window'
+      })
+    );
+
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it('reads Cancelling and stays disabled while the cancel is pending', () => {
+    renderSummary(run({ status: SyncRunStatus.Running, finishedAt: null }), 0, {
+      onCancel: vi.fn(),
+      cancelling: true
+    });
+
+    const control = screen.getByRole('button', {
+      name: 'Cancelling..., Rain On The Window'
+    });
+
+    expect(control).toBeDisabled();
+    expect(control).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByText('Syncing')).toBeInTheDocument();
+  });
+
+  it('offers no Cancel for a settled run', () => {
+    renderSummary(run(), 0, { onCancel: vi.fn() });
+
+    expect(
+      screen.queryByRole('button', { name: /Cancel sync/ })
+    ).not.toBeInTheDocument();
   });
 });

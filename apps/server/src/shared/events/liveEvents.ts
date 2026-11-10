@@ -4,14 +4,14 @@ import {
   playlistAudience,
   playlistAudiences,
   trackAudience
-} from '../access/playlistAccess.js';
+} from '../access/playlistAccess/playlistAccess.js';
 import type { AppContext } from '../context.js';
 import { exhaust } from '../exhaust.js';
 
 /*
  * The live events this server emits, in one place: an event names what changed
- * and the client refetches. The audience is the same access rule that decides
- * who may see the playlist. The context is narrowed to what a publisher needs.
+ * and the client refetches. The audience is the playlist access rule, and the
+ * context is narrowed to what a publisher needs.
  */
 
 export type LiveEventContext = Pick<AppContext, 'database' | 'events'>;

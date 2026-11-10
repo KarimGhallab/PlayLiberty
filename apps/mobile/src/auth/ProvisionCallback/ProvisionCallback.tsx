@@ -1,0 +1,114 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, Text } from 'react-native';
+
+import { useI18n } from '@playliberty/i18n';
+
+import { useAnnouncement } from '../../shared/a11y/useAnnouncement/useAnnouncement';
+import SignInDoor from '../../shared/components/SignInDoor/SignInDoor';
+import SignedOut from '../../shared/components/SignedOut/SignedOut';
+import { lineHeightFor, useTextScale } from '../../shared/styles/textMetrics';
+import {
+  fontFamily,
+  tokenColor,
+  tokenLength
+} from '../../shared/styles/tokens/tokens';
+
+import { expoProvisioningDeps } from '../expoProvisioning';
+import { completeProvisioning } from '../provisioning/provisioning';
+import { provisioningFailure } from '../provisioningFailure';
+import { mobileSession } from '../session/session';
+import { startProvisioning } from '../startProvisioning';
+
+/* The app's callback, shared by the scheme route and the HTTPS App Link: it
+ * trades the code before returning to the library, so the deep link never lands
+ * on the not-found page. */
+export default function ProvisionCallback() {
+  const { t } = useI18n();
+  const scale = useTextScale();
+  const { code, state } = useLocalSearchParams<{
+    code?: string;
+    state?: string;
+  }>();
+  const [failure, setFailure] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const liveRegion = useAnnouncement(
+    failure === null ? t('signedOut.busy') : null
+  );
+
+  useEffect(() => {
+    if (code === undefined || state === undefined) {
+      setFailure(t('signedOut.failed'));
+      return;
+    }
+
+    let active = true;
+
+    void completeProvisioning({ code, state }, expoProvisioningDeps)
+      .then(token => mobileSession.adopt(token))
+      .then(() => {
+        if (active) {
+          router.replace('/');
+        }
+      })
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
+        }
+
+        setFailure(provisioningFailure(t, error));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [code, state, t]);
+
+  const retry = useCallback(async () => {
+    setRetrying(true);
+
+    try {
+      await startProvisioning();
+    } catch (error) {
+      setFailure(provisioningFailure(t, error));
+    } finally {
+      setRetrying(false);
+    }
+  }, [t]);
+
+  if (failure === null) {
+    return (
+      <SignInDoor busy>
+        <Text
+          accessibilityLiveRegion={liveRegion}
+          style={[
+            styles.waiting,
+            { lineHeight: lineHeightFor('text-md', 'leading-normal', scale) }
+          ]}>
+          {t('signedOut.busy')}
+        </Text>
+      </SignInDoor>
+    );
+  }
+
+  return (
+    <SignedOut
+      busy={retrying}
+      failure={failure}
+      actionLabel={t('signedOut.retry')}
+      onSignIn={() => {
+        void retry();
+      }}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  waiting: {
+    color: tokenColor('muted'),
+    fontFamily,
+    fontSize: tokenLength('text-md'),
+    textAlign: 'center',
+    width: '100%'
+  }
+});

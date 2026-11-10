@@ -1,5 +1,7 @@
 import type { IYoutubeClient } from '@playliberty/youtube';
 
+import type { IPangolinClient } from './shared/pangolin.js';
+
 import { buildApp } from './app/buildApp.js';
 
 import { loadConfig } from './platform/config/loadConfig/loadConfig.js';
@@ -33,6 +35,25 @@ async function createYoutubeOverride(
   return createE2eYoutube(scriptPath);
 }
 
+/* The edge's integration API is the second seam: a phone signs in through it,
+ * and a harness run must not reach a real Pangolin. */
+async function createPangolinOverride(
+  runtime: Runtime,
+  harness: boolean
+): Promise<IPangolinClient | undefined> {
+  if (runtime !== 'test' || !harness) {
+    return undefined;
+  }
+
+  // Not a literal, so the production build does not compile the harness.
+  const modulePath: string = './app/testing/e2ePangolin/e2ePangolin.js';
+  const { createE2ePangolin } = (await import(modulePath)) as {
+    createE2ePangolin(): IPangolinClient;
+  };
+
+  return createE2ePangolin();
+}
+
 async function main(): Promise<void> {
   const config = loadConfig();
 
@@ -47,8 +68,18 @@ async function main(): Promise<void> {
     config.e2eHarness,
     config.e2eFakeScript
   );
+  const pangolin = await createPangolinOverride(
+    config.runtime,
+    config.e2eHarness
+  );
 
-  const app = await buildApp({ config, database, mediaPaths, youtube });
+  const app = await buildApp({
+    config,
+    database,
+    mediaPaths,
+    youtube,
+    pangolin
+  });
 
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info({ signal }, 'shutting down');

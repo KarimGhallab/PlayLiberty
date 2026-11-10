@@ -1,0 +1,16 @@
+{
+  "name": "@playliberty/e2e-shared",
+  "version": "0.1.0",
+  "description": "PlayLiberty e2e fixtures: the scenario contract and the source URL builders.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.mts",
+      "import": "./src/index.mjs"
+    }
+  },
+  "keywords": [],
+  "license": "ISC",
+  "packageManager": "pnpm@12.15.0"
+}

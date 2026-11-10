@@ -2,7 +2,7 @@ import type { Dirent } from 'node:fs';
 import { readdir, rm, stat } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
-import { isNotNull, sql } from 'drizzle-orm';
+import { isNotNull, lte, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
 import { TrackFileStatus } from '@playliberty/contracts';
@@ -10,8 +10,11 @@ import { TrackFileStatus } from '@playliberty/contracts';
 import type { DatabaseHandle } from '../../../platform/database/client.js';
 import type { TrackRow } from '../../../platform/database/schema.js';
 import {
+  accessTokens,
   associations,
   playlists,
+  refreshFamilies,
+  refreshTokens,
   tracks
 } from '../../../platform/database/schema.js';
 import type { MediaPaths } from '../../../platform/media/mediaPaths.js';
@@ -23,6 +26,53 @@ export interface PruneOptions {
   mediaPaths: MediaPaths;
   logger: FastifyBaseLogger;
   signal?: AbortSignal;
+}
+
+export interface CredentialPruneOptions {
+  database: DatabaseHandle;
+  logger: FastifyBaseLogger;
+  /* The credential clock; a test moves it to reach expiry. */
+  now?: () => number;
+}
+
+export interface CredentialPruneSummary {
+  readonly families: number;
+  readonly refreshTokens: number;
+  readonly accessTokens: number;
+}
+
+/* Expiry, not revocation: a revoked family is already unusable, but its row is
+ * removed by the same cap that bounds every family. Tokens go first, so the
+ * counts are their own rows rather than the family cascade. */
+export function pruneExpiredCredentials(
+  options: CredentialPruneOptions
+): CredentialPruneSummary {
+  const expiredAt = new Date((options.now ?? Date.now)()).toISOString();
+
+  const summary = options.database.unitOfWork(() => {
+    const refreshTokensRemoved = options.database.db
+      .delete(refreshTokens)
+      .where(lte(refreshTokens.expiresAt, expiredAt))
+      .run().changes;
+    const accessTokensRemoved = options.database.db
+      .delete(accessTokens)
+      .where(lte(accessTokens.expiresAt, expiredAt))
+      .run().changes;
+    const familiesRemoved = options.database.db
+      .delete(refreshFamilies)
+      .where(lte(refreshFamilies.expiresAt, expiredAt))
+      .run().changes;
+
+    return {
+      families: familiesRemoved,
+      refreshTokens: refreshTokensRemoved,
+      accessTokens: accessTokensRemoved
+    };
+  });
+
+  options.logger.info({ ...summary }, 'credential prune finished');
+
+  return summary;
 }
 
 /* An orphan is a track with zero associations and nothing else, so a removed

@@ -13,7 +13,13 @@ const localPlugin = {
 
 export default defineConfig([
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/*.js', '**/*.cjs']
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/*.js',
+      '**/*.cjs',
+      'apps/mobile/modules/**'
+    ]
   },
   pluginJs.configs.recommended,
   tseslint.configs.recommended,

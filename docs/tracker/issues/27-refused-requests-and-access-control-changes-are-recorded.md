@@ -2,7 +2,6 @@
 
 **State:** `resolved`
 **Category:** `enhancement`
-**Blocked by:** 23. The audit must cover the edge-assertion refusal in the same pass, so the identity path is finalized first.
 
 ## Outcome
 

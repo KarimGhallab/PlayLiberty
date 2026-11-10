@@ -209,6 +209,23 @@
     &[data-tone='removed'] {
       color: var(--tone-removed);
     }
+
+    &[data-tone='retained'] {
+      color: var(--tone-retained);
+    }
+  }
+
+  &__separator {
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: var(--text-xs);
+  }
+
+  &__source {
+    flex-shrink: 0;
+    color: var(--tone-removed);
+    font-size: var(--text-xs);
+    white-space: nowrap;
   }
 
   /* The recorded policy when non-default: a fact, not a state, so it stays

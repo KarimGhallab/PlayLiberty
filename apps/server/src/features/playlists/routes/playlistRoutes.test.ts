@@ -409,6 +409,60 @@ describe('GET /playlists', () => {
     ).toBe(listed?.trackCount);
   });
 
+  it('carries every playlist its retained count, zero when nothing is retained', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const retained = seedPlaylist(context.database, owner.accountId, {
+      name: 'Retained',
+      createdAt: '2026-09-01T10:00:00.000Z'
+    });
+    const clear = seedPlaylist(context.database, owner.accountId, {
+      name: 'Clear',
+      createdAt: '2026-09-02T10:00:00.000Z'
+    });
+    addTrack(
+      context.database,
+      retained.playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Stored,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId
+    );
+    addTrack(
+      context.database,
+      retained.playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Stored,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId
+    );
+    /* Stored but still at the source: not retained. */
+    addTrack(
+      context.database,
+      retained.playlistId,
+      seedTrack(context.database).trackId
+    );
+    /* Never stored, so the retention promise does not cover it. */
+    addTrack(
+      context.database,
+      clear.playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Failed,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId
+    );
+
+    /* One page, so a figure filled per row would still come out right; the
+     * statement-count test below proves the count is not a lookup per row. */
+    const page = PageSchema.parse(
+      (await get('/api/v1/playlists', owner.pangolinUserId)).json()
+    );
+    const byId = new Map(page.items.map(item => [item.id, item]));
+
+    expect(byId.get(retained.playlistId)?.remoteRemoved).toBe(2);
+    expect(byId.get(clear.playlistId)?.remoteRemoved).toBe(0);
+  });
+
   it('paginates with a stable order and a total that ignores the page', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
@@ -1634,7 +1688,133 @@ describe('the state filter and the counts', () => {
     expect(page.counts.unavailable).toBe(0);
   });
 
-  it('refuses a state that is not one of the five', async () => {
+  it('counts the stored tracks whose source removed them beside the buckets', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Stored,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      0
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database).trackId,
+      1
+    );
+    /* Never stored, so the retention promise does not cover it. */
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Failed,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      2
+    );
+    addTrackAt(
+      context.database,
+      playlistId,
+      seedTrack(context.database, {
+        fileStatus: TrackFileStatus.Unavailable,
+        sourceStatus: TrackSourceStatus.Removed
+      }).trackId,
+      3
+    );
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    /* The promise is stored plus removed; a removed source that was never
+     * stored is the Unavailable bucket's news, not this figure. */
+    expect(page.remoteRemoved).toBe(1);
+    /* The five buckets still sum to the playlist's size, so the figure above is
+     * a subset of stored and not a sixth bucket. */
+    expect(
+      Object.values(page.counts).reduce((sum, count) => sum + count, 0)
+    ).toBe(4);
+  });
+
+  it('narrows to the stored tracks whose source removed them and totals that figure', async () => {
+    context = await createTestContext();
+    const owner = seedAccount(context.database);
+    const { playlistId } = seedPlaylist(context.database, owner.accountId);
+    const { trackId: retained } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Stored,
+      sourceStatus: TrackSourceStatus.Removed
+    });
+    const { trackId: retainedSecond } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Stored,
+      sourceStatus: TrackSourceStatus.Removed
+    });
+    /* Stored but still at the source: not this view. */
+    const { trackId: available } = seedTrack(context.database);
+    /* Removed but never stored: the loss is the Unavailable row's news. */
+    const { trackId: failed } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Failed,
+      sourceStatus: TrackSourceStatus.Removed
+    });
+    const { trackId: unavailable } = seedTrack(context.database, {
+      fileStatus: TrackFileStatus.Unavailable,
+      sourceStatus: TrackSourceStatus.Removed
+    });
+
+    addTrackAt(context.database, playlistId, retained, 0);
+    addTrackAt(context.database, playlistId, retainedSecond, 1);
+    addTrackAt(context.database, playlistId, available, 2);
+    addTrackAt(context.database, playlistId, failed, 3);
+    addTrackAt(context.database, playlistId, unavailable, 4);
+
+    const page = PlaylistTrackPageSchema.parse(
+      (
+        await get(
+          `/api/v1/playlists/${playlistId}/tracks?state=remoteRemoved`,
+          owner.pangolinUserId
+        )
+      ).json()
+    );
+
+    expect(page.items.map(item => item.track.id)).toEqual([
+      retained,
+      retainedSecond
+    ]);
+    // The total is the retained figure the page already reports.
+    expect(page.total).toBe(2);
+    expect(page.remoteRemoved).toBe(2);
+    // The five buckets do not follow the filter, and still sum the playlist.
+    expect(page.counts).toEqual({
+      stored: 3,
+      pending: 0,
+      downloading: 0,
+      failed: 1,
+      unavailable: 1
+    });
+    expect(
+      Object.values(page.counts).reduce((sum, count) => sum + count, 0)
+    ).toBe(5);
+
+    const playlistRead = PlaylistSchema.parse(
+      (
+        await get(`/api/v1/playlists/${playlistId}`, owner.pangolinUserId)
+      ).json()
+    );
+    expect(
+      Object.values(page.counts).reduce((sum, count) => sum + count, 0)
+    ).toBe(playlistRead.trackCount);
+  });
+
+  it('refuses a state it does not know', async () => {
     context = await createTestContext();
     const owner = seedAccount(context.database);
     const { playlistId } = seedPlaylist(context.database, owner.accountId);

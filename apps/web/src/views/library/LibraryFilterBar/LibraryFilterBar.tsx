@@ -2,21 +2,21 @@ import { IconUserShare } from '@tabler/icons-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import type {
-  TrackFileStatus,
-  TrackFileStatusCounts
+  Provider,
+  TrackFileStatusCounts,
+  TrackFilterState
 } from '@playliberty/contracts';
 import { useI18n } from '@playliberty/i18n';
-
-import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
-
-import styles from './LibraryFilterBar.module.scss';
-
 /*
  * The gallery's filter rail: the ownership scope first, then the status chips
  * over that scope. Without a share the rail is the status chips alone.
  */
 
-export type LibraryScope = 'all' | 'shared';
+import type { LibraryScope } from '@playliberty/library';
+
+import PlaylistFilterChips from '../../../shared/components/PlaylistFilterChips/PlaylistFilterChips';
+
+import styles from './LibraryFilterBar.module.scss';
 
 interface LibraryFilterBarProps {
   readonly hasShared: boolean;
@@ -25,9 +25,11 @@ interface LibraryFilterBarProps {
   readonly scope: LibraryScope;
   readonly onScopeChange: (scope: LibraryScope) => void;
   readonly counts: TrackFileStatusCounts;
+  readonly remoteRemoved: number;
+  readonly provider: Provider;
   readonly showStatus: boolean;
-  readonly activeStatus: TrackFileStatus | null;
-  readonly onStatusChange: (status: TrackFileStatus | null) => void;
+  readonly activeStatus: TrackFilterState | null;
+  readonly onStatusChange: (status: TrackFilterState | null) => void;
 }
 
 export default function LibraryFilterBar({
@@ -37,6 +39,8 @@ export default function LibraryFilterBar({
   scope,
   onScopeChange,
   counts,
+  remoteRemoved,
+  provider,
   showStatus,
   activeStatus,
   onStatusChange
@@ -148,6 +152,8 @@ export default function LibraryFilterBar({
         <div className={styles.status}>
           <PlaylistFilterChips
             counts={counts}
+            remoteRemoved={remoteRemoved}
+            provider={provider}
             active={activeStatus}
             showEmpty={false}
             allLabelKey={hasShared ? 'library.allTracks' : undefined}

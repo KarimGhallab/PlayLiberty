@@ -1,18 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect } from 'react';
 
+import { API_PREFIX, ApiError } from '@playliberty/api-client';
 import type { LiveEvent } from '@playliberty/contracts';
 import { LiveEventSchema, endpoints } from '@playliberty/contracts';
+import { cacheEffects, invalidateForLiveEvent } from '@playliberty/query';
 
-import { cacheEffects } from '../cacheEffects/cacheEffects';
-import { API_PREFIX, ApiError } from '../clients/apiClient/apiClient';
 import { readEndpoint } from '../endpoints/endpoints';
-import { invalidateForLiveEvent } from '../liveEvents/liveEvents';
 
 /*
- * The tab's one live connection, mounted in the shell and reopened on a
- * backoff, which re-reads everything the tab holds so a gap closes without a
- * timer. A refusal uses the re-auth guard; `EventStreamContext` is a test seam.
+ * The tab's one live connection, reopened on a backoff that re-reads everything
+ * the tab holds. A refusal uses the re-auth guard; the context is a test seam.
  */
 
 export interface EventStreamHandlers {

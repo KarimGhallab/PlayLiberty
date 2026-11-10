@@ -17,34 +17,43 @@ import {
 import { flushSync } from 'react-dom';
 
 import {
-  PlaylistSort,
-  PlaylistSyncStatus,
-  Provider,
-  TrackFileStatus,
-  UserRole
-} from '@playliberty/contracts';
-import { useI18n } from '@playliberty/i18n';
-
-import {
+  ApiError,
   ownerNameFrom,
   useAccountDirectory,
-  useCurrentAccount
-} from '../../../shared/api/clients/accountClient/accountClient';
-import { ApiError } from '../../../shared/api/clients/apiClient/apiClient';
-import { usePlaylists } from '../../../shared/api/clients/libraryClient/libraryClient';
-import {
   useAddTrack,
+  useCancelSyncPlaylist,
+  useCurrentAccount,
   useFetchTrackWhole,
   useLatestSyncRun,
   usePlaylist,
   usePlaylistQueue,
   usePlaylistTracks,
+  usePlaylists,
   useRemoveTrack,
   useRetryFailedTracks,
   useRetryTrack,
   useUpdateSkipNonMusic,
   useUpdateSort
-} from '../../../shared/api/clients/playlistClient/playlistClient';
+} from '@playliberty/api-client';
+import type { TrackFilterState } from '@playliberty/contracts';
+import {
+  PlaylistSort,
+  PlaylistSyncStatus,
+  Provider,
+  REMOTE_REMOVED,
+  SyncRunStatus,
+  TrackFileStatus,
+  UserRole
+} from '@playliberty/contracts';
+import type { TrackLinkNotice } from '@playliberty/i18n';
+import { cannotPlayNotice, providerLabel, useI18n } from '@playliberty/i18n';
+import { canWritePlaylist } from '@playliberty/library';
+import {
+  hasPlayableTrack,
+  isPlayable,
+  orderTracksByQueue
+} from '@playliberty/player';
+
 import { problemSentence } from '../../../shared/api/problem/problem';
 import AddTrackDialog from '../../../shared/components/AddTrackDialog/AddTrackDialog';
 import EgressLink from '../../../shared/components/EgressLink/EgressLink';
@@ -70,12 +79,8 @@ import SuccessToast from '../../../shared/components/Toast/SuccessToast';
 import ToastStack from '../../../shared/components/Toast/ToastStack';
 import TrackRow from '../../../shared/components/TrackRow/TrackRow';
 import { useDeferredAction } from '../../../shared/components/useDeferredAction/useDeferredAction';
-import { hasPlayableTrack, isPlayable } from '../../../shared/player/playable';
-import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch';
+import { useQueueRefetch } from '../../../shared/player/playerQueue/useQueueRefetch/useQueueRefetch';
 import { usePlayerStore } from '../../../shared/player/playerStore/playerStore';
-import { orderTracksByQueue } from '../../../shared/player/queueOrder/queueOrder';
-import type { TrackLinkNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
-import { cannotPlayNotice } from '../../../shared/player/trackLinkNotice/trackLinkNotice';
 import {
   currentTrack,
   hasNext,
@@ -88,10 +93,7 @@ import {
   refusalNotice,
   usePlayTransition
 } from '../../../shared/player/usePlayTransition/usePlayTransition';
-import {
-  canWritePlaylist,
-  usePlaylistActions
-} from '../../../shared/playlistActions/playlistActions';
+import { usePlaylistActions } from '../../../shared/playlistActions/playlistActions';
 import {
   MOBILE_QUERY,
   useMediaQuery
@@ -137,8 +139,12 @@ export default function PlaylistDetailPage() {
   const updateSkip = useUpdateSkipNonMusic(playlistId);
   const updateSort = useUpdateSort(playlistId);
   const addTrack = useAddTrack();
+  const cancelSync = useCancelSyncPlaylist();
   const [addOpen, setAddOpen] = useState(false);
   const [settingRefused, setSettingRefused] = useState<string | null>(null);
+  const [cancelRefused, setCancelRefused] = useState<{
+    readonly detail: string | null;
+  } | null>(null);
   const [copyResult, setCopyResult] = useState<CopyLinkResult | null>(null);
   const [linkNotice, setLinkNotice] = useState<TrackLinkNotice | null>(null);
   const deferred = useDeferredAction();
@@ -171,7 +177,7 @@ export default function PlaylistDetailPage() {
    * The filter lasts for the visit only, and is not applied while the shuffled
    * queue is on screen; the choice survives until the shuffle is turned off.
    */
-  const [trackState, setTrackState] = useState<TrackFileStatus | null>(null);
+  const [trackState, setTrackState] = useState<TrackFilterState | null>(null);
   /* The exchange of the queue's order, which is held behind the skeleton. */
   const [rebuilding, setRebuilding] = useState(false);
   /*
@@ -190,7 +196,7 @@ export default function PlaylistDetailPage() {
     playlistId,
     isQueue || trackParam !== null
   );
-  useQueueRefetch(playlist.data, queueRead.data);
+  useQueueRefetch(playlist.data, queueRead.data?.items);
   /* The queue's own derivation, so a shuffled queue goes dead at its last entry
    * exactly as an unshuffled one does. */
   const canSkipNext = usePlayerStore(hasNext);
@@ -210,9 +216,8 @@ export default function PlaylistDetailPage() {
     tracks.tracks.some(association => association.track.id === currentId);
 
   /*
-   * The list has no place to stand while the pages that hold the current row
-   * arrive; the skeleton holds its geometry rather than a list about to jump.
-   * The sort, the chips and Load more belong to that list, so they wait too.
+   * The list has no place to stand while the pages holding the current row
+   * arrive; the skeleton holds its geometry, so the controls wait too.
    */
   const landing =
     isQueue &&
@@ -223,12 +228,8 @@ export default function PlaylistDetailPage() {
     tracks.hasMore &&
     !tracks.moreFailed;
 
-  /*
-   * Opening the queue's playlist lands on its current row, not the top, and a
-   * shuffle toggle lands again: the row it draws changed places with the order.
-   * The jump waits one task because the router resets a cached navigation to the
-   * top, and pages load until the row exists.
-   */
+  /* Opening the queue lands on its current row and a shuffle lands again; the
+   * jump waits one task because the router resets a cached navigation. */
   useLayoutEffect(() => {
     if (!isQueue || currentId === null) {
       scrollHandledFor.current = playlistId;
@@ -310,9 +311,8 @@ export default function PlaylistDetailPage() {
       ? ownerNameFrom(directory.data, playlist.data.ownerAccountId)
       : null;
 
-  /* The transition's subject, held stable so a row's memo survives a render. No
-   * control is drawn before the read answers, so the empty name is never
-   * spoken. */
+  /* The transition's subject, held stable so a row's memo survives a render.
+   * No control is drawn before the read answers, so the name is never empty. */
   const playlistView = useMemo(
     () => ({ id: playlistId, name: playlist.data?.name ?? '' }),
     [playlistId, playlist.data?.name]
@@ -365,7 +365,7 @@ export default function PlaylistDetailPage() {
       return;
     }
 
-    const association = queueRead.data.find(
+    const association = queueRead.data.items.find(
       entry => entry.track.id === trackParam
     );
 
@@ -407,9 +407,8 @@ export default function PlaylistDetailPage() {
     trackParam
   ]);
 
-  /* While this playlist is the queue, the address bar names its current track;
-   * another queue leaves no track on this page. The mirror never moves the
-   * reader, and a link whose entry has not decided yet is not its to remove. */
+  /* While this is the queue, the bar names its current track; another queue
+   * leaves none, and the mirror never moves the reader or an undecided link. */
   useEffect(() => {
     if (playlist.data === undefined) {
       return;
@@ -450,9 +449,8 @@ export default function PlaylistDetailPage() {
     trackParam
   ]);
 
-  /* The exchange freezes the frame it lands on, so the skeleton is painted first
-   * and stands through it; the list stays mounted under it, keeping scroll and
-   * height. */
+  /* The exchange freezes the frame it lands on: the skeleton is painted first
+   * and stands through it, while the list stays mounted and keeps scroll. */
   const toggleShuffle = useCallback(() => {
     landAfterToggle.current = true;
 
@@ -545,12 +543,24 @@ export default function PlaylistDetailPage() {
     (trackId: string): void => fetchWhole.mutate(trackId),
     [fetchWhole.mutate]
   );
+  const cancelRunningSync = useCallback(
+    (): void =>
+      cancelSync.mutate(playlistId, {
+        onError: error =>
+          setCancelRefused({ detail: problemSentence(t, error) })
+      }),
+    [cancelSync.mutate, playlistId, t]
+  );
 
   const neverSynced = playlist.data?.lastSyncedAt === null;
   const canWrite = canWritePlaylist(playlist.data);
+  const runRunning = latestRun.data?.status === SyncRunStatus.Running;
   const syncInFlight =
     playlist.data?.syncStatus === PlaylistSyncStatus.Syncing ||
-    actions.syncing(playlistId);
+    actions.syncing(playlistId) ||
+    runRunning;
+  const cancelling =
+    cancelSync.isPending && cancelSync.variables === playlistId;
   /* The one track whose row action is in flight, so its menu is not opened onto
    * a second press while the first is still running. */
   const busyTrackId = retry.isPending
@@ -582,7 +592,6 @@ export default function PlaylistDetailPage() {
     }
   }, [addTrack.isSuccess, batchRefused]);
 
-  /* The link's refusal withdraws on the notice window. */
   useEffect(() => {
     if (linkNotice === null) {
       return;
@@ -593,7 +602,6 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [linkNotice]);
 
-  /* The copy result withdraws on the same window; the toast owns no timer. */
   useEffect(() => {
     if (copyResult === null) {
       return;
@@ -604,7 +612,6 @@ export default function PlaylistDetailPage() {
     return () => clearTimeout(timer);
   }, [copyResult]);
 
-  /* The refusal withdraws on the window the shuffle notice uses. */
   useEffect(() => {
     if (settingRefused === null) {
       return;
@@ -614,6 +621,17 @@ export default function PlaylistDetailPage() {
 
     return () => clearTimeout(timer);
   }, [settingRefused]);
+
+  /* A failed cancel keeps the run syncing. */
+  useEffect(() => {
+    if (cancelRefused === null) {
+      return;
+    }
+
+    const timer = setTimeout(() => setCancelRefused(null), NOTICE_WINDOW_MS);
+
+    return () => clearTimeout(timer);
+  }, [cancelRefused]);
   const failed = playlist.data?.syncStatus === PlaylistSyncStatus.Error;
   /* The failed band owns the retry, so the header does not draw a second one. */
   const syncErrorShown = failed && latestRun.isSuccess;
@@ -637,7 +655,16 @@ export default function PlaylistDetailPage() {
   const filterEmpty =
     activeState !== null && !tracks.isPlaceholderData && tracks.total === 0;
   const filterEmptyMessage =
-    activeState === null ? null : t(`detail.filterEmpty.${activeState}`);
+    activeState === null
+      ? null
+      : activeState === REMOTE_REMOVED
+        ? t('detail.filterEmpty.remoteRemoved', {
+            provider: providerLabel(
+              t,
+              playlist.data?.provider ?? Provider.Youtube
+            )
+          })
+        : t(`detail.filterEmpty.${activeState}`);
 
   /*
    * The whole playlist's downloading count, an aggregate the read folds in, so
@@ -827,7 +854,7 @@ export default function PlaylistDetailPage() {
             {syncErrorShown ? (
               <div className={styles.playlistDetail__state}>
                 <SyncError
-                  trackCount={playlist.data?.trackCount ?? null}
+                  storedCount={counts?.[TrackFileStatus.Stored] ?? null}
                   provider={playlist.data?.provider ?? Provider.Youtube}
                   rawError={latestRun.data?.error ?? null}
                   onRetry={
@@ -846,7 +873,10 @@ export default function PlaylistDetailPage() {
                 <SyncSummary
                   run={latestRun.data}
                   now={new Date()}
+                  playlistName={playlist.data?.name ?? ''}
                   failedCount={failedCount}
+                  remoteRemoved={tracks.remoteRemoved ?? 0}
+                  provider={playlist.data?.provider ?? Provider.Youtube}
                   downloadingCount={downloadingCount}
                   onRetryFailed={
                     canWrite && activeState !== TrackFileStatus.Failed
@@ -854,7 +884,10 @@ export default function PlaylistDetailPage() {
                       : undefined
                   }
                   retryingFailed={retryAllFailed.isPending}
-                  showRunningStamp={!syncInFlight}
+                  onCancel={
+                    canWrite && runRunning ? cancelRunningSync : undefined
+                  }
+                  cancelling={cancelling}
                 />
               </div>
             ) : null}
@@ -880,6 +913,8 @@ export default function PlaylistDetailPage() {
               />
               <PlaylistFilterChips
                 counts={counts}
+                remoteRemoved={tracks.remoteRemoved ?? 0}
+                provider={playlist.data?.provider ?? Provider.Youtube}
                 active={activeState}
                 disabled={listShuffled}
                 onChange={setTrackState}
@@ -953,7 +988,10 @@ export default function PlaylistDetailPage() {
               {tracks.isSuccess && tracks.tracks.length > 0 && !landing ? (
                 <ul className={styles.playlistDetail__list} ref={listRef}>
                   {(listShuffled
-                    ? orderTracksByQueue(tracks.tracks, queue)
+                    ? orderTracksByQueue(
+                        tracks.tracks,
+                        queue.map(track => track.id)
+                      )
                     : tracks.tracks
                   ).map(association => {
                     /*
@@ -979,6 +1017,7 @@ export default function PlaylistDetailPage() {
                         onFetchWhole={canWrite ? fetchWholeTrack : undefined}
                         onRemove={canWrite ? removeTrackDeferred : undefined}
                         onCopyLink={copyTrackLink}
+                        skipNonMusic={playlist.data?.skipNonMusic ?? false}
                         busy={busyTrackId === association.track.id}
                         starting={
                           startingThisPlaylist?.startTrackId ===
@@ -1035,6 +1074,13 @@ export default function PlaylistDetailPage() {
         <NoticeToast
           message={linkNotice.message}
           detail={linkNotice.detail}
+          durationMs={NOTICE_WINDOW_MS}
+        />
+      )}
+      {cancelRefused === null ? null : (
+        <NoticeToast
+          message={t('syncSummary.cancelFailed')}
+          detail={cancelRefused.detail}
           durationMs={NOTICE_WINDOW_MS}
         />
       )}

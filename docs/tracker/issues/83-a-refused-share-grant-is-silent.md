@@ -9,4 +9,4 @@ A refused grant now opens a notice naming the account, with the server's mapped 
 
 The same silent path on revoke is closed with its own sentence. `shareDialog.grantFailed` and `shareDialog.revokeFailed` name the account; `problemSentence` supplies the reason. A successful write is unchanged: the shares read still invalidates on the response.
 
-Tests: the detail page holds both refusal paths, asserting the account sentence, the mapped reason, and the untouched toggle. Verification: `pnpm run build` and `pnpm run lint` pass; the full unit suite passes (web 537 across 52 files; server, i18n and ui-foundation passed).
+Tests: the detail page holds both refusal paths, asserting the account sentence, the mapped reason, and the untouched toggle.

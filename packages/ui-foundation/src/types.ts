@@ -6,5 +6,6 @@ export enum TrackTone {
   Stored = 'stored',
   Failed = 'failed',
   Unavailable = 'unavailable',
-  Removed = 'removed'
+  Removed = 'removed',
+  Retained = 'retained'
 }

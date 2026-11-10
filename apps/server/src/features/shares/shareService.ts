@@ -6,11 +6,11 @@ import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
-} from '../../shared/access/entry.js';
+} from '../../shared/access/entry/entry.js';
 import type { LiveEventContext } from '../../shared/events/liveEvents.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
-import { Refusal } from '../../shared/refusal.js';
 import type { Refused, Succeeded } from '../../shared/refusal.js';
+import { Refusal } from '../../shared/refusal.js';
 
 import type { DatabaseHandle } from '../../platform/database/client.js';
 import type { AccountRow, ShareRow } from '../../platform/database/schema.js';
@@ -19,8 +19,7 @@ import { toAccountSummary } from '../accounts/accountService.js';
 
 /*
  * Sharing is owner-only: a share grants access, so a collaborator allowed to
- * share would be a second owner. The level is the enum's two members; what each
- * means is enforced by the access rules the rest of the app already asks.
+ * share would be a second owner. The access rules define each level.
  */
 
 function toShareView(share: ShareRow, account: AccountRow): Share {

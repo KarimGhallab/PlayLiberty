@@ -17,7 +17,7 @@ function renderError(props: Partial<Parameters<typeof SyncError>[0]> = {}) {
   return render(
     <I18nProvider preferred={['en']}>
       <SyncError
-        trackCount={3}
+        storedCount={3}
         provider={Provider.Youtube}
         rawError={null}
         {...props}
@@ -42,7 +42,7 @@ describe('SyncError', () => {
   });
 
   it('reassures in the singular for one track', () => {
-    renderError({ trackCount: 1 });
+    renderError({ storedCount: 1 });
 
     expect(
       screen.getByText(/All 1 track is still here and will never be deleted/)
@@ -50,7 +50,7 @@ describe('SyncError', () => {
   });
 
   it('keeps the reassurance quiet at zero tracks', () => {
-    renderError({ trackCount: 0 });
+    renderError({ storedCount: 0 });
 
     expect(
       screen.queryByText(/still here and will never be deleted/)
@@ -58,7 +58,7 @@ describe('SyncError', () => {
   });
 
   it('keeps the reassurance quiet when the count is unknown', () => {
-    renderError({ trackCount: null });
+    renderError({ storedCount: null });
 
     expect(
       screen.queryByText(/still here and will never be deleted/)

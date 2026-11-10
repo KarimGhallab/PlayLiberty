@@ -80,7 +80,7 @@ describe('AppShell', () => {
     await router.navigate({ to: '/' });
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: 'PlayLiberty' })
+        screen.getByRole('heading', { name: 'PlayLiberté' })
       ).toBeInTheDocument();
     });
 
@@ -152,7 +152,7 @@ describe('AppShell', () => {
   it('names the tab after the open playlist, then after the playing track', async () => {
     const { router } = renderShell('/');
     await waitFor(() => {
-      expect(document.title).toBe('PlayLiberty');
+      expect(document.title).toBe('PlayLiberté');
     });
 
     await router.navigate({
@@ -160,7 +160,7 @@ describe('AppShell', () => {
       params: { playlistId: PLAYLIST }
     });
     await waitFor(() => {
-      expect(document.title).toBe('PlayLiberty - Rain On The Window');
+      expect(document.title).toBe('PlayLiberté - Rain On The Window');
     });
 
     act(() => {
@@ -168,7 +168,7 @@ describe('AppShell', () => {
     });
     await waitFor(() => {
       expect(document.title).toBe(
-        'PlayLiberty - Rain On The Window (Blue In Green)'
+        'PlayLiberté - Rain On The Window (Blue In Green)'
       );
     });
   });

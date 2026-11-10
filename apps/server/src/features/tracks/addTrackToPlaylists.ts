@@ -8,7 +8,7 @@ import {
   AccessNeed,
   EntryOutcome,
   playlistEntry
-} from '../../shared/access/entry.js';
+} from '../../shared/access/entry/entry.js';
 import type { AppContext } from '../../shared/context.js';
 import { ChangeKind, announce } from '../../shared/events/liveEvents.js';
 
@@ -24,9 +24,8 @@ import { findTrackByVideoId } from './service/trackService.js';
 import type { TrackSeed } from './types.js';
 
 /*
- * Add a pasted video to several playlists: one outcome per playlist, in request
- * order. A refusal carries no reason, else the batch reveals which ids exist.
- * The video resolves once; a track is created only if some playlist takes it.
+ * One outcome per playlist, in request order. A refusal is empty, else the batch
+ * leaks ids; the video resolves once and only a taken playlist creates a track.
  */
 export async function addTrackToPlaylists(
   context: AppContext,

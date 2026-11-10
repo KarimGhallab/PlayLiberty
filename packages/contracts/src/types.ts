@@ -9,7 +9,9 @@ import {
   CreatePlaylistInputSchema,
   EgressConfigSchema,
   EgressReadSchema,
+  ExchangeInputSchema,
   LiveEventSchema,
+  MobileTokenSchema,
   PageQuerySchema,
   PinPlaylistInputSchema,
   PlaylistAccessSchema,
@@ -21,7 +23,10 @@ import {
   PlaylistTracksQuerySchema,
   PlaylistWithCountsSchema,
   ProblemSchema,
+  ProvisionQuerySchema,
+  RefreshInputSchema,
   RenamePlaylistInputSchema,
+  SessionRevokeInputSchema,
   SharePlaylistInputSchema,
   ShareSchema,
   SkipNonMusicInputSchema,
@@ -57,6 +62,11 @@ export type SkipNonMusicInput = z.infer<typeof SkipNonMusicInputSchema>;
 export type SortPlaylistInput = z.infer<typeof SortPlaylistInputSchema>;
 export type PinPlaylistInput = z.infer<typeof PinPlaylistInputSchema>;
 export type PageQuery = z.infer<typeof PageQuerySchema>;
+export type ProvisionQuery = z.infer<typeof ProvisionQuerySchema>;
+export type ExchangeInput = z.infer<typeof ExchangeInputSchema>;
+export type RefreshInput = z.infer<typeof RefreshInputSchema>;
+export type SessionRevokeInput = z.infer<typeof SessionRevokeInputSchema>;
+export type MobileToken = z.infer<typeof MobileTokenSchema>;
 export type EgressConfig = z.infer<typeof EgressConfigSchema>;
 export type EgressRead = z.infer<typeof EgressReadSchema>;
 

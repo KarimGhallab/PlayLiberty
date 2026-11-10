@@ -14,7 +14,7 @@ PlayLiberty keeps the audio and the link to the source playlist. A sync adds new
 
 - Imports a YouTube playlist or a single video.
 - Syncs a playlist on demand. A removed video keeps its stored track.
-- Streams the stored audio to the web client.
+- Streams the stored audio to the web and mobile clients.
 - Holds several accounts on one instance. A playlist owner shares a playlist read-only or read-write with named accounts.
 - Adds one pasted video to several write-accessible playlists in one action.
 - Pins playlists, and sets, crops or removes a custom cover.
@@ -24,7 +24,7 @@ PlayLiberty keeps the audio and the link to the source playlist. A sync adds new
 
 ![The add-track dialog with one video link and two chosen playlists](.github/assets/readme/03-add-track.webp)
 
-The screenshots use a demo instance with sample playlists and tracks.
+![The mobile client: the library and a playlist detail with the player bar](.github/assets/readme/04-mobile.webp)
 
 ## The components
 
@@ -32,7 +32,7 @@ The screenshots use a demo instance with sample playlists and tracks.
 flowchart TB
   subgraph devices["Client devices"]
     web["Web client<br/>React, Vite"]
-    mobile["Mobile client<br/>planned"]
+    mobile["Mobile client<br/>React Native, Expo"]
   end
 
   edge["Pangolin edge<br/>nginx, identity, TLS"]
@@ -49,7 +49,7 @@ flowchart TB
   youtube["YouTube"]
 
   web --> edge
-  mobile -.-> edge
+  mobile --> edge
   edge --> server
   server <--> db
   server <--> media
@@ -64,14 +64,13 @@ flowchart TB
   classDef mediaRole fill:#2a2116,stroke:#e39a3c,color:#e6e9ea
   classDef egress fill:#241d33,stroke:#7a63b0,color:#e6e9ea
   classDef source fill:#3a1c1c,stroke:#e0625e,color:#e6e9ea
-  classDef planned fill:#14171b,stroke:#6e7379,color:#8b9299,stroke-dasharray:4 3
   classDef hostLabel fill:transparent,stroke:transparent,color:#8b9299
 
   style devices fill:transparent,stroke:#cfd4da
   style host fill:transparent,stroke:#cfd4da
 
   class web client
-  class mobile planned
+  class mobile client
   class edge edgeRole
   class server serverRole
   class db database
@@ -94,6 +93,6 @@ flowchart TB
 
 The agent runs on the host, in its own network namespace. It switches exits, measures which exit reaches YouTube, and reports the facts. The server owns the rotation policy and the stored result. The agent holds no database and no policy, and the server's other traffic never enters the tunnel.
 
-**Edge.** Pangolin authenticates every request and injects the user identity. nginx serves the web client and proxies `/api` to the server. The server publishes no host port.
+**Edge.** Pangolin authenticates every request and injects the user identity, except the two token endpoints the mobile client's sign-in uses. nginx serves the web client and proxies `/api` to the server. The server publishes no host port.
 
-**Mobile client (planned).** An Expo application that uses the same API with a per-user Pangolin token.
+**Mobile client.** An Expo React Native application that uses the same API with a per-user Pangolin token. It draws the same gallery, playlist detail, player and operator's egress page, and keeps playing with the screen off.

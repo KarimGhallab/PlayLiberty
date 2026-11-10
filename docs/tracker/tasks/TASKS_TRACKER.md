@@ -11,8 +11,8 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`03-define-mobile-stack`](03-define-mobile-stack.md)                                                                       | resolved | none                                                     | none                                                      |
 | [`04-scaffold-server`](04-scaffold-server.md)                                                                               | resolved | none                                                     | none                                                      |
 | [`05-scaffold-web`](05-scaffold-web.md)                                                                                     | resolved | none                                                     | none                                                      |
-| [`06-scaffold-mobile`](06-scaffold-mobile.md)                                                                               | open     | none                                                     | [`07`](07-provision-mobile-access.md)                     |
-| [`07-provision-mobile-access`](07-provision-mobile-access.md)                                                               | open     | [`06`](06-scaffold-mobile.md)                            | none                                                      |
+| [`06-scaffold-mobile`](06-scaffold-mobile.md)                                                                               | resolved | none                                                     | [`07`](07-provision-mobile-access.md)                     |
+| [`07-provision-mobile-access`](07-provision-mobile-access.md)                                                               | resolved | [`06`](06-scaffold-mobile.md)                            | none                                                      |
 | [`08-define-design-system`](08-define-design-system.md)                                                                     | resolved | none                                                     | [`09`](09-design-scheme-and-components.md)                |
 | [`09-design-scheme-and-components`](09-design-scheme-and-components.md)                                                     | resolved | none                                                     | [`10`](10-build-design-foundation.md)                     |
 | [`10-build-design-foundation`](10-build-design-foundation.md)                                                               | resolved | [`09`](09-design-scheme-and-components.md)               | [`05`](05-scaffold-web.md), [`06`](06-scaffold-mobile.md) |
@@ -57,8 +57,14 @@ Actionable tickets with blocking edges, written by `/to-tickets`. One file per t
 | [`48-one-optimistic-frame-and-a-playlist-client`](48-one-optimistic-frame-and-a-playlist-client.md)                         | resolved | none                                                     | [`49`](49-clients-for-the-library-account-and-egress.md)  |
 | [`49-clients-for-the-library-account-and-egress`](49-clients-for-the-library-account-and-egress.md)                         | resolved | [`48`](48-one-optimistic-frame-and-a-playlist-client.md) | none                                                      |
 | [`50-share-a-track`](18-share-a-track/TICKETS.md)                                                                           | resolved | none                                                     | none                                                      |
+| [`51-the-e2e-projects-own-their-suites`](51-the-e2e-projects-own-their-suites.md)                                           | resolved | none                                                     | none                                                      |
 
-Feature-scoped ticket sets live in a folder named for their spec:
+Tickets `06` and `07` scaffolded the mobile app and provisioned its access. The rest of spec
+[`19`](../specs/19-the-mobile-shell.md) is in [`19-the-mobile-shell/TICKETS.md`](19-the-mobile-shell/TICKETS.md),
+and `07` is the implementation record of spec [`20`](../specs/20-provision-mobile-access.md); the remaining tickets
+are in [`20-provision-mobile-access/TICKETS.md`](20-provision-mobile-access/TICKETS.md).
+
+Feature-scoped ticket sets live in a folder named for their spec or their audit:
 
 - [`01-sync-a-playlist/TICKETS.md`](01-sync-a-playlist/TICKETS.md)
 - [`02-store-a-track/TICKETS.md`](02-store-a-track/TICKETS.md)
@@ -72,12 +78,46 @@ Feature-scoped ticket sets live in a folder named for their spec:
 - [`09-keep-the-screens-current/TICKETS.md`](09-keep-the-screens-current/TICKETS.md)
 - [`11-choose-a-language/TICKETS.md`](11-choose-a-language/TICKETS.md)
 - [`12-sort-and-filter-the-track-list/TICKETS.md`](12-sort-and-filter-the-track-list/TICKETS.md)
-- [`13-pin-a-playlist/TICKETS.md`](13-pin-a-playlist/TICKETS.md).
+- [`13-pin-a-playlist/TICKETS.md`](13-pin-a-playlist/TICKETS.md)
 - [`14-upload-a-playlist-cover/TICKETS.md`](14-upload-a-playlist-cover/TICKETS.md).
 - [`15-prepare-the-production-deployment/TICKETS.md`](15-prepare-the-production-deployment/TICKETS.md).
 - [`17-crop-a-playlist-cover/TICKETS.md`](17-crop-a-playlist-cover/TICKETS.md).
 - [`16-tunnel-the-youtube-egress/TICKETS.md`](16-tunnel-the-youtube-egress/TICKETS.md).
 - [`18-share-a-track/TICKETS.md`](18-share-a-track/TICKETS.md).
+- [`19-the-mobile-shell/TICKETS.md`](19-the-mobile-shell/TICKETS.md).
+- [`20-provision-mobile-access/TICKETS.md`](20-provision-mobile-access/TICKETS.md).
+- [`21-see-the-library/TICKETS.md`](21-see-the-library/TICKETS.md).
+- [`22-read-a-playlist/TICKETS.md`](22-read-a-playlist/TICKETS.md).
+- [`23-play-stored-audio/TICKETS.md`](23-play-stored-audio/TICKETS.md).
+- [`24-play-in-the-background/TICKETS.md`](24-play-in-the-background/TICKETS.md).
+- [`25-curate-a-playlist/TICKETS.md`](25-curate-a-playlist/TICKETS.md).
+- [`26-share-a-playlist/TICKETS.md`](26-share-a-playlist/TICKETS.md).
+- [`27-sort-and-filter-the-track-list/TICKETS.md`](27-sort-and-filter-the-track-list/TICKETS.md).
+- [`28-pin-a-playlist/TICKETS.md`](28-pin-a-playlist/TICKETS.md).
+- [`29-set-a-playlist-cover/TICKETS.md`](29-set-a-playlist-cover/TICKETS.md).
+- [`30-share-a-track/TICKETS.md`](30-share-a-track/TICKETS.md).
+- [`31-manage-the-egress/TICKETS.md`](31-manage-the-egress/TICKETS.md).
+- [`32-release-the-android-app/TICKETS.md`](32-release-the-android-app/TICKETS.md).
+- [`33-refresh-mobile-access/TICKETS.md`](33-refresh-mobile-access/TICKETS.md).
+- [`34-cancel-a-sync/TICKETS.md`](34-cancel-a-sync/TICKETS.md).
+- [`mobile-ui-audit-1/TICKETS.md`](mobile-ui-audit-1/TICKETS.md): the mobile UI audit's 19 tickets, from issue
+  [`105`](../issues/105-the-mobile-apps-ui-misses-its-contract.md).
+- [`mobile-ui-audit-2/TICKETS.md`](mobile-ui-audit-2/TICKETS.md): the second mobile UI audit's 12 tickets, from issue
+  [`106`](../issues/106-the-mobile-ui-still-misses-its-contract.md).
+- [`mobile-ui-audit-3/TICKETS.md`](mobile-ui-audit-3/TICKETS.md): the third mobile UI audit's 5 tickets, from issue
+  [`107`](../issues/107-five-gaps-remain-in-the-mobile-ui.md).
+- [`mobile-ui-critique-1/TICKETS.md`](mobile-ui-critique-1/TICKETS.md): the first mobile design critique's 18 tickets,
+  from issue [`108`](../issues/108-a-design-critique-scores-the-mobile-app-26-40.md).
+- [`removed-source-view/TICKETS.md`](removed-source-view/TICKETS.md): the retained view in the track filter's 3 tickets,
+  from issue [`109`](../issues/109-the-filter-cannot-show-the-tracks-a-removal-left-behind.md).
+- [`mobile-ui-critique-2/TICKETS.md`](mobile-ui-critique-2/TICKETS.md): the second mobile design critique's 19 tickets,
+  from issue [`123`](../issues/123-a-second-design-critique-scores-the-mobile-app-26-40.md).
+- [`shared-client-modules/TICKETS.md`](shared-client-modules/TICKETS.md): the cross-client duplication review's 8
+  tickets, from the architecture review of 3 November 2026.
+- [`mobile-architecture-review/TICKETS.md`](mobile-architecture-review/TICKETS.md): the mobile architecture review's
+  4 tickets, from the review of 8 November 2026.
+- [`security-review-2026-11-09/TICKETS.md`](security-review-2026-11-09/TICKETS.md): the security review's 3 tickets,
+  from 9 November 2026.
 
 ## Conventions
 

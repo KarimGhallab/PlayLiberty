@@ -13,6 +13,4 @@ The cover gained one owner: `coverTrackIds` (batch) and `coverTrackId` (its sing
 
 Two tests hold it in `playlistRoutes.test.ts`: a position tie answers the same cover from `/playlists/:id` and `/playlists`, and a forced access-resolver miss leaves the row out of the page. The first failed before the change (detail `first`, page `second`); the second failed on the old `?? 'owner'`.
 
-Verification: `pnpm --filter @playliberty/server run test` is 386 passed (28 files); `pnpm run build` and `pnpm run lint` pass. The playlist route, share access and sync suites pass unchanged.
-
 See [ARCHITECTURE.md](../../ARCHITECTURE.md).

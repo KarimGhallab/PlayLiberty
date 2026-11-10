@@ -1,0 +1,67 @@
+appId: dev.playliberty.app
+name: A track link opens the playlist at its track and copies it
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 30000
+    optional: true
+# The dev proxy provisions without a credential.
+- runFlow:
+    when:
+      visible:
+        id: sign-in
+    commands:
+      - tapOn:
+          id: sign-in
+      - extendedWaitUntil:
+          visible:
+            id: account-door
+          timeout: 60000
+- assertVisible:
+    id: account-door
+# The app is warm before the scheme is opened, so the link resolves to it.
+- openLink: dev.playliberty.app://playlists/${PLAYLIST_ID}?track=${TRACK_ID}
+- extendedWaitUntil:
+    visible:
+      id: playlist-screen
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: player-title
+      text: ${TRACK_TITLE}
+    timeout: 20000
+# The link's track row can be the list's last, which no scroll can centre, so the
+# lane only has to clear the floating action before its control is tapped.
+- scrollUntilVisible:
+    element:
+      id: track-actions
+      text: .*${TRACK_TITLE}.*
+      above:
+        id: detail-fab
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: track-actions
+    text: .*${TRACK_TITLE}.*
+    point: '50%,5%'
+- extendedWaitUntil:
+    visible:
+      id: track-actions-sheet
+    timeout: 15000
+# The notice is a four-second window; a settle wait can outlast it.
+- tapOn:
+    id: track-action-copy
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: notice
+    timeout: 15000
+# Leave the playlist for the library.
+- back
+- extendedWaitUntil:
+    visible:
+      id: account-door
+    timeout: 15000

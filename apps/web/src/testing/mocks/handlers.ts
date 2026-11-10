@@ -1,6 +1,7 @@
 import type { HttpHandler, HttpResponseResolver } from 'msw';
 import { HttpResponse, http } from 'msw';
 
+import { API_PREFIX } from '@playliberty/api-client';
 import type {
   Account,
   AccountSummary,
@@ -37,12 +38,9 @@ import {
   endpoints
 } from '@playliberty/contracts';
 
-import { API_PREFIX } from '../../shared/api/clients/apiClient/apiClient';
-
 /*
- * The harness the tests run against: two valid playlists, one owned and one
- * shared, in the route's order, so a component test also exercises schema
- * parsing, ordering and both access levels.
+ * The harness: two valid playlists, one owned and one shared, in route order, so
+ * a component test also exercises schema parsing, ordering and both access levels.
  */
 
 /* Every state is a key including a zero, so the chips have one to draw. */
@@ -238,11 +236,13 @@ const PLAYLIST_PAGE: PlaylistPage = {
     {
       ...PLAYLIST_ONE,
       trackCount: 1,
-      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 1 }
+      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 1 },
+      remoteRemoved: 0
     },
     {
       ...PLAYLIST_TWO,
-      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 4 }
+      counts: { ...EMPTY_COUNTS, [TrackFileStatus.Stored]: 4 },
+      remoteRemoved: 0
     }
   ],
   total: 2,
@@ -341,7 +341,8 @@ function tracksPageOf(url: string): PlaylistTracksPage {
     total: items.length,
     limit: 50,
     offset: 0,
-    counts: countsOf(PLAYLIST_ONE_TRACKS)
+    counts: countsOf(PLAYLIST_ONE_TRACKS),
+    remoteRemoved: 0
   };
 }
 
@@ -471,5 +472,6 @@ export const handlers = [
     () => respond(endpoints.syncPlaylist, STARTED_RUN, 202),
     PLAYLIST_ONE_PARAMS
   ),
+  mockEndpoint(endpoints.cancelSyncPlaylist, NO_CONTENT, PLAYLIST_ONE_PARAMS),
   mockEndpoint(endpoints.deletePlaylist, NO_CONTENT, PLAYLIST_ONE_PARAMS)
 ];

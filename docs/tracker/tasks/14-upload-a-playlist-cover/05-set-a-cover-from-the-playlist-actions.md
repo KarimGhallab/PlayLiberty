@@ -19,7 +19,4 @@ same dialog.
 A successful upload closes the dialog, writes the returned playlist into the cache, and invalidates the
 playlist and gallery reads. The card and tile headers then request the new versioned cover.
 
-Verification: `pnpm run build` passes; the full unit suite passes (server 381, web 524); lint has no errors and
-only the existing unused `CONTROL` warning in the phone journey.
-
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

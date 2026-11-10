@@ -6,17 +6,32 @@ import {
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
-import { EgressStatus } from '@playliberty/contracts';
-import type { EgressConfig } from '@playliberty/contracts';
-import type { Language, Messages, Translator } from '@playliberty/i18n';
-import { formatRelativeTime, useI18n } from '@playliberty/i18n';
-
-import { ApiError } from '../../../shared/api/clients/apiClient/apiClient';
 import {
+  ApiError,
   useCheckEgress,
   useEgress,
   useSwitchEgress
-} from '../../../shared/api/clients/egressClient/egressClient';
+} from '@playliberty/api-client';
+import { EgressStatus } from '@playliberty/contracts';
+import type { EgressConfig } from '@playliberty/contracts';
+import type {
+  EgressNotice,
+  Language,
+  Messages,
+  Translator
+} from '@playliberty/i18n';
+import {
+  EgressAction,
+  egressFailureNotice,
+  egressReasonLabel,
+  egressStatusLabel,
+  egressSuccessNotice,
+  egressTimeLabel,
+  egressUnreachableNotice,
+  useI18n
+} from '@playliberty/i18n';
+import { countryNameOf, countryOf, flagOf } from '@playliberty/ui-foundation';
+
 import NotFoundPage from '../../../shared/components/NotFoundPage/NotFoundPage';
 import ReadFailure from '../../../shared/components/ReadFailure/ReadFailure';
 import ErrorToast from '../../../shared/components/Toast/ErrorToast';
@@ -26,7 +41,6 @@ import { NOTICE_WINDOW_MS } from '../../../shared/player/usePlayTransition/usePl
 import { useMediaQuery } from '../../../shared/useMediaQuery/useMediaQuery';
 
 import styles from './EgressPage.module.scss';
-import { countryNameOf, countryOf, flagOf } from './countryFlag/countryFlag';
 
 interface ActionToast {
   readonly id: number;
@@ -44,43 +58,6 @@ export const CARD_QUERY = '(max-width: 879px)';
 function toastId(): number {
   nextToastId += 1;
   return nextToastId;
-}
-
-function statusLabel(t: Translator<Messages>, status: EgressStatus): string {
-  switch (status) {
-    case EgressStatus.Ok:
-      return t('egress.statusOk');
-    case EgressStatus.Failed:
-      return t('egress.statusFailed');
-    case EgressStatus.Unknown:
-      return t('egress.statusUnknown');
-  }
-}
-
-/* The stored code is the server's classification; an unknown one still gets a
- * sentence rather than the tool's stderr. */
-function reasonLabel(t: Translator<Messages>, reason: string): string {
-  switch (reason) {
-    case 'blocked':
-      return t('egress.reason.blocked');
-    case 'unavailable':
-    case 'private':
-      return t('egress.reason.unavailable');
-    case 'network':
-      return t('egress.reason.network');
-    default:
-      return t('egress.reason.unknown');
-  }
-}
-
-function timeOf(
-  t: Translator<Messages>,
-  value: string | null,
-  now: number
-): string {
-  return value === null
-    ? t('egress.never')
-    : formatRelativeTime(t, new Date(value), now);
 }
 
 interface ConfigPartProps {
@@ -124,11 +101,11 @@ function ConfigState({ t, config }: ConfigPartProps) {
     <>
       <span
         className={`${styles.egress__status} ${styles[`egress__status--${config.status}`]}`}>
-        {statusLabel(t, config.status)}
+        {egressStatusLabel(t, config.status)}
       </span>
       {config.status === EgressStatus.Failed && config.lastError !== null ? (
         <span className={styles.egress__reason}>
-          {reasonLabel(t, config.lastError)}
+          {egressReasonLabel(t, config.lastError)}
         </span>
       ) : null}
     </>
@@ -234,7 +211,7 @@ function ConfigCard({
           className={`${styles.egress__fact} ${styles['egress__fact--wide']}`}>
           <dt>{t('egress.endpoint')}</dt>
           <dd>
-            {config.endpoint ?? '-'}
+            {config.endpoint ?? t('egress.noEndpoint')}
             {config.lastExitIp === null ? null : (
               <span className={styles.egress__observed}>
                 {t('egress.seen', { ip: config.lastExitIp })}
@@ -250,11 +227,20 @@ function ConfigCard({
         </div>
         <div className={styles.egress__fact}>
           <dt>{t('egress.lastAttempt')}</dt>
-          <dd>{timeOf(t, config.lastAttemptAt, now)}</dd>
+          <dd>
+            {egressTimeLabel(
+              t,
+              config.lastAttemptAt,
+              now,
+              'egress.neverAttempted'
+            )}
+          </dd>
         </div>
         <div className={styles.egress__fact}>
           <dt>{t('egress.lastCheck')}</dt>
-          <dd>{timeOf(t, config.lastCheckAt, now)}</dd>
+          <dd>
+            {egressTimeLabel(t, config.lastCheckAt, now, 'egress.neverChecked')}
+          </dd>
         </div>
       </dl>
       <ConfigAction
@@ -301,35 +287,36 @@ export default function EgressPage() {
   const detailOf = (error: Error): string | null =>
     error instanceof ApiError ? (error.problem?.detail ?? null) : null;
 
-  const errorToast = (message: string, detail: string | null): ActionToast => ({
+  const errorToast = (notice: EgressNotice): ActionToast => ({
     id: toastId(),
     kind: 'error',
-    message,
-    detail
+    ...notice
+  });
+
+  const successToast = (notice: EgressNotice): ActionToast => ({
+    id: toastId(),
+    kind: 'success',
+    ...notice
   });
 
   const runSwitch = (name: string): void => {
     switchExit.mutate(name, {
       onSuccess: read => {
         if (!read.agentReachable) {
-          setToast(
-            errorToast(
-              t('egress.toast.switchFailed'),
-              t('egress.checkUnreachable')
-            )
-          );
+          setToast(errorToast(egressUnreachableNotice(t, EgressAction.Switch)));
           return;
         }
 
-        setToast({
-          id: toastId(),
-          kind: 'success',
-          message: t('egress.toast.switched', { name }),
-          detail: t('egress.toast.answered')
-        });
+        setToast(
+          successToast(egressSuccessNotice(t, EgressAction.Switch, name))
+        );
       },
       onError: error => {
-        setToast(errorToast(t('egress.toast.switchFailed'), detailOf(error)));
+        setToast(
+          errorToast(
+            egressFailureNotice(t, EgressAction.Switch, detailOf(error))
+          )
+        );
       }
     });
   };
@@ -338,23 +325,22 @@ export default function EgressPage() {
     check.mutate(undefined, {
       onSuccess: read => {
         if (!read.agentReachable) {
-          setToast(
-            errorToast(t('egress.checkFailed'), t('egress.checkUnreachable'))
-          );
+          setToast(errorToast(egressUnreachableNotice(t, EgressAction.Check)));
           return;
         }
 
         const active = read.configs.find(config => config.active)?.name ?? '';
 
-        setToast({
-          id: toastId(),
-          kind: 'success',
-          message: t('egress.toast.checked', { name: active }),
-          detail: t('egress.toast.answered')
-        });
+        setToast(
+          successToast(egressSuccessNotice(t, EgressAction.Check, active))
+        );
       },
       onError: error => {
-        setToast(errorToast(t('egress.checkFailed'), detailOf(error)));
+        setToast(
+          errorToast(
+            egressFailureNotice(t, EgressAction.Check, detailOf(error))
+          )
+        );
       }
     });
   };
@@ -473,7 +459,7 @@ export default function EgressPage() {
                         />
                       </th>
                       <td className={styles.egress__mono}>
-                        {config.endpoint ?? '-'}
+                        {config.endpoint ?? t('egress.noEndpoint')}
                         {config.lastExitIp === null ? null : (
                           <span className={styles.egress__observed}>
                             {t('egress.seen', { ip: config.lastExitIp })}
@@ -484,10 +470,20 @@ export default function EgressPage() {
                         <ConfigState t={t} config={config} />
                       </td>
                       <td className={styles.egress__mono}>
-                        {timeOf(t, config.lastAttemptAt, now)}
+                        {egressTimeLabel(
+                          t,
+                          config.lastAttemptAt,
+                          now,
+                          'egress.neverAttempted'
+                        )}
                       </td>
                       <td className={styles.egress__mono}>
-                        {timeOf(t, config.lastCheckAt, now)}
+                        {egressTimeLabel(
+                          t,
+                          config.lastCheckAt,
+                          now,
+                          'egress.neverChecked'
+                        )}
                       </td>
                       <td>
                         <ConfigAction

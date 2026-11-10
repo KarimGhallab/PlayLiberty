@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent
+} from 'react';
 
 import { useI18n } from '@playliberty/i18n';
 
@@ -9,9 +13,8 @@ import { volumeIcon } from '../volumeIcon';
 import styles from './VolumeControl.module.scss';
 
 /*
- * The volume control: the bar's one disclosure, its rail shown while pointer,
- * focus or a tap holds it. The button mutes and keeps the level, so unmuting
- * returns to it; Up, Down and M are bound on the window.
+ * The volume control: the rail opens on pointer, focus or a tap; the button
+ * mutes and keeps the level; Up, Down and M are bound on the window.
  */
 
 /** How much one press of Up/Down moves the volume. */
@@ -23,14 +26,85 @@ const KEYBOARD_STEP = 0.05;
  */
 const VOLUME_TOAST_MS = 1600;
 
-/* Pointer capture keeps a drag alive when the pointer leaves the rail. A host
- * without it (jsdom) must not throw, so the call is optional-chained. */
-function capturePointer(element: HTMLElement, pointerId: number): void {
-  element.setPointerCapture?.(pointerId);
+function clampLevel(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
-function releasePointer(element: HTMLElement, pointerId: number): void {
-  element.releasePointerCapture?.(pointerId);
+function levelForKey(key: string, value: number): number | null {
+  switch (key) {
+    case 'ArrowUp':
+    case 'ArrowRight':
+      return clampLevel(value + KEYBOARD_STEP);
+    case 'ArrowDown':
+    case 'ArrowLeft':
+      return clampLevel(value - KEYBOARD_STEP);
+    case 'Home':
+      return 0;
+    case 'End':
+      return 1;
+    default:
+      return null;
+  }
+}
+
+function useVolumeRail(volume: number, onChange: (volume: number) => void) {
+  const rail = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const [held, setHeld] = useState(false);
+
+  const levelAt = (clientX: number): number => {
+    const box = rail.current?.getBoundingClientRect();
+
+    if (box === undefined || box.width === 0) {
+      return 0;
+    }
+
+    return clampLevel((clientX - box.left) / box.width);
+  };
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    event.preventDefault();
+    dragging.current = true;
+    setHeld(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    onChange(levelAt(event.clientX));
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (dragging.current) {
+      onChange(levelAt(event.clientX));
+    }
+  };
+
+  const stop = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    dragging.current = false;
+    setHeld(false);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    const next = levelForKey(event.key, volume);
+
+    if (next === null) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onChange(next);
+  };
+
+  return {
+    ref: rail,
+    held,
+    handlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp: stop,
+      onPointerCancel: stop,
+      onKeyDown
+    }
+  };
 }
 
 export default function VolumeControl() {
@@ -42,9 +116,9 @@ export default function VolumeControl() {
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState<number | null>(null);
   const root = useRef<HTMLDivElement>(null);
-  const rail = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
   const hovering = useRef(false);
+  const rail = useVolumeRail(volume, setVolume);
+  const percent = Math.round(volume * 100);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -102,20 +176,6 @@ export default function VolumeControl() {
 
   const Icon = volumeIcon(volume, muted);
 
-  /*
-   * The pointer's y against the rail's box, as a level: the box is truth, not
-   * the store. The rail fills upward, so top is full and bottom silent.
-   */
-  const volumeAt = (clientY: number): number => {
-    const box = rail.current?.getBoundingClientRect();
-
-    if (box === undefined || box.height === 0) {
-      return 0;
-    }
-
-    return Math.min(1, Math.max(0, (box.bottom - clientY) / box.height));
-  };
-
   return (
     <div
       ref={root}
@@ -145,60 +205,6 @@ export default function VolumeControl() {
           setOpen(false);
         }
       }}>
-      {open ? (
-        <div className={styles.volume__panel}>
-          <div
-            className={styles.volume__track}
-            ref={rail}
-            role="slider"
-            tabIndex={0}
-            aria-label={t('volume.label')}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(volume * 100)}
-            aria-orientation="vertical"
-            onPointerDown={event => {
-              dragging.current = true;
-              capturePointer(event.currentTarget, event.pointerId);
-              setVolume(volumeAt(event.clientY));
-            }}
-            onPointerMove={event => {
-              if (dragging.current) {
-                setVolume(volumeAt(event.clientY));
-              }
-            }}
-            onPointerUp={event => {
-              dragging.current = false;
-              releasePointer(event.currentTarget, event.pointerId);
-            }}
-            onKeyDown={event => {
-              if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                event.stopPropagation();
-                setVolume(volume + KEYBOARD_STEP);
-              }
-
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                event.stopPropagation();
-                setVolume(volume - KEYBOARD_STEP);
-              }
-            }}>
-            <span
-              className={styles.volume__fill}
-              style={{ height: `${volume * 100}%` }}
-              data-muted={muted ? 'true' : undefined}
-            />
-            <span
-              className={styles.volume__knob}
-              style={{ bottom: `${volume * 100}%` }}
-            />
-          </div>
-          <span className={styles.volume__readout}>
-            {Math.round(volume * 100)}
-          </span>
-        </div>
-      ) : null}
       <button
         type="button"
         className={styles.volume__button}
@@ -212,6 +218,32 @@ export default function VolumeControl() {
           focusable="false"
         />
       </button>
+      <div className={styles.volume__inline} data-open={open || undefined}>
+        <div
+          ref={rail.ref}
+          className={styles.volume__inlineRail}
+          role="slider"
+          tabIndex={open ? 0 : -1}
+          aria-hidden={open ? undefined : true}
+          aria-label={t('volume.label')}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+          aria-valuetext={`${percent}%`}
+          aria-orientation="horizontal"
+          data-dragging={rail.held || undefined}
+          {...rail.handlers}>
+          <span
+            className={styles.volume__inlineFill}
+            data-muted={muted ? 'true' : undefined}
+            style={{ width: `${percent}%` }}
+          />
+          <span
+            className={styles.volume__inlineKnob}
+            style={{ left: `${percent}%` }}
+          />
+        </div>
+      </div>
       {notice === null ? null : (
         <VolumeToast
           key={notice}

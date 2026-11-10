@@ -1,21 +1,5 @@
 export { buildFaststartArgs, finalizeAudio } from './audio/audio.js';
-export {
-  classifySourceFailure,
-  EGRESS_BLOCKED_REASON,
-  EgressCircuitOpenError,
-  EgressSourceUnavailableError,
-  FailureDisposition,
-  failureMeaning,
-  failureOf,
-  isSponsorBlockFailureMessage,
-  isVideoUnavailableMessage,
-  SPONSORBLOCK_FAILURE_REASON,
-  SourceFailureError,
-  YoutubeSponsorBlockError,
-  YoutubeVideoUnavailableError
-} from './errors/errors.js';
-export type { FailureMeaning } from './errors/errors.js';
-export * from './types.js';
+export { EgressAgentFetcher } from './egressAgent/agentFetcher.js';
 export {
   EgressAgentClient,
   EgressConfigUnknownError,
@@ -44,7 +28,7 @@ export {
   parseYoutubeSource,
   switchBody,
   wireReply
-} from './egressAgent/protocol.js';
+} from './egressAgent/protocol/protocol.js';
 export type {
   AgentReply,
   AgentWireReply,
@@ -53,8 +37,24 @@ export type {
   FetchBody,
   ListBody,
   SwitchBody
-} from './egressAgent/protocol.js';
-export { EgressAgentFetcher } from './egressAgent/agentFetcher.js';
+} from './egressAgent/protocol/protocol.js';
+export {
+  classifySourceFailure,
+  EGRESS_BLOCKED_REASON,
+  EgressCircuitOpenError,
+  EgressSourceUnavailableError,
+  FailureDisposition,
+  failureMeaning,
+  failureOf,
+  isSponsorBlockFailureMessage,
+  isVideoUnavailableMessage,
+  SourceFailureError,
+  SPONSORBLOCK_FAILURE_REASON,
+  YoutubeSponsorBlockError,
+  YoutubeVideoUnavailableError
+} from './errors/errors.js';
+export type { FailureMeaning } from './errors/errors.js';
+export * from './types.js';
 export {
   isValidVideoId,
   validateYoutubeUrl

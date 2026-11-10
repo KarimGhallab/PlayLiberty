@@ -1,11 +1,11 @@
-name: Unit tests
+name: Unit
 
 on:
   workflow_call:
 
 jobs:
   unit:
-    name: Unit tests
+    name: Unit tests (all workspaces)
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
@@ -14,5 +14,5 @@ jobs:
       - name: Build the workspace
         run: pnpm run build
 
-      - name: Run the unit tests
+      - name: Run every unit test
         run: pnpm run test:unit

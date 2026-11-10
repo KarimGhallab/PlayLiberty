@@ -14,6 +14,12 @@ const optionalUrl = z.preprocess(
   z.url().optional()
 );
 
+/* The credential policy: a short access token, a sliding refresh window, and a
+ * family that ends a year after it was first issued. */
+export const DEFAULT_ACCESS_TOKEN_LIFETIME_SECONDS = 12 * 60 * 60;
+export const DEFAULT_REFRESH_TOKEN_LIFETIME_SECONDS = 180 * 24 * 60 * 60;
+export const DEFAULT_FAMILY_LIFETIME_SECONDS = 365 * 24 * 60 * 60;
+
 const LOOPBACK_HOSTS = new Set(['localhost', '::1', '0:0:0:0:0:0:0:1']);
 
 function isLoopbackHost(host: string): boolean {
@@ -47,6 +53,30 @@ const EnvSchema = z.object({
   PUBLIC_ORIGIN: optionalUrl,
   EDGE_ASSERTION: optionalString,
   ADMIN_PANGOLIN_USER_IDS: z.string().default(''),
+  /* The Integration API that mints the mobile client's token. All three or
+   * none: a partial set is a misconfiguration, not a feature switch. */
+  PANGOLIN_API_URL: optionalUrl,
+  PANGOLIN_RESOURCE_ID: optionalString,
+  PANGOLIN_INTEGRATION_API_KEY: optionalString,
+  /* The callbacks the provisioning route may redirect to, comma-separated. */
+  MOBILE_REDIRECT_URIS: z.string().default(''),
+  /* The credential lifetimes in seconds. Policy, not mechanism: a deployment
+   * may tighten them without a code change. */
+  MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_ACCESS_TOKEN_LIFETIME_SECONDS),
+  MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_REFRESH_TOKEN_LIFETIME_SECONDS),
+  MOBILE_FAMILY_LIFETIME_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_FAMILY_LIFETIME_SECONDS),
   EGRESS_AGENT_SOCKET: z
     .string()
     .min(1)
@@ -114,6 +144,37 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     );
   }
 
+  const pangolinValues = [
+    value.PANGOLIN_API_URL,
+    value.PANGOLIN_RESOURCE_ID,
+    value.PANGOLIN_INTEGRATION_API_KEY
+  ];
+  const pangolinSet = pangolinValues.filter(entry => entry !== undefined);
+  const resourceId = Number(value.PANGOLIN_RESOURCE_ID ?? '');
+
+  if (
+    pangolinSet.length > 0 &&
+    (pangolinSet.length < pangolinValues.length ||
+      !Number.isInteger(resourceId) ||
+      resourceId <= 0)
+  ) {
+    throw new Error(
+      'Invalid environment configuration: PANGOLIN_API_URL, PANGOLIN_RESOURCE_ID and PANGOLIN_INTEGRATION_API_KEY must be set together, and the resource id must be a positive integer.'
+    );
+  }
+
+  /* A credential cannot outlive the family that owns it. */
+  if (
+    value.MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS >
+      value.MOBILE_FAMILY_LIFETIME_SECONDS ||
+    value.MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS >
+      value.MOBILE_FAMILY_LIFETIME_SECONDS
+  ) {
+    throw new Error(
+      'Invalid environment configuration: the mobile access and refresh lifetimes may not exceed MOBILE_FAMILY_LIFETIME_SECONDS.'
+    );
+  }
+
   return {
     runtime,
     port: value.PORT,
@@ -126,6 +187,24 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     adminPangolinUserIds: value.ADMIN_PANGOLIN_USER_IDS.split(',')
       .map(entry => entry.trim())
       .filter(entry => entry.length > 0),
+    pangolin:
+      value.PANGOLIN_API_URL !== undefined &&
+      value.PANGOLIN_RESOURCE_ID !== undefined &&
+      value.PANGOLIN_INTEGRATION_API_KEY !== undefined
+        ? {
+            apiUrl: value.PANGOLIN_API_URL,
+            resourceId,
+            apiKey: value.PANGOLIN_INTEGRATION_API_KEY
+          }
+        : null,
+    mobileRedirectUris: value.MOBILE_REDIRECT_URIS.split(',')
+      .map(entry => entry.trim())
+      .filter(entry => entry.length > 0),
+    mobileAccessTokenLifetimeSeconds:
+      value.MOBILE_ACCESS_TOKEN_LIFETIME_SECONDS,
+    mobileRefreshTokenLifetimeSeconds:
+      value.MOBILE_REFRESH_TOKEN_LIFETIME_SECONDS,
+    mobileFamilyLifetimeSeconds: value.MOBILE_FAMILY_LIFETIME_SECONDS,
     egressAgentSocket: value.EGRESS_AGENT_SOCKET,
     egressFailureLimit: value.EGRESS_FAILURE_LIMIT,
     egressDrainTimeoutMs: value.EGRESS_DRAIN_TIMEOUT_MS,

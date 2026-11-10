@@ -14,7 +14,4 @@ The row, card and tile arrangements and the detail ground all read the same cove
 tests cover the versioned custom source, the custom-to-track-to-sleeve fallback, the same chain in all three
 arrangements and the ground, and both resets.
 
-Verification: `pnpm run build` passes, the full unit suite passes (server 381, web 506), and lint reports only
-the existing unused `CONTROL` warning in the phone journey.
-
 See [`14-upload-a-playlist-cover`](../../specs/14-upload-a-playlist-cover.md).

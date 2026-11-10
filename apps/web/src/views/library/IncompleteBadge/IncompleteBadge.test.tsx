@@ -45,9 +45,9 @@ describe('IncompleteBadge', () => {
 
   /*
    * One pill however many reasons are missing: the count is every track whose
-   * file is not here, and the breakdown is the pill's own content.
+   * file can still arrive, and the breakdown is the pill's own content.
    */
-  it('sums every missing reason into one pill', async () => {
+  it('sums every recoverable reason into one pill and leaves the terminal count apart', async () => {
     renderMark(
       counts({
         [TrackFileStatus.Stored]: 4,
@@ -61,8 +61,14 @@ describe('IncompleteBadge', () => {
     const pill = await screen.findByRole('img');
 
     expect(screen.getAllByRole('img')).toHaveLength(1);
-    /* Eleven of sixteen: the sum of the four reasons and never the stored ones. */
-    expect(pill).toHaveTextContent('11');
+    /* Six of sixteen: the three reasons that can still finish. */
+    expect(pill).toHaveTextContent('6');
+    expect(
+      screen.getByRole('img', {
+        name: '6 tracks are not stored · Pending 2 · Downloading 1 · Failed 3'
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Never stored 5')).toBeInTheDocument();
   });
 
   /*
@@ -80,9 +86,22 @@ describe('IncompleteBadge', () => {
 
     expect(
       await screen.findByRole('img', {
-        name: '7 tracks are not stored · Failed 3 · Unavailable 4'
+        name: '3 tracks are not stored · Failed 3'
       })
     ).toBeInTheDocument();
+    expect(screen.getByText('Never stored 4')).toBeInTheDocument();
+  });
+
+  it('draws no download marker when every gap is terminal', async () => {
+    renderMark(
+      counts({
+        [TrackFileStatus.Stored]: 67,
+        [TrackFileStatus.Unavailable]: 4
+      })
+    );
+
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByText('Never stored 4')).toBeInTheDocument();
   });
 
   it('stays out of the tab order while its label still speaks', async () => {

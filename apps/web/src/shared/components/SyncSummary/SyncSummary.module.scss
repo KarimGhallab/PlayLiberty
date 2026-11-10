@@ -1,7 +1,6 @@
 /*
- * The sync summary: one content-width column per count that is drawn, packed
- * from the start; each figure centers over its word. The band sits on --bg,
- * since a panel would buy nothing.
+ * The sync summary: one content-width column per drawn count, packed from the
+ * start, each figure centered over its word. The band sits on --bg.
  */
 .sync-summary {
   display: flex;
@@ -60,6 +59,48 @@
     font-variant-numeric: tabular-nums;
   }
 
+  &__cancel {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: var(--control-height);
+    padding: 0 var(--space-4);
+    color: var(--tone-failed);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid var(--tone-failed);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+
+    &[aria-busy='true'] {
+      cursor: progress;
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--surface);
+    }
+
+    &:disabled {
+      opacity: var(--opacity-disabled);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--accent);
+      outline-offset: var(--focus-offset);
+    }
+  }
+
+  &__cancel-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+  }
+
   &__no-changes {
     margin: 0;
     color: var(--muted);
@@ -71,6 +112,15 @@
     margin: 0;
     color: var(--muted);
     font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
+  /* The playlist's own retention rather than the run's, so it stays after a
+   * quiet run and reads as a sentence. */
+  &__retained {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
     line-height: var(--leading-normal);
   }
 }

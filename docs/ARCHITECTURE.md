@@ -1,22 +1,26 @@
 # Architecture
 
-PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, shared contracts, design tokens, shared UI decisions, localization package, and YouTube adapter exist; the mobile client is planned. The non-obvious choices are stated in [Decisions](#decisions).
+PlayLiberty is a pnpm workspaces monorepo built with TypeScript (`tsc`). Workspace packages are scoped `@playliberty/*` and consumed through `workspace:*` and the `tsconfig.depcruise.json` paths. The server, web client, mobile client, shared contracts, the shared client protocol, the shared playable rule, design tokens, shared UI decisions, localization package, shared query keys, and YouTube adapter exist. The mobile app is distributed as a signed, sideloaded Android APK. The non-obvious choices are stated in [Decisions](#decisions).
 
 ## Components
 
 ### The applications
 
 - `apps/server` - owns accounts (from Pangolin identity), playlists, associations, the media store, sync, and streaming. One Node 26 process running Fastify 5, compiled by `tsc`, with downloads and the prune scheduler in the same process. The only component that touches the database, the media root, or yt-dlp, and it does not serve the web client. Its source is four top-level folders, `app/`, `features/`, `shared/`, and `platform/`, whose boundaries are checked rather than agreed. See [The server stack](#the-server-stack) and [The server's folder boundaries](#the-servers-folder-boundaries).
-- `apps/web` - React 19.2 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
+- `apps/web` - React 19.3 and Vite 8 SPA (TanStack Router, TanStack Query, Zustand, SCSS modules, `@tabler/icons-react` for glyphs), with one global audio element and the Media Session API. Served by a dedicated nginx container that is the single public origin and reverse-proxies `/api` and `/healthz` to the server. See [The web stack](#the-web-stack).
 - `apps/egress-agent` - the system-scoped host agent that runs yt-dlp in the `playliberty-egress` network namespace. See [The YouTube egress runs in a host network namespace](#the-youtube-egress-runs-in-a-host-network-namespace).
-- `apps/mobile` (planned) - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
+- `apps/mobile` - Expo SDK 57 React Native app (Expo Router, TanStack Query, Zustand, `expo-audio`, `@tabler/icons-react-native` for glyphs), streaming only. It carries its own per-user Pangolin access token and sends it to the edge. See [The mobile stack](#the-mobile-stack) and [Mobile provisioning](#mobile-provisioning).
 
 ### The packages
 
 - `packages/contracts` - the Zod schemas that define the `/api/v1` REST surface and the types inferred from them, shared by both clients and the server, so a change to the API breaks the build rather than the user.
+- `packages/api-client` - the shared client for the API: one transport, one error type, one hook per endpoint, the bulk sync batch, and the client-side address and credential header builders. It reads the keys, the invalidation and the optimistic patch from `@playliberty/query`; each client supplies only its auth adapter and its sync mutation, so a read or a command cannot drift.
+- `packages/query` - the keys, the cache effects, the optimistic patch and its restore, and the library page patchers, so neither client can name a read or undo a write its own way.
+- `packages/library` - the library policy both clients share: who may write, the playlist and track action lists, the syncable set, the gallery totals and groups, and the batch busy rule. Action keys and label keys stay here; each app owns the glyphs and controls.
+- `packages/player` - the pure player rules: the playable check, the queue order, the shuffle and its leader, the random draw, the refetch merge, the seek bound and the grace before Previous, called by both stores.
 - `packages/tokens` - the design values as the single source of truth, with the emitter that writes the flat custom-property stylesheet the web client loads and the module the mobile client reads.
-- `packages/ui-foundation` - the shared, non-rendering UI decisions language cannot touch: the curve to `Easing.bezier` argument mapping, the sleeve hue, and the track state tone.
-- `packages/i18n` - the shared localization: the `en` and `fr` catalogs, the hand-rolled runtime, the locale resolution, the formatters and the React binding, consumed by the web client and the future mobile client.
+- `packages/ui-foundation` - the shared, non-rendering UI decisions language cannot touch: the track-state chip table and its total, the stream verdict, the cover chain selector, the share mark state, the curve to `Easing.bezier` argument mapping, the sleeve hue, and the track state tone.
+- `packages/i18n` - the shared localization: the `en` and `fr` catalogs, the hand-rolled runtime, the locale resolution, the formatters, the failure sentences, the track-link notices, the egress vocabulary and the React binding, consumed by the web client and the mobile client.
 - `packages/youtube` - the single seam around yt-dlp and source metadata. No other module shells out to yt-dlp or parses YouTube.
 
 ### The stores
@@ -36,14 +40,15 @@ The only external service, reached through yt-dlp behind the `packages/youtube` 
 
 nginx serves the web client and proxies `/api` and `/healthz` to the server. It is the single public origin on `pangolin_frontend`; the server is never reached by the browser or the phone directly. nginx forwards the Pangolin `Remote-*` headers and the client's `X-PlayLiberty-Client` header upstream, and the server enforces both.
 
-Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except `POST /auth/exchange`, which is the mobile app's credential-less first contact and is protected by a one-time PKCE-bound code (see [Mobile provisioning](#mobile-provisioning)).
+Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except the static association file and the mobile app's two auth endpoints; [the Pangolin edge runbook](../deploy/pangolin/README.md#the-bypass-rules) owns the exact bypass paths and the guards that remain. The association file is public because Android verifies it without a session; it names only the package and signing fingerprints.
 
 ## Mobile access, end to end
 
 1. The app generates `state` and a PKCE verifier and opens `GET /provision` in an in-app browser.
 2. Pangolin SSO authenticates the browser; the server sees `Remote-User` and mints a single-use, 60-second code bound to the user, the redirect URI, and the PKCE challenge, then redirects to the app.
-3. The app posts the code and verifier to `POST /auth/exchange`, which verifies PKCE, consumes the code atomically, and mints a 180-day per-user Pangolin access token.
-4. The app stores the token in the platform keystore and sends it as `P-Access-Token-Id` plus `P-Access-Token`; Badger injects `Remote-*` and the origin behaves exactly as it does for the browser.
+3. The app posts the code and verifier to `POST /auth/exchange`, which verifies PKCE, consumes the code atomically, and mints a short-lived per-user Pangolin access token plus a refresh family.
+4. The app stores one credential record: the access pair with a local deadline, and the refresh token. Before the access token lapses it renews silently at `POST /auth/refresh`, which rotates the pair. A replayed consumed token inside a 30-second grace window gets the same pair; a replay later revokes the family.
+5. Requests carry the access pair as `P-Access-Token-Id` plus `P-Access-Token`; Badger injects `Remote-*` and the origin behaves exactly as it does for the browser. Sign-out asks the server to revoke the family, then clears the device, best effort.
 
 ## Sync, end to end
 
@@ -69,7 +74,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - Raw SQL lives in `platform/database/` and in `shared/access/`, and nowhere else. Everywhere else goes through Drizzle, so the schema stays the one description of the storage. Enforced by the `no-restricted-syntax` override in `eslint.config.js`, which exists because a `.prepare()` call is a member expression and not an import, so dependency-cruiser cannot see it.
 - Only the server touches the database and the media root, and only `packages/youtube` invokes yt-dlp. Clients reach all of it through the API.
 - Every mutating API request carries `X-PlayLiberty-Client` and passes the `Origin` and `Sec-Fetch-Site` checks. Never mutate on `GET`.
-- `POST /auth/exchange` is the only path exempt from Pangolin SSO; the server owns its code, PKCE, lifetime, and rate-limit checks.
+- Only the paths in the [Pangolin edge runbook](../deploy/pangolin/README.md#the-bypass-rules) are exempt from Pangolin SSO; every other path stays behind it.
 - Workspace dependencies use `workspace:*` and mirror their source paths in `tsconfig.depcruise.json`. The workspace pins one React and one React Native version.
 - The application and package scope is `@playliberty/*`.
 
@@ -87,7 +92,10 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - `docs/runbooks/egress-agent.md` - the host install, verification and reboot runbook.
 - `apps/web/src/` - the web SPA, views under `src/views/` and shared pieces under `src/shared/`. A module split across two or more files is one folder named after it, holding the module, its test and its stylesheet; a single-file module stays flat.
 - `apps/web/deploy/nginx.conf.template` - the static serving and `/api` proxy configuration, rendered by the nginx entrypoint at container start.
-- `apps/mobile/src/` and `apps/mobile/app/` (planned) - the Expo app, routes and feature modules.
+- `apps/mobile/src/` and `apps/mobile/app/` - the Expo app, routes and feature modules.
+- `e2e/web/` - the Playwright journeys: specs, support, per-worker server and web stacks, and the parallel runner.
+- `e2e/mobile/` - the Maestro flows, the device-only flow, the harness shell, the seed and the Maestro runner.
+- `e2e/shared/` - the scenario contract and the playlist and video URL builders both suites use.
 - `packages/contracts/src/` - the API Zod schemas and inferred types.
 - `packages/youtube/src/` - the yt-dlp adapter.
 - `scripts/validate-tsconfig-paths.cjs` - keeps `tsconfig.depcruise.json` paths aligned with the workspace.
@@ -99,7 +107,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 ## Deployment shapes
 
 - Local development: `pnpm install`, then `pnpm run build` or `pnpm run watch`. The Vite dev server proxies `/api` to the running server; the mobile app runs as a development build against the public origin.
-- Production: private, behind the Pangolin authenticating edge. The nginx origin serves the SPA and proxies the API to the server over the pod-local loopback; the concrete network and container rules live in [Deployment behind the Pangolin edge](#deployment-behind-the-pangolin-edge). The mobile app is distributed as a sideloaded Android APK. The server and web `Containerfile`s, the dev `compose.yaml`, and the production units exist: the user-scoped `deploy/quadlet/playliberty-web.kube` runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network, and the system-scoped `deploy/systemd/playliberty-egress.service` runs the YouTube egress in its own namespace. The pod mounts `/run/playliberty` read-only for the agent socket. The host is prepared by `pnpm deploy:build-for-production`, which builds the images, creates `/srv/playliberty`, prepares the egress host, and ensures `playliberty_edge_assertion`, `playliberty_public_origin` and the optional `pangolin_admin_user`. The unit maps the deploying user to container UID 1000 with `UserNS=keep-id:uid=1000,gid=1000`. `06-scaffold-mobile` adds the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
+- Production: private, behind the Pangolin authenticating edge. The nginx origin serves the SPA and proxies the API to the server over the pod-local loopback; the concrete network and container rules live in [Deployment behind the Pangolin edge](#deployment-behind-the-pangolin-edge). The mobile app is distributed as a signed, sideloaded Android APK; a development build is debug-signed, so a release installs over it only after an uninstall (spec `32`). The server and web `Containerfile`s, the dev `compose.yaml`, and the production units exist: the user-scoped `deploy/quadlet/playliberty-web.kube` runs one pod with the nginx front and the server backend, where only the front is reachable on the edge network, and the system-scoped `deploy/systemd/playliberty-egress.service` runs the YouTube egress in its own namespace. The pod mounts `/run/playliberty` read-only for the agent socket. The host is prepared by `pnpm deploy:build-for-production`, which builds the images, creates `/srv/playliberty`, prepares the egress host, and ensures `playliberty_edge_assertion`, `playliberty_public_origin` and the optional `pangolin_admin_user`. The unit maps the deploying user to container UID 1000 with `UserNS=keep-id:uid=1000,gid=1000`. `06-scaffold-mobile` built the mobile app and `07-provision-mobile-access` the provisioning flow and the edge bypass.
 - Clients: the web client is served through the edge; the mobile client carries its own per-user token and streams through the same edge.
 
 ## Decisions
@@ -140,15 +148,19 @@ One Node 26 process built with Fastify 5 and compiled by `tsc`, owning a local S
 
 ### The web stack
 
-`apps/web` is a client-only single-page application: React 19.2 with the React Compiler enabled, built by Vite 8 (Rolldown) with TypeScript 6, routed by TanStack Router, server state in TanStack Query v5, the player and queue in a Zustand 5 store, styling SCSS with CSS Modules and BEM over CSS custom-property design tokens, dark only. Playback is a single global HTML5 audio element with the Media Session API, and the queue and position persist in `sessionStorage`. A dedicated nginx container is the single public origin: it serves the built assets and reverse-proxies `/api` and `/healthz`, so the browser sees one origin and no CORS is needed.
+`apps/web` is a client-only single-page application: React 19.3 with the React Compiler enabled, built by Vite 8 (Rolldown) with TypeScript 6, routed by TanStack Router, server state in TanStack Query v5, the player and queue in a Zustand 5 store, styling SCSS with CSS Modules and BEM over CSS custom-property design tokens, dark only. Playback is a single global HTML5 audio element with the Media Session API, and the queue and position persist in `sessionStorage`. A dedicated nginx container is the single public origin: it serves the built assets and reverse-proxies `/api` and `/healthz`, so the browser sees one origin and no CORS is needed.
 
 ### The mobile stack
 
-`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.2, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The access token lives in `expo-secure-store`. Distribution in v1 is a development build and a sideloaded Android APK; the code stays cross-platform but iOS is not built or tested.
+`apps/mobile` is an Expo SDK 57 React Native app (React Native 0.86.3, React 19.3, New Architecture) written in TypeScript, consuming `packages/contracts` directly. Navigation is Expo Router; server state is TanStack Query; the player and queue use Zustand plus `expo-audio` for background playback, lock-screen controls, and the queue. Styling is React Native `StyleSheet` over the typed token module from `packages/tokens`, dark only. The credential record, the access pair and the refresh token, lives in `expo-secure-store`; the access token renews silently before its deadline. Distribution in v1 is the signed, sideloaded Android APK; [the Android release runbook](runbooks/android-release.md) owns the procedure. The code stays cross-platform but iOS is not built or tested.
+
+### A sheet body is the only scroller
+
+React Native warns when a `FlatList` sits inside a plain `ScrollView` with the same orientation. The development overlay then covers the sheet and intercepts touches, so the rows cannot be pressed and the journeys fail. The shared `Sheet` owns the body scroll, so a sheet body cannot hold a virtualized list. The add-track picker and the share account picker map their rows inside the body scroll. A sheet that must virtualize needs the `Sheet` body to stop scrolling and one list to become the body, with its own bounded height.
 
 ### Mobile provisioning
 
-The mobile client authenticates with a per-user Pangolin resource access token, obtained through the browser flow in [Mobile access, end to end](#mobile-access-end-to-end): PKCE, a single-use 60-second code, `POST /auth/exchange` exempt from Pangolin SSO, and a 180-day token stored in `expo-secure-store`. The long-lived token never travels in a URL; the redirect carries a single-use code bound by PKCE to the app instance. On iOS `ASWebAuthenticationSession` guarantees the callback reaches only the calling app; on Android in Expo SDK 57 there is no equivalent guarantee, so the safety rests on the code plus PKCE, trying a verified HTTPS App Link first and falling back to a reverse-DNS custom scheme.
+The mobile client authenticates with a per-user Pangolin resource access token, obtained through the browser flow in [Mobile access, end to end](#mobile-access-end-to-end): PKCE, a single-use 60-second code, and the two edge-exempt endpoints in [the Pangolin edge runbook](../deploy/pangolin/README.md#the-bypass-rules). The exchange answers a short access token and a rotating refresh token; the access token is renewed silently at refresh, and the server stores only the refresh token's hash. The refresh token never travels in a URL; the redirect carries a single-use code bound by PKCE to the app instance. Sign-out and reuse revoke the family and every unexpired access token at the edge. On iOS `ASWebAuthenticationSession` guarantees the callback reaches only the calling app; on Android in Expo SDK 57 there is no equivalent guarantee, so the safety rests on the code plus PKCE, trying a verified HTTPS App Link first and falling back to a reverse-DNS custom scheme.
 
 ### Mutating requests carry a client header and pass origin checks
 
