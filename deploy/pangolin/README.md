@@ -3,20 +3,22 @@
 The mobile app is the one client that cannot use the browser's session. It obtains a per-user resource access token
 through `GET /provision`, then trades the returned code at `POST /auth/exchange`. That exchange answers a short-lived
 access token and a refresh token, and `POST /auth/refresh` rotates the pair without a Pangolin session. The exchange
-and the refresh are the only two requests that must reach the origin without a session; the exchange has no
-credential yet, and the refresh carries its own in the body.
+and the refresh are the only two API requests that must reach the origin without a session; the Android association
+file is also public so Android can verify the app's HTTPS links.
 
-## The two bypass rules
+## The bypass rules
 
-On the PlayLiberty resource, under **Authentication → Rules**, add two rules above every other:
+On the PlayLiberty resource, under **Authentication → Rules**, add three rules above every other:
 
-| Priority | Action      | Match type | Value           |
-| -------- | ----------- | ---------- | --------------- |
-| 1        | Bypass Auth | Path       | `auth/exchange` |
-| 2        | Bypass Auth | Path       | `auth/refresh`  |
+| Priority | Action      | Match type | Value                         |
+| -------- | ----------- | ---------- | ----------------------------- |
+| 1        | Bypass Auth | Path       | `.well-known/assetlinks.json` |
+| 2        | Bypass Auth | Path       | `auth/exchange`               |
+| 3        | Bypass Auth | Path       | `auth/refresh`                |
 
-Path rules match segment by segment, so both are exact. Do not use `auth/*` or `/*`: a wildcard exposes more than
-these two, and every other path must stay behind Platform SSO, `/provision` included.
+The association file is inert: it names the Android package and signing-certificate fingerprints, and grants no
+access. Path rules match segment by segment, so all three are exact. Do not use `auth/*` or `/*`: a wildcard exposes
+more than these paths, and every other path must stay behind Platform SSO, `/provision` included.
 
 The rules only take effect when the resource has at least one authentication method configured. On a resource with
 no auth method, Pangolin does not evaluate path rules at all (Pangolin issue 2551), so keep Platform SSO enabled.

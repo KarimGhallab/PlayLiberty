@@ -11,4 +11,5 @@ carry it with `autoVerify`, and the iOS associated domain is `applinks:{host}`. 
 empty and the `dev.playliberty.app` scheme remains.
 
 The placeholder `playliberty.example` filters and associated domain left `app.json`; every other field stayed. The
-association file is the deployment's and was not added.
+association file is `apps/web/public/.well-known/assetlinks.json`; the Pangolin resource must bypass auth for
+`/.well-known/assetlinks.json` so Android can fetch it.
