@@ -119,6 +119,27 @@ describe('VolumeControl', () => {
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.45);
   });
 
+  it('moves the focused rail without passing the key to the window', () => {
+    usePlayerStore.getState().setVolume(0.5);
+    renderControl();
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Mute' }));
+
+    const rail = screen.getByRole('slider', { name: 'Volume' });
+    fireEvent.focus(rail);
+
+    fireEvent.keyDown(rail, { key: 'ArrowRight' });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.55);
+
+    fireEvent.keyDown(rail, { key: 'ArrowLeft' });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.5);
+
+    fireEvent.keyDown(rail, { key: 'Home' });
+    expect(usePlayerStore.getState().volume).toBe(0);
+
+    fireEvent.keyDown(rail, { key: 'End' });
+    expect(usePlayerStore.getState().volume).toBe(1);
+  });
+
   it('keeps one notice and restarts its life on the next press', () => {
     vi.useFakeTimers();
     usePlayerStore.getState().setVolume(0.5);
@@ -227,18 +248,18 @@ describe('VolumeControl', () => {
     const rail = screen.getByRole('slider', { name: 'Volume' });
     vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
       top: 0,
-      bottom: 100,
+      bottom: 4,
       left: 0,
-      right: 4,
-      width: 4,
-      height: 100,
+      right: 100,
+      width: 100,
+      height: 4,
       x: 0,
       y: 0,
       toJSON: () => ({})
     });
 
-    /* A quarter down from the top is three quarters loud. */
-    fireEvent.pointerDown(rail, { clientX: 2, clientY: 25, pointerId: 1 });
+    /* Three quarters along the rail is three quarters loud. */
+    fireEvent.pointerDown(rail, { clientX: 75, clientY: 2, pointerId: 1 });
 
     expect(usePlayerStore.getState().volume).toBeCloseTo(0.75);
   });
@@ -250,25 +271,25 @@ describe('VolumeControl', () => {
     const rail = screen.getByRole('slider', { name: 'Volume' });
     vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
       top: 0,
-      bottom: 100,
+      bottom: 4,
       left: 0,
-      right: 4,
-      width: 4,
-      height: 100,
+      right: 100,
+      width: 100,
+      height: 4,
       x: 0,
       y: 0,
       toJSON: () => ({})
     });
 
-    fireEvent.pointerDown(rail, { clientX: 2, clientY: 10, pointerId: 1 });
-    expect(usePlayerStore.getState().volume).toBeCloseTo(0.9);
+    fireEvent.pointerDown(rail, { clientX: 10, clientY: 2, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.1);
 
-    fireEvent.pointerMove(rail, { clientX: 2, clientY: 60, pointerId: 1 });
-    expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
+    fireEvent.pointerMove(rail, { clientX: 60, clientY: 2, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.6);
 
-    fireEvent.pointerUp(rail, { clientX: 2, clientY: 60, pointerId: 1 });
+    fireEvent.pointerUp(rail, { clientX: 60, clientY: 2, pointerId: 1 });
 
-    fireEvent.pointerMove(rail, { clientX: 2, clientY: 90, pointerId: 1 });
-    expect(usePlayerStore.getState().volume).toBeCloseTo(0.4);
+    fireEvent.pointerMove(rail, { clientX: 90, clientY: 2, pointerId: 1 });
+    expect(usePlayerStore.getState().volume).toBeCloseTo(0.6);
   });
 });

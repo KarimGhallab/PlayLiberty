@@ -242,9 +242,7 @@
     bottom: calc(100% + var(--space-2));
     left: 50%;
     z-index: var(--z-overlay);
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
+    display: block;
     padding: var(--space-1) var(--space-2);
     translate: -50% 0;
     pointer-events: none;
@@ -252,14 +250,33 @@
     border: 1px solid var(--control-border);
     border-radius: var(--radius-card);
     box-shadow: 0 10px 24px rgb(0 0 0 / 0.42);
+    line-height: var(--leading-tight);
     white-space: nowrap;
     animation: player-bar-tip-rise var(--motion-fast) var(--ease-standard);
+
+    > * + * {
+      margin-inline-start: var(--space-1);
+    }
+  }
+
+  /* The frame is the cap box, so its centre is the caps' centre. The icon
+   * itself is larger and overflows the frame without moving that centre. */
+  &__tipIconFrame {
+    position: relative;
+    display: inline-block;
+    width: 14px;
+    height: 1cap;
+    font-size: var(--text-xs);
+    vertical-align: baseline;
   }
 
   &__tipIcon {
+    position: absolute;
+    top: 50%;
+    left: 0;
     width: 14px;
     height: 14px;
-    flex-shrink: 0;
+    translate: 0 -50%;
   }
 
   &__tipModifier {

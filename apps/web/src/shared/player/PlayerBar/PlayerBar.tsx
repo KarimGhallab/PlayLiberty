@@ -412,10 +412,14 @@ export default function PlayerBar() {
             {previousControl}
             {!touch && activeShortcut === ShortcutSlot.Previous ? (
               <span className={styles.playerBar__tip} aria-hidden="true">
-                <IconPlayerSkipBack
-                  className={styles.playerBar__tipIcon}
-                  aria-hidden="true"
-                />
+                <span
+                  className={styles.playerBar__tipIconFrame}
+                  aria-hidden="true">
+                  <IconPlayerSkipBack
+                    className={styles.playerBar__tipIcon}
+                    aria-hidden="true"
+                  />
+                </span>
                 <span className={styles.playerBar__tipModifier}>
                   {t('playerBar.shortcutShift')}
                 </span>
@@ -448,10 +452,14 @@ export default function PlayerBar() {
                 <span className={styles.playerBar__tipKey}>
                   {t('playerBar.shortcutNext')}
                 </span>
-                <IconPlayerSkipForward
-                  className={styles.playerBar__tipIcon}
-                  aria-hidden="true"
-                />
+                <span
+                  className={styles.playerBar__tipIconFrame}
+                  aria-hidden="true">
+                  <IconPlayerSkipForward
+                    className={styles.playerBar__tipIcon}
+                    aria-hidden="true"
+                  />
+                </span>
               </span>
             ) : null}
           </span>
