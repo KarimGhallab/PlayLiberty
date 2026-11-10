@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { usePlayerStore } from '../playerStore/playerStore';
 import type { PlayerTrack } from '../playerTrack';
 import type { StreamFailure } from '../streamFailure/streamFailure';
-import { usePlayerAudio } from './usePlayerAudio';
+import { type SourceResolver, usePlayerAudio } from './usePlayerAudio';
 
 jest.mock('expo-audio', () => {
   const player = {
@@ -126,6 +126,23 @@ describe('the player audio', () => {
 
     expect(audio.__player.replace).toHaveBeenCalledTimes(2);
     expect(audio.__player.replace).toHaveBeenLastCalledWith({ uri: 'b' });
+  });
+
+  it('loads a track whose source arrives after the queue starts', async () => {
+    start(['a'], 'a');
+    const view = await renderHook(
+      ({ resolver }: { resolver: SourceResolver }) =>
+        usePlayerAudio(resolver, classifyFailure),
+      { initialProps: { resolver: () => null } }
+    );
+
+    expect(audio.__player.replace).not.toHaveBeenCalled();
+
+    await view.rerender({ resolver: resolveSource });
+
+    await waitFor(() => {
+      expect(audio.__player.replace).toHaveBeenLastCalledWith({ uri: 'a' });
+    });
   });
 
   it('does not rebuild the playing source when the resolver changes', async () => {

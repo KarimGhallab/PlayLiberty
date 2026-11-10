@@ -818,6 +818,21 @@ describe('a shared track link', () => {
     expect(onAddressChange).toHaveBeenLastCalledWith('track-2');
   });
 
+  it('asks for the page holding the link track when it is not loaded', async () => {
+    const { tracksFetchNextPage } = await renderDetail({
+      trackId: 'track-2',
+      hasMore: true,
+      queue: [track, secondTrack]
+    });
+
+    await waitFor(() => {
+      expect(usePlayerStore.getState().currentId).toBe('track-2');
+    });
+    await waitFor(() => {
+      expect(tracksFetchNextPage).toHaveBeenCalled();
+    });
+  });
+
   it('jumps to the link track in the queue it is already in', async () => {
     startPlaylistAt('track-1');
     usePlayerStore.getState().setPosition(30);

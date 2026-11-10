@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, waitFor } from '@testing-library/react-native';
 
@@ -26,11 +26,22 @@ async function renderGuard(queryClient: QueryClient): Promise<void> {
   );
 }
 
+const refresh = jest.fn(async () => {});
+
 beforeEach(() => {
-  useSessionStore.setState({ status: SessionStatus.SignedIn });
+  refresh.mockClear();
+  useSessionStore.setState({ status: SessionStatus.SignedIn, refresh });
 });
 
 describe('the session cache', () => {
+  it('reads the session when the app starts', async () => {
+    const queryClient = seeded();
+    await renderGuard(queryClient);
+
+    expect(refresh).toHaveBeenCalled();
+    queryClient.clear();
+  });
+
   it('drops every read when the session ends', async () => {
     const queryClient = seeded();
     await renderGuard(queryClient);

@@ -354,6 +354,10 @@ export default function PlaylistDetail({
 
     enteredLink.current = true;
     setLinkSettled(true);
+    /* The queue starts after the read, so the render's landing pass saw none;
+     * the link's row is landed on from here. */
+    landingTarget.current = linkTarget;
+    landed.current = false;
 
     void startAtTrack(client, playlistData, linkTarget, {
       resumeCurrent: false
@@ -551,7 +555,8 @@ export default function PlaylistDetail({
     tracks.hasMore,
     tracks.isFetchingNextPage,
     tracks.isFetchNextPageError,
-    tracks.isSuccess
+    tracks.isSuccess,
+    linkSettled
   ]);
 
   /* The list owns the scroll: once the target is loaded and the first

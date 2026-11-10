@@ -65,13 +65,14 @@ export function usePlayerAudio(
 
     const source = resolveSource(currentId);
 
-    loadedId.current = currentId;
-
     if (source === null) {
+      /* The session may still be reading; leave the track unloaded to retry. */
       player.pause();
+      loadedId.current = null;
       return;
     }
 
+    loadedId.current = currentId;
     player.replace(source);
   }, [currentId, player, resolveSource]);
 
@@ -100,7 +101,7 @@ export function usePlayerAudio(
     }
 
     player.pause();
-  }, [currentId, isPlaying, player]);
+  }, [currentId, isPlaying, player, resolveSource]);
 
   /* The status is the player's own; a position from the previous source must
    * not be read as the new track's, so only a time change reports. */

@@ -26,8 +26,6 @@ PlayLiberty keeps the audio and the link to the source playlist. A sync adds new
 
 ![The mobile client: the library and a playlist detail with the player bar](.github/assets/readme/04-mobile.webp)
 
-The screenshots use a demo instance with sample playlists and tracks.
-
 ## The components
 
 ```mermaid

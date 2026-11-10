@@ -11,6 +11,13 @@ import {
 export default function SessionCache() {
   const queryClient = useQueryClient();
   const status = useSessionStore(state => state.status);
+  const refresh = useSessionStore(state => state.refresh);
+
+  /* A linked route has no focused library to read the session, so the shell
+   * reads it once at start. */
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (status === SessionStatus.SignedOut) {

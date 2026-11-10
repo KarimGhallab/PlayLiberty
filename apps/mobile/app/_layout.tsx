@@ -19,6 +19,11 @@ import BackgroundPlayback from '../src/player/backgroundPlayback/BackgroundPlayb
 import { classifyStreamFailure } from '../src/player/streamFailure/streamFailure';
 import AppProviders from '../src/providers/AppProviders';
 
+/* The library anchors a linked playlist, so its modal always has a screen behind it. */
+export const unstable_settings = {
+  anchor: 'index'
+};
+
 /* The first frame has to carry the family the type scale was measured in, so
  * the splash waits for it. */
 void SplashScreen.preventAutoHideAsync();
