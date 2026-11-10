@@ -385,7 +385,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     set({
       positionSeconds: 0,
       isPlaying: true,
-      seekTo: null,
+      seekTo: 0,
       playbackFailureId: null
     });
   },

@@ -188,6 +188,7 @@ describe('the transport', () => {
     expect(usePlayerStore.getState().currentId).toBe('a');
     expect(usePlayerStore.getState().isPlaying).toBe(true);
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBeNull();
   });
 
   it('restarts the current track past the grace window', () => {
@@ -199,6 +200,7 @@ describe('the transport', () => {
     expect(usePlayerStore.getState().currentId).toBe('b');
     expect(usePlayerStore.getState().isPlaying).toBe(true);
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBe(0);
   });
 
   it('restarts the first entry rather than moving before it', () => {
@@ -210,6 +212,7 @@ describe('the transport', () => {
     expect(usePlayerStore.getState().currentId).toBe('a');
     expect(usePlayerStore.getState().isPlaying).toBe(true);
     expect(usePlayerStore.getState().positionSeconds).toBe(0);
+    expect(usePlayerStore.getState().seekTo).toBe(0);
   });
 });
 

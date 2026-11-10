@@ -289,6 +289,22 @@ describe('the player audio', () => {
     expect(audio.__player.seekTo).toHaveBeenCalledTimes(1);
   });
 
+  it('seeks to the start when previous restarts the track', async () => {
+    start(['a', 'b'], 'b');
+    await renderHook(() => usePlayerAudio(resolveSource, classifyFailure));
+
+    await act(() => {
+      usePlayerStore.getState().setPosition(30);
+      usePlayerStore.getState().skipPrevious();
+    });
+
+    await waitFor(() => {
+      expect(audio.__player.seekTo).toHaveBeenCalledWith(0);
+    });
+    expect(usePlayerStore.getState().currentId).toBe('b');
+    expect(usePlayerStore.getState().seekTo).toBeNull();
+  });
+
   it('advances once when the track finishes', async () => {
     start(['a', 'b'], 'a');
     const view = await renderHook(() =>

@@ -66,7 +66,6 @@ export interface AgentOptions {
   fetch: (
     request: FetchBody & { tempDir: string }
   ) => Promise<{ filePath: string }>;
-  /* A test's log sink; the process uses the module logger. */
   log?: AgentLog;
 }
 
@@ -289,8 +288,7 @@ async function streamFetch(
   }
 }
 
-/* Every call is one line in and one line out. The body never enters the log:
- * a fetch response is a whole track, not a payload to quote. */
+/* The body never enters the log: a fetch response is a whole track. */
 function traceRequest(
   request: IncomingMessage,
   response: ServerResponse,
