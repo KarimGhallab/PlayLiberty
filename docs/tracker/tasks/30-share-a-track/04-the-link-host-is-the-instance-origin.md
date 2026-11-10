@@ -1,7 +1,7 @@
 # 04: The link host is the instance origin
 
 **Status:** resolved
-**Labels:** `enhancement`, `ready-for-agent`
+**Labels:** `enhancement`
 
 ## Outcome
 
@@ -11,5 +11,5 @@ carry it with `autoVerify`, and the iOS associated domain is `applinks:{host}`. 
 empty and the `dev.playliberty.app` scheme remains.
 
 The placeholder `playliberty.example` filters and associated domain left `app.json`; every other field stayed. The
-association file is `apps/web/public/.well-known/assetlinks.json`; the Pangolin resource must bypass auth for
-`/.well-known/assetlinks.json` so Android can fetch it.
+association file is `apps/web/public/.well-known/assetlinks.json`; [the Pangolin edge
+runbook](../../../../deploy/pangolin/README.md#the-bypass-rules) owns its public bypass.

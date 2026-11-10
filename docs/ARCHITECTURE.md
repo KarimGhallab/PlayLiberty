@@ -40,7 +40,7 @@ The only external service, reached through yt-dlp behind the `packages/youtube` 
 
 nginx serves the web client and proxies `/api` and `/healthz` to the server. It is the single public origin on `pangolin_frontend`; the server is never reached by the browser or the phone directly. nginx forwards the Pangolin `Remote-*` headers and the client's `X-PlayLiberty-Client` header upstream, and the server enforces both.
 
-Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except the static `/.well-known/assetlinks.json` association file and `POST /auth/exchange` and `POST /auth/refresh`, the mobile app's two exact, method-scoped exemptions. The association file is public because Android verifies it without a session; it names only the package and signing fingerprints. The exchange is protected by a one-time PKCE-bound code, the refresh by the rotating refresh token in its body (see [Mobile provisioning](#mobile-provisioning)).
+Pangolin authenticates the browser with a session and the mobile app with a per-user access token; in both cases Badger strips any client-supplied identity headers and injects `Remote-*` from the verified credential. Every request stays behind SSO except the static association file and the mobile app's two auth endpoints; [the Pangolin edge runbook](../deploy/pangolin/README.md#the-bypass-rules) owns the exact bypass paths and the guards that remain. The association file is public because Android verifies it without a session; it names only the package and signing fingerprints.
 
 ## Mobile access, end to end
 
@@ -74,7 +74,7 @@ Pangolin authenticates the browser with a session and the mobile app with a per-
 - Raw SQL lives in `platform/database/` and in `shared/access/`, and nowhere else. Everywhere else goes through Drizzle, so the schema stays the one description of the storage. Enforced by the `no-restricted-syntax` override in `eslint.config.js`, which exists because a `.prepare()` call is a member expression and not an import, so dependency-cruiser cannot see it.
 - Only the server touches the database and the media root, and only `packages/youtube` invokes yt-dlp. Clients reach all of it through the API.
 - Every mutating API request carries `X-PlayLiberty-Client` and passes the `Origin` and `Sec-Fetch-Site` checks. Never mutate on `GET`.
-- `/.well-known/assetlinks.json`, `POST /auth/exchange` and `POST /auth/refresh` are the only paths exempt from Pangolin SSO; the association file is static and grants nothing, and the server owns the exchange's code, PKCE and lifetime checks and the refresh token's rotation and revocation.
+- Only the paths in the [Pangolin edge runbook](../deploy/pangolin/README.md#the-bypass-rules) are exempt from Pangolin SSO; every other path stays behind it.
 - Workspace dependencies use `workspace:*` and mirror their source paths in `tsconfig.depcruise.json`. The workspace pins one React and one React Native version.
 - The application and package scope is `@playliberty/*`.
 
@@ -160,7 +160,7 @@ React Native warns when a `FlatList` sits inside a plain `ScrollView` with the s
 
 ### Mobile provisioning
 
-The mobile client authenticates with a per-user Pangolin resource access token, obtained through the browser flow in [Mobile access, end to end](#mobile-access-end-to-end): PKCE, a single-use 60-second code, and `POST /auth/exchange` exempt from Pangolin SSO. The exchange answers a short access token and a rotating refresh token; the access token is renewed silently at `POST /auth/refresh`, the second exact, method-scoped exemption, and the server stores only the refresh token's hash. The refresh token never travels in a URL; the redirect carries a single-use code bound by PKCE to the app instance. Sign-out and reuse revoke the family and every unexpired access token at the edge. On iOS `ASWebAuthenticationSession` guarantees the callback reaches only the calling app; on Android in Expo SDK 57 there is no equivalent guarantee, so the safety rests on the code plus PKCE, trying a verified HTTPS App Link first and falling back to a reverse-DNS custom scheme.
+The mobile client authenticates with a per-user Pangolin resource access token, obtained through the browser flow in [Mobile access, end to end](#mobile-access-end-to-end): PKCE, a single-use 60-second code, and the two edge-exempt endpoints in [the Pangolin edge runbook](../deploy/pangolin/README.md#the-bypass-rules). The exchange answers a short access token and a rotating refresh token; the access token is renewed silently at refresh, and the server stores only the refresh token's hash. The refresh token never travels in a URL; the redirect carries a single-use code bound by PKCE to the app instance. Sign-out and reuse revoke the family and every unexpired access token at the edge. On iOS `ASWebAuthenticationSession` guarantees the callback reaches only the calling app; on Android in Expo SDK 57 there is no equivalent guarantee, so the safety rests on the code plus PKCE, trying a verified HTTPS App Link first and falling back to a reverse-DNS custom scheme.
 
 ### Mutating requests carry a client header and pass origin checks
 

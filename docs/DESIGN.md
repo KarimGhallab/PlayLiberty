@@ -74,11 +74,11 @@ set, the type family, the space scale, the radii, the durations and the one curv
 - **Four routes and one sheet.** The library is the root, the playlist detail is pushed, a bare track and the egress
   console are routes of their own, and the account sheet is a modal over whatever is open. There is no tab bar, no
   drawer and no sidebar; the platform's back gesture is the way back.
-- **The way back is a bare chevron.** A 48dp target whose glyph aligns with the content edge; over artwork the cover
-  carries a scrim wash, so the glyph never needs a plate of its own.
+- **The way back is a bare chevron.** Its glyph aligns with the content edge; over artwork the cover carries a
+  scrim wash, so the glyph never needs a plate of its own.
 - **The gallery is a two-column card grid.** The card is the detail's hero arrangement: cover above the identity,
   with the actions door at its top end and the shuffle at its lower left, both a 40dp scrim disc with a hairline
-  boundary inside a 48dp target, and the play a filled circle at its lower right. A shuffled disc takes the accent
+  boundary, and the play a filled circle at its lower right. A shuffled disc takes the accent
   on its boundary and glyph. The pinned section is a heading above one horizontal row that
   peeks the next card and scrolls sideways; the rest is the grid, and the ownership scope and the status chips are
   one row that scrolls, its hidden side fading into the ground and a chip the user picks brought fully into view. The
@@ -91,7 +91,7 @@ set, the type family, the space scale, the radii, the durations and the one curv
   the list moves, following the gesture frame by frame and running backwards when the list does; the wide state
   carries a faint copy of the cover as its ground, with Play leading the action row and Shuffle and the actions door
   closing it, all three on one midline. Play is the row's only plate; Shuffle and the actions door are bare glyphs,
-  and the compact pair paints 36dp inside a 48dp target. The sync evidence and the skip setting live in the actions sheet,
+  and the compact pair paints 36dp. The sync evidence and the skip setting live in the actions sheet,
   the run band above the actions and the checkbox below them, so the page itself keeps only the header's sync line.
   The gallery's card menu carries the same checkbox, without the run band.
   The actions door stays for every access level, because the sheet carries the status and the setting as well as the

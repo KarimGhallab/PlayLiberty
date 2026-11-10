@@ -25,8 +25,9 @@ no auth method, Pangolin does not evaluate path rules at all (Pangolin issue 255
 
 ## What still guards them
 
-- **No identity, but the assertion.** The bypass removes `Remote-*` from both paths, which is why the server treats
-  them as assertion-only: nginx still injects `X-PlayLiberty-Edge`, and the server refuses either one without it.
+- **No identity, but the assertion.** The bypass removes `Remote-*` from both auth paths, which is why the server
+  treats them as assertion-only: nginx still injects `X-PlayLiberty-Edge`, and the server refuses either auth path
+  without it.
 - **One method on one path each.** The server's assertion-only exemptions are `POST /auth/exchange` and
   `POST /auth/refresh`. A different method on either path still needs identity and fails closed with `401`, so a path
   bypass is not a method bypass.

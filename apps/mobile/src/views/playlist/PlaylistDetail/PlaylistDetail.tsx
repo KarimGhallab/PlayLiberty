@@ -809,9 +809,8 @@ export default function PlaylistDetail({
     ? problemMessage(addTrack.error, t('addTrackDialog.failed'))
     : null;
   const addResult = addTrack.data ?? null;
-  /* The floating action owns the bottom-right, so a notice clears its height; the
-   * bar owns the bottom first, so both clear that too. The detail has no page
-   * frame, unlike the gallery, so the dial pays that inset itself. */
+  /* The floating action sits above the bar, the notice above the action, and
+   * the detail has no page frame, so the dial pays the page inset itself. */
   const playerOffset = currentId === null ? 0 : barHeight;
   const pageInset = tokenLength('space-4');
   const dialOffset = playerOffset + pageInset;

@@ -24,7 +24,6 @@ import { usePlayerBarCover } from './usePlayerBarCover';
  * seek line rides the top edge with a touch-safe target.
  */
 
-/* Which step the shortcut legend currently explains. */
 enum ShortcutSlot {
   Previous = 'previous',
   Next = 'next'
