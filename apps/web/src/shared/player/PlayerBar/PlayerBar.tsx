@@ -24,6 +24,12 @@ import { usePlayerBarCover } from './usePlayerBarCover';
  * seek line rides the top edge with a touch-safe target.
  */
 
+/* Which step the shortcut legend currently explains. */
+enum ShortcutSlot {
+  Previous = 'previous',
+  Next = 'next'
+}
+
 /* Pointer capture keeps a drag alive when the pointer leaves the track. A host
  * without it (jsdom) must not throw, so the call is optional-chained. */
 function capturePointer(element: HTMLElement, pointerId: number): void {
@@ -51,6 +57,13 @@ export default function PlayerBar() {
   const touch = useMediaQuery(TOUCH_QUERY);
   const cover = usePlayerBarCover();
   const [coverFailed, setCoverFailed] = useState(false);
+  const [hoveredShortcut, setHoveredShortcut] = useState<ShortcutSlot | null>(
+    null
+  );
+  const [focusedShortcut, setFocusedShortcut] = useState<ShortcutSlot | null>(
+    null
+  );
+  const activeShortcut = hoveredShortcut ?? focusedShortcut;
   const scrubRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   /* The dragged position stays local until release, so the element is asked to
@@ -259,6 +272,53 @@ export default function PlayerBar() {
     }
   };
 
+  const previousControl = (
+    <button
+      type="button"
+      className={styles.playerBar__step}
+      aria-label={t('playerBar.previous')}
+      aria-keyshortcuts="Shift+P"
+      onClick={() => skipPrevious()}>
+      <IconPlayerSkipBack
+        className={styles.playerBar__stepIcon}
+        aria-hidden="true"
+        focusable="false"
+      />
+    </button>
+  );
+  const playControl = (
+    <button
+      type="button"
+      className={styles.playerBar__play}
+      aria-label={isPlaying ? t('playerBar.pause') : t('playerBar.play')}
+      aria-keyshortcuts="Space"
+      data-run={run}
+      onAnimationEnd={endRun}
+      onPointerEnter={() => setHoveredShortcut(null)}
+      onFocus={() => setFocusedShortcut(null)}
+      onClick={() => setPlaying(!isPlaying)}>
+      <PlayGlyph
+        className={styles.playerBar__glyph}
+        stripClassName={styles.playerBar__strip}
+      />
+    </button>
+  );
+  const nextControl = (
+    <button
+      type="button"
+      className={styles.playerBar__step}
+      aria-label={t('playerBar.next')}
+      aria-keyshortcuts="Shift+N"
+      disabled={!canSkipNext}
+      onClick={() => skipNext()}>
+      <IconPlayerSkipForward
+        className={styles.playerBar__stepIcon}
+        aria-hidden="true"
+        focusable="false"
+      />
+    </button>
+  );
+
   return (
     <footer
       className={styles.playerBar}
@@ -342,65 +402,58 @@ export default function PlayerBar() {
           </span>
         </div>
         <div className={styles.playerBar__transport}>
-          <span className={styles.playerBar__hint}>
-            <button
-              type="button"
-              className={styles.playerBar__step}
-              aria-label={t('playerBar.previous')}
-              aria-keyshortcuts="Shift+P"
-              onClick={() => skipPrevious()}>
-              <IconPlayerSkipBack
-                className={styles.playerBar__stepIcon}
-                aria-hidden="true"
-                focusable="false"
-              />
-            </button>
-            <span className={styles.playerBar__tip} aria-hidden="true">
-              <kbd className={styles.playerBar__key}>
-                {t('playerBar.shortcutShift')}
-              </kbd>
-              +
-              <kbd className={styles.playerBar__key}>
-                {t('playerBar.shortcutPrevious')}
-              </kbd>
-            </span>
+          <span
+            className={styles.playerBar__stepAnchor}
+            data-step="previous"
+            onPointerEnter={() => setHoveredShortcut(ShortcutSlot.Previous)}
+            onPointerLeave={() => setHoveredShortcut(null)}
+            onFocus={() => setFocusedShortcut(ShortcutSlot.Previous)}
+            onBlur={() => setFocusedShortcut(null)}>
+            {previousControl}
+            {!touch && activeShortcut === ShortcutSlot.Previous ? (
+              <span className={styles.playerBar__tip} aria-hidden="true">
+                <IconPlayerSkipBack
+                  className={styles.playerBar__tipIcon}
+                  aria-hidden="true"
+                />
+                <span className={styles.playerBar__tipModifier}>
+                  {t('playerBar.shortcutShift')}
+                </span>
+                <span className={styles.playerBar__tipPlus} aria-hidden="true">
+                  +
+                </span>
+                <span className={styles.playerBar__tipKey}>
+                  {t('playerBar.shortcutPrevious')}
+                </span>
+              </span>
+            ) : null}
           </span>
-          <button
-            type="button"
-            className={styles.playerBar__play}
-            aria-label={isPlaying ? t('playerBar.pause') : t('playerBar.play')}
-            aria-keyshortcuts="Space"
-            data-run={run}
-            onAnimationEnd={endRun}
-            onClick={() => setPlaying(!isPlaying)}>
-            <PlayGlyph
-              className={styles.playerBar__glyph}
-              stripClassName={styles.playerBar__strip}
-            />
-          </button>
-          <span className={styles.playerBar__hint}>
-            <button
-              type="button"
-              className={styles.playerBar__step}
-              aria-label={t('playerBar.next')}
-              aria-keyshortcuts="Shift+N"
-              disabled={!canSkipNext}
-              onClick={() => skipNext()}>
-              <IconPlayerSkipForward
-                className={styles.playerBar__stepIcon}
-                aria-hidden="true"
-                focusable="false"
-              />
-            </button>
-            <span className={styles.playerBar__tip} aria-hidden="true">
-              <kbd className={styles.playerBar__key}>
-                {t('playerBar.shortcutShift')}
-              </kbd>
-              +
-              <kbd className={styles.playerBar__key}>
-                {t('playerBar.shortcutNext')}
-              </kbd>
-            </span>
+          {playControl}
+          <span
+            className={styles.playerBar__stepAnchor}
+            data-step="next"
+            onPointerEnter={() => setHoveredShortcut(ShortcutSlot.Next)}
+            onPointerLeave={() => setHoveredShortcut(null)}
+            onFocus={() => setFocusedShortcut(ShortcutSlot.Next)}
+            onBlur={() => setFocusedShortcut(null)}>
+            {nextControl}
+            {!touch && activeShortcut === ShortcutSlot.Next ? (
+              <span className={styles.playerBar__tip} aria-hidden="true">
+                <span className={styles.playerBar__tipModifier}>
+                  {t('playerBar.shortcutShift')}
+                </span>
+                <span className={styles.playerBar__tipPlus} aria-hidden="true">
+                  +
+                </span>
+                <span className={styles.playerBar__tipKey}>
+                  {t('playerBar.shortcutNext')}
+                </span>
+                <IconPlayerSkipForward
+                  className={styles.playerBar__tipIcon}
+                  aria-hidden="true"
+                />
+              </span>
+            ) : null}
           </span>
         </div>
         <div className={styles.playerBar__trail}>

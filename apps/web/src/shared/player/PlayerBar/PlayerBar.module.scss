@@ -71,7 +71,6 @@
 
   &__body {
     position: relative;
-    z-index: 1;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
@@ -231,49 +230,53 @@
     flex-shrink: 0;
   }
 
-  /* The step's chord, on hover or focus. Nothing shows at rest: the bar is the
-   * densest row on screen, and the play button carries none, Space being the
-   * one key nobody needs telling. */
-  &__hint {
+  &__stepAnchor {
     position: relative;
     display: inline-flex;
   }
 
+  /* One chord at a time, above the step it explains. The play button has none:
+   * Space is the one key nobody needs telling. */
   &__tip {
-    display: none;
     position: absolute;
     bottom: calc(100% + var(--space-2));
     left: 50%;
     z-index: var(--z-overlay);
-    gap: 3px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
     padding: var(--space-1) var(--space-2);
     translate: -50% 0;
-    background-color: var(--surface-raised);
+    pointer-events: none;
+    background: var(--surface-raised);
     border: 1px solid var(--control-border);
     border-radius: var(--radius-card);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.42);
     white-space: nowrap;
+    animation: player-bar-tip-rise var(--motion-fast) var(--ease-standard);
   }
 
-  /* Guarded by hover: a tap would otherwise pin the chord on screen, and the
-   * device that tapped it has no key to press. */
-  @media (hover: hover) {
-    &__hint:hover &__tip,
-    &__hint:focus-within &__tip {
-      display: inline-flex;
-    }
+  &__tipIcon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
   }
 
-  &__key {
-    min-width: 18px;
-    padding: 0 4px;
-    color: var(--ink);
-    font-family: inherit;
+  &__tipModifier {
     font-size: var(--text-xs);
-    line-height: 16px;
-    text-align: center;
-    background: var(--surface);
-    border: 1px solid var(--control-border);
-    border-radius: 4px;
+    letter-spacing: 0.06em;
+    opacity: 0.68;
+    text-transform: uppercase;
+  }
+
+  &__tipPlus {
+    color: var(--muted);
+    font-size: var(--text-xs);
+  }
+
+  &__tipKey {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
   }
 
   &__step {
@@ -403,6 +406,18 @@
   }
 }
 
+@keyframes player-bar-tip-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes player-bar-arrive {
   from {
     transform: translateY(100%);
@@ -435,6 +450,13 @@
 
     &__trail {
       display: none;
+    }
+
+    /* The next tip is at the bar's end; centre would leave the viewport. */
+    &__stepAnchor[data-step='next'] &__tip {
+      left: auto;
+      right: 0;
+      translate: 0 0;
     }
   }
 }
