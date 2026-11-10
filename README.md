@@ -24,6 +24,8 @@ PlayLiberty keeps the audio and the link to the source playlist. A sync adds new
 
 ![The add-track dialog with one video link and two chosen playlists](.github/assets/readme/03-add-track.webp)
 
+![The mobile client: the library and a playlist detail with the player bar](.github/assets/readme/04-mobile.webp)
+
 The screenshots use a demo instance with sample playlists and tracks.
 
 ## The components
