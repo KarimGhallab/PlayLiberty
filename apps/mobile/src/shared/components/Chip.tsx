@@ -1,5 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
 
 import { TrackTone, standardEasingBezier } from '@playliberty/ui-foundation';
 
@@ -77,31 +84,33 @@ export default function Chip({
       disabled={disabled}
       style={[styles.chip, disabled && styles.disabled]}
       onPress={onPress}>
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.border, { borderColor: color, opacity: reveal }]}
-      />
-      <Animated.View
-        style={[
-          styles.indicator,
-          {
-            backgroundColor: color,
-            opacity: reveal,
-            transform: [
-              {
-                scale: reveal.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.3, 1]
-                })
-              }
-            ]
-          }
-        ]}
-      />
-      <Text style={[styles.label, { color: labelColor }]}>{label}</Text>
-      {count === undefined ? null : (
-        <Text style={[styles.count, { color: labelColor }]}>{count}</Text>
-      )}
+      <View style={styles.body}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.border, { borderColor: color, opacity: reveal }]}
+        />
+        <Animated.View
+          style={[
+            styles.indicator,
+            {
+              backgroundColor: color,
+              opacity: reveal,
+              transform: [
+                {
+                  scale: reveal.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.3, 1]
+                  })
+                }
+              ]
+            }
+          ]}
+        />
+        <Text style={[styles.label, { color: labelColor }]}>{label}</Text>
+        {count === undefined ? null : (
+          <Text style={[styles.count, { color: labelColor }]}>{count}</Text>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -109,6 +118,10 @@ export default function Chip({
 const styles = StyleSheet.create({
   chip: {
     minHeight: touchTarget,
+    justifyContent: 'center'
+  },
+  body: {
+    height: tokenLength('control-height'),
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-2'),

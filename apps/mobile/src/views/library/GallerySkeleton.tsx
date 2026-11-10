@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2')
   },
   railChip: {
-    height: touchTarget,
+    height: tokenLength('control-height'),
     width: tokenLength('space-9') * 2,
     borderRadius: tokenLength('radius-chip'),
     backgroundColor: tokenColor('surface-raised')

@@ -43,10 +43,12 @@ import {
   touchTarget
 } from '../../shared/styles/tokens/tokens';
 
-/* The pair's 2pt padding and 1pt border on each side leave 6pt; the hit box
- * takes half above and half below. */
-const SEGMENT_INSET = 6;
-const SEGMENT_HIT = SEGMENT_INSET / 2;
+/* The pair paints what a chip paints, 36, inside the same 48 touch target; the
+ * frame is a background behind two full-height segments. */
+const PAIR_HEIGHT = tokenLength('control-height');
+const PAIR_INSET = (touchTarget - PAIR_HEIGHT) / 2;
+const SEGMENT_FRAME = 3;
+const SEGMENT_HEIGHT = PAIR_HEIGHT - SEGMENT_FRAME * 2;
 
 /* Above this scale the scope pair takes a row of its own, so the status rail
  * keeps the viewport and its first chip stays whole. */
@@ -215,56 +217,57 @@ export default function GalleryFilterBar({
       accessibilityRole="radiogroup"
       accessibilityLabel={t('library.scopeLabel')}
       style={styles.pair}>
-      <View style={styles.pairInner}>
-        {measured ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.scopePlate,
-              {
-                left: selection.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [allRect.x, sharedRect.x]
-                }),
-                width: selection.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [allRect.width, sharedRect.width]
-                }),
-                backgroundColor: selection.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [
-                    tokenColor('surface-raised'),
-                    tokenColor('shared-surface')
-                  ]
-                }),
-                borderColor: selection.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [
-                    tokenColor('control-border'),
-                    tokenColor('shared-border')
-                  ]
-                })
-              }
-            ]}
-          />
-        ) : null}
-        <Pressable
-          testID="scope-all"
-          accessibilityRole="radio"
-          accessibilityState={{ checked: scope === 'all' }}
-          accessibilityLabel={`${t('library.scopeAll')} ${totalCount}`}
-          hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
+      <View pointerEvents="none" style={styles.pairBody} />
+      {measured ? (
+        <Animated.View
+          pointerEvents="none"
           style={[
-            styles.segment,
-            !measured && scope === 'all' && styles.segmentAll
+            styles.scopePlate,
+            {
+              left: selection.interpolate({
+                inputRange: [0, 1],
+                outputRange: [allRect.x, sharedRect.x]
+              }),
+              width: selection.interpolate({
+                inputRange: [0, 1],
+                outputRange: [allRect.width, sharedRect.width]
+              }),
+              backgroundColor: selection.interpolate({
+                inputRange: [0, 1],
+                outputRange: [
+                  tokenColor('surface-raised'),
+                  tokenColor('shared-surface')
+                ]
+              }),
+              borderColor: selection.interpolate({
+                inputRange: [0, 1],
+                outputRange: [
+                  tokenColor('control-border'),
+                  tokenColor('shared-border')
+                ]
+              })
+            }
           ]}
-          onLayout={event => {
-            setAllRect({
-              x: event.nativeEvent.layout.x,
-              width: event.nativeEvent.layout.width
-            });
-          }}
-          onPress={() => onScopeChange('all')}>
+        />
+      ) : null}
+      <Pressable
+        testID="scope-all"
+        accessibilityRole="radio"
+        accessibilityState={{ checked: scope === 'all' }}
+        accessibilityLabel={`${t('library.scopeAll')} ${totalCount}`}
+        style={styles.segment}
+        onLayout={event => {
+          setAllRect({
+            x: event.nativeEvent.layout.x,
+            width: event.nativeEvent.layout.width
+          });
+        }}
+        onPress={() => onScopeChange('all')}>
+        <View
+          style={[
+            styles.segmentBody,
+            !measured && scope === 'all' && styles.segmentAll
+          ]}>
           <Text
             style={[
               styles.segmentLabel,
@@ -273,24 +276,26 @@ export default function GalleryFilterBar({
             {t('library.scopeAll')}
           </Text>
           <Text style={styles.segmentCount}>{totalCount}</Text>
-        </Pressable>
-        <Pressable
-          testID="scope-shared"
-          accessibilityRole="radio"
-          accessibilityState={{ checked: scope === 'shared' }}
-          accessibilityLabel={`${t('library.scopeShared')} ${sharedCount}`}
-          hitSlop={{ top: SEGMENT_HIT, bottom: SEGMENT_HIT }}
+        </View>
+      </Pressable>
+      <Pressable
+        testID="scope-shared"
+        accessibilityRole="radio"
+        accessibilityState={{ checked: scope === 'shared' }}
+        accessibilityLabel={`${t('library.scopeShared')} ${sharedCount}`}
+        style={styles.segment}
+        onLayout={event => {
+          setSharedRect({
+            x: event.nativeEvent.layout.x,
+            width: event.nativeEvent.layout.width
+          });
+        }}
+        onPress={() => onScopeChange('shared')}>
+        <View
           style={[
-            styles.segment,
+            styles.segmentBody,
             !measured && scope === 'shared' && styles.segmentShared
-          ]}
-          onLayout={event => {
-            setSharedRect({
-              x: event.nativeEvent.layout.x,
-              width: event.nativeEvent.layout.width
-            });
-          }}
-          onPress={() => onScopeChange('shared')}>
+          ]}>
           <IconUserShare
             size={tokenLength('icon-sm')}
             color={
@@ -311,8 +316,8 @@ export default function GalleryFilterBar({
             ]}>
             {sharedCount}
           </Text>
-        </Pressable>
-      </View>
+        </View>
+      </Pressable>
     </View>
   ) : null;
 
@@ -408,26 +413,37 @@ const styles = StyleSheet.create({
     gap: tokenLength('space-2')
   },
   pair: {
-    padding: tokenLength('space-1') / 2,
+    position: 'relative',
+    height: touchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokenLength('space-1') / 2,
+    paddingHorizontal: SEGMENT_FRAME
+  },
+  pairBody: {
+    position: 'absolute',
+    top: PAIR_INSET,
+    left: 0,
+    right: 0,
+    height: PAIR_HEIGHT,
     borderWidth: 1,
     borderColor: tokenColor('control-border'),
     borderRadius: tokenLength('radius-chip'),
     backgroundColor: tokenColor('surface')
   },
-  pairInner: {
-    flexDirection: 'row',
-    gap: tokenLength('space-1') / 2,
-    position: 'relative'
-  },
   scopePlate: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
+    top: PAIR_INSET + SEGMENT_FRAME,
+    height: SEGMENT_HEIGHT,
     borderWidth: 1,
     borderRadius: tokenLength('radius-chip')
   },
   segment: {
-    height: touchTarget - SEGMENT_INSET,
+    height: touchTarget,
+    justifyContent: 'center'
+  },
+  segmentBody: {
+    height: SEGMENT_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokenLength('space-2'),

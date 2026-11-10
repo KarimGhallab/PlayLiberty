@@ -1,3 +1,4 @@
+import { IconCheck } from '@tabler/icons-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PlaylistSort } from '@playliberty/contracts';
@@ -8,6 +9,7 @@ import {
   fontFamily,
   tokenColor,
   tokenLength,
+  tokenWeight,
   touchTarget
 } from '../../../shared/styles/tokens/tokens';
 
@@ -54,10 +56,17 @@ export default function PlaylistSortSheet({
                 pressed && styles.pressed
               ]}
               onPress={() => onSelect(option.value)}>
-              <View style={[styles.radio, checked && styles.radioOn]}>
-                {checked ? <View style={styles.dot} /> : null}
+              <View style={styles.mark}>
+                {checked ? (
+                  <IconCheck
+                    size={tokenLength('icon-sm')}
+                    color={tokenColor('accent')}
+                  />
+                ) : null}
               </View>
-              <Text style={styles.label}>{t(option.label)}</Text>
+              <Text style={[styles.label, checked && styles.labelOn]}>
+                {t(option.label)}
+              </Text>
             </Pressable>
           );
         })}
@@ -80,27 +89,18 @@ const styles = StyleSheet.create({
   pressed: {
     backgroundColor: tokenColor('surface-raised')
   },
-  radio: {
-    width: tokenLength('space-5'),
-    height: tokenLength('space-5'),
+  mark: {
+    width: tokenLength('icon-md'),
+    height: tokenLength('icon-md'),
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: tokenColor('control-border'),
-    borderRadius: tokenLength('radius-chip')
-  },
-  radioOn: {
-    borderColor: tokenColor('accent')
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: tokenLength('radius-chip'),
-    backgroundColor: tokenColor('accent')
+    justifyContent: 'center'
   },
   label: {
     color: tokenColor('ink'),
     fontFamily,
     fontSize: tokenLength('text-md')
+  },
+  labelOn: {
+    fontWeight: tokenWeight('weight-medium')
   }
 });

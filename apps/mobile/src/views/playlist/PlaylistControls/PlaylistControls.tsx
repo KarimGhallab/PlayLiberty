@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokenColor('line')
   },
   skeletonChip: {
-    height: touchTarget,
+    height: tokenLength('control-height'),
     borderRadius: tokenLength('radius-chip'),
     backgroundColor: tokenColor('surface-raised')
   },
